@@ -200,6 +200,7 @@ describe('AgentExecutionRepository', () => {
 			memory,
 			mock<Telemetry>(),
 			attachmentService,
+			mock(),
 			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
 			mock<ErrorReporter>(),
@@ -1484,6 +1485,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobRepository>(),
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
+				mock(),
 			);
 			const resume = async (
 				user: User,

@@ -27,6 +27,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
 | [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
 | [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
+| [public.agent_session_output_files](public.agent_session_output_files.md) | 12 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
@@ -78,6 +79,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.insights_raw](public.insights_raw.md) | 5 |  | BASE TABLE |
 | [public.installed_nodes](public.installed_nodes.md) | 4 |  | BASE TABLE |
 | [public.installed_packages](public.installed_packages.md) | 6 |  | BASE TABLE |
+| [public.instance_ai_chat_attachments](public.instance_ai_chat_attachments.md) | 9 |  | BASE TABLE |
 | [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 9 |  | BASE TABLE |
 | [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
@@ -89,6 +91,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_observations](public.instance_ai_observations.md) | 10 |  | BASE TABLE |
 | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) | 12 |  | BASE TABLE |
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
+| [public.instance_ai_session_output_files](public.instance_ai_session_output_files.md) | 10 |  | BASE TABLE |
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
@@ -218,6 +221,8 @@ erDiagram
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_plan" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_plan_history" }o--|| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE CASCADE"
+"public.agent_session_output_files" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.agent_session_output_files" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
@@ -301,6 +306,7 @@ erDiagram
 "public.insights_metadata" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 "public.insights_raw" }o--|| "public.insights_metadata" : "FOREIGN KEY (#quot;metaId#quot;) REFERENCES insights_metadata(#quot;metaId#quot;) ON DELETE CASCADE"
 "public.installed_nodes" }o--|| "public.installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages(#quot;packageName#quot;) ON UPDATE CASCADE ON DELETE CASCADE"
+"public.instance_ai_chat_attachments" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_checkpoints" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_events" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_iteration_logs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
@@ -317,6 +323,7 @@ erDiagram
 "public.instance_ai_pending_confirmations" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_pending_confirmations" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_pending_confirmations" }o--o| "public.instance_ai_checkpoints" : "FOREIGN KEY (#quot;checkpointKey#quot;) REFERENCES instance_ai_checkpoints(key) ON DELETE CASCADE"
+"public.instance_ai_session_output_files" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_thread_tabs" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -652,6 +659,20 @@ erDiagram
   integer formatVersion
   uuid planId FK
   integer revision
+}
+"public.agent_session_output_files" {
+  varchar_36_ agentId FK
+  text binaryDataId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ fileName
+  integer fileSizeBytes
+  varchar_16_ id
+  varchar_255_ mimeType
+  varchar_36_ projectId FK
+  varchar_128_ runId
+  varchar_128_ threadId
+  timestamp_3__with_time_zone updatedAt
+  varchar_128_ writerId
 }
 "public.agent_task_definition" {
   varchar_36_ agentId FK
@@ -1135,6 +1156,17 @@ erDiagram
   varchar_214_ packageName
   timestamp_3__with_time_zone updatedAt
 }
+"public.instance_ai_chat_attachments" {
+  text binaryDataId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ fileName
+  integer fileSizeBytes
+  varchar_16_ id
+  varchar_36_ messageId
+  varchar_255_ mimeType
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
 "public.instance_ai_checkpoints" {
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone expiredAt
@@ -1263,6 +1295,18 @@ erDiagram
   json metadata
   timestamp_3__with_time_zone updatedAt
   text workingMemory
+}
+"public.instance_ai_session_output_files" {
+  text binaryDataId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ fileName
+  integer fileSizeBytes
+  varchar_16_ id
+  varchar_255_ mimeType
+  varchar_64_ runId
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_128_ writerId
 }
 "public.instance_ai_thread_grants" {
   timestamp_3__with_time_zone createdAt

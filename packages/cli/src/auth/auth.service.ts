@@ -142,6 +142,13 @@ export class AuthService {
 			new RegExp(
 				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
 			),
+
+			// Session file content (attachments + outputs) is opened as a top-level
+			// <a href> / <img src>, so it also cannot send the browser-id header.
+			new RegExp(
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/sessions/:sessionId/files/:fileId/content$`,
+			),
+			`/${restEndpoint}/instance-ai/sessions/:sessionId/files/:fileId/content`,
 		];
 	}
 

@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | uuid |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) [public.instance_ai_events](public.instance_ai_events.md) [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) [public.instance_ai_messages](public.instance_ai_messages.md) [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) [public.instance_ai_observations](public.instance_ai_observations.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) |  |  |
+| id | uuid |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.instance_ai_chat_attachments](public.instance_ai_chat_attachments.md) [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) [public.instance_ai_events](public.instance_ai_events.md) [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) [public.instance_ai_messages](public.instance_ai_messages.md) [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) [public.instance_ai_observations](public.instance_ai_observations.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_session_output_files](public.instance_ai_session_output_files.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) |  |  |
 | metadata | json |  | true |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Project this thread is scoped to |
 | resourceId | varchar(255) |  | false |  |  |  |
@@ -40,6 +40,7 @@
 erDiagram
 
 "public.ai_builder_temporary_workflow" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_chat_attachments" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_checkpoints" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_events" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_iteration_logs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
@@ -49,6 +50,7 @@ erDiagram
 "public.instance_ai_observational_memory" }o--o| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE SET NULL"
 "public.instance_ai_observations" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_pending_confirmations" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_session_output_files" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -67,6 +69,17 @@ erDiagram
   uuid threadId FK
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.instance_ai_chat_attachments" {
+  text binaryDataId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ fileName
+  integer fileSizeBytes
+  varchar_16_ id
+  varchar_36_ messageId
+  varchar_255_ mimeType
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_checkpoints" {
   timestamp_3__with_time_zone createdAt
@@ -180,6 +193,18 @@ erDiagram
   varchar_64_ toolCallId
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.instance_ai_session_output_files" {
+  text binaryDataId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ fileName
+  integer fileSizeBytes
+  varchar_16_ id
+  varchar_255_ mimeType
+  varchar_64_ runId
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_128_ writerId
 }
 "public.instance_ai_thread_grants" {
   timestamp_3__with_time_zone createdAt

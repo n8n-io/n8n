@@ -27,6 +27,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_message_queue](agent_message_queue.md) | 10 |  | table |
 | [agent_plan](agent_plan.md) | 8 |  | table |
 | [agent_plan_history](agent_plan_history.md) | 6 |  | table |
+| [agent_session_output_files](agent_session_output_files.md) | 12 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
@@ -78,6 +79,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [insights_raw](insights_raw.md) | 5 |  | table |
 | [installed_nodes](installed_nodes.md) | 4 |  | table |
 | [installed_packages](installed_packages.md) | 6 |  | table |
+| [instance_ai_chat_attachments](instance_ai_chat_attachments.md) | 9 |  | table |
 | [instance_ai_checkpoints](instance_ai_checkpoints.md) | 9 |  | table |
 | [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
@@ -89,6 +91,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_observations](instance_ai_observations.md) | 10 |  | table |
 | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
+| [instance_ai_session_output_files](instance_ai_session_output_files.md) | 10 |  | table |
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_thread_tabs](instance_ai_thread_tabs.md) | 5 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
@@ -200,6 +203,8 @@ erDiagram
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (steeringExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_plan" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_plan_history" |o--|| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_session_output_files" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_session_output_files" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -283,6 +288,7 @@ erDiagram
 "insights_metadata" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "insights_raw" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "installed_nodes" }o--|| "installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages (packageName) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
+"instance_ai_chat_attachments" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_checkpoints" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_events" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_iteration_logs" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -299,6 +305,7 @@ erDiagram
 "instance_ai_pending_confirmations" }o--o| "instance_ai_checkpoints" : "FOREIGN KEY (checkpointKey) REFERENCES instance_ai_checkpoints (key) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_session_output_files" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_tabs" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -638,6 +645,20 @@ erDiagram
   INTEGER formatVersion
   varchar planId PK
   INTEGER revision PK
+}
+"agent_session_output_files" {
+  varchar_36_ agentId FK
+  TEXT binaryDataId
+  datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_255_ mimeType
+  varchar_36_ projectId FK
+  varchar_128_ runId
+  varchar_128_ threadId
+  datetime_3_ updatedAt
+  varchar_128_ writerId
 }
 "agent_task_definition" {
   varchar_36_ agentId FK
@@ -1121,6 +1142,17 @@ erDiagram
   char_214_ packageName PK
   datetime_3_ updatedAt
 }
+"instance_ai_chat_attachments" {
+  TEXT binaryDataId
+  datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_36_ messageId
+  varchar_255_ mimeType
+  varchar threadId FK
+  datetime_3_ updatedAt
+}
 "instance_ai_checkpoints" {
   datetime_3_ createdAt
   datetime_3_ expiredAt
@@ -1249,6 +1281,18 @@ erDiagram
   TEXT metadata
   datetime_3_ updatedAt
   TEXT workingMemory
+}
+"instance_ai_session_output_files" {
+  TEXT binaryDataId
+  datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_255_ mimeType
+  varchar_64_ runId
+  varchar threadId FK
+  datetime_3_ updatedAt
+  varchar_128_ writerId
 }
 "instance_ai_thread_grants" {
   datetime_3_ createdAt

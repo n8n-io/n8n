@@ -16,7 +16,7 @@ CREATE TABLE "instance_ai_threads" ("id" varchar PRIMARY KEY NOT NULL, "resource
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar |  | false | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [instance_ai_checkpoints](instance_ai_checkpoints.md) [instance_ai_events](instance_ai_events.md) [instance_ai_iteration_logs](instance_ai_iteration_logs.md) [instance_ai_messages](instance_ai_messages.md) [instance_ai_observation_cursors](instance_ai_observation_cursors.md) [instance_ai_observation_locks](instance_ai_observation_locks.md) [instance_ai_observational_memory](instance_ai_observational_memory.md) [instance_ai_observations](instance_ai_observations.md) [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) [instance_ai_thread_grants](instance_ai_thread_grants.md) [instance_ai_thread_tabs](instance_ai_thread_tabs.md) |  |  |
+| id | varchar |  | false | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [instance_ai_chat_attachments](instance_ai_chat_attachments.md) [instance_ai_checkpoints](instance_ai_checkpoints.md) [instance_ai_events](instance_ai_events.md) [instance_ai_iteration_logs](instance_ai_iteration_logs.md) [instance_ai_messages](instance_ai_messages.md) [instance_ai_observation_cursors](instance_ai_observation_cursors.md) [instance_ai_observation_locks](instance_ai_observation_locks.md) [instance_ai_observational_memory](instance_ai_observational_memory.md) [instance_ai_observations](instance_ai_observations.md) [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) [instance_ai_session_output_files](instance_ai_session_output_files.md) [instance_ai_thread_grants](instance_ai_thread_grants.md) [instance_ai_thread_tabs](instance_ai_thread_tabs.md) |  |  |
 | metadata | TEXT |  | true |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | resourceId | varchar(255) |  | false |  |  |  |
@@ -46,6 +46,7 @@ CREATE TABLE "instance_ai_threads" ("id" varchar PRIMARY KEY NOT NULL, "resource
 erDiagram
 
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_chat_attachments" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_checkpoints" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_events" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_iteration_logs" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -55,6 +56,7 @@ erDiagram
 "instance_ai_observational_memory" }o--o| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "instance_ai_observations" }o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_session_output_files" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_tabs" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -73,6 +75,17 @@ erDiagram
   varchar threadId FK
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
+}
+"instance_ai_chat_attachments" {
+  TEXT binaryDataId
+  datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_36_ messageId
+  varchar_255_ mimeType
+  varchar threadId FK
+  datetime_3_ updatedAt
 }
 "instance_ai_checkpoints" {
   datetime_3_ createdAt
@@ -186,6 +199,18 @@ erDiagram
   varchar_64_ toolCallId
   datetime_3_ updatedAt
   varchar userId FK
+}
+"instance_ai_session_output_files" {
+  TEXT binaryDataId
+  datetime_3_ createdAt
+  varchar_255_ fileName
+  INTEGER fileSizeBytes
+  varchar_16_ id PK
+  varchar_255_ mimeType
+  varchar_64_ runId
+  varchar threadId FK
+  datetime_3_ updatedAt
+  varchar_128_ writerId
 }
 "instance_ai_thread_grants" {
   datetime_3_ createdAt

@@ -55,5 +55,24 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
 		});
+
+		it('should include session file content downloads in the skip browser ID check endpoints', () => {
+			const skipEndpoints = (authService as any).skipBrowserIdCheckEndpoints as Array<
+				string | RegExp
+			>;
+
+			expect(skipEndpoints).toContain(
+				'/rest/instance-ai/sessions/:sessionId/files/:fileId/content',
+			);
+			expect(
+				skipEndpoints.some(
+					(entry) =>
+						entry instanceof RegExp &&
+						entry.test(
+							'/rest/projects/abc/agents/v2/:agentId/sessions/:sessionId/files/:fileId/content',
+						),
+				),
+			).toBe(true);
+		});
 	});
 });
