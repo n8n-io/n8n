@@ -113,7 +113,7 @@
     "eslint": "catalog:",
     "knip": "catalog:",
     "lefthook": "^1.13.6",
-    "nodemon": "^3.0.1",
+    "nodemon": "^3.1.14",
     "npm-run-all2": "^7.0.2",
     "prettier": "catalog:",
     "rimraf": "^5.0.1",
