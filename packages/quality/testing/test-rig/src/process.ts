@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import type { Readable } from 'node:stream';
 import { promisify } from 'node:util';
 
 import { sleep } from '@n8n/utils/sleep';
@@ -106,7 +107,7 @@ export async function waitForLog(
 ): Promise<LogMatch> {
 	const wanted = Array.isArray(snippet) ? snippet : [snippet];
 	const label = `log "${wanted.join('" | "')}"`;
-	const streams: Array<{ destroy?: () => void }> = [];
+	const streams: Readable[] = [];
 	try {
 		return await new Promise((resolve, reject) => {
 			const timer = setTimeout(
@@ -119,7 +120,7 @@ export async function waitForLog(
 			});
 			for (const container of containers) {
 				void container.logs({ since: Math.floor(Date.now() / 1000) - 1 }).then((stream) => {
-					streams.push(stream as unknown as { destroy?: () => void });
+					streams.push(stream);
 					const match = lineMatcher(wanted);
 					stream.on('data', (chunk: Buffer | string) => {
 						const line = match(chunk.toString());
@@ -132,7 +133,7 @@ export async function waitForLog(
 			}
 		});
 	} finally {
-		for (const stream of streams) stream.destroy?.();
+		for (const stream of streams) stream.destroy();
 	}
 }
 

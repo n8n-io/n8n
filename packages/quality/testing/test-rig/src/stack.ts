@@ -93,7 +93,9 @@ export class RigStack {
 	}
 
 	worker(index: number): Container {
-		return this.container(new RegExp(`-n8n-worker-${index}$`));
+		const found = this.workers()[index - 1];
+		if (!found) throw new Error(`worker ${index} not found`);
+		return found;
 	}
 
 	workers(): Container[] {
