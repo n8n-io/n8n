@@ -623,8 +623,6 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-<<<<<<< HEAD
-=======
 		describe('when the workflow uses a credential the user cannot use', () => {
 			const seedUnusableCredential = (currentUserCanUse: boolean) => {
 				mockDocumentStore.allNodes = [
@@ -692,33 +690,6 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('should prevent execution and show error when binary mode is "combined" with filesystem mode "default"', async () => {
-			const pinia = createTestingPinia({ stubActions: false });
-			setActivePinia(pinia);
-			const toast = useToast();
-			const rootStore = useRootStore();
-			const { runWorkflow } = useRunWorkflow({ router });
-
-			vi.mocked(rootStore).binaryDataMode = 'default';
-			mockDocumentStore.serialize.mockReturnValue({
-				id: 'workflowId',
-				nodes: [],
-				settings: {
-					binaryMode: BINARY_MODE_COMBINED,
-				},
-			} as unknown as WorkflowData);
-
-			const result = await runWorkflow({});
-
-			expect(result).toBeUndefined();
-			expect(toast.showMessage).toHaveBeenCalledWith({
-				title: useI18n().baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
-				message: useI18n().baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
-				type: 'error',
-			});
-		});
-
->>>>>>> 0e1c7549997f43053fda83534b597875b0310df6
 		it('should exclude destinationNode from startNodes when provided', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
