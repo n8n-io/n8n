@@ -27,6 +27,13 @@ export interface StackOptions {
 const byName = (containers: Container[]) =>
 	[...containers].sort((a, b) => a.getName().localeCompare(b.getName(), 'en', { numeric: true }));
 
+const running = new Set<RigStack>();
+
+/** Stops every stack this process started and has not stopped, for cleanup after a timeout or an interrupt. */
+export async function stopAllStacks() {
+	await Promise.allSettled([...running].map(async (rig) => await rig.stop()));
+}
+
 /** A running n8n stack with hooks, REST client and probes. */
 export class RigStack {
 	readonly api: N8nClient;
@@ -69,6 +76,7 @@ export class RigStack {
 			},
 		});
 		const rig = new RigStack(stack, Date.now() - started, hooks);
+		running.add(rig);
 		try {
 			await rig.assertHooksInstalled();
 		} catch (error) {
@@ -164,6 +172,7 @@ export class RigStack {
 	}
 
 	async stop() {
+		if (!running.delete(this)) return;
 		await this.stack.stop();
 	}
 }

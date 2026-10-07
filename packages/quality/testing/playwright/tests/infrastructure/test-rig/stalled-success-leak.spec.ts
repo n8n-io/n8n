@@ -10,12 +10,15 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	until,
 	waitForExit,
 	webhookPath,
 } from '@n8n/test-rig';
 
 const GRACE_S = 5;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'stalled job that succeeded: main settles the execution and shuts down cleanly',

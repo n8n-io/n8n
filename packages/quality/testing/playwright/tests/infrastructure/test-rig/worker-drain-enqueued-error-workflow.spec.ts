@@ -11,12 +11,15 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	waitForExit,
 	waitForLog,
 	webhookPath,
 } from '@n8n/test-rig';
 
 const GRACE_S = 10;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: an error workflow enqueued during the drain stays queued',

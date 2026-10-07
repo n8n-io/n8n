@@ -23,6 +23,7 @@ export interface ChaosArgs {
 	minFailures: number;
 	budgetMs: number;
 	outDir: string;
+	help: boolean;
 }
 
 const positive = (name: string, value: string) => {
@@ -48,6 +49,7 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 			'min-failures': { type: 'string', default: '2' },
 			budget: { type: 'string', default: '3600' },
 			out: { type: 'string', default: join(tmpdir(), 'test-rig-chaos') },
+			help: { type: 'boolean', default: false },
 		},
 	});
 	const kinds = values.kinds.split(',').filter(Boolean) as FaultKind[];
@@ -73,5 +75,6 @@ export function parseChaosArgs(argv: string[], random = Math.random): ChaosArgs 
 		minFailures,
 		budgetMs: positive('budget', values.budget) * 1000,
 		outDir: values.out,
+		help: values.help,
 	};
 }

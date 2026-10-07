@@ -11,6 +11,7 @@ import {
 	Scenario,
 	signal,
 	startAgain,
+	stopAllStacks,
 	waitForExit,
 	waitForLog,
 	webhookPath,
@@ -18,6 +19,8 @@ import {
 
 const WORKER_GRACE_S = 25;
 const STOP_TIMEOUT_S = 30;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'ECS-style stop: a node needs a runner after the worker and runner sidecar got SIGTERM',

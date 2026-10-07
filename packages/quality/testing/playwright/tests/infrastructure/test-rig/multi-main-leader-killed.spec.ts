@@ -2,6 +2,7 @@ import {
 	atMost,
 	currentLeader,
 	fastLeaderElection,
+	finishedAt,
 	is,
 	LEADER_HOOKS,
 	leadershipEvents,
@@ -10,12 +11,15 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 } from '@n8n/test-rig';
 import { expect, test } from '@playwright/test';
 
 const TTL_S = 4;
 const INTERVAL_S = 1;
 const HANDOVER_LIMIT_MS = (TTL_S + 2 * INTERVAL_S) * 1000 + 2000;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'multi-main: a follower takes over within the lease when the leader is killed',
@@ -52,7 +56,11 @@ test(
 
 			const events = [
 				...(await leadershipEvents(rig)),
-				{ instance: leader.name, at: killedAt, role: 'follower' as const },
+				{
+					instance: leader.name,
+					at: await finishedAt(leader.container),
+					role: 'follower' as const,
+				},
 			];
 			await s.collectLogs();
 			s.set({ leader: leader.name, handoverMs, events, leaderKey: await rig.redis.leader() });

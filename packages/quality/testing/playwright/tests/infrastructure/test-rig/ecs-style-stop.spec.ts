@@ -11,12 +11,15 @@ import {
 	Scenario,
 	signal,
 	startAgain,
+	stopAllStacks,
 	waitForExit,
 	webhookPath,
 } from '@n8n/test-rig';
 
 const WORKER_GRACE_S = 25;
 const STOP_TIMEOUT_S = 30;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'ECS-style stop: worker and runner get SIGTERM together, then SIGKILL at the stop timeout',

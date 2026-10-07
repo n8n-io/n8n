@@ -3,10 +3,15 @@ import { chaosRun, chaosSchedule } from '../chaos/run';
 import { describeFault } from '../chaos/schedule';
 import { shrink } from '../chaos/shrink';
 import { parseChaosArgs, USAGE } from './chaos-args';
+import { stopAllStacks } from '../stack';
 
 async function main() {
-	if (!process.env.TEST_IMAGE_N8N) throw new Error(`set TEST_IMAGE_N8N\n${USAGE}`);
 	const args = parseChaosArgs(process.argv.slice(2));
+	if (args.help) {
+		console.log(USAGE);
+		return;
+	}
+	if (!process.env.TEST_IMAGE_N8N) throw new Error(`set TEST_IMAGE_N8N\n${USAGE}`);
 
 	const options = { ...args };
 	const schedule = chaosSchedule(options);
@@ -47,6 +52,10 @@ async function main() {
 }
 
 if (require.main === module) {
+	process.once('SIGINT', () => {
+		console.error('interrupted; stopping stacks');
+		void stopAllStacks().finally(() => process.exit(130));
+	});
 	main().catch((error: unknown) => {
 		console.error(error instanceof Error ? error.message : error);
 		process.exit(2);

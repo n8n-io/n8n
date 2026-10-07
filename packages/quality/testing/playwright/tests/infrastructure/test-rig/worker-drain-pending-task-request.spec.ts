@@ -10,11 +10,14 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	waitForExit,
 	webhookPath,
 } from '@n8n/test-rig';
 
 const GRACE_S = 10;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a task request no runner accepts ends inside the shutdown window',

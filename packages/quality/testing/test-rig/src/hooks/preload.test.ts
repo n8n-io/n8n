@@ -46,7 +46,6 @@ beforeEach(() => {
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-/** Starts a Node process with the preload and the given hooks, running `body` against the fake service. */
 function start(hooks: unknown[], body: string, env: Record<string, string> = {}) {
 	const script = join(root, 'script.js');
 	writeFileSync(

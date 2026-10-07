@@ -56,6 +56,7 @@ describe('parseChaosArgs', () => {
 			minFailures: 4,
 			budgetMs: 60_000,
 			outDir: '/o',
+			help: false,
 		});
 	});
 

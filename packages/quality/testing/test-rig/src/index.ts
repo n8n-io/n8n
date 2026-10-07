@@ -2,12 +2,13 @@ export { FILES, hookSpecSchema, parseHookSpecs } from './hooks/spec';
 export type { HookSpec, Role } from './hooks/spec';
 export { hook, parseHookLine, preloadNodeOptions } from './hooks/control';
 export type { HookHit } from './hooks/control';
-export { RigStack } from './stack';
+export { RigStack, stopAllStacks } from './stack';
 export type { StackOptions } from './stack';
 export { N8nClient } from './n8n-client';
 export { PostgresProbe, RedisProbe, FINAL_STATUSES } from './probes';
 export type { BullState, ExecutionState } from './probes';
 export {
+	finishedAt,
 	freeze,
 	logs,
 	msUntilLog,

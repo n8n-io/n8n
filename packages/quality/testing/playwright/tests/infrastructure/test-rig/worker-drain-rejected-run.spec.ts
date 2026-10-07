@@ -10,12 +10,15 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	waitForExit,
 	waitForLog,
 	webhookPath,
 } from '@n8n/test-rig';
 
 const GRACE_S = 5;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a job whose run rejects no longer holds the drain',

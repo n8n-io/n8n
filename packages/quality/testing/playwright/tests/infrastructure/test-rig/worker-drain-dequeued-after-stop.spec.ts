@@ -10,10 +10,13 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	waitForExit,
 	waitForLog,
 	webhookPath,
 } from '@n8n/test-rig';
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a job handed to the worker after stop began runs on another worker',

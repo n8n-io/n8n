@@ -10,6 +10,7 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	waitForExit,
 	waitForLog,
 	webhookPath,
@@ -20,6 +21,8 @@ const RUNNERS = EXTERNAL ? 'external' : 'internal';
 const NAME = EXTERNAL
 	? 'worker-drain-detached-subworkflow-external'
 	: 'worker-drain-detached-subworkflow';
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: detached sub-workflow finishes before the worker exits',

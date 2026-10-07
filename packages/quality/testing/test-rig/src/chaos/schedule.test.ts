@@ -54,6 +54,14 @@ describe('generateSchedule', () => {
 		expect(restarts.every((s) => s.fault.target !== 'main')).toBe(true);
 	});
 
+	it('aims hook faults only at hook targets', () => {
+		const hooks = generateSchedule(13, { ...menu, hookTargets: ['worker-1'] }, 300, 1_000).filter(
+			(s) => s.fault.kind === 'hook',
+		);
+		expect(hooks.length).toBeGreaterThan(0);
+		expect(new Set(hooks.map((s) => s.fault.target))).toEqual(new Set(['worker-1']));
+	});
+
 	it('leaves hook faults out when no hook point is declared', () => {
 		const kinds = generateSchedule(3, { ...menu, hookPoints: [] }, 100, 1_000).map(
 			(s) => s.fault.kind,

@@ -37,6 +37,8 @@ export interface MenuOptions {
 	targets: string[];
 	/** Targets that `kill` and `stop` may pick; a restarted container gets a new host port, so keep the main out. */
 	restartTargets?: string[];
+	/** Targets that `hook` may pick: containers that run the hooked methods. */
+	hookTargets?: string[];
 	kinds: FaultKind[];
 	/** Hook points declared for the stack that a `hook` fault may arm. */
 	hookPoints?: string[];
@@ -49,7 +51,13 @@ function faultFrom(rng: ReturnType<typeof random>, menu: MenuOptions): Fault {
 	const kinds = menu.kinds.filter((kind) => kind !== 'hook' || menu.hookPoints?.length);
 	const kind = rng.pick(kinds);
 	const restartable = menu.restartTargets ?? menu.targets;
-	const target = rng.pick(kind === 'kill' || kind === 'stop' ? restartable : menu.targets);
+	const pool =
+		kind === 'kill' || kind === 'stop'
+			? restartable
+			: kind === 'hook'
+				? (menu.hookTargets ?? menu.targets)
+				: menu.targets;
+	const target = rng.pick(pool);
 	const forMs = rng.int(1_000, maxMs);
 	const to = rng.pick(['postgres', 'redis'] as const);
 	switch (kind) {

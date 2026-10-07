@@ -8,9 +8,12 @@ import {
 	nodes,
 	RigStack,
 	Scenario,
+	stopAllStacks,
 	waitForLog,
 	webhookPath,
 } from '@n8n/test-rig';
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'job moved to active before the worker takes its lock is not failed as stalled',

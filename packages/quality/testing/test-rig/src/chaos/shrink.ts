@@ -60,5 +60,5 @@ export async function shrink(
 			}
 		}
 	}
-	return { schedule: current, runs, exhausted: false };
+	return { schedule: current, runs, exhausted: outOfBudget() };
 }

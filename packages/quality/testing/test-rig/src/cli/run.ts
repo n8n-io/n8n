@@ -140,6 +140,7 @@ function main() {
 					'--project=test-rig',
 					'--reporter=line',
 					`--repeat-each=${options.runs}`,
+					`--output=${join(options.out, `${name}.${variant}`)}`,
 					join(SPEC_DIR, scenario.spec),
 				],
 				{

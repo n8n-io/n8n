@@ -9,6 +9,7 @@ import {
 	msUntilLog,
 	RigStack,
 	Scenario,
+	stopAllStacks,
 } from '@n8n/test-rig';
 import { expect, test } from '@playwright/test';
 
@@ -16,6 +17,8 @@ const TTL_S = 4;
 const INTERVAL_S = 1;
 const TAKEOVER_LIMIT_MS = (TTL_S + 2 * INTERVAL_S) * 1000 + 2000;
 const STEP_DOWN_LIMIT_MS = INTERVAL_S * 1000 + 2000;
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'multi-main: a frozen leader steps down after it thaws and finds a new leader',

@@ -7,7 +7,7 @@ import type { AppliedFault } from './execute';
 import { runSchedule } from './execute';
 import type { Fault, FaultKind, ScheduledFault } from './schedule';
 import { generateSchedule } from './schedule';
-import { hook } from '../hooks/control';
+import { HOOK_DIR, hook } from '../hooks/control';
 import type { HookSpec } from '../hooks/spec';
 import { FILES } from '../hooks/spec';
 import type { Violation } from '../invariants';
@@ -68,6 +68,7 @@ export function chaosSchedule(options: ChaosOptions): ScheduledFault[] {
 		{
 			targets: ['main', ...workers],
 			restartTargets: workers,
+			hookTargets: workers,
 			kinds: options.kinds,
 			hookPoints: CHAOS_HOOKS.map((h) => h.point),
 		},
@@ -124,13 +125,18 @@ export function rigExecutor(rig: RigStack) {
 	};
 }
 
-/** Brings every n8n container back to running, unfrozen and with a clean network. */
+/** Brings every n8n container back to running, unfrozen, with a clean network and no armed hooks. */
 async function heal(rig: RigStack) {
 	for (const { container } of rig.n8nContainers()) {
 		const status = await running(container);
 		if (status === 'paused') await freeze(container, false);
 		if (status === 'exited') await startAgain(container);
 		if (status !== 'exited') await network.restore(container).catch(() => undefined);
+		await container.exec([
+			'node',
+			'-e',
+			`const fs = require('fs'); for (const f of fs.readdirSync(${JSON.stringify(HOOK_DIR)})) if (f.endsWith('.arm')) fs.rmSync(${JSON.stringify(HOOK_DIR)} + '/' + f);`,
+		]);
 	}
 }
 
@@ -151,7 +157,7 @@ export async function chaosRun(
 		const workload = await Workload.setup(rig);
 		workload.start(options.perSecond);
 		const applied = await runSchedule(schedule, rigExecutor(rig), { now: Date.now, sleep });
-		const remaining = options.durationMs - (applied.at(-1)?.endedMs ?? 0);
+		const remaining = options.durationMs - Math.max(0, ...applied.map((a) => a.endedMs));
 		if (remaining > 0) await sleep(remaining);
 		const requests = await workload.stop();
 		await heal(rig);

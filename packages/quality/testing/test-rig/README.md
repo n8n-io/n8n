@@ -51,7 +51,7 @@ pnpm scenarios --after-image n8nio/n8n:my-build      # every after variant on on
 - A variant passes when the image behaves as the spec expects for it: the bug on `before`, the fix on `after`. A `before` run that fails another way counts as a failure
 - A scenario with no image for a variant is skipped. A missing local build fails the run
 - Results go to `$TMPDIR/test-rig-results/<timestamp>/<scenario>.<variant>.jsonl`. Each line holds the outcome fields, the failed checks and a timeline
-- Logs of the last run of each test are in `packages/quality/testing/playwright/test-results/*/logs/`
+- Container logs of the last run of each variant are in `<results dir>/<scenario>.<variant>/*/logs/`
 
 To run one spec by hand:
 
@@ -65,7 +65,7 @@ The containers package reads `TEST_IMAGE_N8N` when it loads and derives the runn
 
 ### Multi-main scenarios
 
-A multi-main stack needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell before you run one. The stack uses the sandbox licence tenant by default. Ask in the team channel for a sandbox key; never commit one. Every fresh stack activates the key once, so prefer a cert when you run many: read it from the `settings` table (`key = 'license.cert'`) of a stack that activated, and export it as `N8N_LICENSE_CERT`.
+A multi-main stack needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell before you run one. The stack uses the sandbox licence tenant by default, so use a sandbox key. Never commit a key or cert. Every fresh stack activates the key once, so prefer a cert when you run many: read it from the `settings` table (`key = 'license.cert'`) of a stack that activated, and export it as `N8N_LICENSE_CERT`.
 
 Single-main stacks always get an empty licence, so a licence in your shell cannot change their results.
 
@@ -132,7 +132,7 @@ test('worker drain: a fetched job runs before the worker exits', async () => {
 | `scope` | Fire only inside an async call of another method, once per call |
 | `where` | Filters: `[{ path: 'args.0.node.name', equals: 'Pause' }]` |
 | `detail` | Values to log with each hit: `{ executionId: 'args.0.executionId' }`. Paths start at `args`, `this`, `scope.args` or `result` |
-| `phase` | `before` the call (default) or `after` it resolves; `where` and `detail` can then read `result` |
+| `phase` | `before` the call or `after` it resolves; `where` and `detail` can then read `result`. Default `before`, except `fault`, which defaults to `after` (call through, then reject) |
 | `preserve` | For `fault` after: methods copied from the original return value onto the rejected promise |
 | `roles`, `lazy` | Containers that must show the hook installed before the scenario starts (default `worker`); `lazy` skips the check for files that load on first use |
 
@@ -143,6 +143,15 @@ test('worker drain: a fetched job runs before the worker exits', async () => {
 `pnpm chaos` starts a stack, runs the workload, and applies a seeded schedule of faults from a menu: signals, freezes, restarts, hook faults and network faults. It then checks the invariants. A failing seed replays the same schedule with `--seed`. `--shrink` removes faults one at a time, repeating each candidate, until the smallest failing schedule is left. See `pnpm chaos --help`.
 
 A seed fixes the schedule, not the outcome: Docker timing still varies, so the shrinker counts a candidate as failing only when it fails in enough of its repeats.
+
+## Clean up
+
+A stack stops when its scenario ends, after a timeout, and on Ctrl-C in `pnpm chaos`. If a process dies before that, remove what is left:
+
+```bash
+docker ps -aq --filter 'name=^rig-' | xargs docker rm -f
+docker network prune -f --filter 'label=org.testcontainers=true'
+```
 
 ## Tests of the rig
 

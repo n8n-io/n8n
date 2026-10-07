@@ -74,6 +74,13 @@ export async function waitForExit(
 	return undefined;
 }
 
+/** When the container's process last exited, on the Docker host's clock, which the container logs also use. */
+export async function finishedAt(container: Container): Promise<number> {
+	return Date.parse(
+		await docker('inspect', '--format', '{{.State.FinishedAt}}', container.getId()),
+	);
+}
+
 export async function logs(container: Container): Promise<string> {
 	const { stdout, stderr } = await run('docker', ['logs', container.getId()], {
 		maxBuffer: 256 * 1024 * 1024,
@@ -108,6 +115,7 @@ export async function waitForLog(
 	const wanted = Array.isArray(snippet) ? snippet : [snippet];
 	const label = `log "${wanted.join('" | "')}"`;
 	const streams: Readable[] = [];
+	let settled = false;
 	try {
 		return await new Promise((resolve, reject) => {
 			const timer = setTimeout(
@@ -120,6 +128,10 @@ export async function waitForLog(
 			});
 			for (const container of containers) {
 				void container.logs({ since: Math.floor(Date.now() / 1000) - 1 }).then((stream) => {
+					if (settled) {
+						stream.destroy();
+						return;
+					}
 					streams.push(stream);
 					const match = lineMatcher(wanted);
 					stream.on('data', (chunk: Buffer | string) => {
@@ -133,6 +145,7 @@ export async function waitForLog(
 			}
 		});
 	} finally {
+		settled = true;
 		for (const stream of streams) stream.destroy();
 	}
 }

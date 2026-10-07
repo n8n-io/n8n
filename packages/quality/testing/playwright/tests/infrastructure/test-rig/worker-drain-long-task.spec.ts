@@ -11,18 +11,19 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	waitForExit,
 	webhookPath,
 } from '@n8n/test-rig';
 
 const EXTERNAL = process.env.TEST_RIG_RUNNERS === 'external';
-// The external runner container keeps its own 60 s task timeout, so its window stays below that.
 const RUNNERS = EXTERNAL ? 'external' : 'internal';
 const WORKERS = EXTERNAL ? 1 : 2;
 const NAME = EXTERNAL ? 'worker-drain-long-task-external' : 'worker-drain-long-task';
 const GRACE_S = EXTERNAL ? 40 : 60;
-// The external runner fails the task itself before the stall check sees it.
 const STALLED_BEFORE = EXTERNAL ? anything : is(true);
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a task longer than the shutdown window ends inside it',

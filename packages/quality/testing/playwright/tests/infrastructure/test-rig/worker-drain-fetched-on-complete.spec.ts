@@ -9,10 +9,13 @@ import {
 	RigStack,
 	Scenario,
 	signal,
+	stopAllStacks,
 	until,
 	waitForExit,
 	webhookPath,
 } from '@n8n/test-rig';
+
+test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a job fetched on completing another goes back to the queue',
