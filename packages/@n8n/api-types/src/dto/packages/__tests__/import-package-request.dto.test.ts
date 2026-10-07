@@ -3,7 +3,6 @@ import {
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from '../import-package-request.dto';
 
-/** Merges a valid `package` file part into a fixture */
 function withPackageFile<T extends Record<string, unknown>>(fields: T) {
 	return {
 		package: {
