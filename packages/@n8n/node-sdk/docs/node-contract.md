@@ -53,7 +53,7 @@ flowchart LR
 | Version | Of what | Where | At run time |
 |---|---|---|---|
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
-| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Pack writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version. Publish refuses a published version with other manifest bytes | Yes: a workflow pins it |
+| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Pack writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version with the same contract and bundle hash. Publish skips such a version and refuses any other change | Yes: a workflow pins it |
 | credential version | the content | `semver` of the credential manifest, from `defineCredential({ version })`; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
 | SDK version | `@n8n/node-sdk` | `sdk: { version, digest }` in each bundled manifest | Yes: the host gives the bundle the SDK runtime of that digest |
 | n8n version | the product | — | Only through the Node Contract range it supports |

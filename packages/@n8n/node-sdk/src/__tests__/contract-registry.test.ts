@@ -15,7 +15,7 @@ import {
 } from '../entry/registry';
 import { defineNode, t } from '../index';
 import { credential, defineCredential, field } from '../entry/credentials';
-import { packAction, packCredential, packNative, type PackedAction } from '../pack';
+import { packAction, packCredential, packNative, packSdkRuntime, type PackedAction } from '../pack';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -45,7 +45,9 @@ import {
 	type InstanceStore,
 	type StoredVersion,
 } from '../contract-registry';
-import { npmDeprecate, npmPackageOf, npmPublish } from '../npm';
+import { npmDeprecate, npmDigestOf, npmPackageOf, npmPublish } from '../npm';
+import { storeRecordOf } from '../store';
+import { sha256 } from '../version';
 import { fakeNpmRegistry, type FakeNpmRegistry } from './fake-npm-registry';
 
 // The built embedded stores of the first-party packages.
@@ -558,6 +560,65 @@ describe('contractStore', () => {
 		const store = storeOf();
 		const stored = await store.locked('demo.echo', pinOf('1.0.1'));
 		expect(await run(locked('1.0.0'), { keys: noKeys }, [], stored)).toEqual(['HELLO']);
+	});
+});
+
+describe('contractStore with an SDK runtime from the registry', () => {
+	it('downloads a version with the SDK runtime it pins, runs it and exports both', async () => {
+		const sdk = await packSdkRuntime();
+		const otherBundle = `${sdk.bundle}\n`;
+		const otherSdk = {
+			manifest: { ...sdk.manifest, semver: '0.0.1', bundleHash: sha256(otherBundle) },
+			bundle: otherBundle,
+		};
+		const entry = path.join(dirs.root, 'echo-sdk.ts');
+		await writeFile(entry, echoSource('1.0.3', 'input.text.toUpperCase()'));
+		const packed = await packAction(entry, 'echo', otherSdk);
+		const pin = { version: '1.0.3', digest: npmDigestOf(packed.manifest) };
+		publish(packed);
+		await expect(run({ contract: pin }, { policy: 'strict' })).rejects.toThrow(
+			`The registry has no SDK runtime sha256:${otherSdk.manifest.bundleHash}`,
+		);
+		fake().put(npmPackageOf(otherSdk, { privateKey }));
+
+		expect(await run({ contract: pin }, { policy: 'strict' })).toEqual(['HELLO']);
+		expect(
+			[...instance.current.rows.values()].map(({ id, version, kind }) => [id, version, kind]),
+		).toEqual([
+			['sdkRuntime', '0.0.1', 'sdk'],
+			['demo.echo', '1.0.3', 'action'],
+		]);
+
+		const out = path.join(dirs.root, 'sdk-export');
+		await exportContractStore(instance.current.store, out, ({ kind }) => kind === 'action');
+		const imported = memoryStore();
+		await importContractStore(storeReader(storeFilesOfDir(out)), imported.store, vettingKeys);
+		expect([...imported.rows.values()].map(({ id }) => id).sort()).toEqual([
+			'demo.echo',
+			'sdkRuntime',
+		]);
+	}, 60_000);
+
+	it('refuses a version whose SDK runtime n8n does not have', async () => {
+		const sdk = await packSdkRuntime();
+		const otherBundle = `${sdk.bundle}\n`;
+		const otherManifest = { ...sdk.manifest, semver: '0.0.1', bundleHash: sha256(otherBundle) };
+		const entry = path.join(dirs.root, 'echo-sdk.ts');
+		await writeFile(entry, echoSource('1.0.3', 'input.text.toUpperCase()'));
+		const packed = await packAction(entry, 'echo', {
+			manifest: otherManifest,
+			bundle: otherBundle,
+		});
+		const rowOf = (manifestText: string, bundle: string): StoredVersion => {
+			const { id, version, kind, manifest } = storeRecordOf({ manifestText });
+			return { id, version, kind, manifest, manifestText, bundle, origin: 'private' };
+		};
+		const version = rowOf(manifestTextOf(packed.manifest), packed.bundle);
+		await expect(admitVersions(instance.current.store, [version])).rejects.toThrow(
+			'demo.echo@1.0.3 pins the SDK runtime sha256:',
+		);
+		const runtime = rowOf(manifestTextOf(otherManifest), otherBundle);
+		expect(await admitVersions(instance.current.store, [version, runtime])).toHaveLength(2);
 	});
 });
 

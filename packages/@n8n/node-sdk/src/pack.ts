@@ -19,6 +19,7 @@ import {
 import {
 	actionUiSchema,
 	credentialManifestOf,
+	parseCredentialManifest,
 	SDK_RUNTIME_ID,
 	type CredentialManifest,
 	type NativeManifest,
@@ -30,6 +31,7 @@ import {
 	npmManifestTextOf,
 	npmNameOf,
 	npmRegistryOf,
+	npmStoreReader,
 	npmTarballFile,
 	npmVersionsOf,
 } from './npm';
@@ -50,6 +52,7 @@ import {
 	manifestKindOf,
 	NODE_CONTRACT_VERSION,
 	parseManifest,
+	parseNativeManifest,
 	parseSemver,
 	requiredNodeContractOf,
 	sha256,
@@ -697,36 +700,74 @@ async function publishedOf(registry: string, scope: string, { id, semver }: Stor
 }
 
 /**
- * The version to ship of a HEAD with a bundle. A rebuild can give other bytes for a published
- * version: then the published manifest, bundle and fixtures ship.
+ * What a published version must keep, next to the contract hash, to stand for a HEAD: the
+ * bundle, or all of a credential but its old `sdk` text.
  */
-async function shippedOf(
-	registry: string,
-	scope: string,
-	manifest: VersionManifest,
-	bundle: string,
-	log: (line: string) => void,
-): Promise<{ readonly manifest: VersionManifest } & StoreVersion> {
-	const local = { manifest, manifestText: manifestTextOf(manifest), bundle };
-	const found = await publishedOf(registry, scope, manifest);
-	if (!found || found.published.digest === npmDigestOf(manifest)) return local;
-	const at = `${manifest.id}@${manifest.semver}`;
-	const manifestText = await npmManifestTextOf(found.published, found.name);
-	const published = parseManifest(manifestText);
-	if (published.contractHash !== manifest.contractHash) {
+// A version without a bundle (credential, native) is all manifest, so every field except the SDK
+// pin must match.
+const shipKeyOf = (manifest: StoreManifest) =>
+	'bundleHash' in manifest
+		? manifest.bundleHash
+		: canonicalJson(Object.fromEntries(Object.entries(manifest).filter(([key]) => key !== 'sdk')));
+
+const contractHashOf = (manifest: StoreManifest) =>
+	'contractHash' in manifest ? manifest.contractHash : undefined;
+
+/**
+ * Throws unless the published version of an id and version may stand for the HEAD of that
+ * version, e.g. when only its SDK pin differs. Build ships it and publish skips the HEAD.
+ */
+export function assertPublishedMatches(published: StoreManifest, head: StoreManifest) {
+	const at = `${head.id}@${head.semver}`;
+	if (contractHashOf(published) !== contractHashOf(head)) {
 		throw new UserError(`${at} is published with another contract; bump the version in source`);
 	}
+	if (shipKeyOf(published) !== shipKeyOf(head)) {
+		throw new UserError(`${at} is published with other bytes; bump the version in source`);
+	}
+}
+
+/**
+ * The version to ship of a HEAD. The registry can have the version with another manifest, e.g. one
+ * that pins another SDK runtime. Then the published manifest, bundle and fixtures ship when they
+ * match, see `assertPublishedMatches`. Any other change fails: it needs a new version.
+ */
+async function shippedOf<M extends StoreManifest>(
+	registry: string,
+	scope: string,
+	local: { readonly manifest: M; readonly bundle?: string },
+	parse: (text: string) => M,
+	log: (line: string) => void,
+): Promise<{ readonly manifest: M } & StoreVersion> {
+	const { manifest, bundle } = local;
+	const found = await publishedOf(registry, scope, manifest);
+	if (!found || found.published.digest === npmDigestOf(manifest)) {
+		return { manifest, manifestText: manifestTextOf(manifest), bundle };
+	}
+	const manifestText = await npmManifestTextOf(found.published, found.name);
+	const published = parse(manifestText);
+	assertPublishedMatches(published, manifest);
 	const response = await fetch(found.published.tarball ?? '', {
 		headers: process.env.NPM_TOKEN ? { authorization: `Bearer ${process.env.NPM_TOKEN}` } : {},
 	});
 	const tgz = new Uint8Array(await response.arrayBuffer());
-	log(`${at} has unpublished changes; bump the version to ship them`);
+	log(`${manifest.id}@${manifest.semver} has unpublished changes; bump the version to ship them`);
 	return {
 		manifest: published,
 		manifestText,
 		bundle: npmTarballFile(tgz, 'bundle.cjs'),
 		fixtures: npmTarballFile(tgz, 'fixtures.json'),
 	};
+}
+
+/** The SDK runtime of a `sha256:<hex>` digest from the registry, which a shipped manifest pins. */
+async function registrySdkOf(registry: string, scope: string, digest: string) {
+	const reader = npmStoreReader(registry, { scope });
+	const record = (await reader.records(SDK_RUNTIME_ID)).find(({ bundle }) => bundle === digest);
+	const read = record && (await reader.readManifest(record));
+	const bundle = await reader.blob(digest);
+	if (!read || !bundle) throw new UserError(`The registry has no SDK runtime ${digest}`);
+	return { manifestText: read.text, bundle: bundle.toString('utf8') };
 }
 
 /**
@@ -737,9 +778,8 @@ async function shippedOf(
  * (`contractsOfPackage`).
  *
  * With `N8N_NODE_CONTRACTS_NPM_REGISTRY` (scope: `N8N_NODE_CONTRACTS_NPM_SCOPE`), a release ships
- * the published bytes of each HEAD that the registry has. A HEAD with a bundle and the published
- * contract hash ships the published version and gives a line to `log`. Any other change of a
- * published version is an error.
+ * the published bytes of each HEAD that the registry has, see `shippedOf`, with the SDK runtime
+ * that they pin, and gives a line to `log` for each published manifest that differs from HEAD.
  */
 export async function packPackage(
 	pkg: Pick<SourcePackage, 'name' | 'dir'>,
@@ -757,37 +797,48 @@ export async function packPackage(
 	const url = process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY;
 	const registry = url ? npmRegistryOf(url) : undefined;
 	const scope = process.env.N8N_NODE_CONTRACTS_NPM_SCOPE ?? DEFAULT_NPM_SCOPE;
-	const shipped = await Promise.all(
-		packed.map(async ({ manifest, bundle }) =>
-			registry
-				? await shippedOf(registry, scope, manifest, bundle, log)
-				: { manifest, manifestText: manifestTextOf(manifest), bundle },
+	const ship = async <M extends StoreManifest>(
+		local: { readonly manifest: M; readonly bundle?: string },
+		parse: (text: string) => M,
+	) =>
+		registry
+			? await shippedOf(registry, scope, local, parse, log)
+			: { ...local, manifestText: manifestTextOf(local.manifest) };
+	const [shipped, shippedCredentials, shippedNatives] = await Promise.all([
+		Promise.all(packed.map(async (version) => await ship(version, parseManifest))),
+		Promise.all(
+			credentialManifests.map(
+				async (manifest) => await ship({ manifest }, parseCredentialManifest),
+			),
 		),
-	);
-	if (registry) {
-		// A version without a bundle holds only data, so other bytes are a real change.
-		await Promise.all(
-			[...credentialManifests, ...natives].map(async (manifest) => {
-				const found = await publishedOf(registry, scope, manifest);
-				if (found && found.published.digest !== npmDigestOf(manifest)) {
-					throw new UserError(
-						`${manifest.id}@${manifest.semver} is published with other bytes; bump the version in source`,
-					);
-				}
-			}),
-		);
-	}
+		Promise.all(natives.map(async (manifest) => await ship({ manifest }, parseNativeManifest))),
+	]);
+	const localSdk = `sha256:${sdk.manifest.bundleHash}`;
+	const pinnedSdks = [
+		...new Set(
+			shipped.flatMap(({ manifest }) =>
+				typeof manifest.sdk === 'object' && manifest.sdk.digest !== localSdk
+					? [manifest.sdk.digest]
+					: [],
+			),
+		),
+	];
+	const publishedSdks = registry
+		? await Promise.all(
+				pinnedSdks.map(async (digest) => await registrySdkOf(registry, scope, digest)),
+			)
+		: [];
 	rmSync(outDir, { recursive: true, force: true });
 	await addToStore(outDir, [
 		{ manifestText: manifestTextOf(sdk.manifest), bundle: sdk.bundle },
+		...publishedSdks,
 		...shipped,
-		...[...credentialManifests, ...natives].map((manifest) => ({
-			manifestText: manifestTextOf(manifest),
-		})),
+		...shippedCredentials,
+		...shippedNatives,
 	]);
 	return {
 		manifests: shipped.map(({ manifest }) => manifest),
-		credentials: credentialManifests,
-		natives,
+		credentials: shippedCredentials.map(({ manifest }) => manifest),
+		natives: shippedNatives.map(({ manifest }) => manifest),
 	};
 }

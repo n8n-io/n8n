@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { defineCredential, field } from '../entry/credentials';
-import { packAction, packCredential } from '../pack';
+import { packAction, packCredential, packSdkRuntime, sdkVersion } from '../pack';
 import { defineNode, t } from '../index';
 import {
 	DEFAULT_NPM_SCOPE,
@@ -273,25 +273,29 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 		executions: [{ name: 'pass', params: {}, items: [{ a: 1 }], output: [{ a: 1 }] }],
 	};
 
-	it('publishes each action of a package once, and deprecates a version', async () => {
-		// Inside this package, so the action file resolves @n8n/node-sdk.
+	/** A source package with the `pass` action, inside this package, so it resolves @n8n/node-sdk. */
+	const sourcePackage = async () => {
 		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		const entryFile = path.join(dir, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
+		const keyFile = path.join(dir, 'key.pem');
+		await mkdir(path.dirname(entryFile), { recursive: true });
+		await mkdir(path.join(dir, 'fixtures'));
+		await writeFile(entryFile, pass);
+		await writeFile(path.join(dir, 'fixtures', 'demo.pass.json'), JSON.stringify(fixtures));
+		await writeFile(path.join(dir, 'package.json'), JSON.stringify({ license: 'MIT' }));
+		// The package.json ends the self-reference of @n8n/node-sdk, so a link resolves it.
+		await mkdir(path.join(dir, 'node_modules', '@n8n'), { recursive: true });
+		await symlink(
+			path.resolve(__dirname, '..', '..'),
+			path.join(dir, 'node_modules', '@n8n', 'node-sdk'),
+		);
+		await writeFile(keyFile, privateKey);
+		return { dir, entryFile, keyFile, pkg: { name: '@acme/nodes', dir } };
+	};
+
+	it('publishes each action of a package once, and deprecates a version', async () => {
+		const { dir, keyFile, pkg } = await sourcePackage();
 		try {
-			const entryFile = path.join(dir, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
-			const keyFile = path.join(dir, 'key.pem');
-			await mkdir(path.dirname(entryFile), { recursive: true });
-			await mkdir(path.join(dir, 'fixtures'));
-			await writeFile(entryFile, pass);
-			await writeFile(path.join(dir, 'fixtures', 'demo.pass.json'), JSON.stringify(fixtures));
-			await writeFile(path.join(dir, 'package.json'), JSON.stringify({ license: 'MIT' }));
-			// The package.json ends the self-reference of @n8n/node-sdk, so a link resolves it.
-			await mkdir(path.join(dir, 'node_modules', '@n8n'), { recursive: true });
-			await symlink(
-				path.resolve(__dirname, '..', '..'),
-				path.join(dir, 'node_modules', '@n8n', 'node-sdk'),
-			);
-			await writeFile(keyFile, privateKey);
-			const pkg = { name: '@acme/nodes', dir };
 			const log: string[] = [];
 			const name = '@acme/demo.pass';
 			vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', 'https://registry.npmjs.org/');
@@ -330,6 +334,29 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 				'@acme/demo.pass@1.0.0: revoked: leaks',
 			]);
 			await expect(publishPackage(pkg, ['yank', 'demo.pass'])).rejects.toThrow('Usage:');
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	it('publishes a new SDK runtime and skips an action whose bytes it does not change', async () => {
+		const { dir, entryFile, keyFile, pkg } = await sourcePackage();
+		try {
+			const older = await packSdkRuntime('0.0.1');
+			const published = await packAction(entryFile, 'pass', older);
+			fake().put(npmPackageOf(older, { privateKey }));
+			fake().put(npmPackageOf({ ...published, fixtures }, { privateKey }));
+			vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', fake().url);
+			vi.stubEnv('N8N_NODE_CONTRACTS_SIGNING_KEY_FILE', keyFile);
+			const log: string[] = [];
+
+			await publishPackage(pkg, [], (line) => log.push(line));
+			expect(log).toEqual([`sdkRuntime@${sdkVersion()}`, 'demo.pass@1.0.0']);
+			expect(fake().state.writes).toBe(1);
+			const runtimes = await npmVersionsOf(fake().url, npmNameOf('sdkRuntime'));
+			expect(runtimes.map(({ version }) => version).sort()).toEqual(['0.0.1', sdkVersion()].sort());
+			const [action] = await npmVersionsOf(fake().url, npmNameOf('demo.pass'));
+			expect(action?.digest).toBe(`sha256:${sha256(manifestTextOf(published.manifest))}`);
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}

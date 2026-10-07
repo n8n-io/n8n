@@ -118,11 +118,13 @@ It finds the contracts in the exports of `src/nodes/<node>/actions/*.ts`, with n
 each action and writes its manifest, bundle and fixtures into `dist/store`.
 `pnpm publish:contracts` calls `publishPackage`. Pack takes the version from the source and
 sets the lowest Node Contract version that the bundle needs. The same source gives the same bytes.
-A bundle inlines the SDK, so a rebuild can give other bytes for an unchanged version. With
+A bundle imports the SDK from the host, and its manifest pins the SDK runtime. With
 `N8N_NODE_CONTRACTS_NPM_REGISTRY`, the build writes the published manifest, bundle and fixtures of
-each HEAD that the registry has, and logs `<id>@<version> has unpublished changes; bump the
-version to ship them`. Another contract hash, or other bytes of a version without a bundle, under
-a published version is an error. Without the variable, the build reads no registry. The release
+each HEAD that the registry has, with the SDK runtime that they pin. When the published manifest
+differs from HEAD, it logs `<id>@<version> has unpublished changes; bump the version to ship
+them`. The published version must keep the contract hash and the bundle hash of HEAD; a
+credential or a native version has no bundle, so it must keep all but its old `sdk` text. Any other change under a published version is
+an error. Publish skips such a version with the same rule (`assertPublishedMatches`). Without the variable, the build reads no registry. The release
 ships this store, so its versions are first-party with no key check. Details:
 [node-contract.md, Versions](node-contract.md#versions) and
 [Store layout](node-contract.md#store-layout).

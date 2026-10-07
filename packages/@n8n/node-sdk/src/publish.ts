@@ -20,6 +20,7 @@ import {
 	type Trigger,
 } from './define';
 import {
+	assertPublishedMatches,
 	contractsOfPackage,
 	credentialTypesOf,
 	packAction,
@@ -546,8 +547,8 @@ export interface PublishOptions extends PublishTarget {
 
 /**
  * Gates one packed version and publishes it as an npm package. A version already published with
- * the same manifest digest is a no-op. Other bytes for a published version are refused, and so is
- * a package that holds another contract id.
+ * the same manifest digest, or one that `assertPublishedMatches` accepts, is a no-op. Other bytes
+ * for a published version are refused, and so is a package that holds another contract id.
  */
 async function publishVersion<M extends StoreManifest>(
 	target: PublishTarget,
@@ -566,9 +567,9 @@ async function publishVersion<M extends StoreManifest>(
 	const existing = published.find(({ version }) => version === semver);
 	if (existing) {
 		if (existing.digest === npmDigestOf(manifest)) return manifest;
-		throw new UserError(
-			`${id}@${semver} is published with other bytes; bump the version in source`,
-		);
+		const shipped = parse(await npmManifestTextOf(existing, name));
+		assertPublishedMatches(shipped, manifest);
+		return shipped;
 	}
 	const previous = published
 		.filter(({ version }) => compareSemver(version, semver) < 0)
@@ -581,8 +582,8 @@ async function publishVersion<M extends StoreManifest>(
 
 /**
  * Packs HEAD, gates it against the newest published version below it, signs it, and publishes
- * it. A version already published with the same manifest digest is a no-op; with other bytes it
- * is refused.
+ * it. A published version that matches HEAD (see `publishVersion`) is a no-op; with other bytes
+ * it is refused.
  */
 export async function publishAction(options: PublishOptions): Promise<VersionManifest> {
 	const packed = await packAction(options.entryFile, options.exportName);
@@ -658,8 +659,8 @@ function deprecationOfArgs(args: readonly string[]) {
  * Without `args`, publishes the SDK runtime, then the HEAD of each action and trigger, each
  * credential type that is not a compat type, and each native contract of a package as npm
  * packages, one at a time, and
- * gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a version
- * already published with the same manifest digest is a no-op. With the arguments
+ * gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a published
+ * version that matches HEAD is a no-op. With the arguments
  * `<yank|revoke> <id>@<version> <reason>`, it runs `npm deprecate`.
  * `N8N_NODE_CONTRACTS_NPM_REGISTRY` is the registry, `N8N_NODE_CONTRACTS_NPM_SCOPE` the scope
  * (default `DEFAULT_NPM_SCOPE`), `NPM_TOKEN` the registry token, and

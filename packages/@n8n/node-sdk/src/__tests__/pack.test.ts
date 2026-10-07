@@ -1,9 +1,7 @@
-import { execFile } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { Action } from '../define';
@@ -13,6 +11,7 @@ import {
 	contractsOfPackage,
 	credentialTypesOf,
 	packAction,
+	packCredential,
 	packPackage,
 	packSdkRuntime,
 	sdkVersion,
@@ -20,7 +19,8 @@ import {
 	type PackedAction,
 	type PackedSdkRuntime,
 } from '../pack';
-import { npmDigestOf, npmPackageOf } from '../npm';
+import type { CredentialManifest } from '../manifest';
+import { npmDigestOf, npmPackageOf, type NpmVersion } from '../npm';
 import {
 	executorOf,
 	hostRuntime,
@@ -33,6 +33,7 @@ import {
 import { storeFilesOfDir, storeReader } from '../store';
 import { loadTriggerExecutor, toVersionedTriggerType } from '../triggers';
 import { sha256 } from '../version';
+import { fakeNpmRegistry, type FakeNpmRegistry } from './fake-npm-registry';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
@@ -497,8 +498,20 @@ describe('the manifest of a trigger as the permission source', () => {
 describe('packPackage with a registry', () => {
 	const passSource = (run: string, input = '{}') => `
 import { defineNode, t } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
-export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass', {
+const token = defineCredential({
+	id: 'demo.token',
+	displayName: 'Demo',
+	fields: { token: field.secret('Token') },
+	auth: (a) => a.none(),
+});
+
+export const pass = defineNode({
+	id: 'demo',
+	displayName: 'Demo',
+	credential: credential({ types: [token] }),
+}).action('pass', {
 	action: 'Pass',
 	summary: 'Pass the item on.',
 	flow: { effect: 'transform', cardinality: 'batch' },
@@ -507,102 +520,93 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 	run: ${run},
 });
 `;
-	const registry = 'http://registry.test/';
-	const { privateKey } = generateKeyPairSync('ed25519');
-	const dirs = { pkg: '', entry: '' };
+	const run = '({ items }) => items.map((item) => ({ item }))';
+	const privateKey = generateKeyPairSync('ed25519')
+		.privateKey.export({ type: 'pkcs8', format: 'pem' })
+		.toString();
+	const state = { pkg: '', entry: '', registry: undefined as FakeNpmRegistry | undefined };
 
 	beforeEach(async () => {
 		// Inside this package, so the action file resolves @n8n/node-sdk.
-		dirs.pkg = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
-		dirs.entry = path.join(dirs.pkg, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
-		await mkdir(path.dirname(dirs.entry), { recursive: true });
+		state.pkg = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		state.entry = path.join(state.pkg, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
+		await mkdir(path.dirname(state.entry), { recursive: true });
+		state.registry = await fakeNpmRegistry();
 	});
 
 	afterEach(async () => {
 		vi.unstubAllEnvs();
-		vi.unstubAllGlobals();
-		await rm(dirs.pkg, { recursive: true, force: true });
+		await state.registry?.close();
+		await rm(state.pkg, { recursive: true, force: true });
 	});
 
-	/** Packs the npm package of the action in `dirs.entry` with `npm pack`, and serves it at `registry`. */
-	async function publish() {
-		const packed = await packAction(dirs.entry, 'pass');
-		const files = npmPackageOf(
-			{ ...packed, fixtures: { executions: [] } },
-			{ privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() },
-		);
-		const packDir = path.join(dirs.pkg, 'pack');
-		await mkdir(packDir);
-		await Promise.all(
-			Object.entries(files).map(
-				async ([file, text]) => await writeFile(path.join(packDir, file), text),
-			),
-		);
-		const { stdout } = await promisify(execFile)('npm', ['pack', '--json'], { cwd: packDir });
-		const [{ filename }] = JSON.parse(stdout) as Array<{ filename: string }>;
-		const tgz = await readFile(path.join(packDir, filename));
-		const tarball = `${registry}-/pass.tgz`;
-		const packument = {
-			versions: {
-				'1.0.0': {
-					n8n: { id: 'demo.pass', digest: npmDigestOf(packed.manifest) },
-					dist: { tarball },
-				},
-			},
+	const storeOf = () => storeReader(storeFilesOfDir(path.join(state.pkg, 'dist', 'store')));
+
+	it('ships a published version that pins another SDK runtime, with that runtime', async () => {
+		const registry = state.registry as FakeNpmRegistry;
+		const put = (version: NpmVersion) => registry.put(npmPackageOf(version, { privateKey }));
+		await writeFile(state.entry, passSource(run));
+		const sdk = await packSdkRuntime();
+		const otherBundle = `${sdk.bundle}\n`;
+		const otherSdk = {
+			manifest: { ...sdk.manifest, semver: '0.0.1', bundleHash: sha256(otherBundle) },
+			bundle: otherBundle,
 		};
-		vi.stubGlobal('fetch', async (url: string) =>
-			url === tarball
-				? new Response(tgz)
-				: url === `${registry}@n8n-nodes%2fdemo.pass`
-					? Response.json(packument)
-					: new Response('{}', { status: 404 }),
+		const published = await packAction(state.entry, 'pass', otherSdk);
+		const [credential] = credentialTypesOf([published.action]).flatMap(
+			(type) => packCredential(type) ?? [],
 		);
-		return packed;
-	}
-
-	const headOf = async () => {
-		const reader = storeReader(storeFilesOfDir(path.join(dirs.pkg, 'dist', 'store')));
-		return (await reader.records('demo.pass'))[0];
-	};
-
-	it('ships the published bytes of a version, and packs locally without a registry', async () => {
-		await writeFile(dirs.entry, passSource('({ items }) => items.map((item) => ({ item }))'));
-		const published = await publish();
-		const pkg = { name: '@acme/nodes', dir: dirs.pkg };
+		// A credential manifest of Node Contract 2.10 names the SDK it was packed with.
+		const oldCredential = { ...credential, sdk: '@n8n/node-sdk@0.1.0' };
+		put(otherSdk);
+		put({ ...published, fixtures: { executions: [] } });
+		put({ manifest: oldCredential as CredentialManifest });
+		const pkg = { name: '@acme/nodes', dir: state.pkg };
 		const log: string[] = [];
-		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry);
-		await packPackage(pkg, undefined, (line) => log.push(line));
-		expect(log).toEqual([]);
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry.url);
 
-		// Other bundle bytes, same contract.
-		await writeFile(dirs.entry, passSource('({ items }) => items.map((one) => ({ item: one }))'));
-		const { manifests } = await packPackage(pkg, undefined, (line) => log.push(line));
-		expect(manifests).toEqual([published.manifest]);
-		expect(await headOf()).toMatchObject({
+		const shipped = await packPackage(pkg, undefined, (line) => log.push(line));
+		expect(shipped.manifests).toEqual([published.manifest]);
+		expect(shipped.credentials).toEqual([oldCredential]);
+		expect(log.sort()).toEqual([
+			'demo.pass@1.0.0 has unpublished changes; bump the version to ship them',
+			'demo.token@1.0.0 has unpublished changes; bump the version to ship them',
+		]);
+		expect((await storeOf().records('demo.pass'))[0]).toMatchObject({
 			manifest: npmDigestOf(published.manifest),
 			fixtures: expect.any(String),
 		});
-		expect(log).toEqual(['demo.pass@1.0.0 has unpublished changes; bump the version to ship them']);
-
-		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', '');
-		const local = await packPackage(pkg);
-		expect(local.manifests[0]?.bundleHash).not.toBe(published.manifest.bundleHash);
-		expect((await headOf())?.manifest).toBe(npmDigestOf(local.manifests[0] ?? published.manifest));
-		const store = storeReader(storeFilesOfDir(path.join(dirs.pkg, 'dist', 'store')));
-		const sdkLines = await store.records('sdkRuntime');
-		expect(sdkLines).toEqual([expect.objectContaining({ kind: 'sdk', version: sdkVersion() })]);
-		expect(local.manifests[0]?.sdk).toEqual({ version: sdkVersion(), digest: sdkLines[0]?.bundle });
-
-		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry);
-		await writeFile(
-			dirs.entry,
-			passSource(
-				'({ items }) => items.map((item) => ({ item }))',
-				"{ note: t.str().title('Note') }",
-			),
+		const runtimes = await storeOf().records('sdkRuntime');
+		expect(runtimes.map(({ bundle }) => bundle).sort()).toEqual(
+			[`sha256:${sdk.manifest.bundleHash}`, `sha256:${otherSdk.manifest.bundleHash}`].sort(),
 		);
+		expect((await storeOf().blob(`sha256:${otherSdk.manifest.bundleHash}`))?.toString('utf8')).toBe(
+			otherBundle,
+		);
+
+		put({ manifest: { ...oldCredential, displayName: 'Other' } as CredentialManifest });
+		await expect(packPackage(pkg)).rejects.toThrow(
+			'demo.token@1.0.0 is published with other bytes; bump the version in source',
+		);
+		put({ manifest: oldCredential as CredentialManifest });
+		await writeFile(state.entry, passSource('({ items }) => items.map((one) => ({ item: one }))'));
+		await expect(packPackage(pkg)).rejects.toThrow(
+			'demo.pass@1.0.0 is published with other bytes; bump the version in source',
+		);
+		await writeFile(state.entry, passSource(run, "{ note: t.str().title('Note') }"));
 		await expect(packPackage(pkg)).rejects.toThrow(
 			'demo.pass@1.0.0 is published with another contract; bump the version in source',
 		);
+
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', '');
+		await writeFile(state.entry, passSource(run));
+		const local = await packPackage(pkg);
+		expect(local.manifests[0]?.bundleHash).toBe(published.manifest.bundleHash);
+		expect((await storeOf().records('demo.pass'))[0]?.manifest).toBe(
+			npmDigestOf(local.manifests[0] ?? published.manifest),
+		);
+		const sdkLines = await storeOf().records('sdkRuntime');
+		expect(sdkLines).toEqual([expect.objectContaining({ kind: 'sdk', version: sdkVersion() })]);
+		expect(local.manifests[0]?.sdk).toEqual({ version: sdkVersion(), digest: sdkLines[0]?.bundle });
 	}, 60_000);
 });

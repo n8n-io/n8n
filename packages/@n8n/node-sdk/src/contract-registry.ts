@@ -460,13 +460,53 @@ async function assertPinsResolve(store: InstanceStore, added: readonly StoredVer
 	}
 }
 
+/** The `sha256:<hex>` digest of the SDK runtime that a stored version pins, or `undefined`. */
+const sdkPinOf = (version: StoredVersion) => {
+	const manifest = pinningManifestOf(version);
+	return manifest && 'sdk' in manifest && typeof manifest.sdk === 'object'
+		? manifest.sdk.digest
+		: undefined;
+};
+
+/** The `sha256:<hex>` digest of the bundle of a stored SDK runtime. */
+const runtimeDigestOf = ({ manifestText }: Pick<StoredManifest, 'manifestText'>) =>
+	`sha256:${parseSdkManifest(manifestText).bundleHash}`;
+
+/**
+ * Refuses the versions whose SDK pin resolves to no runtime: none in `added`, none in the store
+ * and none that n8n bundles. Without it, the version cannot run.
+ */
+async function assertSdkResolves(store: InstanceStore, added: readonly StoredVersion[]) {
+	const pinning = added.flatMap((version) => {
+		const digest = sdkPinOf(version);
+		return digest === undefined || store.embedded.sdk(digest) !== undefined
+			? []
+			: [{ version, digest }];
+	});
+	if (pinning.length === 0) return;
+	const known = new Set(
+		[...(await store.manifests(SDK_RUNTIME_ID)), ...added.filter(({ kind }) => kind === 'sdk')].map(
+			runtimeDigestOf,
+		),
+	);
+	const unresolved = pinning.flatMap(({ version, digest }) =>
+		known.has(digest) ? [] : [`${version.id}@${version.version} pins the SDK runtime ${digest}`],
+	);
+	if (unresolved.length > 0) {
+		throw new UserError(
+			`${unresolved.join('; ')}, but n8n has no SDK runtime of that digest. Add the runtime to the store first, e.g. with "n8n contracts:import".`,
+		);
+	}
+}
+
 const storedManifestsOf = async (store: InstanceStore, ids: readonly string[]) =>
 	(await Promise.all(ids.map(async (id) => await store.manifests(id)))).flat();
 
 /**
  * Inserts checked versions into the store and returns the versions that it did not have. A
  * stored version stays, and other bytes for its id and version are refused. A version whose
- * credential pins do not resolve is refused, see `assertPinsResolve`.
+ * credential pins or SDK pin do not resolve is refused, see `assertPinsResolve` and
+ * `assertSdkResolves`.
  */
 export async function admitVersions(
 	store: InstanceStore,
@@ -482,6 +522,7 @@ export async function admitVersions(
 	);
 	if (added.length === 0) return added;
 	await assertPinsResolve(store, added);
+	await assertSdkResolves(store, added);
 	await store.insert(added);
 	// Another admission can store other bytes after the read above. The table then skips the row.
 	assertSameBytes(await storedManifestsOf(store, ids), added);
@@ -739,6 +780,36 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		return bundle === undefined ? undefined : { ...checked, bundle };
 	};
 
+	/** The SDK runtime of a digest from an embedded store or the store of the instance, or `undefined`. */
+	const knownSdkOf = async (digest: string) => {
+		const embedded = store.embedded.sdk(digest);
+		if (embedded !== undefined) return embedded;
+		const row = (await store.manifests(SDK_RUNTIME_ID)).find(
+			(entry) => runtimeDigestOf(entry) === digest,
+		);
+		return row && (await store.bundle(row.manifest));
+	};
+
+	/** The SDK runtime of a digest from the registry. The pin of the digest checks its bytes. */
+	const registrySdk = async (
+		digest: string,
+	): Promise<StoredVersion & { readonly bundle: string }> => {
+		const registry = registryOf();
+		const record = (await registry.records(SDK_RUNTIME_ID)).find(({ bundle }) => bundle === digest);
+		const read = record && (await registry.readManifest(record));
+		const bundle = await registry.blob(digest);
+		if (!record || !read || !bundle)
+			throw new UserError(`The registry has no SDK runtime ${digest}`);
+		const origin = originOf(record, read.text, keys);
+		return { ...storedVersionOf(record, read.text, origin), bundle: bundle.toString('utf8') };
+	};
+
+	/** The SDK runtime that a version pins, from the registry, unless n8n has it. */
+	const pinnedSdk = async ({ sdk }: VersionManifest): Promise<StoredVersion[]> =>
+		typeof sdk === 'object' && (await knownSdkOf(sdk.digest)) === undefined
+			? [await registrySdk(sdk.digest)]
+			: [];
+
 	/** Copies a registry version into the store. The reader checks the bytes against the line. */
 	const download = async (record: StoreRecord): Promise<LoadedVersion> => {
 		const checked = await registryManifest(record);
@@ -748,6 +819,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		const code = bundle.toString('utf8');
 		await admitVersions(store, [
 			...(await pinnedCredentials(manifest)),
+			...(await pinnedSdk(manifest)),
 			storedVersionOf(record, checked.text, origin, { bundle: code }),
 		]);
 		storedById.delete(record.id);
@@ -794,16 +866,14 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		);
 	};
 
-	/** The SDK runtime of a digest: from an embedded store, else from the store of the instance. */
+	/** The SDK runtime of a digest: embedded, stored, or else from the registry into the store. */
 	const sdkOf = async (digest: string) => {
-		const embedded = store.embedded.sdk(digest);
-		if (embedded !== undefined) return embedded;
-		const row = (await store.manifests(SDK_RUNTIME_ID)).find(
-			({ manifestText }) => `sha256:${parseSdkManifest(manifestText).bundleHash}` === digest,
-		);
-		const code = row && (await store.bundle(row.manifest));
-		if (code === undefined) throw new UserError(`n8n has no SDK runtime ${digest}`);
-		return code;
+		const known = await knownSdkOf(digest);
+		if (known !== undefined) return known;
+		if (!registryReader) throw new UserError(`n8n has no SDK runtime ${digest}`);
+		const runtime = await registrySdk(digest);
+		await admitVersions(store, [runtime]);
+		return runtime.bundle;
 	};
 
 	/** The bundle and the SDK runtime load on the first execution. */
@@ -1266,9 +1336,9 @@ const credentialPinOf = ({ manifestText }: StoredVersion) => {
 
 /**
  * Writes the stored versions that `include` accepts to `dir`, in the store layout, with the
- * stored credential manifests that they pin, and the status lines of the written versions. The
- * index of each id lists its versions in semver order, then its status lines in the order of
- * their canonical JSON, so the same rows give the same bytes.
+ * stored credential manifests and SDK runtimes that they pin, and the status lines of the written
+ * versions. The index of each id lists its versions in semver order, then its status lines in the
+ * order of their canonical JSON, so the same rows give the same bytes.
  */
 export async function exportContractStore(
 	store: InstanceStore,
@@ -1278,11 +1348,12 @@ export async function exportContractStore(
 	const all = await store.versions();
 	const included = all.filter(include);
 	const pins = new Set(included.flatMap(credentialPinsOf));
+	const sdks = new Set(included.flatMap((version) => sdkPinOf(version) ?? []));
 	const pinned = all.filter(
 		(version) =>
-			version.kind === 'credential' &&
 			!included.includes(version) &&
-			pins.has(credentialPinOf(version)),
+			((version.kind === 'credential' && pins.has(credentialPinOf(version))) ||
+				(version.kind === 'sdk' && sdks.has(runtimeDigestOf(version)))),
 	);
 	const versions = [...included, ...pinned].sort(
 		(a, b) => a.id.localeCompare(b.id) || compareSemver(a.version, b.version),
