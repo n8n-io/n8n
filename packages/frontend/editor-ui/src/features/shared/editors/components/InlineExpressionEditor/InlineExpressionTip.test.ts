@@ -40,6 +40,16 @@ describe('InlineExpressionTip.vue', () => {
 		expect(container).toHaveTextContent('Tip: Anything inside {{ }} is JavaScript. Learn more');
 	});
 
+	test('should suggest .first() when a referenced node is on another branch', async () => {
+		const { container } = renderComponent(InlineExpressionTip, {
+			pinia: createTestingPinia(),
+			props: { pairedItemNotOnBranch: true },
+		});
+		expect(container).toHaveTextContent(
+			'Tip: Use .first() to read from a node on another branch. Learn more',
+		);
+	});
+
 	describe('When the NDV input is not empty and a mappable input is focused', () => {
 		test('should show the drag-n-drop tip', async () => {
 			mockNdvState = {

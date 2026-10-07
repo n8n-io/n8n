@@ -94,6 +94,22 @@ describe('Utils: Expressions', () => {
 			).toEqual('[ERROR: No input connected]');
 		});
 
+		it('should name the node when it is not on the item branch', () => {
+			expect(
+				stringifyExpressionResult(
+					{
+						ok: false,
+						error: new ExpressionError('error message', {
+							type: 'paired_item_not_on_branch',
+							functionality: 'pairedItem',
+							nodeCause: 'out2',
+						}),
+					},
+					{},
+				),
+			).toEqual('[ERROR: ‘out2’ is on another branch]');
+		});
+
 		it('should return empty string when result is null', () => {
 			expect(stringifyExpressionResult({ ok: true, result: null }, {})).toEqual('');
 		});

@@ -3,6 +3,8 @@ import { DateTime, Duration, Interval } from 'luxon';
 import * as Helpers from './helpers';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ExpressionError } from '../src/errors/expression.error';
+import { UserError } from '../src/errors';
+import { createMergeAppendProxy } from './fixtures/merge-append-proxy';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
@@ -2622,4 +2624,50 @@ describe('WorkflowDataProxy → pairedItem traversal through a diamond', () => {
 
 		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
 	});
+});
+
+describe('WorkflowDataProxy → pairedItem with no path to the referenced node', () => {
+	test('resolves a node on the same branch', () => {
+		const { proxy } = createMergeAppendProxy(0);
+
+		expect(proxy.$('Left').item.json).toEqual({ value: 'left' });
+	});
+
+	test('throws an error that is not an expression error for a node on the other branch', () => {
+		const { proxy } = createMergeAppendProxy(0);
+
+		expect(() => proxy.$('Right').item).toThrow(UserError);
+		expect(() => proxy.$('Right').item).not.toThrow(ExpressionError);
+	});
+
+	test.each([
+		{ itemIndex: 0, otherBranch: 'Right' },
+		{ itemIndex: 1, otherBranch: 'Left' },
+	])(
+		'resolves an expression for $otherBranch to no value during an execution',
+		async ({ itemIndex, otherBranch }) => {
+			const { workflow, runExecutionData, executeData, endInput } =
+				createMergeAppendProxy(itemIndex);
+
+			await workflow.expression.acquireIsolate();
+			try {
+				const result = workflow.expression.getParameterValue(
+					`={{ $('${otherBranch}').item.json.value }}`,
+					runExecutionData,
+					0,
+					itemIndex,
+					'End',
+					endInput,
+					'manual',
+					{},
+					executeData,
+				);
+
+				// The node stores the missing value as null.
+				expect(result).toBeUndefined();
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		},
+	);
 });
