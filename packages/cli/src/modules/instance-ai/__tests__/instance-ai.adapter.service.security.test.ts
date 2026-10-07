@@ -442,6 +442,23 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 	});
 
+	it('deletes a large set of executions in chunks', async () => {
+		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
+		const ids = Array.from({ length: 1201 }, (_, i) => `exec-${i}`);
+		executionRepository.find.mockResolvedValue(ids.map((id) => ({ id })) as never);
+		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
+
+		expect(result.deletedCount).toBe(1201);
+		const chunks = executionPersistence.hardDeleteBy.mock.calls.map(
+			([criteria]) => criteria.deleteConditions.ids,
+		);
+		expect(chunks.map((chunk) => chunk?.length)).toEqual([500, 500, 201]);
+		expect(chunks.flat()).toEqual(ids);
+	});
+
 	it('emits execution-deleted audit event', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
 		executionRepository.find.mockResolvedValue([{ id: 'exec-1' }] as never);
