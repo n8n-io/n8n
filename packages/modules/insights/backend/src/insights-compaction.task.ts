@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsCompactionService } from './insights-compaction.service';
@@ -20,6 +20,12 @@ export class InsightsCompactionTask implements SystemTask {
 	readonly effects: SystemTaskEffects = 'idempotent';
 
 	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
+
+	// The compaction budget plus the batch in flight when it runs out.
+	readonly timeoutSeconds = timeoutAfterLimit(
+		this.insightsConfig.compactionMaxRuntimeSeconds,
+		5 * Time.minutes.toSeconds,
+	);
 
 	constructor(
 		private readonly insightsConfig: InsightsConfig,

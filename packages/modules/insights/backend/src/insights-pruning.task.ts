@@ -1,5 +1,6 @@
+import { DatabaseConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsPruningService } from './insights-pruning.service';
@@ -24,8 +25,17 @@ export class InsightsPruningTask implements SystemTask {
 	/** Only the in-memory timer, which runs whenever the task does not run durably, honors this. */
 	readonly retryDelaySeconds = 1;
 
+	// One DELETE that ignores the signal. A timeout that stops the run before the
+	// DELETE ends lets the next run start a second one, so it waits for the
+	// statement timeout first.
+	readonly timeoutSeconds = timeoutAfterLimit(
+		statementTimeoutSeconds(this.databaseConfig),
+		5 * Time.minutes.toSeconds,
+	);
+
 	constructor(
 		private readonly insightsConfig: InsightsConfig,
+		private readonly databaseConfig: DatabaseConfig,
 		private readonly pruningService: InsightsPruningService,
 	) {}
 

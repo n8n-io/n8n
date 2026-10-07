@@ -1,3 +1,4 @@
+import { MAX_TASK_TIMEOUT_SECONDS } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import type { InsightsCompactionService } from '../insights-compaction.service';
@@ -18,6 +19,23 @@ describe('InsightsCompactionTask', () => {
 		expect(task.effects).toBe('idempotent');
 		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 	});
+
+	it.each([
+		{ maxRuntimeSeconds: 300, timeoutSeconds: 600 },
+		{ maxRuntimeSeconds: 1800, timeoutSeconds: 2100 },
+		{ maxRuntimeSeconds: 0, timeoutSeconds: MAX_TASK_TIMEOUT_SECONDS },
+	])(
+		'should time out 5 minutes after a compaction budget of $maxRuntimeSeconds s',
+		({ maxRuntimeSeconds, timeoutSeconds }) => {
+			const config = Object.assign(new InsightsConfig(), {
+				compactionMaxRuntimeSeconds: maxRuntimeSeconds,
+			});
+
+			expect(new InsightsCompactionTask(config, compactionService).timeoutSeconds).toBe(
+				timeoutSeconds,
+			);
+		},
+	);
 
 	it('should compact insights on run, handing it the run signal', async () => {
 		const { signal } = new AbortController();
