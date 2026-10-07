@@ -102,15 +102,14 @@ describe('SystemTaskHandler', () => {
 		'marks %s work dispatched only after the run',
 		async (effects) => {
 			const { task, handler } = setup(effects);
-			let runCountAtDispatch: number | undefined;
+			const runCountsAtDispatch: number[] = [];
 			const report = createDispatchReporter(() => {
-				runCountAtDispatch = task.runCount;
+				runCountsAtDispatch.push(task.runCount);
 			});
 
 			await handler.execute(claimed, report, new AbortController().signal);
 
-			expect(task.runCount).toBe(1);
-			expect(runCountAtDispatch).toBe(1);
+			expect(runCountsAtDispatch).toEqual([1]);
 		},
 	);
 
