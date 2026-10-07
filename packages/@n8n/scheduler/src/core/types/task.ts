@@ -39,6 +39,8 @@ export interface ScheduledTask {
 	status: ScheduledTaskStatus;
 	attempts: number;
 	maxAttempts: number;
+	/** How long one attempt may run before the executor stops it. Copied from the job. */
+	timeoutSeconds: number;
 }
 
 /**

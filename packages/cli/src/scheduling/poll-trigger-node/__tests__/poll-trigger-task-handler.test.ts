@@ -101,6 +101,7 @@ describe('PollTriggerTaskHandler', () => {
 		scheduledFor,
 		runAt: scheduledFor,
 		status: 'running',
+		timeoutSeconds: 45,
 		attempts: 0,
 		maxAttempts: 1,
 		leaseEpoch: 1,

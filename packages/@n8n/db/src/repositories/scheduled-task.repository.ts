@@ -80,6 +80,7 @@ export interface NewOccurrence {
 	scheduledFor: Date;
 	runAt: Date;
 	maxAttempts: number;
+	timeoutSeconds: number;
 	missedAfter?: Date | null;
 }
 
@@ -268,6 +269,20 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		);
 		const result = await qb.execute();
 		return result.affected ?? 0;
+	}
+
+	/** Set the timeout of the still-`pending` occurrences of the given jobs. */
+	async updateTimeoutForPendingJobs(
+		manager: EntityManager,
+		jobIds: number[],
+		timeoutSeconds: number,
+	): Promise<void> {
+		if (jobIds.length === 0) return;
+		await manager.update(
+			ScheduledTask,
+			{ jobId: In(jobIds), status: ScheduledTaskStatus.Pending },
+			{ timeoutSeconds },
+		);
 	}
 
 	/**

@@ -46,6 +46,7 @@ describe('executor claims far enough ahead to fire on time', () => {
 		status: 'pending',
 		attempts: 0,
 		maxAttempts: 1,
+		timeoutSeconds: 300,
 		leaseEpoch: 0,
 	});
 
