@@ -63,8 +63,8 @@ Telegram limits that reference to 64 bytes.
 A **separate kind of capability token** authorizes a resume request. The engine derives the token
 from a secret that only the data plane holds, and does not store the token. The token is the only
 control between an unknown caller and a paused workflow. Therefore every resume request carries a
-token, and the data plane rejects a request without one. Engine v1 skips its check for executions
-from before it stored tokens. Engine v2 has no such executions.
+token, and a request without one is rejected. Engine v1 skips its check for executions from before
+it stored tokens. Engine v2 has no such executions.
 
 The bar this decision must meet is parity with engine v1: a resume request is as hard to forge here
 as it is there. The decision meets that bar. It goes past v1 in two places. Only the runtime of the
