@@ -37,10 +37,12 @@ function isN8nConnectServer(server: McpRegistryServer): boolean {
 /**
  * Whether a fetched n8n Connect server matches its stored row in every field.
  * The gateway keeps a fixed version, so a version check alone misses a changed
- * URL or tool list. The JSON round trip drops `undefined` fields, as storing does.
+ * URL or tool list. The JSON round trip drops `undefined` fields, as storing does;
+ * `deepCopy` keeps them, so every refresh would see a change.
  */
 function isSameStoredServer(stored: McpRegistryServer, fetched: McpRegistryServer): boolean {
 	const toStoredShape = (server: McpRegistryServer): unknown =>
+		// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
 		JSON.parse(JSON.stringify(toEntity(server)));
 	return isEqual(toStoredShape(stored), toStoredShape(fetched));
 }

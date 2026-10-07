@@ -190,6 +190,22 @@ describe('McpRegistryService', () => {
 			expect(repository.upsertFetchedServers).toHaveBeenCalledWith([toEntity(moved)], DB_NOW);
 		});
 
+		it('refreshFromApi treats an undefined field as absent, as the stored row has it', async () => {
+			// Storing drops `undefined` fields, so the stored row lacks these keys.
+			const { websiteUrl: _websiteUrl, tags: _tags, ...storedRow } = n8nConnectMockServer;
+			const { service, apiClient, aiGatewayService, repository } = createService({
+				storedServers: [notionMockServer, linearMockServer, storedRow],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+			aiGatewayService.fetchN8nConnectMcpServers.mockResolvedValue([
+				{ ...storedRow, websiteUrl: undefined, tags: undefined },
+			]);
+
+			await service.refreshFromApi();
+
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
+		});
+
 		it('refreshFromApi deprecates an n8n Connect row the gateway no longer lists', async () => {
 			const { service, apiClient, repository } = createService({
 				storedServers: [notionMockServer, linearMockServer, n8nConnectMockServer],
