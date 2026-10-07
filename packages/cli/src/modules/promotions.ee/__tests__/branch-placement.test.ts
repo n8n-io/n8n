@@ -1,6 +1,6 @@
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerMoves, staleWorkflowTargets } from '../branch-placement';
+import { containerMoves, remapPath, staleWorkflowTargets } from '../branch-placement';
 
 const baseMetadata = {
 	packageFormatVersion: '1' as const,
@@ -73,6 +73,24 @@ describe('containerMoves', () => {
 		});
 
 		expect(containerMoves(existing, staging)).toEqual([]);
+	});
+});
+
+describe('remapPath', () => {
+	const moves = [
+		{ kind: 'folders' as const, from: `${P}/folders/a`, to: `${P}/folders/b` },
+		{ kind: 'folders' as const, from: `${P}/folders/a/c`, to: `${P}/folders/b/d` },
+	];
+
+	it('rewrites through the deepest covering move regardless of move order', () => {
+		const target = `${P}/folders/a/c/workflows/w1`;
+		expect(remapPath(target, moves)).toBe(`${P}/folders/b/d/workflows/w1`);
+		expect(remapPath(target, [...moves].reverse())).toBe(`${P}/folders/b/d/workflows/w1`);
+	});
+
+	it('leaves a path no move covers, and does not match a sibling by prefix', () => {
+		expect(remapPath(`${P}/folders/ab/workflows/w1`, moves)).toBe(`${P}/folders/ab/workflows/w1`);
+		expect(remapPath(`${P}/variables/v1`, moves)).toBe(`${P}/variables/v1`);
 	});
 });
 

@@ -41,9 +41,13 @@ export function containerMoves(existing: BranchLayout, staging: PackageManifest)
 	return moves.sort((a, b) => b.from.length - a.from.length);
 }
 
-/** Rewrite a branch path through the deepest move that covers it. */
+/** Rewrite a branch path through the deepest move that covers it, in any move order. */
 export function remapPath(target: string, moves: readonly ContainerMove[]): string {
-	const move = moves.find((m) => target === m.from || isUnder(target, m.from));
+	let move: ContainerMove | undefined;
+	for (const m of moves) {
+		if (target !== m.from && !isUnder(target, m.from)) continue;
+		if (move === undefined || m.from.length > move.from.length) move = m;
+	}
 	return move ? `${move.to}${target.slice(move.from.length)}` : target;
 }
 
