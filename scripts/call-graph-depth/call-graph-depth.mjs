@@ -125,6 +125,18 @@ export function stronglyConnectedComponents(graph) {
 	return components;
 }
 
+/** The deepest already-solved entry among the successors of a component. */
+function deepestSuccessor(graph, component, entryOf) {
+	let deepest;
+	for (const node of component) {
+		for (const next of graph.get(node) ?? []) {
+			const candidate = entryOf(next);
+			if (candidate && (!deepest || candidate.depth > deepest.depth)) deepest = candidate;
+		}
+	}
+	return deepest;
+}
+
 /**
  * Longest call chain from every node. A strongly connected component counts
  * as one step, because recursion has no static bound. Returns
@@ -140,21 +152,15 @@ export function longestChains(graph) {
 	// Tarjan emits components callee-first, so one pass in order is enough.
 	const best = new Map();
 	components.forEach((component, componentIndex) => {
-		let bestNext;
-		for (const node of component) {
-			for (const next of graph.get(node) ?? []) {
-				const nextComponent = componentOf.get(next);
-				if (nextComponent === componentIndex) continue;
-				const candidate = best.get(nextComponent);
-				if (!bestNext || candidate.depth > bestNext.depth) bestNext = candidate;
-			}
-		}
+		const bestNext = deepestSuccessor(graph, component, (next) => {
+			const nextComponent = componentOf.get(next);
+			return nextComponent === componentIndex ? undefined : best.get(nextComponent);
+		});
 		const head = [...component].sort()[0];
 		best.set(componentIndex, {
 			depth: 1 + (bestNext?.depth ?? 0),
 			chain: [head, ...(bestNext?.chain ?? [])],
 			recursive: component.length > 1 || (graph.get(head) ?? new Set()).has(head),
-			members: component,
 		});
 	});
 
@@ -198,54 +204,61 @@ function isFunctionLike(ts, node) {
 	);
 }
 
+function identifierText(ts, nameNode) {
+	return nameNode && ts.isIdentifier(nameNode) ? nameNode.text : undefined;
+}
+
+const NAMED_PARENT_KINDS = [
+	'isVariableDeclaration',
+	'isPropertyAssignment',
+	'isPropertyDeclaration',
+];
+
+function functionName(ts, node) {
+	if (ts.isConstructorDeclaration(node)) return 'constructor';
+	const own = identifierText(ts, node.name);
+	if (own) return own;
+	const parent = node.parent;
+	const namedParent = parent && NAMED_PARENT_KINDS.some((kind) => ts[kind](parent));
+	return namedParent ? identifierText(ts, parent.name) : undefined;
+}
+
 function functionLabel(ts, node, sourceFile) {
 	const line = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 	const file = path.relative(process.cwd(), sourceFile.fileName);
-	let name = node.name && ts.isIdentifier(node.name) ? node.name.text : undefined;
-	if (ts.isConstructorDeclaration(node)) name = 'constructor';
-	if (!name && node.parent) {
-		const parent = node.parent;
-		if (
-			(ts.isVariableDeclaration(parent) ||
-				ts.isPropertyAssignment(parent) ||
-				ts.isPropertyDeclaration(parent)) &&
-			parent.name &&
-			ts.isIdentifier(parent.name)
-		) {
-			name = parent.name.text;
-		}
+	const ownerName = ts.isClassLike(node.parent) ? identifierText(ts, node.parent.name) : undefined;
+	const owner = ownerName ? `${ownerName}.` : '';
+	return `${file}:${line} ${owner}${functionName(ts, node) ?? '<anonymous>'}`;
+}
+
+function resolveSymbol(ts, checker, call) {
+	const location = ts.isPropertyAccessExpression(call.expression)
+		? call.expression.name
+		: call.expression;
+	const symbol = checker.getSymbolAtLocation(location);
+	if (!symbol) return undefined;
+	return symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+}
+
+/** The function body behind one declaration of a callee, if there is one. */
+function functionOfDeclaration(ts, declaration, call) {
+	if (isFunctionLike(ts, declaration)) return declaration;
+	const hasInitializer =
+		ts.isVariableDeclaration(declaration) || ts.isPropertyDeclaration(declaration);
+	if (hasInitializer && declaration.initializer && isFunctionLike(ts, declaration.initializer)) {
+		return declaration.initializer;
 	}
-	const owner = ts.isClassLike(node.parent) && node.parent.name ? `${node.parent.name.text}.` : '';
-	return `${file}:${line} ${owner}${name ?? '<anonymous>'}`;
+	if (ts.isClassDeclaration(declaration) && ts.isNewExpression(call)) {
+		return declaration.members.find((member) => ts.isConstructorDeclaration(member));
+	}
+	return undefined;
 }
 
 function calleeDeclarations(ts, checker, call) {
-	const target = ts.isNewExpression(call) ? call.expression : call.expression;
-	const location = ts.isPropertyAccessExpression(target) ? target.name : target;
-	let symbol = checker.getSymbolAtLocation(location);
-	if (!symbol) return [];
-	if (symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-	const declarations = [];
-	for (const declaration of symbol.declarations ?? []) {
-		if (isFunctionLike(ts, declaration)) declarations.push(declaration);
-		else if (
-			ts.isVariableDeclaration(declaration) &&
-			declaration.initializer &&
-			isFunctionLike(ts, declaration.initializer)
-		)
-			declarations.push(declaration.initializer);
-		else if (
-			ts.isPropertyDeclaration(declaration) &&
-			declaration.initializer &&
-			isFunctionLike(ts, declaration.initializer)
-		)
-			declarations.push(declaration.initializer);
-		else if (ts.isClassDeclaration(declaration) && ts.isNewExpression(call)) {
-			const constructor = declaration.members.find((member) => ts.isConstructorDeclaration(member));
-			if (constructor) declarations.push(constructor);
-		}
-	}
-	return declarations;
+	const symbol = resolveSymbol(ts, checker, call);
+	return (symbol?.declarations ?? [])
+		.map((declaration) => functionOfDeclaration(ts, declaration, call))
+		.filter(Boolean);
 }
 
 /** Build the call graph of the target files. Returns `Map<label, Set<label>>`. */
@@ -293,33 +306,45 @@ export function buildCallGraph(files, { tsconfig } = {}) {
 	return graph;
 }
 
-/** Summarise chains per file and overall. */
-export function summarise(chains, max) {
+function deepestPerFile(chains) {
 	const byFile = new Map();
-	let deepest;
 	for (const [node, entry] of chains) {
 		const file = node.split(':')[0];
 		const current = byFile.get(file);
-		if (!current || entry.depth > current.depth)
+		if (!current || entry.depth > current.depth) {
 			byFile.set(file, { depth: entry.depth, chain: entry.chain });
+		}
+	}
+	return [...byFile]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([file, entry]) => ({ file, ...entry }));
+}
+
+function deepestOverall(chains) {
+	let deepest;
+	for (const [node, entry] of chains) {
 		if (!deepest || entry.depth > deepest.depth) deepest = { node, ...entry };
 	}
-	const over =
+	return deepest;
+}
+
+/** Summarise chains per file and overall. */
+export function summarise(chains, max) {
+	const entries = [...chains];
+	const deepest = deepestOverall(chains);
+	const overLimit =
 		max === undefined
 			? []
-			: [...chains]
+			: entries
 					.filter(([, entry]) => entry.depth > max)
 					.map(([node, entry]) => ({ node, depth: entry.depth, chain: entry.chain }));
-	const recursive = [...chains].filter(([, entry]) => entry.recursive).map(([node]) => node);
 	return {
 		functions: chains.size,
 		maxDepth: deepest?.depth ?? 0,
 		deepestChain: deepest?.chain ?? [],
-		files: [...byFile]
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([file, entry]) => ({ file, ...entry })),
-		overLimit: over,
-		recursive,
+		files: deepestPerFile(chains),
+		overLimit,
+		recursive: entries.filter(([, entry]) => entry.recursive).map(([node]) => node),
 	};
 }
 
