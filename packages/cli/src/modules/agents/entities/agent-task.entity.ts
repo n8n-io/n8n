@@ -14,6 +14,7 @@ import { Agent } from './agent.entity';
 
 /** A scheduled, recurring objective an agent runs on its own cron. */
 @Entity({ name: 'agent_task_definition' })
+@Index(['agentId', 'sourceTaskId'])
 export class AgentTask extends WithTimestamps {
 	@PrimaryColumn({
 		type: 'varchar',
@@ -21,6 +22,14 @@ export class AgentTask extends WithTimestamps {
 		comment: 'Application-generated task ID referenced from agent JSON config',
 	})
 	id: string;
+
+	@Column({
+		type: 'varchar',
+		length: AGENT_TASK_ID_MAX_LENGTH,
+		nullable: true,
+		comment: 'Source ID recorded by package import',
+	})
+	sourceTaskId: string | null;
 
 	@Index()
 	@Column({

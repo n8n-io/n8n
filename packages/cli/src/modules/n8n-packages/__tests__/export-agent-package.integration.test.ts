@@ -123,6 +123,7 @@ beforeAll(async () => {
 			id: draft.id,
 			name: draft.name,
 			projectId: project.id,
+			sourceAgentId: `origin_${draft.id}`,
 			schema: draft.config && withoutLegacySkillRefs(storedAgentConfig(draft.config)),
 			tools: draft.tools,
 			availableInMCP: draft.availableInMCP,
@@ -132,7 +133,12 @@ beforeAll(async () => {
 			revision: 0,
 		});
 		await taskRepository.save(
-			Object.entries(draft.tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
+			Object.entries(draft.tasks).map(([id, task]) => ({
+				id,
+				agentId: agent.id,
+				sourceTaskId: `origin_${id}`,
+				...task,
+			})),
 		);
 		const history = await historyRepository.saveVersion({
 			versionId: `${agent.id}_published`,
