@@ -122,8 +122,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 24 |  | BASE TABLE |
-| [public.scheduled_task](public.scheduled_task.md) | 18 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 25 |  | BASE TABLE |
+| [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.self_healing_result](public.self_healing_result.md) | 15 |  | BASE TABLE |
@@ -1562,6 +1562,7 @@ erDiagram
   integer recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
+  integer timeoutSeconds
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
@@ -1584,6 +1585,7 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   varchar_128_ taskType
+  integer timeoutSeconds
 }
 "public.scope" {
   text description

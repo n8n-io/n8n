@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" integer NOT NULL, "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "scheduledFor" datetime(3) NOT NULL, "runAt" datetime(3) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attempts" integer NOT NULL DEFAULT (0), "maxAttempts" integer NOT NULL DEFAULT (1), "claimedBy" varchar(255), "leaseExpiresAt" datetime(3), "leaseEpoch" integer NOT NULL DEFAULT (0), "startedAt" datetime(3), "finishedAt" datetime(3), "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "dispatchedAt" datetime(3), "missedAfter" datetime(3), CONSTRAINT "CHK_scheduled_task_running_lease" CHECK ("status" <> 'running' OR "leaseExpiresAt" IS NOT NULL), CONSTRAINT "CHK_scheduled_task_status" CHECK ("status" IN ('pending', 'running', 'succeeded', 'failed', 'missed', 'cancelled')), CONSTRAINT "FK_scheduled_task_jobId" FOREIGN KEY ("jobId") REFERENCES "scheduled_job" ("id") ON DELETE CASCADE)
+CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" integer NOT NULL, "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "scheduledFor" datetime(3) NOT NULL, "runAt" datetime(3) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attempts" integer NOT NULL DEFAULT (0), "maxAttempts" integer NOT NULL DEFAULT (1), "claimedBy" varchar(255), "leaseExpiresAt" datetime(3), "leaseEpoch" integer NOT NULL DEFAULT (0), "startedAt" datetime(3), "finishedAt" datetime(3), "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "dispatchedAt" datetime(3), "missedAfter" datetime(3), "timeoutSeconds" int NOT NULL DEFAULT 300 CONSTRAINT "CHK_scheduled_task_timeoutSeconds" CHECK ("timeoutSeconds" > 0 AND "timeoutSeconds" <= 2147483 AND CAST("timeoutSeconds" AS INTEGER) = "timeoutSeconds"), CONSTRAINT "CHK_scheduled_task_running_lease" CHECK ("status" <> 'running' OR "leaseExpiresAt" IS NOT NULL), CONSTRAINT "CHK_scheduled_task_status" CHECK ("status" IN ('pending', 'running', 'succeeded', 'failed', 'missed', 'cancelled')), CONSTRAINT "FK_scheduled_task_jobId" FOREIGN KEY ("jobId") REFERENCES "scheduled_job" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -33,11 +33,13 @@ CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" intege
 | startedAt | datetime(3) |  | true |  |  |  |
 | status | varchar(16) | 'pending' | false |  |  |  |
 | taskType | varchar(128) |  | false |  |  |  |
+| timeoutSeconds | INT | 300 | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("timeoutSeconds" > 0 AND "timeoutSeconds" <= 2147483 AND CAST("timeoutSeconds" AS INTEGER) = "timeoutSeconds") |
 | - | CHECK | CHECK ("status" <> 'running' OR "leaseExpiresAt" IS NOT NULL) |
 | - | CHECK | CHECK ("status" IN ('pending', 'running', 'succeeded', 'failed', 'missed', 'cancelled')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
@@ -79,6 +81,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   varchar_128_ taskType
+  INT timeoutSeconds
 }
 "scheduled_job" {
   INT concurrencyLimit
@@ -103,6 +106,7 @@ erDiagram
   INT recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
+  INT timeoutSeconds
   varchar_64_ timezone
   datetime_3_ updatedAt
 }

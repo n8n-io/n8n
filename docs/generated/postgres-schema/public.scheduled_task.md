@@ -22,6 +22,7 @@
 | startedAt | timestamp(3) with time zone |  | true |  |  | When the current attempt started running. |
 | status | varchar(16) | 'pending'::character varying | false |  |  | Lifecycle state; drives which occurrences the claim and reaper scans consider. |
 | taskType | varchar(128) |  | false |  |  | What kind of work to run, copied from the job so a run is self-contained (no join to execute it). Also lets a run exist without a parent job in future. |
+| timeoutSeconds | integer | 300 | false |  |  | How long, in seconds, one attempt of an occurrence may run before the executor stops it. |
 
 ## Constraints
 
@@ -29,6 +30,7 @@
 | ---- | ---- | ---------- |
 | CHK_scheduled_task_running_lease | CHECK | CHECK ((((status)::text <> 'running'::text) OR ("leaseExpiresAt" IS NOT NULL))) |
 | CHK_scheduled_task_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'missed'::character varying, 'cancelled'::character varying])::text[]))) |
+| CHK_scheduled_task_timeoutSeconds | CHECK | CHECK ((("timeoutSeconds" > 0) AND ("timeoutSeconds" <= 2147483) AND ("timeoutSeconds" = "timeoutSeconds"))) NOT VALID |
 | FK_scheduled_task_jobId | FOREIGN KEY | FOREIGN KEY ("jobId") REFERENCES scheduled_job(id) ON DELETE CASCADE |
 | PK_d690af24e57e30594c1948af1e6 | PRIMARY KEY | PRIMARY KEY (id) |
 | scheduled_task_attempts_not_null | n | NOT NULL attempts |
@@ -42,6 +44,7 @@
 | scheduled_task_scheduledFor_not_null | n | NOT NULL "scheduledFor" |
 | scheduled_task_status_not_null | n | NOT NULL status |
 | scheduled_task_taskType_not_null | n | NOT NULL "taskType" |
+| scheduled_task_timeoutSeconds_not_null | n | NOT NULL "timeoutSeconds" |
 
 ## Indexes
 
@@ -80,6 +83,7 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   varchar_128_ taskType
+  integer timeoutSeconds
 }
 "public.scheduled_job" {
   integer concurrencyLimit
@@ -104,6 +108,7 @@ erDiagram
   integer recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
+  integer timeoutSeconds
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }

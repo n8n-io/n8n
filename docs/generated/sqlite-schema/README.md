@@ -122,8 +122,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
-| [scheduled_job](scheduled_job.md) | 24 |  | table |
-| [scheduled_task](scheduled_task.md) | 18 |  | table |
+| [scheduled_job](scheduled_job.md) | 25 |  | table |
+| [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [self_healing_result](self_healing_result.md) | 15 |  | table |
@@ -1548,6 +1548,7 @@ erDiagram
   INT recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
+  INT timeoutSeconds
   varchar_64_ timezone
   datetime_3_ updatedAt
 }
@@ -1570,6 +1571,7 @@ erDiagram
   datetime_3_ startedAt
   varchar_16_ status
   varchar_128_ taskType
+  INT timeoutSeconds
 }
 "scope" {
   TEXT description
