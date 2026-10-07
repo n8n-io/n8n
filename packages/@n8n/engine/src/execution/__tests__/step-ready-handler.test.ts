@@ -810,7 +810,6 @@ describe('StepReadyHandler waits', () => {
 	const timeWait: WaitDeclaration = {
 		resumeAt: '2099-01-01T00:00:00.000Z',
 		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-		acceptsResumeRequest: false,
 	};
 
 	it('suspends the step and announces no settlement when the executor declares a wait', async () => {
@@ -872,7 +871,7 @@ describe('StepReadyHandler waits', () => {
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {
-		const openWait: WaitDeclaration = { acceptsResumeRequest: true };
+		const openWait: WaitDeclaration = { resumeBinding: 'execution' };
 		const stepStore = makeStepStore();
 		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: makeExecutor({ wait: openWait }),
@@ -895,7 +894,6 @@ describe('StepReadyHandler waits', () => {
 				wait: {
 					resumeAt: 'the day after tomorrow',
 					outputsAtDeadline: [[{ json: {} }]],
-					acceptsResumeRequest: false,
 				},
 			}),
 		});
@@ -919,7 +917,7 @@ describe('StepReadyHandler waits', () => {
 		const queue = makeQueue();
 		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: makeExecutor({
-				wait: { resumeAt: '2099-01-01T00:00:00.000Z', acceptsResumeRequest: false },
+				wait: { resumeAt: '2099-01-01T00:00:00.000Z' },
 			}),
 		});
 
@@ -942,7 +940,7 @@ describe('StepReadyHandler waits', () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
-			v1StepExecutor: makeExecutor({ wait: { acceptsResumeRequest: false } }),
+			v1StepExecutor: makeExecutor({ wait: {} as WaitDeclaration }),
 		});
 
 		await handler.handle(event);
@@ -966,7 +964,6 @@ describe('StepReadyHandler resumes', () => {
 	const timeWait: WaitDeclaration = {
 		resumeAt: '2099-01-01T00:00:00.000Z',
 		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-		acceptsResumeRequest: false,
 	};
 
 	it('emits the captured outputs when a deadline resume dispatches the step', async () => {
@@ -1025,7 +1022,7 @@ describe('StepReadyHandler resumes', () => {
 		const requestOutputs = [[{ json: { approved: true } }]];
 		const stepStore = makeStepStore({
 			status: 'running',
-			waitDeclaration: { acceptsResumeRequest: true },
+			waitDeclaration: { resumeBinding: 'execution' },
 			resumeCause: { kind: 'request', outputs: requestOutputs },
 		});
 		const queue = makeQueue();

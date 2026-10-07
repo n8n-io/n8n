@@ -13,6 +13,7 @@ export type {
 	StepError,
 	StepKey,
 	StepKeyId,
+	ResumeBinding,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
