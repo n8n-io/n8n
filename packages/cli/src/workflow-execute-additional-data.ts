@@ -9,7 +9,7 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	AiEvent,
 	EnvProviderState,
@@ -696,6 +696,7 @@ async function startExecution(
 			additionalDataIntegrated,
 			runData.executionMode,
 			runExecutionData,
+			Container.get(StorageConfig).modeTag,
 		);
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
