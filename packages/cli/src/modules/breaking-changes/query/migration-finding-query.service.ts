@@ -3,9 +3,9 @@ import type {
 	BreakingChangeLightReportResult,
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
-	BreakingChangeWorkflowOwner,
 	BreakingChangeVersion,
 	BreakingChangeWorkflowIssue,
+	BreakingChangeWorkflowOwner,
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
