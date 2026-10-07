@@ -83,6 +83,17 @@ export class InvalidRunOptionError extends Error {
 	}
 }
 
+/**
+ * The abort reason of a handler's signal when its run reaches the timeout of
+ * its occurrence. The executor stops renewing the lease at the same time.
+ */
+export class TaskTimeoutError extends Error {
+	constructor(readonly timeoutSeconds: number) {
+		super('The run of this occurrence reached its timeout');
+		this.name = 'TaskTimeoutError';
+	}
+}
+
 /** Raised when a lease heartbeat is given a lease duration that is not a positive integer. */
 export class InvalidLeaseDurationError extends Error {
 	constructor(readonly leaseDurationMs: number) {

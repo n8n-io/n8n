@@ -153,10 +153,10 @@ describe('withHandoffTracing', () => {
 		const report = mock<DispatchReporter>();
 		const signal = new AbortController().signal;
 
-		await withHandoffTracing(tracer, handler).execute(task, report, signal);
+		await withHandoffTracing(tracer, handler).execute(task, report, signal, 45_000);
 
-		// The wrapper adds a span, not semantics: the dispatch reporter and signal flow through.
-		expect(handler.execute).toHaveBeenCalledWith(task, report, signal);
+		// The wrapper adds a span, not semantics: the dispatch reporter, signal and deadline flow through.
+		expect(handler.execute).toHaveBeenCalledWith(task, report, signal, 45_000);
 		const options = tracer.startSpan.mock.calls[0][0];
 		expect(options.name).toBe('Scheduler handoff');
 		expect(options.op).toBe('scheduler.handoff');
@@ -177,6 +177,7 @@ describe('withHandoffTracing', () => {
 				claimedTask(),
 				mock<DispatchReporter>(),
 				new AbortController().signal,
+				45_000,
 			),
 		).rejects.toThrow('boom');
 
