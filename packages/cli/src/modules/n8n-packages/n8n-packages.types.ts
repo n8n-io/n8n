@@ -141,6 +141,8 @@ export const DataTableSchemaConflictPolicy = {
 	Fail: 'fail',
 	/** Changes a matched target table to match the package schema: renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. */
 	Overwrite: 'overwrite',
+	/** Like `overwrite`, but fails the import when a change deletes data: a removed (target-only or renamed) or retyped column. */
+	OverwriteNonDestructive: 'overwrite-non-destructive',
 } as const;
 
 export const VariableMissingMode = {
@@ -288,8 +290,9 @@ export interface ImportSelection {
 
 /**
  * Match or create the destination project from the package. Callers cannot override its location.
- * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`, and
- * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`).
+ * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`,
+ * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`), and
+ * `dataTableSchemaConflictPolicy` (defaults to `fail`).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -298,6 +301,7 @@ export type ImportSelectionRequest = {
 	workflowConflictPolicy?: WorkflowConflictPolicy;
 	workflowIdPolicy?: WorkflowIdPolicy;
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
+	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
 };
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
