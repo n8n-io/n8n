@@ -91,10 +91,20 @@ export class EngineV2ManualRunPlanner {
 			graph.removeNode(destination);
 		}
 
+		const onCycle = nodesOnCycles(graph);
 		const seeded: SeededNode[] = [];
 		for (const node of graph.getChildren(root)) {
 			const outputs = this.outputsOf(node, runData, pinData);
-			if (outputs) seeded.push({ nodeId: node.id, outputs });
+			if (!outputs) continue;
+
+			// A seeded step holds one pass, and a loop member runs once per pass.
+			// TODO(CAT-4875): seed every iteration.
+			if (onCycle.has(node)) {
+				throw new UserError(
+					`Node "${node.name}" is inside a loop, and engine v2 cannot reuse the results of a loop yet. Run the workflow from the trigger instead.`,
+				);
+			}
+			seeded.push({ nodeId: node.id, outputs });
 		}
 
 		return {
@@ -273,6 +283,18 @@ function withPairedItems(items: INodeExecutionData[]): INodeExecutionData[] {
 	return items.map((item, index) =>
 		item.pairedItem === undefined ? { ...item, pairedItem: { item: index } } : item,
 	);
+}
+
+/** Nodes on a cycle: in a component of more than one node, or connected to themselves. */
+function nodesOnCycles(graph: DirectedGraph): Set<INode> {
+	const onCycle = new Set<INode>();
+	for (const component of graph.getStronglyConnectedComponents()) {
+		if (component.size > 1) for (const node of component) onCycle.add(node);
+	}
+	for (const connection of graph.getConnections()) {
+		if (connection.from === connection.to) onCycle.add(connection.from);
+	}
+	return onCycle;
 }
 
 function toConnections(graph: DirectedGraph): IConnections {

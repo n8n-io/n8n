@@ -275,6 +275,36 @@ describe('EngineV2ManualRunPlanner', () => {
 	});
 
 	describe('refusals', () => {
+		const LOOP = node('l-uuid', 'Loop', 'n8n-nodes-base.splitInBatches');
+		/** Trigger -> Loop; Loop's done slot -> B; Loop's loop slot -> A -> Loop */
+		const loopWorkflow = workflow({
+			nodes: [TRIGGER, LOOP, A, B],
+			connections: {
+				...chain([TRIGGER, LOOP], [A, LOOP]),
+				[LOOP.name]: {
+					main: [
+						[{ node: B.name, type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: A.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			},
+		});
+
+		it.each([
+			{ name: 'a loop member', pinned: A },
+			{ name: 'the node that heads a loop', pinned: LOOP },
+		])('refuses to seed $name', ({ pinned }) => {
+			expect(() =>
+				planner.plan(
+					runData({
+						workflowData: loopWorkflow,
+						triggerToStartFrom: { name: TRIGGER.name },
+						pinData: { [pinned.name]: [item({ pinned: true })] },
+					}),
+				),
+			).toThrow(`"${pinned.name}" is inside a loop`);
+		});
+
 		it('refuses to seed a node that ran more than once', () => {
 			const twice = {
 				...fullRunData(TRIGGER, A, B),
