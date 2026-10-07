@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import {
 	N8nButton,
 	N8nCallout,
+	N8nCheckbox,
 	N8nDialog,
 	N8nDialogDescription,
 	N8nDialogFooter,
@@ -47,6 +48,8 @@ const {
 	isSubmitting,
 	isCreating,
 	sourceChanged,
+	destructiveConfirmed,
+	destructiveConflictCount,
 	error,
 	canContinue,
 } = bindings;
@@ -299,8 +302,20 @@ async function continueApply() {
 						<p v-if="item.kind !== 'project'">{{ consumerNames(item.consumers) }}</p>
 						<p v-else>{{ item.workflows.map((workflow) => workflow.name).join(', ') }}</p>
 					</N8nCallout>
+					<N8nCheckbox
+						v-if="destructiveConflictCount > 0"
+						v-model="destructiveConfirmed"
+						:class="$style.confirmDestructive"
+						:disabled="isBusy || sourceChanged"
+						:label="i18n.baseText('promotions.bindings.conflicts.confirmDestructive')"
+					/>
 				</section>
-				<p v-if="preflight?.accessRequirements.length || preflight?.conflicts.length">
+				<p
+					v-if="
+						preflight?.accessRequirements.length ||
+						(preflight?.conflicts.length ?? 0) > destructiveConflictCount
+					"
+				>
 					{{ i18n.baseText('promotions.bindings.restart') }}
 				</p>
 				<section v-if="preflight?.warnings.length" :class="$style.notices">
@@ -514,6 +529,10 @@ async function continueApply() {
 .notices h3 {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
+}
+
+.confirmDestructive {
+	--checkbox--label--font-size: var(--font-size--2xs);
 }
 
 .footer {

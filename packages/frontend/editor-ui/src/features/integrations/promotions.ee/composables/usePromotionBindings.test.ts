@@ -8,6 +8,7 @@ import {
 	blocked,
 	consumers,
 	credential,
+	destructiveDataTableConflict,
 	savedCredential,
 	variable,
 } from '../__tests__/bindings.fixtures';
@@ -131,6 +132,20 @@ it.each(['access', 'conflict'] as const)('blocks Continue for %s requirements', 
 	expect(session.unresolvedCount.value).toBe(1);
 	await session.continueApply();
 	expect(continueApplyPromotion).not.toHaveBeenCalled();
+});
+
+it('asks again to confirm data table changes after Continue is blocked again', async () => {
+	const session = usePromotionBindings();
+	session.start(blocked({ missingBindings: [], conflicts: [destructiveDataTableConflict] }));
+	expect(session.canContinue.value).toBe(false);
+	session.destructiveConfirmed.value = true;
+	expect(session.canContinue.value).toBe(true);
+	vi.mocked(continueApplyPromotion).mockResolvedValue(
+		blocked({ missingBindings: [], conflicts: [destructiveDataTableConflict] }),
+	);
+	await session.continueApply();
+	expect(session.destructiveConfirmed.value).toBe(false);
+	expect(session.canContinue.value).toBe(false);
 });
 
 it('counts credentials with the same name and different types separately', () => {

@@ -38,6 +38,18 @@ export const savedCredential: Extract<CreatedPromotionBinding, { kind: 'credenti
 	projectId: credential.ownerProject.id,
 };
 
+export const destructiveDataTableConflict: Extract<
+	BlockedApplyResult['preflight']['conflicts'][number],
+	{ kind: 'data-table' }
+> = {
+	kind: 'data-table',
+	code: 'destructive-change',
+	id: 'orders-table',
+	name: 'Orders',
+	consumers,
+	changes: [{ kind: 'remove-column', column: 'extra', type: 'string', destructive: true }],
+};
+
 export function blocked(
 	preflight: Partial<BlockedApplyResult['preflight']> = {},
 ): BlockedApplyResult {

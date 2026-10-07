@@ -10,6 +10,7 @@ import {
 	blocked,
 	consumers,
 	credential,
+	destructiveDataTableConflict,
 	savedCredential,
 	variable,
 } from '../__tests__/bindings.fixtures';
@@ -130,6 +131,49 @@ it('blocks dismissal and repeated form submissions while Continue is pending', a
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 	pending.resolve(applied);
 	await waitFor(() => expect(emitted('applied')).toEqual([[applied]]));
+});
+
+it('applies a data table change that deletes data after the user confirms it', async () => {
+	vi.mocked(continueApplyPromotion).mockResolvedValue(applied);
+	const result = blocked({ missingBindings: [], conflicts: [destructiveDataTableConflict] });
+	const { getByRole, queryByText, emitted } = await renderDialog({
+		props: { open: true, blockedResult: result, createBinding: vi.fn() },
+	});
+	expect(getByRole('button', { name: 'Continue' })).toBeDisabled();
+	expect(queryByText(/close this dialog and start Apply remote changes again/)).toBeNull();
+	await userEvent.click(getByRole('checkbox', { name: /This deletes data in the destination/ }));
+	expect(getByRole('status')).toHaveTextContent('All items are ready');
+	await userEvent.click(getByRole('button', { name: 'Continue' }));
+	expect(continueApplyPromotion).toHaveBeenCalledWith(expect.anything(), result.connectionId, {
+		expectedSource: { configId: result.configId, ...result.git },
+		confirmDestructiveChanges: true,
+	});
+	expect(emitted('applied')).toEqual([[applied]]);
+});
+
+it('keeps Continue blocked by other conflicts after the user confirms the data table changes', async () => {
+	const { getByRole, getByText } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({
+				missingBindings: [],
+				conflicts: [
+					destructiveDataTableConflict,
+					{
+						kind: 'variable',
+						name: variable.name,
+						code: 'missing-definition',
+						referenceFiles: ['workflow.json'],
+						consumers,
+					},
+				],
+			}),
+			createBinding: vi.fn(),
+		},
+	});
+	await userEvent.click(getByRole('checkbox', { name: /This deletes data in the destination/ }));
+	expect(getByRole('button', { name: 'Continue' })).toBeDisabled();
+	expect(getByText(/close this dialog and start Apply remote changes again/)).toBeInTheDocument();
 });
 
 it('returns a changed source to the caller and stops the session', async () => {

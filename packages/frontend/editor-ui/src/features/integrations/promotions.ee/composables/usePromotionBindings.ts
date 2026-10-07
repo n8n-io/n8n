@@ -67,6 +67,7 @@ export function usePromotionBindings() {
 	const isCreating = ref(false);
 	const isFinished = ref(false);
 	const sourceChanged = ref(false);
+	const destructiveConfirmed = ref(false);
 	const error = shallowRef<PromotionBindingsError | null>(null);
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
@@ -108,9 +109,16 @@ export function usePromotionBindings() {
 		return Array.from(projects.values());
 	});
 
+	const destructiveConflictCount = computed(
+		() =>
+			preflight.value?.conflicts.filter(({ code }) => code === 'destructive-change').length ?? 0,
+	);
 	const unresolvedCount = computed(
 		() =>
-			missingKeys.value.size + accessByKey.value.size + (preflight.value?.conflicts.length ?? 0),
+			missingKeys.value.size +
+			accessByKey.value.size +
+			(preflight.value?.conflicts.length ?? 0) -
+			(destructiveConfirmed.value ? destructiveConflictCount.value : 0),
 	);
 	const isBusy = computed(() => isSubmitting.value || isCreating.value);
 	const canContinue = computed(
@@ -125,6 +133,7 @@ export function usePromotionBindings() {
 
 	function reconcile(result: BlockedApplyResult) {
 		preflight.value = result.preflight;
+		destructiveConfirmed.value = false;
 		const next = new Map(knownBindings.value);
 		for (const binding of result.preflight.missingBindings) {
 			next.set(promotionBindingKey(binding), binding);
@@ -199,6 +208,7 @@ export function usePromotionBindings() {
 		try {
 			const result = await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
 				expectedSource: { ...expectedSource },
+				confirmDestructiveChanges: destructiveConfirmed.value || undefined,
 			});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
@@ -223,6 +233,8 @@ export function usePromotionBindings() {
 		isSubmitting,
 		isCreating,
 		sourceChanged,
+		destructiveConfirmed,
+		destructiveConflictCount,
 		error,
 		canContinue,
 		start,
