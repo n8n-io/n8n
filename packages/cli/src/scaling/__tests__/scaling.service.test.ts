@@ -198,6 +198,21 @@ describe('ScalingService', () => {
 				expect(scheduleQueueRecoverySpy).toHaveBeenCalledWith(0);
 			});
 
+			it('should rebind the job wait when the stall sweep returns a job under a fresh id', async () => {
+				await scalingService.setupQueue();
+				const recovered = mock<Job>({ id: 'job-2', data: { executionId: 'exec-1' } });
+				queue.getJob.mockResolvedValue(recovered);
+
+				const onStalled = queue.on.mock.calls.find(
+					([event]) => (event as string) === 'global:stalled',
+				)?.[1] as (jobId: JobId) => void;
+				onStalled('job-2');
+				await vi.waitFor(() => expect(jobOutcomeTracker.rebind).toHaveBeenCalled());
+
+				expect(queue.getJob).toHaveBeenCalledWith('job-2');
+				expect(jobOutcomeTracker.rebind).toHaveBeenCalledWith('jobs', recovered);
+			});
+
 			it('should recheck pending job waits when the Redis connection recovers', async () => {
 				await scalingService.setupQueue();
 				const { RedisClientService } = await import('@n8n/backend-services');

@@ -111,6 +111,17 @@ export class JobOutcomeTracker {
 		this.settle(executionId, { error, succeeded: !error });
 	}
 
+	/** Re-key the wait for a job that the stall sweep returned to the queue under a fresh job ID. */
+	rebind(queueName: string, job: Job) {
+		const { executionId } = job.data;
+		const wait = this.pendingWaits.get(executionId);
+		if (!wait) return;
+
+		this.executionIdByJobKey.delete(wait.jobKey);
+		wait.jobKey = toJobKey(queueName, job.id);
+		this.executionIdByJobKey.set(wait.jobKey, executionId);
+	}
+
 	/**
 	 * Wait until the worker reports the job as finished, or Bull reports it as
 	 * failed. Rejects with the failure reason, like Bull's `job.finished()`.

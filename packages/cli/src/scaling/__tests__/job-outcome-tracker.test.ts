@@ -290,6 +290,30 @@ describe('JobOutcomeTracker', () => {
 		});
 	});
 
+	describe('rebind', () => {
+		it('should settle the wait from the fresh job ID, not the old one', async () => {
+			const wait = tracker.waitFor(job);
+			const recovered = mock<Job>({ id: 'job-2', data: { executionId: 'exec-1' } });
+
+			tracker.rebind('jobs', recovered);
+
+			tracker.settleByJobKey('jobs', 'job-1');
+			expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
+			tracker.settleByJobKey('jobs', 'job-2');
+			await expect(wait).resolves.toBeUndefined();
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledTimes(1);
+		});
+
+		it('should do nothing without a pending wait for the execution', () => {
+			const recovered = mock<Job>({ id: 'job-2', data: { executionId: 'exec-9' } });
+
+			tracker.rebind('jobs', recovered);
+
+			tracker.settleByJobKey('jobs', 'job-2');
+			expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('drop', () => {
 		it('should stop the recheck once no wait is pending and leave the wait unsettled', async () => {
 			vi.useFakeTimers();

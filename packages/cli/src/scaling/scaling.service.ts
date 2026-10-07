@@ -693,6 +693,20 @@ export class ScalingService {
 		queue.on('global:completed', (jobId: JobId) => {
 			this.jobOutcomeTracker.settleByJobKey(queue.name, jobId);
 		});
+		// The stall sweep returns a never-started job to the queue under a fresh job ID
+		queue.on('global:stalled', (jobId: JobId) => {
+			queue
+				.getJob(jobId)
+				.then((job) => {
+					if (job) this.jobOutcomeTracker.rebind(queue.name, job);
+				})
+				.catch((error: Error) => {
+					this.logger.warn('Failed to load a job the stall sweep returned to the queue', {
+						jobId,
+						error,
+					});
+				});
+		});
 
 		if (this.isQueueMetricsEnabled) {
 			queue.on('global:completed', () => this.jobCounters.completed++);
