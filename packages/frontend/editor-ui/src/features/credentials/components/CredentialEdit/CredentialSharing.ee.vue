@@ -220,7 +220,7 @@ function usedInShareLabel(project: Pick<ProjectSharingData, 'name'>) {
 		: i18n.baseText('credentialEdit.credentialSharing.share');
 }
 
-function usedInAccessTooltip(project: ProjectListItem) {
+function usedInAccessTooltip(project: Pick<ProjectSharingData, 'name'>) {
 	const projectName = project.name ?? '';
 
 	return isOwnedByViewer.value
