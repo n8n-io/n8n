@@ -1,5 +1,6 @@
-import { type Router } from 'vue-router';
+import { type RouteComponent, type Router, type RouteRecordRaw } from 'vue-router';
 import {
+	type FrontendModuleDescription,
 	assertUniqueRouteNames,
 	modalRegistry,
 	registerResource,
@@ -55,7 +56,7 @@ export const registerModuleSettingsPages = () => {
 	const uiStore = useUIStore();
 	modules.forEach((module) => {
 		if (module.settingsPages && module.settingsPages.length > 0) {
-			uiStore.registerSettingsPages(module.id, module.settingsPages);
+			uiStore.registerSettingsPages(module.id, module.settingsPages, !!module.placeholderPage);
 		}
 	});
 };
@@ -70,7 +71,8 @@ const checkModuleAvailability = (options: any) => {
 	}
 	const settingsStore = useSettingsStore();
 	if (!settingsStore.isModuleActive(options.to.meta.moduleName)) {
-		return false;
+		// A module with a placeholder page stays reachable
+		return modules.some((m) => m.id === options.to.meta.moduleName && m.placeholderPage);
 	}
 	if (options.to.meta.moduleName === 'agents' && options.to.name !== AGENTS_SETTINGS_VIEW) {
 		return settingsStore.isAgentsEnabled;
@@ -149,6 +151,30 @@ export const registerModuleParameterInputs = () => {
 	});
 };
 
+// Module views are lazy loaders (see the frontend module guide)
+const isLazyView = (
+	component: RouteRecordRaw['component'],
+): component is () => Promise<RouteComponent> => typeof component === 'function';
+
+/**
+ * Loads `placeholderPage` instead of the view while the module is inactive.
+ * vue-router caches the first result, so the choice is made once per page load.
+ */
+const withPlaceholderPage = (
+	route: RouteRecordRaw,
+	module: FrontendModuleDescription,
+): RouteRecordRaw => {
+	const { placeholderPage } = module;
+	if (!placeholderPage || !route.component || !isLazyView(route.component)) return route;
+	const view = route.component;
+
+	return {
+		...route,
+		component: async () =>
+			useSettingsStore().isModuleActive(module.id) ? await view() : await placeholderPage(),
+	};
+};
+
 /**
  * Initialize module routes, done in main.ts
  */
@@ -159,7 +185,7 @@ export const registerModuleRoutes = (router: Router) => {
 		module.routes?.forEach((route) => {
 			// Prepare the enhanced route with module metadata and custom middleware that checks module availability
 			const enhancedRoute = {
-				...route,
+				...withPlaceholderPage(route, module),
 				meta: {
 					...route.meta,
 					moduleName: module.id,

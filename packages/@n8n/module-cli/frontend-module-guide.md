@@ -274,6 +274,22 @@ routes: [
 If `meta.middleware` has no `'custom'` entry, the route resolves. The state of the module then
 makes no difference.
 
+### Placeholder page for licensed features
+
+An unlicensed module is inactive, so its settings links and routes disappear. To show a paywall
+instead, set `placeholderPage`:
+
+```ts
+placeholderPage: async () => await import('./views/MyFeaturePaywall.vue'),
+```
+
+While the module is inactive, its settings links stay visible and its routes render this page. The
+`available` getter and route `rbac` still apply. The route views must be lazy loaders. The shell
+picks the view or the placeholder once, when the route first loads.
+
+The page shows for any inactive module, not only an unlicensed one. For example, a module turned
+off with `N8N_DISABLED_MODULES` shows it too. Do not assume the cause.
+
 ## Import-light descriptors
 
 The descriptor file can import **types and the SDK only**. Load views lazily. Read a store inside

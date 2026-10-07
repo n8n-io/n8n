@@ -1,4 +1,5 @@
 import type { IMenuItem } from '@n8n/design-system';
+import type { Component } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 
 import type { ModuleBanner } from './banner';
@@ -48,6 +49,11 @@ export type FrontendModuleDescription = {
 	 */
 	adHocModalKeyPrefixes?: string[];
 	settingsPages?: IMenuSettingItem[];
+	/**
+	 * Shown instead of the module's routes while the module is inactive, e.g. a paywall.
+	 * Keeps the settings links visible. Don't assume why the module is inactive.
+	 */
+	placeholderPage?: () => Promise<Component>;
 
 	// --- descriptor v2 (all optional, additive) ---
 

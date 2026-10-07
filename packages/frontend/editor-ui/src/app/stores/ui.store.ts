@@ -173,6 +173,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * when the corresponding module is active.
 	 */
 	const registeredSettingsPages = ref<Record<string, IMenuSettingItem[]>>({});
+	const modulesWithPlaceholderPage = ref(new Set<string>());
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -285,7 +286,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsSidebarItems = computed<IMenuSettingItem[]>(() => {
 		const items: IMenuSettingItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
-			if (settingsStore.isModuleActive(moduleName)) {
+			if (
+				settingsStore.isModuleActive(moduleName) ||
+				modulesWithPlaceholderPage.value.has(moduleName)
+			) {
 				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
 			}
 		});
@@ -599,8 +603,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
-	const registerSettingsPages = (moduleName: string, items: IMenuSettingItem[]) => {
+	const registerSettingsPages = (
+		moduleName: string,
+		items: IMenuSettingItem[],
+		hasPlaceholderPage = false,
+	) => {
 		registeredSettingsPages.value[moduleName] = items;
+		if (hasPlaceholderPage) modulesWithPlaceholderPage.value.add(moduleName);
 	};
 
 	/**
