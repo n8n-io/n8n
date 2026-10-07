@@ -8,11 +8,13 @@ on:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
       - 'docker/images/n8n-base/Dockerfile.debian'
+      - '.github/scripts/docker/base-debian-smoke-check.sh'
       - '.github/workflows/build-base-image.yml'
   pull_request:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
       - 'docker/images/n8n-base/Dockerfile.debian'
+      - '.github/scripts/docker/base-debian-smoke-check.sh'
       - '.github/workflows/build-base-image.yml'
   workflow_dispatch:
     inputs:
@@ -45,6 +47,9 @@ jobs:
           - tag: '26.7.0-debian'
             dockerfile: docker/images/n8n-base/Dockerfile.debian
             dhi_ref: dhi.io/node:26.7.0-debian13-dev@sha256:f64567ec3fd6eb86a5cbd384bc2f09f329796c5bcb1737d8d85041dda981e797
+            # No n8n image builds on this base yet, so the Docker smoke test
+            # does not cover it. Check its contract here.
+            smoke_check: .github/scripts/docker/base-debian-smoke-check.sh
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -71,6 +76,23 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Load each platform into the daemon and run the check on it. The push
+      # step below reuses these layers, so the pushed image is the checked one.
+      - name: Smoke check
+        if: matrix.smoke_check
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          DHI_REF: ${{ matrix.dhi_ref }}
+          SMOKE_CHECK: ${{ matrix.smoke_check }}
+        run: |
+          set -euo pipefail
+          for platform in linux/amd64 linux/arm64; do
+            docker buildx build --platform "$platform" --build-arg "DHI_REF=$DHI_REF" \
+              -f "$DOCKERFILE" -t base-smoke --load .
+            docker run --rm --platform "$platform" --user root --entrypoint sh \
+              -v "$PWD/$SMOKE_CHECK:/smoke.sh:ro" base-smoke /smoke.sh
+          done
+
       - name: Build and push
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
@@ -87,4 +109,4 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.tag }}
             ghcr.io/${{ github.repository_owner }}/base:${{ matrix.tag }}-${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/base:${{ matrix.tag }}
-          no-cache: true
+          no-cache: ${{ !matrix.smoke_check }}
