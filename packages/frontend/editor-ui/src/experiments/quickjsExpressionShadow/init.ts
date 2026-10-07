@@ -21,6 +21,11 @@ const MAX_TIMEOUT_MS = 5000;
 
 let started = false;
 
+// Counts logouts, so a start that finishes after one does not install itself.
+let session = 0;
+
+let stopActiveRun: (() => void) | undefined;
+
 export interface ShadowSettings {
 	sampleRate: number;
 	timeoutMs: number;
@@ -62,6 +67,7 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	// Checked again after the wait, so two calls cannot both start a run.
 	if (started) return;
 	started = true;
+	const startSession = session;
 
 	const settings = readShadowSettings(
 		postHogStore.getFeatureFlagPayload(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name),
@@ -95,13 +101,13 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	} catch {
 		// A policy that blocks WASM ends here; the editor keeps working on legacy.
 		initDurationMs = performance.now() - initStart;
-		send('failed', emptyReport());
+		if (startSession === session) send('failed', emptyReport());
 		return;
 	}
 	initDurationMs = performance.now() - initStart;
 
-	// The main engine may have switched while the shadow engine loaded.
-	if (Expression.getActiveImplementation() !== 'legacy') {
+	// The user may have logged out, or the main engine switched, while the shadow engine loaded.
+	if (startSession !== session || Expression.getActiveImplementation() !== 'legacy') {
 		await evaluator.dispose().catch(() => {});
 		return;
 	}
@@ -112,11 +118,32 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 		const report = shadow.takeReport();
 		if (report) send('ready', report);
 	};
-	setInterval(flush, REPORT_INTERVAL_MS);
-	document.addEventListener('visibilitychange', () => {
+	const onVisibilityChange = () => {
 		if (document.visibilityState === 'hidden') flush();
-	});
+	};
+	const interval = setInterval(flush, REPORT_INTERVAL_MS);
+	document.addEventListener('visibilitychange', onVisibilityChange);
 	window.addEventListener('pagehide', flush);
+
+	stopActiveRun = () => {
+		Expression.setShadowRunner(undefined);
+		flush();
+		clearInterval(interval);
+		document.removeEventListener('visibilitychange', onVisibilityChange);
+		window.removeEventListener('pagehide', flush);
+		void evaluator.dispose().catch(() => {});
+	};
+}
+
+/**
+ * Stop the shadow run and send what it collected. Call it on logout, before
+ * telemetry forgets the user, so the last report keeps its instance and user.
+ */
+export function stopQuickJsExpressionShadow() {
+	session += 1;
+	started = false;
+	stopActiveRun?.();
+	stopActiveRun = undefined;
 }
 
 function emptyReport(): ShadowReport {
@@ -132,10 +159,4 @@ function emptyReport(): ShadowReport {
 		quickjs_latency_buckets: [],
 		mismatches: [],
 	};
-}
-
-/** For tests: forget that a shadow run started. */
-export function resetQuickJsExpressionShadow() {
-	started = false;
-	Expression.setShadowRunner(undefined);
 }

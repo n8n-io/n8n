@@ -50,7 +50,9 @@ describe('canonicalize', () => {
 
 	it('compares dates, maps and sets by content', () => {
 		expect(canonicalize(new Date(0))).toBe(canonicalize(new Date(0)));
+		expect(canonicalize(new Date(0))).not.toBe(canonicalize(new Date(1)));
 		expect(canonicalize(new Map([['a', 1]]))).toBe(canonicalize(new Map([['a', 1]])));
+		expect(canonicalize(new Map([['a', 1]]))).not.toBe(canonicalize(new Map([['a', 2]])));
 		expect(canonicalize(new Set([1]))).not.toBe(canonicalize(new Set([2])));
 	});
 
@@ -67,6 +69,8 @@ describe('canonicalize', () => {
 
 	it('gives up on values that are too large to compare on the main thread', () => {
 		expect(canonicalize(new Array(20_000).fill(1))).toBeUndefined();
+		expect(canonicalize('x'.repeat(2_000_000))).toBeUndefined();
+		expect(canonicalize({ a: 'x'.repeat(600_000), b: 'y'.repeat(600_000) })).toBeUndefined();
 	});
 });
 
@@ -98,6 +102,18 @@ describe('expressionSkeleton', () => {
 		['{{ $json.items?.length }}', '{{ $json.<id>?.length }}'],
 	])('reduces %s to %s', (source, expected) => {
 		expect(expressionSkeleton(source)).toBe(expected);
+	});
+
+	it('keeps known methods and masks methods the user wrote', () => {
+		expect(expressionSkeleton('{{ $json.date.toDateTime().plus(1, "day").toISO() }}')).toBe(
+			'{{ $json.<id>.toDateTime().plus(<num>,<str>).toISO() }}',
+		);
+		expect(expressionSkeleton("{{ $('Orders').first().json.total.toFixed(2) }}")).toBe(
+			'{{ $(<str>).first().json.<id>.toFixed(<num>) }}',
+		);
+		expect(expressionSkeleton('{{ ({ customerSecret() {} }).customerSecret() }}')).not.toContain(
+			'customerSecret',
+		);
 	});
 
 	it('drops names that the user chose, such as arrow function parameters', () => {

@@ -39,7 +39,10 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
-import { initializeQuickJsExpressionShadow } from '@/experiments/quickjsExpressionShadow/init';
+import {
+	initializeQuickJsExpressionShadow,
+	stopQuickJsExpressionShadow,
+} from '@/experiments/quickjsExpressionShadow/init';
 
 export const state = {
 	initialized: false,
@@ -328,6 +331,8 @@ function registerAuthenticationHooks() {
 	});
 
 	usersStore.registerLogoutHook(() => {
+		// Before telemetry.reset(), so the last shadow report keeps its user.
+		stopQuickJsExpressionShadow();
 		bannersStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();

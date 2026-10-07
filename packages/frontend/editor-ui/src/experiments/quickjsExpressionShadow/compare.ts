@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { DateTime, Duration, Interval } from 'luxon';
+import { ExpressionExtensions } from 'n8n-workflow';
 
 // Each run reads the clock or a random source, so two engines legitimately disagree.
 const NON_DETERMINISTIC_PATTERN =
@@ -25,11 +26,20 @@ export function valueType(value: unknown): string {
 
 const MAX_CANONICAL_NODES = 10_000;
 
+// A long string counts as one node, so the size of strings has its own limit.
+const MAX_CANONICAL_CHARS = 1_000_000;
+
 class ValueTooLargeError extends Error {}
 
 interface CanonicalState {
 	nodes: number;
+	chars: number;
 	seen: Set<object>;
+}
+
+function spendChars(state: CanonicalState, chars: number) {
+	state.chars += chars;
+	if (state.chars > MAX_CANONICAL_CHARS) throw new ValueTooLargeError();
 }
 
 /**
@@ -39,7 +49,7 @@ interface CanonicalState {
  */
 export function canonicalize(value: unknown): string | undefined {
 	try {
-		return writeCanonical(value, { nodes: 0, seen: new Set() });
+		return writeCanonical(value, { nodes: 0, chars: 0, seen: new Set() });
 	} catch (error) {
 		if (error instanceof ValueTooLargeError) return undefined;
 		throw error;
@@ -52,6 +62,7 @@ function writeCanonical(value: unknown, state: CanonicalState): string {
 
 	switch (typeof value) {
 		case 'string':
+			spendChars(state, value.length);
 			return JSON.stringify(value);
 		case 'number':
 		case 'boolean':
@@ -95,7 +106,10 @@ function writeCanonical(value: unknown, state: CanonicalState): string {
 
 		const entries = Object.entries(value)
 			.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-			.map(([key, entry]) => `${JSON.stringify(key)}:${writeCanonical(entry, state)}`);
+			.map(([key, entry]) => {
+				spendChars(state, key.length);
+				return `${JSON.stringify(key)}:${writeCanonical(entry, state)}`;
+			});
 		return `{${entries.join(',')}}`;
 	} finally {
 		state.seen.delete(value);
@@ -180,15 +194,61 @@ const KNOWN_MEMBERS = new Set([
 	'runIndex',
 ]);
 
+// n8n data proxy methods, and extensions that are not in the extension maps.
+const N8N_METHODS = ['all', 'first', 'isEmpty', 'isNotEmpty', 'itemMatching', 'last'];
+
+let knownMethods: Set<string> | undefined;
+
+/** Methods that JavaScript, luxon or n8n define. Any other called member is code the user wrote. */
+function getKnownMethods(): Set<string> {
+	if (knownMethods) return knownMethods;
+
+	const names = new Set(N8N_METHODS);
+	const owners: object[] = [
+		Object,
+		Object.prototype,
+		Array,
+		Array.prototype,
+		String,
+		String.prototype,
+		Number,
+		Number.prototype,
+		Boolean.prototype,
+		Date,
+		Date.prototype,
+		RegExp.prototype,
+		Map.prototype,
+		Set.prototype,
+		Math,
+		JSON,
+		DateTime,
+		DateTime.prototype,
+		Duration,
+		Duration.prototype,
+		Interval,
+		Interval.prototype,
+	];
+	for (const owner of owners) {
+		for (const name of Object.getOwnPropertyNames(owner)) names.add(name);
+	}
+	for (const extensions of ExpressionExtensions) {
+		for (const name of Object.keys(extensions.functions)) names.add(name);
+	}
+
+	knownMethods = names;
+	return names;
+}
+
 const IDENTIFIER = /^[A-Za-z_$][\w$]*/;
 const NUMBER =
 	/^(?:0[xXoObB][\da-fA-F_]+n?|\d[\d_]*(?:\.\d*)?(?:[eE][+-]?\d+)?n?|\.\d+(?:[eE][+-]?\d+)?)/;
 
 /**
  * The shape of an expression, without the parts that can hold user data:
- * field names become `<id>`, strings `<str>`, numbers `<num>`, and text outside
- * `{{ }}` becomes `<text>`. Method names, `$` variables and JavaScript names stay,
- * so a mismatch can be reproduced without seeing the original expression.
+ * field names become `<id>`, methods the user wrote `<fn>`, strings `<str>`,
+ * numbers `<num>`, and text outside `{{ }}` becomes `<text>`. Known methods,
+ * `$` variables and JavaScript names stay, so a mismatch can be reproduced
+ * without seeing the original expression.
  */
 export function expressionSkeleton(source: string): string {
 	const tokens: string[] = [];
@@ -252,9 +312,11 @@ export function expressionSkeleton(source: string): string {
 			const name = identifier[0];
 			index += name.length;
 			if (afterDot) {
-				// A called member is a method of JavaScript or n8n; a read member is a field name.
-				const isCall = nextNonSpace(source, index) === '(';
-				tokens.push(isCall || KNOWN_MEMBERS.has(name) ? name : '<id>');
+				if (nextNonSpace(source, index) === '(') {
+					tokens.push(getKnownMethods().has(name) ? name : '<fn>');
+				} else {
+					tokens.push(KNOWN_MEMBERS.has(name) ? name : '<id>');
+				}
 			} else {
 				tokens.push(name.startsWith('$') || KNOWN_NAMES.has(name) ? name : '<id>');
 			}

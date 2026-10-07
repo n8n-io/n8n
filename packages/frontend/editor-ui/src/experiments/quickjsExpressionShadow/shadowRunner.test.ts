@@ -132,6 +132,24 @@ describe('QuickJsExpressionShadow', () => {
 		expect(shadow.beforeLegacy(context('{{ 3 }}'))).toBeTypeOf('function');
 	});
 
+	it('keeps sampling after the QuickJS evaluator throws', () => {
+		const evaluate = vi
+			.fn<() => ExpressionEvaluationOutcome>()
+			.mockImplementationOnce(() => {
+				throw new Error('bridge failure');
+			})
+			.mockReturnValue(ok(1));
+		const shadow = new QuickJsExpressionShadow({
+			evaluator: { evaluate },
+			sampleRate: 1,
+			random: () => 0,
+			now: () => 0,
+		});
+
+		expect(() => shadow.beforeLegacy(context('{{ 1 }}'))).toThrow('bridge failure');
+		expect(shadow.beforeLegacy(context('{{ 2 }}'))).toBeTypeOf('function');
+	});
+
 	it('resets the counts after a report', () => {
 		const { shadow } = createShadow(ok(1));
 		run(shadow, '{{ 1 }}', ok(1));

@@ -24,7 +24,10 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
-import { initializeQuickJsExpressionShadow } from '@/experiments/quickjsExpressionShadow/init';
+import {
+	initializeQuickJsExpressionShadow,
+	stopQuickJsExpressionShadow,
+} from '@/experiments/quickjsExpressionShadow/init';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -79,6 +82,7 @@ vi.mock('@/app/init/expressionEngine', () => ({
 // The real one waits for feature flags and loads the QuickJS runtime bundle.
 vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
 	initializeQuickJsExpressionShadow: vi.fn(async () => {}),
+	stopQuickJsExpressionShadow: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -227,7 +231,19 @@ describe('Init', () => {
 			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
 		});
 
+		it('should stop the expression shadow run on logout', async () => {
+			usersStore.registerLogoutHook.mockImplementation((hook) => {
+				void hook();
+			});
+
+			await initializeCore();
+
+			expect(stopQuickJsExpressionShadow).toHaveBeenCalledTimes(1);
+		});
+
+		// The shadow run reads its flag, which only exists once PostHog has the user's flags.
 		it('should start the expression shadow run in the login hook after PostHog', async () => {
+			const postHogInit = vi.spyOn(mockedStore(usePostHog), 'init');
 			usersStore.registerLoginHook.mockImplementation(async (hook) => {
 				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
 			});
@@ -235,6 +251,9 @@ describe('Init', () => {
 			await initializeCore();
 
 			expect(initializeQuickJsExpressionShadow).toHaveBeenCalledTimes(1);
+			expect(postHogInit.mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(initializeQuickJsExpressionShadow).mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {

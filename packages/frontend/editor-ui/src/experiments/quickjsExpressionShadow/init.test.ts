@@ -7,7 +7,7 @@ import {
 	DEFAULT_TIMEOUT_MS,
 	initializeQuickJsExpressionShadow,
 	readShadowSettings,
-	resetQuickJsExpressionShadow,
+	stopQuickJsExpressionShadow,
 } from './init';
 
 const { settingsStore, postHogStore, track, evaluator } = vi.hoisted(() => ({
@@ -44,7 +44,7 @@ const installedRunner = () =>
 
 describe('initializeQuickJsExpressionShadow', () => {
 	beforeEach(() => {
-		resetQuickJsExpressionShadow();
+		stopQuickJsExpressionShadow();
 		vi.clearAllMocks();
 		settingsStore.isCloudDeployment = true;
 		postHogStore.isFeatureEnabled.mockReturnValue(true);
@@ -88,6 +88,55 @@ describe('initializeQuickJsExpressionShadow', () => {
 		await initializeQuickJsExpressionShadow();
 
 		expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
+	});
+
+	it('drops the shadow engine when QuickJS becomes the main engine while it loads', async () => {
+		vi.mocked(Expression.createQuickJsShadowEvaluator).mockImplementation(async () => {
+			vi.mocked(Expression.getActiveImplementation).mockReturnValue('quickjs');
+			return evaluator;
+		});
+
+		await initializeQuickJsExpressionShadow();
+
+		expect(evaluator.dispose).toHaveBeenCalledTimes(1);
+		expect(Expression.setShadowRunner).not.toHaveBeenCalled();
+	});
+
+	it('drops the shadow engine when the user logs out while it loads', async () => {
+		vi.mocked(Expression.createQuickJsShadowEvaluator).mockImplementation(async () => {
+			stopQuickJsExpressionShadow();
+			return evaluator;
+		});
+
+		await initializeQuickJsExpressionShadow();
+
+		expect(evaluator.dispose).toHaveBeenCalledTimes(1);
+		expect(Expression.setShadowRunner).not.toHaveBeenCalledWith(expect.anything());
+	});
+
+	it('sends the collected results and stops on logout', async () => {
+		postHogStore.getFeatureFlagPayload.mockReturnValue({ sampleRate: 1 });
+		await initializeQuickJsExpressionShadow();
+		const finish = installedRunner().beforeLegacy({
+			expression: '{{ 1 }}',
+			source: '{{ 1 }}',
+			data: {} as ExpressionShadowContext['data'],
+			timezone: 'UTC',
+		});
+		finish?.({ ok: true, value: 1 });
+
+		stopQuickJsExpressionShadow();
+
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
+			expect.objectContaining({ evaluations: 1 }),
+		);
+		expect(Expression.setShadowRunner).toHaveBeenLastCalledWith(undefined);
+		expect(evaluator.dispose).toHaveBeenCalledTimes(1);
+
+		// The next login can start a new run.
+		await initializeQuickJsExpressionShadow();
+		expect(Expression.createQuickJsShadowEvaluator).toHaveBeenCalledTimes(2);
 	});
 
 	it('starts only once', async () => {
