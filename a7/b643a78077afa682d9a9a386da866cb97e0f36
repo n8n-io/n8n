@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_b07838ec2e5b11 318-320
+packages/@n8n/instance-ai/evaluations/routing/cases.ts
+  s_fd6e130ca898c8::t_23941fd4ca4915 40-46
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_584a4f84ff9c8b 190,192-193,197,199-203
+packages/@n8n/instance-ai/evaluations/routing/judge.ts
+  s_fd6e130ca898c8::t_73696867e8089f 75,87,89,93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7b643a78077afa682d9a9a386da866cb97e0f36",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

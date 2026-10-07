@@ -1,0 +1,14 @@
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  h_5d40c27a8fdfd1 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "136b4b072703658b9c1103832f049ebabc3bb8cb",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
