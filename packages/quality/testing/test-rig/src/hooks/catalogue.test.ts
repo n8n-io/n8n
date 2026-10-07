@@ -3,13 +3,15 @@ import { join } from 'node:path';
 
 import { HOOKED_METHODS, observeHookedMethods, olderThan } from './catalogue';
 import { FILES } from './spec';
+import { CHAOS_HOOKS } from '../chaos/run';
+import { LEADER_HOOKS } from '../multi-main';
 import { PLAYWRIGHT_DIR, SPEC_DIR } from '../cli/manifest';
 
 const specDir = join(PLAYWRIGHT_DIR, SPEC_DIR);
 const methodRef = /file: FILES\.(\w+),\s*target: '([^']*)',\s*method: '(\w+)'/g;
 
 describe('HOOKED_METHODS', () => {
-	it('lists every method a scenario spec hooks', () => {
+	it('lists every method a scenario spec or the rig hooks', () => {
 		const used = new Set<string>();
 		for (const spec of readdirSync(specDir).filter((name) => name.endsWith('.spec.ts'))) {
 			for (const [, key, target, method] of readFileSync(join(specDir, spec), 'utf8').matchAll(
@@ -18,6 +20,8 @@ describe('HOOKED_METHODS', () => {
 				used.add(`${FILES[key as keyof typeof FILES]} ${target}.${method}`);
 			}
 		}
+		for (const ref of [...LEADER_HOOKS, ...CHAOS_HOOKS])
+			used.add(`${ref.file} ${ref.target}.${ref.method}`);
 		const listed = new Set(HOOKED_METHODS.map((ref) => `${ref.file} ${ref.target}.${ref.method}`));
 		expect([...used].filter((ref) => !listed.has(ref))).toEqual([]);
 		expect(used.size).toBeGreaterThan(0);

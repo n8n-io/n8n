@@ -88,7 +88,7 @@ export function formatTable(rows: Row[]): string {
 function ensureImage(image: string): boolean {
 	if (spawnSync('docker', ['image', 'inspect', image], { stdio: 'ignore' }).status === 0)
 		return true;
-	if (image.includes(':repro-') || image.includes(':rig-') || image.endsWith(':local')) {
+	if (image.includes(':rig-') || image.endsWith(':local')) {
 		console.error(`missing local build ${image}; build it as the README describes`);
 		return false;
 	}

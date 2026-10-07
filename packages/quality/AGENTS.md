@@ -5,7 +5,7 @@ Read the repository [AGENTS.md](../../AGENTS.md) first. Use the [quality enginee
 | Area | Responsibility | Current location |
 | --- | --- | --- |
 | Policy | Repository rules and static analysis | [`rules-engine`](policy/rules-engine/), [`code-health`](policy/code-health/) |
-| Testing | Test selection, architecture checks, and test orchestration | [`test-impact`](testing/test-impact/), [`janitor`](testing/janitor/), [`playwright`](testing/playwright/) |
+| Testing | Test selection, architecture checks, and test orchestration | [`test-impact`](testing/test-impact/), [`janitor`](testing/janitor/), [`playwright`](testing/playwright/), [`test-rig`](testing/test-rig/) |
 | Environments | Test services and deployment stacks | [`containers`](environments/containers/) |
 | Efficiency | Speed, memory, load, latency, throughput, capacity, and resource use | [Microbenchmarks](efficiency/microbenchmarks/), [Playwright performance tests](testing/playwright/tests/performance/), [infrastructure benchmarks](testing/playwright/tests/infrastructure/benchmarks/), [benchmark CLI](efficiency/scale/benchmark/) |
 

@@ -27,7 +27,7 @@ export const scenarioSchema = z
 		before: image.nullable(),
 		/** Image with the fix; null while no fix exists. */
 		after: image.nullable(),
-		/** Git ref to build the after image from when it is not a released tag. */
+		/** What to build the after image from when it is not a released tag. */
 		afterRef: z.string().optional(),
 		env: z.record(z.string().regex(/^TEST_RIG_[A-Z_]+$/), z.string()).optional(),
 	})

@@ -19,6 +19,8 @@ export const HOOKED_METHODS: HookedMethod[] = [
 		method: 'findSingleExecution',
 	},
 	{ file: FILES.jobProcessor, target: 'JobProcessor.prototype', method: 'processJob' },
+	{ file: FILES.multiMainSetup, target: 'MultiMainSetup.prototype', method: 'stepDownToFollower' },
+	{ file: FILES.multiMainSetup, target: 'MultiMainSetup.prototype', method: 'takeOverAsLeader' },
 	{ file: FILES.scalingService, target: 'ScalingService.prototype', method: 'addJob' },
 	{
 		file: FILES.scalingService,
