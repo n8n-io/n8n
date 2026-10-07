@@ -94,6 +94,11 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
+			// Both modes are Assistant surfaces, so the switch has no use while the Assistant is off.
+			experience: {
+				enabled: enabled && globalConfig.instanceAi.experienceModesEnabled,
+				defaultMode: globalConfig.instanceAi.experienceDefaultMode,
+			},
 		};
 	}
 

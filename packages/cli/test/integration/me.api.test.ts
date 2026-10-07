@@ -9,7 +9,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
+import type { IPersonalizationSurveyAnswersV4, IUserSettings } from 'n8n-workflow';
 import validator from 'validator';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
@@ -17,7 +17,8 @@ import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
+// 'auth' serves GET /login and 'users' serves GET /users. Both return the saved settings of the current user.
+const testServer = utils.setupTestServer({ endpointGroups: ['me', 'auth', 'users'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
@@ -302,6 +303,122 @@ describe('Member', () => {
 			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
 			expect(storedMember.settings?.easyAIWorkflowOnboarded).toBe(true);
 			expect(storedMember.settings?.userActivated).toBeUndefined();
+		});
+
+		describe('experienceMode', () => {
+			const storedSettings = async (userId: string) =>
+				(await Container.get(UserRepository).findOneByOrFail({ id: userId })).settings;
+
+			const listedUser = async (agent: SuperAgentTest, userId: string) => {
+				const response = await agent.get('/users').expect(200);
+				const items: { id: string; settings?: IUserSettings | null }[] = response.body.data.items;
+				return items.find((item) => item.id === userId);
+			};
+
+			test('should save the mode and return it for the current user', async () => {
+				const response = await authMemberAgent
+					.patch('/me/settings')
+					.send({ experienceMode: 'power' })
+					.expect(200);
+
+				expect(response.body.data.experienceMode).toBe('power');
+				expect((await storedSettings(member.id))?.experienceMode).toBe('power');
+
+				const currentUser = await authMemberAgent.get('/login').expect(200);
+				expect(currentUser.body.data.settings.experienceMode).toBe('power');
+			});
+
+			// The editor merges each GET /users item into the current user, so the list must keep the mode.
+			test('should return the saved mode for the current user in the users list', async () => {
+				await authMemberAgent
+					.patch('/me/settings')
+					.send({ experienceMode: 'power', easyAIWorkflowOnboarded: true })
+					.expect(200);
+
+				const self = await listedUser(authMemberAgent, member.id);
+
+				expect(self?.settings).toMatchObject({
+					experienceMode: 'power',
+					easyAIWorkflowOnboarded: true,
+				});
+			});
+
+			test("should not show another user's mode to a member in the users list", async () => {
+				const otherMember = await createUser({ role: { slug: 'global:member' } });
+				await testServer
+					.authAgentFor(otherMember)
+					.patch('/me/settings')
+					.send({ experienceMode: 'power' })
+					.expect(200);
+
+				const other = await listedUser(authMemberAgent, otherMember.id);
+
+				expect(other).toBeDefined();
+				expect(other).not.toHaveProperty('settings');
+			});
+
+			test('should keep the other settings when the mode changes', async () => {
+				await authMemberAgent
+					.patch('/me/settings')
+					.send({ easyAIWorkflowOnboarded: true, dismissedCallouts: { 'test-callout': true } })
+					.expect(200);
+				await authMemberAgent.patch('/me/settings').send({ experienceMode: 'power' }).expect(200);
+
+				const response = await authMemberAgent
+					.patch('/me/settings')
+					.send({ experienceMode: 'simple' })
+					.expect(200);
+
+				const expected = {
+					easyAIWorkflowOnboarded: true,
+					dismissedCallouts: { 'test-callout': true },
+					experienceMode: 'simple',
+				};
+				expect(response.body.data).toMatchObject(expected);
+				expect(await storedSettings(member.id)).toMatchObject(expected);
+			});
+
+			test.each(['builder', 'POWER', '', null])(
+				'should reject %j and keep the saved mode',
+				async (experienceMode) => {
+					await authMemberAgent.patch('/me/settings').send({ experienceMode: 'power' }).expect(200);
+
+					const response = await authMemberAgent
+						.patch('/me/settings')
+						.send({ experienceMode })
+						.expect(400);
+
+					expect(response.body.path).toEqual(['experienceMode']);
+					expect((await storedSettings(member.id))?.experienceMode).toBe('power');
+				},
+			);
+
+			test('should save the mode and strip allowSSOManualLogin from the same payload', async () => {
+				const response = await authMemberAgent
+					.patch('/me/settings')
+					.send({ experienceMode: 'power', allowSSOManualLogin: true })
+					.expect(200);
+
+				expect(response.body.data.experienceMode).toBe('power');
+				expect(response.body.data.allowSSOManualLogin).toBeUndefined();
+
+				const settings = await storedSettings(member.id);
+				expect(settings?.experienceMode).toBe('power');
+				expect(settings?.allowSSOManualLogin).toBeUndefined();
+			});
+
+			test("should not change another user's mode", async () => {
+				const otherMember = await createUser({ role: { slug: 'global:member' } });
+
+				await authMemberAgent.patch('/me/settings').send({ experienceMode: 'power' }).expect(200);
+
+				const otherCurrentUser = await testServer
+					.authAgentFor(otherMember)
+					.get('/login')
+					.expect(200);
+				expect(otherCurrentUser.body.data.settings?.experienceMode).toBeUndefined();
+				expect((await storedSettings(otherMember.id))?.experienceMode).toBeUndefined();
+			});
 		});
 	});
 });

@@ -49,6 +49,8 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
 | `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
+| `N8N_EXPERIENCE_MODES_ENABLED` | boolean | `false` | Show the Simple and Power experience modes in the editor. Each user can switch between the two modes, and n8n saves the choice in their user settings. The modes show only while the Assistant is enabled. When `false`, the editor does not change. |
+| `N8N_EXPERIENCE_DEFAULT_MODE` | string | `simple` | The mode for users who did not choose one: `simple` or `power`. The value is case-sensitive. An empty or invalid value logs a warning and n8n uses `simple`. |
 
 The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.
 `variant` enables the async panel. `control` or an unavailable assignment uses

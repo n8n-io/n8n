@@ -6,6 +6,7 @@ import type {
 	ChatProviderSettingsDto,
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
+import type { ExperienceMode } from './schemas/experience-mode.schema';
 import type { InsightsDateRange } from './schemas/insights.schema';
 import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
@@ -400,6 +401,12 @@ export type FrontendModuleSettings = {
 		runDebugEnabled: boolean;
 		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
 		activationCapped?: boolean;
+		/**
+		 * Simple and Power modes (`N8N_EXPERIENCE_MODES_ENABLED`, `N8N_EXPERIENCE_DEFAULT_MODE`).
+		 * `enabled` is true only when the flag is on and the Assistant is enabled.
+		 * Consumers do not need a separate check of the Assistant `enabled` value.
+		 */
+		experience?: { enabled: boolean; defaultMode: ExperienceMode };
 	};
 
 	/**

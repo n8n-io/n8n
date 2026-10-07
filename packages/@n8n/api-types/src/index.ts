@@ -314,6 +314,8 @@ export {
 	type WorkflowExecutionStatus,
 } from './schemas/workflow-execution-status.schema';
 
+export { experienceModeSchema, type ExperienceMode } from './schemas/experience-mode.schema';
+
 export {
 	WorkflowPublicationStatusSchema,
 	type WorkflowPublicationStatus,

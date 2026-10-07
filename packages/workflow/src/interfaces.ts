@@ -4498,6 +4498,8 @@ export interface IUserSettings {
 	mcpJsonNudge?: {
 		impressions: number;
 	};
+	/** The user's own choice of editor experience. Missing means the instance default applies. */
+	experienceMode?: 'simple' | 'power';
 }
 
 export interface IProcessedDataConfig {

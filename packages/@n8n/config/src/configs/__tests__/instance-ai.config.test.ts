@@ -50,3 +50,96 @@ describe('InstanceAiConfig concurrency caps', () => {
 		);
 	});
 });
+
+describe('InstanceAiConfig experience modes', () => {
+	const MODES_ENABLED = 'N8N_EXPERIENCE_MODES_ENABLED';
+	const DEFAULT_MODE = 'N8N_EXPERIENCE_DEFAULT_MODE';
+
+	const loadConfig = () => Container.get(GlobalConfig).instanceAi;
+	const silenceWarnings = () => vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+	beforeEach(() => {
+		Container.reset();
+		vi.unstubAllEnvs();
+		// The developer shell must not change the defaults under test.
+		vi.stubEnv(MODES_ENABLED, undefined);
+		vi.stubEnv(DEFAULT_MODE, undefined);
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		vi.restoreAllMocks();
+	});
+
+	it('keeps the modes off and uses simple when nothing is set', () => {
+		const warn = silenceWarnings();
+
+		const config = loadConfig();
+
+		expect(config.experienceModesEnabled).toBe(false);
+		expect(config.experienceDefaultMode).toBe('simple');
+		expect(warn).not.toHaveBeenCalledWith(expect.stringContaining(MODES_ENABLED));
+		expect(warn).not.toHaveBeenCalledWith(expect.stringContaining(DEFAULT_MODE));
+	});
+
+	it.each([
+		['true', true],
+		['TRUE', true],
+		['1', true],
+		['false', false],
+		['0', false],
+	])('reads %s as %s for the modes flag', (value, expected) => {
+		vi.stubEnv(MODES_ENABLED, value);
+
+		expect(loadConfig().experienceModesEnabled).toBe(expected);
+	});
+
+	it.each(['yes', 'on', 'enabled'])('warns and keeps the modes off for %s', (value) => {
+		const warn = silenceWarnings();
+		vi.stubEnv(MODES_ENABLED, value);
+
+		expect(loadConfig().experienceModesEnabled).toBe(false);
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining(MODES_ENABLED));
+	});
+
+	it.each(['simple', 'power'] as const)('accepts %s as the default mode', (mode) => {
+		const warn = silenceWarnings();
+		vi.stubEnv(DEFAULT_MODE, mode);
+
+		expect(loadConfig().experienceDefaultMode).toBe(mode);
+		expect(warn).not.toHaveBeenCalledWith(expect.stringContaining(DEFAULT_MODE));
+	});
+
+	// Compose env files and `echo value > file` often add whitespace or quotes.
+	it.each([' power ', '"power"', "'power'", 'power\n'])(
+		'removes whitespace and quotes from %j',
+		(value) => {
+			vi.stubEnv(DEFAULT_MODE, value);
+
+			expect(loadConfig().experienceDefaultMode).toBe('power');
+		},
+	);
+
+	// Startup must continue, so an unknown value falls back to the safe default.
+	it.each(['builder', 'Power', 'POWER', '', 'simple,power'])(
+		'warns and falls back to simple for %j',
+		(value) => {
+			const warn = silenceWarnings();
+			vi.stubEnv(DEFAULT_MODE, value);
+
+			expect(loadConfig().experienceDefaultMode).toBe('simple');
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining(DEFAULT_MODE));
+		},
+	);
+
+	it('reads the flag and the default mode independently', () => {
+		silenceWarnings();
+		vi.stubEnv(MODES_ENABLED, 'true');
+		vi.stubEnv(DEFAULT_MODE, 'builder');
+
+		const config = loadConfig();
+
+		expect(config.experienceModesEnabled).toBe(true);
+		expect(config.experienceDefaultMode).toBe('simple');
+	});
+});

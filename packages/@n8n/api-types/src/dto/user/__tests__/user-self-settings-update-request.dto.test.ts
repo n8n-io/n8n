@@ -38,11 +38,13 @@ describe('UserSelfSettingsUpdateRequestDto', () => {
 				easyAIWorkflowOnboarded: false,
 				dismissedCallouts: { 'test-callout': true },
 				mcpJsonNudge: { impressions: 1 },
+				experienceMode: 'power',
 			};
 
 			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
 
 			expect(result.success).toBe(true);
+			expect(result.data).toEqual(data);
 		});
 
 		it('should pass validation with mcpJsonNudge', () => {
@@ -53,6 +55,20 @@ describe('UserSelfSettingsUpdateRequestDto', () => {
 			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
 
 			expect(result.success).toBe(true);
+		});
+
+		it.each(['simple', 'power'])('should pass validation with experienceMode %s', (mode) => {
+			const result = UserSelfSettingsUpdateRequestDto.safeParse({ experienceMode: mode });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.experienceMode).toBe(mode);
+		});
+
+		it('should not add experienceMode when the payload leaves it out', () => {
+			const result = UserSelfSettingsUpdateRequestDto.safeParse({ easyAIWorkflowOnboarded: true });
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('experienceMode');
 		});
 	});
 
@@ -128,6 +144,19 @@ describe('UserSelfSettingsUpdateRequestDto', () => {
 			expect(result.success).toBe(false);
 			expect(result.error?.issues[0].path).toEqual(['mcpJsonNudge', 'impressions']);
 		});
+
+		it.each([
+			['an unknown mode', 'builder'],
+			['an empty string', ''],
+			['an upper-case mode', 'POWER'],
+			['null', null],
+			['a number', 1],
+		])('should fail validation with %s for experienceMode', (_label, experienceMode) => {
+			const result = UserSelfSettingsUpdateRequestDto.safeParse({ experienceMode });
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues[0].path).toEqual(['experienceMode']);
+		});
 	});
 
 	describe('security: restricted fields should be stripped', () => {
@@ -144,6 +173,18 @@ describe('UserSelfSettingsUpdateRequestDto', () => {
 				expect(result.data).not.toHaveProperty('allowSSOManualLogin');
 				expect(result.data.easyAIWorkflowOnboarded).toBe(true);
 			}
+		});
+
+		it('should strip allowSSOManualLogin and keep experienceMode', () => {
+			const data = {
+				experienceMode: 'power',
+				allowSSOManualLogin: true,
+			};
+
+			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
+
+			expect(result.success).toBe(true);
+			expect(result.data).toEqual({ experienceMode: 'power' });
 		});
 
 		it('should strip userActivated from payload (backend-only field)', () => {

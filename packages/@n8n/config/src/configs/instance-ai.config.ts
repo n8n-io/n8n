@@ -1,7 +1,11 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
+
+// Kept local: @n8n/config cannot depend on @n8n/api-types, which owns the shared schema.
+const experienceModeSchema = z.enum(['simple', 'power']);
 
 @Config
 export class InstanceAiConfig {
@@ -259,6 +263,23 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
 	activationLockMessageThreshold: number = 1;
+
+	/**
+	 * Show the Simple and Power experience modes in the editor. Each user can
+	 * switch between the two modes. The modes also need the Assistant to be
+	 * enabled. When false, the editor does not change.
+	 */
+	@Env('N8N_EXPERIENCE_MODES_ENABLED')
+	experienceModesEnabled: boolean = false;
+
+	/**
+	 * The experience mode for users who did not choose one.
+	 * - `simple` (default) starts with the chat and hides most controls.
+	 * - `power` shows the thread list and the run-target controls.
+	 * An empty or invalid value logs a warning and falls back to `simple`.
+	 */
+	@Env('N8N_EXPERIENCE_DEFAULT_MODE', experienceModeSchema)
+	experienceDefaultMode: z.infer<typeof experienceModeSchema> = 'simple';
 
 	/**
 	 * Max orchestrator runs executing concurrently on this process. A new user turn over

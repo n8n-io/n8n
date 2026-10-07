@@ -387,6 +387,8 @@ describe('GlobalConfig', () => {
 			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
+			experienceModesEnabled: false,
+			experienceDefaultMode: 'simple',
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
