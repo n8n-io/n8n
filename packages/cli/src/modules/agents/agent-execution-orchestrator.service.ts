@@ -1100,7 +1100,15 @@ export class AgentExecutionOrchestratorService {
 			await this.settingsService.assertEnabled();
 		}
 		try {
-			return await this.runtimeCacheService.getRuntime(params);
+			const coding =
+				(params.previewChat || params.user) &&
+				recording.threadId &&
+				(await this.agentRepository.findByIdAndProjectId(params.agentId, params.projectId))?.schema
+					?.coding;
+			return await this.runtimeCacheService.getRuntime({
+				...params,
+				...(coding ? { codingSessionId: recording.threadId } : {}),
+			});
 		} catch (error) {
 			abortSignal?.throwIfAborted();
 			const { agentId, projectId } = params;

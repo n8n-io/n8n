@@ -1150,6 +1150,24 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
+	it.each([true, false])(
+		'reports review acceptance %s and preserves the composer draft',
+		async (accepted) => {
+			const wrapper = mountPanel({ continueSessionId: 'coding-session' });
+			await wrapper.setProps({ inputDraft: 'Unsent chat draft' });
+			sendMessageMock.mockImplementationOnce(async (_text, _files, onAccepted: () => void) => {
+				if (accepted) onAccepted();
+				return 'sent';
+			});
+			const panel = wrapper.vm as unknown as { sendReview: (message: string) => Promise<boolean> };
+			expect(await panel.sendReview('Review feedback')).toBe(accepted);
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
+				'Unsent chat draft',
+			);
+			wrapper.unmount();
+		},
+	);
+
 	it('awaits beforeSend before sending a chat message', async () => {
 		const events: string[] = [];
 		let resolveBeforeSend: () => void = () => {};

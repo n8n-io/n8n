@@ -1,4 +1,6 @@
 import {
+	createScopedWorkspace,
+	Workspace,
 	createWriteTodosTool,
 	type Agent as RuntimeAgent,
 	type CreateDelegateSubAgentToolOptions,
@@ -58,6 +60,11 @@ import {
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
+import {
+	codingSessionDirectory,
+	codingSessionPaths,
+	readCodingSession,
+} from './agent-coding-session';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -114,6 +121,7 @@ export interface SubAgentDelegationConfig {
 }
 
 export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
+	codingSessionId?: string;
 	config: AgentJsonConfig;
 	memoryOwnerAgentId: string;
 	projectId: string;
@@ -188,7 +196,6 @@ interface RuntimeDependencies
 		| 'supportsHitl'
 		| 'allowBackgroundTasks'
 		| 'unavailableTools'
-		| 'previewChat'
 	> {
 	agent: RuntimeAgent;
 	agentId: string;
@@ -302,6 +309,7 @@ export class AgentRuntimeReconstructionService {
 			previewChat,
 			allowBackgroundTasks = true,
 			attributionUserId,
+			codingSessionId,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 			supportsHitl?: boolean;
@@ -310,6 +318,7 @@ export class AgentRuntimeReconstructionService {
 			/** Disable background jobs for task-triggered runtimes. */
 			allowBackgroundTasks?: boolean;
 			attributionUserId?: string;
+			codingSessionId?: string;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
 		let config = agentEntity.schema;
@@ -360,6 +369,7 @@ export class AgentRuntimeReconstructionService {
 			unavailableTools,
 			allowBackgroundTasks,
 			previewChat,
+			codingSessionId,
 		});
 		return {
 			...runtime,
@@ -598,7 +608,13 @@ export class AgentRuntimeReconstructionService {
 		const aiMcpFetch = instrumentation?.mcpFetch ?? createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
 		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
-		const reconstructed = await buildFromJson(config, toolDescriptors, {
+		const runtimeConfig = config.coding
+			? {
+					...config,
+					instructions: `${config.instructions}\n\nYou are working on the repository ${config.coding.repositoryUrl}. Your workspace is the repository checkout. Read AGENTS.md before you change code. Use the workspace file and command tools to inspect and edit the real checkout. Preserve unrelated changes. The user can review your changes and run the app in the coding view. Do not commit or push unless the user asks. Work only in this checkout. Do not switch branches or modify other worktrees. The coding view manages the app process. Do not start or stop preview servers with command tools.`,
+				}
+			: config;
+		const reconstructed = await buildFromJson(runtimeConfig, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
@@ -932,9 +948,54 @@ export class AgentRuntimeReconstructionService {
 				agentId,
 				sandboxPrincipalHash,
 			);
-			agent.workspace(workspace);
+			if (params.config.coding) {
+				const sessionExists =
+					params.codingSessionId &&
+					(await handle.filesystem.exists(
+						`${codingSessionDirectory(handle.workspaceRoot, params.codingSessionId)}/session.json`,
+					));
+				if (params.previewChat && !sessionExists) {
+					throw new UserError('Create a coding session before sending a coding task');
+				}
+				const session =
+					params.codingSessionId && sessionExists
+						? await readCodingSession(
+								handle.filesystem,
+								handle.workspaceRoot,
+								params.codingSessionId,
+							)
+						: undefined;
+				if (session?.archivedAt)
+					throw new UserError('Reopen this coding session before sending a message');
+				const { root, meta } = codingSessionPaths(handle.workspaceRoot, session);
+				if (session && !session.original) {
+					const ready =
+						(await handle.filesystem.exists(`${meta}/setup.exit`)) &&
+						(await handle.filesystem.readFile(`${meta}/setup.exit`)).toString().trim() === '0';
+					if (!ready) throw new UserError('Wait for this coding session to finish setup');
+				}
+				if (!(await handle.filesystem.exists(`${root}/.git`))) {
+					throw new UserError(
+						'Prepare the repository in the coding view before sending a coding task',
+					);
+				}
+				const path = await handle.sandbox.executeCommand?.('printf "%s" "$PATH"');
+				agent.workspace(
+					createScopedWorkspace(
+						new Workspace({ filesystem: handle.filesystem, sandbox: handle.sandbox }),
+						root,
+						{
+							PNPM_HOME: `${handle.workspaceRoot}/.coding/pnpm`,
+							PATH: `${handle.workspaceRoot}/.coding/pnpm/bin:${handle.workspaceRoot}/.coding/node/bin:${path?.stdout.trim() ?? '/usr/local/bin:/usr/bin:/bin'}`,
+						},
+					),
+				);
+			} else {
+				agent.workspace(workspace);
+			}
 			return handle;
 		} catch (error) {
+			if (params.config.coding) throw error;
 			this.logger.warn('Failed to attach agent workspace', {
 				projectId,
 				agentId,

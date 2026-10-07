@@ -37,6 +37,7 @@ function buildSandbox(
 			logger,
 			apiUrl: config.daytonaApiUrl,
 			labels: config.labels,
+			resources: config.resources,
 			...(config.ephemeral !== undefined ? { ephemeral: config.ephemeral } : {}),
 			...(config.autoStopInterval !== undefined
 				? { autoStopInterval: config.autoStopInterval }

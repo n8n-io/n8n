@@ -368,6 +368,30 @@ describe('AgentRuntimeCacheService', () => {
 		);
 	});
 
+	it.each([true, false])(
+		'isolates coding conversations with preview mode %s',
+		async (previewChat) => {
+			const { service, agentRepository, reconstructionService } = makeService();
+			const user = mock<User>({ id: 'same-user' });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(makeRuntime())
+				.mockResolvedValueOnce(makeRuntime());
+			const params = { agentId, projectId, user, previewChat };
+			const first = await service.getRuntime({ ...params, codingSessionId: 'session-a' });
+			const second = await service.getRuntime({ ...params, codingSessionId: 'session-b' });
+			const resumed = await service.getRuntime({ ...params, codingSessionId: 'session-a' });
+
+			expect(first.agent).not.toBe(second.agent);
+			expect(resumed.agent).toBe(first.agent);
+			expect(
+				reconstructionService.reconstructFromAgentEntity.mock.calls.map(
+					(call) => call[8]?.codingSessionId,
+				),
+			).toEqual(['session-a', 'session-b']);
+		},
+	);
+
 	it('keeps draft runtimes separate by integration type', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();

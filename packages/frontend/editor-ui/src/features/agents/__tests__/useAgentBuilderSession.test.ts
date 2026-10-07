@@ -127,6 +127,22 @@ describe('useAgentBuilderSession', () => {
 		});
 	});
 
+	it('adopts a new worktree conversation without replacing its id', async () => {
+		const { session } = createSession();
+		session.onSessionPick('coding-session', true);
+		await nextTick();
+		expect(session.effectiveSessionId.value).toBe('coding-session');
+		expect(session.currentSessionIsEphemeral.value).toBe(true);
+		session.markSessionCreated('coding-session');
+		expect(session.currentSessionIsEphemeral.value).toBe(false);
+		session.onSessionPick('another-session', true);
+		await nextTick();
+		session.onSessionPick('coding-session');
+		await nextTick();
+		expect(session.effectiveSessionId.value).toBe('coding-session');
+		expect(session.currentSessionIsEphemeral.value).toBe(false);
+	});
+
 	it('uses an explicit route-backed selection before the route query catches up', () => {
 		route.query = { continueSessionId: 'old-session' };
 		const { session } = createSession(ref(true));

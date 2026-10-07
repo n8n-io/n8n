@@ -516,6 +516,7 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 }
 
 const OPTIONAL_SCHEMA_FIELDS = [
+	'coding',
 	'credential',
 	'description',
 	'modelDeploymentName',

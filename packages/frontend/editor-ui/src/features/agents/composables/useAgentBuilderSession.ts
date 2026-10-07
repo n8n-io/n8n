@@ -101,9 +101,9 @@ function useSessionSelection(routeBacked: Readonly<Ref<boolean>>) {
 		void router.replace({ query: rest });
 	}
 
-	function onSessionPick(id: string) {
+	function onSessionPick(id: string, newSession = false) {
 		if (id === '__empty__') return;
-		selectSession(id);
+		selectSession(id, newSession || id === ephemeralSessionId.value);
 	}
 
 	function onNewChat() {

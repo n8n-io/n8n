@@ -73,6 +73,7 @@ export interface EnabledSandboxConfigBase extends SandboxConfigBase {
 }
 
 export interface DaytonaSandboxConfig extends EnabledSandboxConfigBase {
+	resources?: CreateSandboxFromImageParams['resources'];
 	provider: 'daytona';
 	id?: string;
 	name?: string;

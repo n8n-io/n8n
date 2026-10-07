@@ -2,7 +2,14 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Not,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { jsonParse, UserError } from 'n8n-workflow';
 
@@ -48,6 +55,22 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			where: { id: threadId },
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+	}
+
+	async findCodingSessionThreads(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		ids: string[],
+	) {
+		if (ids.length === 0) return [];
+		return await this.findBy({
+			id: In(ids),
+			projectId,
+			agentId,
+			ownerId: userId,
+			accessScope: 'user',
 		});
 	}
 

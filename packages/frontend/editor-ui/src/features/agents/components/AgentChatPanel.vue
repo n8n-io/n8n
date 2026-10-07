@@ -807,6 +807,23 @@ function sendMessageFromOutside(message: string) {
 	void submitQueuedExternalMessage();
 }
 
+async function sendReview(message: string): Promise<boolean> {
+	if (isSubmissionBlocked.value || isStreaming.value || hasOpenInteraction.value) return false;
+	const sessionId = props.continueSessionId;
+	isPreparingToSend.value = true;
+	try {
+		await props.beforeSend?.();
+		if (disposed || props.continueSessionId !== sessionId) return false;
+		let accepted = false;
+		await sendMessage(message, undefined, () => {
+			accepted = true;
+		});
+		return accepted;
+	} finally {
+		isPreparingToSend.value = false;
+	}
+}
+
 async function submitQueuedExternalMessage() {
 	const message = queuedExternalMessage;
 	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
@@ -839,7 +856,13 @@ function getConversationMarkdown(): string {
 		.join('\n\n---\n\n');
 }
 
-defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside, clearBudgetStops });
+defineExpose({
+	focusInput,
+	getConversationMarkdown,
+	sendMessageFromOutside,
+	clearBudgetStops,
+	sendReview,
+});
 
 onMounted(() => {
 	void loadHistory();

@@ -9,6 +9,7 @@ import AgentValidationTooltip from './AgentValidationTooltip.vue';
 const props = withDefaults(
 	defineProps<{
 		isRunnable: boolean;
+		coding?: boolean;
 		isPreviewOpen?: boolean;
 		iconOnly?: boolean;
 		variant?: 'subtle' | 'ghost';
@@ -30,12 +31,13 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const isDisabled = computed(() => !props.isPreviewOpen && !props.isRunnable);
-const label = computed(() =>
-	props.isPreviewOpen
-		? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
-		: i18n.baseText('agents.builder.preview.button' as BaseTextKey),
-);
+const isDisabled = computed(() => !props.isPreviewOpen && !props.isRunnable && !props.coding);
+const label = computed(() => {
+	if (props.isPreviewOpen)
+		return i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey);
+	if (props.coding) return i18n.baseText('agents.coding.open');
+	return i18n.baseText('agents.builder.preview.button' as BaseTextKey);
+});
 const disabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
 );
@@ -62,7 +64,7 @@ function onClick() {
 			:model-value="props.isPreviewOpen"
 			variant="subtle"
 			size="medium"
-			icon="flask-conical"
+			:icon="props.coding ? 'code' : 'flask-conical'"
 			:label="label"
 			:disabled="isDisabled"
 			:data-testid="props.testId"
@@ -72,7 +74,7 @@ function onClick() {
 			v-else
 			:variant="props.variant"
 			size="medium"
-			icon="flask-conical"
+			:icon="props.coding ? 'code' : 'flask-conical'"
 			:label="label"
 			:disabled="isDisabled"
 			:data-testid="props.testId"
