@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
@@ -21,8 +21,6 @@ import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
-import { onMounted } from 'vue';
-
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -57,7 +55,6 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 
 const descriptionValue = ref(props.data.workflowDescription ?? '');
-const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
 
 const tagIds = ref<string[]>([...(props.data.workflowTags ?? [])]);
@@ -207,12 +204,6 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 		await save();
 	}
 };
-
-onMounted(() => {
-	setTimeout(() => {
-		descriptionInput.value?.focus();
-	}, 150);
-});
 </script>
 
 <template>
@@ -232,7 +223,6 @@ onMounted(() => {
 					<div :class="$style.field">
 						<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.description') }}</N8nText>
 						<N8nInput
-							ref="descriptionInput"
 							v-model="descriptionValue"
 							:rows="6"
 							data-test-id="workflow-description-input"
