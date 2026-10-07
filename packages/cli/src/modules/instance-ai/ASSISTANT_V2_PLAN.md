@@ -98,7 +98,8 @@ Section 7 lists the shared-code changes that must support both runtimes.
 
 All items in this phase are changes in the Agents module or the shared
 Agents chat code. None changes behavior for project agents. Items A1–A7 have
-no dependencies on each other and can land in parallel. A8 and A9 come last.
+no dependencies on each other and can land in parallel. A8, A9 and A10 come
+last.
 
 Each item lists: what to build, the PoC reference, what to fix compared to
 the PoC, and the acceptance criteria.
@@ -329,6 +330,70 @@ execution-service tests), routing in `agent-message-queue.service.ts`,
   resume with `normalizeResumeData`, cancel, steer, authorization refusal.
 - Security review of the authorization paths.
 
+### A10. Workspace source hook for system agents
+
+**What:** an optional `workspace` source on `SystemAgentProvider`. The
+provider keeps its own sandbox (identity, images, lifecycle). The runtime
+only drives it:
+
+- `acquire(scope)` before each turn (start and resume). It returns an opaque
+  lease. It must not start a sandbox: the sandbox starts on first use.
+- The runtime passes the lease to `prepareTurn` as `turn.workspace`.
+- `release(scope, lease, outcome)` after the turn settles.
+- `destroy({ agentId, threadId, userId })` when the thread is deleted, and
+  from `SystemAgentExecutionService.destroyThreadWorkspace` for hosts that
+  delete threads on their own path.
+
+The provider type is generic over the lease (`SystemAgentProvider<TLease>`),
+so the provider gets its own lease type without casts.
+
+**Why:** project agents get their sandbox from `AgentSandboxRuntimeService`
+(one sandbox per project, agent and user, persistent, archived after 1 hour).
+The Assistant needs a different model: one sandbox per thread, started from
+the builder snapshot, ephemeral or stopped soon after use, with a one-time
+workspace setup. The hook lets the Assistant keep that model while the
+runtime owns the lifecycle events.
+
+**PoC reference:** commit `c63fca86323`.
+
+- Agents: `system-agents/system-agent.types.ts` (`SystemAgentWorkspaceSource`,
+  `SystemAgentWorkspaceScope`), `system-agent-execution.service.ts`
+  (acquire, release, destroy).
+- Assistant: `instance-ai/sandbox/assistant-workspace-source.ts`
+  (`AssistantSandboxWorkspaceSource`, `AssistantSandboxLease` with
+  `getEntry` and `getSetupEntry(context)`), `forgetSandbox` in
+  `instance-ai-sandbox.service.ts`.
+
+**Assistant release policy (PoC):** after a suspended turn, drop the cached
+sandbox handle in this process. The remote sandbox stays. The resume
+reattaches by its thread-derived name (the Daytona adapter looks up the
+sandbox by name before it creates one), or creates a new sandbox if an
+ephemeral one was deleted. This removes the stale-handle failure after a long
+HITL wait. Other outcomes keep the cached handle.
+
+**Verified live (PoC):** a build turn created the Daytona sandbox and ran the
+workspace setup through the lease; a run turn suspended on approval; the
+resume reattached the same sandbox (prebaked skills found); thread delete
+reached the source with no errors. The remote delete itself was not
+observed.
+
+**Open points:**
+
+- The runtime does not attach the workspace to the SDK agent. The provider
+  does it in `prepareTurn`, because the Assistant also wires a lazy skill
+  workspace. Decide if the runtime should attach a `Workspace` when the lease
+  exposes one.
+- System agents without a source have no sandbox. A later option: fall back
+  to the project-agent sandbox (`AgentWorkspaceService`).
+- Planned-task dispatch runs outside a turn. It acquires its own lease and
+  nothing releases it. This is harmless for the Assistant (release only
+  drops a cache entry), but other sources may need a release there.
+
+**Acceptance:** execution-service tests for acquire, release, destroy, a
+missing lease, a failed release and a busy thread; source tests for the
+lazy lease, retry after a failed acquisition, setup, release policy and
+destroy.
+
 ## 6. Phase 2: Assistant refactors on master (no behavior change)
 
 These steps prepare v1 code for v2. Each one is a refactor of v1 that ships
@@ -383,7 +448,7 @@ on its own.
 
 | Item | Detail |
 |---|---|
-| Sandbox on the Agents runtime | Move the per-thread `InstanceAiSandboxService` onto `AgentSandboxRuntimeService`. Needs a provider sandbox setup hook (bootstrap with a marker file), a decision on sandbox identity (per thread or per agent and user, with thread folders), Daytona snapshot images in `@n8n/agents/sandbox`, and one config source (`SandboxSettingsService`, `AgentsConfig`). Removes the last per-main sandbox state. |
+| Sandbox | With A10, v2 keeps the Assistant sandbox and its lifecycle behind the workspace source hook. Optional later: move `InstanceAiSandboxService` onto `AgentSandboxRuntimeService` with one config source (`SandboxSettingsService`, `AgentsConfig`), a decision on sandbox identity (per thread, or per agent and user with thread folders), and Daytona snapshot images in `@n8n/agents/sandbox`. |
 | Side panels on Agents messages | Rewrite `useResourceRegistry.ts`, `canvasPreview.utils.ts`, `useSetupPanelState.ts`, `builderAgents.ts` and `planReview.utils.ts` to read Agents chat messages. Then delete `agentsChatThreadAdapter.ts` and the legacy message types. |
 | Cut features | Preference cards, debug panel and run debug, @-mentions in the thread composer, onboarding card, LangSmith thumbs feedback, response-latency and stall telemetry, user-facing error rewording. |
 | Cleanup | Unused `instanceAi.*` i18n keys (about 212 in the PoC), dead exports. |
@@ -441,7 +506,7 @@ Practical notes:
 | Extensible HITL confirmation types | A7 (editor), A9 `normalizeResumeData` (backend) |
 | Registry for n8n-managed system tools in privileged contexts | Section 11, provider model decision |
 | Per-turn context hook (time, project, tabs, artifacts) | A4, A9 `chatTurnOptions` and `prepareTurn` |
-| Per-agent sandbox preconfiguration | Phase 6 sandbox item |
+| Per-agent sandbox preconfiguration | A10 (provider-owned sandbox and setup); Phase 6 sandbox item |
 | Backend-started runs with durable suspend and resume | A5, A9 |
 | Policy hook to lock an agent's model | Section 11, provider model decision |
 
@@ -449,6 +514,6 @@ Practical notes:
 
 | Item | Status | PR |
 |---|---|---|
-| A1–A9 | Not started | |
+| A1–A10 | Not started | |
 | B1–B5 | Not started | |
 | C1–C6 | Not started | |
