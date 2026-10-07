@@ -2,16 +2,19 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import {
 	N8nButton,
-	N8nHeading,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIconButton,
 	N8nInputNumber,
 	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	type ChatHubLLMProvider,
 	type ChatModelDto,
@@ -44,7 +47,6 @@ const props = defineProps<{
 }>();
 
 const settings = ref<ChatProviderSettingsDto | null>(null);
-const modalBus = ref(createEventBus());
 const loadingSettings = ref(false);
 const loadingModels = ref(false);
 const limitModels = ref(false);
@@ -119,6 +121,16 @@ const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const chatStore = useChatStore();
 const toast = useToast();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const credentialType = computed(() => {
 	return PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider];
@@ -145,12 +157,12 @@ async function onConfirm() {
 		props.data.onCancel();
 	}
 
-	modalBus.value.emit('close');
+	void closeDialog();
 }
 
 function onCancel() {
 	props.data.onCancel();
-	modalBus.value.emit('close');
+	void closeDialog();
 }
 
 async function loadSettings() {
@@ -236,18 +248,20 @@ watch(
 </script>
 
 <template>
-	<Modal :name="modalName" :event-bus="modalBus" width="50%" max-width="500px" :center="true">
-		<template #header>
+	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
+		<N8nDialogHeader>
 			<div :class="$style.header">
-				<N8nHeading size="large" color="text-dark">{{
-					i18n.baseText('settings.chatHub.providers.modal.edit.title', {
-						interpolate: { provider: providerDisplayNames[props.data.provider] },
-					})
-				}}</N8nHeading>
+				<N8nDialogTitle>
+					{{
+						i18n.baseText('settings.chatHub.providers.modal.edit.title', {
+							interpolate: { provider: providerDisplayNames[props.data.provider] },
+						})
+					}}
+				</N8nDialogTitle>
 			</div>
-		</template>
+		</N8nDialogHeader>
 
-		<template #content>
+		<N8nDialogBody>
 			<div :class="$style.content">
 				<label :class="$style.container">
 					<N8nText color="text-dark">
@@ -286,6 +300,7 @@ watch(
 								:credential-type="credentialType"
 								:selected-credential-id="settings.credentialId"
 								:hide-create-new="true"
+								:teleported="false"
 								@credential-selected="onCredentialSelect"
 								@credential-deselected="onCredentialDeselect"
 							/>
@@ -389,9 +404,8 @@ watch(
 					</label>
 				</template>
 			</div>
-		</template>
-
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<div :class="$style.footerRight">
 					<N8nButton variant="subtle" @click="onCancel">
@@ -402,8 +416,8 @@ watch(
 					</N8nButton>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
