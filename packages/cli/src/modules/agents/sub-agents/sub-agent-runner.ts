@@ -350,7 +350,7 @@ export class SubAgentRunner {
 			context.abortSignal?.throwIfAborted();
 			const checkCancellation = async (): Promise<GuardrailDecision | undefined> =>
 				(await this.cancellations.isCancelled(threadId, executionId))
-					? { action: 'stop', code: 'tasks-cancelled' }
+					? { action: 'stop', code: 'tasks-cancelled', canceled: true }
 					: undefined;
 			const executionOptions = withBudgetGuardrail(
 				{

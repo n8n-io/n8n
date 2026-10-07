@@ -130,6 +130,7 @@ describe('SubAgentRunner', () => {
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
+	let cancellations: Mocked<AgentTaskCancellationRepository>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -150,11 +151,12 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
+		cancellations = mock<AgentTaskCancellationRepository>();
 		runner = new SubAgentRunner(
-			mock<AgentTaskCancellationRepository>(),
+			cancellations,
 			sourceResolver,
 			new AgentTurnExecutionService(
-				mock<AgentTaskCancellationRepository>(),
+				cancellations,
 				logger,
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
@@ -193,6 +195,25 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it('marks task cancellation in the child model and tool checks', async () => {
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		cancellations.isCancelled.mockResolvedValue(true);
+		const hooks = childAgent.stream.mock.calls[0][1]?.guardrails?.hooks ?? [];
+		const decisions = await Promise.all([
+			hooks[0]?.before?.(mock()),
+			hooks[0]?.beforeTool?.(mock()),
+		]);
+		expect(decisions).toEqual([
+			{ action: 'stop', code: 'tasks-cancelled', canceled: true },
+			{ action: 'stop', code: 'tasks-cancelled', canceled: true },
+		]);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {

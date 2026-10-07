@@ -266,13 +266,14 @@ function makeService(sandboxEnabled = false) {
 	}));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
+	const cancellations = mock<AgentTaskCancellationRepository>();
 
 	const service = new AgentExecutionOrchestratorService(
 		mockLogger(),
 		checkpointStorage,
 		executionService,
 		new AgentTurnExecutionService(
-			mock<AgentTaskCancellationRepository>(),
+			cancellations,
 			mockLogger(),
 			executionService,
 			chatExecutionService,
@@ -296,6 +297,7 @@ function makeService(sandboxEnabled = false) {
 
 	return {
 		service,
+		cancellations,
 		settingsService,
 		backgroundJobRepository,
 		backgroundJobs,
@@ -765,6 +767,26 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(sdkStart.mock.calls[0].at(-1)).toMatchObject({ approvalContext });
 		});
 
+		it('marks task cancellation in the main model and tool checks', async () => {
+			const { stream, sdkStart, cancellations } = makeTurn({ previewChat: true });
+			await collect(stream);
+			cancellations.isCancelled.mockResolvedValue(true);
+			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+				| (RunOptions & ExecutionOptions)
+				| undefined;
+			const hook = options?.guardrails?.hooks[0];
+			expect(await hook?.before?.(mock())).toEqual({
+				action: 'stop',
+				code: 'tasks-cancelled',
+				canceled: true,
+			});
+			expect(await hook?.beforeTool?.(mock())).toEqual({
+				action: 'stop',
+				code: 'tasks-cancelled',
+				canceled: true,
+			});
+		});
+
 		it.each([true, false])(
 			'wires onBudgetNotice into the budget guardrail only when previewChat is %s',
 			async (previewChat) => {
@@ -779,7 +801,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
 					| (RunOptions & ExecutionOptions)
 					| undefined;
-				const hook = options?.guardrails?.hooks[0];
+				const hook = options?.guardrails?.hooks.find((candidate) => candidate.after);
 				if (!hook?.before || !hook.after) throw new Error('Expected a budget guardrail hook');
 
 				const ctx = {
@@ -1914,7 +1936,9 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(runtime.agent.stream.mock.calls[0][1]?.guardrails?.hooks).toHaveLength(1);
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		const hooks = options.guardrails?.hooks ?? [];
+		expect(hooks.filter((hook) => hook.after)).toHaveLength(1);
 	});
 
 	it('rejects a production turn with a foreign thread or memory scope', async () => {
@@ -2422,11 +2446,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
 		expect(options.toolsEnabled).toBe(false);
-		const hook = options.guardrails?.hooks?.find((candidate) => candidate.beforeTool);
-		expect(await hook?.beforeTool?.(mock())).toMatchObject({
-			action: 'stop',
-			code: 'background-pause-report',
-		});
+		const decisions = await Promise.all(
+			(options.guardrails?.hooks ?? []).map(async (hook) => await hook.beforeTool?.(mock())),
+		);
+		expect(decisions).toContainEqual({ action: 'stop', code: 'background-pause-report' });
 	});
 
 	it('records a background continuation while Agents is disabled', async () => {

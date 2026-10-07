@@ -454,7 +454,7 @@ export class AgentTurnExecutionService {
 		const { executionId, inputMessageIds } = admission;
 		const checkCancellation = async (): Promise<GuardrailDecision | undefined> =>
 			(await this.cancellations.isCancelled(config.context.threadId, executionId))
-				? { action: 'stop', code: 'tasks-cancelled' }
+				? { action: 'stop', code: 'tasks-cancelled', canceled: true }
 				: undefined;
 		turn.options.guardrails = {
 			...turn.options.guardrails,

@@ -1730,6 +1730,60 @@ describe('AgentRuntime — guardrails', () => {
 		expect(call.state === 'rejected' && call.error).toContain('tool.stop');
 	});
 
+	it.each(['generate', 'stream'] as const)(
+		'records canceled calls without errors and stops the next %s model turn',
+		async (mode) => {
+			const canceled: GuardrailDecision = { action: 'stop', code: 'user.cancel', canceled: true };
+			const calls = ['tc-1', 'tc-2'].map((toolCallId) => ({
+				toolCallId,
+				toolName: 'echo',
+				args: { v: 'x' },
+			}));
+			generateText.mockResolvedValueOnce(makeGenerateWithToolCalls(calls));
+			streamText.mockReturnValueOnce(makeStreamWithToolCalls(calls));
+			const handler = vi.fn(async () => 'Must not run');
+			const hook = makeGuardrail({
+				before: vi.fn().mockResolvedValueOnce({ action: 'allow' }).mockResolvedValue(canceled),
+				beforeTool: vi.fn().mockResolvedValue(canceled),
+			});
+			const runtime = createRuntimeWithEchoTool(handler);
+			const options = { guardrails: guardrailsOption(hook) };
+			if (mode === 'generate') {
+				const result = await runtime.generate('go', options);
+				const blocks = result.messages.flatMap((message) =>
+					isLlmMessage(message)
+						? message.content.filter((block) => block.type === 'tool-call')
+						: [],
+				);
+				expect(blocks).toHaveLength(2);
+				expect(blocks).toEqual([
+					expect.objectContaining({ state: 'resolved', canceled: true }),
+					expect.objectContaining({ state: 'resolved', canceled: true }),
+				]);
+				expect(result.error).toBeUndefined();
+				expect(result.guardrail).toEqual({ code: 'user.cancel', canceled: true });
+				expect(generateText).toHaveBeenCalledTimes(1);
+			} else {
+				const { stream } = await runtime.stream('go', options);
+				const chunks = await collectChunks(stream);
+				const results = chunks.filter((chunk) => chunk.type === 'tool-result');
+				expect(results).toHaveLength(2);
+				for (const result of results) {
+					expect(result.canceled).toBe(true);
+					expect(result.isError).not.toBe(true);
+				}
+				expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
+				expect(chunks.at(-1)).toMatchObject({
+					type: 'finish',
+					guardrail: { code: 'user.cancel', canceled: true },
+				});
+				expect(streamText).toHaveBeenCalledTimes(1);
+			}
+			expect(handler).not.toHaveBeenCalled();
+			expect(hook.afterTool).not.toHaveBeenCalled();
+		},
+	);
+
 	it('passes the handler result to afterTool() when the tool call is allowed', async () => {
 		generateText
 			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'echo', { v: 'x' }))
