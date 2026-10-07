@@ -484,6 +484,21 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('ft:gpt-4o:my-org:custom:abc123');
 	});
 
+	it('passes a gateway model ID after the provider through unchanged', () => {
+		const model = createModel('openai/@OpenAI/gpt-5-mini') as unknown as Record<string, unknown>;
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('@OpenAI/gpt-5-mini');
+	});
+
+	it('passes credential headers to the OpenAI provider', () => {
+		const model = createModel({
+			id: 'openai/gpt-5-mini',
+			apiKey: 'key',
+			headers: { 'x-custom-header': 'value' },
+		}) as unknown as Record<string, unknown>;
+		expect(model.headers).toEqual({ 'x-custom-header': 'value' });
+	});
+
 	it('should not pass fetch when no proxy env vars are set', () => {
 		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeUndefined();
