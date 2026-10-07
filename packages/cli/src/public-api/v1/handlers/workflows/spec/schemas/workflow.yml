@@ -28,6 +28,10 @@ properties:
     readOnly: true
     deprecated: true
     description: Deprecated. Check whether `activeVersionId` is not null instead.
+  activeVersionId:
+    type: string
+    nullable: true
+    readOnly: true
   createdAt:
     type: string
     format: date-time
