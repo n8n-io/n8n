@@ -34,7 +34,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
 | [agent_thread_grants](agent_thread_grants.md) | 4 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
-| [agents](agents.md) | 14 |  | table |
+| [agents](agents.md) | 15 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -80,25 +80,14 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [insights_raw](insights_raw.md) | 5 |  | table |
 | [installed_nodes](installed_nodes.md) | 4 |  | table |
 | [installed_packages](installed_packages.md) | 6 |  | table |
-| [instance_ai_checkpoints](instance_ai_checkpoints.md) | 9 |  | table |
-| [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
-| [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |
-| [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 5 |  | table |
-| [instance_ai_observation_locks](instance_ai_observation_locks.md) | 6 |  | table |
-| [instance_ai_observational_memory](instance_ai_observational_memory.md) | 32 |  | table |
-| [instance_ai_observations](instance_ai_observations.md) | 10 |  | table |
-| [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) | 12 |  | table |
-| [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
-| [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
-| [instance_ai_thread_tabs](instance_ai_thread_tabs.md) | 5 |  | table |
-| [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
+| [linked_instance](linked_instance.md) | 9 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
@@ -148,6 +137,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
 | [workflow_history](workflow_history.md) | 11 |  | table |
+| [workflow_provenance](workflow_provenance.md) | 4 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
 | [workflow_publication_retry_state](workflow_publication_retry_state.md) | 4 |  | table |
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
@@ -208,7 +198,7 @@ erDiagram
 "agent_thread_grants" |o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents_memory_entries" }o--o| "agents_memory_entries" : "FOREIGN KEY (supersededBy) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agents_memory_entries" }o--|| "agents_resources" : "FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -233,7 +223,7 @@ erDiagram
 "agents_observations" }o--o| "agents_observations" : "FOREIGN KEY (parentId) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agents_observations" }o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observations" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_builder_temporary_workflow" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -285,28 +275,12 @@ erDiagram
 "insights_metadata" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "insights_raw" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "installed_nodes" }o--|| "installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages (packageName) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
-"instance_ai_checkpoints" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_events" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_iteration_logs" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_iteration_logs" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "mcp_registry_server" : "FOREIGN KEY (serverSlug) REFERENCES mcp_registry_server (slug) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_messages" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_observation_cursors" |o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_observation_locks" |o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_observational_memory" }o--o| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"instance_ai_observations" }o--o| "instance_ai_observations" : "FOREIGN KEY (supersededBy) REFERENCES instance_ai_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
-"instance_ai_observations" }o--o| "instance_ai_observations" : "FOREIGN KEY (parentId) REFERENCES instance_ai_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
-"instance_ai_observations" }o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_pending_confirmations" }o--o| "instance_ai_checkpoints" : "FOREIGN KEY (checkpointKey) REFERENCES instance_ai_checkpoints (key) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_pending_confirmations" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_thread_tabs" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_thread_tabs" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"linked_instance" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -362,6 +336,8 @@ erDiagram
 "workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_entity" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_provenance" }o--o| "user" : "FOREIGN KEY (createdByUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_provenance" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publication_retry_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publication_trigger_status" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publication_trigger_status" }o--|| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -701,6 +677,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER revision
   TEXT schema
+  varchar_16_ scope
   datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
@@ -818,7 +795,7 @@ erDiagram
 }
 "ai_builder_temporary_workflow" {
   datetime_3_ createdAt
-  varchar threadId FK
+  varchar_36_ threadId FK
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
 }
@@ -1133,32 +1110,12 @@ erDiagram
   char_214_ packageName PK
   datetime_3_ updatedAt
 }
-"instance_ai_checkpoints" {
-  datetime_3_ createdAt
-  datetime_3_ expiredAt
-  VARCHAR_64_ hostRunId
-  varchar_255_ key PK
-  varchar_255_ resourceId
-  varchar_255_ runId
-  TEXT state
-  varchar threadId FK
-  datetime_3_ updatedAt
-}
-"instance_ai_events" {
-  datetime_3_ createdAt
-  TEXT payload
-  varchar_64_ runId
-  INTEGER seq PK
-  varchar threadId PK
-  varchar_64_ type
-  datetime_3_ updatedAt
-}
 "instance_ai_iteration_logs" {
   datetime_3_ createdAt
   TEXT entry
   varchar_36_ id PK
-  varchar taskKey
-  varchar threadId FK
+  varchar_255_ taskKey
+  varchar_36_ threadId FK
   datetime_3_ updatedAt
 }
 "instance_ai_mcp_registry_connections" {
@@ -1169,121 +1126,6 @@ erDiagram
   TEXT toolPermissions
   datetime_3_ updatedAt
   varchar userId FK
-}
-"instance_ai_messages" {
-  TEXT content
-  datetime_3_ createdAt
-  varchar_36_ id PK
-  varchar_255_ resourceId
-  varchar_16_ role
-  varchar threadId FK
-  varchar_32_ type
-  datetime_3_ updatedAt
-}
-"instance_ai_observation_cursors" {
-  datetime_3_ createdAt
-  datetime_3_ lastObservedAt
-  varchar_36_ lastObservedMessageId
-  varchar observationScopeId PK
-  datetime_3_ updatedAt
-}
-"instance_ai_observation_locks" {
-  datetime_3_ createdAt
-  datetime_3_ heldUntil
-  varchar_64_ holderId
-  varchar observationScopeId PK
-  varchar_20_ taskKind PK
-  datetime_3_ updatedAt
-}
-"instance_ai_observational_memory" {
-  TEXT activeObservations
-  TEXT bufferedMessageIds
-  TEXT bufferedObservationChunks
-  INTEGER bufferedObservationTokens
-  TEXT bufferedObservations
-  TEXT bufferedReflection
-  INTEGER bufferedReflectionInputTokens
-  INTEGER bufferedReflectionTokens
-  TEXT config
-  datetime_3_ createdAt
-  INTEGER generationCount
-  varchar_36_ id PK
-  boolean isBufferingObservation
-  boolean isBufferingReflection
-  boolean isObserving
-  boolean isReflecting
-  datetime_3_ lastBufferedAtTime
-  INTEGER lastBufferedAtTokens
-  datetime_3_ lastObservedAt
-  varchar_255_ lookupKey
-  TEXT metadata
-  INTEGER observationTokenCount
-  TEXT observedMessageIds
-  varchar observedTimezone
-  varchar_32_ originType
-  INTEGER pendingMessageTokens
-  INTEGER reflectedObservationLineCount
-  varchar_255_ resourceId
-  varchar_16_ scope
-  varchar threadId FK
-  INTEGER totalTokensObserved
-  datetime_3_ updatedAt
-}
-"instance_ai_observations" {
-  datetime_3_ createdAt
-  varchar_36_ id PK
-  varchar_16_ marker
-  varchar observationScopeId FK
-  varchar_36_ parentId FK
-  varchar_16_ status
-  varchar_36_ supersededBy FK
-  TEXT text
-  INTEGER tokenCount
-  datetime_3_ updatedAt
-}
-"instance_ai_pending_confirmations" {
-  varchar_255_ checkpointKey FK
-  varchar_36_ checkpointTaskId
-  datetime_3_ createdAt
-  datetime_3_ expiresAt
-  varchar_16_ kind
-  varchar_36_ messageGroupId
-  varchar_36_ requestId PK
-  varchar_36_ runId
-  varchar threadId FK
-  varchar_64_ toolCallId
-  datetime_3_ updatedAt
-  varchar userId FK
-}
-"instance_ai_resources" {
-  datetime_3_ createdAt
-  varchar_255_ id PK
-  TEXT metadata
-  datetime_3_ updatedAt
-  TEXT workingMemory
-}
-"instance_ai_thread_grants" {
-  datetime_3_ createdAt
-  varchar_512_ grantKey PK
-  varchar threadId PK
-  datetime_3_ updatedAt
-  varchar userId PK
-}
-"instance_ai_thread_tabs" {
-  datetime_3_ createdAt
-  TEXT state
-  varchar threadId PK
-  datetime_3_ updatedAt
-  varchar userId PK
-}
-"instance_ai_threads" {
-  datetime_3_ createdAt
-  varchar id PK
-  TEXT metadata
-  varchar_36_ projectId FK
-  varchar_255_ resourceId
-  TEXT title
-  datetime_3_ updatedAt
 }
 "instance_ai_workflow_snapshots" {
   datetime_3_ createdAt
@@ -1322,6 +1164,17 @@ erDiagram
 "invalid_auth_token" {
   datetime_3_ expiresAt
   varchar_512_ token PK
+}
+"linked_instance" {
+  varchar_2048_ baseUrl
+  datetime_3_ createdAt
+  varchar id PK
+  datetime_3_ lastVerifiedAt
+  varchar_64_ name
+  varchar_16_ status
+  TEXT tokenEncrypted
+  datetime_3_ updatedAt
+  varchar userId FK
 }
 "mcp_registry_server" {
   datetime_3_ createdAt
@@ -1803,6 +1656,12 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ versionId PK
   varchar_36_ workflowId FK
+}
+"workflow_provenance" {
+  datetime_3_ createdAt
+  varchar createdByUserId FK
+  varchar_36_ threadId
+  varchar_36_ workflowId PK
 }
 "workflow_publication_outbox" {
   datetime_3_ createdAt

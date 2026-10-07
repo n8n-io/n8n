@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_ai_iteration_logs" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar NOT NULL, "taskKey" varchar NOT NULL, "entry" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_8bfcc6c51fd3d69b1eae8aebd49" FOREIGN KEY ("threadId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE)
+CREATE TABLE "instance_ai_iteration_logs" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(36) NOT NULL, "taskKey" varchar(255) NOT NULL, "entry" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_8bfcc6c51fd3d69b1eae8aebd49" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -18,15 +18,15 @@ CREATE TABLE "instance_ai_iteration_logs" ("id" varchar(36) PRIMARY KEY NOT NULL
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | entry | TEXT |  | false |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
-| taskKey | varchar |  | false |  |  |  |
-| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
+| taskKey | varchar(255) |  | false |  |  |  |
+| threadId | varchar(36) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_instance_ai_iteration_logs_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -42,23 +42,35 @@ CREATE TABLE "instance_ai_iteration_logs" ("id" varchar(36) PRIMARY KEY NOT NULL
 ```mermaid
 erDiagram
 
-"instance_ai_iteration_logs" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_iteration_logs" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_iteration_logs" {
   datetime_3_ createdAt
   TEXT entry
   varchar_36_ id PK
-  varchar taskKey
-  varchar threadId FK
+  varchar_255_ taskKey
+  varchar_36_ threadId FK
   datetime_3_ updatedAt
 }
-"instance_ai_threads" {
+"agent_execution_threads" {
+  varchar_16_ accessScope
+  varchar_36_ agentId FK
+  varchar_255_ agentName
   datetime_3_ createdAt
-  varchar id PK
-  TEXT metadata
-  varchar_36_ projectId FK
-  varchar_255_ resourceId
-  TEXT title
+  varchar_8_ emoji
+  varchar_128_ id PK
+  varchar ownerId FK
+  varchar_36_ parentAgentId
+  varchar_128_ parentThreadId
+  varchar_255_ projectId FK
+  INTEGER sessionNumber
+  varchar_32_ taskId
+  varchar_36_ taskVersionId FK
+  varchar_255_ title
+  INTEGER totalCompletionTokens
+  REAL totalCost
+  INTEGER totalDuration
+  INTEGER totalPromptTokens
   datetime_3_ updatedAt
 }
 ```

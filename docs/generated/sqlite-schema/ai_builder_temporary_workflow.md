@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "ai_builder_temporary_workflow" ("workflowId" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_85a87a1ba0f61999fe11dc56325" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_39b07732e819fb561d74c38763f" FOREIGN KEY ("threadId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE)
+CREATE TABLE "ai_builder_temporary_workflow" ("workflowId" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_85a87a1ba0f61999fe11dc56325" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_39b07732e819fb561d74c38763f" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -16,7 +16,7 @@ CREATE TABLE "ai_builder_temporary_workflow" ("workflowId" varchar(36) PRIMARY K
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
+| threadId | varchar(36) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
@@ -24,7 +24,7 @@ CREATE TABLE "ai_builder_temporary_workflow" ("workflowId" varchar(36) PRIMARY K
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_ai_builder_temporary_workflow_1 | PRIMARY KEY | PRIMARY KEY (workflowId) |
 | workflowId | PRIMARY KEY | PRIMARY KEY (workflowId) |
@@ -41,22 +41,34 @@ CREATE TABLE "ai_builder_temporary_workflow" ("workflowId" varchar(36) PRIMARY K
 ```mermaid
 erDiagram
 
-"ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_builder_temporary_workflow" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "ai_builder_temporary_workflow" {
   datetime_3_ createdAt
-  varchar threadId FK
+  varchar_36_ threadId FK
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
 }
-"instance_ai_threads" {
+"agent_execution_threads" {
+  varchar_16_ accessScope
+  varchar_36_ agentId FK
+  varchar_255_ agentName
   datetime_3_ createdAt
-  varchar id PK
-  TEXT metadata
-  varchar_36_ projectId FK
-  varchar_255_ resourceId
-  TEXT title
+  varchar_8_ emoji
+  varchar_128_ id PK
+  varchar ownerId FK
+  varchar_36_ parentAgentId
+  varchar_128_ parentThreadId
+  varchar_255_ projectId FK
+  INTEGER sessionNumber
+  varchar_32_ taskId
+  varchar_36_ taskVersionId FK
+  varchar_255_ title
+  INTEGER totalCompletionTokens
+  REAL totalCost
+  INTEGER totalDuration
+  INTEGER totalPromptTokens
   datetime_3_ updatedAt
 }
 "workflow_entity" {
