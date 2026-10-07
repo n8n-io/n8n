@@ -34,6 +34,7 @@ The `daily` count is the `billable` insight, which n8n records from 2.40.0.
 The first day with `billable` rows and every day before it carry succeeded plus
 failed executions instead, because that first day can mix an older version with
 2.40.0 or later. Every later day carries `billable`, also when it is `0`.
+Without any `billable` rows, every day carries succeeded plus failed executions.
 
 Known limits:
 
