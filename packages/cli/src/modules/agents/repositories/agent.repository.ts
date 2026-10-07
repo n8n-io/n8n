@@ -39,6 +39,8 @@ const projectScopeUpdateSql = "scope = 'project'";
 /** Integration and publication state for channel runtime decisions. */
 export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
 
+export type AgentImportIdentity = Pick<Agent, 'id' | 'name' | 'projectId' | 'sourceAgentId'>;
+
 export type AgentSummaryFilters = {
 	query?: string;
 	publishedOnly?: boolean;
@@ -117,6 +119,33 @@ export class AgentRepository extends BaseRepository<Agent> {
 			for (const { id } of agents) ids.add(id);
 		}
 		return ids;
+	}
+
+	async findImportCandidates(
+		projectId: string,
+		sourceAgentIds: string[],
+	): Promise<AgentImportIdentity[]> {
+		const agents: AgentImportIdentity[] = [];
+		for (const ids of chunkIds([...new Set(sourceAgentIds)])) {
+			agents.push(
+				...(await this.find({
+					select: ['id', 'name', 'projectId', 'sourceAgentId'],
+					where: [
+						{ projectId, sourceAgentId: In(ids) },
+						{ projectId, id: In(ids), sourceAgentId: IsNull() },
+					],
+				})),
+			);
+		}
+		return agents;
+	}
+
+	async findImportIdOwners(agentIds: string[]): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		for (const ids of chunkIds([...new Set(agentIds)])) {
+			agents.push(...(await this.find({ select: ['id', 'projectId'], where: { id: In(ids) } })));
+		}
+		return agents;
 	}
 
 	/**

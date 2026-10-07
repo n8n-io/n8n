@@ -267,21 +267,33 @@ describe('AgentExporter', () => {
 		expect(JSON.parse(writer.files[1].content)).toEqual(expected.metadata);
 	});
 
-	it('keeps authored bytes and hashes stable when only publication metadata changes', async () => {
-		const { agent, exporter } = setup();
-		const before = (await exporter.prepare(agent))!;
-		agent.versionId = 'new-draft-version';
-		agent.activeVersionId = null;
-		const after = (await exporter.prepare(agent))!;
-		const captures = [new CapturingWriter(), new CapturingWriter()];
-		const hashes = [new HashingPackageWriter(), new HashingPackageWriter()];
-		for (const [index, snapshot] of [before, after].entries()) {
-			await exporter.write(snapshot, captures[index]);
-			await exporter.write(snapshot, hashes[index]);
-		}
-		expect(captures[0].files[0]).toEqual(captures[1].files[0]);
-		expect(hashes[0].finalize()[0]).toEqual(hashes[1].finalize()[0]);
-		expect(captures[0].files[1]).not.toEqual(captures[1].files[1]);
-		expect(hashes[0].finalize()[1]).not.toEqual(hashes[1].finalize()[1]);
-	});
+	it.each(['publication metadata', 'source identity'])(
+		'keeps authored bytes and hashes stable when %s changes',
+		async (change) => {
+			const { agent, exporter } = setup();
+			const before = (await exporter.prepare(agent))!;
+			if (change === 'publication metadata') {
+				agent.versionId = 'new-draft-version';
+				agent.activeVersionId = null;
+			} else {
+				agent.sourceAgentId = 'original-agent';
+			}
+			const after = (await exporter.prepare(agent))!;
+			const captures = [new CapturingWriter(), new CapturingWriter()];
+			const hashes = [new HashingPackageWriter(), new HashingPackageWriter()];
+			for (const [index, snapshot] of [before, after].entries()) {
+				await exporter.write(snapshot, captures[index]);
+				await exporter.write(snapshot, hashes[index]);
+			}
+			expect(captures[0].files[0]).toEqual(captures[1].files[0]);
+			expect(hashes[0].finalize()[0]).toEqual(hashes[1].finalize()[0]);
+			if (change === 'publication metadata') {
+				expect(captures[0].files[1]).not.toEqual(captures[1].files[1]);
+				expect(hashes[0].finalize()[1]).not.toEqual(hashes[1].finalize()[1]);
+			} else {
+				expect(captures[0].files).toEqual(captures[1].files);
+				expect(hashes[0].finalize()).toEqual(hashes[1].finalize());
+			}
+		},
+	);
 });
