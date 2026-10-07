@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 import {
 	computed,
+	getCurrentScope,
 	onScopeDispose,
 	ref,
 	toRaw,
@@ -52,24 +53,33 @@ export function useNodeCredentialOptions(
 	// Host-supplied override lists are often a static suspend payload. If a
 	// credential is deleted while the panel is open, drop it locally so the
 	// dropdown / existence checks do not keep serving the deleted id.
+	//
+	// Only subscribe inside an active effect scope, and only when a host
+	// override list was passed. Callers like getAutoSelectedCredential invoke
+	// this composable outside setup; $onAction would otherwise leak a store
+	// subscription per call (onScopeDispose is a no-op without a scope).
 	const removedOverrideIds = ref(new Set<string>());
-	watch(
-		() => toValue(overrideCredentials),
-		() => {
-			removedOverrideIds.value = new Set();
-		},
-	);
-	const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
-		if (name !== 'deleteCredential') return;
-		after(() => {
-			const id = args[0]?.id;
-			if (typeof id !== 'string') return;
-			const next = new Set(removedOverrideIds.value);
-			next.add(id);
-			removedOverrideIds.value = next;
+	if (getCurrentScope() && overrideCredentials !== undefined) {
+		watch(
+			() => toValue(overrideCredentials),
+			() => {
+				removedOverrideIds.value = new Set();
+			},
+		);
+		const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
+			if (name !== 'deleteCredential') return;
+			after((deleted) => {
+				// deleteCredential returns the API flag; after() still runs on failure.
+				if (deleted !== true) return;
+				const id = args[0]?.id;
+				if (typeof id !== 'string') return;
+				const next = new Set(removedOverrideIds.value);
+				next.add(id);
+				removedOverrideIds.value = next;
+			});
 		});
-	});
-	onScopeDispose(stopDeleteListener);
+		onScopeDispose(stopDeleteListener);
+	}
 
 	const credentialTypesNodeDescriptions = computed(() =>
 		credentialsStore.getCredentialTypesNodeDescriptions(
