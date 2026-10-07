@@ -240,8 +240,15 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages', 'messagingState', 'canIncreaseBudget', 'budgetIncreasePending'],
-		emits: ['send-to-assistant', 'increase-budget'],
+		props: [
+			'messages',
+			'messagingState',
+			'canIncreaseBudget',
+			'budgetIncreasePending',
+			'retryMessageId',
+			'retryDisabled',
+		],
+		emits: ['send-to-assistant', 'increase-budget', 'retry'],
 	},
 }));
 
@@ -374,6 +381,117 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	describe('resend after an error', () => {
+		const failedMessages = (attachments?: ChatMessage['attachments']): ChatMessage[] => [
+			{ id: 'user', role: 'user', content: 'Find the invoice', attachments },
+			{ id: 'error', role: 'assistant', content: 'Try again', status: 'error' },
+		];
+		it('sends the original text and attachment through the normal send action', async () => {
+			const beforeSend = vi.fn();
+			const file = new File(['invoice'], 'invoice.txt', { type: 'text/plain' });
+			messagesMock.value = failedMessages([{ file, fileName: file.name, mimeType: file.type }]);
+			const wrapper = mountPanel({ beforeSend });
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			expect(list.props('retryMessageId')).toBe('user');
+			list.vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(beforeSend).toHaveBeenCalledOnce();
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'Find the invoice',
+				[file],
+				expect.any(Function),
+			);
+			expect(messagesMock.value.at(-1)?.status).toBe('error');
+			wrapper.unmount();
+		});
+
+		it.each(['draft', 'active', 'queue', 'budget'] as const)(
+			'does not resend with %s work',
+			async (state) => {
+				messagesMock.value = failedMessages();
+				const wrapper = mountPanel();
+				await flushPromises();
+				if (state === 'draft')
+					wrapper
+						.findComponent({ name: 'ChatInputBase' })
+						.vm.$emit('update:modelValue', 'New draft');
+				if (state === 'active') isStreamingMock.value = true;
+				if (state === 'queue')
+					queuedMessagesMock.value = [
+						{
+							id: 'q',
+							message: 'Next message',
+							attachments: [],
+							steeringExecutionId: null,
+							createdAt: new Date().toISOString(),
+						},
+					];
+				if (state === 'budget')
+					messagesMock.value[1].budgetNotices = [{ id: 'cap', code: 'budget.session' }];
+				await nextTick();
+				const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+				expect(list.props('retryDisabled')).toBe(true);
+				list.vm.$emit('retry', 'user');
+				await flushPromises();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				wrapper.unmount();
+			},
+		);
+
+		it('cancels resend if a turn starts while the attachment loads', async () => {
+			messagesMock.value = failedMessages([
+				{ fileId: 'stored', fileName: 'invoice.txt', mimeType: 'text/plain' },
+			]);
+			const download = createDeferredPromise<Response>();
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockReturnValue(download.promise);
+			const wrapper = mountPanel();
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			list.vm.$emit('retry', 'user');
+			list.vm.$emit('retry', 'user');
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			isStreamingMock.value = true;
+			download.resolve(new Response('invoice'));
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+			fetchSpy.mockRestore();
+			wrapper.unmount();
+		});
+
+		it('keeps the failed message when an attachment download fails', async () => {
+			messagesMock.value = failedMessages([
+				{ fileId: 'stored', fileName: 'invoice.txt', mimeType: 'text/plain' },
+			]);
+			const fetchSpy = vi
+				.spyOn(globalThis, 'fetch')
+				.mockResolvedValue(new Response(null, { status: 404 }));
+			const wrapper = mountPanel();
+			await flushPromises();
+			wrapper.findComponent({ name: 'AgentChatMessageList' }).vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'agents.chat.retry.error');
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+			fetchSpy.mockRestore();
+			wrapper.unmount();
+		});
+
+		it('does not offer resend for an earlier failed turn after a newer message', async () => {
+			messagesMock.value = [
+				...failedMessages(),
+				{ id: 'new', role: 'user', content: 'New request' },
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(
+				wrapper.findComponent({ name: 'AgentChatMessageList' }).props('retryMessageId'),
+			).toBeUndefined();
+			wrapper.unmount();
+		});
+	});
 
 	it('reports the first user message, for a title before the thread has one', async () => {
 		messagesMock.value = [

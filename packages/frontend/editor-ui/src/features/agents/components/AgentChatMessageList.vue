@@ -44,9 +44,12 @@ const props = defineProps<{
 	dismissedFixToolCallIds?: string[];
 	canIncreaseBudget?: boolean;
 	budgetIncreasePending?: boolean;
+	retryMessageId?: string;
+	retryDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
+	retry: [messageId: string];
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
 	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
@@ -719,6 +722,28 @@ watch(
 			</div>
 		</template>
 
+		<div v-if="retryMessageId" :class="$style.message">
+			<N8nButton
+				variant="ghost"
+				size="small"
+				icon="refresh-cw"
+				:disabled="retryDisabled"
+				data-testid="agent-chat-retry"
+				@click="emit('retry', retryMessageId)"
+			>
+				{{ i18n.baseText('agents.chat.retry') }}
+			</N8nButton>
+		</div>
+		<div
+			v-if="messagingState === 'receiving'"
+			:class="[$style.message, $style.runningStatus]"
+			role="status"
+			data-testid="agent-chat-running"
+		>
+			<N8nIcon icon="loader-circle" size="small" spin aria-hidden="true" />
+			<N8nText size="small" color="text-light">{{ i18n.baseText('agents.chat.running') }}</N8nText>
+		</div>
+
 		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
 			<div :class="$style.content">
 				<AgentTypingIndicator :class="$style.typingIndicator" />
@@ -747,6 +772,13 @@ watch(
 	&::-webkit-scrollbar {
 		display: none;
 	}
+}
+
+.runningStatus {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	color: var(--text-color--subtler);
 }
 
 .message {

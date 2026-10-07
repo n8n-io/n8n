@@ -132,6 +132,48 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('shows that the turn is running after tool output and clears it when the turn ends', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'tool-output',
+						role: 'assistant',
+						content: '',
+						status: 'success',
+						toolCalls: [
+							{ toolCallId: 'lookup', tool: 'search', state: 'done', output: 'Found a result' },
+						],
+					},
+				],
+				messagingState: 'receiving',
+			},
+		});
+		expect(wrapper.get('[data-testid="agent-chat-running"]').attributes('role')).toBe('status');
+		await wrapper.setProps({ messagingState: 'idle' });
+		expect(wrapper.find('[data-testid="agent-chat-running"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('exposes resend beside the failed turn and respects a blocked retry', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'failed', role: 'assistant', content: 'Try again', status: 'error' }],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+				retryDisabled: true,
+			},
+		});
+		const retry = wrapper.get('[data-testid="agent-chat-retry"]');
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toBeUndefined();
+		await wrapper.setProps({ retryDisabled: false });
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toEqual([['user-message']]);
+		expect(wrapper.text()).toContain('Try again');
+		wrapper.unmount();
+	});
+
 	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
 		const initial = planView();
 		const previous = { ...planMessage(initial), content: 'Starting research.' };
