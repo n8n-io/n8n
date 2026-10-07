@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, globSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const run = (file, args = [], options = {}) =>
@@ -47,13 +47,6 @@ try {
 } finally {
 	rmSync(moduleDir, { recursive: true, force: true });
 }
-
-// The kafka native module links against this library. The n8n image smoke
-// test loads the module itself.
-assert.ok(
-	globSync('/usr/lib/*-linux-gnu/librdkafka.so.1').length > 0,
-	'librdkafka.so.1 is missing',
-);
 
 // The EditImage node uses Arial by default and draws text with GraphicsMagick.
 const arial = '/usr/share/fonts/truetype/msttcorefonts/Arial.ttf';

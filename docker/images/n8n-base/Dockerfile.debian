@@ -20,15 +20,17 @@ FROM ${DHI_REF}
 COPY --from=fonts /usr/share/fonts/truetype/msttcorefonts /usr/share/fonts/truetype/msttcorefonts
 
 # The DHI base already has git, openssl (c_rehash for the custom certificates
-# flow in the entrypoint) and ca-certificates. No blanket `apt-get upgrade`:
+# flow in the entrypoint) and ca-certificates. It also has the libraries that
+# the kafka native module links against (ssl, sasl2, zstd, lz4, xxhash). The
+# Debian librdkafka is older than the module needs, so the n8n image builds
+# the librdkafka that the module bundles. No blanket `apt-get upgrade`:
 # patched packages come from a bump of the pinned DHI digest.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         openssh-client \
         graphicsmagick \
         tini \
-        tzdata \
-        librdkafka1 && \
+        tzdata && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt /tmp/* /root/.npm /root/.cache && \
     # Remove the package manager, as the Alpine base removes apk-tools. dpkg
     # cannot remove apt and itself in one call. The dpkg status files stay, so
