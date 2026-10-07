@@ -1,12 +1,22 @@
+import { getBearerTokenProvider } from '@azure/identity';
+import { ChatAnthropic } from '@langchain/anthropic';
 import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler } from '@n8n/ai-utilities';
+import {
+	aiClientFetch,
+	anthropicTokensUsageParser,
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeHelpers, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAzureOpenAi } from '../LmChatAzureOpenAi.node';
 
 vi.mock('@langchain/openai');
+vi.mock('@langchain/anthropic', () => ({ ChatAnthropic: vi.fn() }));
 vi.mock('@n8n/ai-utilities');
+vi.mock('@azure/identity', () => ({ getBearerTokenProvider: vi.fn() }));
 
 const mockNode: INode = {
 	id: '1',
@@ -34,6 +44,7 @@ const setupMockContext = (
 	credential: object,
 	options: object = {},
 	responsesApiEnabled = false,
+	modelFamily = 'openai',
 ) => {
 	const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 	ctx.getCredentials = vi.fn().mockResolvedValue(credential);
@@ -43,6 +54,7 @@ const setupMockContext = (
 		if (paramName === 'model') return 'gpt-4o';
 		if (paramName === 'options') return options;
 		if (paramName === 'responsesApiEnabled') return responsesApiEnabled;
+		if (paramName === 'modelFamily') return modelFamily;
 		return undefined;
 	});
 	ctx.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -58,8 +70,8 @@ describe('LmChatAzureOpenAi', () => {
 		const { description } = new LmChatAzureOpenAi();
 
 		it('should be labelled for the whole Foundry catalogue, not just OpenAI', () => {
-			expect(description.displayName).toBe('Azure AI Foundry Chat Model');
-			expect(description.defaults.name).toBe('Azure AI Foundry Chat Model');
+			expect(description.displayName).toBe('Microsoft Foundry Chat Model');
+			expect(description.defaults.name).toBe('Microsoft Foundry Chat Model');
 		});
 
 		// A saved workflow resolves its nodes by type, so the rename is only safe while this is
@@ -74,7 +86,7 @@ describe('LmChatAzureOpenAi', () => {
 			expect(description.codex?.alias).toContain('Azure OpenAI');
 		});
 
-		it.each(['Azure OpenAI Chat Model', 'Azure AI Foundry', 'Foundry'])(
+		it.each(['Azure', 'Azure OpenAI Chat Model', 'Azure AI Foundry', 'Foundry', 'AOAI'])(
 			'should be findable by %s',
 			(term) => {
 				expect(description.codex?.alias).toContain(term);
@@ -176,7 +188,9 @@ describe('LmChatAzureOpenAi', () => {
 				expect.objectContaining({
 					type: 'boolean',
 					default: false,
-					displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+					displayOptions: {
+						show: { '@version': [{ _cnd: { gte: 1.1 } }], modelFamily: ['openai'] },
+					},
 				}),
 			);
 		});
@@ -194,6 +208,7 @@ describe('LmChatAzureOpenAi', () => {
 			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
 
 			expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({ useResponsesApi: false });
+			expect(vi.mocked(ChatAnthropic)).not.toHaveBeenCalled();
 		});
 
 		// The two APIs name the format differently, and modelKwargs is spread over LangChain's own.
@@ -263,7 +278,7 @@ describe('LmChatAzureOpenAi', () => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {}, true);
 
 			await expect(new LmChatAzureOpenAi().supplyData.call(ctx, 0)).rejects.toThrow(
-				'The Responses API needs a credential using the Azure AI Foundry endpoint type',
+				'The Responses API needs a credential using the Microsoft Foundry endpoint type',
 			);
 			expect(vi.mocked(AzureChatOpenAI)).not.toHaveBeenCalled();
 		});
@@ -390,6 +405,263 @@ describe('LmChatAzureOpenAi', () => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, { extraBody });
 
 			await expect(new LmChatAzureOpenAi().supplyData.call(ctx, 0)).rejects.toThrow(message);
+		});
+	});
+
+	describe('Model Family: Anthropic', () => {
+		const foundry = {
+			...apiKeyCredential,
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+		};
+		const entraFoundry = {
+			...entraCredential,
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+		};
+		const { properties } = new LmChatAzureOpenAi().description;
+		const findOption = (name: string) =>
+			properties
+				.find((p) => p?.name === 'options')
+				?.options?.find((o) => 'name' in o && o.name === name);
+
+		// Azure does not report the API family, so the user says which one the deployment answers on.
+		it('should expose Model Family with OpenAI as the default', () => {
+			const index = properties.findIndex((p) => p?.name === 'modelFamily');
+
+			expect(properties[index]).toEqual(
+				expect.objectContaining({
+					type: 'options',
+					default: 'openai',
+					options: [
+						expect.objectContaining({ value: 'openai' }),
+						expect.objectContaining({ value: 'anthropic' }),
+					],
+				}),
+			);
+			expect(properties[index + 1]?.name).toBe('responsesApiEnabled');
+		});
+
+		it.each(['frequencyPenalty', 'presencePenalty', 'responseFormat'])(
+			'should show %s for the OpenAI family only',
+			(name) => {
+				expect(findOption(name)).toEqual(
+					expect.objectContaining({
+						displayOptions: { show: { '/modelFamily': ['openai'] } },
+					}),
+				);
+			},
+		);
+
+		it('should cap Sampling Temperature at 1 for the Anthropic family and 2 for OpenAI', () => {
+			const temperatures = properties
+				.find((p) => p?.name === 'options')
+				?.options?.filter((o) => 'name' in o && o.name === 'temperature');
+
+			expect(temperatures).toEqual([
+				expect.objectContaining({
+					typeOptions: expect.objectContaining({ maxValue: 2 }),
+					displayOptions: { show: { '/modelFamily': ['openai'] } },
+				}),
+				expect.objectContaining({
+					typeOptions: expect.objectContaining({ maxValue: 1 }),
+					displayOptions: { show: { '/modelFamily': ['anthropic'] } },
+				}),
+			]);
+		});
+
+		it('should build the client against the resource origin plus /anthropic', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, false, 'anthropic');
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(ChatAnthropic).mock.calls[0][0]).toMatchObject({
+				model: 'gpt-4o',
+				anthropicApiUrl: 'https://my-resource.services.ai.azure.com/anthropic',
+			});
+			expect(vi.mocked(ChatOpenAI)).not.toHaveBeenCalled();
+			expect(vi.mocked(AzureChatOpenAI)).not.toHaveBeenCalled();
+		});
+
+		it('should pass the API key as anthropicApiKey', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, false, 'anthropic');
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			const params = vi.mocked(ChatAnthropic).mock.calls[0][0];
+			expect(params).toMatchObject({ anthropicApiKey: 'test-key' });
+			expect(params?.clientOptions?.fetch).toBe(aiClientFetch);
+			// Null keeps the SDK from reading ANTHROPIC_AUTH_TOKEN off the host.
+			expect(params?.clientOptions?.authToken).toBeNull();
+		});
+
+		// The classic endpoint type serves only the Azure OpenAI route, so fail before any request.
+		it('should refuse a classic credential before building a client', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {}, false, 'anthropic');
+
+			await expect(new LmChatAzureOpenAi().supplyData.call(ctx, 0)).rejects.toThrow(
+				'Claude deployments need a credential using the Microsoft Foundry endpoint type',
+			);
+			expect(vi.mocked(ChatAnthropic)).not.toHaveBeenCalled();
+			expect(vi.mocked(AzureChatOpenAI)).not.toHaveBeenCalled();
+			expect(vi.mocked(ChatOpenAI)).not.toHaveBeenCalled();
+		});
+
+		// The SDK's bearer option is a static string and an Entra token expires mid-run, so each
+		// request asks the provider for a token and drops the placeholder API key header.
+		it('should mint a token for every request and send it as a bearer', async () => {
+			vi.mocked(getBearerTokenProvider).mockReturnValue(
+				vi.fn().mockResolvedValueOnce('tok-1').mockResolvedValueOnce('tok-2'),
+			);
+			const ctx = setupMockContext(
+				'azureEntraCognitiveServicesOAuth2Api',
+				entraFoundry,
+				{},
+				false,
+				'anthropic',
+			);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			const params = vi.mocked(ChatAnthropic).mock.calls[0][0];
+			expect(typeof params?.anthropicApiKey).toBe('string');
+			expect(params?.anthropicApiKey).not.toBe('');
+			const fetchImpl = params?.clientOptions?.fetch;
+			expect(fetchImpl).toBeDefined();
+			const input = 'https://my-resource.services.ai.azure.com/anthropic/v1/messages';
+			const init = {
+				method: 'POST',
+				headers: { 'x-api-key': 'entra-id', 'content-type': 'application/json' },
+			};
+			await fetchImpl!(input, init);
+			await fetchImpl!(input, init);
+
+			expect(vi.mocked(aiClientFetch)).toHaveBeenCalledTimes(2);
+			for (const [n, [calledInput, calledInit]] of vi.mocked(aiClientFetch).mock.calls.entries()) {
+				const headers = new Headers(calledInit?.headers);
+				expect(calledInput).toBe(input);
+				expect(calledInit?.method).toBe('POST');
+				expect(headers.get('Authorization')).toBe(`Bearer tok-${n + 1}`);
+				expect(headers.has('x-api-key')).toBe(false);
+				expect(headers.get('content-type')).toBe('application/json');
+			}
+		});
+
+		it('should resolve the proxy against the Anthropic host', async () => {
+			const dispatcher = { tag: 'dispatcher' };
+			vi.mocked(getProxyAgent).mockReturnValue(dispatcher as never);
+			const ctx = setupMockContext(
+				'azureOpenAiApi',
+				foundry,
+				{ timeout: 1234 },
+				false,
+				'anthropic',
+			);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(getProxyAgent)).toHaveBeenCalledWith(
+				'https://my-resource.services.ai.azure.com/anthropic',
+				{ headersTimeout: 1234, bodyTimeout: 1234 },
+				expect.any(Object),
+			);
+			expect(vi.mocked(ChatAnthropic).mock.calls[0][0]).toMatchObject({
+				clientOptions: { timeout: 1234, fetchOptions: { dispatcher } },
+			});
+		});
+
+		// Claude 4.x rejects temperature and top_p together, so only what the user added is sent.
+		it.each([
+			[{}, undefined, undefined],
+			[{ temperature: 0.2 }, 0.2, undefined],
+			[{ topP: 0.9 }, undefined, 0.9],
+		])(
+			'should send temperature and top P only when set (%j)',
+			async (options, temperature, topP) => {
+				const ctx = setupMockContext('azureOpenAiApi', foundry, options, false, 'anthropic');
+
+				await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+				const params = vi.mocked(ChatAnthropic).mock.calls[0][0];
+				expect(params?.temperature).toBe(temperature);
+				expect(params?.topP).toBe(topP);
+			},
+		);
+
+		// -1 is the OpenAI "use default" sentinel; the Messages API rejects it.
+		it.each([
+			[undefined, undefined],
+			[-1, undefined],
+			[1024, 1024],
+		])(
+			'should leave max tokens to the client default when unset or -1 (%s)',
+			async (maxTokens, expected) => {
+				const options = maxTokens === undefined ? {} : { maxTokens };
+				const ctx = setupMockContext('azureOpenAiApi', foundry, options, false, 'anthropic');
+
+				await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+				expect(vi.mocked(ChatAnthropic).mock.calls[0][0]?.maxTokens).toBe(expected);
+			},
+		);
+
+		it('should pass Extra Body as invocationKwargs and drop Response Format', async () => {
+			const ctx = setupMockContext(
+				'azureOpenAiApi',
+				foundry,
+				{
+					frequencyPenalty: 0.5,
+					presencePenalty: 0.5,
+					responseFormat: 'json_object',
+					extraBody: '{"top_k":40}',
+				},
+				false,
+				'anthropic',
+			);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			const params = vi.mocked(ChatAnthropic).mock.calls[0][0];
+			expect(params).toMatchObject({ invocationKwargs: { top_k: 40 } });
+			expect(JSON.stringify(params)).not.toContain('response_format');
+			expect(params).not.toHaveProperty('frequencyPenalty');
+			expect(params).not.toHaveProperty('presencePenalty');
+			expect(params).not.toHaveProperty('responseFormat');
+		});
+
+		it.each([
+			[{ maxRetries: 5 }, 5],
+			[{}, 2],
+		])('should pass through max retries and default them to 2 (%j)', async (options, expected) => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, options, false, 'anthropic');
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(ChatAnthropic).mock.calls[0][0]?.maxRetries).toBe(expected);
+		});
+
+		// The default parser reads the OpenAI usage shape and would record estimates for Claude.
+		it('should record Anthropic token counts', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, false, 'anthropic');
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(anthropicTokensUsageParser).toBeDefined();
+			expect(vi.mocked(N8nLlmTracing)).toHaveBeenCalledWith(
+				ctx,
+				expect.objectContaining({ tokensUsageParser: anthropicTokensUsageParser }),
+			);
+		});
+
+		it('should explain a 404 on the Anthropic route', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, false, 'anthropic');
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			const handler = vi.mocked(makeN8nLlmFailedAttemptHandler).mock.calls[0][1];
+			expect(handler).toBeDefined();
+			expect(() => handler!({ status: 404 } as never)).toThrow('on the Anthropic Messages API');
+			expect(() => handler!({ status: 404 } as never)).toThrow('Set Model Family to OpenAI');
 		});
 	});
 

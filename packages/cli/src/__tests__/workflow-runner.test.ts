@@ -15,7 +15,7 @@ import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
-import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
+import { DirectedGraph, StorageConfig, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
@@ -746,6 +746,35 @@ describe('processError', () => {
 });
 
 describe('run', () => {
+	it('reloads static data for a new queued execution', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'trigger',
+				workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+			});
+
+			await runner.run(data, true);
+
+			expect(enqueueExecution).toHaveBeenCalledWith(
+				'1',
+				'workflow-id',
+				data,
+				true,
+				undefined,
+				undefined,
+			);
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
@@ -848,6 +877,65 @@ describe('run', () => {
 
 		// ASSERT
 		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+	});
+
+	describe('storedAt', () => {
+		function arrangeRun() {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const processRunExecutionData = vi
+				.spyOn(WorkflowExecute.prototype, 'processRunExecutionData')
+				.mockReturnValueOnce(new PCancelable(() => mock<IRun>()));
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'webhook',
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+			});
+
+			return {
+				data,
+				getStoredAt: () => {
+					const [workflowExecute] = processRunExecutionData.mock.contexts as WorkflowExecute[];
+					return workflowExecute.getFullRunData(new Date()).storedAt;
+				},
+			};
+		}
+
+		it('passes the storedAt of a resumed execution into WorkflowExecute', async () => {
+			const { data, getStoredAt } = arrangeRun();
+
+			await runner.run(data, undefined, false, {
+				executionId: '1',
+				expectedStatus: 'waiting',
+				storedAt: 'fs',
+			});
+
+			expect(getStoredAt()).toBe('fs');
+		});
+
+		it('passes the configured mode into WorkflowExecute for a new execution', async () => {
+			const storageConfig = Container.get(StorageConfig);
+			storageConfig.mode = 's3';
+			try {
+				const { data, getStoredAt } = arrangeRun();
+
+				await runner.run(data);
+
+				expect(getStoredAt()).toBe('s3');
+			} finally {
+				storageConfig.mode = 'database';
+			}
+		});
 	});
 
 	describe('engine v2 dispatch', () => {
