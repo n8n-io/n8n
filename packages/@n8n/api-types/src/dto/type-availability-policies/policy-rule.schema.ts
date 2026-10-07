@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type {
+	NodeTypePolicyRule,
 	NonDelegatingPolicyAction,
 	NonDelegatingPolicyRule,
 	PolicyAction,
@@ -70,7 +71,10 @@ type RuleSchemas<Rule, NonDelegatingRule> = {
 
 export const nodeTypePolicyRuleSchemas = ruleSchemasFor(
 	nodeTypePolicySelectorSchema,
-) satisfies RuleSchemas<PolicyRule, NonDelegatingPolicyRule>;
+) satisfies RuleSchemas<
+	NodeTypePolicyRule,
+	NodeTypePolicyRule & { readonly action: NonDelegatingPolicyAction }
+>;
 
 export const credentialTypePolicyRuleSchemas = ruleSchemasFor(
 	credentialTypePolicySelectorSchema,
