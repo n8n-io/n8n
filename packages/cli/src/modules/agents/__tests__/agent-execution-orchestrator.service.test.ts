@@ -4026,6 +4026,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(executionService.findLatestSuspendedRun).not.toHaveBeenCalled();
+		// The published runtime resolves tools project-wide and attributes the run to the chat user.
+		const runtimeParams = runtimeCacheService.getRuntime.mock.calls[0][0];
+		expect(runtimeParams.user).toBeUndefined();
+		expect(runtimeParams.attributionUserId).toBe(user.id);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'n8n_chat_production' }),
 		);

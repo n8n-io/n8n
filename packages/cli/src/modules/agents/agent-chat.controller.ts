@@ -184,6 +184,22 @@ export class AgentChatController {
 			throw new NotFoundError('Session not found');
 	}
 
+	/** Preview counterpart of `requireProductionThread`: the thread must still be the user's preview chat. */
+	private async requirePreviewThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<void> {
+		if (
+			!(await this.agentExecutionService.canUseDraftThread(threadId, projectId, agentId, userId, {
+				previewChat: true,
+				sessionMode: 'existing',
+			}))
+		)
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+	}
+
 	/**
 	 * Enqueue a chat message and relay its execution to the browser stream.
 	 * `accept` validates the request and stores attachments. It returns nothing after it sends its own error.
@@ -889,17 +905,9 @@ export class AgentChatController {
 		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		if (
-			thread.accessScope === 'user' &&
-			!(await this.agentExecutionService.canUseDraftThread(
-				threadId,
-				projectId,
-				agentId,
-				req.user.id,
-				{ previewChat: true, sessionMode: 'existing' },
-			))
-		)
-			throw new NotFoundError(`Thread "${threadId}" not found`);
+		if (thread.accessScope === 'user') {
+			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
+		}
 
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
 		return this.mapBackgroundJobsToDto(jobs);
@@ -948,17 +956,7 @@ export class AgentChatController {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (
-			!(await this.agentExecutionService.canUseDraftThread(
-				threadId,
-				projectId,
-				agentId,
-				req.user.id,
-				{ previewChat: true, sessionMode: 'existing' },
-			))
-		) {
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
+		await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
 		if (!this.agentsConfig.backgroundTasksEnabled)
 			throw new BadRequestError('Background tasks are not enabled');
 		await this.backgroundJobService.requestPause(
@@ -1003,17 +1001,9 @@ export class AgentChatController {
 		if (thread && !threadBelongsTo(thread, projectId, agentId, req.user.id)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		if (
-			thread?.accessScope === 'user' &&
-			!(await this.agentExecutionService.canUseDraftThread(
-				threadId,
-				projectId,
-				agentId,
-				req.user.id,
-				{ previewChat: true, sessionMode: 'existing' },
-			))
-		)
-			throw new NotFoundError(`Thread "${threadId}" not found`);
+		if (thread?.accessScope === 'user') {
+			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
+		}
 		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
 			threadId,
 			projectId,
