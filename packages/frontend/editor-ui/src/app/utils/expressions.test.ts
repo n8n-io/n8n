@@ -1,7 +1,9 @@
 import { ExpressionError } from 'n8n-workflow';
 import {
 	completeExpressionSyntax,
+	getExpressionErrorMessage,
 	getExternalSecretPreview,
+	isPairedItemNotOnBranchError,
 	shouldConvertToExpression,
 	removeExpressionPrefix,
 	stringifyExpressionResult,
@@ -10,6 +12,33 @@ import {
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 
 describe('Utils: Expressions', () => {
+	describe('isPairedItemNotOnBranchError()', () => {
+		it('should return true for a not-on-branch expression error', () => {
+			const error = new ExpressionError('error message', { type: 'paired_item_not_on_branch' });
+			expect(isPairedItemNotOnBranchError(error)).toBe(true);
+		});
+
+		it('should return false for other paired item errors', () => {
+			const error = new ExpressionError('error message', { type: 'paired_item_no_connection' });
+			expect(isPairedItemNotOnBranchError(error)).toBe(false);
+		});
+
+		it('should return false for errors that are not expression errors', () => {
+			expect(isPairedItemNotOnBranchError(new Error('error message'))).toBe(false);
+		});
+	});
+
+	describe('getExpressionErrorMessage()', () => {
+		it('should name the node that is on another branch', () => {
+			const error = new ExpressionError('error message', {
+				type: 'paired_item_not_on_branch',
+				functionality: 'pairedItem',
+				nodeCause: 'out3',
+			});
+			expect(getExpressionErrorMessage(error, {})).toBe('‘out3’ is on another branch');
+		});
+	});
+
 	describe('getExternalSecretPreview()', () => {
 		const secrets = {
 			vault: {

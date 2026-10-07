@@ -2663,7 +2663,8 @@ describe('WorkflowDataProxy → pairedItem with no path to the referenced node',
 					executeData,
 				);
 
-				// The node stores the missing value as null.
+				// The engines swallow the error and return undefined. The Set node then
+				// stores the value as null.
 				expect(result).toBeUndefined();
 			} finally {
 				await workflow.expression.releaseIsolate();
