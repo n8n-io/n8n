@@ -366,9 +366,10 @@ export class SchedulerConfig {
 
 	/**
 	 * How long, in seconds, one run of a scheduled task may take before the
-	 * scheduler stops it and gives the run back. Defaults to 300 seconds.
+	 * scheduler aborts its signal and gives the run back. A handler that ignores
+	 * the signal keeps running. Defaults to 300 seconds.
 	 *
-	 * A stopped run that had not started its work counts as a failed attempt (see
+	 * A timed-out run that had not started its work counts as a failed attempt (see
 	 * {@link maxAttempts}). Some tasks set their own timeout, which wins over this one.
 	 * A new value applies to a schedule the next time it is provisioned, for
 	 * example at startup or when its workflow is activated.
