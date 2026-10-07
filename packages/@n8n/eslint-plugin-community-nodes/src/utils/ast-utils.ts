@@ -240,6 +240,7 @@ export function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
 /** Execution context interfaces from `n8n-workflow` that expose a `helpers` object. */
 export const EXECUTION_CONTEXT_TYPES = new Set([
 	'IAllExecuteFunctions',
+	'ICredentialTestFunctions',
 	'IExecuteFunctions',
 	'IExecutePaginationFunctions',
 	'IExecuteSingleFunctions',

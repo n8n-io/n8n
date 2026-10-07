@@ -351,5 +351,32 @@ class ExampleApi {
 				},
 			],
 		},
+		{
+			name: 'credential test context passed in as a parameter',
+			code: `
+import type { ICredentialTestFunctions } from 'n8n-workflow';
+
+export async function testCredential(context: ICredentialTestFunctions, options) {
+	return await context.helpers.request(options);
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'request', replacement: 'httpRequest' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'request', replacement: 'httpRequest' },
+							output: `
+import type { ICredentialTestFunctions } from 'n8n-workflow';
+
+export async function testCredential(context: ICredentialTestFunctions, options) {
+	return await context.helpers.httpRequest(options);
+}`,
+						},
+					],
+				},
+			],
+		},
 	],
 });

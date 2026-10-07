@@ -17,7 +17,8 @@ several ways — all of them are reported:
 this.helpers.request(options); // execute() bound to the context
 context.helpers.requestOAuth2.call(context, ...); // context passed into a transport helper
 this.executeFunctions.helpers.request(options); // context stored on a class field
-const { helpers } = this; // destructured off the context
+const { helpers } = this;
+helpers.request(options); // destructured off the context, reported on the call
 ```
 
 > [!NOTE]
