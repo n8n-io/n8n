@@ -41,6 +41,9 @@ const bindings = usePromotionBindings();
 const {
 	preflight,
 	groups,
+	destructiveChanges,
+	hardConflicts,
+	mode,
 	unresolvedCount,
 	savedResources,
 	isBusy,
@@ -67,6 +70,31 @@ watch(
 	{ immediate: true, flush: 'sync' },
 );
 onBeforeUnmount(bindings.end);
+
+const header = computed(() => {
+	if (mode.value === 'bindings') {
+		return {
+			title: i18n.baseText('promotions.bindings.title'),
+			subtitle: i18n.baseText('promotions.bindings.subtitle'),
+		};
+	}
+	return {
+		title: i18n.baseText(`promotions.bindings.${mode.value}.title`),
+		subtitle: i18n.baseText(`promotions.bindings.${mode.value}.subtitle`),
+	};
+});
+
+// A blocked apply cannot continue, so it offers no binding setup.
+const visibleGroups = computed(() => (mode.value === 'bindings' ? groups.value : []));
+
+const destructiveSummary = computed(() =>
+	i18n.baseText(
+		mode.value === 'blocked'
+			? 'promotions.bindings.destructive.description'
+			: 'promotions.bindings.destructive.confirmDescription',
+		{ adjustToNumber: destructiveChanges.value.length },
+	),
+);
 
 const errorDetail = computed(() =>
 	error.value?.kind === 'continue' && error.value.cause instanceof Error
@@ -137,6 +165,10 @@ async function continueApply() {
 		emit('update:open', false);
 	} else if (result?.status === 'source-changed') {
 		emit('source-changed', result);
+	} else if (result?.status === 'blocked') {
+		// Focus is lost: the submit button was disabled while loading and can now be hidden.
+		await nextTick();
+		title.value?.focus();
 	}
 }
 </script>
@@ -153,7 +185,10 @@ async function continueApply() {
 		@escape-key-down="preventEscapeDismissal"
 		@interact-outside="preventBusyDismissal"
 	>
-		<form :class="$style.form" @submit.prevent="continueApply">
+		<form
+			:class="[$style.form, mode !== 'bindings' && $style.compact]"
+			@submit.prevent="continueApply"
+		>
 			<header :class="$style.header">
 				<N8nButton
 					type="button"
@@ -168,17 +203,16 @@ async function continueApply() {
 				<div>
 					<N8nDialogTitle as-child>
 						<h2 ref="title" :class="$style.title" tabindex="-1">
-							{{ i18n.baseText('promotions.bindings.title') }}
+							{{ header.title }}
 						</h2>
 					</N8nDialogTitle>
 					<N8nDialogDescription :class="$style.subtitle">
-						{{ i18n.baseText('promotions.bindings.subtitle') }}
+						{{ header.subtitle }}
 					</N8nDialogDescription>
 				</div>
 			</header>
 			<div :class="$style.body" data-test-id="promotion-bindings-body">
 				<slot name="notices" />
-				<p :class="$style.description">{{ i18n.baseText('promotions.bindings.description') }}</p>
 				<N8nCallout v-if="sourceChanged" theme="warning">
 					{{ i18n.baseText('promotions.bindings.sourceChanged') }}
 				</N8nCallout>
@@ -186,7 +220,49 @@ async function continueApply() {
 					{{ i18n.baseText(`promotions.bindings.error.${error.kind}`) }}
 					<p v-if="errorDetail">{{ errorDetail }}</p>
 				</N8nCallout>
-				<section v-for="group in groups" :key="group.project.id" :class="$style.project">
+				<section v-if="preflight?.accessRequirements.length" :class="$style.notices">
+					<h3>{{ i18n.baseText('promotions.bindings.access.title') }}</h3>
+					<N8nCallout
+						v-for="item in preflight.accessRequirements"
+						:key="item.sourceId"
+						theme="warning"
+					>
+						<strong>{{ item.name }}</strong>
+						<p>{{ i18n.baseText('promotions.bindings.access.description') }}</p>
+						<p>{{ consumerNames(item.consumers) }}</p>
+					</N8nCallout>
+				</section>
+				<section v-if="hardConflicts.length" :class="$style.notices">
+					<h3>{{ i18n.baseText('promotions.bindings.conflicts.title') }}</h3>
+					<N8nCallout v-for="(item, index) in hardConflicts" :key="index" theme="warning">
+						<strong>{{ item.kind === 'project' ? item.project.name : item.name }}</strong>
+						<p>{{ i18n.baseText(`promotions.bindings.conflicts.${item.code}`) }}</p>
+						<p v-if="item.kind !== 'project'">{{ consumerNames(item.consumers) }}</p>
+						<p v-else>{{ item.workflows.map((workflow) => workflow.name).join(', ') }}</p>
+					</N8nCallout>
+				</section>
+				<p v-if="mode === 'blocked'">
+					{{ i18n.baseText('promotions.bindings.restart') }}
+				</p>
+				<section v-if="destructiveChanges.length" :class="$style.notices">
+					<h3 v-if="mode !== 'review'">
+						{{ i18n.baseText('promotions.bindings.destructive.title') }}
+					</h3>
+					<p>{{ destructiveSummary }}</p>
+					<N8nCallout v-for="item in destructiveChanges" :key="item.id" theme="warning">
+						<strong>{{ item.name }}</strong>
+						<p>{{ consumerNames(item.consumers) }}</p>
+					</N8nCallout>
+				</section>
+				<div v-if="mode === 'bindings'" :class="$style.notices">
+					<h3 v-if="destructiveChanges.length">
+						{{ i18n.baseText('promotions.bindings.bindingsSection.title') }}
+					</h3>
+					<p :class="$style.description">
+						{{ i18n.baseText('promotions.bindings.description') }}
+					</p>
+				</div>
+				<section v-for="group in visibleGroups" :key="group.project.id" :class="$style.project">
 					<h3 v-if="groups.length > 1" :class="$style.projectName">{{ group.project.name }}</h3>
 					<section v-for="entry in group.workflows" :key="entry.workflow.id">
 						<h4 :class="$style.workflow">
@@ -279,30 +355,6 @@ async function continueApply() {
 						</div>
 					</section>
 				</section>
-				<section v-if="preflight?.accessRequirements.length" :class="$style.notices">
-					<h3>{{ i18n.baseText('promotions.bindings.access.title') }}</h3>
-					<N8nCallout
-						v-for="item in preflight.accessRequirements"
-						:key="item.sourceId"
-						theme="warning"
-					>
-						<strong>{{ item.name }}</strong>
-						<p>{{ i18n.baseText('promotions.bindings.access.description') }}</p>
-						<p>{{ consumerNames(item.consumers) }}</p>
-					</N8nCallout>
-				</section>
-				<section v-if="preflight?.conflicts.length" :class="$style.notices">
-					<h3>{{ i18n.baseText('promotions.bindings.conflicts.title') }}</h3>
-					<N8nCallout v-for="(item, index) in preflight.conflicts" :key="index" theme="warning">
-						<strong>{{ item.kind === 'project' ? item.project.name : item.name }}</strong>
-						<p>{{ i18n.baseText(`promotions.bindings.conflicts.${item.code}`) }}</p>
-						<p v-if="item.kind !== 'project'">{{ consumerNames(item.consumers) }}</p>
-						<p v-else>{{ item.workflows.map((workflow) => workflow.name).join(', ') }}</p>
-					</N8nCallout>
-				</section>
-				<p v-if="preflight?.accessRequirements.length || preflight?.conflicts.length">
-					{{ i18n.baseText('promotions.bindings.restart') }}
-				</p>
 				<section v-if="preflight?.warnings.length" :class="$style.notices">
 					<h3>{{ i18n.baseText('promotions.bindings.warnings.title') }}</h3>
 					<N8nCallout v-for="(item, index) in preflight.warnings" :key="index" theme="info">
@@ -320,7 +372,7 @@ async function continueApply() {
 					{{ i18n.baseText('promotions.bindings.savedResources') }}
 				</p>
 				<N8nDialogFooter :class="$style.actions">
-					<span :class="$style.count" role="status">
+					<span v-if="mode === 'bindings'" :class="$style.count" role="status">
 						{{
 							i18n.baseText('promotions.bindings.unresolvedCount', {
 								adjustToNumber: unresolvedCount,
@@ -328,11 +380,30 @@ async function continueApply() {
 							})
 						}}
 					</span>
-					<N8nButton type="button" variant="outline" size="small" :disabled="isBusy" @click="close">
+					<N8nButton
+						type="button"
+						:variant="mode === 'blocked' ? 'solid' : 'outline'"
+						size="small"
+						:disabled="isBusy"
+						@click="close"
+					>
 						{{ i18n.baseText('promotions.bindings.close') }}
 					</N8nButton>
-					<N8nButton type="submit" size="small" :disabled="!canContinue" :loading="isSubmitting">
-						{{ i18n.baseText('promotions.bindings.continue') }}
+					<N8nButton
+						v-if="mode !== 'blocked'"
+						type="submit"
+						size="small"
+						:variant="destructiveChanges.length ? 'destructive' : 'solid'"
+						:disabled="!canContinue"
+						:loading="isSubmitting"
+					>
+						{{
+							i18n.baseText(
+								destructiveChanges.length
+									? 'promotions.bindings.applyAndDelete'
+									: 'promotions.bindings.continue',
+							)
+						}}
 					</N8nButton>
 				</N8nDialogFooter>
 			</div>
@@ -349,6 +420,12 @@ async function continueApply() {
 	width: min(44rem, calc(100dvw - var(--spacing--lg)));
 	height: min(40rem, calc(100dvh - var(--spacing--xl)));
 	color: var(--text-color);
+}
+
+// Without the bindings table the content is short, so the dialog fits it.
+.compact {
+	height: auto;
+	max-height: min(40rem, calc(100dvh - var(--spacing--xl)));
 }
 
 .header {

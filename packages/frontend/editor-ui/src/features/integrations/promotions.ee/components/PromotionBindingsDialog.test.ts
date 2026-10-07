@@ -10,6 +10,8 @@ import {
 	blocked,
 	consumers,
 	credential,
+	destructiveChange,
+	projectConflict,
 	savedCredential,
 	variable,
 } from '../__tests__/bindings.fixtures';
@@ -29,12 +31,44 @@ async function renderDialog(options: Parameters<typeof renderComponent>[0]) {
 
 beforeEach(() => vi.resetAllMocks());
 
-it('shows all projects, scopes, and blocker reasons without exposing source values', async () => {
+const restartLine = /close this dialog and start Apply remote changes again/;
+
+function precedes(first: Node, second: Node) {
+	return !!(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
+it('shows every missing binding with its destination scope without exposing source values', async () => {
 	const { getByRole, getByText, getAllByText, queryByText } = await renderDialog({
 		props: {
 			open: true,
 			blockedResult: blocked({
 				missingBindings: [credential, variable],
+				warnings: applied.warnings,
+			}),
+			createBinding: vi.fn(),
+		},
+	});
+	expect(getByRole('heading', { level: 2, name: 'Resolve bindings' })).toBeInTheDocument();
+	expect(getByRole('heading', { name: 'Team A' })).toBeInTheDocument();
+	expect(getByRole('heading', { name: 'Team B' })).toBeInTheDocument();
+	expect(getByRole('table', { name: 'Workflow A' })).toBeInTheDocument();
+	expect(getByRole('table', { name: 'Workflow B' })).toBeInTheDocument();
+	expect(getAllByText('Owner team')).toHaveLength(2);
+	expect(getByText('Global')).toBeInTheDocument();
+	expect(getAllByText('Needs setup')).toHaveLength(3);
+	expect(getByText(/project variable overrides the global variable SETTING/)).toBeInTheDocument();
+	expect(queryByText('private-value')).not.toBeInTheDocument();
+	expect(queryByText('={{ $vars.SECRET }}')).not.toBeInTheDocument();
+	expect(getByRole('button', { name: 'Continue' })).toBeDisabled();
+	expect(getByRole('status')).toHaveTextContent('2 items still need setup');
+});
+
+it('blocks apply and asks to correct missing access', async () => {
+	const { getByRole, getByText, queryByRole } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({
+				missingBindings: [credential],
 				accessRequirements: [
 					{
 						...credential,
@@ -43,34 +77,136 @@ it('shows all projects, scopes, and blocker reasons without exposing source valu
 						code: 'access-required',
 					},
 				],
-				conflicts: [
-					{
-						kind: 'project',
-						code: 'project-not-team',
-						project: { id: 'personal', name: 'Personal project' },
-						filePath: 'project.json',
-						workflows: [],
-					},
-				],
-				warnings: applied.warnings,
 			}),
 			createBinding: vi.fn(),
 		},
 	});
-	expect(getByRole('heading', { name: 'Team A' })).toBeInTheDocument();
-	expect(getByRole('heading', { name: 'Team B' })).toBeInTheDocument();
-	expect(getByRole('table', { name: 'Workflow A' })).toBeInTheDocument();
-	expect(getByRole('table', { name: 'Workflow B' })).toBeInTheDocument();
-	expect(getAllByText('Owner team')).toHaveLength(2);
-	expect(getByText('Global')).toBeInTheDocument();
-	expect(getAllByText('Needs setup')).toHaveLength(3);
+	expect(getByRole('heading', { level: 2, name: 'Apply is blocked' })).toBeInTheDocument();
 	expect(getByText(/Ask an administrator/)).toBeInTheDocument();
+	expect(getByText(restartLine)).toBeInTheDocument();
+	expect(queryByRole('table')).not.toBeInTheDocument();
+	expect(queryByRole('button', { name: 'Create Source credential' })).not.toBeInTheDocument();
+	expect(queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
+	expect(queryByRole('status')).not.toBeInTheDocument();
+	expect(getByRole('button', { name: 'Close' })).toBeInTheDocument();
+});
+
+it('lists destructive changes after the blocking conflicts and keeps apply blocked', async () => {
+	const { getByRole, getByText, getAllByText, queryByRole, queryByText } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({
+				conflicts: [
+					projectConflict,
+					destructiveChange,
+					{ ...destructiveChange, id: 'invoices-id', name: 'Invoices' },
+				],
+			}),
+			createBinding: vi.fn(),
+		},
+	});
+	const destructiveHeading = getByRole('heading', { name: 'Destructive changes' });
+	expect(getByRole('heading', { level: 2, name: 'Apply is blocked' })).toBeInTheDocument();
 	expect(getByText(/destination project is not a team project/)).toBeInTheDocument();
-	expect(getByText(/project variable overrides the global variable SETTING/)).toBeInTheDocument();
-	expect(queryByText('private-value')).not.toBeInTheDocument();
-	expect(queryByText('={{ $vars.SECRET }}')).not.toBeInTheDocument();
-	expect(getByRole('button', { name: 'Continue' })).toBeDisabled();
-	expect(getByRole('status')).toHaveTextContent('4 items still need setup');
+	expect(getByText('These data tables lose data when you apply.')).toBeInTheDocument();
+	expect(getByText('Orders')).toBeInTheDocument();
+	expect(getByText('Invoices')).toBeInTheDocument();
+	expect(getAllByText('Team A: Workflow A')).toHaveLength(2);
+	expect(precedes(getByText(/destination project is not a team project/), destructiveHeading)).toBe(
+		true,
+	);
+	expect(precedes(getByText(restartLine), destructiveHeading)).toBe(true);
+	expect(queryByText(/no longer need this data/)).not.toBeInTheDocument();
+	expect(queryByRole('button', { name: /delete data|Continue/ })).not.toBeInTheDocument();
+});
+
+it('asks to confirm data deletion when only destructive changes block apply', async () => {
+	vi.mocked(continueApplyPromotion).mockResolvedValue(applied);
+	const { getByRole, getByText, queryByRole, queryByText, emitted } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({ missingBindings: [], conflicts: [destructiveChange] }),
+			createBinding: vi.fn(),
+		},
+	});
+	expect(
+		getByRole('heading', { level: 2, name: 'Review destructive changes' }),
+	).toBeInTheDocument();
+	expect(getByText('Confirm the data loss before you apply')).toBeInTheDocument();
+	expect(
+		getByText(
+			'This data table loses data when you apply. Apply only if you no longer need this data.',
+		),
+	).toBeInTheDocument();
+	expect(getByText('Orders')).toBeInTheDocument();
+	expect(queryByRole('heading', { name: 'Destructive changes' })).not.toBeInTheDocument();
+	expect(queryByRole('heading', { name: 'Conflicts' })).not.toBeInTheDocument();
+	expect(queryByText(/Create the missing credentials/)).not.toBeInTheDocument();
+	expect(queryByText(restartLine)).not.toBeInTheDocument();
+	expect(queryByRole('table')).not.toBeInTheDocument();
+	expect(queryByRole('status')).not.toBeInTheDocument();
+	const apply = getByRole('button', { name: 'Apply and delete data' });
+	expect(apply).toBeEnabled();
+	await userEvent.click(apply);
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+	expect(emitted('applied')).toEqual([[applied]]);
+});
+
+it('shows destructive changes above the bindings and continues with data deletion after setup', async () => {
+	vi.mocked(continueApplyPromotion).mockResolvedValue(
+		blocked({ missingBindings: [], conflicts: [destructiveChange] }),
+	);
+	const { getByRole, getByText, queryByText, emitted } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({
+				missingBindings: [{ ...credential, consumers: [consumers[0]] }],
+				conflicts: [destructiveChange],
+			}),
+			createBinding: vi.fn().mockResolvedValue(savedCredential),
+		},
+	});
+	expect(getByRole('heading', { level: 2, name: 'Resolve bindings' })).toBeInTheDocument();
+	expect(precedes(getByRole('heading', { name: 'Destructive changes' }), getByRole('table'))).toBe(
+		true,
+	);
+	expect(getByText(/Apply only if you no longer need this data/)).toBeInTheDocument();
+	expect(
+		precedes(
+			getByRole('heading', { level: 3, name: 'Credentials and variables' }),
+			getByRole('table'),
+		),
+	).toBe(true);
+	expect(getByRole('status')).toHaveTextContent('1 item still needs setup');
+	expect(getByRole('button', { name: 'Apply and delete data' })).toBeDisabled();
+
+	await userEvent.click(getByRole('button', { name: 'Create Source credential' }));
+	expect(getByRole('status')).toHaveTextContent('All items are ready');
+	await userEvent.click(getByRole('button', { name: 'Apply and delete data' }));
+
+	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+	expect(emitted('applied')).toBeUndefined();
+	expect(getByRole('heading', { level: 2, name: 'Resolve bindings' })).toBeInTheDocument();
+	expect(getByRole('heading', { name: 'Destructive changes' })).toBeInTheDocument();
+	expect(within(getByRole('table')).getByText('Resolved')).toBeInTheDocument();
+	expect(queryByText(restartLine)).not.toBeInTheDocument();
+	expect(getByRole('button', { name: 'Apply and delete data' })).toBeEnabled();
+	await waitFor(() =>
+		expect(getByRole('heading', { level: 2, name: 'Resolve bindings' })).toHaveFocus(),
+	);
+});
+
+it('moves focus to the title when Continue reveals a blocking conflict', async () => {
+	vi.mocked(continueApplyPromotion).mockResolvedValue(
+		blocked({ missingBindings: [], conflicts: [projectConflict] }),
+	);
+	const { getByRole } = await renderDialog({
+		props: { open: true, blockedResult: blocked({ missingBindings: [] }), createBinding: vi.fn() },
+	});
+	await userEvent.click(getByRole('button', { name: 'Continue' }));
+	await waitFor(() =>
+		expect(getByRole('heading', { level: 2, name: 'Apply is blocked' })).toHaveFocus(),
+	);
 });
 
 it('creates the original binding, restores focus, and emits the full applied result', async () => {

@@ -1,3 +1,4 @@
+import type { PromotionBindingConflict } from '@n8n/api-types';
 import type {
 	AppliedResult,
 	BlockedApplyResult,
@@ -28,6 +29,24 @@ export const variable: Extract<MissingPromotionBinding, { kind: 'variable' }> = 
 	sourceValue: 'private-value',
 	consumers: [consumers[0]],
 };
+
+export const projectConflict: Extract<PromotionBindingConflict, { code: 'project-not-team' }> = {
+	kind: 'project',
+	code: 'project-not-team',
+	project: { id: 'personal', name: 'Personal project' },
+	filePath: 'project.json',
+	workflows: [],
+};
+
+export const destructiveChange: Extract<PromotionBindingConflict, { code: 'destructive-change' }> =
+	{
+		kind: 'data-table',
+		code: 'destructive-change',
+		id: 'table-id',
+		name: 'Orders',
+		consumers: [consumers[0]],
+		changes: [{ kind: 'remove-column', column: 'total', type: 'number', destructive: true }],
+	};
 
 export const savedCredential: Extract<CreatedPromotionBinding, { kind: 'credential' }> = {
 	kind: 'credential',
