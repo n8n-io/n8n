@@ -132,7 +132,7 @@ export default defineConfig(backendConfig, {
 				'import { frontendConfig } from "@n8n/eslint-config/frontend";\nexport default frontendConfig;\n',
 				`import { vueConfig } from '@n8n/oxlint-config/vue';
 import { defineConfig } from 'oxlint';
-export default defineConfig({ extends: [vueConfig], settings: vueConfig.settings });
+export default defineConfig({ extends: [vueConfig] });
 `,
 			);
 

@@ -5,8 +5,6 @@ import { vueConfig } from './vue.js';
 export const frontendConfig = defineConfig({
 	extends: [baseConfig, vueConfig],
 	env: { browser: true, node: true },
-	// Not inherited through `extends`. A package config repeats `frontendConfig.settings`.
-	settings: vueConfig.settings,
 	rules: {
 		'unicorn/filename-case': 'off',
 		'n8n-local-rules/no-reka-ui-pagination': 'error',

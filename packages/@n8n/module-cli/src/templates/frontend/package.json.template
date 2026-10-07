@@ -12,8 +12,8 @@
     "test": "vitest run",
     "test:changed": "janitor test-scoped",
     "test:dev": "vitest",
-    "lint": "oxlint src --quiet && eslint src --quiet",
-    "lint:fix": "oxlint src --fix && eslint src --fix",
+    "lint": "vize lint --help-level none 'src/**/*.vue' && oxlint src --quiet && eslint src --quiet",
+    "lint:fix": "vize lint --fix --help-level none 'src/**/*.vue' && oxlint src --fix && eslint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --allow-empty-input",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --allow-empty-input",
     "format": "biome format --write . && prettier --write . --ignore-path ../../../../.prettierignore",
@@ -53,6 +53,7 @@
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",
+    "vize": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },

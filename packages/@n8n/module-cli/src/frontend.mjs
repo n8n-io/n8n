@@ -44,6 +44,7 @@ const files = (name) => [
 	['vite.config.ts.template', 'vite.config.ts'],
 	['eslint.config.mjs.template', 'eslint.config.mjs'],
 	['oxlint.config.mts.template', 'oxlint.config.mts'],
+	['vize.config.ts.template', 'vize.config.ts'],
 	['stylelint.config.mjs.template', 'stylelint.config.mjs'],
 	['biome.jsonc.template', 'biome.jsonc'],
 	['README.md.template', 'README.md'],

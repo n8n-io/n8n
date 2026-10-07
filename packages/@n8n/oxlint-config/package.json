@@ -20,6 +20,10 @@
       "types": "./dist/configs/vue.d.ts",
       "default": "./dist/configs/vue.js"
     },
+    "./vize": {
+      "types": "./dist/configs/vize.d.ts",
+      "default": "./dist/configs/vize.js"
+    },
     "./nodes": {
       "types": "./dist/configs/nodes.d.ts",
       "default": "./dist/configs/nodes.js"
@@ -55,7 +59,7 @@
     "eslint-plugin-lodash": "^8.0.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "oxlint": "catalog:",
-    "oxlint-plugin-vize": "catalog:"
+    "vize": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

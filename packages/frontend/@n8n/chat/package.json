@@ -13,8 +13,8 @@
     "test": "vitest run",
     "test:changed": "janitor test-scoped",
     "typecheck": "vue-tsc --noEmit",
-    "lint": "oxlint src --quiet && eslint src --quiet",
-    "lint:fix": "oxlint src --fix && eslint src --fix",
+    "lint": "vize lint --help-level none 'src/**/*.vue' && oxlint src --quiet && eslint src --quiet",
+    "lint:fix": "vize lint --fix --help-level none 'src/**/*.vue' && oxlint src --fix && eslint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "format": "biome format --write src && prettier --write src/ --ignore-path ../../../../.prettierignore",
@@ -72,6 +72,7 @@
     "vite": "catalog:",
     "unplugin-dts": "catalog:",
     "vitest": "catalog:",
+    "vize": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "peerDependencies": {

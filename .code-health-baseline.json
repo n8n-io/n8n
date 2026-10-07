@@ -1406,14 +1406,6 @@
 				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
 				"hash": "9ac3dbae3d22"
 			}
-		],
-		"packages/frontend/editor-ui/oxlint.config.mts": [
-			{
-				"rule": "lint-config-layering",
-				"line": 18,
-				"message": "packages/frontend/editor-ui turns 'vize/vue/attribute-hyphenation' down to 'warn' for the whole package.",
-				"hash": "8b26fe2890dc"
-			}
 		]
 	}
 }

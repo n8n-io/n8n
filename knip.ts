@@ -113,7 +113,6 @@ const config: KnipConfig = {
 				'@stylistic/eslint-plugin',
 				'eslint-plugin-lodash',
 				'eslint-plugin-unused-imports',
-				'oxlint-plugin-vize',
 			],
 		}),
 		'packages/@n8n/nodes-langchain': pkg({

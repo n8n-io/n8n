@@ -9,8 +9,8 @@
     "build:unchecked": "pnpm run build",
     "bundle": "pnpm build && node scripts/bundle.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --quiet",
-    "lint:fix": "oxlint --fix",
+    "lint": "vize lint --help-level none './**/*.vue' && oxlint --quiet",
+    "lint:fix": "vize lint --fix --help-level none './**/*.vue' && oxlint --fix",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest",
@@ -36,7 +36,8 @@
     "typescript": "catalog:typescript-tooling",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vize": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -111,7 +111,8 @@ packages/modules/my-feature/frontend/
 ├── tsconfig.json              # extends the shared module base
 ├── vite.config.ts             # vitest config + the shared source aliases
 ├── eslint.config.mjs          # TypeScript rules
-├── oxlint.config.mts          # Vue rules (oxlint + Vize)
+├── oxlint.config.mts          # Vue script rules
+├── vize.config.ts             # Vue template rules
 ├── biome.jsonc
 ├── README.md
 └── src/
@@ -598,7 +599,7 @@ Narrow the type of each error by hand.
 ## Lint
 
 ```sh
-pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # oxlint, then eslint
+pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # vize, oxlint, then eslint
 pnpm --filter @n8n/frontend-module-my-feature lint:fix        # no build needed to autofix
 ```
 

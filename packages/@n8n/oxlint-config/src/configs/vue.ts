@@ -7,34 +7,15 @@ const designSystemPlugin = createRequire(import.meta.url).resolve(
 );
 
 /**
- * oxlint translation of the Vue rules in `@n8n/eslint-config/frontend`.
+ * oxlint translation of the Vue script rules in `@n8n/eslint-config/frontend`.
  *
- * Oxlint lints only the script block of an SFC. Vize (`oxlint-plugin-vize`)
- * parses the whole SFC and adds the template and SFC-structure rules as
- * `vize/vue/*` and `vize/script/*`. The `incremental` preset runs only the
- * rules listed here.
- *
- * Vize reports a template diagnostic at the start of the script block, because
- * oxlint rejects a location outside it. The message ends with the real
- * position, for example `(at <template>:12:5)`. A `.vue` file without a
- * `<script>` block gets no Vize diagnostics.
- *
- * To suppress a template rule, prefer a scoped `overrides` entry. Vize also
- * reads `<!-- eslint-disable-next-line vue/<rule> -->` inside `<template>`, but
- * Vue keeps that comment in dev builds and in snapshots.
- *
- * oxlint does not pass `settings` or `ignorePatterns` through `extends`. A
- * package config that extends this layer must set `settings: vueConfig.settings`
- * (or `frontendConfig.settings` for the frontend layer). Without it, Vize
- * applies its default preset and silently skips every listed rule outside it.
+ * Oxlint lints only the script block of an SFC. The template and SFC-structure
+ * rules run in the Vize CLI, from `@n8n/oxlint-config/vize`.
  */
 export const vueConfig = defineConfig({
 	plugins: ['vue'],
-	jsPlugins: ['oxlint-plugin-vize', '@n8n/eslint-config/plugin', designSystemPlugin],
+	jsPlugins: ['@n8n/eslint-config/plugin', designSystemPlugin],
 	categories: { correctness: 'off' },
-	settings: {
-		vize: { preset: 'incremental', helpLevel: 'none' },
-	},
 	rules: {
 		// ----------------------------------
 		//        oxlint native (script)
@@ -72,65 +53,6 @@ export const vueConfig = defineConfig({
 		'vue/valid-define-options': 'error',
 		'vue/valid-define-props': 'error',
 		'vue/valid-next-tick': 'error',
-
-		// ----------------------------------
-		//        Vize (template and SFC)
-		// ----------------------------------
-		'vize/vue/attribute-hyphenation': ['error', 'always'],
-		'vize/vue/component-name-in-template-casing': ['error', 'PascalCase'],
-		'vize/vue/no-child-content': 'error',
-		// `vue/no-deprecated-filter` is retired. Vize reads the `|` of a TypeScript
-		// union in a template cast (`el as Element | null`) as a Vue 2 filter.
-		'vize/vue/no-deprecated-functional-template': 'error',
-		'vize/vue/no-deprecated-html-element-is': 'error',
-		'vize/vue/no-deprecated-inline-template': 'error',
-		'vize/vue/no-deprecated-router-link-tag-prop': 'error',
-		'vize/vue/no-deprecated-scope-attribute': 'error',
-		'vize/vue/no-deprecated-slot-attribute': 'error',
-		'vize/vue/no-deprecated-slot-scope-attribute': 'error',
-		'vize/vue/no-deprecated-v-bind-sync': 'error',
-		'vize/vue/no-deprecated-v-on-native-modifier': 'error',
-		'vize/vue/no-deprecated-v-on-number-modifiers': 'error',
-		'vize/vue/no-dupe-v-else-if': 'error',
-		'vize/vue/no-duplicate-attributes': 'error',
-		'vize/vue/no-multiple-template-root': 'error',
-		'vize/vue/no-template-key': 'error',
-		'vize/vue/no-textarea-mustache': 'error',
-		'vize/vue/no-unused-components': 'error',
-		'vize/vue/no-unused-vars': 'error',
-		'vize/vue/no-use-v-if-with-v-for': 'error',
-		'vize/vue/no-useless-template-attributes': 'error',
-		'vize/vue/no-v-for-template-key-on-child': 'error',
-		'vize/vue/no-v-html': 'error',
-		'vize/vue/require-component-is': 'error',
-		// eslint-plugin-vue: `no-undef-components`.
-		'vize/vue/require-component-registration': 'error',
-		'vize/vue/require-toggle-inside-transition': 'error',
-		'vize/vue/require-v-for-key': 'error',
-		// eslint-plugin-vue: `block-order`.
-		'vize/vue/sfc-element-order': ['error', { order: ['script', 'template', 'style'] }],
-		'vize/vue/use-v-on-exact': 'error',
-		'vize/vue/v-slot-style': 'error',
-		'vize/vue/valid-attribute-name': 'error',
-		'vize/vue/valid-template-root': 'error',
-		'vize/vue/valid-v-bind': 'error',
-		'vize/vue/valid-v-cloak': 'error',
-		'vize/vue/valid-v-else': 'error',
-		'vize/vue/valid-v-for': 'error',
-		'vize/vue/valid-v-html': 'error',
-		'vize/vue/valid-v-if': 'error',
-		'vize/vue/valid-v-memo': 'error',
-		'vize/vue/valid-v-model': 'error',
-		'vize/vue/valid-v-on': 'error',
-		'vize/vue/valid-v-once': 'error',
-		'vize/vue/valid-v-show': 'error',
-		'vize/vue/valid-v-slot': 'error',
-		'vize/vue/valid-v-text': 'error',
-		'vize/script/no-deprecated-dollar-listeners-api': 'error',
-		'vize/script/no-deprecated-dollar-scopedslots-api': 'error',
-		'vize/script/no-ref-as-operand': 'error',
-		'vize/script/no-use-computed-property-like-method': 'error',
-		'vize/script/require-valid-default-prop': 'error',
 
 		// ----------------------------------
 		//         n8n ports of Vue rules

@@ -4,8 +4,6 @@ import { defineConfig } from 'oxlint';
 export default defineConfig({
 	extends: [frontendConfig],
 	options: { typeAware: true },
-	// oxlint does not inherit `settings` through `extends`.
-	settings: frontendConfig.settings,
 	ignorePatterns: ['vite.*.config.mts', 'vitest.config.mts', 'scripts/**'],
 	rules: {
 		'typescript/no-deprecated': 'off',

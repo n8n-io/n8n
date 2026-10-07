@@ -28,8 +28,8 @@
     "build:ui": "vite build --mode workflow-preview",
     "build:server": "tsc -p tsconfig.build.json",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.build.json",
-    "lint": "oxlint . --quiet && eslint . --quiet",
-    "lint:fix": "oxlint . --fix && eslint . --fix",
+    "lint": "vize lint --help-level none './**/*.vue' && oxlint . --quiet && eslint . --quiet",
+    "lint:fix": "vize lint --fix --help-level none './**/*.vue' && oxlint . --fix && eslint . --fix",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest",
@@ -63,6 +63,7 @@
     "vite-plugin-singlefile": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
+    "vize": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "peerDependencies": {

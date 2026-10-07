@@ -3,7 +3,13 @@ import { frontendConfig } from '@n8n/eslint-config/frontend';
 
 export default defineConfig(
 	{
-		ignores: ['vite.config.mts', 'vitest.config.mts', 'oxlint.config.mts', 'dist/**'],
+		ignores: [
+			'vite.config.mts',
+			'vitest.config.mts',
+			'oxlint.config.mts',
+			'vize.config.ts',
+			'dist/**',
+		],
 	},
 	frontendConfig,
 	{

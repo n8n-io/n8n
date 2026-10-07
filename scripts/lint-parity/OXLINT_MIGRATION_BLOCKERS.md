@@ -1,6 +1,6 @@
 # Oxlint migration blockers
 
-Last reviewed: 2026-10-06
+Last reviewed: 2026-10-07
 Oxlint version: 1.78.0
 
 This file is the working backlog for the ESLint to Oxlint migration. It focuses on rules that block an Oxlint-only lint command for many packages. `oxlint-gap.json` is the machine-readable source of truth for shared-layer parity.
@@ -77,31 +77,30 @@ Reconsider this exception only if the package removal plan changes.
 
 ## Frontend package blockers
 
-Oxlint lints only the script block of a Vue SFC. Vize (`oxlint-plugin-vize`) closes most of the template gap: it parses the whole SFC and reports through Oxlint's JS plugin bridge. `@n8n/oxlint-config/vue` holds the Vue rules:
+Oxlint lints only the script block of a Vue SFC. The Vize CLI (`vize lint`) closes the template gap: it parses the whole SFC natively, so it reports exact template positions, lints an SFC without a `<script>` block, and reports template parse errors. Each Vue package runs `vize lint`, then `oxlint`, then (for now) `eslint`.
 
-- 30 native Oxlint `vue/*` rules for the script block.
-- 51 Vize rules (`vize/vue/*` and `vize/script/*`). `vue/block-order` becomes `vize/vue/sfc-element-order`, and `vue/no-undef-components` becomes `vize/vue/require-component-registration`.
-- `n8n-local-rules/require-macro-variable-name`, a port of `vue/require-macro-variable-name`.
-- `@n8n/design-system/require-teleported-tooltip-in-dropdown`, which now parses the template with `@vue/compiler-dom`.
+- `@n8n/oxlint-config/vize` holds the 51 Vize rules (`vue/*` and `script/*`). `vue/block-order` becomes `vue/sfc-element-order`, and `vue/no-undef-components` becomes `vue/require-component-registration`. A package `vize.config.ts` imports it.
+- `@n8n/oxlint-config/vue` holds the 30 native Oxlint `vue/*` script rules, `n8n-local-rules/require-macro-variable-name` (a port of `vue/require-macro-variable-name`), and `@n8n/design-system/require-teleported-tooltip-in-dropdown` (which parses the template with `@vue/compiler-dom`).
 
 `eslint-plugin-vue` is gone. ESLint still parses `.vue` files with `vue-eslint-parser`, so the type-aware TypeScript rules still reach the SFC script. Oxlint's type-aware rules skip `.vue` files.
 
-`frontend/vue-template-rules` in `oxlint-gap.json` lists the eight rules without a Vize equivalent.
+`frontend/vue-template-rules` in `oxlint-gap.json` lists the seven rules without a Vize equivalent.
 
 Known limits:
 
-- Oxlint rejects a JS plugin location outside the script block. A template diagnostic points at the start of the script block, and its message ends with the real position, for example `(at <template>:12:5)`.
-- Vize skips an SFC without a `<script>` block. The `oxlint-vize` wrapper fixes this, but it shifts every script diagnostic, so we do not use it.
-- Oxlint does not pass `settings` or `ignorePatterns` through `extends`. A package config must repeat `settings: vueConfig.settings`. Without it, Vize applies its default preset and silently skips rules.
-- To suppress a template rule, add a scoped `overrides` entry. Vize reads `eslint-disable` comments only inside `<template>`, and Vue keeps those comments in dev builds and snapshots. Vize does not read comments in the script block or before `<template>`.
+- Vize does not read `extends` from a JSON path. A package config imports `vizeConfig` from `@n8n/oxlint-config/vize` and spreads it.
+- To suppress a rule for some files, add an `entries` item with `files` and `linter.rules` to the package `vize.config.ts`. Vize also reads `eslint-disable` comments inside `<template>`, but Vue keeps those comments in dev builds and snapshots.
+- Vize cannot run a JavaScript rule. The two n8n Vue rules stay in Oxlint.
 - `vue/attribute-hyphenation` stays at `warn` in editor-ui, as it was in ESLint.
 - Vize is experimental and releases often. The catalog pins one version, and `minimumReleaseAge` applies.
+- `oxlint-plugin-vize` is not used. It calls the native linter once for each rule and each file, which costs about 11 s in editor-ui, and it reports every template diagnostic at the start of the script block.
+
+Speed, editor-ui, 1,127 SFCs, 51 rules: `vize lint` takes 0.3 s. The same rules through `oxlint-plugin-vize` took 11 s, and through `eslint-plugin-vue` about 3 s of rule time on top of the ESLint parse.
 
 Suggested direction:
 
-1. Run Oxlint with `@n8n/oxlint-config/vue` (or `frontend`) in every Vue package.
-2. Move the TypeScript rules of each frontend package to Oxlint, then remove the ESLint pass.
-3. Re-check the gap list when Vize releases new rules.
+1. Move the TypeScript rules of each frontend package to Oxlint, then remove the ESLint pass.
+2. Re-check the gap list when Vize releases new rules.
 
 ## Node package blockers
 
@@ -141,7 +140,7 @@ The main exceptions are:
 3. Audit and reduce `naming-convention` package overrides.
 4. Re-test the two nursery rules.
 5. Run a JS-plugin bridge spike for `n8n-nodes-base`.
-6. Run Vue template rules through Vize. Re-check the Vize gap list on each upgrade.
+6. Run Vue template rules through the Vize CLI. Re-check the Vize gap list on each upgrade.
 
 ## Validation commands
 

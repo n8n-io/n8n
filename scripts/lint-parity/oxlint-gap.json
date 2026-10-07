@@ -46,18 +46,17 @@
 	"frontend/vue-template-rules": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "Oxlint lints only the SFC script block. `@n8n/oxlint-config/vue` adds the template and SFC-structure rules through Vize (`oxlint-plugin-vize`), and ports `require-macro-variable-name` to `n8n-local-rules`. The rules below have no Vize equivalent, or Vize reports false positives for them.",
+		"reason": "Oxlint lints only the SFC script block. The Vize CLI (`vize lint`, config in `@n8n/oxlint-config/vize`) runs the template and SFC-structure rules. `n8n-local-rules/require-macro-variable-name` is a port of the ESLint rule. The rules below have no Vize equivalent, or Vize reports false positives for them.",
 		"rules": [
 			"vue/comment-directive",
 			"vue/jsx-uses-vars",
 			"vue/no-deprecated-filter",
 			"vue/no-deprecated-v-is",
-			"vue/no-parsing-error",
 			"vue/valid-v-else-if",
 			"vue/valid-v-is",
 			"vue/valid-v-pre"
 		],
-		"impact": "Low. Vize reads `eslint-disable` comments in the template itself. No SFC uses JSX or `v-is`, and one uses `v-pre`. `vue-tsc` and the Vite build reject template parse errors. Vize reads the `|` of a TypeScript union in a template cast as a Vue 2 filter, so `no-deprecated-filter` is retired. Vize skips an SFC without a `<script>` block.",
+		"impact": "Low. Vize reads `eslint-disable` comments in the template itself. No SFC uses JSX or `v-is`, and one uses `v-pre`. Vize reads the `|` of a TypeScript union in a template cast as a Vue 2 filter, so `no-deprecated-filter` is retired. Vize reports template parse errors as `parser/sfc`, which replaces `vue/no-parsing-error`.",
 		"replacement": "Enable the Vize rule when Vize adds it or fixes the false positive."
 	},
 	"n8n-nodes-base/*": {

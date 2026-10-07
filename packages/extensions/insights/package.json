@@ -31,8 +31,8 @@
     "clean": "rimraf dist .turbo",
     "cleanup": "rimraf dist",
     "dev": "tsdown --watch",
-    "lint": "oxlint src --quiet",
-    "lint:fix": "oxlint src --fix",
+    "lint": "vize lint --help-level none 'src/**/*.vue' && oxlint src --quiet",
+    "lint:fix": "vize lint --fix --help-level none 'src/**/*.vue' && oxlint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "typecheck": "vue-tsc --noEmit",
@@ -62,6 +62,7 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "unplugin-dts": "catalog:",
+    "vize": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "peerDependencies": {
