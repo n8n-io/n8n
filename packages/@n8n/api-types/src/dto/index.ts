@@ -340,6 +340,7 @@ export {
 	LogStreamingDestinationListPublicDto,
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
+	LogStreamingTestResultPublicDto,
 	CreateLogStreamingDestinationPublicDto,
 	UpdateLogStreamingDestinationPublicDto,
 	type LogStreamingDestinationPublic,
