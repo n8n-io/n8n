@@ -1,12 +1,19 @@
 /**
- * Domain types for node type availability policies, shared by the internal and public API
+ * Domain types for type availability policies, shared by the internal and public API
  * request DTOs and by the backend evaluator.
  */
 
-/** Matches a node type by its exact full name, or by its package segment. */
+/**
+ * Matches a type by its exact full name, or by its package segment. `extends` is for credential
+ * types only: it matches the named type and every type built on it through `extends`.
+ */
 export type PolicySelector =
 	| { readonly kind: 'name'; readonly value: string }
-	| { readonly kind: 'package'; readonly value: string };
+	| { readonly kind: 'package'; readonly value: string }
+	| { readonly kind: 'extends'; readonly value: string };
+
+/** The selectors a node type policy accepts. */
+export type NodeTypePolicySelector = Exclude<PolicySelector, { readonly kind: 'extends' }>;
 
 export type PolicyAction = 'allow' | 'deny' | 'delegate';
 
@@ -15,6 +22,11 @@ export type PolicyRule = {
 	readonly id: string;
 	readonly action: PolicyAction;
 	readonly selector: PolicySelector;
+};
+
+/** A `PolicyRule` as a node type policy accepts it. */
+export type NodeTypePolicyRule = Omit<PolicyRule, 'selector'> & {
+	readonly selector: NodeTypePolicySelector;
 };
 
 /**

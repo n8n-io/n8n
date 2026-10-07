@@ -332,6 +332,67 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
 		});
 
+		describe('extends rules', () => {
+			const familyRule = (id: string, value: string): PolicyRule => ({
+				id,
+				action: 'deny',
+				selector: { kind: 'extends', value },
+			});
+
+			beforeEach(() => {
+				Object.defineProperty(loadNodesAndCredentials, 'knownCredentials', {
+					configurable: true,
+					value: {
+						oAuth2Api: { className: '', sourcePath: '' },
+						googleSheetsOAuth2Api: { className: '', sourcePath: '', extends: ['oAuth2Api'] },
+					},
+				});
+			});
+
+			afterEach(() => {
+				delete (loadNodesAndCredentials as { knownCredentials?: unknown }).knownCredentials;
+			});
+
+			it('rejects an extends rule in a node type policy', async () => {
+				await expect(
+					service.createPolicyDocument(KIND, [familyRule('r1', 'oAuth2Api')], 'user-1'),
+				).rejects.toThrow('An "extends" rule is only valid in a credential type policy');
+				expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			});
+
+			it('rejects an extends rule naming a credential type that is not installed', async () => {
+				await expect(
+					service.createPolicyDocument(
+						CREDENTIAL_TYPES_KIND,
+						[familyRule('r1', 'notInstalledApi')],
+						'user-1',
+					),
+				).rejects.toThrow(
+					'Extends rule names a credential type that is not installed: notInstalledApi',
+				);
+				expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			});
+
+			it('warns about a derived-type rule placed after the family rule that covers it', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+				const allowSheets: PolicyRule = {
+					id: 'r2',
+					action: 'allow',
+					selector: { kind: 'name', value: 'googleSheetsOAuth2Api' },
+				};
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[familyRule('r1', 'oAuth2Api'), allowSheets],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+			});
+		});
+
 		it('accepts a package rule naming an installed package', async () => {
 			policyRepository.createPolicy.mockResolvedValue(makePolicy());
 			const rule: PolicyRule = {

@@ -112,20 +112,29 @@ describe('nonDelegatingPolicyRuleListSchema', () => {
 });
 
 describe('rule schemas per kind', () => {
-	const packageRule = {
+	const extendsRule = {
 		id: 'r1',
 		action: 'deny',
-		selector: { kind: 'package', value: 'n8n-nodes-base' },
+		selector: { kind: 'extends', value: 'oAuth2Api' },
 	};
 
-	it('accepts the same selectors for both kinds', () => {
-		expect(nodeTypePolicyRuleSchemas.ruleList.safeParse([packageRule]).success).toBe(true);
-		expect(credentialTypePolicyRuleSchemas.ruleList.safeParse([packageRule]).success).toBe(true);
+	it('rejects an extends rule in a node type policy', () => {
+		expect(nodeTypePolicyRuleSchemas.ruleList.safeParse([extendsRule]).success).toBe(false);
+		expect(nodeTypePolicyRuleSchemas.nonDelegatingRuleList.safeParse([extendsRule]).success).toBe(
+			false,
+		);
+	});
+
+	it('accepts an extends rule in a credential type policy', () => {
+		expect(credentialTypePolicyRuleSchemas.ruleList.safeParse([extendsRule]).success).toBe(true);
+		expect(
+			credentialTypePolicyRuleSchemas.nonDelegatingRuleList.safeParse([extendsRule]).success,
+		).toBe(true);
 	});
 
 	it('rejects duplicate rule ids in a credential type policy', () => {
 		expect(
-			credentialTypePolicyRuleSchemas.ruleList.safeParse([packageRule, packageRule]).success,
+			credentialTypePolicyRuleSchemas.ruleList.safeParse([extendsRule, extendsRule]).success,
 		).toBe(false);
 	});
 });
