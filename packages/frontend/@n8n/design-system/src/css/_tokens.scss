@@ -424,11 +424,6 @@
 	// Node error
 	--node--error-output--color--text: var(--color--danger);
 
-	// MFA Recovery codes
-	--mfa--recovery-code--color--background: var(--color--background);
-	--mfa--recovery-code--color: var(--color--neutral-500);
-	--mfa--lose-access--color--text: var(--color--danger);
-
 	// Text highlight
 	--text-highlight--color--background: var(--color--yellow-200);
 
@@ -1022,11 +1017,6 @@
 
 	// Node error
 	--node--error-output--color--text: var(--color--danger);
-
-	// MFA Recovery codes
-	--mfa--recovery-code--color--background: var(--color--background--light-3);
-	--mfa--recovery-code--color: var(--color--text--shade-1);
-	--mfa--lose-access--color--text: var(--color--danger);
 
 	// Text highlight
 	--text-highlight--color--background: var(--color--yellow-700);
