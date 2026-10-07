@@ -427,12 +427,12 @@ describe('V1StepExecutor', () => {
 		// The flag defaults to true, as it does in core. The deadline emits the
 		// node's input, which is what v1 passes through on a timed resume.
 		it.each([
-			['omitted', true],
-			['true', true],
-			['false', false],
+			['omitted', { resumeBinding: 'execution' }],
+			['true', { resumeBinding: 'execution' }],
+			['false', {}],
 		])(
 			'declares a deadline wait with acceptsResumeRequest %s',
-			async (acceptsResumeRequest, declared) => {
+			async (acceptsResumeRequest, binding) => {
 				const graph = graphWith('test.waitsUntil', {
 					waitTill: '2026-10-01T12:00:00.000Z',
 					acceptsResumeRequest,
@@ -442,7 +442,7 @@ describe('V1StepExecutor', () => {
 					wait: {
 						resumeAt: '2026-10-01T12:00:00.000Z',
 						outputsAtDeadline: input,
-						acceptsResumeRequest: declared,
+						...binding,
 					},
 				});
 			},
@@ -512,7 +512,8 @@ describe('V1StepExecutor', () => {
 			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 			const after = Date.now();
 
-			expect(result.wait).toMatchObject({ outputsAtDeadline: input, acceptsResumeRequest: false });
+			expect(result.wait).toMatchObject({ outputsAtDeadline: input });
+			expect(result.wait).not.toHaveProperty('resumeBinding');
 			const resumeAt = Date.parse(result.wait!.resumeAt!);
 			expect(resumeAt).toBeGreaterThanOrEqual(before + 2000);
 			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
