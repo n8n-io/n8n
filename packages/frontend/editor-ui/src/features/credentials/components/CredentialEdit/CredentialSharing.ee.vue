@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import ProjectSharingInfo from '@/features/collaboration/projects/components/ProjectSharingInfo.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -210,7 +209,7 @@ const usedInAccessText = computed(() =>
 			}),
 );
 
-function usedInShareLabel(project: ProjectListItem) {
+function usedInShareLabel(project: Pick<ProjectSharingData, 'name'>) {
 	// A personal project is named "Name <email>"; the project row hides the email, so the label does too.
 	const { name } = splitName(project.name ?? '');
 
@@ -296,6 +295,8 @@ function goToUpgrade() {
 				:roles="credentialRoles"
 				:role-descriptions="credentialRoleDescriptions"
 				:confirm-removal="confirmRemoval"
+				:sort-selected="isCredSharingEnabled"
+				:unshared-projects="usedInProjects"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
@@ -310,30 +311,22 @@ function goToUpgrade() {
 				:is-shared-globally="isSharedGlobally"
 				:teleported="false"
 				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
-			/>
-			<ul v-if="usedInProjects.length" :class="$style.usedIn">
-				<li
-					v-for="entry in usedInProjects"
-					:key="entry.project.id"
-					:class="$style.project"
-					data-test-id="credential-used-in-project"
-				>
-					<ProjectSharingInfo :project="entry.project" :subtitle="entry.subtitle">
-						<div :class="$style.onlyYou">
-							<N8nText :class="$style.accessText" color="text-light" :title="usedInAccessText">
-								{{ usedInAccessText }}
-							</N8nText>
-							<N8nButton
-								variant="outline"
-								data-test-id="credential-used-in-project-share"
-								@click="shareUsedInProject(entry.project.id)"
-							>
-								{{ usedInShareLabel(entry.project) }}
-							</N8nButton>
-						</div>
-					</ProjectSharingInfo>
-				</li>
-			</ul>
+			>
+				<template #unshared-actions="{ project }">
+					<div :class="$style.onlyYou">
+						<N8nText :class="$style.accessText" color="text-light" :title="usedInAccessText">
+							{{ usedInAccessText }}
+						</N8nText>
+						<N8nButton
+							variant="outline"
+							data-test-id="credential-used-in-project-share"
+							@click="shareUsedInProject(project.id)"
+						>
+							{{ usedInShareLabel(project) }}
+						</N8nButton>
+					</div>
+				</template>
+			</ProjectSharing>
 		</div>
 	</div>
 </template>
@@ -344,27 +337,6 @@ function goToUpgrade() {
 	> * {
 		margin-bottom: var(--spacing--lg);
 	}
-}
-
-.usedIn {
-	border-top: var(--border);
-
-	li {
-		padding: 0;
-		border-bottom: var(--border);
-
-		&:last-child {
-			border-bottom: none;
-		}
-	}
-}
-
-.project {
-	display: flex;
-	width: 100%;
-	align-items: center;
-	padding: var(--spacing--2xs) 0;
-	gap: var(--spacing--2xs);
 }
 
 .onlyYou {
