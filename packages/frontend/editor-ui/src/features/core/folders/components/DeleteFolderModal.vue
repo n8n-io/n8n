@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
-import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
-import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
+import { type EventBus } from '@n8n/utils/event-bus';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '../folders.store';
 import { useRoute } from 'vue-router';
@@ -12,7 +12,15 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { ChangeLocationSearchResult, WorkflowListEventMap } from '../folders.types';
 
 import { ElRadio } from 'element-plus';
-import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInput,
+	N8nInputLabel,
+	N8nText,
+} from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	activeId: string;
@@ -25,9 +33,10 @@ const props = defineProps<{
 	};
 }>();
 
-const modalBus = createEventBus();
 const { showMessage, showError } = useToast();
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const route = useRoute();
 
 const foldersStore = useFoldersStore();
@@ -130,7 +139,7 @@ async function onSubmit() {
 			workflowCount: props.data.content.workflowCount,
 			folderCount: props.data.content.subFolderCount,
 		});
-		modalBus.emit('close');
+		void closeDialog();
 	} catch (error) {
 		showError(error, i18n.baseText('folders.delete.error.message'));
 	} finally {
@@ -141,18 +150,19 @@ async function onSubmit() {
 const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	selectedFolder.value = payload;
 };
+
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:title="title"
-		:center="true"
-		width="600"
-		:event-bus="modalBus"
-		@enter="onSubmit"
-	>
-		<template #content>
+	<N8nDialog :open="modalOpen" size="xlarge" :header="title" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody>
 			<div>
 				<div v-if="isPending">
 					<N8nText color="text-base">{{ i18n.baseText('folders.delete.confirm.message') }}</N8nText>
@@ -223,8 +233,8 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 					</div>
 				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
 				:loading="loading"
 				:disabled="!enabled"
@@ -233,14 +243,13 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 				data-test-id="confirm-delete-folder-button"
 				@click="onSubmit"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
 .content {
-	padding-bottom: var(--spacing--2xs);
-	> * {
+	> *:not(:last-child) {
 		margin-bottom: var(--spacing--sm);
 	}
 }
