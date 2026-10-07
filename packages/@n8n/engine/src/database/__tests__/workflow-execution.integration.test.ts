@@ -128,6 +128,7 @@ describe('workflow_execution table (integration)', () => {
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
+			seededSteps: null,
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
 			finishedAt: null,
