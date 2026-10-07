@@ -85,10 +85,6 @@ paths:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
   /n8n-packages/import-selection:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml'
-  /settings/log-streaming/destinations/{id}/test:
-    $ref: './handlers/log-streaming/spec/paths/destinations.id.test.yml'
-  /settings/log-streaming/destinations/{id}:
-    $ref: './handlers/log-streaming/spec/paths/destinations.id.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

@@ -163,7 +163,6 @@ export default defineConfig(
 		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 		// must fail CI. Entries are removed as each handler becomes a controller.
 		files: [
-			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
 		],
 		rules: {

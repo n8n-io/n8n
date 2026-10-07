@@ -113,11 +113,6 @@ export declare namespace CommunityPackageRequest {
 	type Uninstall = AuthenticatedRequest<{ name: string }>;
 }
 
-export declare namespace LogStreamingRequest {
-	type TestDestination = AuthenticatedRequest<{ id: string }>;
-	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
-}
-
 // ----------------------------------
 //        /settings/otel
 // ----------------------------------

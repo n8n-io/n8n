@@ -4,6 +4,7 @@ import {
 	LogStreamingDestinationListPublicDto,
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
+	LogStreamingTestResultPublicDto,
 	logStreamingDestinationIdParamSchema,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -19,6 +20,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Licensed,
 	Param,
@@ -143,6 +145,59 @@ export class LogStreamingPublicController {
 
 		// `addDestination` replaces the stored destination that has this id.
 		return await this.saveDestination(req.user, { ...toInternalDestinationOptions(body), id });
+	}
+
+	@Post('/destinations/:id/test')
+	@ApiKeyScope('eventBusDestination:test')
+	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
+	@ApiSummary('Send a test message to a log streaming destination')
+	@ApiDescription(
+		'Send a test message to the destination to verify it is reachable and configured correctly. Requires the `eventBusDestination:test` scope and the Log Streaming feature to be licensed.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, LogStreamingTestResultPublicDto)
+	@ApiErrorResponse(404)
+	async testLogStreamingDestination(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id', logStreamingDestinationIdParamSchema) id: string,
+	): Promise<LogStreamingTestResultPublicDto> {
+		const destination = await this.findDestinationOrFail(id);
+		await assertUserCanUseDestinationCredentials(
+			this.credentialsFinderService,
+			req.user,
+			destination,
+		);
+
+		// A delivery failure is a failed test, not a server error.
+		try {
+			return { success: await this.destinationService.testDestination(id) };
+		} catch {
+			return { success: false };
+		}
+	}
+
+	@Delete('/destinations/:id')
+	@ApiKeyScope('eventBusDestination:delete')
+	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
+	@ApiSummary('Delete a log streaming destination')
+	@ApiDescription(
+		'Remove a log streaming destination. Requires the `eventBusDestination:delete` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the delete is rejected with 409 and nothing is removed; reads still return the current values.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, LogStreamingDestinationPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async deleteLogStreamingDestination(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id', logStreamingDestinationIdParamSchema) id: string,
+	): Promise<LogStreamingDestinationPublicDto> {
+		this.assertNotManagedByEnv();
+		const destination = await this.findDestinationOrFail(id);
+		await this.destinationService.removeDestination(id);
+
+		return toLogStreamingDestinationPublic(destination);
 	}
 
 	private assertNotManagedByEnv() {
