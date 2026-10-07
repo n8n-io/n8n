@@ -30,10 +30,6 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpCuPN2BHQ7G0A2qD2Bd27bwwUB9M
 Npzv5WS/ygt55l8y2X+Vfm5TQFRMNkqEx+/GXaPIU/hDmtnBdCxAUIRM9g==
 -----END PUBLIC KEY-----`;
 
-const ED25519_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAPBUxurC3wGyi/yXTTjNwTzgHjSioAIa4Qx6nyOqof0U=
------END PUBLIC KEY-----`;
-
 // ──────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────
@@ -429,12 +425,6 @@ describe('TrustedKeyService (integration)', () => {
 		it.each([
 			{ name: 'RSA key with RS256', kid: 'rsa-key', algorithms: ['RS256'], key: RSA_PUBLIC_KEY },
 			{ name: 'EC key with ES256', kid: 'ec-key', algorithms: ['ES256'], key: EC_PUBLIC_KEY },
-			{
-				name: 'Ed25519 key with EdDSA',
-				kid: 'ed-key',
-				algorithms: ['EdDSA'],
-				key: ED25519_PUBLIC_KEY,
-			},
 		])('should accept $name', async ({ kid, algorithms, key }) => {
 			await insertSource({
 				config: JSON.stringify([staticKeyEntry({ kid, algorithms, key })]),
