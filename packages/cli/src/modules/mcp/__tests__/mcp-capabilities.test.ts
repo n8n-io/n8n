@@ -27,6 +27,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { registerInstanceAiCapabilities } from '@/modules/instance-ai/capabilities/instance-ai-capabilities';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -34,7 +35,6 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { defineCapability } from '@/services/capabilities/capability';
 import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
-import { parseScheduleCapability } from '@/services/capabilities/parse-schedule.capability';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -126,8 +126,9 @@ describe('McpService capabilities', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// What the instance-ai module registers in its init.
 		Container.set(CapabilityRegistry, new CapabilityRegistry());
-		Container.get(CapabilityRegistry).register(parseScheduleCapability);
+		registerInstanceAiCapabilities(Container.get(CapabilityRegistry));
 		eventService = mockInstance(EventService);
 		service = buildService(eventService);
 	});
@@ -280,21 +281,38 @@ describe('McpService capabilities', () => {
 		expect(names).toContain('parse_schedule');
 		expect(names).not.toContain('assistant_only_tool');
 	});
+
+	// The instance-ai module registers parse_schedule, so with that module off no caller gets it.
+	describe('when no module registered parse_schedule', () => {
+		beforeEach(() => {
+			Container.set(CapabilityRegistry, new CapabilityRegistry());
+		});
+
+		it.each<[string, McpAuthContext]>([
+			['an API key caller', API_KEY_CALLER],
+			['an OAuth caller with workflow:read', { grantedScopes: ['workflow:read'] }],
+		])('does not offer it to %s', async (_caller, auth) => {
+			const names = await listToolNames(auth);
+			const call = await callParseSchedule(auth, 'every weekday at 8');
+
+			expect(names).toContain('search_workflows');
+			expect(names).not.toContain('parse_schedule');
+			expect(call.error?.message).toBe('Tool parse_schedule not found');
+		});
+	});
 });
 
 describe('McpModule', () => {
-	it('registers parse_schedule once, also when init runs again', async () => {
+	// Each capability follows the module that owns it, not the mcp module.
+	it('registers no capability', async () => {
 		Container.set(CapabilityRegistry, new CapabilityRegistry());
 		mockInstance(McpProtectedResource);
-		mockInstance(ProtectedResourceRegistry);
-		const mcpModule = Container.get(McpModule);
+		const protectedResources = mockInstance(ProtectedResourceRegistry);
 
-		await mcpModule.init();
-		await mcpModule.init();
+		await Container.get(McpModule).init();
 
-		const names = Container.get(CapabilityRegistry)
-			.list('mcp')
-			.map((capability) => capability.name);
-		expect(names).toEqual(['parse_schedule']);
+		expect(protectedResources.register).toHaveBeenCalledTimes(1);
+		expect(Container.get(CapabilityRegistry).list('mcp')).toEqual([]);
+		expect(Container.get(CapabilityRegistry).list('assistant')).toEqual([]);
 	});
 });

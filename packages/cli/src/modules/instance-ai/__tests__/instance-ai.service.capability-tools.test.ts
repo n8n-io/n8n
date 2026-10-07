@@ -41,6 +41,13 @@ const capability = (name: string, surfaces: CapabilitySurface[], alwaysLoaded = 
 		}),
 	});
 
+// The registry rejects an MCP capability that its list does not name, so list the test ones.
+const testRegistry = () =>
+	new CapabilityRegistry({
+		'workflow:read': ['parse_schedule', 'mcp_only_tool'],
+		'workflow:execute': ['guarded_tool'],
+	});
+
 function createService(eventService: EventService): Internals {
 	const service = Object.create(InstanceAiService.prototype) as Record<string, unknown>;
 	Object.assign(service, {
@@ -72,7 +79,7 @@ describe('InstanceAiService capability tools', () => {
 		vi.mocked(createInstanceAgent)
 			.mockReset()
 			.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] } as never);
-		Container.set(CapabilityRegistry, new CapabilityRegistry());
+		Container.set(CapabilityRegistry, testRegistry());
 	});
 
 	afterAll(() => {

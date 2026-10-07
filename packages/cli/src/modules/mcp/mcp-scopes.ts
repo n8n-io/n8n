@@ -2,6 +2,11 @@ import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
 import {
+	CAPABILITY_TOOLS_BY_SCOPE,
+	type CapabilityToolsByScope,
+} from '@/services/capabilities/capability-scopes';
+
+import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
 	MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
@@ -9,15 +14,11 @@ import {
 } from './mcp.constants';
 
 /**
- * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
- * available if ANY granted scope covers it, so support tools (node search,
- * SDK reference, validation) can ride on both read and write scopes.
- *
- * Keep in sync with the tools registered in `McpService.getServer` — the
- * drift-guard test in `__tests__/mcp-scopes.test.ts` fails when a registered
- * tool is missing here.
+ * The built-in MCP tools that each grantable OAuth scope unlocks. Keep in sync
+ * with the tools registered in `McpService.getServer`. Capability tools are
+ * listed in `CAPABILITY_TOOLS_BY_SCOPE` instead.
  */
-export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
+const BUILT_IN_TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'workflow:read': [
 		'search_workflows',
 		'get_workflow_details',
@@ -121,6 +122,33 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
 	],
 };
+
+// Appends per scope. An object spread would replace the built-in tools of a scope.
+function withCapabilityTools(
+	builtIn: Record<McpScope, readonly string[]>,
+	capabilityTools: CapabilityToolsByScope,
+): Record<McpScope, readonly string[]> {
+	const merged = { ...builtIn };
+	for (const scope of MCP_INSTANCE_SCOPES) {
+		merged[scope] = [...builtIn[scope], ...(capabilityTools[scope] ?? [])];
+	}
+	return merged;
+}
+
+/**
+ * Maps each grantable OAuth scope to the MCP tools it unlocks: the built-in
+ * tools and the capability tools. A tool is available if ANY granted scope
+ * covers it, so support tools (node search, SDK reference, validation) can
+ * ride on both read and write scopes. The OAuth consent screen and the tool
+ * registration both read this map.
+ *
+ * The drift-guard tests in `__tests__/mcp-scopes.test.ts` fail when a tool
+ * that `McpService.getServer` registers is missing here, or the reverse.
+ */
+export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = withCapabilityTools(
+	BUILT_IN_TOOLS_BY_SCOPE,
+	CAPABILITY_TOOLS_BY_SCOPE,
+);
 
 /**
  * Tools that operate on folders and therefore require the `feat:folders`

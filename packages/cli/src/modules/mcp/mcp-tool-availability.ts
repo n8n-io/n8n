@@ -5,6 +5,8 @@ import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 import type { FeatureFlags } from 'n8n-workflow';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import type { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
+import { CAPABILITY_TOOLS_BY_SCOPE } from '@/services/capabilities/capability-scopes';
 
 import type { McpConfig } from './mcp.config';
 
@@ -70,4 +72,18 @@ export function isCommunityNodeInstallAvailable(
 		!globalConfig.instanceSettingsLoader.communityPackagesManagedByEnv &&
 		hasGlobalScope(user, 'communityPackage:install')
 	);
+}
+
+/**
+ * The capability tools in `TOOLS_BY_SCOPE` that no enabled module registered for MCP, for
+ * example `parse_schedule` while the instance-ai module is disabled. The MCP server cannot
+ * offer them, so the consent screen must not advertise them.
+ */
+export function getUnregisteredCapabilityTools(
+	registry: Pick<CapabilityRegistry, 'list'>,
+): string[] {
+	const registered = new Set(registry.list('mcp').map((capability) => capability.name));
+	return Object.values(CAPABILITY_TOOLS_BY_SCOPE)
+		.flatMap((names) => names ?? [])
+		.filter((name) => !registered.has(name));
 }

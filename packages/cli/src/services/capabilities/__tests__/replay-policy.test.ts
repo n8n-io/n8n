@@ -1,4 +1,5 @@
-import type { ToolDefinition } from '../../mcp.types';
+import type { ToolDefinition } from '@/modules/mcp/mcp.types';
+
 import {
 	decideJournalAction,
 	INTERRUPTED_TOOL_MESSAGE,
@@ -7,7 +8,7 @@ import {
 	type JournalStatus,
 	type ReplayPolicy,
 	type ToolReplayAnnotations,
-} from '../tool-call-journal.policy';
+} from '../replay-policy';
 
 describe('decideJournalAction', () => {
 	it('runs the call when no journal record exists', () => {

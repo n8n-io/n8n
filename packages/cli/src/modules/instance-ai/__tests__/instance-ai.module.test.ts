@@ -1,9 +1,24 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceAiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
+import { SandboxSettingsService } from '@/services/sandbox-settings.service';
+
+import { AssistantAgentProvider } from '../assistant-agent.provider';
 import { InstanceAiCheckpointPruningTask } from '../instance-ai-checkpoint-pruning.task';
+import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { InstanceAiSetupTelemetryService } from '../instance-ai-setup-telemetry.service';
 import { InstanceAiModule } from '../instance-ai.module';
+import { InstanceAiService } from '../instance-ai.service';
+
+// Importing the controllers resolves their middleware from the container, which needs a database.
+vi.mock('../instance-ai.controller', () => ({}));
+vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
 
 describe('InstanceAiModule', () => {
 	const usePruneInterval = (pruneInterval: number): void => {
@@ -24,5 +39,45 @@ describe('InstanceAiModule', () => {
 		const tasks = await new InstanceAiModule().systemTasks();
 
 		expect(tasks).toEqual([]);
+	});
+
+	describe('init', () => {
+		const capabilityNames = (surface: 'mcp' | 'assistant') =>
+			Container.get(CapabilityRegistry)
+				.list(surface)
+				.map((capability) => capability.name);
+
+		beforeEach(() => {
+			mockInstance(InstanceCredentialBroker);
+			mockInstance(InstanceAiSettingsService);
+			mockInstance(SandboxSettingsService);
+			mockInstance(InstanceAiSetupTelemetryService);
+			mockInstance(InstanceAiEventRelay);
+			mockInstance(InstanceAiService);
+			mockInstance(SystemAgentExecutionService);
+			mockInstance(AssistantAgentProvider);
+			Container.set(CapabilityRegistry, new CapabilityRegistry());
+		});
+
+		afterAll(() => {
+			Container.set(CapabilityRegistry, new CapabilityRegistry());
+		});
+
+		// The module owns parse_schedule, so the Assistant keeps it when the mcp module is off.
+		it('registers parse_schedule for MCP clients and for the n8n Assistant', async () => {
+			await new InstanceAiModule().init();
+
+			expect(capabilityNames('mcp')).toEqual(['parse_schedule']);
+			expect(capabilityNames('assistant')).toEqual(['parse_schedule']);
+		});
+
+		it('registers each capability once, also when init runs again', async () => {
+			const instanceAiModule = new InstanceAiModule();
+
+			await instanceAiModule.init();
+			await instanceAiModule.init();
+
+			expect(capabilityNames('mcp')).toEqual(['parse_schedule']);
+		});
 	});
 });

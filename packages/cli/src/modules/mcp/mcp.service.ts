@@ -743,21 +743,19 @@ export class McpService {
 			);
 		}
 
-		this.registerCapabilities(registerTool, user, auth);
+		this.registerCapabilities(registerIfAllowed, user);
 
 		return server;
 	}
 
 	/**
-	 * Capabilities check their own scope, so `TOOLS_BY_SCOPE` does not list them. They use the
-	 * same instrumented registrar as the other tools, so each call emits `mcp-tool-called`.
+	 * `TOOLS_BY_SCOPE` lists the capability tools, so `registerIfAllowed` filters them by the
+	 * grant like the other tools, and each call emits `mcp-tool-called`. The registry holds only
+	 * the capabilities of enabled modules, so it is read for each server.
 	 */
-	private registerCapabilities(registerTool: RegisterToolFn, user: User, auth?: McpAuthContext) {
-		const grantedScopes = auth?.grantedScopes;
+	private registerCapabilities(registerIfAllowed: RegisterToolFn, user: User) {
 		for (const capability of Container.get(CapabilityRegistry).list('mcp')) {
-			if (grantedScopes === undefined || grantedScopes.includes(capability.scope)) {
-				capability.registerOn(registerTool, { user });
-			}
+			capability.registerOn(registerIfAllowed, { user });
 		}
 	}
 

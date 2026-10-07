@@ -4,8 +4,9 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import z from 'zod';
 
 import { type CapabilityToolDefinition, defineCapability } from './capability';
+import { PARSE_SCHEDULE_CAPABILITY_NAME } from './capability-scopes';
 
-export const PARSE_SCHEDULE_CAPABILITY_NAME = 'parse_schedule';
+export { PARSE_SCHEDULE_CAPABILITY_NAME };
 
 export const PARSE_SCHEDULE_MAX_TEXT_LENGTH = 2000;
 
@@ -71,7 +72,7 @@ export type ParseScheduleResult = {
 
 /** Finds the first schedule phrase in the text. Returns `found: false` when there is none. */
 export async function parseSchedule(text: string): Promise<ParseScheduleResult> {
-	// Loaded at the first call, so the MCP module does not load the Assistant package at startup.
+	// Loaded at the first call, so that importing this capability does not load the Assistant package.
 	const { parseSchedulePhrase, scheduleToCron } = await lazyImport<typeof InstanceAi>(
 		async () => await import('@n8n/instance-ai'),
 	);

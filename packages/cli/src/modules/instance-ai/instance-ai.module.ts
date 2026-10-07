@@ -20,6 +20,11 @@ export class InstanceAiModule implements ModuleInterface {
 		credentialBroker.registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
 		Container.get(SandboxSettingsService).registerCredentialUses();
 		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
+		// This module owns its capabilities, so MCP and the Assistant offer them only while it is on.
+		const { registerInstanceAiCapabilities } = await import(
+			'./capabilities/instance-ai-capabilities.js'
+		);
+		registerInstanceAiCapabilities();
 		await settingsService.loadFromDb();
 		// Instantiating the setup telemetry service registers its settings-updated
 		// listener. A setup finished by env vars only becomes observable at boot,

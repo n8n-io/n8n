@@ -25,6 +25,8 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { registerInstanceAiCapabilities } from '@/modules/instance-ai/capabilities/instance-ai-capabilities';
+import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -71,6 +73,13 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
+		// What the instance-ai module registers in its init.
+		Container.set(CapabilityRegistry, new CapabilityRegistry());
+		registerInstanceAiCapabilities(Container.get(CapabilityRegistry));
+	});
+
+	afterAll(() => {
+		Container.set(CapabilityRegistry, new CapabilityRegistry());
 	});
 
 	describe('getScopeTools', () => {
@@ -217,6 +226,52 @@ describe('McpProtectedResource', () => {
 			expect((await withoutBuilder.getScopeTools())['aiPreference:read']).toEqual([
 				'get_user_preferences',
 			]);
+		});
+
+		it('lists parse_schedule under workflow:read only, like a built-in tool', async () => {
+			const scopeTools = await resource.getScopeTools();
+
+			const scopesWithIt = Object.entries(scopeTools)
+				.filter(([, tools]) => tools.includes('parse_schedule'))
+				.map(([scope]) => scope);
+			expect(scopesWithIt).toEqual(['workflow:read']);
+		});
+
+		it('lists parse_schedule also when the builder is off', async () => {
+			const withoutBuilder = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ builderEnabled: false }),
+				moduleRegistry,
+				licenseState,
+				postHogClient,
+			);
+
+			expect((await withoutBuilder.getScopeTools())['workflow:read']).toContain('parse_schedule');
+		});
+
+		// For example the instance-ai module is disabled, so the MCP server cannot offer the tool.
+		it('hides parse_schedule when no module registered it', async () => {
+			Container.set(CapabilityRegistry, new CapabilityRegistry());
+
+			const scopeTools = await resource.getScopeTools();
+
+			expect(Object.values(scopeTools).flat()).not.toContain('parse_schedule');
+			// Unrelated entries under the same scope are untouched.
+			expect(scopeTools['workflow:read']).toContain('search_workflows');
+			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+		});
+
+		// Consent reads the registry for each request, after every module has run its init.
+		it('lists parse_schedule as soon as a module registers it', async () => {
+			Container.set(CapabilityRegistry, new CapabilityRegistry());
+			const before = await resource.getScopeTools();
+
+			registerInstanceAiCapabilities(Container.get(CapabilityRegistry));
+
+			expect(before['workflow:read']).not.toContain('parse_schedule');
+			expect((await resource.getScopeTools())['workflow:read']).toContain('parse_schedule');
 		});
 
 		it('should drop agent scopes and tools when the agents module is inactive', async () => {

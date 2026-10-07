@@ -5,7 +5,7 @@ import {
 	type JournalAction,
 	type JournalRecord,
 	type ReplayPolicy,
-} from '../tool-call-journal.policy';
+} from '../replay-policy';
 
 const policyArb = fc.constantFrom<ReplayPolicy>('safe', 'unsafe');
 const recordArb: fc.Arbitrary<JournalRecord> = fc.record({

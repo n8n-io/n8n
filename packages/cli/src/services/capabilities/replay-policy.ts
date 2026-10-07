@@ -6,7 +6,7 @@
  * A call that has an intent but no outcome re-runs only when it is safe to run twice.
  */
 
-import type { ToolDefinition } from '../mcp.types';
+import type { ToolDefinition } from '@/modules/mcp/mcp.types';
 
 export type ReplayPolicy = 'safe' | 'unsafe';
 

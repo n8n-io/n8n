@@ -1,4 +1,4 @@
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -10,6 +10,7 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 
@@ -33,6 +34,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { registerInstanceAiCapabilities } from '@/modules/instance-ai/capabilities/instance-ai-capabilities';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
 	EMPTY_INSTANCE_CONTEXT_TEXT,
@@ -45,6 +47,8 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
+import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
+import { CAPABILITY_TOOLS_BY_SCOPE } from '@/services/capabilities/capability-scopes';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -141,6 +145,47 @@ describe('getAllowedToolNames', () => {
 	it('exposes the renamed list_n8n_gateway_services tool via credential:read', () => {
 		expect(getAllowedToolNames(['credential:read'])).toContain('list_n8n_gateway_services');
 	});
+
+	// Capability tools take the same path as built-in tools: a grant reaches them through their scope.
+	it('allows parse_schedule with workflow:read only', () => {
+		expect(getAllowedToolNames(['workflow:read'])).toContain('parse_schedule');
+		expect(getAllowedToolNames(['workflow:write', 'execution:read'])).not.toContain(
+			'parse_schedule',
+		);
+	});
+});
+
+describe('capability tools in TOOLS_BY_SCOPE', () => {
+	const capabilityTools = Object.entries(CAPABILITY_TOOLS_BY_SCOPE).flatMap(([scope, names]) =>
+		(names ?? []).map((name) => ({ scope, name })),
+	);
+
+	it('includes parse_schedule', () => {
+		expect(capabilityTools).toContainEqual({ scope: 'workflow:read', name: 'parse_schedule' });
+	});
+
+	// A second entry means that a built-in tool has the same name. The MCP server would then fail
+	// to register the tool twice, for every request.
+	it.each(capabilityTools)('lists $name under $scope and nowhere else', ({ scope, name }) => {
+		const entries = Object.entries(TOOLS_BY_SCOPE).flatMap(([toolScope, names]) =>
+			names.filter((toolName) => toolName === name).map(() => toolScope),
+		);
+
+		expect(entries).toEqual([scope]);
+	});
+
+	// Every scope has built-in tools, so an empty head means the capability tools replaced them.
+	it.each(MCP_INSTANCE_SCOPES)(
+		'appends the capability tools of %s to its built-in tools',
+		(scope) => {
+			const tools = TOOLS_BY_SCOPE[scope];
+			const capabilityNames = CAPABILITY_TOOLS_BY_SCOPE[scope] ?? [];
+			const builtInCount = tools.length - capabilityNames.length;
+
+			expect(builtInCount).toBeGreaterThan(0);
+			expect(tools.slice(builtInCount)).toEqual(capabilityNames);
+		},
+	);
 });
 
 describe('McpService scope enforcement', () => {
@@ -222,6 +267,9 @@ describe('McpService scope enforcement', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// The drift guards include capability tools, so register what the owning modules register.
+		Container.set(CapabilityRegistry, new CapabilityRegistry());
+		registerInstanceAiCapabilities(Container.get(CapabilityRegistry));
 	});
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
@@ -595,6 +643,7 @@ describe('McpService scope enforcement', () => {
 				'get_workflow_history',
 				'get_workflow_version',
 				'get_workflow_versions_diff',
+				'parse_schedule',
 			]),
 		);
 	});

@@ -55,7 +55,10 @@ export type CapabilityToolDefinition<S extends z.ZodRawShape> = ToolDefinition<S
 /** An AI capability that is written once and offered on each of its surfaces. */
 export type Capability = {
 	readonly name: string;
-	/** An OAuth token must hold this scope before the MCP server offers the capability. */
+	/**
+	 * An OAuth token must hold this scope before the MCP server offers the capability.
+	 * `CAPABILITY_TOOLS_BY_SCOPE` lists an MCP capability under this scope.
+	 */
 	readonly scope: McpScope;
 	readonly surfaces: readonly CapabilitySurface[];
 	/** Registers the tool on an MCP server for one user request. */
@@ -89,7 +92,10 @@ export type CapabilityAssistantOptions<S extends z.ZodRawShape> = {
 };
 
 export type CapabilityInput<S extends z.ZodRawShape> = {
-	/** The tool name on every surface. It must be unique across capabilities and MCP tools. */
+	/**
+	 * The tool name on every surface. It must be unique across capabilities and MCP tools. A
+	 * capability with the 'mcp' surface must be listed under its scope in `CAPABILITY_TOOLS_BY_SCOPE`.
+	 */
 	name: string;
 	scope: McpScope;
 	/** Defaults to every surface. */

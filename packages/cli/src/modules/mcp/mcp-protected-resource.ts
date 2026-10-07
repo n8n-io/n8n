@@ -11,6 +11,7 @@ import { Container, Service } from '@n8n/di';
 import type { ProtectedResource, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
 import { PostHogClient } from '@/posthog';
+import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
 
 import {
 	ACTIVITY_LOG_TOOLS,
@@ -22,6 +23,7 @@ import {
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
+	getUnregisteredCapabilityTools,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -83,36 +85,44 @@ export class McpProtectedResource implements ProtectedResource {
 	 * screen never advertises tools a grant cannot deliver.
 	 */
 	async getScopeTools(): Promise<Record<string, string[]>> {
-		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
-		const tagsDisabled = this.globalConfig.tags.disabled;
-		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
-		// Consent and tool registration use the same instance activity gate.
-		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
-		let instanceContextEnabled = false;
-		try {
-			instanceContextEnabled =
-				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
-				true;
-		} catch {
-			// Keep context tools hidden when the gate cannot be read.
-		}
+		const hiddenTools = await this.getHiddenTools();
 
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
 				.filter(([scope]) => supportedScopes.has(scope))
-				.map(([scope, tools]) => [
-					scope,
-					tools.filter(
-						(tool) =>
-							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
-							(!tagsDisabled || tool !== 'list_workflow_tags') &&
-							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
-							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
-							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
-					),
-				]),
+				.map(([scope, tools]) => [scope, tools.filter((tool) => !hiddenTools.has(tool))]),
 		);
+	}
+
+	/** The mapped tools that this instance does not register for any grant. */
+	private async getHiddenTools(): Promise<Set<string>> {
+		const { endpoints, tags } = this.globalConfig;
+		// Consent and tool registration use the same instance activity gate.
+		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
+		const instanceContextEnabled = await this.isInstanceContextEnabled();
+
+		return new Set([
+			...(endpoints.mcpBuilderEnabled ? [] : BUILDER_TOOLS),
+			...(tags.disabled ? ['list_workflow_tags'] : []),
+			...(this.licenseState.isFoldersLicensed() ? [] : FOLDER_FEATURE_TOOLS),
+			...(instanceContextAvailable ? [] : ACTIVITY_LOG_TOOLS),
+			...(instanceContextEnabled ? [] : INSTANCE_CONTEXT_TOOLS),
+			// The owning module registers a capability, so it is absent while that module is off.
+			...getUnregisteredCapabilityTools(Container.get(CapabilityRegistry)),
+		]);
+	}
+
+	private async isInstanceContextEnabled(): Promise<boolean> {
+		try {
+			return (
+				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
+				true
+			);
+		} catch {
+			// Keep context tools hidden when the gate cannot be read.
+			return false;
+		}
 	}
 
 	getResourceUrl(): string {
