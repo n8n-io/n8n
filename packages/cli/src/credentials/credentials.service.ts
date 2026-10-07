@@ -971,17 +971,15 @@ export class CredentialsService {
 	/**
 	 * Decrypts a stored credential whose secret is about to leave n8n, such as a test call to its
 	 * provider. Refuses what the credential policy blocks; `decrypt` stays for display and rewrite.
-	 * `projectId` defaults to the owning project. Pass `null` to judge on instance policy only.
+	 * `projectId` defaults to the owning project. With no owner, only instance policy applies.
 	 */
 	async decryptForUse(
 		credential: CredentialsEntity,
 		actor: PolicyActor,
-		projectId?: string | null,
+		projectId?: string,
 	): Promise<ICredentialDataDecryptedObject> {
 		const judgedProjectId =
-			projectId === undefined
-				? ((await this.findCredentialOwningProject(credential.id))?.id ?? null)
-				: projectId;
+			projectId ?? (await this.findCredentialOwningProject(credential.id))?.id ?? null;
 		await this.enforceCredentialUse(credential, actor, judgedProjectId);
 		return await this.decrypt(credential, true);
 	}
@@ -2381,7 +2379,7 @@ export class CredentialsService {
 		if (credentialsToTest && credentialsToTest.type !== storedCredential.type) {
 			await this.enforceCredentialUse(credentialsToTest, actor, projectId);
 		}
-		const decryptedData = await this.decryptForUse(storedCredential, actor, projectId);
+		const decryptedData = await this.decryptForUse(storedCredential, actor, owningProject?.id);
 		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
 			? deepCopy(credentialsToTest)
 			: {

@@ -1172,12 +1172,24 @@ describe('CredentialsService', () => {
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 		});
 
-		it('judges on instance policy only when given a null project', async () => {
+		it('judges on the given project without looking up the owner', async () => {
 			vi.spyOn(service, 'decrypt').mockResolvedValue({});
 
-			await service.decryptForUse(storedCredential, ownerActor, null);
+			await service.decryptForUse(storedCredential, ownerActor, 'project-2');
 
 			expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'project-2' }),
+				ownerActor,
+			);
+		});
+
+		it('judges on instance policy only when the credential has no owning project', async () => {
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+			vi.spyOn(service, 'decrypt').mockResolvedValue({});
+
+			await service.decryptForUse(storedCredential, ownerActor);
+
 			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: null }),
 				ownerActor,
@@ -1188,9 +1200,9 @@ describe('CredentialsService', () => {
 			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
 			const decrypt = vi.spyOn(service, 'decrypt');
 
-			await expect(service.decryptForUse(storedCredential, ownerActor, null)).rejects.toThrow(
-				PolicyViolationError,
-			);
+			await expect(
+				service.decryptForUse(storedCredential, ownerActor, 'project-1'),
+			).rejects.toThrow(PolicyViolationError);
 			expect(decrypt).not.toHaveBeenCalled();
 		});
 	});
