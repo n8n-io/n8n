@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
+import { isContainedWithin, LicenseState, Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
@@ -17,7 +17,6 @@ import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
-import { License } from '@/license';
 import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
 import { containsExpression } from '@/utils';
 
@@ -279,9 +278,7 @@ export function sourceControlFoldersExistCheck(
 }
 
 export function isSourceControlLicensed() {
-	const license = Container.get(License);
-	// oxlint-disable-next-line typescript/no-deprecated
-	return license.isSourceControlLicensed();
+	return Container.get(LicenseState).isSourceControlLicensed();
 }
 
 export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair> {

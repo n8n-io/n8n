@@ -1,7 +1,8 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { PublicUser } from '@n8n/db';
 import {
 	AuthIdentity,
@@ -39,7 +40,6 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
-import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -68,7 +68,7 @@ export class UserService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly jwtService: JwtService,
 		private readonly projectService: ProjectService,
-		private readonly license: License,
+		private readonly license: LicenseState,
 		private readonly externalHooks: ExternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -525,8 +525,7 @@ export class UserService {
 			);
 		}
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (!this.license.isWithinUsersLimit()) {
+		if (this.license.getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
@@ -541,7 +540,6 @@ export class UserService {
 		}
 
 		const attributes = invitations.map(({ email, role }) => {
-			// oxlint-disable-next-line typescript/no-deprecated
 			if (role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
 				throw new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',

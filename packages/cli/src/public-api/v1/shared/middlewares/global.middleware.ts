@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
+import { LicenseState } from '@n8n/backend-common';
 import { type BooleanLicenseFeature, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { DeprecationInfo } from '@n8n/decorators';
@@ -9,7 +10,6 @@ import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@n8n/errors';
-import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import type { PaginatedRequest } from '@/public-api/types';
@@ -171,9 +171,7 @@ export const validLicenseWithUserQuota = (
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	const license = Container.get(License);
-	// oxlint-disable-next-line typescript/no-deprecated
-	if (license.getUsersLimit() !== UNLIMITED_LICENSE_QUOTA) {
+	if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 		return res.status(403).json({
 			message: USER_QUOTA_FORBIDDEN_MESSAGE,
 		});
@@ -184,7 +182,7 @@ export const validLicenseWithUserQuota = (
 
 export const isLicensed = (feature: BooleanLicenseFeature) => {
 	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		if (Container.get(License).isLicensed(feature)) return next();
+		if (Container.get(LicenseState).isLicensed(feature)) return next();
 
 		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 	};

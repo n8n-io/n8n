@@ -3,7 +3,7 @@ import type {
 	AiAskRequestDto,
 	AiChatRequestDto,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -26,11 +26,11 @@ export class AiService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async init() {
-		// oxlint-disable-next-line typescript/no-deprecated
-		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
+		const aiAssistantEnabled = this.licenseState.isAiAssistantLicensed();
 
 		if (!aiAssistantEnabled) {
 			return;
@@ -74,8 +74,7 @@ export class AiService {
 
 	/** Whether the AI service proxy is enabled (license + base URL configured). */
 	isProxyEnabled(): boolean {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return this.licenseService.isAiAssistantEnabled() && !!this.globalConfig.aiAssistant.baseUrl;
+		return this.licenseState.isAiAssistantLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
 	}
 
 	/** Return the initialized AiAssistantClient. Initializes lazily if needed. */

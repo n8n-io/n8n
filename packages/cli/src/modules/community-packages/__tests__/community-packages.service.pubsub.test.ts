@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
@@ -8,7 +8,6 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { NPM_PACKAGE_STATUS_GOOD } from '@/constants';
-import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -44,7 +43,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
 	mockInstance(InstalledNodesRepository);
@@ -112,7 +111,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 
 		request.mockResolvedValue({ status: NPM_PACKAGE_STATUS_GOOD });
 
-		license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+		license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 		loadNodesAndCredentials.loadPackage.mockResolvedValue(
 			mock<PackageDirectoryLoader>({
 				loadedNodes: [{ name: 'a-node-from-the-loader', version: 1 }],

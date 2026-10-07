@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { EventService, UrlService, RoleCacheService } from '@n8n/backend-services';
+import { LicenseState } from '@n8n/backend-common';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
@@ -358,8 +359,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * database yet when the follower starts up.
 	 */
 	private async ensureMultiMainLicensed() {
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (this.license.isMultiMainLicensed()) return;
+		if (Container.get(LicenseState).isMultiMainLicensed()) return;
 
 		if (!this.instanceSettings.isLeader) {
 			const maxRetries = 5;
@@ -370,8 +370,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				);
 				await sleep(delayMs);
 				await this.license.reload();
-				// oxlint-disable-next-line typescript/no-deprecated
-				if (this.license.isMultiMainLicensed()) return;
+				if (Container.get(LicenseState).isMultiMainLicensed()) return;
 			}
 		}
 
