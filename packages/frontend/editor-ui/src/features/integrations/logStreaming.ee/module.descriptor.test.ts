@@ -1,4 +1,6 @@
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { createPinia, setActivePinia } from 'pinia';
 
 import { LOG_STREAM_MODAL_KEY } from './modals';
 import { LogStreamingModule } from './module.descriptor';
@@ -12,6 +14,26 @@ describe('LogStreamingModule', () => {
 		expect(LogStreamingModule.settingsPages?.map(({ id, order }) => ({ id, order }))).toEqual([
 			{ id: 'settings-log-streaming', order: 170 },
 		]);
+	});
+
+	describe('settings sidebar item', () => {
+		const item = () => LogStreamingModule.settingsPages![0];
+
+		beforeEach(() => {
+			setActivePinia(createPinia());
+		});
+
+		it('should be available to a user with the logStreaming:manage scope', () => {
+			useRBACStore().setGlobalScopes(['logStreaming:manage']);
+
+			expect(item().available).toBe(true);
+		});
+
+		it('should be hidden from a user without the logStreaming:manage scope', () => {
+			useRBACStore().setGlobalScopes(['workflow:read']);
+
+			expect(item().available).toBe(false);
+		});
 	});
 
 	it('should show a placeholder page, so unlicensed users still reach the paywall', () => {

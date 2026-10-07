@@ -22,7 +22,9 @@ export const LogStreamingModule = defineFrontendModule({
 			id: 'settings-log-streaming',
 			order: 170,
 			icon: 'log-in',
-			label: i18n.baseText('settings.log-streaming'),
+			get label() {
+				return i18n.baseText('settings.log-streaming');
+			},
 			position: 'top',
 			route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
 			get available() {
