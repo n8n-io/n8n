@@ -1,3 +1,4 @@
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IHttpRequestOptions,
@@ -18,7 +19,13 @@ import {
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
-import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
+import {
+	getSelectedLakebaseTarget,
+	readLakebaseTarget,
+	resolveLakebaseSchemaUrlFor,
+} from '../actions/lakebase/helpers';
+import { isOpenApiUnavailable } from '../actions/lakebase/openApiDocument';
+import { fetchLakebaseFunctions } from '../actions/lakebase/schema';
 import {
 	assertLakebaseOAuth,
 	collectPages,
@@ -741,4 +748,41 @@ export async function getLakebaseTables(
 			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
 		);
 	}
+}
+
+/** Databricks ships helper functions into user schemas; hide them from the list. UX only: grants decide what a user can run */
+const INTERNAL_FUNCTION_PREFIX = /^(databricks_|pg_databricks_|_dbx_|grant_)/;
+
+export async function getLakebaseFunctions(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const target = readLakebaseTarget(this);
+	for (const [key, value] of Object.entries(target)) {
+		if (!value) {
+			const label = key[0].toUpperCase() + key.slice(1);
+			return { results: [{ name: `Please Select a ${label} First`, value: '' }] };
+		}
+	}
+
+	const schemaUrl = await resolveLakebaseSchemaUrlFor(this, target);
+
+	let names: string[];
+	try {
+		names = await fetchLakebaseFunctions(this, schemaUrl);
+	} catch (error) {
+		if (!isOpenApiUnavailable(error, `${schemaUrl}/openapi.json`)) throw error;
+		throw new NodeOperationError(
+			this.getNode(),
+			'Turn on the OpenAPI specification setting of the Data API to list functions, or enter the function name By ID',
+		);
+	}
+
+	const needle = filter?.toLowerCase();
+	return {
+		results: names
+			.filter((name) => !INTERNAL_FUNCTION_PREFIX.test(name))
+			.filter((name) => !needle || name.toLowerCase().includes(needle))
+			.map((name) => ({ name, value: name })),
+	};
 }
