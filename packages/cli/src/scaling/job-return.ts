@@ -24,8 +24,8 @@ async function moveToFrontOfPriority(job: Job, logger: Logger) {
 	}
 }
 
-/** Fails the job so that Bull retries it under the same id, without publishing a failure. */
-export async function returnJobToQueue(job: Job, logger: Logger): Promise<never> {
+/** Always throws, failing the job so that Bull retries it under the same id without publishing a failure. */
+export async function throwJobBackToQueue(job: Job, logger: Logger): Promise<never> {
 	grantRetryAttempt(job);
 	await moveToFrontOfPriority(job, logger);
 	throw new JobReturnedToQueueError(job.id.toString());

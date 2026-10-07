@@ -21,7 +21,7 @@ import { assertNever } from '@/utils';
 import { JOB_TYPE_NAME } from './constants';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
-import { returnJobToQueue } from './job-return';
+import { throwJobBackToQueue } from './job-return';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
 	JobQueue,
@@ -182,7 +182,7 @@ export class ScalingService {
 					{ executionId, jobId },
 				);
 				// A job started this late may not finish before the force exit, so another worker runs it.
-				await returnJobToQueue(job, this.logger);
+				await throwJobBackToQueue(job, this.logger);
 			}
 
 			try {

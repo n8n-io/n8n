@@ -4,7 +4,7 @@ import { Redis } from 'ioredis';
 import { once } from 'node:events';
 
 import { JOB_TYPE_NAME } from '../constants';
-import { returnJobToQueue } from '../job-return';
+import { throwJobBackToQueue } from '../job-return';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
 
 const REDIS_HOST = process.env.N8N_TEST_REDIS_HOST;
@@ -13,7 +13,7 @@ const REDIS_PORT = Number(process.env.N8N_TEST_REDIS_PORT);
 const PREFIX = `job-return-${process.pid}-${Date.now()}`;
 const QUEUE_NAME = 'jobs';
 
-describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () => {
+describe.skipIf(!REDIS_HOST || !REDIS_PORT)('throwJobBackToQueue (real Redis)', () => {
 	let control: Redis;
 	let queues: JobQueue[];
 
@@ -48,7 +48,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 			await queue.pause(true, true);
 			markStarted(activeJob);
 			await released;
-			await returnJobToQueue(activeJob, mockLogger());
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const heldJob = await started;
@@ -111,7 +111,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			await returnJobToQueue(activeJob, mockLogger());
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const [returnedJob] = await failedOnWorkerA;
@@ -149,7 +149,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			markStarted(activeJob);
 			await released;
-			await returnJobToQueue(activeJob, mockLogger());
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const activeJob = await started;
@@ -192,7 +192,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			await returnJobToQueue(activeJob, mockLogger());
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const [returnedJob] = await failedOnWorkerA;
