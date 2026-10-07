@@ -1,6 +1,6 @@
 import type { Action } from '@n8n/node-sdk';
-import { contractsOfPackage, freezePackage } from '@n8n/node-sdk/freeze';
-import { hostRuntime, type FrozenVersion } from '@n8n/node-sdk/host';
+import { contractsOfPackage, packPackage } from '@n8n/node-sdk/pack';
+import { hostRuntime, type PackedVersion } from '@n8n/node-sdk/host';
 import { replayFixtures } from '@n8n/node-sdk/publish';
 import {
 	contractCatalogOf,
@@ -18,7 +18,7 @@ import path from 'node:path';
 import { ACTION_ORDER } from '../catalog';
 
 const nodesCore = { name: '@n8n/nodes-core', dir: path.resolve(__dirname, '../..') };
-// The actions with a bundle, as freeze finds them in the action files.
+// The actions with a bundle, as the build finds them in the action files.
 const actions: Action[] = [];
 
 beforeAll(async () => {
@@ -34,7 +34,7 @@ const fixturesOf = (id: string) =>
 	parseFixtures(readFileSync(path.join(nodesCore.dir, 'fixtures', `${id}.json`), 'utf8'));
 
 /** The bundled HEAD of an action, as the host reads it from the embedded store. */
-async function headOf(id: string): Promise<FrozenVersion> {
+async function headOf(id: string): Promise<PackedVersion> {
 	const store = storeReader(storeFilesOfDir(STORE_DIR));
 	const [record] = await store.records(id);
 	const read = record && (await store.readManifest(record));
@@ -60,7 +60,7 @@ describe('bundled versions', () => {
 	it('are the same bytes as the embedded store of the build', async () => {
 		const copy = mkdtempSync(path.join(tmpdir(), 'nodes-core-versions-'));
 		try {
-			const { manifests } = await freezePackage(nodesCore, copy);
+			const { manifests } = await packPackage(nodesCore, copy);
 			const filesOf = (dir: string) =>
 				readdirSync(dir, { recursive: true, encoding: 'utf8' })
 					.filter((file) => statSync(path.join(dir, file)).isFile())

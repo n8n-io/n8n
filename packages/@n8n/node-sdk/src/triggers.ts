@@ -49,7 +49,7 @@ import {
 	withCredentialHostsOf,
 	type Executor,
 	type ExecutorHost,
-	type FrozenVersion,
+	type PackedVersion,
 	type HostRuntime,
 } from './runtime';
 import { actionUiSchema } from './manifest';
@@ -382,11 +382,11 @@ const MAX_PAGES = 100;
 
 type HostPoll = PollConfig<RunInput<Shape>, unknown, unknown>;
 
-/** A poll as the host gets it: a bundle frozen before `response` existed has none. */
-type FrozenPoll = Omit<HostPoll, 'response'> & Partial<Pick<HostPoll, 'response'>>;
+/** A poll as the host gets it: a bundle packed before `response` existed has none. */
+type PackedPoll = Omit<HostPoll, 'response'> & Partial<Pick<HostPoll, 'response'>>;
 
 async function fetchPages(
-	poll: FrozenPoll,
+	poll: PackedPoll,
 	pageOf: (body: unknown) => unknown,
 	http: Http,
 	input: RunInput<Shape>,
@@ -406,7 +406,7 @@ async function fetchPages(
 
 async function pollOnce(
 	id: string,
-	poll: FrozenPoll,
+	poll: PackedPoll,
 	call: Extract<TriggerCall, { readonly call: 'poll' }>,
 	{ input, http, log }: TriggerRunContext,
 ) {
@@ -549,7 +549,7 @@ export function triggerRunOf(trigger: Trigger, egress: ContractEgress | undefine
  * signature of the manifest, so a manifest without one must not hide the one of the bundle.
  */
 export function assertWebhookSignature(
-	{ id, semver, contract }: Pick<FrozenVersion['manifest'], 'id' | 'semver' | 'contract'>,
+	{ id, semver, contract }: Pick<PackedVersion['manifest'], 'id' | 'semver' | 'contract'>,
 	verify: unknown,
 	onRefusal: PermissionRefusalListener | undefined,
 ) {
@@ -560,22 +560,22 @@ export function assertWebhookSignature(
 }
 
 /**
- * The executor of a frozen trigger version with its bundle in this process. The egress comes
+ * The executor of a packed trigger version with its bundle in this process. The egress comes
  * from the manifest, as for an action, and the bundle must grant what its manifest grants.
  */
 export async function loadTriggerExecutor(
-	frozen: FrozenVersion,
+	packed: PackedVersion,
 	runtime: HostRuntime,
 ): Promise<Executor> {
-	const exported = await verifiedBundleOf(frozen, runtime.nodeContractRange);
+	const exported = await verifiedBundleOf(packed, runtime.nodeContractRange);
 	if (!('kind' in exported))
 		throw new UnexpectedError(`${exported.id} is an action, not a trigger`);
-	assertManifestPermissions(frozen.manifest, exported, runtime.reportRefusal);
+	assertManifestPermissions(packed.manifest, exported, runtime.reportRefusal);
 	if (exported.kind === 'webhook') {
-		assertWebhookSignature(frozen.manifest, exported.webhook.verify, runtime.reportRefusal);
+		assertWebhookSignature(packed.manifest, exported.webhook.verify, runtime.reportRefusal);
 	}
 	const trigger = await withCredentialHostsOf(exported, runtime.credentialManifestOf);
-	return executorOf(triggerRunOf(trigger, frozen.manifest.contract.egress));
+	return executorOf(triggerRunOf(trigger, packed.manifest.contract.egress));
 }
 
 // ── The host: the n8n entry points of a trigger node ────────────────────────────────────
@@ -839,30 +839,30 @@ export function toTriggerNodeType(
 }
 
 /**
- * One frozen trigger version. Its bundle loads at the first call, with the executor loader of
+ * One packed trigger version. Its bundle loads at the first call, with the executor loader of
  * the host: in this process or in the sandbox, by origin.
  */
-const frozenTriggerType = (frozen: FrozenVersion, runtime: HostRuntime): INodeType => {
+const packedTriggerType = (packed: PackedVersion, runtime: HostRuntime): INodeType => {
 	const type = triggerTypeOf(
-		frozen.manifest.contract,
-		nodeDescriptionOf(frozen.manifest),
-		async () => (await cachedExecutorOf(frozen, loadTriggerExecutor, runtime)).executor,
-		storedFieldOf(frozen.manifest.contract.input, frozen.manifest.ui),
+		packed.manifest.contract,
+		nodeDescriptionOf(packed.manifest),
+		async () => (await cachedExecutorOf(packed, loadTriggerExecutor, runtime)).executor,
+		storedFieldOf(packed.manifest.contract.input, packed.manifest.ui),
 		runtime,
 	);
 	const methods = lookupMethodsOf(
-		frozen.manifest.contract,
-		frozen.manifest.ui,
-		async () => await manifestLookupOwnerOf(frozen.manifest, runtime.credentialManifestOf),
+		packed.manifest.contract,
+		packed.manifest.ui,
+		async () => await manifestLookupOwnerOf(packed.manifest, runtime.credentialManifestOf),
 		runtime,
 	);
 	return methods ? { ...type, methods } : type;
 };
 
-/** The versioned node type of a trigger, from its frozen versions. Every call uses `runtime`. */
-export const toVersionedTriggerType = (versions: readonly FrozenVersion[], runtime: HostRuntime) =>
+/** The versioned node type of a trigger, from its packed versions. Every call uses `runtime`. */
+export const toVersionedTriggerType = (versions: readonly PackedVersion[], runtime: HostRuntime) =>
 	versionedTypeOf(
 		versions,
-		(frozen) => frozenTriggerType(frozen, runtime),
+		(packed) => packedTriggerType(packed, runtime),
 		runtime.nodeContractRange,
 	);

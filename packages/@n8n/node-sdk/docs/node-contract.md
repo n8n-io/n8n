@@ -53,7 +53,7 @@ flowchart LR
 | Version | Of what | Where | At run time |
 |---|---|---|---|
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
-| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Freeze writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version. Publish refuses a published version with other manifest bytes | Yes: a workflow pins it |
+| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Pack writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version. Publish refuses a published version with other manifest bytes | Yes: a workflow pins it |
 | credential version | the content | `semver` of the credential manifest, from `defineCredential({ version })`; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
 | SDK version | `@n8n/node-sdk` | `sdk` in each manifest | No: for traceability only |
 | n8n version | the product | — | Only through the Node Contract range it supports |
@@ -76,7 +76,7 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
 The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
-one frozen before 2.5.0, and a bundle of Node Contract 1.x. Freeze such a version again. The
+one packed before 2.5.0, and a bundle of Node Contract 1.x. Pack such a version again. The
 index line of a version in a store also states `nodeContract`.
 
 ## Store layout
@@ -104,8 +104,8 @@ native manifest have no bundle. The line of a credential has its n8n type `name`
 of a native version has its legacy node type in `native`, so a reader finds them from the index. A reader checks each blob
 against its digest, and the fields of each index line against the manifest. A line can also
 have `fixtures`, `signatures` (ed25519 over the manifest bytes, `key` is `sha256:` of the public
-key) and `published`. Freeze adds none of them, so it writes the same bytes for the same source.
-When freeze ships the published bytes of a version, it writes the published `fixtures` too.
+key) and `published`. Pack adds none of them, so it writes the same bytes for the same source.
+When the build ships the published bytes of a version, it writes the published `fixtures` too.
 
 ### Status lines
 
@@ -185,7 +185,7 @@ the bundle against `bundleHash`. It sends the token to the registry host only.
 
 ## Rules
 
-- Freeze writes the lowest version that has what a bundle uses
+- Pack writes the lowest version that has what a bundle uses
   (`requiredNodeContractOf`): 2.10.0 for an `errorOf` expression, 2.9.0 for a bundle that imports the validator module, 2.8.0 for the `parsers` import, 2.7.0 for a `runtime` image, 2.6.0 for counted inputs or a binary key pattern, 2.4.0 for a
   `list` binding or a `t.pageValue()` input, 2.3.0 for host imports, named inputs or a provider
   capability, 2.2.0 for a binary field, else 2.1.0. So an older host still runs it. A JS trigger bundle follows the same rule: hosts before 2.5.0 run
@@ -197,7 +197,7 @@ the bundle against `bundleHash`. It sends the token to the registry host only.
   Exception: the spike added `nodeDisplayName`, `credentialOptional`, `endpoint` and `verify` to
   the contract at 2.6.0 with no version bump, and the trigger `egress`. It also added `describe`,
   `check` and the poll time `at` to the trigger interface, and `migrate` to the action
-  interface at 2.7.0. Freeze all spike versions again.
+  interface at 2.7.0. Pack all spike versions again.
 - A new item in the host interfaces raises the one Node Contract minor. A bundle that does not
   use the new item keeps its lower `nodeContract`.
 - The contract hash covers only `contract`. The manifest fields `kind`, `nodeContract`, `sdk`
@@ -253,7 +253,7 @@ the bundle against `bundleHash`. It sends the token to the registry host only.
 - An action major changes when it adds a permission: a scope, an egress host, an import, a
   provider call, binary data access or a credential type. An auto-update then never widens what an action may do. `diffContracts`
   reads the permissions from `permissionsOf`.
-- The manifest is the permission source on both run paths. Freeze writes every static host
+- The manifest is the permission source on both run paths. Pack writes every static host
   into `contract.egress.hosts`, also the host of the node `baseUrl`, so that host is in the
   contract hash. `loadExecutor` (in this process) refuses a bundle whose export grants other
   permissions than its manifest, and it takes `egress` from the manifest. The
@@ -263,11 +263,11 @@ the bundle against `bundleHash`. It sends the token to the registry host only.
   native contracts to the same store, each with the gate of its kind.
 - Binary key patterns (`t.indexedBinaries()`, `t.openBinaries()`, an output `patternProperties`
   entry with `x-n8n-binary`) use the `binary` import of 2.2.0, but a host before 2.6.0 keeps
-  such a binary in the JSON. So freeze writes 2.6.0.
+  such a binary in the JSON. So pack writes 2.6.0.
 - Counted inputs: the contract `inputs: { count: '<field>' }` names an integer input field with
   `minimum` and `maximum` (`lintContract`). The host makes one n8n input per count from the
   parameter, as the legacy Merge node does with `numberInputs`, and `run()` gets one item list
-  per input. A host before 2.6.0 cannot make the inputs, so freeze writes 2.6.0.
+  per input. A host before 2.6.0 cannot make the inputs, so pack writes 2.6.0.
 - An output keyword that a host ignores does not raise the Node Contract minor:
   `x-n8n-claim` and `x-n8n-resource` are for builders, and a host runs a bundle that has them
   as before.
@@ -334,7 +334,7 @@ request sends the `search` input; `label`: the host filters the labels) and `err
 an error text in a page, for a service that answers an error with status 200, e.g. Slack
 `ok: false`; the lookup fails with that text). A dependent resource
 names the action input fields that its request reads in `input`, e.g. the spreadsheet of a
-sheet. `ref()` writes the lookup into the field as `x-n8n-lookup`, and freeze writes the node
+sheet. `ref()` writes the lookup into the field as `x-n8n-lookup`, and pack writes the node
 `baseUrl` into the contract. The host runs a lookup from the manifest without the bundle, as an
 action with the node's credential, the action egress, the retries and the limits. The n8n form
 shows each `ref` field as a resource locator with a list (the generated `listSearch` method,

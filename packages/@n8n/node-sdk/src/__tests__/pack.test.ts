@@ -11,11 +11,11 @@ import type { PermissionRefusal } from '../egress';
 import { defineCredential, field } from '../entry/credentials';
 import {
 	credentialTypesOf,
-	freezeAction,
-	freezePackage,
+	packAction,
+	packPackage,
 	GUEST_LACKS,
-	type FrozenAction,
-} from '../freeze';
+	type PackedAction,
+} from '../pack';
 import { npmDigestOf, npmPackageOf } from '../npm';
 import {
 	executorOf,
@@ -24,7 +24,7 @@ import {
 	nodeDescriptionOf,
 	toNodeType,
 	type ExecutorHost,
-	type FrozenVersion,
+	type PackedVersion,
 } from '../runtime';
 import { storeFilesOfDir, storeReader } from '../store';
 import { loadTriggerExecutor, toVersionedTriggerType } from '../triggers';
@@ -54,7 +54,7 @@ ${header}
 const probe = defineNode({ id: 'probe', displayName: 'Probe' });
 export const probeAction = probe.action('probe', {
 	action: 'Probe',
-	summary: 'Probe the freeze check.',
+	summary: 'Probe the pack check.',
 	flow: { effect: 'read', cardinality: 'per-item' },
 	input: {},
 	output: obj({ value: str() }),
@@ -63,16 +63,16 @@ export const probeAction = probe.action('probe', {
 } as any);
 `;
 
-describe('freezeAction', () => {
+describe('packAction', () => {
 	const dirs = { root: '' };
-	const freeze = async (value: string, header?: string, spec?: string) => {
+	const pack = async (value: string, header?: string, spec?: string) => {
 		const entry = path.join(dirs.root, `${Math.random().toString(36).slice(2)}.ts`);
 		await writeFile(entry, probeSource(value, header, spec));
-		return await freezeAction(entry, 'probeAction');
+		return await packAction(entry, 'probeAction');
 	};
 
 	beforeAll(async () => {
-		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-freeze-'));
+		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-pack-'));
 	});
 
 	afterAll(async () => {
@@ -81,7 +81,7 @@ describe('freezeAction', () => {
 
 	it('writes the image of the action to the contract', async () => {
 		const image = `node@sha256:${'a'.repeat(64)}`;
-		const { manifest } = await freeze(
+		const { manifest } = await pack(
 			"'x'",
 			'',
 			`runtime: { image: '${image}', childProcess: true },`,
@@ -92,16 +92,16 @@ describe('freezeAction', () => {
 
 	it('writes the ui block beside the contract, and refuses one that is not valid', async () => {
 		const ui = { order: ['value'], fields: { value: { widget: 'textarea' } } };
-		const { manifest } = await freeze("'x'", '', `ui: ${JSON.stringify(ui)},`);
+		const { manifest } = await pack("'x'", '', `ui: ${JSON.stringify(ui)},`);
 		expect(manifest.ui).toEqual(ui);
 		expect(manifest.contract).not.toHaveProperty('ui');
-		await expect(freeze("'x'", '', "ui: { order: 'value' },")).rejects.toThrow(
+		await expect(pack("'x'", '', "ui: { order: 'value' },")).rejects.toThrow(
 			'has a ui block that is not valid',
 		);
 	});
 
 	it('refuses an image without a digest', async () => {
-		await expect(freeze("'x'", '', "runtime: { image: 'node:24-slim' },")).rejects.toThrow(
+		await expect(pack("'x'", '', "runtime: { image: 'node:24-slim' },")).rejects.toThrow(
 			'Pin it by digest',
 		);
 	});
@@ -143,7 +143,7 @@ describe('freezeAction', () => {
 			'a Unicode property escape',
 		],
 	])('refuses a bundle that uses %s', async (_what, value, header, gap) => {
-		await expect(freeze(value, header)).rejects.toThrow(`uses what a bundle may not use: ${gap}`);
+		await expect(pack(value, header)).rejects.toThrow(`uses what a bundle may not use: ${gap}`);
 	});
 
 	it.each([
@@ -156,8 +156,8 @@ describe('freezeAction', () => {
 		['a local that shadows a global', '((process: string) => process)("local")'],
 		['a property with the name of a global', '({ process: 1, Buffer: 2 }).process'],
 		['a regex without \\p{}', "/[a-zé]+/u.test('é')"],
-	])('freezes a bundle with %s', async (_what, value) => {
-		await expect(freeze(value)).resolves.toMatchObject({ manifest: { id: 'probe.probe' } });
+	])('packs a bundle with %s', async (_what, value) => {
+		await expect(pack(value)).resolves.toMatchObject({ manifest: { id: 'probe.probe' } });
 	});
 
 	it('resolves a package without exports, with its browser build first', async () => {
@@ -176,7 +176,7 @@ describe('freezeAction', () => {
 				'browser.js': "module.exports = 'from-browser';",
 			},
 		);
-		const { bundle } = await freeze(
+		const { bundle } = await pack(
 			'mainOnly + browserFirst',
 			"import mainOnly from 'main-only';\nimport browserFirst from 'browser-first';",
 		);
@@ -186,13 +186,13 @@ describe('freezeAction', () => {
 
 	it('refuses a bundle that carries ajv', async () => {
 		const header = `import Ajv from ${JSON.stringify(require.resolve('ajv'))};`;
-		await expect(freeze("new Ajv().validate({ type: 'string' }, 'x')", header)).rejects.toThrow(
+		await expect(pack("new Ajv().validate({ type: 'string' }, 'x')", header)).rejects.toThrow(
 			'ajv (use validate of @n8n/node-sdk: the host gives it)',
 		);
 	});
 
 	it('takes validate from the host module, which needs Node Contract 2.9.0', async () => {
-		const { manifest, bundle, action } = await freeze(
+		const { manifest, bundle, action } = await pack(
 			'validate(1, t.str().json).join()',
 			"import { validate } from '@n8n/node-sdk';",
 		);
@@ -204,7 +204,7 @@ describe('freezeAction', () => {
 	});
 
 	it('writes no node description: the host projects it from the contract', async () => {
-		const { manifest, action } = await freeze('1');
+		const { manifest, action } = await pack('1');
 		expect(manifest).not.toHaveProperty('description');
 		if ('kind' in action) throw new Error('The probe is an action');
 		expect(nodeDescriptionOf(manifest)).toEqual(new (toNodeType(action))().description);
@@ -220,7 +220,7 @@ describe('freezeAction', () => {
 		['UserError', 'configuration-invalid'],
 		['OperationalError', 'temporarily-unavailable'],
 	])('runs a bundle that throws the %s of the SDK root', async (kind, cause) => {
-		const { action } = await freeze(
+		const { action } = await pack(
 			`(() => { throw new ${kind}('failed'); })()`,
 			`import { ${kind} } from '@n8n/node-sdk';`,
 		);
@@ -261,10 +261,10 @@ export const getAction = api.action('get', {
 `;
 
 describe('the manifest as the permission source', () => {
-	const state: { root: string; frozen?: FrozenAction } = { root: '' };
-	const versionOf = (contract: Record<string, unknown> = {}): FrozenVersion => {
-		if (!state.frozen) throw new Error('Not frozen');
-		const { manifest, bundle } = state.frozen;
+	const state: { root: string; packed?: PackedAction } = { root: '' };
+	const versionOf = (contract: Record<string, unknown> = {}): PackedVersion => {
+		if (!state.packed) throw new Error('Not packed');
+		const { manifest, bundle } = state.packed;
 		return {
 			manifest: { ...manifest, contract: { ...manifest.contract, ...contract } },
 			origin: 'first-party',
@@ -276,7 +276,7 @@ describe('the manifest as the permission source', () => {
 		state.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-manifest-'));
 		const entry = path.join(state.root, 'api.ts');
 		await writeFile(entry, baseUrlSource);
-		state.frozen = await freezeAction(entry, 'getAction');
+		state.packed = await packAction(entry, 'getAction');
 	});
 
 	afterAll(async () => {
@@ -284,7 +284,7 @@ describe('the manifest as the permission source', () => {
 	});
 
 	it('holds the host of the node base URL with the declared hosts', () => {
-		expect(state.frozen?.manifest.contract.egress).toEqual({
+		expect(state.packed?.manifest.contract.egress).toEqual({
 			hosts: ['api.probe.test', 'files.probe.test'],
 		});
 	});
@@ -356,10 +356,10 @@ export const labelTrigger = api.trigger('labelled', {
 `;
 
 describe('the manifest of a trigger as the permission source', () => {
-	const state: { root: string; frozen?: FrozenAction } = { root: '' };
-	const versionOf = (contract: Record<string, unknown> = {}): FrozenVersion => {
-		if (!state.frozen) throw new Error('Not frozen');
-		const { manifest, bundle } = state.frozen;
+	const state: { root: string; packed?: PackedAction } = { root: '' };
+	const versionOf = (contract: Record<string, unknown> = {}): PackedVersion => {
+		if (!state.packed) throw new Error('Not packed');
+		const { manifest, bundle } = state.packed;
 		return {
 			manifest: { ...manifest, contract: { ...manifest.contract, ...contract } },
 			origin: 'first-party',
@@ -371,7 +371,7 @@ describe('the manifest of a trigger as the permission source', () => {
 		state.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-trigger-manifest-'));
 		const entry = path.join(state.root, 'hook.ts');
 		await writeFile(entry, triggerSource);
-		state.frozen = await freezeAction(entry, 'hookTrigger');
+		state.packed = await packAction(entry, 'hookTrigger');
 	});
 
 	afterAll(async () => {
@@ -379,18 +379,15 @@ describe('the manifest of a trigger as the permission source', () => {
 	});
 
 	it('holds the host of the node base URL and the webhook signature', () => {
-		expect(state.frozen?.manifest.contract).toMatchObject({
+		expect(state.packed?.manifest.contract).toMatchObject({
 			egress: { hosts: ['api.probe.test'] },
 			verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
 		});
 	});
 
-	it('shows the advanced fields of a frozen trigger in Options, and reads them from there', async () => {
-		const { manifest, bundle } = await freezeAction(
-			path.join(state.root, 'hook.ts'),
-			'labelTrigger',
-		);
-		const version: FrozenVersion = {
+	it('shows the advanced fields of a packed trigger in Options, and reads them from there', async () => {
+		const { manifest, bundle } = await packAction(path.join(state.root, 'hook.ts'), 'labelTrigger');
+		const version: PackedVersion = {
 			manifest,
 			origin: 'first-party',
 			readBundle: async () => bundle,
@@ -440,7 +437,7 @@ describe('the manifest of a trigger as the permission source', () => {
 	});
 });
 
-describe('freezePackage with a registry', () => {
+describe('packPackage with a registry', () => {
 	const passSource = (run: string, input = '{}') => `
 import { defineNode, t } from '@n8n/node-sdk';
 
@@ -472,9 +469,9 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 
 	/** Packs the npm package of the action in `dirs.entry` with `npm pack`, and serves it at `registry`. */
 	async function publish() {
-		const frozen = await freezeAction(dirs.entry, 'pass');
+		const packed = await packAction(dirs.entry, 'pass');
 		const files = npmPackageOf(
-			{ ...frozen, fixtures: { executions: [] } },
+			{ ...packed, fixtures: { executions: [] } },
 			{ privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() },
 		);
 		const packDir = path.join(dirs.pkg, 'pack');
@@ -491,7 +488,7 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 		const packument = {
 			versions: {
 				'1.0.0': {
-					n8n: { id: 'demo.pass', digest: npmDigestOf(frozen.manifest) },
+					n8n: { id: 'demo.pass', digest: npmDigestOf(packed.manifest) },
 					dist: { tarball },
 				},
 			},
@@ -503,7 +500,7 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 					? Response.json(packument)
 					: new Response('{}', { status: 404 }),
 		);
-		return frozen;
+		return packed;
 	}
 
 	const headOf = async () => {
@@ -511,18 +508,18 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 		return (await reader.records('demo.pass'))[0];
 	};
 
-	it('ships the published bytes of a version, and freezes locally without a registry', async () => {
+	it('ships the published bytes of a version, and packs locally without a registry', async () => {
 		await writeFile(dirs.entry, passSource('({ items }) => items.map((item) => ({ item }))'));
 		const published = await publish();
 		const pkg = { name: '@acme/nodes', dir: dirs.pkg };
 		const log: string[] = [];
 		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry);
-		await freezePackage(pkg, undefined, (line) => log.push(line));
+		await packPackage(pkg, undefined, (line) => log.push(line));
 		expect(log).toEqual([]);
 
 		// Other bundle bytes, same contract.
 		await writeFile(dirs.entry, passSource('({ items }) => items.map((one) => ({ item: one }))'));
-		const { manifests } = await freezePackage(pkg, undefined, (line) => log.push(line));
+		const { manifests } = await packPackage(pkg, undefined, (line) => log.push(line));
 		expect(manifests).toEqual([published.manifest]);
 		expect(await headOf()).toMatchObject({
 			manifest: npmDigestOf(published.manifest),
@@ -531,7 +528,7 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 		expect(log).toEqual(['demo.pass@1.0.0 has unpublished changes; bump the version to ship them']);
 
 		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', '');
-		const local = await freezePackage(pkg);
+		const local = await packPackage(pkg);
 		expect(local.manifests[0]?.bundleHash).not.toBe(published.manifest.bundleHash);
 		expect((await headOf())?.manifest).toBe(npmDigestOf(local.manifests[0] ?? published.manifest));
 
@@ -543,7 +540,7 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 				"{ note: t.str().title('Note') }",
 			),
 		);
-		await expect(freezePackage(pkg)).rejects.toThrow(
+		await expect(packPackage(pkg)).rejects.toThrow(
 			'demo.pass@1.0.0 is published with another contract; bump the version in source',
 		);
 	}, 60_000);

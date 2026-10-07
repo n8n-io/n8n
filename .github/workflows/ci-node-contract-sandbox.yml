@@ -95,9 +95,9 @@ jobs:
         working-directory: packages/@n8n/node-sdk/sandbox
         run: test -x sidecar/target/release/n8n-sandbox && test -f dist/action.wasm && test -f dist/provider.wasm && test -f dist/trigger.wasm
 
-      - name: Test the sandbox and the freeze check
+      - name: Test the sandbox and the pack check
         working-directory: packages/@n8n/node-sdk
-        run: pnpm exec vitest run src/__tests__/sandbox.test.ts src/__tests__/freeze.test.ts
+        run: pnpm exec vitest run src/__tests__/sandbox.test.ts src/__tests__/pack.test.ts
 
       - name: Replay the bundled versions of nodes-integrations in the sandbox
         working-directory: packages/@n8n/nodes-integrations

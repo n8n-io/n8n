@@ -67,7 +67,7 @@ export function unresolvedCredentialPinsOf(
 	);
 }
 
-/** One version line of `index/<id>.ndjson`. Freeze writes the fields up to `name`. */
+/** One version line of `index/<id>.ndjson`. The build writes the fields up to `name`. */
 export interface StoreRecord {
 	/** The contract or credential id, e.g. `notion.databasePage.getAll`. */
 	readonly id: string;
@@ -665,7 +665,7 @@ export function verifyStoreSignature(
 /**
  * One source package. The package folder holds one file for each action or trigger in
  * `src/nodes/<node>/actions/`, the fixtures of each action in `fixtures/<id>.json`, and after the
- * build its embedded store. `freezePackage` finds the contracts in the action files, and the host
+ * build its embedded store. `packPackage` finds the contracts in the action files, and the host
  * reads the embedded store.
  */
 export interface SourcePackage {

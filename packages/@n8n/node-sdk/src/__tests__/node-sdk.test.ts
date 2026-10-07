@@ -1044,7 +1044,7 @@ describe('testPattern', () => {
 		expect(() => testPattern('a(', 'a')).toThrow(/Invalid regular expression/);
 	});
 
-	it('is the safeRegex.test that a frozen bundle imports', () => {
+	it('is the safeRegex.test that a packed bundle imports', () => {
 		const bundle = `module.exports = { default: {
 			id: 'demo.probe', version: 1, credentialTypes: [], run: () => [],
 			probe: (pattern, input) => require('n8n-workflow').safeRegex.test(pattern, input),

@@ -133,14 +133,14 @@ const DATA_SOURCE = '2a3b4c5d6e7f40818293a4b5c6d7e8f9';
 describe('notion.dataSource.pageAdded against the legacy Notion trigger', () => {
 	afterEach(() => vi.useRealTimers());
 
-	const frozen = new (toVersionedTriggerType(
+	const packed = new (toVersionedTriggerType(
 		versionsOf(pageAdded.id),
 		hostRuntime(),
 	))().getNodeType(1);
 
 	it.each([
 		['the source', new (toTriggerNodeType(pageAdded))()],
-		['the frozen bundle', frozen],
+		['the packed bundle', packed],
 	])('emits the same pages over the same polls from %s', async (_, next) => {
 		const old = new NotionTrigger();
 		const [oldData, newData]: IDataObject[] = [{}, {}];

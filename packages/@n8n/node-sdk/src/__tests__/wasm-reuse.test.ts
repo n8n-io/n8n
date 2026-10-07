@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
-import { freezeAction } from '../freeze';
+import { packAction } from '../pack';
 import { hostRuntime, type ExecutorHost } from '../runtime';
 import { wasmReuseRuntime } from '../runtimes/wasm-reuse';
 import { sandboxedVersionOf, type SandboxLimits } from '../sandbox';
@@ -68,9 +68,9 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action.wa
 			runtime: ReturnType<typeof wasmReuseRuntime>,
 			limits: Partial<SandboxLimits>,
 		) => {
-			const frozen = await freezeAction(path.join(dirs.root, 'counter.ts'), 'count');
+			const packed = await packAction(path.join(dirs.root, 'counter.ts'), 'count');
 			const { executor } = await sandboxedVersionOf(
-				{ manifest: frozen.manifest, origin: 'private', readBundle: async () => frozen.bundle },
+				{ manifest: packed.manifest, origin: 'private', readBundle: async () => packed.bundle },
 				{
 					runtime,
 					cacheDir: path.join(dirs.root, 'cache'),

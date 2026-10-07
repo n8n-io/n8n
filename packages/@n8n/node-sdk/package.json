@@ -37,9 +37,9 @@
       "types": "./dist/lift/mcp.d.ts",
       "default": "./dist/lift/mcp.js"
     },
-    "./freeze": {
-      "types": "./dist/freeze.d.ts",
-      "default": "./dist/freeze.js"
+    "./pack": {
+      "types": "./dist/pack.d.ts",
+      "default": "./dist/pack.js"
     },
     "./publish": {
       "types": "./dist/publish.d.ts",

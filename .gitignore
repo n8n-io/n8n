@@ -5,6 +5,8 @@ node_modules
 .tmp-schema-docs
 tmp
 dist
+# Node contract tests make temporary projects here and remove them; a killed run leaves one.
+.package-test-*
 coverage
 coverage-by-spec
 coverage-by-spec-backend

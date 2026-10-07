@@ -11,7 +11,7 @@ import {
 	firstPartyVersionsOf as versionsOf,
 	fixturesFileOf,
 } from './first-party';
-import { freezeAction } from '../freeze';
+import { packAction } from '../pack';
 import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';
 import { childProcessSnapshotBuilder } from '../../scripts/snapshot-bundle';
@@ -181,9 +181,9 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action-sn
 		const snapshotDirs = () => readdirSync(path.join(cacheDir(), 'snapshots'));
 
 		const counterOf = async (runtime: GuestRuntime, file = 'counter.ts') => {
-			const frozen = await freezeAction(path.join(dirs.root, file), 'count');
+			const packed = await packAction(path.join(dirs.root, file), 'count');
 			const { executor } = await sandboxedVersionOf(
-				{ manifest: frozen.manifest, origin: 'private', readBundle: async () => frozen.bundle },
+				{ manifest: packed.manifest, origin: 'private', readBundle: async () => packed.bundle },
 				{ runtime, cacheDir: cacheDir(), credentialType: () => undefined },
 				firstPartyRuntime(),
 			);

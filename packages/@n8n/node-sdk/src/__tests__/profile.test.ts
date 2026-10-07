@@ -12,7 +12,7 @@ import {
 	type RunProfile,
 	type RunProfileMeta,
 } from '../profile';
-import { hostRuntime, toVersionedNodeType, type FrozenVersion, type HostRuntime } from '../runtime';
+import { hostRuntime, toVersionedNodeType, type PackedVersion, type HostRuntime } from '../runtime';
 import { NODE_CONTRACT_VERSION, sha256 } from '../version';
 
 const query = defineNode({
@@ -41,10 +41,10 @@ const query = defineNode({
 		},
 	});
 
-// The bundle gives the contract of this file, so `loadExecutor` runs it as a frozen version.
+// The bundle gives the contract of this file, so `loadExecutor` runs it as a packed version.
 const bundle = 'module.exports = { default: globalThis.profileQuery };';
 
-const frozen: FrozenVersion = {
+const packed: PackedVersion = {
 	manifest: {
 		kind: 'action',
 		id: query.id,
@@ -92,7 +92,7 @@ const contextOf = (replies: unknown[]) => {
 };
 
 const execute = async (context: IExecuteFunctions, runtime: HostRuntime) => {
-	const NodeType = toVersionedNodeType([frozen], runtime);
+	const NodeType = toVersionedNodeType([packed], runtime);
 	const result = await new NodeType().getNodeType(1).execute?.call(context);
 	return Array.isArray(result) ? (result as INodeExecutionData[][]) : [];
 };

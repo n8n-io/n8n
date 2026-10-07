@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import type { IBinaryData, INodeParameters } from 'n8n-workflow';
 
-import { freezeAction } from '../freeze';
+import { packAction } from '../pack';
 import { hostRuntime, type BinaryStore, type ExecutorHost } from '../runtime';
 import { CONTAINER_GUEST, containerRuntime, type ContainerOptions } from '../runtimes/container';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
@@ -135,7 +135,7 @@ const probe = async (
 ) => {
 	const file = path.join(cacheDir, 'probes.ts');
 	writeFileSync(file, PROBES);
-	const { manifest, bundle } = await freezeAction(file, name);
+	const { manifest, bundle } = await packAction(file, name);
 	const { executor } = await sandboxedVersionOf(
 		{ manifest, origin: 'private', readBundle: async () => bundle },
 		{

@@ -70,7 +70,7 @@ const exportOf = (): unknown =>
 export function evaluateBundle(code: string): unknown {
 	const module: { exports: unknown } = { exports: {} };
 	const hostRequire = (id: string) => {
-		if (!(id in HOST_MODULES)) throw new Error(`A frozen bundle cannot import ${id}`);
+		if (!(id in HOST_MODULES)) throw new Error(`A packed bundle cannot import ${id}`);
 		return HOST_MODULES[id];
 	};
 	// The engine has no `node:vm`. The bundle runs in this realm either way.

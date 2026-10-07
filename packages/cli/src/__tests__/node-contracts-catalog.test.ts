@@ -70,7 +70,7 @@ describe('migrated nodes of the first-party catalog', () => {
 		expect(v4.description.credentials).toEqual(legacy.getNodeType(3).description.credentials);
 	});
 
-	it('run the owned slot through the frozen action and record its version', async () => {
+	it('run the owned slot through the packed action and record its version', async () => {
 		const parameters: Record<string, unknown> = {
 			resource: 'databasePage',
 			operation: 'getAll',

@@ -87,7 +87,7 @@ flowchart LR
   publish can replay the fixtures and the migration pairs in the sandbox.
 - The credential types of a sandboxed action come from the host (`options.credentialType`) by
   the names in the manifest. Their hosts and base URLs never come from the bundle. The bundle
-  gives only the node name, the scopes text and the node `baseUrl`. Freeze writes the `baseUrl`
+  gives only the node name, the scopes text and the node `baseUrl`. Pack writes the `baseUrl`
   host into the manifest `egress`, so the host refuses a bundle whose `baseUrl` host is not an
   `egress` host of its manifest. An action without `egress` reaches only the hosts of its
   credential base URL; with no base URL, it reaches no host.
@@ -161,7 +161,7 @@ The policy (`src/runtime-policy.ts`):
 
 - **Needs** come from the contract. `web` (no `runtime` field): web APIs and host imports only.
   `image`: the action spec declares `runtime: { image: '<ref>@sha256:<digest>', childProcess?,
-  addons? }`. Freeze refuses an image without a digest. The image is part of the contract hash,
+  addons? }`. Pack refuses an image without a digest. The image is part of the contract hash,
   and the version needs Node Contract 2.7.0. Such a version runs only in `container`, in its own
   image, with `--allow-child-process` and `--allow-addons` from the contract.
 - **Trust class**: the origin that the store recorded for the version (see the notes under "n8n configuration"):
@@ -193,7 +193,7 @@ The policy (`src/runtime-policy.ts`):
 | `N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE` | — | PEM of the first-party key. A version that it signs is first-party. |
 | `N8N_NODE_CONTRACTS_VETTING_KEY_FILE` | — | PEM of the vetting key. A version that it signs, and the first-party key does not, is community. |
 
-- The origin of a version (`FrozenVersion.origin`) is `first-party`, `community` or `private`.
+- The origin of a version (`PackedVersion.origin`) is `first-party`, `community` or `private`.
   The store records it once, when it takes the version: from the npm registry, from
   `n8n contracts:import`, or as a credential manifest that a version pins. The key that signs the
   manifest bytes gives it. A version of the embedded store is first-party without a key check,
@@ -262,9 +262,9 @@ absolute numbers are noisy. Source: `.scratch/runtime-poc/RESULTS.md` of the run
 
 ### Known issues
 
-- Two freeze gaps. A package without `exports` freezes only with `mainFields`, which
+- Two pack gaps. A package without `exports` packs only with `mainFields`, which
   `platform: 'neutral'` does not set. The `typeof` guard check counts one guard for the whole
-  bundle, so luxon freezes and then fails in WASM with `Intl is not defined`.
+  bundle, so luxon packs and then fails in WASM with `Intl is not defined`.
 - Chunked runs read ahead: a side-effect action can run items that the host does not take yet,
   and a chunk has a count limit (1000), not a byte limit.
 - The snapshot cache has no cap: 79 bundles took 3.6 GB.
@@ -295,7 +295,7 @@ A trap stops the component: every later call of the execution gets the same erro
 | global `fetch` to a local server | `fetch is not available in the sandbox. Use http.request.`; the server gets nothing |
 | `process.env`, with the name built at run time | `… is undefined` |
 | `import()` of `node:fs`, with the name built at run time | the JS engine stops (trap) |
-| a global of `GUEST_LACKS` (`src/freeze.ts`) | absent in the guest |
+| a global of `GUEST_LACKS` (`src/pack.ts`) | absent in the guest |
 | `setTimeout` with a late request | `setTimeout is not available in the sandbox`; the host gets no request |
 | endless loop | stopped at the CPU limit |
 | memory blow-up | stopped at the memory limit |
@@ -315,16 +315,16 @@ A trap stops the component: every later call of the execution gets the same erro
 
 ## Coverage and cost
 
-`versions.test.ts` of nodes-core and of nodes-integrations replays the fixtures of every frozen action in the sandbox.
+`versions.test.ts` of nodes-core and of nodes-integrations replays the fixtures of every packed action in the sandbox.
 84 of 84 pass, the 6 binary-data actions, the 3 AI roots and the 5 providers included. The 2
 triggers have no fixtures; `sandbox.test.ts` runs a poll and a webhook trigger in the sandbox. The CI job `ci-node-contract-sandbox.yml` builds the sandbox
 and runs these tests, so they do not skip there.
 
-A bundle must use web APIs only. `freezeAction` refuses a bundle that uses what the guest does not
+A bundle must use web APIs only. `packAction` refuses a bundle that uses what the guest does not
 have:
 
 - a module other than `n8n-workflow` and `@n8n/node-sdk/validator` (from the esbuild metafile).
-  Freeze keeps the SDK validator out of each bundle as `@n8n/node-sdk/validator`: the host gives
+  Pack keeps the SDK validator out of each bundle as `@n8n/node-sdk/validator`: the host gives
   it, and a guest calls the host through the `schema` import;
 - ajv, which the host already has;
 - a global of `GUEST_LACKS` (`Buffer`, `process`, `setImmediate`, `Intl`, `__dirname`, …) or
@@ -376,7 +376,7 @@ runs any component of the world. The same fixtures prove parity across languages
 ## Risks
 
 - StarlingMonkey has no `Intl`, no `\p{…}` and no `String.prototype.normalize`, and its
-  `toLowerCase` has no final sigma rule (`ΟΝΟΜΑΣ` gives `ονομασ`, Node gives `ονομας`). The freeze
+  `toLowerCase` has no final sigma rule (`ΟΝΟΜΑΣ` gives `ονομασ`, Node gives `ονομας`). The pack
   check finds `Intl` and `\p{…}`, but not a missing method or another result. The fixture replay
   in the sandbox at publish finds such a bundle when a fixture covers the case.
 - The interpreter is 20 to 45 times slower than V8 JIT for CPU-heavy code (S14).
@@ -401,7 +401,7 @@ requests and the binary transfers go through the same `request`. The logic is in
   (`{region}.api.example.com`), or `fromInput` for a URL field. Without it, the action reaches
   the hosts of the node and credential base URLs only. An action with no base URL and no
   `egress` reaches no host, in-process and in the sandbox. A trigger reaches the hosts of its
-  base URLs only: freeze writes the node base URL host into the trigger manifest `egress`. The
+  base URLs only: pack writes the node base URL host into the trigger manifest `egress`. The
   credential hosts apply.
 - The host refuses a request outside the action hosts or the credential hosts before it sends it.
   A refused request is not retried. Every page is a new request, so every page is checked.
@@ -411,7 +411,7 @@ requests and the binary transfers go through the same `request`. The logic is in
 - A `url` must be an absolute http or https URL. A `path` must start with one `/`. The host adds
   it to the base URL path and refuses a result with another origin.
 - `egress` is in the contract document and in the contract hash, with the host of the node
-  `baseUrl` that freeze adds. A new host is a major change.
+  `baseUrl` that pack adds. A new host is a major change.
   A removed host is a minor change. The publish gate refuses `*` and a value that is not a host.
 - `permissionsOf(contract, credentialTypes, limits)` (`@n8n/node-sdk/host`) is the one view of
   the permissions of a contract: egress hosts, host templates, `fromInput`, credential types

@@ -1116,7 +1116,7 @@ function fileNameOf(headers: Readonly<Record<string, string>>, url: string): str
 	return name ? decoded(name) : undefined;
 }
 
-/** A native action or trigger has no SDK runtime: n8n runs its legacy node, so nothing freezes or loads it. */
+/** A native action or trigger has no SDK runtime: n8n runs its legacy node, so nothing packs or loads it. */
 export const nativeRunError = ({ id, native }: Pick<Action | Trigger, 'id' | 'native'>) =>
 	new UnexpectedError(`${id} runs as the legacy node ${native?.type ?? ''}`);
 
@@ -2548,7 +2548,7 @@ export function lookupMethodsOf(
 }
 
 /**
- * The lookup owner of a frozen version, without its bundle: the credential types from the
+ * The lookup owner of a packed version, without its bundle: the credential types from the
  * credential manifests of the host, else as n8n defines them, and the egress of the manifest.
  */
 export async function manifestLookupOwnerOf(
@@ -2681,8 +2681,8 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
  */
 export type ContractOrigin = 'first-party' | 'community' | 'private';
 
-/** A frozen action version: its manifest, its origin and a reader for its bundle. */
-export interface FrozenVersion {
+/** A packed action version: its manifest, its origin and a reader for its bundle. */
+export interface PackedVersion {
 	/** The version manifest. */
 	readonly manifest: VersionManifest;
 	/** Who vouches for the version. The host runs only `first-party` bundles out of the sandbox. */
@@ -2692,23 +2692,23 @@ export interface FrozenVersion {
 }
 
 /**
- * The host module of the SDK validator, since Node Contract 2.9.0. Freeze keeps the SDK
+ * The host module of the SDK validator, since Node Contract 2.9.0. Pack keeps the SDK
  * `validator` module out of each bundle, so no bundle carries ajv.
  */
 export const VALIDATOR_MODULE = '@n8n/node-sdk/validator';
 
 /**
- * Host modules a frozen bundle may import. `n8n-workflow` is part of every Node Contract
+ * Host modules a packed bundle may import. `n8n-workflow` is part of every Node Contract
  * version. A bundle tests patterns with `safeRegex.test`, so `test` is `testPattern`: the same
  * result, without a `vm` call for a pattern that it allows.
  */
 const HOST_MODULES: Readonly<Record<string, unknown>> = {
-	// The host classes, so the host classifies the errors that a frozen bundle throws.
+	// The host classes, so the host classifies the errors that a packed bundle throws.
 	'n8n-workflow': { safeRegex: { ...safeRegex, test: testPattern }, OperationalError, UserError },
 	[VALIDATOR_MODULE]: { validate },
 };
 
-/** The host gives a frozen bundle the module of this name. */
+/** The host gives a packed bundle the module of this name. */
 export const isHostModule = (name: string) => Object.hasOwn(HOST_MODULES, name);
 
 const isContract = (value: unknown): value is Action | Trigger =>
@@ -2722,7 +2722,7 @@ const isContract = (value: unknown): value is Action | Trigger =>
 		isRecord(value.poll) ||
 		isRecord(value.webhook));
 
-/** Runs a CommonJS bundle from `freezeAction` and returns the action or trigger it exports. */
+/** Runs a CommonJS bundle from `packAction` and returns the action or trigger it exports. */
 export function evaluateBundle(code: string, nodeContract: NodeContractVersion): Action | Trigger {
 	if (!implementsNodeContract(nodeContract)) {
 		throw new UserError(
@@ -2731,7 +2731,7 @@ export function evaluateBundle(code: string, nodeContract: NodeContractVersion):
 	}
 	const module: { exports: unknown } = { exports: {} };
 	const hostRequire = (id: string) => {
-		if (!(id in HOST_MODULES)) throw new UnexpectedError(`A frozen action cannot import ${id}`);
+		if (!(id in HOST_MODULES)) throw new UnexpectedError(`A packed action cannot import ${id}`);
 		return HOST_MODULES[id];
 	};
 	Reflect.apply(compileFunction(code, ['module', 'require']), undefined, [module, hostRequire]);
@@ -2740,9 +2740,9 @@ export function evaluateBundle(code: string, nodeContract: NodeContractVersion):
 	return exported;
 }
 
-/** The code of a frozen version, after its Node Contract version and its hash are checked. */
+/** The code of a packed version, after its Node Contract version and its hash are checked. */
 export async function verifiedCodeOf(
-	{ manifest, readBundle }: FrozenVersion,
+	{ manifest, readBundle }: PackedVersion,
 	range: NodeContractRange,
 ) {
 	assertNodeContract(range, manifest);
@@ -2779,12 +2779,12 @@ export function evaluateVersion(code: string, manifest: VersionManifest): Action
 	return evaluateBundle(code, manifest.nodeContract);
 }
 
-/** The bundle of a frozen version, after its Node Contract version and its hash are checked. */
+/** The bundle of a packed version, after its Node Contract version and its hash are checked. */
 export async function verifiedBundleOf(
-	frozen: FrozenVersion,
+	packed: PackedVersion,
 	range: NodeContractRange,
 ): Promise<Action | Trigger> {
-	return evaluateVersion(await verifiedCodeOf(frozen, range), frozen.manifest);
+	return evaluateVersion(await verifiedCodeOf(packed, range), packed.manifest);
 }
 
 /** The executor of the action interface for one node execution. */
@@ -2841,24 +2841,24 @@ export function assertManifestPermissions(
 }
 
 /**
- * The executor of a frozen action or provider version with its bundle in this process. The
+ * The executor of a packed action or provider version with its bundle in this process. The
  * egress comes from the manifest, as in the sandbox. The credential hosts come from the
  * credential manifests. `loadTriggerExecutor` loads a trigger version.
  */
-export async function loadExecutor(frozen: FrozenVersion, runtime: HostRuntime): Promise<Executor> {
-	const exported = await verifiedBundleOf(frozen, runtime.nodeContractRange);
+export async function loadExecutor(packed: PackedVersion, runtime: HostRuntime): Promise<Executor> {
+	const exported = await verifiedBundleOf(packed, runtime.nodeContractRange);
 	if ('kind' in exported) throw new UnexpectedError(`${exported.id} is a trigger, not an action`);
-	assertManifestPermissions(frozen.manifest, exported, runtime.reportRefusal);
-	const { errorOf } = frozen.manifest;
+	assertManifestPermissions(packed.manifest, exported, runtime.reportRefusal);
+	const { errorOf } = packed.manifest;
 	const checked: Action = {
 		...exported,
 		// The manifest is what a reviewer reads, so its error expression replaces the bundle's.
 		...(errorOf ? { node: { ...exported.node, errorOf } } : {}),
-		egress: frozen.manifest.contract.egress ?? { hosts: [] },
+		egress: packed.manifest.contract.egress ?? { hosts: [] },
 	};
 	const action =
-		frozen.manifest.guest === 'http'
-			? withN8nCredentialTypes(frozen.manifest, checked, runtime.credentialTypeOf)
+		packed.manifest.guest === 'http'
+			? withN8nCredentialTypes(packed.manifest, checked, runtime.credentialTypeOf)
 			: checked;
 	const executor = executorOf(await withCredentialHostsOf(action, runtime.credentialManifestOf));
 	return async (host) => {
@@ -2868,10 +2868,10 @@ export async function loadExecutor(frozen: FrozenVersion, runtime: HostRuntime):
 }
 
 /**
- * Makes the executor of a frozen action, provider or trigger version under a host runtime, e.g. in
+ * Makes the executor of a packed action, provider or trigger version under a host runtime, e.g. in
  * a sandbox. The default is `loadExecutor`, and `loadTriggerExecutor` for a trigger.
  */
-export type ExecutorLoader = (frozen: FrozenVersion, runtime: HostRuntime) => Promise<Executor>;
+export type ExecutorLoader = (packed: PackedVersion, runtime: HostRuntime) => Promise<Executor>;
 
 /**
  * The node type of a version that no store holds, e.g. a draft in the test panel. It runs in
@@ -2879,15 +2879,15 @@ export type ExecutorLoader = (frozen: FrozenVersion, runtime: HostRuntime) => Pr
  * its response, in order: the `routes` of an execution fixture (`fixtureRouteOf`).
  */
 export function draftNodeTypeOf(
-	frozen: FrozenVersion,
+	packed: PackedVersion,
 	runtime: HostRuntime,
 	onExchange: (request: IHttpRequestOptions, response: unknown) => void,
 ): INodeType {
 	return {
-		description: nodeDescriptionOf(frozen.manifest),
+		description: nodeDescriptionOf(packed.manifest),
 		async execute(this: IExecuteFunctions) {
-			const executor = await loadExecutor(frozen, runtime);
-			const host = hostOf(this, runtime, headFieldOf(frozen));
+			const executor = await loadExecutor(packed, runtime);
+			const host = hostOf(this, runtime, headFieldOf(packed));
 			return await executor({
 				...host,
 				request: async (options, credentialType) => {
@@ -2935,8 +2935,8 @@ function withN8nCredentialTypes(
  */
 export type ContractVersionLoader = (
 	context: NodeContext,
-	head: FrozenVersion,
-) => Promise<FrozenVersion>;
+	head: PackedVersion,
+) => Promise<PackedVersion>;
 
 /**
  * What the host gives every node contract run: its configuration, its lookups and its listeners.
@@ -3042,21 +3042,21 @@ export function hostRuntime(options: HostRuntimeOptions = {}): HostRuntime {
 }
 
 /**
- * The executor of a frozen version from the executor loader of the runtime, else from `load`.
+ * The executor of a packed version from the executor loader of the runtime, else from `load`.
  * A bundle loads once: the executor stays by bundle hash.
  */
 export async function cachedExecutorOf(
-	frozen: FrozenVersion,
+	packed: PackedVersion,
 	load: ExecutorLoader,
 	runtime: HostRuntime,
 ) {
-	const { bundleHash } = frozen.manifest;
+	const { bundleHash } = packed.manifest;
 	const { executors } = runtime;
 	// A failed read, for example a registry outage, must not stay in the cache.
 	const cached = executors.has(bundleHash);
 	const executor =
 		executors.get(bundleHash) ??
-		(runtime.executorLoader ?? load)(frozen, runtime).catch((error: unknown) => {
+		(runtime.executorLoader ?? load)(packed, runtime).catch((error: unknown) => {
 			executors.delete(bundleHash);
 			throw error;
 		});
@@ -3065,27 +3065,27 @@ export async function cachedExecutorOf(
 }
 
 /** The executor of the version a node runs, and its manifest. */
-async function versionExecutorOf(context: NodeContext, head: FrozenVersion, runtime: HostRuntime) {
+async function versionExecutorOf(context: NodeContext, head: PackedVersion, runtime: HostRuntime) {
 	const loader = runtime.versionLoader;
-	const frozen = loader ? await loader(context, head) : head;
-	const { id, semver, contract } = frozen.manifest;
+	const packed = loader ? await loader(context, head) : head;
+	const { id, semver, contract } = packed.manifest;
 	if (contract.version !== head.manifest.contract.version || id !== head.manifest.id) {
 		throw new UnexpectedError(
 			`${id}@${semver} cannot run as ${head.manifest.id}@${head.manifest.semver}`,
 		);
 	}
-	assertNodeContract(runtime.nodeContractRange, frozen.manifest);
-	const { executor, cached } = await cachedExecutorOf(frozen, loadExecutor, runtime);
-	return { executor, manifest: frozen.manifest, cached };
+	assertNodeContract(runtime.nodeContractRange, packed.manifest);
+	const { executor, cached } = await cachedExecutorOf(packed, loadExecutor, runtime);
+	return { executor, manifest: packed.manifest, cached };
 }
 
 /** The stored fields follow the form of `head`, which the editor shows and stores. */
-const headFieldOf = ({ manifest }: FrozenVersion) =>
+const headFieldOf = ({ manifest }: PackedVersion) =>
 	storedFieldOf(manifest.contract.input, manifest.ui);
 
 async function executeVersion(
 	context: IExecuteFunctions,
-	head: FrozenVersion,
+	head: PackedVersion,
 	runtime: HostRuntime,
 ) {
 	const slot = runtime.runProfile;
@@ -3129,14 +3129,14 @@ async function executeVersion(
 /** The run data tells which version of the action ran. */
 function recordVersion(
 	context: IExecuteFunctions,
-	{ id, semver, bundleHash, nodeContract }: FrozenVersion['manifest'],
+	{ id, semver, bundleHash, nodeContract }: PackedVersion['manifest'],
 ) {
 	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, nodeContract } });
 }
 
 async function supplyVersion(
 	context: ISupplyDataFunctions,
-	head: FrozenVersion,
+	head: PackedVersion,
 	runtime: HostRuntime,
 	kind: ProviderKind,
 	itemIndex: number,
@@ -3151,12 +3151,12 @@ async function supplyVersion(
  * description comes from the contract, see `nodeDescriptionOf`.
  */
 export function versionedTypeOf(
-	versions: readonly FrozenVersion[],
-	typeOf: (frozen: FrozenVersion) => INodeType,
+	versions: readonly PackedVersion[],
+	typeOf: (packed: PackedVersion) => INodeType,
 	range: NodeContractRange,
 ): new () => VersionedNodeType {
 	versions.forEach(({ manifest }) => assertNodeContract(range, manifest));
-	const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
+	const majorOf = ({ manifest }: PackedVersion) => manifest.contract.version;
 	// Oldest first: the last entry of a major wins, so the newest semver describes the major.
 	const ascending = [...versions].sort((a, b) =>
 		compareSemver(a.manifest.semver, b.manifest.semver),
@@ -3164,7 +3164,7 @@ export function versionedTypeOf(
 	const latest = ascending.at(-1);
 	if (!latest) throw new UnexpectedError('A versioned node type needs at least one version');
 	const nodeVersions = Object.fromEntries(
-		ascending.map((frozen): [number, INodeType] => [majorOf(frozen), typeOf(frozen)]),
+		ascending.map((packed): [number, INodeType] => [majorOf(packed), typeOf(packed)]),
 	);
 	const { displayName, name, group, description } = nodeVersions[majorOf(latest)].description;
 	const base = { displayName, name, group, description, defaultVersion: majorOf(latest) };
@@ -3179,17 +3179,17 @@ export function versionedTypeOf(
  * The versioned node type of an action. The bundle loads on the first execution of its version.
  * A sub-node action supplies its capability instead. Every run uses `runtime`.
  */
-export const toVersionedNodeType = (versions: readonly FrozenVersion[], runtime: HostRuntime) =>
+export const toVersionedNodeType = (versions: readonly PackedVersion[], runtime: HostRuntime) =>
 	versionedTypeOf(
 		versions,
-		(frozen): INodeType => {
-			const { contract, ui } = frozen.manifest;
-			const description = nodeDescriptionOf(frozen.manifest);
+		(packed): INodeType => {
+			const { contract, ui } = packed.manifest;
+			const description = nodeDescriptionOf(packed.manifest);
 			const kind = providedKindOf(contract.output);
 			const methods = lookupMethodsOf(
 				contract,
 				ui,
-				async () => await manifestLookupOwnerOf(frozen.manifest, runtime.credentialManifestOf),
+				async () => await manifestLookupOwnerOf(packed.manifest, runtime.credentialManifestOf),
 				runtime,
 			);
 			if (kind) {
@@ -3197,7 +3197,7 @@ export const toVersionedNodeType = (versions: readonly FrozenVersion[], runtime:
 					description,
 					...(methods ? { methods } : {}),
 					async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-						return await supplyVersion(this, frozen, runtime, kind, itemIndex);
+						return await supplyVersion(this, packed, runtime, kind, itemIndex);
 					},
 				};
 			}
@@ -3208,7 +3208,7 @@ export const toVersionedNodeType = (versions: readonly FrozenVersion[], runtime:
 					: description,
 				...(methods ? { methods } : {}),
 				async execute(this: IExecuteFunctions) {
-					return await executeVersion(this, frozen, runtime);
+					return await executeVersion(this, packed, runtime);
 				},
 			};
 		},
@@ -3270,12 +3270,12 @@ function toolInputOf(input: JsonSchema, descriptions: ReadonlyMap<string, string
  */
 function toolOf(
 	context: NodeContext,
-	frozen: FrozenVersion,
+	packed: PackedVersion,
 	runtime: HostRuntime,
 	itemIndex: number,
 ) {
 	const node = context.getNode();
-	const { contract } = frozen.manifest;
+	const { contract } = packed.manifest;
 	const descriptions = new Map(
 		Object.entries(contract.input.properties ?? {}).flatMap(([name, schema]) => {
 			const raw = context.getNodeParameter(name, itemIndex, undefined, { rawExpressions: true });
@@ -3293,7 +3293,7 @@ function toolOf(
 			typeof description === 'string' && description.trim() ? description : contract.summary,
 		input: toolInputOf(contract.input, descriptions),
 		async call(args: Readonly<Record<string, unknown>>) {
-			const { executor } = await versionExecutorOf(context, frozen, runtime);
+			const { executor } = await versionExecutorOf(context, packed, runtime);
 			const outputs = await executor({
 				...hostBaseOf(context, runtime),
 				items: [{ json: {} }],
@@ -3321,21 +3321,21 @@ function toolOf(
  * Every call uses `runtime`.
  */
 export const toVersionedToolType = (
-	versions: readonly FrozenVersion[],
+	versions: readonly PackedVersion[],
 	describe: (description: INodeTypeDescription) => INodeTypeDescription,
 	runtime: HostRuntime,
 ) =>
 	versionedTypeOf(
 		versions,
-		(frozen): INodeType => ({
+		(packed): INodeType => ({
 			description: describe(
 				nodeDescriptionOf({
-					...frozen.manifest,
-					ui: toolUiOf(frozen.manifest.contract.input, frozen.manifest.ui),
+					...packed.manifest,
+					ui: toolUiOf(packed.manifest.contract.input, packed.manifest.ui),
 				}),
 			),
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-				const tool = toolOf(this, frozen, runtime, itemIndex);
+				const tool = toolOf(this, packed, runtime, itemIndex);
 				return { response: recordedSupply(tool, 'tool', this, toolTriesOf(this.getNode())) };
 			},
 			// An agent that has the engine run its tool calls runs this node: each item is one call.
@@ -3343,7 +3343,7 @@ export const toVersionedToolType = (
 			async execute(this: IExecuteFunctions) {
 				const outputs = await this.getInputData().reduce<Promise<INodeExecutionData[]>>(
 					async (done, item, index) => {
-						const results = await toolOf(this, frozen, runtime, index).call(item.json);
+						const results = await toolOf(this, packed, runtime, index).call(item.json);
 						return [
 							...(await done),
 							...results.map((json) => ({ json, pairedItem: { item: index } })),
@@ -3351,7 +3351,7 @@ export const toVersionedToolType = (
 					},
 					Promise.resolve([]),
 				);
-				recordVersion(this, (await versionExecutorOf(this, frozen, runtime)).manifest);
+				recordVersion(this, (await versionExecutorOf(this, packed, runtime)).manifest);
 				return [outputs];
 			},
 		}),

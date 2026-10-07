@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
-import { freezeAction, type FrozenAction } from '../freeze';
+import { packAction, type PackedAction } from '../pack';
 import { hostRuntime, type ExecutorHost } from '../runtime';
 import { WORKER_GUEST, workerRuntime } from '../runtimes/worker';
 import {
@@ -95,7 +95,7 @@ const scripted = (script: (calls: Served) => Promise<unknown>): GuestRuntime => 
 
 describe('chunked item runs', () => {
 	const dirs = { root: '' };
-	const frozen = new Map<'probe', FrozenAction>();
+	const packed = new Map<'probe', PackedAction>();
 	const requests: string[] = [];
 
 	const hostOf = (texts: readonly string[], continueOnFail: boolean): ExecutorHost => ({
@@ -111,7 +111,7 @@ describe('chunked item runs', () => {
 	});
 
 	const executorOf = async (runtime: GuestRuntime, chunkItems: boolean) => {
-		const probe = frozen.get('probe')!;
+		const probe = packed.get('probe')!;
 		const { executor } = await sandboxedVersionOf(
 			{ manifest: probe.manifest, origin: 'private', readBundle: async () => probe.bundle },
 			{
@@ -129,7 +129,7 @@ describe('chunked item runs', () => {
 	beforeAll(async () => {
 		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-chunked-'));
 		await writeFile(path.join(dirs.root, 'probe.ts'), PROBE);
-		frozen.set('probe', await freezeAction(path.join(dirs.root, 'probe.ts'), 'chunkProbe'));
+		packed.set('probe', await packAction(path.join(dirs.root, 'probe.ts'), 'chunkProbe'));
 	});
 
 	afterAll(async () => {

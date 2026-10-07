@@ -3,7 +3,7 @@ import { appendFile, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/p
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { freezeAction, freezeCredential, freezeNative, type FrozenAction } from '../freeze';
+import { packAction, packCredential, packNative, type PackedAction } from '../pack';
 import { credential, defineCredential, field } from '../entry/credentials';
 import { defineNode, t } from '../index';
 import { credentialChangeOf } from '../publish';
@@ -75,12 +75,12 @@ const otherKey = generateKeyPairSync('ed25519')
 
 const dirs = { root: '', entry: '' };
 
-const freeze = async (version = '1.0.0', text = 'input.text') => {
+const pack = async (version = '1.0.0', text = 'input.text') => {
 	await writeFile(dirs.entry, echoSource(version, text));
-	return await freezeAction(dirs.entry, 'echo');
+	return await packAction(dirs.entry, 'echo');
 };
 
-const storeVersionOf = ({ manifest, bundle }: FrozenAction) => ({
+const storeVersionOf = ({ manifest, bundle }: PackedAction) => ({
 	manifestText: manifestTextOf(manifest),
 	bundle,
 });
@@ -110,13 +110,13 @@ afterAll(async () => {
 });
 
 describe('the store layout', () => {
-	it('gives back the frozen manifest and bundle bytes', async () => {
-		const frozen = await freeze();
-		const credential = freezeCredential(token);
+	it('gives back the packed manifest and bundle bytes', async () => {
+		const packed = await pack();
+		const credential = packCredential(token);
 		if (!credential) throw new Error('demo.token has no manifest');
 		const dir = await newDir('round-trip');
 		const [record] = await addToStore(dir, [
-			storeVersionOf(frozen),
+			storeVersionOf(packed),
 			{ manifestText: manifestTextOf(credential) },
 		]);
 		const reader = storeReader(storeFilesOfDir(dir));
@@ -125,19 +125,19 @@ describe('the store layout', () => {
 			id: 'demo.echo',
 			version: '1.0.0',
 			kind: 'action',
-			nodeContract: frozen.manifest.nodeContract,
+			nodeContract: packed.manifest.nodeContract,
 			manifest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
-			bundle: `sha256:${frozen.manifest.bundleHash}`,
-			contractHash: frozen.manifest.contractHash,
+			bundle: `sha256:${packed.manifest.bundleHash}`,
+			contractHash: packed.manifest.contractHash,
 			permissions: { egress: ['a.example.com', 'b.example.com'], imports: [] },
 		});
 		expect(await reader.records('demo.echo')).toEqual([record]);
 		expect((await reader.catalog()).map(({ id }) => id)).toEqual(['demo.echo', 'demo.token']);
 		const read = await reader.readManifest(record as StoreRecord);
-		expect(read?.manifest).toEqual(frozen.manifest);
-		expect(read?.text).toBe(manifestTextOf(frozen.manifest));
-		expect((await reader.blob(`sha256:${frozen.manifest.bundleHash}`))?.toString('utf8')).toBe(
-			frozen.bundle,
+		expect(read?.manifest).toEqual(packed.manifest);
+		expect(read?.text).toBe(manifestTextOf(packed.manifest));
+		expect((await reader.blob(`sha256:${packed.manifest.bundleHash}`))?.toString('utf8')).toBe(
+			packed.bundle,
 		);
 		const [credentialRecord] = await reader.records('demo.token');
 		expect((await reader.readManifest(credentialRecord as StoreRecord))?.manifest).toEqual(
@@ -147,8 +147,8 @@ describe('the store layout', () => {
 
 	it('writes the same bytes for the same source', async () => {
 		const [first, second] = [await newDir('first'), await newDir('second')];
-		await addToStore(first, [storeVersionOf(await freeze())]);
-		await addToStore(second, [storeVersionOf(await freeze())]);
+		await addToStore(first, [storeVersionOf(await pack())]);
+		await addToStore(second, [storeVersionOf(await pack())]);
 		expect(await treeOf(second)).toEqual(await treeOf(first));
 		expect(Object.keys(await treeOf(first)).sort()).toEqual(
 			expect.arrayContaining(['catalog.json', 'index/demo.echo.ndjson']),
@@ -156,13 +156,13 @@ describe('the store layout', () => {
 	});
 
 	it('refuses a blob that does not match its digest', async () => {
-		const frozen = await freeze();
+		const packed = await pack();
 		const dir = await newDir('tampered');
-		const [record] = await addToStore(dir, [storeVersionOf(frozen)]);
+		const [record] = await addToStore(dir, [storeVersionOf(packed)]);
 		if (!record) throw new Error('nothing stored');
 		const reader = storeReader(storeFilesOfDir(dir));
-		const bundle = `sha256:${frozen.manifest.bundleHash}`;
-		await writeFile(path.join(dir, storeBlobFileOf(bundle)), `${frozen.bundle} `);
+		const bundle = `sha256:${packed.manifest.bundleHash}`;
+		await writeFile(path.join(dir, storeBlobFileOf(bundle)), `${packed.bundle} `);
 		await expect(reader.blob(bundle)).rejects.toThrow('does not match its digest');
 		await writeFile(path.join(dir, storeBlobFileOf(record.manifest)), '{}');
 		await expect(reader.readManifest(record)).rejects.toThrow('does not match its digest');
@@ -170,7 +170,7 @@ describe('the store layout', () => {
 
 	it('refuses an index line that does not match its manifest', async () => {
 		const dir = await newDir('lying-line');
-		const [record] = await addToStore(dir, [storeVersionOf(await freeze())]);
+		const [record] = await addToStore(dir, [storeVersionOf(await pack())]);
 		if (!record) throw new Error('nothing stored');
 		await expect(
 			storeReader(storeFilesOfDir(dir)).readManifest({ ...record, version: '1.0.7' }),
@@ -179,7 +179,7 @@ describe('the store layout', () => {
 
 	it('skips index lines that are not version records', async () => {
 		const dir = await newDir('records');
-		const [record] = await addToStore(dir, [storeVersionOf(await freeze())]);
+		const [record] = await addToStore(dir, [storeVersionOf(await pack())]);
 		await appendFile(
 			path.join(dir, storeIndexFileOf('demo.echo')),
 			[
@@ -194,20 +194,20 @@ describe('the store layout', () => {
 
 	it('keeps a stored version and refuses other bytes for it', async () => {
 		const dir = await newDir('immutable');
-		const frozen = await freeze();
-		await addToStore(dir, [storeVersionOf(frozen)]);
+		const packed = await pack();
+		await addToStore(dir, [storeVersionOf(packed)]);
 		const index = await readFile(path.join(dir, storeIndexFileOf('demo.echo')), 'utf8');
-		await addToStore(dir, [storeVersionOf(frozen)]);
+		await addToStore(dir, [storeVersionOf(packed)]);
 		expect(await readFile(path.join(dir, storeIndexFileOf('demo.echo')), 'utf8')).toBe(index);
 		await expect(
-			addToStore(dir, [storeVersionOf(await freeze('1.0.0', "input.text + '!'"))]),
+			addToStore(dir, [storeVersionOf(await pack('1.0.0', "input.text + '!'"))]),
 		).rejects.toThrow('demo.echo@1.0.0 is in the store with other bytes');
 	});
 
 	it('keeps a stored credential version and refuses other bytes for it', async () => {
 		const dir = await newDir('immutable-credential');
-		const textOf = (type: Parameters<typeof freezeCredential>[0]) => {
-			const manifest = freezeCredential(type);
+		const textOf = (type: Parameters<typeof packCredential>[0]) => {
+			const manifest = packCredential(type);
 			if (!manifest) throw new Error('no manifest');
 			return manifestTextOf(manifest);
 		};
@@ -226,7 +226,7 @@ describe('the store layout', () => {
 
 describe('unresolvedCredentialPinsOf', () => {
 	const pinning = () =>
-		freezeNative(
+		packNative(
 			defineNode({
 				id: 'demo',
 				displayName: 'Demo',
@@ -239,8 +239,8 @@ describe('unresolvedCredentialPinsOf', () => {
 				native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
 			}),
 		);
-	const credentialOf = (type: Parameters<typeof freezeCredential>[0]) => {
-		const manifest = freezeCredential(type);
+	const credentialOf = (type: Parameters<typeof packCredential>[0]) => {
+		const manifest = packCredential(type);
 		if (!manifest) throw new Error('no manifest');
 		return manifest;
 	};
@@ -284,7 +284,7 @@ describe('store status lines', () => {
 			['1.0.1', "input.text + '!'"],
 			['1.1.0', "input.text + '?'"],
 		] as const) {
-			await addToStore(dir, [storeVersionOf(await freeze(version, text))]);
+			await addToStore(dir, [storeVersionOf(await pack(version, text))]);
 		}
 		return dir;
 	};
@@ -344,7 +344,7 @@ describe('store status lines', () => {
 
 describe('store signatures', () => {
 	it('verify the manifest bytes with the trusted key', async () => {
-		const { manifest } = await freeze();
+		const { manifest } = await pack();
 		const text = manifestTextOf(manifest);
 		const signatures = [signStoreManifest(text, privateKey)];
 		expect(verifyStoreSignature({ signatures }, text, publicKey)).toBe(true);
@@ -356,7 +356,7 @@ describe('store signatures', () => {
 
 describe('credentialChangeOf', () => {
 	const manifestOf = (fields: Parameters<typeof defineCredential>[0]['fields'], doc = '') =>
-		freezeCredential(
+		packCredential(
 			defineCredential({
 				id: 'demo.token',
 				displayName: 'Demo API',

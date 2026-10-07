@@ -41,7 +41,7 @@ import {
 	type Executor,
 	type CredentialManifestOf,
 	type ExecutorLoader,
-	type FrozenVersion,
+	type PackedVersion,
 	type HostRuntime,
 	type ItemOutcome,
 } from './runtime';
@@ -1839,7 +1839,7 @@ async function only(id: string, outputs: AsyncGenerator<unknown>): Promise<unkno
  * The node of a bundle. The credential types come from the host by the names of the manifest:
  * from the credential manifest, else from `credentialType`. The name, the base URL and the scopes
  * text come from `describe()`. The bundle can name only a base URL on an egress host of its
- * manifest: freeze writes the base URL host there.
+ * manifest: pack writes the base URL host there.
  */
 async function nodeOf(
 	manifest: VersionManifest,
@@ -2085,7 +2085,7 @@ async function sandboxedTriggerCall(
 }
 
 /**
- * The action of a frozen version that runs in the sandbox. Its contract comes from the
+ * The action of a packed version that runs in the sandbox. Its contract comes from the
  * signed manifest; the host runs no bundle code. An action without egress reaches only the
  * hosts of its base URLs. `start` opens a connection for a run outside a sandboxed execution,
  * e.g. a fixture replay.
@@ -2218,18 +2218,18 @@ function unsupported({ id, kind, contract }: VersionManifest): string | undefine
 	return undefined;
 }
 
-/** The action of a frozen version in the sandbox, the executor that runs it, and its `migrate`. */
+/** The action of a packed version in the sandbox, the executor that runs it, and its `migrate`. */
 export async function sandboxedVersionOf(
-	frozen: FrozenVersion,
+	packed: PackedVersion,
 	options: SandboxOptions,
 	hostRuntime: HostRuntime,
 ) {
-	const { manifest } = frozen;
+	const { manifest } = packed;
 	const missing = unsupported(manifest);
 	if (missing) throw new UserError(missing);
 	// The host compiles the contract schemas, so they get the same guards as a schema of the guest.
 	const refused =
-		frozen.origin === 'first-party'
+		packed.origin === 'first-party'
 			? []
 			: [
 					...validateUntrusted(undefined, manifest.contract.input, { path: 'input' }),
@@ -2239,7 +2239,7 @@ export async function sandboxedVersionOf(
 		throw new UserError(`The contract of ${manifest.id}@${manifest.semver}: ${refused.join('; ')}`);
 	}
 	const kind: SandboxKind = manifest.kind;
-	const code = await verifiedCodeOf(frozen, hostRuntime.nodeContractRange);
+	const code = await verifiedCodeOf(packed, hostRuntime.nodeContractRange);
 	const config: GuestSession = {
 		kind,
 		limits: { ...DEFAULT_LIMITS, ...options.limits },
@@ -2398,19 +2398,19 @@ export function policyExecutorLoader(
 	policy: RuntimePolicy,
 	options: SandboxOptions,
 ): ExecutorLoader {
-	return async (frozen, hostRuntime) => {
-		const { manifest } = frozen;
-		const name = runtimeNameOf(policy, frozen);
-		policy.log?.(`${manifest.id}@${manifest.semver} (${frozen.origin}) runs in ${name}`);
+	return async (packed, hostRuntime) => {
+		const { manifest } = packed;
+		const name = runtimeNameOf(policy, packed);
+		policy.log?.(`${manifest.id}@${manifest.semver} (${packed.origin}) runs in ${name}`);
 		if (name === 'in-process') {
 			return manifest.kind === 'trigger'
-				? await loadTriggerExecutor(frozen, hostRuntime)
-				: await loadExecutor(frozen, hostRuntime);
+				? await loadTriggerExecutor(packed, hostRuntime)
+				: await loadExecutor(packed, hostRuntime);
 		}
 		const runtime = policy.runtimes[name];
 		if (!runtime)
 			throw new UnexpectedError(`The ${name} runtime is available, but the host gave none`);
-		return (await sandboxedVersionOf(frozen, { ...options, runtime: runtime() }, hostRuntime))
+		return (await sandboxedVersionOf(packed, { ...options, runtime: runtime() }, hostRuntime))
 			.executor;
 	};
 }

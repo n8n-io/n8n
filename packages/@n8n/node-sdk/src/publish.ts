@@ -22,11 +22,11 @@ import {
 import {
 	contractsOfPackage,
 	credentialTypesOf,
-	freezeAction,
-	freezeCredential,
-	freezeNative,
-	type FrozenAction,
-} from './freeze';
+	packAction,
+	packCredential,
+	packNative,
+	type PackedAction,
+} from './pack';
 import {
 	isDataTableColumns,
 	isDataTableInfo,
@@ -216,7 +216,7 @@ async function callResults(capability: unknown, calls: ExecutionFixture['calls']
  * A trigger replays only its migration pairs.
  */
 export async function replayFixtures(
-	{ manifest, bundle }: Pick<FrozenAction, 'manifest' | 'bundle'>,
+	{ manifest, bundle }: Pick<PackedAction, 'manifest' | 'bundle'>,
 	fixtures: ContractFixtures,
 	/** The action, its executor and its `migrate`, e.g. in the sandbox. The default runs the bundle here. */
 	loaded?: {
@@ -421,10 +421,10 @@ function movedParametersOf(previous: FormVersion, next: FormVersion): string[] {
  */
 export async function checkPublish(
 	previous: VersionManifest | undefined,
-	frozen: FrozenAction,
+	packed: PackedAction,
 	fixtures: ContractFixtures,
 ): Promise<ContractDiff | undefined> {
-	const { manifest, action } = frozen;
+	const { manifest, action } = packed;
 	const at = `${manifest.id}@${manifest.semver}`;
 	const isTrigger = 'kind' in action;
 	if (fixtures.executions.length === 0 && !isTrigger) {
@@ -447,7 +447,7 @@ export async function checkPublish(
 	}
 	const untitled = missingTitlesOf(manifest.contract);
 	if (untitled.length > 0) throw new UserError(`${at} needs field titles: ${untitled.join('; ')}`);
-	const issues = await replayFixtures(frozen, fixtures);
+	const issues = await replayFixtures(packed, fixtures);
 	if (issues.length > 0) throw new UserError(`${at} fails its fixtures: ${issues.join('; ')}`);
 	return checked?.diff;
 }
@@ -539,17 +539,17 @@ export interface PublishOptions extends PublishTarget {
 }
 
 /**
- * Gates one frozen version and publishes it as an npm package. A version already published with
+ * Gates one packed version and publishes it as an npm package. A version already published with
  * the same manifest digest is a no-op. Other bytes for a published version are refused, and so is
  * a package that holds another contract id.
  */
 async function publishVersion<M extends StoreManifest>(
 	target: PublishTarget,
-	frozen: NpmVersion & { readonly manifest: M },
+	packed: NpmVersion & { readonly manifest: M },
 	parse: (text: string) => M,
 	gate: (previous: M | undefined) => unknown,
 ): Promise<M> {
-	const { manifest } = frozen;
+	const { manifest } = packed;
 	const { id, semver } = manifest;
 	const name = npmNameOf(id, target.scope);
 	const published = await npmVersionsOf(target.registry, name);
@@ -569,23 +569,23 @@ async function publishVersion<M extends StoreManifest>(
 		.sort((a, b) => compareSemver(a.version, b.version))
 		.at(-1);
 	await gate(previous ? parse(await npmManifestTextOf(previous, name)) : undefined);
-	await npmPublish(target.registry, npmPackageOf(frozen, target));
+	await npmPublish(target.registry, npmPackageOf(packed, target));
 	return manifest;
 }
 
 /**
- * Freezes HEAD, gates it against the newest published version below it, signs it, and publishes
+ * Packs HEAD, gates it against the newest published version below it, signs it, and publishes
  * it. A version already published with the same manifest digest is a no-op; with other bytes it
  * is refused.
  */
 export async function publishAction(options: PublishOptions): Promise<VersionManifest> {
-	const frozen = await freezeAction(options.entryFile, options.exportName);
+	const packed = await packAction(options.entryFile, options.exportName);
 	const fixtures = options.fixtures ?? { executions: [] };
 	return await publishVersion(
 		options,
-		{ ...frozen, fixtures: options.fixtures },
+		{ ...packed, fixtures: options.fixtures },
 		parseManifest,
-		async (previous) => await checkPublish(previous, frozen, fixtures),
+		async (previous) => await checkPublish(previous, packed, fixtures),
 	);
 }
 
@@ -601,7 +601,7 @@ export async function publishCredential(
 		readonly type: AnyCredentialType;
 	},
 ): Promise<CredentialManifest> {
-	const manifest = freezeCredential(options.type);
+	const manifest = packCredential(options.type);
 	if (!manifest) throw new UserError(`${options.type.name} is a compat type and has no manifest`);
 	return await publishVersion(options, { manifest }, parseCredentialManifest, (previous) =>
 		checkCredentialPublish(previous, manifest),
@@ -618,7 +618,7 @@ export async function publishNative(
 		readonly native: Action | Trigger;
 	},
 ): Promise<NativeManifest> {
-	const manifest = freezeNative(options.native);
+	const manifest = packNative(options.native);
 	return await publishVersion(options, { manifest }, parseNativeManifest, (previous) =>
 		checkNativePublish(previous, manifest),
 	);

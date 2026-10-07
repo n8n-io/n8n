@@ -1,8 +1,8 @@
-import { GUEST_LACKS } from '../freeze';
+import { GUEST_LACKS } from '../pack';
 
 /**
  * The source of a module with one action per probe of the sandbox: escapes, host checks and
- * guest features. `sandbox.test.ts` and `scripts/runtime-matrix.ts` freeze its exports. A request
+ * guest features. `sandbox.test.ts` and `scripts/runtime-matrix.ts` pack its exports. A request
  * to `canary` shows that the bundle reached the network.
  */
 export const escapeProbes = (canary: string) => `import { defineNode, t } from '@n8n/node-sdk';
@@ -41,7 +41,7 @@ const spec = (run: (context: any) => Promise<unknown>, extra: Record<string, unk
 		run,
 	} as any);
 const canary = '${canary}';
-// Names built at run time pass the freeze check, so the sandbox must stop them.
+// Names built at run time pass the pack check, so the sandbox must stop them.
 export const fetchProbe = spec(async () => ({ value: String(await (globalThis as any)[['fet', 'ch'].join('')](canary)) }));
 export const processProbe = spec(async () => ({ value: String((globalThis as any)[['pro', 'cess'].join('')].env.SANDBOX_CANARY) }));
 // String() of a module namespace throws, which would hide an import that worked.

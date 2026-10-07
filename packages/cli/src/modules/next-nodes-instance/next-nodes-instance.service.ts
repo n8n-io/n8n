@@ -10,7 +10,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
-import type { FrozenAction } from '@n8n/node-sdk/freeze';
+import type { PackedAction } from '@n8n/node-sdk/pack';
 import type { ExecutionFixture, VersionManifest } from '@n8n/node-sdk/registry';
 import { isRecord } from '@n8n/utils/is-record';
 import type { JsonSchema } from '@n8n/workflow-sdk';
@@ -143,7 +143,7 @@ export class NextNodesInstanceService {
 	}
 
 	/**
-	 * Freezes an HTTP guest config as the next version of its action, checks it against the newest
+	 * Packs an HTTP guest config as the next version of its action, checks it against the newest
 	 * version of the same major (the bump and the fixtures), stores it as a `private` version, and
 	 * reloads the node types on every main.
 	 */
@@ -157,8 +157,8 @@ export class NextNodesInstanceService {
 			import('@n8n/node-sdk/registry'),
 		]);
 		const versions = await this.versions();
-		const frozen = await this.nextVersionOf(config, versions);
-		const { manifest } = frozen;
+		const packed = await this.nextVersionOf(config, versions);
+		const { manifest } = packed;
 		// One id names one action: the AI builder and the node types resolve actions by id.
 		if (firstPartyCatalog().packageOf(manifest.id)) {
 			throw new UserError(`n8n ships ${manifest.id}, so this instance cannot publish it`);
@@ -168,7 +168,7 @@ export class NextNodesInstanceService {
 			throw new UserError(`${manifest.id}@${known.manifest.semver} already has this config`);
 		}
 		const previous = this.newestOf(versions, manifest.id, manifest.contract.version);
-		await checkPublish(previous?.manifest, frozen, parseFixtures(JSON.stringify(fixtures)));
+		await checkPublish(previous?.manifest, packed, parseFixtures(JSON.stringify(fixtures)));
 		const manifestText = manifestTextOf(manifest);
 		await this.repository.insertNew([
 			{
@@ -177,7 +177,7 @@ export class NextNodesInstanceService {
 				version: manifest.semver,
 				kind: 'action',
 				manifest: manifestText,
-				bundle: frozen.bundle,
+				bundle: packed.bundle,
 				fixtures: JSON.stringify(fixtures),
 				signatures: [],
 				published: new Date(),
@@ -190,22 +190,22 @@ export class NextNodesInstanceService {
 	}
 
 	/**
-	 * Freezes `config` as the next version of its action, so the author never picks a number: a
+	 * Packs `config` as the next version of its action, so the author never picks a number: a
 	 * patch when the contract stays, a minor for an additive change, else a new major. A config
 	 * has no migration of old input, so a change that old input fails is refused.
 	 */
 	private async nextVersionOf(
 		config: unknown,
 		versions: readonly CustomVersion[],
-	): Promise<FrozenAction> {
+	): Promise<PackedAction> {
 		const contract = isRecord(config) && isRecord(config.contract) ? config.contract : undefined;
 		const latest =
 			typeof contract?.id === 'string' ? this.newestOf(versions, contract.id) : undefined;
-		if (!isRecord(config) || !contract || !latest) return await this.freeze(config);
+		if (!isRecord(config) || !contract || !latest) return await this.pack(config);
 		const { diffContracts, parseSemver } = await import('@n8n/node-sdk/registry');
 		const { major, minor, patch } = parseSemver(latest.manifest.semver);
 		const as = async (version: number, nextMinor: number, nextPatch: number) =>
-			await this.freeze({
+			await this.pack({
 				...config,
 				version: `${version}.${nextMinor}.${nextPatch}`,
 				contract: { ...contract, version },
@@ -241,7 +241,7 @@ export class NextNodesInstanceService {
 		if (!isNodeParameters(params)) throw new UserError('The parameters are not node parameters');
 		const [{ draftNodeTypeOf, nodeDescriptionOf, nodeNameOf }, { fixtureRouteOf }] =
 			await Promise.all([import('@n8n/node-sdk/host'), import('@n8n/node-sdk/testing')]);
-		const { manifest, bundle } = await this.freeze(config);
+		const { manifest, bundle } = await this.pack(config);
 		const credential = await this.credentialOf(manifest, credentialId, user);
 		const routes: Array<ReturnType<typeof fixtureRouteOf>> = [];
 		const draft = draftNodeTypeOf(
@@ -368,11 +368,11 @@ export class NextNodesInstanceService {
 	}
 
 	/**
-	 * Freezes a config with the shipped node it extends and n8n's credential types, with the hosts
+	 * Packs a config with the shipped node it extends and n8n's credential types, with the hosts
 	 * of their credential manifests, as the runtime takes them.
 	 */
-	private async freeze(config: unknown) {
-		const { freezeHttpGuest } = await import('@n8n/node-sdk/freeze');
+	private async pack(config: unknown) {
+		const { packHttpGuest } = await import('@n8n/node-sdk/pack');
 		const typeOf = customActionCredentialTypeOf((name) => this.credentialTypes.recognizes(name));
 		const contract = isRecord(config) && isRecord(config.contract) ? config.contract : {};
 		const extended = isRecord(config) && typeof config.extends === 'string' ? config.extends : '';
@@ -386,7 +386,7 @@ export class NextNodesInstanceService {
 				names.map(async (name) => [name, await this.runtime().credentialManifestOf(name)] as const),
 			),
 		);
-		return await freezeHttpGuest(config, {
+		return await packHttpGuest(config, {
 			parentOf: parentNode,
 			credentialTypeOf: (name) => {
 				const type = typeOf(name);

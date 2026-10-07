@@ -74,7 +74,7 @@ export interface NodeDefinition {
 	 * that answers an error with status 200 fails the item. The request throws a `UserError`
 	 * with the message, which `run()` may catch.
 	 *
-	 * Prefer an n8n expression over `$response.body`: freeze writes it into the manifest and the
+	 * Prefer an n8n expression over `$response.body`: pack writes it into the manifest and the
 	 * host checks each response with it, in every runtime, and an action that extends the node
 	 * copies it. A function runs in the bundle and stays with it.
 	 *
@@ -394,7 +394,7 @@ export interface HttpError extends Error {
  * }
  * ```
  */
-// A property check, not `instanceof`: a frozen bundle has its own copy of the SDK.
+// A property check, not `instanceof`: a packed bundle has its own copy of the SDK.
 export const isHttpError = (error: unknown): error is HttpError =>
 	error instanceof Error &&
 	'status' in error &&
@@ -469,7 +469,7 @@ export async function* pages<P, T>(
 	for (const { cursor, emitted } of queue) {
 		const room = limit === undefined ? undefined : limit - emitted;
 		const response = await http.request(request(cursor, room));
-		// Not `instanceof Schema`: a frozen bundle has its own copy of the SDK.
+		// Not `instanceof Schema`: a packed bundle has its own copy of the SDK.
 		const page =
 			typeof reader === 'function'
 				? reader(response)

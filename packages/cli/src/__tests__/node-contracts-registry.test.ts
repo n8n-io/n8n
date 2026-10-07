@@ -580,7 +580,7 @@ describe('NodeContractsStore', () => {
 		const loader = Object.assign(
 			Object.create(ContractNodeLoader.prototype) as ContractNodeLoader,
 			{
-				frozenVersionsOf: () => [{ manifest: { id: 'demo.echo', kind: 'action' } }],
+				packedVersionsOf: () => [{ manifest: { id: 'demo.echo', kind: 'action' } }],
 			},
 		);
 		Container.set(

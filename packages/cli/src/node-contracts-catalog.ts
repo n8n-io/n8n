@@ -1,7 +1,7 @@
 import { migrateVersion } from '@n8n/node-contract-compat';
 import type { Action } from '@n8n/node-sdk';
 import { compat, type AnyCredentialType } from '@n8n/node-sdk/credentials';
-import { toVersionedNodeType, type FrozenVersion, type HostRuntime } from '@n8n/node-sdk/host';
+import { toVersionedNodeType, type PackedVersion, type HostRuntime } from '@n8n/node-sdk/host';
 import {
 	contractCatalogOf,
 	contractNodeTypeOf,
@@ -125,7 +125,7 @@ export function migratedSlotOf({ type, typeVersion, parameters }: WorkflowNodeRe
 export function withMigratedVersions(
 	nodeType: string,
 	legacy: IVersionedNodeType,
-	loadedVersionsOf: (actionId: string) => readonly FrozenVersion[],
+	loadedVersionsOf: (actionId: string) => readonly PackedVersion[],
 	runtime: HostRuntime,
 ) {
 	const migrated = Object.entries(MIGRATED_NODES[nodeType] ?? {}).flatMap(

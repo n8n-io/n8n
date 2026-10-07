@@ -1,4 +1,4 @@
-// The JSON Schema validator of the host. A frozen bundle does not inline this module: freeze
+// The JSON Schema validator of the host. A packed bundle does not inline this module: pack
 // keeps it external as `@n8n/node-sdk/validator`, the host process gives it to the bundle, and
 // a sandbox guest calls it through the `schema` import. A bundle gets only `validate`.
 import { isRecord } from '@n8n/utils/is-record';

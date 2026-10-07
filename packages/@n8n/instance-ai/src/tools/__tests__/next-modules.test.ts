@@ -1,5 +1,5 @@
 import { validate } from '@n8n/node-sdk';
-import { freezeHttpGuest } from '@n8n/node-sdk/freeze';
+import { packHttpGuest } from '@n8n/node-sdk/pack';
 import { evaluateVersion } from '@n8n/node-sdk/host';
 import { parentNodeOf } from '@n8n/node-sdk/registry';
 import * as flowSdk from '@n8n/workflow-sdk/next';
@@ -465,7 +465,7 @@ describe('next-modules of the first-party packages', () => {
 
 describe('next-modules with actions that this instance published', () => {
 	const lockIssue = async () => {
-		const { manifest, bundle } = await freezeHttpGuest(
+		const { manifest, bundle } = await packHttpGuest(
 			{
 				extends: 'github',
 				contract: {

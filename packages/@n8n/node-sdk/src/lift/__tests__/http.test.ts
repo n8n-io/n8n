@@ -2,7 +2,7 @@ import { compat, credential } from '../../entry/credentials';
 import { toContract } from '../../define';
 import { defineNode, isRecord, t, type Action } from '../../index';
 import { mockHttp, runAction } from '../../testing';
-import { freezeHttpGuest } from '../../freeze';
+import { packHttpGuest } from '../../pack';
 import {
 	extendedConfig,
 	liftHttpGuest,
@@ -302,7 +302,7 @@ describe('extending a node', () => {
 				input: { required: ['owner', 'repository', 'issueNumber'] },
 			},
 		});
-		const { bundle } = await freezeHttpGuest(config, { parentOf: () => parent });
+		const { bundle } = await packHttpGuest(config, { parentOf: () => parent });
 		const action = liftHttpGuest(parseHttpGuestConfig(JSON.parse(bundle)));
 		const run = async (reply: unknown) => {
 			const fetch = mockHttp([
@@ -329,7 +329,7 @@ describe('extending a node', () => {
 	it('keeps the resource input, so its actions give the node as a parent', async () => {
 		const parent = parentNodeOf([getIssue], 'gh');
 		if (!parent?.extendable) throw new Error('gh is not extendable');
-		const { bundle } = await freezeHttpGuest(draft(), { parentOf: () => parent });
+		const { bundle } = await packHttpGuest(draft(), { parentOf: () => parent });
 		const lifted = liftHttpGuest(parseHttpGuestConfig(JSON.parse(bundle)));
 
 		expect(JSON.parse(bundle)).toMatchObject({ resourceFields: ['owner', 'repository'] });
@@ -340,18 +340,18 @@ describe('extending a node', () => {
 		});
 	});
 
-	it('freezes a config without resource fields as before', async () => {
+	it('packs a config without resource fields as before', async () => {
 		const parent = parentNodeOf([getIssue], 'gh');
 		if (!parent?.extendable) throw new Error('gh is not extendable');
 		const { resourceFields: _, extends: __, ...old } = extendedConfig(draft(), parent);
-		const first = await freezeHttpGuest(old);
+		const first = await packHttpGuest(old);
 		const lifted = liftHttpGuest(parseHttpGuestConfig(JSON.parse(first.bundle)));
 
-		expect((await freezeHttpGuest(old)).manifest.bundleHash).toBe(first.manifest.bundleHash);
+		expect((await packHttpGuest(old)).manifest.bundleHash).toBe(first.manifest.bundleHash);
 		expect(lifted.resourceFields).toEqual([]);
 	});
 
-	it('freezes a draft that lists the resource input itself, in any key order', async () => {
+	it('packs a draft that lists the resource input itself, in any key order', async () => {
 		const parent = parentNodeOf([getIssue], 'gh');
 		if (!parent?.extendable) throw new Error('gh is not extendable');
 		const listed = draft();
@@ -365,7 +365,7 @@ describe('extending a node', () => {
 			required: ['owner', 'repository', 'issueNumber'],
 		};
 		await expect(
-			freezeHttpGuest(
+			packHttpGuest(
 				{ ...listed, contract: { ...listed.contract, input } },
 				{ parentOf: () => parent },
 			),

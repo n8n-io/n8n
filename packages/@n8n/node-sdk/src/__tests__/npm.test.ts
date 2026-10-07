@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { defineCredential, field } from '../entry/credentials';
-import { freezeAction, freezeCredential } from '../freeze';
+import { packAction, packCredential } from '../pack';
 import { defineNode, t } from '../index';
 import {
 	DEFAULT_NPM_SCOPE,
@@ -118,7 +118,7 @@ describe('npmRegistryOf', () => {
 describe('npmPackageOf', () => {
 	it('holds the exact manifest bytes, the bundle, the fixtures and a signature', async () => {
 		await writeFile(dirs.entry, echoSource('1.2.3', 'input.text'));
-		const { manifest, bundle } = await freezeAction(dirs.entry, 'echo');
+		const { manifest, bundle } = await packAction(dirs.entry, 'echo');
 		const files = npmPackageOf(
 			{ manifest, bundle, fixtures: echoFixtures },
 			{ privateKey, source: { license: 'MIT' } },
@@ -232,9 +232,7 @@ describe('publishCredential', () => {
 			publish(tokenWith({ hosts: ['b.example.com'], version: '1.0.1' })),
 		).rejects.toThrow('demo.token@1.0.1 is a patch bump from 1.0.0, but the change is major');
 		const v200 = await publish(tokenWith({ hosts: ['b.example.com'], version: '2.0.0' }));
-		expect(v200).toEqual(
-			freezeCredential(tokenWith({ hosts: ['b.example.com'], version: '2.0.0' })),
-		);
+		expect(v200).toEqual(packCredential(tokenWith({ hosts: ['b.example.com'], version: '2.0.0' })));
 		const versions = await npmVersionsOf(fake().url, '@n8n-nodes/demo.token');
 		expect(versions.map(({ version }) => version)).toEqual(['1.0.0', '2.0.0']);
 	}, 60_000);

@@ -1,7 +1,7 @@
-import { freezePackage } from '@n8n/node-sdk/freeze';
+import { packPackage } from '@n8n/node-sdk/pack';
 import path from 'node:path';
 
 if (require.main === module) {
 	const pkg = { name: '@n8n/nodes-integrations', dir: path.resolve(__dirname, '..') };
-	void freezePackage(pkg, undefined, console.log);
+	void packPackage(pkg, undefined, console.log);
 }

@@ -16,14 +16,14 @@ import {
 } from '../src/__tests__/first-party';
 import { escapeProbes } from '../src/__tests__/escape-probes';
 import { compat, defineCredential, field } from '../src/credentials';
-import { freezeAction } from '../src/freeze';
+import { packAction } from '../src/pack';
 import { replayFixtures } from '../src/publish';
 import {
 	hostRuntime,
 	loadExecutor,
 	type Executor,
 	type ExecutorHost,
-	type FrozenVersion,
+	type PackedVersion,
 } from '../src/runtime';
 import { sandboxedVersionOf, type GuestRuntime, type SandboxOptions } from '../src/sandbox';
 import { parseFixtures } from '../src/version';
@@ -237,16 +237,16 @@ const CHECKS: ReadonlyArray<{
 /** Rejects, and does not judge, when the runtime does not stop the probe or the budget ends. */
 async function probeCell(
 	{ runtime }: Runtime,
-	frozen: FrozenVersion,
+	packed: PackedVersion,
 	judge: Judge,
 	budget: Budget,
 ) {
 	const before = { ...observed };
 	const requests: IHttpRequestOptions[] = [];
 	const executor: Executor = runtime
-		? (await budget.within(sandboxedVersionOf(frozen, sandboxOptions(runtime, LIMITS), HOST)))
+		? (await budget.within(sandboxedVersionOf(packed, sandboxOptions(runtime, LIMITS), HOST)))
 				.executor
-		: await loadExecutor(frozen, HOST);
+		: await loadExecutor(packed, HOST);
 	const ran: Promise<Outcome> = executor(hostOf(requests)).then(
 		(out) => ({ value: out[0]?.[0]?.json.value }),
 		(error: unknown) => ({ error: messageOf(error) }),
@@ -296,9 +296,9 @@ async function main() {
 	process.env.SANDBOX_CANARY = 'secret';
 	const probeRuns = await Promise.all(
 		CHECKS.map(async (check) => {
-			const { manifest, bundle } = await freezeAction(probesFile, check.probe);
-			const frozen: FrozenVersion = { manifest, origin: 'private', readBundle: async () => bundle };
-			return { ...check, frozen };
+			const { manifest, bundle } = await packAction(probesFile, check.probe);
+			const packed: PackedVersion = { manifest, origin: 'private', readBundle: async () => bundle };
+			return { ...check, packed };
 		}),
 	);
 
@@ -317,13 +317,13 @@ async function main() {
 				? `pass: ${firstPartyActionIds.length} actions`
 				: `**FAIL**: ${issues.length} issues`;
 		const probes: string[] = [];
-		for (const { judge, stopsHost, frozen } of probeRuns) {
+		for (const { judge, stopsHost, packed } of probeRuns) {
 			if (!runtime.runtime && stopsHost) {
 				probes.push('n/a: no limit, would stop this process');
 				continue;
 			}
 			probes.push(
-				await probeCell(runtime, frozen, judge, budget).catch((error: unknown) =>
+				await probeCell(runtime, packed, judge, budget).catch((error: unknown) =>
 					messageOf(error) === TIMEOUT
 						? `**timeout** after ${values.timeout} s`
 						: `**FAIL**: ${messageOf(error)}`,

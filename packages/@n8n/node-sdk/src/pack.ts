@@ -54,7 +54,7 @@ import {
 } from './version';
 import { canonicalJson } from './schema';
 
-/** The SDK source inlines into each bundle, so a version keeps the SDK helpers it was frozen with. */
+/** The SDK source inlines into each bundle, so a version keeps the SDK helpers it was packed with. */
 const SDK_SOURCE = path.resolve(__dirname, '..', 'src');
 
 /** The SDK module that the host gives each bundle as `VALIDATOR_MODULE`, with ajv. */
@@ -118,7 +118,7 @@ export const GUEST_LACKS = [
 ] as const;
 
 /**
- * The globals that freeze refuses. The guest has `fetch` and the timers only as stubs that throw.
+ * The globals that pack refuses. The guest has `fetch` and the timers only as stubs that throw.
  * In the n8n process, `fetch` sends a request past the egress check of the host, and a timer
  * runs code after the run.
  */
@@ -170,8 +170,8 @@ async function sandboxGapsOf(
 	];
 }
 
-/** A frozen action or trigger in memory: its manifest, its bundle, and what the bundle exports. */
-export interface FrozenAction {
+/** A packed action or trigger in memory: its manifest, its bundle, and what the bundle exports. */
+export interface PackedAction {
 	/** The version manifest of the bundle. */
 	readonly manifest: VersionManifest;
 	/** The bundle code. */
@@ -187,7 +187,7 @@ const semverOf = (source: Action | Trigger) => source.semver ?? `${source.versio
  * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
  * same bytes, so a release build reproduces the HEAD bundle the registry holds.
  */
-export async function freezeAction(entryFile: string, exportName: string): Promise<FrozenAction> {
+export async function packAction(entryFile: string, exportName: string): Promise<PackedAction> {
 	const { build } = await import('esbuild');
 	const result = await build({
 		stdin: {
@@ -286,11 +286,11 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 }
 
 /**
- * Freezes the config of a declarative HTTP action for the HTTP guest. The bundle is the config
+ * Packs the config of a declarative HTTP action for the HTTP guest. The bundle is the config
  * with the contract that its binding gives, e.g. the `egress` of its base URL and the `paging`
  * input of a paged list, as canonical JSON: the same config gives the same bytes.
  */
-export async function freezeHttpGuest(
+export async function packHttpGuest(
 	config: unknown,
 	options: {
 		/** The node that a config `extends`, as a copy takes it. Absent: no config may extend. */
@@ -300,7 +300,7 @@ export async function freezeHttpGuest(
 		/** n8n's credential type of a name. Absent: the config's credentials stay. */
 		readonly credentialTypeOf?: (name: string) => AnyCredentialType | undefined;
 	} = {},
-): Promise<FrozenAction> {
+): Promise<PackedAction> {
 	// The bundle is canonical JSON, which sorts keys, and the binding takes the order of `required`
 	// from the properties. So the contract comes from the sorted config, as the lift reads it.
 	const parsed = parseHttpGuestConfig(
@@ -468,7 +468,7 @@ function assertCredentialHost(baseUrl: string | undefined, type: AnyCredentialTy
 }
 
 /** The credential manifest of a type, with the version of its source, or none for a compat type. */
-export const freezeCredential = (type: AnyCredentialType): CredentialManifest | undefined =>
+export const packCredential = (type: AnyCredentialType): CredentialManifest | undefined =>
 	credentialManifestOf(type, sdkVersion());
 
 /**
@@ -477,7 +477,7 @@ export const freezeCredential = (type: AnyCredentialType): CredentialManifest | 
  *
  * @throws a `UserError` for a contract that is not native.
  */
-export function freezeNative(source: Action | Trigger): NativeManifest {
+export function packNative(source: Action | Trigger): NativeManifest {
 	const binding = source.native;
 	const contract = toContract(source);
 	const kind = manifestKindOf(contract);
@@ -552,8 +552,8 @@ const isContractExport = (value: unknown): value is Action | Trigger =>
 
 /**
  * The contracts of a package: the exports of its `src/nodes/<node>/actions/*.ts` files. An
- * action file without a contract export is an error, because freeze would drop it without a
- * sign. Two exports of one id and major are an error, because freeze would write two versions
+ * action file without a contract export is an error, because pack would drop it without a
+ * sign. Two exports of one id and major are an error, because pack would write two versions
  * for one.
  */
 export async function contractsOfPackage(
@@ -598,8 +598,8 @@ export async function contractsOfPackage(
 	};
 }
 
-/** The manifests that `freezePackage` writes. */
-export interface FrozenPackage {
+/** The manifests that `packPackage` writes. */
+export interface PackedPackage {
 	/** The manifest of the HEAD of each action and trigger with a bundle. */
 	readonly manifests: readonly VersionManifest[];
 	/** The manifest of each credential type that is not a compat type. */
@@ -651,7 +651,7 @@ async function shippedOf(
 }
 
 /**
- * Freezes the HEAD of each action, trigger, credential type and native contract of a package
+ * Packs the HEAD of each action, trigger, credential type and native contract of a package
  * into the store in `outDir`, by default the embedded store of the package. It replaces the
  * store in `outDir`: n8n loads every version there, so a removed contract must not stay from an
  * older build. Each version comes from the source. It finds the contracts in the action files
@@ -662,23 +662,23 @@ async function shippedOf(
  * contract hash ships the published version and gives a line to `log`. Any other change of a
  * published version is an error.
  */
-export async function freezePackage(
+export async function packPackage(
 	pkg: Pick<SourcePackage, 'name' | 'dir'>,
 	outDir = embeddedStoreDirOf(pkg),
 	log: (line: string) => void = () => {},
-): Promise<FrozenPackage> {
+): Promise<PackedPackage> {
 	const { entries, natives: sources } = await contractsOfPackage(pkg);
 	const types = credentialTypesOf([...entries.map(({ action }) => action), ...sources]);
-	const frozen = await Promise.all(
-		entries.map(async ({ entryFile, exportName }) => await freezeAction(entryFile, exportName)),
+	const packed = await Promise.all(
+		entries.map(async ({ entryFile, exportName }) => await packAction(entryFile, exportName)),
 	);
-	const credentialManifests = types.flatMap((type) => freezeCredential(type) ?? []);
-	const natives = sources.map(freezeNative);
+	const credentialManifests = types.flatMap((type) => packCredential(type) ?? []);
+	const natives = sources.map(packNative);
 	const url = process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY;
 	const registry = url ? npmRegistryOf(url) : undefined;
 	const scope = process.env.N8N_NODE_CONTRACTS_NPM_SCOPE ?? DEFAULT_NPM_SCOPE;
 	const shipped = await Promise.all(
-		frozen.map(async ({ manifest, bundle }) =>
+		packed.map(async ({ manifest, bundle }) =>
 			registry
 				? await shippedOf(registry, scope, manifest, bundle, log)
 				: { manifest, manifestText: manifestTextOf(manifest), bundle },

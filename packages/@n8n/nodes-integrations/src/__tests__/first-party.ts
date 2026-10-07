@@ -1,5 +1,5 @@
 import type { Action, Trigger } from '@n8n/node-sdk';
-import { contractsOfPackage } from '@n8n/node-sdk/freeze';
+import { contractsOfPackage } from '@n8n/node-sdk/pack';
 import {
 	bundledCredentialsOf as credentialsOfDir,
 	bundledIdsOf as idsOfDir,
@@ -39,7 +39,7 @@ export const bundledIdsOf = (dir?: string) =>
 export const bundledCredentialsOf = () =>
 	FIRST_PARTY_PACKAGES.flatMap((pkg) => credentialsOfDir(embeddedStoreDirOf(pkg)));
 
-/** The source contracts of a package, as freeze finds them in its action files. */
+/** The source contracts of a package, as the build finds them in its action files. */
 export interface SourceContracts {
 	readonly actions: readonly Action[];
 	readonly triggers: readonly Trigger[];

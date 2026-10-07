@@ -1,5 +1,5 @@
 /**
- * The manifest format of the Node Contract: what freeze writes for each version of an action,
+ * The manifest format of the Node Contract: what pack writes for each version of an action,
  * trigger, provider or credential. `scripts/spec.ts` writes these schemas to
  * `spec/manifest.schema.json`, and `parseManifest` reads with them.
  */
@@ -350,7 +350,7 @@ export interface CredentialManifest {
 	readonly semver: string;
 	/** The lowest Node Contract version that has what the type uses. */
 	readonly nodeContract: NodeContractVersion;
-	/** The `@n8n/node-sdk` version that froze it, for traceability only. */
+	/** The `@n8n/node-sdk` version that packed it, for traceability only. */
 	readonly sdk: string;
 	/** The type name in the n8n UI. */
 	readonly displayName: string;
@@ -411,7 +411,7 @@ export interface NativeManifest {
 	readonly semver: string;
 	/** The lowest Node Contract version that has native manifests. */
 	readonly nodeContract: NodeContractVersion;
-	/** The `@n8n/node-sdk` version that froze it, for traceability only. */
+	/** The `@n8n/node-sdk` version that packed it, for traceability only. */
 	readonly sdk: string;
 	/** `<id>@<major>` of each credential type with a credential manifest. Absent when none has one. */
 	readonly credentials?: readonly string[];
@@ -539,7 +539,7 @@ export const manifestJsonSchema = (version: string) => ({
 	oneOf: [versionManifestSchema.json, credentialManifestSchema.json, nativeManifestSchema.json],
 });
 
-/** The credential manifest that freeze writes. A compat type has none. */
+/** The credential manifest that pack writes. A compat type has none. */
 export function credentialManifestOf(
 	type: AnyCredentialType,
 	sdk: string,
@@ -567,7 +567,7 @@ export function credentialManifestOf(
 	};
 }
 
-/** Reads a credential manifest that freeze wrote. */
+/** Reads a credential manifest that pack wrote. */
 export function parseCredentialManifest(text: string): CredentialManifest {
 	const value: unknown = JSON.parse(text);
 	if (!matches(credentialManifestSchema, value)) {

@@ -409,7 +409,7 @@ export function liftHttpGuest(config: HttpGuestConfig): Action {
 }
 
 /**
- * The action of a config without the contract check. Freeze uses it to write the contract that
+ * The action of a config without the contract check. Pack uses it to write the contract that
  * the binding gives, e.g. the `egress` of the base URL.
  */
 export function httpGuestActionOf(config: HttpGuestConfig): Action {

@@ -2,7 +2,7 @@
 	"$schema": "../../../node_modules/@biomejs/biome/configuration_schema.json",
 	"extends": ["../../../biome.jsonc"],
 	"files": {
-		// Frozen bundles and manifests keep their bytes.
+		// Packed bundles and manifests keep their bytes.
 		"ignore": ["versions/**"]
 	}
 }

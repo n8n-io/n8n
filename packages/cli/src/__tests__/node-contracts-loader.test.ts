@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig, NodePermissionClass } from '@n8n/config';
-import { hostRuntime, nodeDescriptionOf, type FrozenVersion } from '@n8n/node-sdk/host';
+import { hostRuntime, nodeDescriptionOf, type PackedVersion } from '@n8n/node-sdk/host';
 import {
 	bundledIdsOf,
 	embeddedStoreDirOf,
@@ -43,7 +43,7 @@ const nodesCore = packageOf('noOp.pass');
 const nodesIntegrations = packageOf('notion.user.get');
 const storeOf =
 	(
-		versions: ReadonlyMap<string, readonly FrozenVersion[]> = new Map(),
+		versions: ReadonlyMap<string, readonly PackedVersion[]> = new Map(),
 		credentials: ReadonlyMap<string, CredentialManifest> = new Map(),
 	) =>
 	async () => ({ versions: async () => versions, credentials: async () => credentials });
@@ -193,12 +193,12 @@ describe('ContractNodeLoader', () => {
 		if (!head) throw new Error(`${id} has no bundled HEAD`);
 		const { manifest } = head;
 		const major = manifest.contract.version + 1;
-		const stored: FrozenVersion = {
+		const stored: PackedVersion = {
 			...head,
 			manifest: { ...manifest, contract: { ...manifest.contract, version: major } },
 		};
 		const storedManifest = deepCopy(stored.manifest);
-		const sameMajor: FrozenVersion = { ...head, manifest: { ...manifest, semver: '9.9.9' } };
+		const sameMajor: PackedVersion = { ...head, manifest: { ...manifest, semver: '9.9.9' } };
 		const loader = new ContractNodeLoader(
 			hostRuntime(),
 			[],
@@ -208,7 +208,7 @@ describe('ContractNodeLoader', () => {
 		await loader.loadAll();
 
 		const { name } = nodeDescriptionOf(manifest);
-		const [bundled, other] = loader.frozenVersionsOf(name);
+		const [bundled, other] = loader.packedVersionsOf(name);
 		expect(bundled?.manifest.semver).toBe(manifest.semver);
 		expect(other).toBe(stored);
 		expect(loader.getNode(name).type.getNodeType(major).poll).toBeDefined();
@@ -316,7 +316,7 @@ describe('ContractNodeLoader', () => {
 		const [head] = versionsOf(id);
 		if (!head) throw new Error(`${id} has no bundled HEAD`);
 		const { manifest } = head;
-		const stored: FrozenVersion = {
+		const stored: PackedVersion = {
 			...head,
 			manifest: { ...manifest, contract: { ...manifest.contract, version: 2 } },
 		};
@@ -353,7 +353,7 @@ describe('ContractNodeLoader', () => {
 		expect(next.known.nodes).not.toHaveProperty('noOpPass');
 		expect(
 			core
-				.frozenVersionsOf('noOpPass')
+				.packedVersionsOf('noOpPass')
 				.map((version) => [version.manifest.contract.version, version.origin]),
 		).toEqual([
 			[1, 'first-party'],
@@ -440,7 +440,7 @@ describe('ContractNodeLoader', () => {
 		if (!head) throw new Error(`${id} has no bundled HEAD`);
 		const { manifest } = head;
 		const major = manifest.contract.version + 1;
-		const stored: FrozenVersion = {
+		const stored: PackedVersion = {
 			...head,
 			manifest: {
 				...manifest,
@@ -456,9 +456,9 @@ describe('ContractNodeLoader', () => {
 		);
 		await loader.loadAll();
 
-		const majors = (versions: readonly FrozenVersion[]) =>
+		const majors = (versions: readonly PackedVersion[]) =>
 			versions.map((version) => version.manifest.contract.version);
-		expect(majors(loader.frozenVersionsOf(nodeDescriptionOf(manifest).name))).toEqual(
+		expect(majors(loader.packedVersionsOf(nodeDescriptionOf(manifest).name))).toEqual(
 			majors(versionsOf(id)),
 		);
 	});

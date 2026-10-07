@@ -1,6 +1,6 @@
 import { validate, type Action } from '@n8n/node-sdk';
 import { toNodeType } from '@n8n/node-sdk/host';
-import { credentialTypesOf } from '@n8n/node-sdk/freeze';
+import { credentialTypesOf } from '@n8n/node-sdk/pack';
 import {
 	checkAction,
 	checkCredentialType,

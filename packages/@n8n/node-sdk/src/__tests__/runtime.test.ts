@@ -1910,9 +1910,9 @@ describe('resource lookups', () => {
 			}
 		});
 
-		it('runs the field lookup of a frozen version from its manifest', async () => {
+		it('runs the field lookup of a packed version from its manifest', async () => {
 			const contract = toContract(readCells);
-			const frozen = {
+			const packed = {
 				manifest: {
 					kind: 'action' as const,
 					id: readCells.id,
@@ -1925,7 +1925,7 @@ describe('resource lookups', () => {
 				origin: 'community' as const,
 				readBundle: async () => await Promise.reject(new Error('the lookup read the bundle')),
 			};
-			const nodeType = new (toVersionedNodeType([frozen], hostRuntime()))().getNodeType(1);
+			const nodeType = new (toVersionedNodeType([packed], hostRuntime()))().getNodeType(1);
 			const { context } = contextOf({ database: 'abcdef12', sheet: '77' }, [
 				{ columns: { a: { title: 'Due', kind: 'date' } } },
 			]);
@@ -1935,9 +1935,9 @@ describe('resource lookups', () => {
 		});
 	});
 
-	it('runs the lookup of a frozen version from its manifest, without its bundle', async () => {
+	it('runs the lookup of a packed version from its manifest, without its bundle', async () => {
 		const contract = toContract(readRow);
-		const frozen = {
+		const packed = {
 			manifest: {
 				kind: 'action' as const,
 				id: readRow.id,
@@ -1951,7 +1951,7 @@ describe('resource lookups', () => {
 			readBundle: async () => await Promise.reject(new Error('the lookup read the bundle')),
 		};
 		expect(contract.baseUrl).toBe('https://directory.test/api');
-		const nodeType = new (toVersionedNodeType([frozen], hostRuntime()))().getNodeType(1);
+		const nodeType = new (toVersionedNodeType([packed], hostRuntime()))().getNodeType(1);
 		const context = {
 			getNode: () => credentialed,
 			getCurrentNodeParameter: () => undefined,
@@ -1972,7 +1972,7 @@ describe('resource lookups', () => {
 
 describe('versionedTypeOf', () => {
 	const contract = toContract(fetchAction({ method: 'GET', url: '/items' }));
-	const frozenOf = (semver: string) => ({
+	const packedOf = (semver: string) => ({
 		manifest: {
 			kind: 'action' as const,
 			id: contract.id,
@@ -1991,7 +1991,7 @@ describe('versionedTypeOf', () => {
 		['newest first', ['3.2.0', '3.1.0', '2.0.0']],
 	])('projects the newest version of each major, %s', (_, semvers) => {
 		const NodeType = versionedTypeOf(
-			semvers.map(frozenOf),
+			semvers.map(packedOf),
 			({ manifest }) => ({
 				description: {
 					displayName: 'Echo',

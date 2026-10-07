@@ -57,7 +57,7 @@ export async function npmSourceOf(dir: string): Promise<NpmSource> {
 	);
 }
 
-/** One frozen version, as publish adds it. */
+/** One packed version, as publish adds it. */
 export interface NpmVersion {
 	/** The manifest. `manifest.json` holds its exact bytes. */
 	readonly manifest: StoreManifest;

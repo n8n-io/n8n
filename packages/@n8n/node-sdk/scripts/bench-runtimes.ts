@@ -23,7 +23,7 @@ import {
 	type BinaryStore,
 	type Executor,
 	type ExecutorHost,
-	type FrozenVersion,
+	type PackedVersion,
 } from '../src/runtime';
 import { sandboxedVersionOf, type GuestRuntime, type SandboxOptions } from '../src/sandbox';
 import type { MockRoute } from '../src/testing';
@@ -96,7 +96,7 @@ const fixtureOf = (id: string, index = 0) => {
 	return fixture;
 };
 
-const headOf = (id: string): FrozenVersion => {
+const headOf = (id: string): PackedVersion => {
 	const [head] = versionsOf(id);
 	if (!head) throw new Error(`${id} has no bundled HEAD`);
 	return head;
@@ -150,7 +150,7 @@ const binaryStore: BinaryStore = {
 };
 
 const hostFor = (
-	head: FrozenVersion,
+	head: PackedVersion,
 	{ items, params, routes = [], latencyMs = 0 }: Workload,
 ): ExecutorHost => {
 	const description = nodeDescriptionOf(head.manifest);

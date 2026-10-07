@@ -2,7 +2,7 @@ import type { NextNodeParent } from '@n8n/api-types';
 import type { CatalogCredentialType } from '@n8n/frontend-module-sdk';
 
 /**
- * The HTTP action form as data, and the HTTP guest config that it gives. The server freezes the
+ * The HTTP action form as data, and the HTTP guest config that it gives. The server packs the
  * config and writes the parts of the contract that the request gives, such as the egress and
  * the paging input, so the config here only has to be valid, not complete.
  */

@@ -1,6 +1,6 @@
 import { UserError } from 'n8n-workflow';
 
-import type { ContractOrigin, FrozenVersion } from './runtime';
+import type { ContractOrigin, PackedVersion } from './runtime';
 import type { GuestRuntime } from './sandbox';
 import type { VersionManifest } from './version';
 
@@ -132,7 +132,7 @@ export const codeTrustOf = (origin: ContractOrigin, manifest: VersionManifest): 
  */
 export function runtimeNameOf(
 	{ lists, available }: RuntimePolicy,
-	{ manifest, origin }: Pick<FrozenVersion, 'manifest' | 'origin'>,
+	{ manifest, origin }: Pick<PackedVersion, 'manifest' | 'origin'>,
 ): RuntimeName {
 	const resolved = resolveRuntime({
 		version: `${manifest.id}@${manifest.semver}`,

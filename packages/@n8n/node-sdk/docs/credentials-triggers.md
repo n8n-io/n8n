@@ -13,10 +13,10 @@ each contract runs. It is the design of the NODE-6071 spike, lane C2.
 | Credential types | `defineCredential({ id, legacyName, fields, baseUrl, auth, test })`. `auth` is data first: `a.bearer`, `a.header`, `a.query`, `a.basic`, `a.apply`, `a.when`, `a.oauth2.*`. `a.custom` is the last resort. | n8n owns the secrets and the mechanics. `tsc` rejects a typo in a field, a template or an id. |
 | Ids | `service.scheme`, e.g. `notion.token`, `notion.oauth2`. `legacyName` is the n8n type name. | One spelling per concept. Stored credentials and workflows refer to `legacyName`, so they resolve unchanged. |
 | Compat | `compat('githubApi', { id, fields, baseUrl })` reuses a legacy class by name. | Saved credentials keep working. `defineCredential` is the primary form. |
-| Versions | `defineCredential({ version: '1.2.0' })`, `1.0.0` when omitted. Publish refuses a published version with other manifest bytes. Freeze writes a credential manifest (`spec/manifest.schema.json`), and each action manifest pins `<id>@<major>`. | A new required field, a new host or a new scheme is a major. A compat type has no manifest and no pin. See [node-contract.md](node-contract.md). |
+| Versions | `defineCredential({ version: '1.2.0' })`, `1.0.0` when omitted. Publish refuses a published version with other manifest bytes. Pack writes a credential manifest (`spec/manifest.schema.json`), and each action manifest pins `<id>@<major>`. | A new required field, a new host or a new scheme is a major. A compat type has no manifest and no pin. See [node-contract.md](node-contract.md). |
 | Scopes | Each action and trigger lists `scopes`. `tsc` rejects a scope that the node's credential does not declare. | The scope need is per contract, so a workflow can compute its union. |
 | Scope check | The flow build unions the scopes of all nodes. With `grants`, a missing scope fails the build and names the scope and the nodes. | A missing scope is found before the workflow runs. |
-| Triggers | `resource.trigger(event, spec)` next to `resource.action(...)`. Kinds: `poll`, `webhook`. | Same id, version, freeze, and contract hash path as an action. |
+| Triggers | `resource.trigger(event, spec)` next to `resource.action(...)`. Kinds: `poll`, `webhook`. | Same id, version, pack, and contract hash path as an action. |
 | Bindings | `run` (code), `request` (data the host sends), `mcp` (a lifted MCP tool). | A simple action needs no code. An MCP server gives partial contracts at no cost. |
 | Node keys | `defineNode` rejects a key that `NodeDefinition` does not have. | The old `credentials` key now fails to compile instead of being ignored. |
 
@@ -114,7 +114,7 @@ fills the projected default of each field, as for a legacy credential: the first
 `0` or `''`. So a required field without a declared default does not fail there. The editor saves
 only the values that differ from these defaults, so a strict check would break saved credentials.
 
-The freeze step writes a credential manifest for each type that is not `compat` into the
+The pack step writes a credential manifest for each type that is not `compat` into the
 embedded store (`dist/store/index/notion.token.ndjson` and its blob). The n8n loader reads the manifest and
 projects the type with `credentialTypeOfManifest`, so no class file and no `package.json` list
 exist. With node contracts on, the loader of the contract package goes last, so the projected
@@ -197,9 +197,9 @@ sequenceDiagram
 - A trigger has the same versioning as an action. A major that breaks old input needs
   `migrate` and a migration fixture pair. Publish replays the pair. Trigger execution
   fixtures do not replay.
-- A frozen trigger bundle loads on its first call, with the executor loader of the host: in this
+- A packed trigger bundle loads on its first call, with the executor loader of the host: in this
   process or in the sandbox, by origin (see `sandboxed-execution.md`). `toVersionedTriggerType`
-  builds the n8n node type from the frozen versions, as `toVersionedNodeType` does for actions.
+  builds the n8n node type from the packed versions, as `toVersionedNodeType` does for actions.
 - Each trigger request goes through the executor of an action run, so the egress, the response
   limit and the refusal report of actions apply. A trigger reaches the hosts of its base URLs.
 - The trigger contract has `trigger: 'poll' | 'webhook'` and the flow `read, 1:N`. Its `egress`
@@ -240,8 +240,8 @@ export const webhookTrigger = webhook.trigger('trigger', {
 
 - `generatedTriggersOf(trigger, nodeType)` gives the factories of a trigger. A native trigger
   emits its legacy node type and version, and its reply.
-- A native trigger has no bundle and no node class. `triggerRunOf` throws for it. Freeze
-  writes its manifest (`freezeNative`, `NativeManifest`): the contract, the legacy node in
+- A native trigger has no bundle and no node class. `triggerRunOf` throws for it. Pack
+  writes its manifest (`packNative`, `NativeManifest`): the contract, the legacy node in
   `native`, and the reply step in `reply`. `publishNative` publishes it with a signature. Its gate
   (`checkNativePublish`) rates the contract as for an action, and a patch must keep the legacy
   node. It has no fixtures: the legacy node runs it.
@@ -296,7 +296,7 @@ The port does not have these legacy behaviours (`GithubTrigger.node.ts`):
   states. A trigger without a fixtures file publishes without fixtures.
 - A declarative request runs from the bundle today. The manifest could carry the request, so a
   host runs it without a bundle.
-- MCP tools are not frozen: a lifted tool has no bundle and no semver beyond `1.0.0`.
+- MCP tools are not packed: a lifted tool has no bundle and no semver beyond `1.0.0`.
 - The version loader (`setContractVersionLoader`) does not apply to triggers. They run HEAD.
 - Projected credential types are not registered in `package.json`. The legacy classes stay the
   definitions until nodes-base drops them.

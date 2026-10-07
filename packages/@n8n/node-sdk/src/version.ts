@@ -69,7 +69,7 @@ export const manifestKindOf = (
 			: 'action';
 
 /**
- * The version `freezeAction` writes: the lowest minor that has what the action declares, so an
+ * The version `packAction` writes: the lowest minor that has what the action declares, so an
  * older host still runs every bundle that does not need the newer features. The 2.1.0 features
  * (the current item) are used in code, so the contract cannot show a lower minimum. The contract
  * does not record the binding, so `list` tells it, and `errorExpression` tells that the node
@@ -134,7 +134,7 @@ export function assertNodeContract(
 	);
 }
 
-/** One frozen version of an action, trigger or provider. A published `id` and `semver` never change their bytes. */
+/** One packed version of an action, trigger or provider. A published `id` and `semver` never change their bytes. */
 export interface VersionManifest {
 	/** What the version is: an action, a trigger, or a provider. */
 	readonly kind: 'action' | 'trigger' | 'provider';
@@ -144,7 +144,7 @@ export interface VersionManifest {
 	readonly semver: string;
 	/** The lowest Node Contract version that has what the bundle uses. */
 	readonly nodeContract: NodeContractVersion;
-	/** The `@n8n/node-sdk` version that froze it, for traceability only. An older SDK did not write it. */
+	/** The `@n8n/node-sdk` version that packed it, for traceability only. An older SDK did not write it. */
 	readonly sdk?: string;
 	/**
 	 * `<id>@<major>` of each credential type of `contract.credentials` that has a credential
@@ -286,14 +286,14 @@ export function semverRange(range: string): (version: string) => boolean {
 
 /**
  * Reads a manifest of an action, trigger or provider. A manifest without `nodeContract` comes
- * from a freeze before Node Contract 2.5.0, and this host does not read it.
+ * from a build before Node Contract 2.5.0, and this host does not read it.
  */
 export function parseManifest(text: string): VersionManifest {
 	const value: unknown = JSON.parse(text);
 	if (isRecord(value) && !('nodeContract' in value)) {
 		const name = [value.id, value.semver].filter((part) => typeof part === 'string').join('@');
 		throw new UserError(
-			`The manifest of ${name || 'a version'} has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): freeze the version again.`,
+			`The manifest of ${name || 'a version'} has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): pack the version again.`,
 		);
 	}
 	if (
@@ -333,7 +333,7 @@ export function parseManifest(text: string): VersionManifest {
 	};
 }
 
-/** Reads a native manifest that freeze wrote. It checks the contract hash and the major. */
+/** Reads a native manifest that pack wrote. It checks the contract hash and the major. */
 export function parseNativeManifest(text: string): NativeManifest {
 	const value: unknown = JSON.parse(text);
 	if (

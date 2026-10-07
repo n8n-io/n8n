@@ -452,13 +452,13 @@ describe('triggers', () => {
 		]);
 	});
 
-	it('poll a trigger frozen without a response schema: items read the body', async () => {
+	it('poll a trigger packed without a response schema: items read the body', async () => {
 		if (!created.poll) throw new Error('created has no poll');
-		const { response: _, ...frozenPoll } = created.poll;
-		const frozen = { ...created, poll: frozenPoll } as unknown as typeof created;
+		const { response: _, ...packedPoll } = created.poll;
+		const packed = { ...created, poll: packedPoll } as unknown as typeof created;
 		const staticData: IDataObject = { cursor: '1' };
 		const replies = [[{ id: '2', title: 'B' }]];
-		const type: INodeType = new (toTriggerNodeType(frozen))();
+		const type: INodeType = new (toTriggerNodeType(packed))();
 		const result = await type.poll?.call(pollContext(staticData, replies, []) as never);
 		expect(result?.[0]?.map(({ json }) => json)).toEqual([{ id: '2', title: 'B' }]);
 	});

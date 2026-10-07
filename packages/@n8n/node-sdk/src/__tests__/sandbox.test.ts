@@ -12,7 +12,7 @@ import type { IDataObject, IHttpRequestOptions, INode, INodeType } from 'n8n-wor
 import { compat, defineCredential, field } from '../credentials';
 import type { PermissionRefusal } from '../egress';
 import { escapeProbes } from './escape-probes';
-import { freezeAction } from '../freeze';
+import { packAction } from '../pack';
 import { defineNode, t } from '../index';
 import { runRecorder } from '../profile';
 import { replayFixtures } from '../publish';
@@ -31,7 +31,7 @@ import {
 	type BinaryStore,
 	type ContractOrigin,
 	type ExecutorHost,
-	type FrozenVersion,
+	type PackedVersion,
 } from '../runtime';
 import { toVersionedTriggerType } from '../triggers';
 import { NODE_CONTRACT_VERSION } from '../version';
@@ -176,9 +176,9 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		sandbox = options(),
 		runtime = hostRuntime(),
 	) => {
-		const frozen = await freezeAction(path.join(dirs.root, 'probes.ts'), name);
+		const packed = await packAction(path.join(dirs.root, 'probes.ts'), name);
 		const { executor } = await sandboxedVersionOf(
-			{ manifest: frozen.manifest, origin: 'community', readBundle: async () => frozen.bundle },
+			{ manifest: packed.manifest, origin: 'community', readBundle: async () => packed.bundle },
 			sandbox,
 			runtime,
 		);
@@ -242,7 +242,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		);
 	});
 
-	it('has none of the globals that the freeze check refuses', async () => {
+	it('has none of the globals that the pack check refuses', async () => {
 		await expect(run('globalsProbe')).resolves.toBe('[]');
 	});
 
@@ -363,7 +363,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	});
 
 	it('refuses a bundle that names a base URL outside the egress hosts of its manifest', async () => {
-		const { manifest, bundle } = await freezeAction(
+		const { manifest, bundle } = await packAction(
 			path.join(dirs.root, 'probes.ts'),
 			'baseUrlProbe',
 		);
@@ -796,14 +796,14 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 
 	it('replays the migration pairs with the migrate of the guest', async () => {
 		const replay = async (name: ProbeName, expected: Record<string, unknown>) => {
-			const frozen = await freezeAction(path.join(dirs.root, 'probes.ts'), name);
+			const packed = await packAction(path.join(dirs.root, 'probes.ts'), name);
 			const loaded = await sandboxedVersionOf(
-				{ manifest: frozen.manifest, origin: 'community', readBundle: async () => frozen.bundle },
+				{ manifest: packed.manifest, origin: 'community', readBundle: async () => packed.bundle },
 				options(),
 				hostRuntime(),
 			);
 			return await replayFixtures(
-				frozen,
+				packed,
 				{ executions: [], migrations: [{ fromMajor: 1, params: { text: 'hi' }, expected }] },
 				{ contract: loaded.action, executor: loaded.executor, migrate: loaded.migrate },
 			);
@@ -878,8 +878,8 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
 			credentialType: () => undefined,
 			limits: { cpuMs: 1_000, memoryMb: 64, wallMs: 20_000 },
 		});
-		const versionOf = async (name: string, origin: ContractOrigin): Promise<FrozenVersion> => {
-			const { manifest, bundle } = await freezeAction(path.join(dirs.root, 'triggers.ts'), name);
+		const versionOf = async (name: string, origin: ContractOrigin): Promise<PackedVersion> => {
+			const { manifest, bundle } = await packAction(path.join(dirs.root, 'triggers.ts'), name);
 			return { manifest, origin, readBundle: async () => bundle };
 		};
 		/** A loader that runs first-party versions in this process and every other one in wasm. */
@@ -896,7 +896,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
 				sandbox,
 			);
 		/** The node type of a trigger with the default runtime lists. */
-		const typeOf = async (version: FrozenVersion, sandbox = options()): Promise<INodeType> => {
+		const typeOf = async (version: PackedVersion, sandbox = options()): Promise<INodeType> => {
 			const runtime = hostRuntime({
 				executorLoader: loaderOf(sandbox),
 				onPermissionRefused: (refusal) => refusals.push(refusal),

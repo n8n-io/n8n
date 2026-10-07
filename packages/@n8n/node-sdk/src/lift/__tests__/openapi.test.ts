@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { isRecord } from '../../index';
-import { freezeHttpGuest } from '../../freeze';
+import { packHttpGuest } from '../../pack';
 import { mockHttp, runAction } from '../../testing';
 import { liftHttpGuest, parseHttpGuestConfig, valueAt } from '../http';
 import { mapOpenApi, type OpenApiMapping } from '../openapi';
@@ -22,11 +22,11 @@ function dereferenced(value: unknown, root: unknown = value): unknown {
 	);
 }
 
-/** Each config is valid, freezes, and lifts with the contract it holds. */
+/** Each config is valid, packs, and lifts with the contract it holds. */
 async function expectValid({ actions }: OpenApiMapping) {
 	for (const config of actions) {
 		expect(parseHttpGuestConfig(config)).toBe(config);
-		await expect(freezeHttpGuest(config)).resolves.toMatchObject({
+		await expect(packHttpGuest(config)).resolves.toMatchObject({
 			manifest: { id: config.contract.id },
 		});
 		expect(liftHttpGuest(config).id).toBe(config.contract.id);
@@ -98,10 +98,10 @@ describe('mapOpenApi on searchly', () => {
 		await expectValid(mapping);
 	});
 
-	it('pages the frozen action with offset and limit', async () => {
+	it('pages the packed action with offset and limit', async () => {
 		const [search] = mapping.actions;
 		if (!search) throw new Error('searchly has no action');
-		const { bundle } = await freezeHttpGuest(search);
+		const { bundle } = await packHttpGuest(search);
 		const action = liftHttpGuest(parseHttpGuestConfig(JSON.parse(bundle)));
 		const hit = (id: string) => ({ id, title: id, lang: 'en', score: 1 });
 		const fetch = mockHttp([
@@ -444,7 +444,7 @@ describe('mapOpenApi documents', () => {
 		);
 	});
 
-	it('cuts a cyclic schema, so the config freezes', async () => {
+	it('cuts a cyclic schema, so the config packs', async () => {
 		const tree: Record<string, unknown> = {
 			type: 'object',
 			properties: { name: { type: 'string' } },

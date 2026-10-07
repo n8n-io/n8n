@@ -604,14 +604,14 @@ describe('narrowHosts', () => {
 	});
 });
 
-describe('credential hosts of a frozen version', () => {
-	const frozenEcho = defineNode({
+describe('credential hosts of a packed version', () => {
+	const packedEcho = defineNode({
 		id: 'echo',
 		displayName: 'Echo',
 		credential: credential({ types: [compat('echoApi')] }),
 		baseUrl: 'https://api.echo.test/v1',
 	});
-	const frozenGet = frozenEcho.action('get', {
+	const packedGet = packedEcho.action('get', {
 		action: 'Get',
 		summary: 'Get one record.',
 		flow: { effect: 'read', cardinality: 'per-item' },
@@ -639,18 +639,18 @@ describe('credential hosts of a frozen version', () => {
 
 	it('come from the credential manifest of the type', async () => {
 		const before = hostOf({ credentialType: 'echoApi', data: none });
-		await expect(executorOf(frozenGet)(before.host)).rejects.toThrow(
+		await expect(executorOf(packedGet)(before.host)).rejects.toThrow(
 			'This credential is configured to prevent use within an Echo node',
 		);
 
-		const allowed = await withCredentialHostsOf(frozenGet, async () =>
+		const allowed = await withCredentialHostsOf(packedGet, async () =>
 			manifestWith(['api.echo.test']),
 		);
 		const { host, sent } = hostOf({ credentialType: 'echoApi', data: none });
 		await executorOf(allowed)(host);
 		expect(sent.map(({ url }) => url)).toEqual(['https://api.echo.test/v1/x']);
 
-		const moved = await withCredentialHostsOf(frozenGet, async () =>
+		const moved = await withCredentialHostsOf(packedGet, async () =>
 			manifestWith(['api.moved.test']),
 		);
 		const after = hostOf({ credentialType: 'echoApi', data: none });
@@ -658,7 +658,7 @@ describe('credential hosts of a frozen version', () => {
 		expect(after.sent).toEqual([]);
 	});
 
-	it('stay the frozen ones for a type without a credential manifest', async () => {
+	it('stay the packed ones for a type without a credential manifest', async () => {
 		const kept = await withCredentialHostsOf(sender([]), async () => undefined);
 		expect(kept.node.credential?.types[0]?.hosts).toEqual(['api.echo.test']);
 	});

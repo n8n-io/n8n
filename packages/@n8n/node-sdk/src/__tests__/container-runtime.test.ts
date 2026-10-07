@@ -9,7 +9,7 @@ import {
 	firstPartyVersionsOf as versionsOf,
 	fixturesFileOf,
 } from './first-party';
-import { freezeAction } from '../freeze';
+import { packAction } from '../pack';
 import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';
 import { CONTAINER_GUEST, containerRuntime } from '../runtimes/container';
@@ -95,7 +95,7 @@ const host: ExecutorHost = {
 const probe = async (name: string, limits?: SandboxOptions['limits']) => {
 	const file = path.join(cacheDir, 'probes.ts');
 	writeFileSync(file, PROBES);
-	const { manifest, bundle } = await freezeAction(file, name);
+	const { manifest, bundle } = await packAction(file, name);
 	const { executor } = await sandboxedVersionOf(
 		{ manifest, origin: 'private', readBundle: async () => bundle },
 		options(runtime, limits),

@@ -19,7 +19,7 @@ import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './catalo
 import { permissionsOf, type ContractPermissions, type PermissionRefusalListener } from './egress';
 import { parseCredentialManifest, type CredentialManifest } from './manifest';
 import { npmRegistryOf, npmStoreReader } from './npm';
-import type { ContractOrigin, ContractVersionLoader, FrozenVersion } from './runtime';
+import type { ContractOrigin, ContractVersionLoader, PackedVersion } from './runtime';
 import { canonicalJson } from './schema';
 import {
 	addStatusToStore,
@@ -131,7 +131,7 @@ export const permissionClassesOf = ({
 ];
 
 /** The first class of the contract of a version that `deny` has, e.g. to refuse it at load and at run time. */
-export const deniedPermissionClassOf = ({ manifest }: FrozenVersion, deny: readonly string[]) =>
+export const deniedPermissionClassOf = ({ manifest }: PackedVersion, deny: readonly string[]) =>
 	permissionClassesOf(permissionsOf(manifest.contract)).find((name) => deny.includes(name));
 
 /** PEM of the public keys that prove the origin of a version. */
@@ -227,7 +227,7 @@ export interface ContractStore {
 	 * The version of an action that a node pin names: a bundled version, a stored one, or else
 	 * one from the registry into the store. It throws when no source has the pinned digest.
 	 */
-	locked(actionId: string, pin: INodeContractPin): Promise<FrozenVersion>;
+	locked(actionId: string, pin: INodeContractPin): Promise<PackedVersion>;
 	/**
 	 * The pin that the host saves on a node of an action major. `current` stays when it pins
 	 * that major and a bundled or stored version has its digest and version. With `keepUnknown`,
@@ -245,9 +245,9 @@ export interface ContractStore {
 		},
 	): Promise<INodeContractPin | undefined>;
 	/** The newest stored version of each major, by action id. A bad version is skipped. */
-	versions(): Promise<ReadonlyMap<string, readonly FrozenVersion[]>>;
+	versions(): Promise<ReadonlyMap<string, readonly PackedVersion[]>>;
 	/** Signed patches of the pinned major.minor with the pinned contract hash. */
-	newerPatches(lock: NodeContractLock): Promise<FrozenVersion[]>;
+	newerPatches(lock: NodeContractLock): Promise<PackedVersion[]>;
 	/**
 	 * The newest stored credential manifest of each n8n type name. A version that the store takes
 	 * from the registry brings the credential manifests it pins when a key is set, unless n8n
@@ -260,7 +260,7 @@ export interface ContractStore {
 	 * origin of the version.
 	 */
 	withdrawal(
-		version: Pick<FrozenVersion, 'manifest' | 'origin'>,
+		version: Pick<PackedVersion, 'manifest' | 'origin'>,
 	): Promise<StoreYank | StoreRevoke | undefined>;
 	/**
 	 * Adds status lines that this instance writes, e.g. a yank of a version that a user of the
@@ -540,7 +540,7 @@ const INDEX_TTL_MS = 60_000;
 const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
 /** A checked version and its origin. */
-type CheckedVersion = Pick<FrozenVersion, 'manifest' | 'origin'>;
+type CheckedVersion = Pick<PackedVersion, 'manifest' | 'origin'>;
 
 /** A checked version and the digest of its manifest bytes. */
 type PinnableVersion = CheckedVersion & Pick<DigestedVersion, 'digest'>;
@@ -913,7 +913,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 						...(byAction.get(checked.manifest.id) ?? []),
 						storedVersion(checked),
 					]),
-				new Map<string, FrozenVersion[]>(),
+				new Map<string, PackedVersion[]>(),
 			);
 		},
 
@@ -985,7 +985,7 @@ export function contractVersionLoader(
 	const { store } = options;
 	const allowed = new Set(options.revokedAllowed ?? []);
 	const deny = options.permissionsDeny ?? [];
-	const runnable = async (version: FrozenVersion, node: INode) => {
+	const runnable = async (version: PackedVersion, node: INode) => {
 		const withdrawn = await store.withdrawal(version);
 		const { id, semver } = version.manifest;
 		const at = `${id}@${semver}`;
@@ -1009,7 +1009,7 @@ export function contractVersionLoader(
 		}
 		return version;
 	};
-	const notWithdrawn = async (versions: readonly FrozenVersion[]) => {
+	const notWithdrawn = async (versions: readonly PackedVersion[]) => {
 		const withdrawn = await Promise.all(
 			versions.map(async (version) => await store.withdrawal(version)),
 		);

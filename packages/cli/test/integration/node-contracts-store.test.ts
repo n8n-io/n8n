@@ -46,7 +46,7 @@ const keys = generateKeyPairSync('ed25519', {
 	privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 });
 
-/** A frozen version, signed by the publisher key. */
+/** A packed version, signed by the publisher key. */
 const signed = (manifestText: string, bundle: string) => ({
 	manifest: parseManifest(manifestText),
 	version: {

@@ -9,7 +9,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { AnyCredentialType } from './credentials';
 import { isToolContract, type Action, type Trigger } from './define';
 import type { NativeManifest } from './manifest';
-import { evaluateBundle, nodeNameOf, type FrozenVersion } from './runtime';
+import { evaluateBundle, nodeNameOf, type PackedVersion } from './runtime';
 import {
 	embeddedStoreDirOf,
 	isVersionManifest,
@@ -33,8 +33,8 @@ const manifestOf = (dir: string, record: StoreRecord) =>
 
 const catalogOf = (dir: string) => parseStoreCatalog(textOf(dir, STORE_CATALOG_FILE));
 
-/** A frozen version and the digest of its manifest bytes, which a node pin names. */
-export type DigestedVersion = FrozenVersion & {
+/** A packed version and the digest of its manifest bytes, which a node pin names. */
+export type DigestedVersion = PackedVersion & {
 	/** `sha256:<hex>` of the manifest bytes. */
 	readonly digest: string;
 };

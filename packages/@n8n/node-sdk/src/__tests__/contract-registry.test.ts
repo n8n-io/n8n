@@ -1,4 +1,4 @@
-import { hostRuntime, toVersionedNodeType, type FrozenVersion } from '../entry/host';
+import { hostRuntime, toVersionedNodeType, type PackedVersion } from '../entry/host';
 import {
 	addStatusToStore,
 	addToStore,
@@ -15,7 +15,7 @@ import {
 } from '../entry/registry';
 import { defineNode, t } from '../index';
 import { credential, defineCredential, field } from '../entry/credentials';
-import { freezeAction, freezeCredential, freezeNative, type FrozenAction } from '../freeze';
+import { packAction, packCredential, packNative, type PackedAction } from '../pack';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -141,7 +141,7 @@ const noKeys = { firstParty: undefined, vetting: undefined };
 const bothKeys = { firstParty: firstParty.publicKey, vetting: publicKey };
 
 interface Published {
-	readonly frozen: FrozenAction;
+	readonly packed: PackedAction;
 	readonly key: string;
 }
 
@@ -178,7 +178,7 @@ const published = new Map<string, Published>();
 const dirs = { root: '' };
 const instance = { current: memoryStore() };
 const registry: { url: string; npm?: FakeNpmRegistry } = { url: '' };
-const versions = new Map<string, FrozenAction>();
+const versions = new Map<string, PackedAction>();
 
 const fake = () => {
 	if (!registry.npm) throw new Error('no registry');
@@ -188,11 +188,11 @@ const fake = () => {
 /** Writes the registry again from `published`. */
 const writeRegistry = () => {
 	fake().packuments.clear();
-	published.forEach(({ frozen, key }) => fake().put(npmPackageOf(frozen, { privateKey: key })));
+	published.forEach(({ packed, key }) => fake().put(npmPackageOf(packed, { privateKey: key })));
 };
 
-const publish = (frozen: FrozenAction, key = privateKey) => {
-	published.set(frozen.manifest.semver, { frozen, key });
+const publish = (packed: PackedAction, key = privateKey) => {
+	published.set(packed.manifest.semver, { packed, key });
 	writeRegistry();
 };
 
@@ -200,23 +200,23 @@ const publish = (frozen: FrozenAction, key = privateKey) => {
 const tamper = (version: string, file = 'bundle.cjs') => {
 	const entry = published.get(version);
 	if (!entry) throw new Error(`${version} is not published`);
-	const files = npmPackageOf(entry.frozen, { privateKey: entry.key });
+	const files = npmPackageOf(entry.packed, { privateKey: entry.key });
 	fake().put({ ...files, [file]: `${files[file]}\n` });
 };
 
 beforeAll(async () => {
 	dirs.root = await mkdtemp(path.join(tmpdir(), 'contract-registry-'));
 	const entry = path.join(dirs.root, 'echo.ts');
-	const freeze = async (version: string, text: string, imports?: string) => {
+	const pack = async (version: string, text: string, imports?: string) => {
 		await writeFile(entry, echoSource(version, text, imports));
-		const frozen = await freezeAction(entry, 'echo');
-		versions.set(frozen.manifest.semver, frozen);
+		const packed = await packAction(entry, 'echo');
+		versions.set(packed.manifest.semver, packed);
 	};
-	await freeze('1.0.0', 'input.text.toUpperCase()');
-	await freeze('1.0.1', "input.text + '?'");
-	await freeze('1.1.0', "input.text + (input.suffix ?? '#')");
-	await freeze('1.2.0', 'input.text', "imports: ['code'],");
-	await freeze('1.2.1', "input.text + '!'", "imports: ['code'],");
+	await pack('1.0.0', 'input.text.toUpperCase()');
+	await pack('1.0.1', "input.text + '?'");
+	await pack('1.1.0', "input.text + (input.suffix ?? '#')");
+	await pack('1.2.0', 'input.text', "imports: ['code'],");
+	await pack('1.2.1', "input.text + '!'", "imports: ['code'],");
 	registry.npm = await fakeNpmRegistry();
 	registry.url = registry.npm.url;
 });
@@ -225,7 +225,7 @@ beforeEach(() => {
 	instance.current = memoryStore();
 	published.clear();
 	['1.0.0', '1.0.1', '1.1.0'].forEach((version) =>
-		published.set(version, { frozen: frozenOf(version), key: privateKey }),
+		published.set(version, { packed: packedOf(version), key: privateKey }),
 	);
 	writeRegistry();
 });
@@ -235,25 +235,25 @@ afterAll(async () => {
 	await rm(dirs.root, { recursive: true, force: true });
 });
 
-function frozenOf(version: string): FrozenAction {
-	const frozen = versions.get(version);
-	if (!frozen) throw new Error(`${version} is not frozen`);
-	return frozen;
+function packedOf(version: string): PackedAction {
+	const packed = versions.get(version);
+	if (!packed) throw new Error(`${version} is not packed`);
+	return packed;
 }
 
-const bundled = (version: string): FrozenVersion => ({
-	manifest: frozenOf(version).manifest,
+const bundled = (version: string): PackedVersion => ({
+	manifest: packedOf(version).manifest,
 	origin: 'first-party',
-	readBundle: async () => frozenOf(version).bundle,
+	readBundle: async () => packedOf(version).bundle,
 });
 
 const lockOf = (version: string): NodeContractLock => {
-	const { id, semver, bundleHash, contractHash } = frozenOf(version).manifest;
+	const { id, semver, bundleHash, contractHash } = packedOf(version).manifest;
 	return { action: id, version: semver, bundleHash, contractHash };
 };
 
 const pinOf = (version: string): INodeContractPin => {
-	const { manifest } = frozenOf(version);
+	const { manifest } = packedOf(version);
 	const digest = createHash('sha256').update(manifestTextOf(manifest)).digest('hex');
 	return { version: manifest.semver, digest: `sha256:${digest}` };
 };
@@ -338,7 +338,7 @@ describe('contractVersionLoader', () => {
 
 	it('applies no newer patch without a trusted key or with a wrong signature', async () => {
 		expect(await run(locked('1.0.0'), { keys: noKeys })).toEqual(['HELLO']);
-		publish(frozenOf('1.0.1'), strangerKey);
+		publish(packedOf('1.0.1'), strangerKey);
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
@@ -381,8 +381,8 @@ describe('contractVersionLoader', () => {
 	});
 
 	it('refuses a locked version or its patch that a denied permission class has', async () => {
-		publish(frozenOf('1.2.0'));
-		publish(frozenOf('1.2.1'));
+		publish(packedOf('1.2.0'));
+		publish(packedOf('1.2.1'));
 		const onPermissionRefused = vi.fn();
 		const deny = { permissionsDeny: ['code'], onPermissionRefused };
 
@@ -409,7 +409,7 @@ describe('contractVersionLoader', () => {
 	it('records the version that ran in the execution metadata', async () => {
 		const metadata: ITaskMetadata[] = [];
 		await run(locked('1.0.0'), {}, metadata);
-		const { bundleHash } = frozenOf('1.0.1').manifest;
+		const { bundleHash } = packedOf('1.0.1').manifest;
 		expect(metadata).toEqual([
 			{
 				nodeContract: {
@@ -425,7 +425,7 @@ describe('contractVersionLoader', () => {
 
 describe('contractStore', () => {
 	it('takes only bundles with the trusted signature when a key is set', async () => {
-		publish(frozenOf('1.0.0'), strangerKey);
+		publish(packedOf('1.0.0'), strangerKey);
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			'demo.echo@1.0.0 (bundle',
 		);
@@ -504,7 +504,7 @@ describe('contractStore', () => {
 		const fetchRegistry = vi.fn(async () => new Response(null, { status: 500 }));
 		const worker = storeOf({ mayFetch: () => false, fetch: fetchRegistry });
 		expect(await (await worker.locked('demo.echo', pinOf('1.0.1'))).readBundle()).toBe(
-			frozenOf('1.0.1').bundle,
+			packedOf('1.0.1').bundle,
 		);
 		expect(
 			(await worker.newerPatches(lockOf('1.0.0'))).map(({ manifest }) => manifest.semver),
@@ -544,7 +544,7 @@ describe('contractStore', () => {
 	});
 
 	it('serves only signed versions when a key is set', async () => {
-		publish(frozenOf('1.0.0'), strangerKey);
+		publish(packedOf('1.0.0'), strangerKey);
 		await storeOf({ keys: noKeys }).locked('demo.echo', pinOf('1.0.0'));
 		expect((await storeOf({ keys: noKeys }).versions()).has('demo.echo')).toBe(true);
 		expect((await storeOf().versions()).has('demo.echo')).toBe(false);
@@ -568,13 +568,13 @@ describe('contractStore with npm publish', () => {
 			for (const version of ['1.0.0', '1.0.1']) {
 				await npmPublish(
 					npm.url,
-					npmPackageOf(frozenOf(version), { privateKey: firstParty.privateKey }),
+					npmPackageOf(packedOf(version), { privateKey: firstParty.privateKey }),
 				);
 			}
 			const storeOfNpm = () => storeOf({ registryUrl: npm.url, keys: bothKeys });
 			const pinned = await storeOfNpm().locked('demo.echo', pinOf('1.0.0'));
 			expect(pinned.origin).toBe('first-party');
-			expect(await pinned.readBundle()).toBe(frozenOf('1.0.0').bundle);
+			expect(await pinned.readBundle()).toBe(packedOf('1.0.0').bundle);
 			const patches = await storeOfNpm().newerPatches(lockOf('1.0.0'));
 			expect(patches.map(({ manifest, origin }) => [manifest.semver, origin])).toEqual([
 				['1.0.1', 'first-party'],
@@ -589,7 +589,7 @@ describe('contractStore with npm publish', () => {
 			const store = storeOfNpm();
 			await store.syncStatuses(['demo.echo'], Date.now());
 			const withdrawalOf = async (version: string) =>
-				await store.withdrawal({ manifest: frozenOf(version).manifest, origin: 'first-party' });
+				await store.withdrawal({ manifest: packedOf(version).manifest, origin: 'first-party' });
 			expect(await withdrawalOf('1.0.1')).toMatchObject({
 				yank: '1.0.1',
 				reason: 'wrong output',
@@ -611,7 +611,7 @@ describe('origin', () => {
 		[...instance.current.rows.values()].map(({ version, origin }) => [version, origin]);
 
 	it('takes the origin of a version from the key that signs it', () => {
-		const text = manifestTextOf(frozenOf('1.0.0').manifest);
+		const text = manifestTextOf(packedOf('1.0.0').manifest);
 		const signedBy = (key: string) => ({ signatures: [signStoreManifest(text, key)] });
 		expect(originOf(signedBy(firstParty.privateKey), text, bothKeys)).toBe('first-party');
 		expect(originOf(signedBy(privateKey), text, bothKeys)).toBe('community');
@@ -621,13 +621,13 @@ describe('origin', () => {
 	});
 
 	it('does not take the n8n namespace from an id', () => {
-		const text = manifestTextOf(frozenOf('1.0.0').manifest);
+		const text = manifestTextOf(packedOf('1.0.0').manifest);
 		const line = { id: 'n8n.echo', signatures: [signStoreManifest(text, privateKey)] };
 		expect(originOf(line, text, bothKeys)).toBe('community');
 	});
 
 	it('records the origin at admission and serves it from the store', async () => {
-		publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(packedOf('1.0.0'), firstParty.privateKey);
 		const store = storeOf({ keys: bothKeys });
 		expect((await store.locked('demo.echo', pinOf('1.0.0'))).origin).toBe('first-party');
 		expect((await store.locked('demo.echo', pinOf('1.0.1'))).origin).toBe('community');
@@ -643,7 +643,7 @@ describe('origin', () => {
 	});
 
 	it('serves a first-party version with the origin that the keys prove now', async () => {
-		publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(packedOf('1.0.0'), firstParty.privateKey);
 		await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
 		const [[digest, row] = []] = [...instance.current.rows];
 		if (!digest || !row) throw new Error('no stored row');
@@ -664,7 +664,7 @@ describe('origin', () => {
 	});
 
 	it('takes an unsigned version as private only without a key', async () => {
-		publish(frozenOf('1.0.0'), strangerKey);
+		publish(packedOf('1.0.0'), strangerKey);
 		expect((await storeOf({ keys: noKeys }).locked('demo.echo', pinOf('1.0.0'))).origin).toBe(
 			'private',
 		);
@@ -682,7 +682,7 @@ describe('origin', () => {
 				['1.0.0', firstParty.privateKey],
 				['1.0.1', privateKey],
 			].map(([version = '', key = '']) => {
-				const { manifest, bundle } = frozenOf(version);
+				const { manifest, bundle } = packedOf(version);
 				const manifestText = manifestTextOf(manifest);
 				return { manifestText, bundle, signatures: [signStoreManifest(manifestText, key)] };
 			}),
@@ -695,10 +695,10 @@ describe('origin', () => {
 	});
 
 	it('applies a newer patch only from the origin of the pinned version', async () => {
-		publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(packedOf('1.0.0'), firstParty.privateKey);
 		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['HELLO']);
 		instance.current = memoryStore();
-		publish(frozenOf('1.0.1'), firstParty.privateKey);
+		publish(packedOf('1.0.1'), firstParty.privateKey);
 		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['hello?']);
 	});
 
@@ -778,7 +778,7 @@ describe('status lines', () => {
 	});
 
 	it('applies a registry line to every origin, and an own line only to private versions', async () => {
-		publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(packedOf('1.0.0'), firstParty.privateKey);
 		inRegistry('1.0.0', 'revoked: leaks the token');
 		await expect(run(locked('1.0.0'), { policy: 'strict', keys: bothKeys })).rejects.toThrow(
 			'demo.echo@1.0.0 is revoked: leaks the token',
@@ -819,7 +819,7 @@ describe('status lines', () => {
 		await addToStore(
 			dir,
 			['1.0.0', '1.0.1'].map((version) => {
-				const { manifest, bundle } = frozenOf(version);
+				const { manifest, bundle } = packedOf(version);
 				const manifestText = manifestTextOf(manifest);
 				return { manifestText, bundle, signatures: [signStoreManifest(manifestText, privateKey)] };
 			}),
@@ -874,7 +874,7 @@ describe('importContractStore and exportContractStore', () => {
 		await addToStore(
 			dir,
 			['1.0.0', '1.0.1', '1.1.0'].map((version) => {
-				const { manifest, bundle } = frozenOf(version);
+				const { manifest, bundle } = packedOf(version);
 				const manifestText = manifestTextOf(manifest);
 				return {
 					manifestText,
@@ -923,7 +923,7 @@ describe('importContractStore and exportContractStore', () => {
 		const dir = await sourceDir();
 		await addToStore(dir, [
 			{
-				manifestText: manifestTextOf(freezeNative(pingCalled)),
+				manifestText: manifestTextOf(packNative(pingCalled)),
 				signatures: [],
 			},
 		]);
@@ -998,8 +998,8 @@ describe('importContractStore and exportContractStore', () => {
 				"egress: { hosts: ['api.echo.test'] },\n\tflow:",
 			),
 		);
-		const two = await freezeAction(entry, 'echo');
-		const storedOf = ({ manifest, bundle }: FrozenAction): StoredVersion => ({
+		const two = await packAction(entry, 'echo');
+		const storedOf = ({ manifest, bundle }: PackedAction): StoredVersion => ({
 			id: manifest.id,
 			version: manifest.semver,
 			kind: manifest.kind,
@@ -1013,8 +1013,8 @@ describe('importContractStore and exportContractStore', () => {
 			...instance.current.store,
 			installed: (added) => installs.push(...added),
 		};
-		await admitVersions(store, [storedOf(frozenOf('1.0.0')), storedOf(frozenOf('1.1.0'))]);
-		await admitVersions(store, [storedOf(frozenOf('1.0.1'))]);
+		await admitVersions(store, [storedOf(packedOf('1.0.0')), storedOf(packedOf('1.1.0'))]);
+		await admitVersions(store, [storedOf(packedOf('1.0.1'))]);
 		await admitVersions(store, [storedOf(two)]);
 		expect(installs).toEqual([
 			{ id: 'demo.echo', version: '1.0.0', origin: 'community', addedPermissions: [] },
@@ -1035,7 +1035,7 @@ describe('importContractStore and exportContractStore', () => {
 				throw new Error('listener failed');
 			},
 		};
-		const { manifest, bundle } = frozenOf('1.0.0');
+		const { manifest, bundle } = packedOf('1.0.0');
 		const admitted = await admitVersions(store, [
 			{
 				id: manifest.id,
@@ -1063,11 +1063,11 @@ describe('importContractStore and exportContractStore', () => {
 	/** A store folder with a credential manifest and a native version that pins it. */
 	const credentialAndNativeDir = async () => {
 		const dir = await sourceDir();
-		const pingCredential = freezeCredential(pingToken);
+		const pingCredential = packCredential(pingToken);
 		if (!pingCredential) throw new Error('ping.token has no manifest');
 		await addToStore(
 			dir,
-			[pingCredential, freezeNative(pingCalled)].map((manifest) => {
+			[pingCredential, packNative(pingCalled)].map((manifest) => {
 				const manifestText = manifestTextOf(manifest);
 				return { manifestText, signatures: [signStoreManifest(manifestText, privateKey)] };
 			}),
@@ -1119,9 +1119,9 @@ describe('contractStore with triggers and credentials', () => {
 	const ping = async () => {
 		const entry = path.join(dirs.root, 'ping.ts');
 		await writeFile(entry, pingSource);
-		const credential = freezeCredential(pingToken);
+		const credential = packCredential(pingToken);
 		if (!credential) throw new Error('ping.token has no manifest');
-		return { trigger: await freezeAction(entry, 'pinged'), credential };
+		return { trigger: await packAction(entry, 'pinged'), credential };
 	};
 
 	const publishPing = async (credentialKey = privateKey) => {
@@ -1251,7 +1251,7 @@ describe('embedded contracts', () => {
 	it('give a bundled version and a version that the first-party key signs the first-party origin', async () => {
 		const [version] = versionsOf('httpRequest.send');
 		expect(version?.origin).toBe('first-party');
-		publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(packedOf('1.0.0'), firstParty.privateKey);
 		const signed = await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
 		expect(signed.origin).toBe('first-party');
 	});

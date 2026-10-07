@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
-import { freezeAction, freezePackage, type FrozenAction } from '../freeze';
+import { packAction, packPackage, type PackedAction } from '../pack';
 import { generateNodeModule } from '../entry/codegen';
 import {
 	hostRuntime,
 	nodeContractRangeOf,
 	toVersionedNodeType,
-	type FrozenVersion,
+	type PackedVersion,
 	type HostRuntime,
 } from '../entry/host';
 import {
@@ -266,7 +266,7 @@ describe('diffContracts', () => {
 		]);
 		expect(diffContracts(pointed(pointer), base).kind).toBe('major');
 		expect(diffContracts(pointed(pointer), pointed({ input: 'mode' })).kind).toBe('major');
-		// A frozen pointer of the legacy shape, with load-options calls.
+		// A packed pointer of the legacy shape, with load-options calls.
 		const legacy = {
 			...pointer,
 			method: 'demo.fields',
@@ -461,9 +461,9 @@ const contextOf = (metadata: ITaskMetadata[] = []) =>
 
 const dirs = { root: '', entry: '', shout: '' };
 
-const freeze = async (options: EchoOptions = {}) => {
+const pack = async (options: EchoOptions = {}) => {
 	await writeFile(dirs.entry, echoSource(options));
-	return await freezeAction(dirs.entry, 'echo');
+	return await packAction(dirs.entry, 'echo');
 };
 
 const writeShout = async (body: string) =>
@@ -479,15 +479,15 @@ afterAll(async () => {
 	await rm(dirs.root, { recursive: true, force: true });
 });
 
-describe('freezeAction', () => {
+describe('packAction', () => {
 	it('writes the version of the source, with its major as the contract version', async () => {
 		await writeShout('text.toUpperCase()');
-		expect((await freeze()).manifest).toMatchObject({ semver: '1.0.0', contract: { version: 1 } });
-		expect((await freeze({ version: '2.3.1' })).manifest).toMatchObject({
+		expect((await pack()).manifest).toMatchObject({ semver: '1.0.0', contract: { version: 1 } });
+		expect((await pack({ version: '2.3.1' })).manifest).toMatchObject({
 			semver: '2.3.1',
 			contract: { version: 2 },
 		});
-		await expect(freeze({ version: '2.3' })).rejects.toThrow(
+		await expect(pack({ version: '2.3' })).rejects.toThrow(
 			'2.3 is not a major.minor.patch version',
 		);
 	});
@@ -509,12 +509,12 @@ describe('freezeAction', () => {
 describe('checkPublish', () => {
 	const v1 = async () => {
 		await writeShout('text.toUpperCase()');
-		return (await freeze()).manifest;
+		return (await pack()).manifest;
 	};
 
 	it('refuses a bump lower than the computed change', async () => {
 		const prev = await v1();
-		const next = await freeze({ version: '1.1.0', input: '{ text: str(), prefix: str() }' });
+		const next = await pack({ version: '1.1.0', input: '{ text: str(), prefix: str() }' });
 		await expect(checkPublish(prev, next, fixturesOf('HELLO!'))).rejects.toThrow(
 			'is a minor bump from 1.0.0, but the change is major (major: input.prefix added as required)',
 		);
@@ -522,8 +522,8 @@ describe('checkPublish', () => {
 
 	it('refuses a patch whose contract hash moved', async () => {
 		const prev = await v1();
-		const next = await freeze({ version: '1.0.1' });
-		const moved: FrozenAction = {
+		const next = await pack({ version: '1.0.1' });
+		const moved: PackedAction = {
 			...next,
 			manifest: { ...next.manifest, contractHash: sha256('other contract') },
 		};
@@ -539,9 +539,9 @@ describe('checkPublish', () => {
 		await writeShout('text.toUpperCase()');
 		const input =
 			"{ text: str(), note: str().optional(), body: t.variant('kind', { a: { a: str(), inner: t.variant('mode', { x: { x: str() } }).title('Inner').optional() } }).title('Body').optional(), rows: t.arr(t.obj({ a: str() })).title('Rows').optional(), meta: t.record(str()).title('Meta').optional() }";
-		const prev = (await freeze({ input })).manifest;
-		const next = await freeze({ input, version: '1.0.1' });
-		const withUi = (ui: VersionManifest['ui']): FrozenAction => ({
+		const prev = (await pack({ input })).manifest;
+		const next = await pack({ input, version: '1.0.1' });
+		const withUi = (ui: VersionManifest['ui']): PackedAction => ({
 			...next,
 			manifest: { ...next.manifest, ui },
 		});
@@ -582,10 +582,10 @@ describe('checkPublish', () => {
 
 	it('refuses an older version and failing fixtures', async () => {
 		const prev = await v1();
-		await expect(checkPublish(prev, await freeze(), fixturesOf('HELLO!'))).rejects.toThrow(
+		await expect(checkPublish(prev, await pack(), fixturesOf('HELLO!'))).rejects.toThrow(
 			'must be newer',
 		);
-		const patch = await freeze({ version: '1.0.1' });
+		const patch = await pack({ version: '1.0.1' });
 		await expect(checkPublish(prev, patch, fixturesOf('hello!'))).rejects.toThrow(
 			'demo.echo@1.0.1 fails its fixtures: demo.echo@1.0.1 fixture "echo": output [{"text":"HELLO!"}]',
 		);
@@ -596,7 +596,7 @@ describe('checkPublish', () => {
 
 	it('refuses an input field without a title', async () => {
 		await writeShout('text.toUpperCase()');
-		const untitled = await freeze({ input: '{ text: t.str(), rows: t.arr(obj({ a: str() })) }' });
+		const untitled = await pack({ input: '{ text: t.str(), rows: t.arr(obj({ a: str() })) }' });
 		await expect(checkPublish(undefined, untitled, fixturesOf('HELLO!'))).rejects.toThrow(
 			'demo.echo@1.0.0 needs field titles: demo.echo: input.text has no title; demo.echo: input.rows has no title',
 		);
@@ -604,13 +604,13 @@ describe('checkPublish', () => {
 
 	it('reports fixture params that the action does not declare', async () => {
 		await writeShout('text.toUpperCase()');
-		const frozen = await freeze();
+		const packed = await pack();
 		const fixtures = (params: Record<string, unknown>) => ({
 			executions: [{ name: 'echo', params, routes: suffixRoutes, output: [{ text: 'HELLO!' }] }],
 		});
 
-		await expect(replayFixtures(frozen, fixtures({ text: 'hello' }))).resolves.toEqual([]);
-		await expect(replayFixtures(frozen, fixtures({ text: 'hello', txt: 'x' }))).resolves.toEqual([
+		await expect(replayFixtures(packed, fixtures({ text: 'hello' }))).resolves.toEqual([]);
+		await expect(replayFixtures(packed, fixtures({ text: 'hello', txt: 'x' }))).resolves.toEqual([
 			'demo.echo@1.0.0 fixture "echo": params not declared: txt',
 		]);
 		const failing = {
@@ -623,21 +623,21 @@ describe('checkPublish', () => {
 				},
 			],
 		};
-		await expect(replayFixtures(frozen, failing)).resolves.toEqual([
+		await expect(replayFixtures(packed, failing)).resolves.toEqual([
 			'demo.echo@1.0.0 fixture "echo": params not declared: txt',
 		]);
 	});
 
 	it('answers each request from the route of its method and path', async () => {
 		await writeShout('text.toUpperCase()');
-		const frozen = await freeze();
+		const packed = await pack();
 		const fixtures = (routes: MockRoute[]) => ({
 			executions: [{ name: 'echo', params: { text: 'hi' }, routes, output: [{ text: 'HI!' }] }],
 		});
 
 		await expect(
 			replayFixtures(
-				frozen,
+				packed,
 				fixtures([
 					{ method: 'POST', path: '/suffix', reply: { json: '?' } },
 					{ path: '/other', reply: { json: '?' } },
@@ -646,7 +646,7 @@ describe('checkPublish', () => {
 			),
 		).resolves.toEqual([]);
 		await expect(
-			replayFixtures(frozen, fixtures([{ path: '/suffix', reply: { status: 404, json: {} } }])),
+			replayFixtures(packed, fixtures([{ path: '/suffix', reply: { status: 404, json: {} } }])),
 		).resolves.toEqual([
 			'demo.echo@1.0.0 fixture "echo": GET https://demo.test/suffix failed with 404: {}',
 		]);
@@ -669,10 +669,10 @@ describe('checkPublish', () => {
 			migrations: [{ fromMajor: 1, params: { text: 'hi' }, expected }],
 		});
 
-		await expect(checkPublish(prev, await freeze(v2), { executions })).rejects.toThrow(
+		await expect(checkPublish(prev, await pack(v2), { executions })).rejects.toThrow(
 			'demo.echo@2.0.0 breaks old input, so it needs migrate',
 		);
-		const migrating = await freeze({ ...v2, migrate });
+		const migrating = await pack({ ...v2, migrate });
 		await expect(checkPublish(prev, migrating, { executions })).rejects.toThrow(
 			'needs a migration fixture from major 1',
 		);
@@ -682,10 +682,10 @@ describe('checkPublish', () => {
 		await expect(replayFixtures(migrating, pair({ message: 'ho' }))).resolves.toEqual([
 			'demo.echo@2.0.0 migration from 1: got {"message":"hi"}',
 		]);
-		await expect(replayFixtures(await freeze(v2), pair({ message: 'hi' }))).resolves.toEqual([
+		await expect(replayFixtures(await pack(v2), pair({ message: 'hi' }))).resolves.toEqual([
 			'demo.echo@2.0.0 migration from 1: the contract has no migrate',
 		]);
-		const throwing = await freeze({
+		const throwing = await pack({
 			...v2,
 			migrate: "migrate: () => { throw new Error('boom'); },",
 		});
@@ -696,7 +696,7 @@ describe('checkPublish', () => {
 
 	it('needs migrate and a fixture pair for a trigger major that breaks old input', async () => {
 		const entry = path.join(dirs.root, 'ping.ts');
-		const freezePing = async (version: number, input: string, migrate = '') => {
+		const packPing = async (version: number, input: string, migrate = '') => {
 			await writeFile(
 				entry,
 				`import { defineNode, t } from '@n8n/node-sdk';
@@ -714,9 +714,9 @@ export const ping = demo.trigger('ping', {
 });
 `,
 			);
-			return await freezeAction(entry, 'ping');
+			return await packAction(entry, 'ping');
 		};
-		const prev = (await freezePing(1, '{ text: str() }')).manifest;
+		const prev = (await packPing(1, '{ text: str() }')).manifest;
 		const v2 = '{ message: str() }';
 		const migrate = 'migrate: (fromMajor, params) => ({ message: params.text }),';
 		const pair = (expected: Record<string, unknown>) => ({
@@ -724,10 +724,10 @@ export const ping = demo.trigger('ping', {
 			migrations: [{ fromMajor: 1, params: { text: 'hi' }, expected }],
 		});
 
-		await expect(checkPublish(prev, await freezePing(2, v2), { executions: [] })).rejects.toThrow(
+		await expect(checkPublish(prev, await packPing(2, v2), { executions: [] })).rejects.toThrow(
 			'demo.ping@2.0.0 breaks old input, so it needs migrate',
 		);
-		const migrating = await freezePing(2, v2, migrate);
+		const migrating = await packPing(2, v2, migrate);
 		await expect(checkPublish(prev, migrating, pair({ message: 'hi' }))).resolves.toMatchObject({
 			kind: 'major',
 		});
@@ -762,7 +762,7 @@ export const read = demo.action('read', {
 });
 `,
 		);
-		const frozen = await freezeAction(entry, 'read');
+		const packed = await packAction(entry, 'read');
 		const fixture = (credential?: Record<string, unknown>) => ({
 			executions: [
 				{
@@ -776,24 +776,24 @@ export const read = demo.action('read', {
 		});
 
 		await expect(
-			replayFixtures(frozen, fixture({ server: 'https://demo.example.com' })),
+			replayFixtures(packed, fixture({ server: 'https://demo.example.com' })),
 		).resolves.toEqual([]);
-		await expect(replayFixtures(frozen, fixture())).resolves.toEqual([
+		await expect(replayFixtures(packed, fixture())).resolves.toEqual([
 			expect.stringContaining('demo.read@1.0.0 fixture "read": Credential demoApi'),
 		]);
 		await expect(
-			replayFixtures(frozen, fixture({ server: 'https://demo.example.com', token: 't' })),
+			replayFixtures(packed, fixture({ server: 'https://demo.example.com', token: 't' })),
 		).resolves.toEqual([
 			'demo.read@1.0.0 fixture "read": A fixture credential holds only fields of demoApi, not token',
 		]);
 		await expect(
-			checkPublish(undefined, frozen, fixture({ server: 'https://demo.example.com', token: 't' })),
+			checkPublish(undefined, packed, fixture({ server: 'https://demo.example.com', token: 't' })),
 		).rejects.toThrow('not token');
 	});
 
 	it('takes a major without migrate when the old input still fits', async () => {
 		const prev = await v1();
-		const next = await freeze({
+		const next = await pack({
 			version: '2.0.0',
 			input: '{ text: str(), prefix: str().optional() }',
 		});
@@ -839,16 +839,16 @@ describe('resolveContractVersion', () => {
 
 describe('published versions', () => {
 	const run = async (
-		frozen: FrozenVersion,
+		packed: PackedVersion,
 		metadata: ITaskMetadata[] = [],
 		runtime: HostRuntime = hostRuntime(),
 	) => {
-		const NodeType = toVersionedNodeType([frozen], runtime);
+		const NodeType = toVersionedNodeType([packed], runtime);
 		const result = await new NodeType().getNodeType(1).execute?.call(contextOf(metadata));
 		const [items = []]: INodeExecutionData[][] = Array.isArray(result) ? result : [];
 		return items.map((item) => item.json.text);
 	};
-	const frozenOf = (manifest: VersionManifest, bundle: string): FrozenVersion => ({
+	const packedOf = (manifest: VersionManifest, bundle: string): PackedVersion => ({
 		manifest,
 		origin: 'first-party',
 		readBundle: async () => bundle,
@@ -857,14 +857,14 @@ describe('published versions', () => {
 	it('keep their behaviour when a shared helper changes', async () => {
 		await writeShout('text.toUpperCase()');
 		await writeFile(dirs.entry, echoSource());
-		const old = await freezeAction(dirs.entry, 'echo');
+		const old = await packAction(dirs.entry, 'echo');
 		await checkPublish(undefined, old, fixturesOf('HELLO!'));
 		const v100 = old.manifest;
 
 		// The helper changes: other bytes need a new version in the source.
 		await writeShout("text + '?'");
 		await writeFile(dirs.entry, echoSource({ version: '1.0.1' }));
-		const next = await freezeAction(dirs.entry, 'echo');
+		const next = await packAction(dirs.entry, 'echo');
 		await checkPublish(v100, next, fixturesOf('hello!?'));
 		const v101 = next.manifest;
 		expect(v101.contractHash).toBe(v100.contractHash);
@@ -876,7 +876,7 @@ describe('published versions', () => {
 			echoSource({ version: '1.0.2', input: '{ text: str(), prefix: str().optional() }' }),
 		);
 		await expect(
-			checkPublish(v101, await freezeAction(dirs.entry, 'echo'), fixturesOf('hello!?')),
+			checkPublish(v101, await packAction(dirs.entry, 'echo'), fixturesOf('hello!?')),
 		).rejects.toThrow('demo.echo@1.0.2 is a patch bump from 1.0.1, but the change is minor');
 		await writeFile(dirs.entry, echoSource({ version: '1.0.1' }));
 
@@ -887,11 +887,11 @@ describe('published versions', () => {
 		]);
 		expect(issues.flat()).toEqual([]);
 
-		const head = await freezeAction(dirs.entry, 'echo');
+		const head = await packAction(dirs.entry, 'echo');
 		expect(head.manifest).toEqual(v101);
-		const pinned = hostRuntime({ versionLoader: async () => frozenOf(old.manifest, old.bundle) });
+		const pinned = hostRuntime({ versionLoader: async () => packedOf(old.manifest, old.bundle) });
 		const metadata: ITaskMetadata[] = [];
-		expect(await run(frozenOf(head.manifest, head.bundle), metadata, pinned)).toEqual(['HELLO!']);
+		expect(await run(packedOf(head.manifest, head.bundle), metadata, pinned)).toEqual(['HELLO!']);
 		expect(metadata).toEqual([
 			{
 				nodeContract: {
@@ -902,22 +902,22 @@ describe('published versions', () => {
 				},
 			},
 		]);
-		expect(await run(frozenOf(head.manifest, head.bundle))).toEqual(['hello!?']);
+		expect(await run(packedOf(head.manifest, head.bundle))).toEqual(['hello!?']);
 	});
 
 	it('refuse a bundle that does not match its hash', async () => {
 		await writeShout('text');
-		const { manifest, bundle } = await freeze();
+		const { manifest, bundle } = await pack();
 		const tampered = { ...manifest, bundleHash: sha256('other bytes') };
 
-		await expect(run(frozenOf(tampered, bundle))).rejects.toThrow('does not match');
+		await expect(run(packedOf(tampered, bundle))).rejects.toThrow('does not match');
 	});
 
 	it('read the bundle again after a failed read', async () => {
 		await writeShout('text');
-		const { manifest, bundle } = await freeze();
+		const { manifest, bundle } = await pack();
 		const reads = { count: 0 };
-		const flaky: FrozenVersion = {
+		const flaky: PackedVersion = {
 			manifest,
 			origin: 'first-party',
 			readBundle: async () => {
@@ -934,9 +934,9 @@ describe('published versions', () => {
 	});
 
 	describe('nodeContract', () => {
-		it('is the version freezeAction writes: 2.1.0 without binary data', async () => {
+		it('is the version packAction writes: 2.1.0 without binary data', async () => {
 			await writeShout('text');
-			const { manifest } = await freeze();
+			const { manifest } = await pack();
 			expect(manifest).toMatchObject({ kind: 'action', nodeContract: '2.1.0' });
 			expect(manifest.sdk).toMatch(/^\d+\.\d+\.\d+$/);
 		});
@@ -968,9 +968,9 @@ describe('published versions', () => {
 
 		it('refuse a bundle outside the range, or of a minor this host lacks', async () => {
 			await writeShout('text');
-			const { manifest, bundle } = await freeze();
+			const { manifest, bundle } = await pack();
 			const typeOf = (nodeContract: NodeContractVersion, runtime = hostRuntime()) =>
-				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)], runtime);
+				toVersionedNodeType([packedOf({ ...manifest, nodeContract }, bundle)], runtime);
 
 			expect(() => typeOf('3.0.0')).toThrow(
 				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.10.0.',
@@ -993,7 +993,7 @@ describe('published versions', () => {
 			// The range also applies at run time, to a version the registry loader picks.
 			const picking = hostRuntime({
 				nodeContractRange: '>=2.1.0 <3.0.0',
-				versionLoader: async () => frozenOf({ ...manifest, nodeContract: '2.0.0' }, bundle),
+				versionLoader: async () => packedOf({ ...manifest, nodeContract: '2.0.0' }, bundle),
 			});
 			const NodeType = typeOf('2.9.0', picking);
 			await expect(new NodeType().getNodeType(1).execute?.call(contextOf([]))).rejects.toThrow(
@@ -1003,12 +1003,12 @@ describe('published versions', () => {
 
 		it('refuses a manifest without nodeContract and names its version', async () => {
 			await writeShout('text');
-			const { manifest } = await freeze();
+			const { manifest } = await pack();
 			const { nodeContract: _, ...fields } = manifest;
 			const unversioned = (extra: Record<string, unknown>) =>
 				JSON.stringify({ ...fields, ...extra });
 			const refusal =
-				'The manifest of demo.echo@1.0.0 has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): freeze the version again.';
+				'The manifest of demo.echo@1.0.0 has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): pack the version again.';
 
 			expect(() => parseManifest(unversioned({ abi: 1 }))).toThrow(refusal);
 			expect(() => parseManifest(unversioned({ apiVersion: 'n8n:action@2.4.0' }))).toThrow(refusal);
@@ -1019,13 +1019,13 @@ describe('published versions', () => {
 
 		it('ignores a manifest field that this host does not know', async () => {
 			await writeShout('text');
-			const { manifest } = await freeze();
+			const { manifest } = await pack();
 			expect(parseManifest(JSON.stringify({ ...manifest, later: { x: 1 } }))).toEqual(manifest);
 		});
 
 		it('keeps the runtime and refuses an image without a digest', async () => {
 			await writeShout('text');
-			const { manifest } = await freeze();
+			const { manifest } = await pack();
 			const withImage = (image: string) => {
 				const contract = { ...manifest.contract, runtime: { image } };
 				return { ...manifest, contract, contractHash: contractHash(contract) };
@@ -1037,7 +1037,7 @@ describe('published versions', () => {
 
 		it('is refused by evaluateBundle for a major or minor this host lacks', async () => {
 			await writeShout('text');
-			const { bundle } = await freeze();
+			const { bundle } = await pack();
 			expect(() => evaluateBundle(bundle, '3.0.0')).toThrow(
 				'This host cannot run Node Contract 3.0.0',
 			);
@@ -1066,7 +1066,7 @@ describe('semverRange', () => {
 	});
 });
 
-describe('freezePackage', () => {
+describe('packPackage', () => {
 	const pass = `
 import { defineNode, t } from '@n8n/node-sdk';
 
@@ -1081,17 +1081,17 @@ export const pass = demo.action('pass', {
 	run: ({ items }) => items.map((item) => ({ item })),
 });
 `;
-	it('freezes each action of a package', async () => {
+	it('packs each action of a package', async () => {
 		// Inside this package, so the action file resolves @n8n/node-sdk.
 		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
 		try {
 			const entryFile = path.join(dir, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
 			await mkdir(path.dirname(entryFile), { recursive: true });
 			await writeFile(entryFile, pass);
-			// No list of contracts: freeze finds them in the action files.
+			// No list of contracts: the build finds them in the action files.
 			const pkg = { name: '@acme/nodes', dir };
 
-			const { manifests } = await freezePackage(pkg);
+			const { manifests } = await packPackage(pkg);
 			expect(manifests.map(({ id, semver }) => `${id}@${semver}`)).toEqual(['demo.pass@1.0.0']);
 			const embedded = storeReader(storeFilesOfDir(path.join(dir, 'dist', 'store')));
 			expect((await embedded.records('demo.pass')).map(({ version }) => version)).toEqual([
@@ -1111,12 +1111,12 @@ export const pass = demo.action('pass', {
 			await writeFile(path.join(actionsDir, 'copy.ts'), pass);
 			const pkg = { name: '@acme/nodes', dir };
 
-			await expect(freezePackage(pkg)).rejects.toThrow(
+			await expect(packPackage(pkg)).rejects.toThrow(
 				'These contracts of @acme/nodes have more than one export: demo.pass@1 (demo/actions/copy.ts#pass, demo/actions/pass.ts#pass)',
 			);
 			await rm(path.join(actionsDir, 'copy.ts'));
 			await writeFile(path.join(actionsDir, 'label.ts'), 'export const label = "Pass";\n');
-			await expect(freezePackage(pkg)).rejects.toThrow(
+			await expect(packPackage(pkg)).rejects.toThrow(
 				'These action files of @acme/nodes export no action or trigger: demo/actions/label.ts.',
 			);
 		} finally {

@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { missingTitlesOf } from '../define';
-import { freezeAction, freezeHttpGuest } from '../freeze';
+import { packAction, packHttpGuest } from '../pack';
 import { checkPublish } from '../publish';
 import { fixtureRouteOf } from '../testing';
 import type { HttpGuestConfig } from '../lift/http';
@@ -20,14 +20,14 @@ import {
 	nodeDescriptionOf,
 	verifiedBundleOf,
 	type ExecutorHost,
-	type FrozenVersion,
+	type PackedVersion,
 } from '../runtime';
 import { parseManifest, sha256, type VersionManifest } from '../version';
 
 const RUNTIME = hostRuntime();
 
 /** A version that no trusted key signs, as an instance publishes it. */
-const versionOf = (manifest: VersionManifest, bundle: string): FrozenVersion => ({
+const versionOf = (manifest: VersionManifest, bundle: string): PackedVersion => ({
 	manifest,
 	origin: 'private',
 	readBundle: async () => bundle,
@@ -141,10 +141,10 @@ describe('the HTTP guest', () => {
 
 	/** The JS version of an action, and the HTTP guest version of the same contract. */
 	async function versionsOf(name: keyof typeof BINDINGS) {
-		const frozen = await freezeAction(path.join(dirs.root, 'actions.ts'), name);
-		const guest = await freezeHttpGuest({ contract: frozen.manifest.contract, ...BINDINGS[name] });
-		const js: FrozenVersion = versionOf(frozen.manifest, frozen.bundle);
-		const http: FrozenVersion = versionOf(guest.manifest, guest.bundle);
+		const packed = await packAction(path.join(dirs.root, 'actions.ts'), name);
+		const guest = await packHttpGuest({ contract: packed.manifest.contract, ...BINDINGS[name] });
+		const js: PackedVersion = versionOf(packed.manifest, packed.bundle);
+		const http: PackedVersion = versionOf(guest.manifest, guest.bundle);
 		return { js, http, config: guest.bundle };
 	}
 
@@ -180,7 +180,7 @@ describe('the HTTP guest', () => {
 		);
 	});
 
-	it('freezes a config with the contract that its binding gives', async () => {
+	it('packs a config with the contract that its binding gives', async () => {
 		const { js, config } = await versionsOf('searchPages');
 		const { egress: _, input, ...contract } = js.manifest.contract;
 		const { paging: __, ...properties } = input.properties ?? {};
@@ -189,28 +189,28 @@ describe('the HTTP guest', () => {
 			version: '1.2.0',
 			contract: { ...contract, input: { ...input, properties } },
 		};
-		const frozen = await freezeHttpGuest({
+		const packed = await packHttpGuest({
 			...source,
 			node: { displayName: 'Notion', icon: 'node:n8n-nodes-base.notion' },
 		});
-		expect(nodeDescriptionOf(frozen.manifest).displayName).toBe('Notion: Search pages');
-		expect(frozen.manifest).toMatchObject({
+		expect(nodeDescriptionOf(packed.manifest).displayName).toBe('Notion: Search pages');
+		expect(packed.manifest).toMatchObject({
 			semver: '1.2.0',
 			nodeContract: '2.10.0',
 			guest: 'http',
-			bundleHash: sha256(frozen.bundle),
+			bundleHash: sha256(packed.bundle),
 			contract: js.manifest.contract,
 		});
-		expect(parseManifest(JSON.stringify(frozen.manifest))).toEqual(frozen.manifest);
+		expect(parseManifest(JSON.stringify(packed.manifest))).toEqual(packed.manifest);
 		expect(
 			(
-				await freezeHttpGuest({
+				await packHttpGuest({
 					...source,
 					node: { displayName: 'Notion', icon: 'node:n8n-nodes-base.notion' },
 				})
 			).bundle,
-		).toBe(frozen.bundle);
-		const version: FrozenVersion = versionOf(frozen.manifest, frozen.bundle);
+		).toBe(packed.bundle);
+		const version: PackedVersion = versionOf(packed.manifest, packed.bundle);
 		const fromJs = await outputsOf('searchPages', await loadExecutor(js, RUNTIME));
 		expect(await outputsOf('searchPages', await loadExecutor(version, RUNTIME))).toEqual(fromJs);
 	});
@@ -222,7 +222,7 @@ describe('the HTTP guest', () => {
 			...js.manifest.contract,
 			input: { ...input, properties: { user: { type: 'string' }, page_size: { type: 'integer' } } },
 		};
-		const { manifest } = await freezeHttpGuest({ contract, ...BINDINGS.getUser });
+		const { manifest } = await packHttpGuest({ contract, ...BINDINGS.getUser });
 		expect(manifest.contract.input.properties).toMatchObject({
 			user: { title: 'User' },
 			page_size: { title: 'Page Size' },
@@ -232,9 +232,9 @@ describe('the HTTP guest', () => {
 
 	it('passes the publish gate on the routes that a run of it records', async () => {
 		const { js } = await versionsOf('getUser');
-		const frozen = await freezeHttpGuest({ contract: js.manifest.contract, ...BINDINGS.getUser });
+		const packed = await packHttpGuest({ contract: js.manifest.contract, ...BINDINGS.getUser });
 		const requests: IHttpRequestOptions[] = [];
-		const executor = await loadExecutor(versionOf(frozen.manifest, frozen.bundle), RUNTIME);
+		const executor = await loadExecutor(versionOf(packed.manifest, packed.bundle), RUNTIME);
 		await executor(hostOf('getUser', requests));
 		const routes = requests.map((request) =>
 			fixtureRouteOf(request, { object: 'user', id: 'u-1' }),
@@ -243,10 +243,10 @@ describe('the HTTP guest', () => {
 			executions: [{ name: 'a user', params: { user: 'u-1' }, routes, output: [output] }],
 		});
 		await expect(
-			checkPublish(undefined, frozen, fixture({ object: 'user', id: 'u-1' })),
+			checkPublish(undefined, packed, fixture({ object: 'user', id: 'u-1' })),
 		).resolves.toBeUndefined();
 		await expect(
-			checkPublish(undefined, frozen, fixture({ object: 'user', id: 'u-2' })),
+			checkPublish(undefined, packed, fixture({ object: 'user', id: 'u-2' })),
 		).rejects.toThrow();
 	});
 
@@ -256,19 +256,19 @@ describe('the HTTP guest', () => {
 
 		const withErrorOf = async () => {
 			const { js } = await versionsOf('getUser');
-			const frozen = await freezeHttpGuest({
+			const packed = await packHttpGuest({
 				contract: js.manifest.contract,
 				...BINDINGS.getUser,
 				errorOf: ERROR_OF,
 			});
-			const version: FrozenVersion = versionOf(frozen.manifest, frozen.bundle);
-			return { frozen, version };
+			const version: PackedVersion = versionOf(packed.manifest, packed.bundle);
+			return { packed, version };
 		};
 
 		it('goes into the manifest, which needs Node Contract 2.10.0', async () => {
-			const { frozen } = await withErrorOf();
-			expect(frozen.manifest).toMatchObject({ errorOf: ERROR_OF, nodeContract: '2.10.0' });
-			expect(parseManifest(JSON.stringify(frozen.manifest))).toEqual(frozen.manifest);
+			const { packed } = await withErrorOf();
+			expect(packed.manifest).toMatchObject({ errorOf: ERROR_OF, nodeContract: '2.10.0' });
+			expect(parseManifest(JSON.stringify(packed.manifest))).toEqual(packed.manifest);
 		});
 
 		it('fails an in-band error on the host', async () => {
@@ -304,12 +304,12 @@ describe('the HTTP guest', () => {
 		});
 
 		it('comes from n8n by its name, not from the config', async () => {
-			const frozen = await freezeHttpGuest(
+			const packed = await packHttpGuest(
 				await configTo('https://evil.example', 'https://evil.example'),
 			);
 			const requests: IHttpRequestOptions[] = [];
 			const executor = await loadExecutor(
-				versionOf(frozen.manifest, frozen.bundle),
+				versionOf(packed.manifest, packed.bundle),
 				hostRuntime({ credentialTypeOf: typeOf }),
 			);
 			await expect(executor(withCredential(requests))).rejects.toThrow('Domain not allowed');
@@ -317,26 +317,26 @@ describe('the HTTP guest', () => {
 		});
 
 		it('that n8n does not have refuses the version', async () => {
-			const frozen = await freezeHttpGuest(await configTo('https://api.notion.com/v1'));
-			const version = versionOf(frozen.manifest, frozen.bundle);
+			const packed = await packHttpGuest(await configTo('https://api.notion.com/v1'));
+			const version = versionOf(packed.manifest, packed.bundle);
 			await expect(
 				loadExecutor(version, hostRuntime({ credentialTypeOf: () => undefined })),
 			).rejects.toThrow('uses the credential type notionApi, which n8n does not have');
 		});
 
-		it('with known hosts refuses a base URL on another host at freeze', async () => {
+		it('with known hosts refuses a base URL on another host when it packs', async () => {
 			await expect(
-				freezeHttpGuest(await configTo('https://evil.example'), { credentialTypeOf: typeOf }),
+				packHttpGuest(await configTo('https://evil.example'), { credentialTypeOf: typeOf }),
 			).rejects.toThrow('notionApi goes only to api.notion.com, not to evil.example');
-			const frozen = await freezeHttpGuest(
+			const packed = await packHttpGuest(
 				await configTo('https://api.notion.com/v1', 'https://evil.example'),
 				{ credentialTypeOf: typeOf },
 			);
-			expect(JSON.parse(frozen.bundle)).toMatchObject({ credentials: [{ name: 'notionApi' }] });
-			expect(frozen.bundle).not.toContain('evil.example');
+			expect(JSON.parse(packed.bundle)).toMatchObject({ credentials: [{ name: 'notionApi' }] });
+			expect(packed.bundle).not.toContain('evil.example');
 			const notionWithBase = compat('notionApi', { baseUrl: 'https://api.notion.com/v1' });
 			await expect(
-				freezeHttpGuest(await configTo('https://evil.example'), {
+				packHttpGuest(await configTo('https://evil.example'), {
 					credentialTypeOf: () => notionWithBase,
 				}),
 			).rejects.toThrow('notionApi goes only to api.notion.com, not to evil.example');
@@ -345,7 +345,7 @@ describe('the HTTP guest', () => {
 
 	it('refuses an HTTP guest version below Node Contract 2.10.0', async () => {
 		const { http } = await versionsOf('getUser');
-		const old: FrozenVersion = { ...http, manifest: { ...http.manifest, nodeContract: '2.9.0' } };
+		const old: PackedVersion = { ...http, manifest: { ...http.manifest, nodeContract: '2.9.0' } };
 		await expect(verifiedBundleOf(old, RUNTIME.nodeContractRange)).rejects.toThrow(
 			'needs Node Contract 2.10.0 or newer',
 		);
@@ -353,7 +353,7 @@ describe('the HTTP guest', () => {
 
 	it('refuses a config that does not match its bundle hash', async () => {
 		const { http } = await versionsOf('getUser');
-		const swapped: FrozenVersion = { ...http, readBundle: async () => '{}' };
+		const swapped: PackedVersion = { ...http, readBundle: async () => '{}' };
 		await expect(verifiedBundleOf(swapped, RUNTIME.nodeContractRange)).rejects.toThrow(
 			'does not match',
 		);

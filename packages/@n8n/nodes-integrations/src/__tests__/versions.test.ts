@@ -20,9 +20,9 @@ import {
 import {
 	contractsOfPackage,
 	credentialTypesOf,
-	freezePackage,
-	type FrozenPackage,
-} from '@n8n/node-sdk/freeze';
+	packPackage,
+	type PackedPackage,
+} from '@n8n/node-sdk/pack';
 import { replayFixtures } from '@n8n/node-sdk/publish';
 import { sandboxedVersionOf } from '@n8n/node-sdk/sandbox';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
@@ -43,7 +43,8 @@ import {
 } from './first-party';
 
 // The checks run over every first-party package: the packages share one store format and the
-// expectations name actions of both. The contracts come from the action files, as freeze finds them.
+// expectations name actions of both. The contracts come from the action files, as the build finds
+// them.
 const sources = new Map<string, SourceContracts>();
 const contractsOf = ({ name }: SourcePackage): Array<Action | Trigger> => {
 	const found = sources.get(name);
@@ -78,7 +79,7 @@ beforeAll(async () => {
 const sortedIdsOf = (list: ReadonlyArray<{ readonly id: string }>) =>
 	list.map(({ id }) => id).sort();
 
-/** The node type that n8n projects from the frozen versions of an action or a trigger. */
+/** The node type that n8n projects from the packed versions of an action or a trigger. */
 const nodeTypeOf = (id: string, dir: string) => {
 	const versions = versionsOf(id, dir);
 	const typeOf =
@@ -118,7 +119,7 @@ describe('bundled versions', () => {
 		FIRST_PARTY_PACKAGES.map((pkg) => [pkg.name, mkdtempSync(path.join(tmpdir(), 'versions-'))]),
 	);
 	const copyOf = ({ name }: SourcePackage) => copies.get(name) ?? '';
-	const frozen: FrozenPackage = {
+	const packed: PackedPackage = {
 		manifests: [],
 		credentials: [],
 		natives: [],
@@ -126,9 +127,9 @@ describe('bundled versions', () => {
 
 	beforeAll(async () => {
 		const packages = await Promise.all(
-			FIRST_PARTY_PACKAGES.map(async (pkg) => await freezePackage(pkg, copyOf(pkg))),
+			FIRST_PARTY_PACKAGES.map(async (pkg) => await packPackage(pkg, copyOf(pkg))),
 		);
-		Object.assign(frozen, {
+		Object.assign(packed, {
 			manifests: packages.flatMap(({ manifests }) => manifests),
 			credentials: packages.flatMap(({ credentials }) => credentials),
 			natives: packages.flatMap((pkg) => pkg.natives),
@@ -140,7 +141,7 @@ describe('bundled versions', () => {
 	});
 
 	it('hold the HEAD of every action, as the source builds it', () => {
-		const { manifests } = frozen;
+		const { manifests } = packed;
 		expect(manifests.map(({ id }) => id).sort()).toEqual(
 			source.contracts.map(({ id }) => id).sort(),
 		);
@@ -194,7 +195,7 @@ describe('bundled versions', () => {
 				? host.toTriggerNodeType(contract)
 				: host.toNodeType(contract))().description;
 		};
-		const { manifests } = frozen;
+		const { manifests } = packed;
 		expect(manifests.filter((manifest) => 'description' in manifest)).toEqual([]);
 		expect(manifests.map((manifest) => host.nodeDescriptionOf(manifest))).toEqual(
 			manifests.map(({ id }) => describe(id)),
@@ -226,7 +227,7 @@ describe('bundled versions', () => {
 			source.contracts.map(({ id, version }) => [host.nodeNameOf(id), version]),
 		);
 		const versions = Object.fromEntries(
-			frozen.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
+			packed.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
 		// A bundle that validates takes the validator from the host, which has it since 2.9.0.
 		const validating = new Set([
@@ -331,7 +332,7 @@ describe('bundled versions', () => {
 				validate(readJson(path.join(dir, id, 'manifest.json')), schema, { path: id }),
 			);
 
-		it('with every frozen action, trigger, credential and native manifest', () => {
+		it('with every packed action, trigger, credential and native manifest', () => {
 			const catalog = FIRST_PARTY_PACKAGES.flatMap((pkg) =>
 				parseStoreCatalog(readFileSync(path.join(copyOf(pkg), STORE_CATALOG_FILE), 'utf8')).map(
 					(line) => ({ ...line, dir: copyOf(pkg) }),
@@ -364,7 +365,7 @@ describe('bundled versions', () => {
 	});
 
 	it('record the kind and the credential major of each version', () => {
-		const byId = new Map(frozen.manifests.map((manifest) => [manifest.id, manifest]));
+		const byId = new Map(packed.manifests.map((manifest) => [manifest.id, manifest]));
 		expect(byId.get('slack.message.send')).toMatchObject({
 			kind: 'action',
 			credentials: ['slack.token@1'],
@@ -401,18 +402,18 @@ describe('bundled versions', () => {
 			'items.set': '86cbf3d0b0d13a69a6de6d6710e3339050cd41406045c2b8d6d4246050d56464',
 			'items.sort': '5ba4066cb65478a779e2d2ac18fb023932f6a5976cfd83c8a60bbc0ef24d49c5',
 		};
-		const byId = new Map(frozen.manifests.map((manifest) => [manifest.id, manifest]));
+		const byId = new Map(packed.manifests.map((manifest) => [manifest.id, manifest]));
 		expect(
 			Object.fromEntries(Object.keys(hashes).map((id) => [id, byId.get(id)?.contractHash])),
 		).toEqual(hashes);
 	});
 
 	it('pin only credential manifests that the embedded store holds', () => {
-		const pinning = [...frozen.manifests, ...frozen.natives];
+		const pinning = [...packed.manifests, ...packed.natives];
 		expect(pinning.filter(({ credentials }) => credentials?.length).length).toBeGreaterThan(40);
 		expect(
 			pinning.flatMap((manifest) =>
-				unresolvedCredentialPinsOf(manifest, frozen.credentials).map(
+				unresolvedCredentialPinsOf(manifest, packed.credentials).map(
 					(pin) => `${manifest.id} ${pin}`,
 				),
 			),

@@ -124,7 +124,7 @@ async function bundleGuest(name: string, guest: string) {
 		external: ['node:*', 'n8n-workflow'],
 		plugins: [
 			{
-				// As in `freezeAction`: an SDK module that the guest does not use drops out.
+				// As in `packAction`: an SDK module that the guest does not use drops out.
 				name: 'node-sdk-source',
 				setup(bundler) {
 					bundler.onResolve({ filter: /^\.\.?\/[\w./-]+$/ }, ({ importer, path: file }) => {

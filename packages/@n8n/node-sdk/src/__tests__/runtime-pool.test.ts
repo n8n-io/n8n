@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
-import { freezeAction } from '../freeze';
+import { packAction } from '../pack';
 import { hostRuntime, type ExecutorHost } from '../runtime';
 import { pooledRuntime } from '../runtimes/pool';
 import {
@@ -211,9 +211,9 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action.wa
 				},
 			};
 			const pool = pooledRuntime(counting, { size: 1 });
-			const frozen = await freezeAction(path.join(dirs.root, 'counter.ts'), 'count');
+			const packed = await packAction(path.join(dirs.root, 'counter.ts'), 'count');
 			const { executor } = await sandboxedVersionOf(
-				{ manifest: frozen.manifest, origin: 'private', readBundle: async () => frozen.bundle },
+				{ manifest: packed.manifest, origin: 'private', readBundle: async () => packed.bundle },
 				{
 					runtime: pool,
 					cacheDir: path.join(dirs.root, 'cache'),

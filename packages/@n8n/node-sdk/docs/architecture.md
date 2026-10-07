@@ -49,7 +49,7 @@ flowchart BT
 
 | Package | Has | Read first |
 |---|---|---|
-| `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from frozen versions (`toVersionedNodeType`); freeze, publish and the store format; the guest runtimes and the sandbox | `src/runtime.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
+| `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from packed versions (`toVersionedNodeType`); pack, publish and the store format; the guest runtimes and the sandbox | `src/runtime.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
 | `@n8n/nodes-integrations` | Integration nodes, one vendor each (`src/nodes/<service>/actions/*.ts`); the list of first-party packages (`FIRST_PARTY_PACKAGES`); the instance logic that has no n8n dependency: origin, admission, pins, version resolution, sync, import and export | `src/index.ts`, `src/registry.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
 | `@n8n/nodes-core` | Core nodes: flow control, item transforms, host features (wait, webhook, form, schedule, data tables, code), HTTP Request and the AI roots. The engine and the flow SDK may name them by type | `src/index.ts` |
 | `@n8n/node-contract-compat` | Derives manifests and typed modules from legacy node descriptions; composes a legacy node version where contract actions run some operations | `src/derive/`, `src/migrate/` |
@@ -71,7 +71,7 @@ the same logic runs in tests and scripts without n8n.
 | Unit | One class with all resources and operations | One action per operation |
 | Description | Written by hand in the class | Made from the contract (`nodeDescriptionOf`) |
 | n8n type | `n8n-nodes-base.notion`, `typeVersion` set in the class | `<source package>.<nodeNameOf(id)>`, e.g. `@n8n/nodes-core.httpRequestGet`; `typeVersion` = action major |
-| Old versions | Kept in the class code | Separate frozen versions in a store |
+| Old versions | Kept in the class code | Separate packed versions in a store |
 | Comes from | The release only | The release (HEAD), the registry, or an import |
 | Permissions | None declared | Declared in the manifest, checked by the host |
 | Runs | In the n8n process | In the runtime that its origin allows |
@@ -96,7 +96,7 @@ The engine sees both as `INodeType` in one registry (`LoadNodesAndCredentials`).
 
 ```mermaid
 flowchart LR
-  W["1 Write<br/>defineNode, n8n-node-next check"] --> F["2 Freeze<br/>pnpm freeze"]
+  W["1 Write<br/>defineNode, n8n-node-next check"] --> F["2 Build<br/>pnpm build:contracts"]
   F --> E["embedded store<br/>dist/store (HEAD)"]
   F --> P["3 Publish<br/>pnpm publish:contracts"]
   P --> R["npm registry<br/>Verdaccio in the POC"]
@@ -111,18 +111,18 @@ flowchart LR
 An author writes `defineNode` and one `node.action(...)` per operation, then runs
 `n8n-node-next check` and `test`. See the [README](../README.md).
 
-### 2. Freeze
+### 2. Build
 
-`pnpm freeze` in each first-party package (part of `build`) calls `freezePackage`. It finds the
-contracts in the exports of `src/nodes/<node>/actions/*.ts`, with no list. It bundles each action
-and writes its manifest, bundle and fixtures into `dist/store`.
-`pnpm publish:contracts` calls `publishPackage`. Freeze takes the version from the source and
+`pnpm build:contracts` in each first-party package (part of `build`) calls `packPackage`.
+It finds the contracts in the exports of `src/nodes/<node>/actions/*.ts`, with no list. It bundles
+each action and writes its manifest, bundle and fixtures into `dist/store`.
+`pnpm publish:contracts` calls `publishPackage`. Pack takes the version from the source and
 sets the lowest Node Contract version that the bundle needs. The same source gives the same bytes.
 A bundle inlines the SDK, so a rebuild can give other bytes for an unchanged version. With
-`N8N_NODE_CONTRACTS_NPM_REGISTRY`, freeze writes the published manifest, bundle and fixtures of
+`N8N_NODE_CONTRACTS_NPM_REGISTRY`, the build writes the published manifest, bundle and fixtures of
 each HEAD that the registry has, and logs `<id>@<version> has unpublished changes; bump the
 version to ship them`. Another contract hash, or other bytes of a version without a bundle, under
-a published version is an error. Without the variable, freeze reads no registry. The release
+a published version is an error. Without the variable, the build reads no registry. The release
 ships this store, so its versions are first-party with no key check. Details:
 [node-contract.md, Versions](node-contract.md#versions) and
 [Store layout](node-contract.md#store-layout).
@@ -192,7 +192,7 @@ sequenceDiagram
   E->>T: execute()
   T->>V: version for this node
   V->>V: pin on the node, update policy,<br/>yank, revoke, deny list
-  V-->>T: frozen version + origin
+  V-->>T: packed version + origin
   T->>P: executor of the version (cached by bundle hash)
   P->>P: origin → runtime list → first runtime that serves it
   P->>G: start the bundle
@@ -237,7 +237,7 @@ and `contractNodeLoadersOf` gives it to the loader of each first-party package.
 
 | Level | Example | Who sets it | What it decides |
 |---|---|---|---|
-| Node Contract | `2.9.0` | The spec. Freeze writes the lowest that a bundle needs | Whether this n8n can run the bundle |
+| Node Contract | `2.9.0` | The spec. Pack writes the lowest that a bundle needs | Whether this n8n can run the bundle |
 | Action major | `notion.databasePage.getAll@1` | The author; a new permission forces a new major | The n8n `typeVersion`. A saved node keeps its major |
 | Action minor and patch | `1.2.3` | The author, in the source | Which bundle a node runs inside its major |
 | Pin | `INode.contract` (`{ version, digest }`) | The host, at each save | The exact version that a saved node runs |

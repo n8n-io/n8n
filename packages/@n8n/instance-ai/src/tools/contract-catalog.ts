@@ -189,7 +189,7 @@ const authorizationOf = ({ scheme, fields }: CredentialManifest) =>
 				? 'fields'
 				: 'none';
 
-/** A credential type of the contract nodes, from its frozen manifest. */
+/** A credential type of the contract nodes, from its packed manifest. */
 export interface ContractCredential {
 	/** The credential id, e.g. `notion.token`. */
 	readonly credential: string;

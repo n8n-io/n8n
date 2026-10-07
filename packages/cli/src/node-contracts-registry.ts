@@ -24,7 +24,7 @@ import {
 	toVersionedToolType,
 	toVersionedTriggerType,
 	verifiedBundleOf,
-	type FrozenVersion,
+	type PackedVersion,
 	type HostRuntime,
 	type PermissionRefusal,
 } from '@n8n/node-sdk/host';
@@ -278,11 +278,11 @@ const hasOtherCredentialTypeInN8n = (name: string) =>
 		(loader) => !(loader instanceof ContractNodeLoader) && name in loader.known.credentials,
 	);
 
-const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
+const majorOf = ({ manifest }: PackedVersion) => manifest.contract.version;
 
-/** One node type of the contract loader and the frozen versions it projects. */
+/** One node type of the contract loader and the packed versions it projects. */
 interface ContractNode extends LoadedClass<VersionedNodeType> {
-	readonly versions: readonly FrozenVersion[];
+	readonly versions: readonly PackedVersion[];
 }
 
 /** The packages of the legacy nodes that a contract node can stand for. */
@@ -354,7 +354,7 @@ async function legacyDescriptionsOf(loaders: Readonly<Record<string, NodeLoader>
  * an action without a resource (`n8n-nodes-base.set` for `items.set`).
  */
 function legacyNodeTypeOf(
-	{ id, node }: Pick<FrozenVersion['manifest']['contract'], 'id' | 'node'>,
+	{ id, node }: Pick<PackedVersion['manifest']['contract'], 'id' | 'node'>,
 	legacy: ReadonlyMap<string, INodeTypeDescription>,
 ) {
 	const [, ...segments] = id.split('.');
@@ -368,7 +368,7 @@ function legacyNodeTypeOf(
  * A custom action: a version that someone on this instance made in the form. No trusted key signs
  * it, and it runs n8n's HTTP guest on its config.
  */
-export const isCustomAction = ({ manifest, origin }: Pick<FrozenVersion, 'manifest' | 'origin'>) =>
+export const isCustomAction = ({ manifest, origin }: Pick<PackedVersion, 'manifest' | 'origin'>) =>
 	origin === 'private' && manifest.guest === 'http';
 
 /**
@@ -377,7 +377,7 @@ export const isCustomAction = ({ manifest, origin }: Pick<FrozenVersion, 'manife
  */
 function customDescriptionOf(
 	description: INodeTypeDescription,
-	{ manifest }: FrozenVersion,
+	{ manifest }: PackedVersion,
 	legacyNodeType: string | undefined,
 	hidden: boolean,
 ): INodeTypeDescription {
@@ -406,13 +406,13 @@ function customDescriptionOf(
 }
 
 /**
- * The node type of the frozen versions of one id, with the presentation of its legacy node, else
+ * The node type of the packed versions of one id, with the presentation of its legacy node, else
  * the icon of its node, and the parameters n8n adds to every node. The nodes panel lists an action
  * or a trigger as an action of its legacy node item. A provider is a sub-node, so the panel does
  * not list it under an app item.
  */
 function contractNodeTypeOf(
-	versions: readonly FrozenVersion[],
+	versions: readonly PackedVersion[],
 	legacy: ReadonlyMap<string, INodeTypeDescription>,
 	runtime: HostRuntime,
 	hidden = false,
@@ -574,12 +574,12 @@ export class ContractNodeLoader implements NodeLoader {
 
 	/** Gives the Instance AI builder the newest major of each listed custom action. */
 	private async publishCustomActions(
-		stored: ReadonlyMap<string, readonly FrozenVersion[]>,
+		stored: ReadonlyMap<string, readonly PackedVersion[]>,
 		yanked: ReadonlySet<string>,
 	) {
 		const newest = [...stored.values()].flatMap((versions) => {
 			const custom = versions.filter(isCustomAction);
-			const latest = custom.reduce<FrozenVersion | undefined>(
+			const latest = custom.reduce<PackedVersion | undefined>(
 				(best, version) =>
 					best && best.manifest.contract.version > version.manifest.contract.version
 						? best
@@ -597,8 +597,8 @@ export class ContractNodeLoader implements NodeLoader {
 		setPublishedActions(exported.flatMap((action) => ('kind' in action ? [] : [action])));
 	}
 
-	/** The frozen versions that the node type of a node name projects. */
-	frozenVersionsOf(name: string): readonly FrozenVersion[] {
+	/** The packed versions that the node type of a node name projects. */
+	packedVersionsOf(name: string): readonly PackedVersion[] {
 		return this.nodes.get(name)?.versions ?? [];
 	}
 
@@ -676,7 +676,7 @@ export class ContractNodeLoader implements NodeLoader {
 	}
 
 	/** Whether `N8N_NODE_PERMISSIONS_DENY` lets a version load, for bundled and stored versions alike. */
-	private readonly permits = (version: FrozenVersion) => {
+	private readonly permits = (version: PackedVersion) => {
 		const denied = deniedPermissionClassOf(version, this.deny);
 		if (denied === undefined) return true;
 		const { id, semver } = version.manifest;
@@ -977,7 +977,7 @@ export function contractPermissionsOf(
 	const tool = toolIdOf(type);
 	const name = tool ? nodeNameOf(tool) : type.slice(separator + 1);
 	const version = contracts
-		.frozenVersionsOf(name)
+		.packedVersionsOf(name)
 		.find(({ manifest }) => manifest.contract.version === typeVersion);
 	return version && permissionsOf(version.manifest.contract);
 }
@@ -998,7 +998,7 @@ export function contractActionOf(
 	if (!(contracts instanceof ContractNodeLoader)) return undefined;
 	const tool = toolIdOf(node.type);
 	// Any major gives the id, also when the node type does not list the major of the node.
-	const [version] = contracts.frozenVersionsOf(
+	const [version] = contracts.packedVersionsOf(
 		tool ? nodeNameOf(tool) : node.type.slice(separator + 1),
 	);
 	if (!version || version.manifest.kind === 'trigger') return undefined;
@@ -1076,7 +1076,7 @@ function versionedNodeOf(loaders: Readonly<Record<string, NodeLoader>>, nodeType
 function toolNodesOf(loaders: Readonly<Record<string, NodeLoader>>, runtime: HostRuntime) {
 	return toolEntries().flatMap(({ manifest: { id }, nodeType: actionType, toolType }) => {
 		const base = versionedNodeOf(loaders, actionType);
-		const versions = contractLoaderOf(loaders, id)?.frozenVersionsOf(nodeNameOf(id)) ?? [];
+		const versions = contractLoaderOf(loaders, id)?.packedVersionsOf(nodeNameOf(id)) ?? [];
 		if (!base || !toolType || versions.length === 0) return [];
 		const nodeType = toolType;
 		const presentation = presentationOf(base.type.getNodeType().description);
@@ -1102,7 +1102,7 @@ export function composeContractNodes(
 ) {
 	// The slots run the versions that the contract loader loads, so its settings apply to them too.
 	const loadedVersionsOf = (actionId: string) =>
-		contractLoaderOf(loaders, actionId)?.frozenVersionsOf(nodeNameOf(actionId)) ?? [];
+		contractLoaderOf(loaders, actionId)?.packedVersionsOf(nodeNameOf(actionId)) ?? [];
 	// Every contract loader has the one host runtime of the host.
 	const runtime = Object.values(loaders).find(
 		(loader): loader is ContractNodeLoader => loader instanceof ContractNodeLoader,

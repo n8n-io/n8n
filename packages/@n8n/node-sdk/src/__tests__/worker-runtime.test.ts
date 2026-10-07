@@ -9,7 +9,7 @@ import {
 	firstPartyVersionsOf as versionsOf,
 	fixturesFileOf,
 } from './first-party';
-import { freezeAction } from '../freeze';
+import { packAction } from '../pack';
 import { runRecorder } from '../profile';
 import { replayFixtures } from '../publish';
 import { t } from '../schema';
@@ -91,7 +91,7 @@ export const echoProbe = probe.action('probe', {
 	egress: { hosts: ['api.example.com'] },
 	run: async ({ http }: any) => ({ value: JSON.stringify(await http.request({ url: 'https://api.example.com/echo' })) }),
 } as any);
-// A name built at run time passes the freeze check.
+// A name built at run time passes the pack check.
 export const exitProbe = spec(async () => {
 	(globalThis as any)[['pro', 'cess'].join('')].exit(3);
 	return { value: 'exited' };
@@ -125,7 +125,7 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 	beforeAll(() => writeFileSync(file, PROBES));
 
 	const runProbe = async (name: string, limits?: SandboxOptions['limits']) => {
-		const { manifest, bundle } = await freezeAction(file, name);
+		const { manifest, bundle } = await packAction(file, name);
 		const { executor } = await sandboxedVersionOf(
 			{ manifest, origin: 'private', readBundle: async () => bundle },
 			options(runtime, limits),
@@ -148,7 +148,7 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 	);
 
 	it('gives the issues of validate in the host process and in the guest', async () => {
-		const { action } = await freezeAction(file, 'validateProbe');
+		const { action } = await packAction(file, 'validateProbe');
 		const { run } = action as unknown as { run: () => Promise<{ value: string }> };
 		const inProcess = await run();
 		expect(inProcess.value).toBe(
@@ -190,7 +190,7 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 	});
 
 	it('records each JSON-RPC message of the worker in the run profile', async () => {
-		const { manifest, bundle } = await freezeAction(file, 'echoProbe');
+		const { manifest, bundle } = await packAction(file, 'echoProbe');
 		const { executor } = await sandboxedVersionOf(
 			{ manifest, origin: 'private', readBundle: async () => bundle },
 			options(runtime),

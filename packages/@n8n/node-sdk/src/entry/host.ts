@@ -47,7 +47,7 @@ export {
 	type CredentialManifestOf,
 	type Executor,
 	type ExecutorLoader,
-	type FrozenVersion,
+	type PackedVersion,
 	type HostRuntime,
 	type HostRuntimeOptions,
 	type LookupOwner,
