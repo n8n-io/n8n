@@ -611,6 +611,7 @@ export class McpAgentToolsService {
 
 					// Agents created over MCP stay operable over MCP.
 					const agent = await this.agentsService.create(projectId, name, {
+						actor: { kind: 'user', user },
 						availableInMCP: true,
 					});
 					let configHash: string | null;
