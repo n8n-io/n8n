@@ -445,7 +445,7 @@ overrides:
   fast-uri: 3.1.6
   cjs-module-lexer@<2.2.0: 2.2.0
   protobufjs: 7.6.5
-  shell-quote: 1.9.0
+  shell-quote: 1.11.0
   adm-zip: 0.6.0
   ip-address@10: 10.3.1
   brace-expansion@5: 5.0.9
