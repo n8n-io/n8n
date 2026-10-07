@@ -1,4 +1,7 @@
-import { LogStreamingEventTypesPublicDto } from '../log-streaming-public.dto';
+import {
+	LogStreamingDestinationPublicDto,
+	LogStreamingEventTypesPublicDto,
+} from '../log-streaming-public.dto';
 
 describe('LogStreamingEventTypesPublicDto', () => {
 	test('accepts a list of event names', () => {
@@ -19,5 +22,23 @@ describe('LogStreamingEventTypesPublicDto', () => {
 		['a non-string event name', { data: [1] }],
 	])('rejects %s', (_, input) => {
 		expect(LogStreamingEventTypesPublicDto.safeParse(input).success).toBe(false);
+	});
+});
+
+const webhook = {
+	id: '88be6560-bfb4-455c-8aa1-06971e9e5522',
+	type: 'webhook',
+	label: 'My destination',
+	enabled: true,
+	subscribedEvents: ['n8n.workflow'],
+	url: 'https://example.com/n8n-events',
+};
+
+describe('LogStreamingDestinationPublicDto', () => {
+	test.each([
+		['a missing id', { ...webhook, id: undefined }],
+		['an unknown type', { ...webhook, type: 'kafka' }],
+	])('rejects %s', (_, input) => {
+		expect(LogStreamingDestinationPublicDto.safeParse(input).success).toBe(false);
 	});
 });

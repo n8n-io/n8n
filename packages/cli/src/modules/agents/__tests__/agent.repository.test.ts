@@ -316,6 +316,60 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findChatReachableById', () => {
+		const makeSingleQb = (result: Agent | null = null) => ({
+			leftJoinAndSelect: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
+			getOne: vi.fn().mockResolvedValue(result),
+		});
+
+		it('returns null without querying when projectIds is empty', async () => {
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			const result = await repository.findChatReachableById('agent-1', []);
+
+			expect(result).toBeNull();
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('filters by id and the availableInChat predicate, joining project and activeVersion', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			const mockQb = makeSingleQb(agent);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			const result = await repository.findChatReachableById('agent-1', ['project-1']);
+
+			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.activeVersion', 'activeVersion');
+			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.project', 'project');
+			expect(mockQb.where).toHaveBeenCalledWith('agent.id = :id', { id: 'agent-1' });
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+				projectIds: ['project-1'],
+			});
+			expect(mockQb.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('json_each'),
+				expect.objectContaining({ n8nChatType: 'n8n_chat' }),
+			);
+			expect(result).toBe(agent);
+		});
+
+		it('omits the project filter when project access is global', async () => {
+			const mockQb = makeSingleQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findChatReachableById('agent-1', null);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('json_each'),
+				expect.anything(),
+			);
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.projectId IN (:...projectIds)',
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('findMcpAvailabilityCandidates', () => {
 		it('omits the where clause when all agents are requested', async () => {
 			const find = vi.spyOn(repository, 'find').mockResolvedValue([]);

@@ -11,8 +11,9 @@ import { Tracing, type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
-import { InsightsConfig } from '@/modules/insights/insights.config';
-import type { InsightsService } from '@/modules/insights/insights.service';
+import type { InsightsService } from '@n8n/backend-module-insights';
+import { InsightsConfig } from '@n8n/backend-module-insights/config';
+import { packagedModules } from '@/modules/modules.manifest';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { SystemTaskHandler } from '@/scheduling/system-tasks/system-task-handler';
@@ -38,7 +39,7 @@ describe('instance reporting across mains', () => {
 	let schedulers: Array<Scheduler & SchedulerPasses> = [];
 
 	beforeAll(async () => {
-		await testModules.loadModules(['insights', 'instance-reporting']);
+		await testModules.loadModules(['insights', 'instance-reporting'], packagedModules);
 		await testDb.init();
 		reports = Container.get(InstanceMonitoringReportRepository);
 		jobs = Container.get(ScheduledJobRepository);

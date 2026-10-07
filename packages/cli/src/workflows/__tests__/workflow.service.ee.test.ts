@@ -704,6 +704,94 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('transferFolder()', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const sourceProject = mock<Project>({ id: 'proj-source' });
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		const makeWorkflow = (id: string) =>
+			mock<WorkflowEntity>({
+				id,
+				name: `Workflow ${id}`,
+				nodes: [],
+				activeVersionId: 'version-1',
+				shared: [mock<SharedWorkflow>({ role: 'workflow:owner', project: sourceProject })],
+			});
+		const workflows = [makeWorkflow('wf-1'), makeWorkflow('wf-2')];
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let transferOwnershipSpy: ReturnType<typeof vi.spyOn<any, any>>;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let moveFoldersSpy: ReturnType<typeof vi.spyOn<any, any>>;
+
+		beforeEach(() => {
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
+			workflowRepository.find.mockResolvedValue(workflows);
+			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.hasChecksFor.mockReturnValue(true);
+			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
+			activeWorkflowManager.remove.mockResolvedValue(undefined);
+			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			transferOwnershipSpy = vi
+				.spyOn(service as any, 'transferWorkflowOwnership')
+				.mockResolvedValue(undefined);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			vi.spyOn(service as any, 'shareCredentialsWithProject').mockResolvedValue(undefined);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			moveFoldersSpy = vi
+				.spyOn(service as any, 'moveFoldersToDestination')
+				.mockResolvedValue(undefined);
+		});
+
+		it('loads the fields the policy check reads', async () => {
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(workflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ select: expect.arrayContaining(['name', 'nodes']) }),
+			);
+		});
+
+		it('skips the nodes and the check when no check is registered', async () => {
+			policyEnforcementService.hasChecksFor.mockReturnValue(false);
+
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(workflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ select: expect.not.arrayContaining(['nodes']) }),
+			);
+			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('calls enforceWorkflowTransfer once per workflow with the target project', async () => {
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledTimes(2);
+			for (const workflow of workflows) {
+				expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledWith(
+					{ workflow, targetProjectId: destinationProject.id },
+					{ kind: 'user', user },
+				);
+			}
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
+			expect(moveFoldersSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('blocks the move and performs no mutation when the policy check throws', async () => {
+			const violation = new Error('blocked by policy');
+			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValueOnce(violation);
+
+			await expect(
+				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
+			).rejects.toThrow(violation);
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(moveFoldersSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('transferWorkflow()', () => {
 		const user = mock<User>({ id: 'user-1' });
 		const sourceProject = mock<Project>({ id: 'proj-source' });

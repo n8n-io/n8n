@@ -1,3 +1,10 @@
+---
+name: data-table-playbook
+description: >-
+  Load when a data table task needs schema design, import mapping, cleanup, or
+  a careful bulk mutation.
+---
+
 # Data Table Playbook
 
 Use this reference when the table needs design judgment, import mapping,

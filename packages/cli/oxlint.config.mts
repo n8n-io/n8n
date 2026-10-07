@@ -157,7 +157,6 @@ export default defineConfig({
 				'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],
 			rules: {
 				'n8n-local-rules/require-public-api-controller': 'off',
@@ -345,7 +344,6 @@ export default defineConfig({
 				'./src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts',
 				'./src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts',
 				'./src/modules/favorites/favorites.service.ts',
-				'./src/modules/insights/insights-collection.service.ts',
 				'./src/modules/instance-ai/instance-ai.adapter.service.ts',
 				'./src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts',
 				'./src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts',
@@ -434,10 +432,7 @@ export default defineConfig({
 			// Shrink-only ratchet: periodic leader timers not yet migrated to system
 			// tasks. NEVER add to this list — new periodic leader work must be a
 			// @SystemTask() class. Entries are removed as each migrates on its own ticket.
-			files: [
-				'./src/services/pruning/executions-pruning.service.ts',
-				'./src/services/workflow-statistics-rollup.service.ts',
-			],
+			files: ['./src/services/pruning/executions-pruning.service.ts'],
 			rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 		},
 		{
