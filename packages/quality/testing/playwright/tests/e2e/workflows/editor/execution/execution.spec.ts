@@ -159,7 +159,7 @@ test.describe(
 			expect(execution.status).toBe('canceled');
 		});
 
-		test('should test webhook workflow', async ({ n8n, api }) => {
+		test('should test webhook workflow @engine:v2', async ({ n8n, api }) => {
 			await n8n.start.fromImportedWorkflow('Webhook_wait_set.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
@@ -209,7 +209,9 @@ test.describe(
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
 		});
 
-		test('should execute workflow from specific trigger nodes independently', async ({ n8n }) => {
+		test('should execute workflow from specific trigger nodes independently @engine:v2', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow('Two_schedule_triggers.json');
 
 			await n8n.canvas.clickZoomToFitButton();
@@ -243,7 +245,9 @@ test.describe(
 		});
 
 		test.describe('execution preview', () => {
-			test('when deleting the last execution, it should show empty state', async ({ n8n }) => {
+			test('when deleting the last execution, it should show empty state @engine:v2', async ({
+				n8n,
+			}) => {
 				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.addInitialNodeToCanvas('Manual Trigger');
 				await n8n.canvas.clickExecuteWorkflowButton();
@@ -282,7 +286,7 @@ test.describe(
 			});
 		});
 
-		test('should send proper payload for node rerun', async ({ n8n }) => {
+		test('should send proper payload for node rerun @engine:v2', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Multiple_trigger_node_rerun.json');
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.clickExecuteWorkflowButton();
@@ -301,7 +305,7 @@ test.describe(
 			});
 		});
 
-		test('should send proper payload for manual node run', async ({ n8n }) => {
+		test('should send proper payload for manual node run @engine:v2', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Check_manual_node_run_for_pinned_and_rundata.json');
 			await n8n.canvas.clickZoomToFitButton();
 
@@ -328,7 +332,7 @@ test.describe(
 			});
 		});
 
-		test('should successfully execute partial executions with nodes attached to the second output', async ({
+		test('should successfully execute partial executions with nodes attached to the second output @engine:v2', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('Test_Workflow_pairedItem_incomplete_manual_bug.json');
@@ -348,7 +352,9 @@ test.describe(
 			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
 		});
 
-		test('should execute workflow partially up to the node that has issues', async ({ n8n }) => {
+		test('should execute workflow partially up to the node that has issues @engine:v2', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow(
 				'Test_workflow_partial_execution_with_missing_credentials.json',
 			);
@@ -375,7 +381,7 @@ test.describe(
 			);
 		});
 
-		test('Paired items should be correctly mapped after passed through the merge node with more than two inputs', async ({
+		test('Paired items should be correctly mapped after passed through the merge node with more than two inputs @engine:v2-pending', async ({
 			n8n,
 		}) => {
 			await n8n.start.fromImportedWorkflow('merge_node_inputs_paired_items.json');
