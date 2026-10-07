@@ -59,6 +59,28 @@ const workflow = (name: string) => ({
 	pinData: {},
 });
 
+// Trigger (pinned to three items) -> Loop -> A -> Loop; Loop's done slot -> After.
+const loopWorkflow = (name: string) => ({
+	name: `Manual run partial ${name}`,
+	nodes: [
+		node(TRIGGER_NAME, 'n8n-nodes-base.manualTrigger'),
+		{
+			...node('Loop', 'n8n-nodes-base.splitInBatches', { batchSize: 1, options: {} }),
+			typeVersion: 3,
+		},
+		stamp('A', 'a'),
+		stamp('After', 'after'),
+	],
+	connections: {
+		...chain(TRIGGER_NAME, 'Loop'),
+		...chain('A', 'Loop'),
+		Loop: {
+			main: [[{ node: 'After', type: 'main', index: 0 }], [{ node: 'A', type: 'main', index: 0 }]],
+		},
+	} satisfies IConnections,
+	pinData: { [TRIGGER_NAME]: [{ json: { i: 1 } }, { json: { i: 2 } }, { json: { i: 3 } }] },
+});
+
 const runDataOf = (execution: { data: string }): IRunData =>
 	flatted.parse(execution.data).resultData.runData;
 
@@ -157,6 +179,29 @@ test.describe(
 
 			const partialRun = runDataOf(execution);
 			expect(firstItem(partialRun, 'C')?.fromA).toEqual(firstItem(upToB, 'A')?.a);
+		});
+
+		test('should reuse every pass of a finished loop before the destination @engine:v2', async ({
+			api,
+		}) => {
+			const { id: workflowId } = await api.workflows.createWorkflow(loopWorkflow('loop'));
+
+			const first = await api.workflows.runManually(workflowId, TRIGGER_NAME);
+			const fullRun = runDataOf(await api.workflows.waitForExecutionById(first.executionId));
+			expect(fullRun.A).toHaveLength(3);
+
+			const second = await api.workflows.runToNode(workflowId, 'After', { runData: fullRun });
+			const execution = await api.workflows.waitForExecutionById(second.executionId);
+			expect(execution.status).toBe('success');
+
+			const partialRun = runDataOf(execution);
+			// No pass of the loop ran again: A's three stamps are the first run's.
+			const stampsOf = (runData: IRunData) =>
+				runData.A.map((run) => run.data?.main[0]?.[0]?.json.a);
+			expect(stampsOf(partialRun)).toEqual(stampsOf(fullRun));
+			// After ran again, on everything the loop collected.
+			expect(firstItem(partialRun, 'After')?.after).not.toEqual(firstItem(fullRun, 'After')?.after);
+			expect(partialRun.After[0].data?.main[0]).toHaveLength(3);
 		});
 	},
 );
