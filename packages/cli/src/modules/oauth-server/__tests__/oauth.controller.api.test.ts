@@ -957,6 +957,13 @@ describe('IP rate limit configuration', () => {
 		expect(response.headers).not.toHaveProperty('ratelimit-policy');
 	});
 
+	test('does not cap authorization requests at the SDK default of 100', async () => {
+		for (let attempt = 0; attempt <= 100; attempt++) {
+			const response = await testServer.restlessAgent.get('/mcp-oauth/authorize');
+			expect(response.statusCode).toBe(400);
+		}
+	});
+
 	test.each([
 		'metadata',
 		'metadataOptions',
