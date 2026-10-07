@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { CONFIRM_PASSWORD_MODAL_KEY } from '../auth.constants';
-import Modal from '@/app/components/Modal.vue';
-import { createFormEventBus } from '@n8n/design-system';
 import type { IFormInputs, IFormInput, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { confirmPasswordEventBus } from '../auth.eventBus';
+import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nFormInputs, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nFormInputs,
+	N8nText,
+	createFormEventBus,
+} from '@n8n/design-system';
 
 // DynamicModalLoader's modal-state props must not reach the dialog root.
 defineOptions({ inheritAttrs: false });
@@ -16,6 +23,16 @@ const formBus = createFormEventBus();
 const loading = ref(false);
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[CONFIRM_PASSWORD_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(CONFIRM_PASSWORD_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const onSubmit = (data: FormValues) => {
 	const currentPassword = (data as { currentPassword: string }).currentPassword;
@@ -29,6 +46,7 @@ const onSubmit = (data: FormValues) => {
 	confirmPasswordEventBus.emit('close', {
 		currentPassword,
 	});
+	void closeDialog();
 };
 
 const onSubmitClick = () => {
@@ -57,15 +75,13 @@ onMounted(() => {
 </script>
 
 <template>
-	<Modal
-		:name="CONFIRM_PASSWORD_MODAL_KEY"
-		:title="i18n.baseText('auth.confirmPassword')"
-		:center="true"
-		width="460px"
-		:event-bus="confirmPasswordEventBus"
-		@enter="onSubmitClick"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="i18n.baseText('auth.confirmPassword')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<N8nText :class="$style.description" tag="p">{{
 				i18n.baseText('auth.confirmPassword.confirmPasswordToChangeEmail')
 			}}</N8nText>
@@ -76,8 +92,8 @@ onMounted(() => {
 				:column-view="true"
 				@submit="onSubmit"
 			/>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
 				:loading="loading"
 				:label="i18n.baseText('generic.confirm')"
@@ -85,8 +101,8 @@ onMounted(() => {
 				data-test-id="confirm-password-button"
 				@click="onSubmitClick"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 <style lang="scss" module>
 .description {
