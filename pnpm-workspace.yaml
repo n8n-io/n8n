@@ -480,6 +480,7 @@ overrides:
   nanoid@<3.3.18: 'catalog:'
   '@zone-eu/mailsplit@<5.4.15': 5.4.15
   'strnum@<2.4.2': 2.4.2
+  proxy-addr: 2.0.8
 
 patchedDependencies:
   axios: patches/axios.patch
