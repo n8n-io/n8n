@@ -7,10 +7,12 @@ on:
       - master
     paths:
       - 'docker/images/n8n-base/Dockerfile'
+      - 'docker/images/n8n-base/Dockerfile.debian'
       - '.github/workflows/build-base-image.yml'
   pull_request:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
+      - 'docker/images/n8n-base/Dockerfile.debian'
       - '.github/workflows/build-base-image.yml'
   workflow_dispatch:
     inputs:
@@ -26,17 +28,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # One entry per published Node version: `node_version` is the
-        # `n8nio/base:<node_version>` tag, `dhi_ref` the DHI base it builds on,
-        # pinned to a multi-arch index digest. Bump tag and digest together
-        # when updating.
+        # One entry per published image: `tag` is the `n8nio/base:<tag>` tag,
+        # `dhi_ref` the DHI base it builds on, pinned to a multi-arch index
+        # digest. Bump tag and digest together when updating. The Debian
+        # (glibc) base is published for the Node version of the n8n image only.
         include:
-          - node_version: '22'
+          - tag: '22'
+            dockerfile: docker/images/n8n-base/Dockerfile
             dhi_ref: dhi.io/node:22.23.3-alpine3.24-dev@sha256:23ee07ace431ea7d14e22c0e52fb52b0bd1853dabdacd89ba75f937f6dff8a8d
-          - node_version: '24.21.0'
+          - tag: '24.21.0'
+            dockerfile: docker/images/n8n-base/Dockerfile
             dhi_ref: dhi.io/node:24.21.0-alpine3.24-dev@sha256:d22ba0e9ab2a54609ae533df4ebfd6f36c1f233b662a4c547f5a3195e8c21937
-          - node_version: '26.10.0'
+          - tag: '26.10.0'
+            dockerfile: docker/images/n8n-base/Dockerfile
             dhi_ref: dhi.io/node:26.10.0-alpine3.24-dev@sha256:8da859df5dc853c923ace53c4cfe994a909a28917f7fcfc8508869beab8cf132
+          - tag: '26.7.0-debian'
+            dockerfile: docker/images/n8n-base/Dockerfile.debian
+            dhi_ref: dhi.io/node:26.7.0-debian13-dev@sha256:f64567ec3fd6eb86a5cbd384bc2f09f329796c5bcb1737d8d85041dda981e797
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -67,7 +75,7 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
-          file: ./docker/images/n8n-base/Dockerfile
+          file: ./${{ matrix.dockerfile }}
           build-args: |
             DHI_REF=${{ matrix.dhi_ref }}
           platforms: linux/amd64,linux/arm64
@@ -75,8 +83,8 @@ jobs:
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}-${{ github.sha }}
-            ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}
-            ghcr.io/${{ github.repository_owner }}/base:${{ matrix.node_version }}-${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/base:${{ matrix.node_version }}
+            ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.tag }}-${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.tag }}
+            ghcr.io/${{ github.repository_owner }}/base:${{ matrix.tag }}-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/base:${{ matrix.tag }}
           no-cache: true

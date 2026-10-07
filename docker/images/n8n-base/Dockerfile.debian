@@ -1,0 +1,47 @@
+# glibc variant of ./Dockerfile, for vendor libraries that need glibc (for
+# example Oracle Instant Client in Thick mode, or the IBM DB2 clidriver).
+# This image does not ship vendor libraries. It keeps apt so that users can
+# build on top of it. That is the reason this variant exists.
+#
+# CI passes the DHI reference (see build-base-image.yml). The default keeps
+# plain `docker build` working.
+ARG DHI_REF=dhi.io/node:26.7.0-debian13-dev@sha256:f64567ec3fd6eb86a5cbd384bc2f09f329796c5bcb1737d8d85041dda981e797
+
+# The DHI Debian mirror serves `main` only, so the MS core fonts installer is
+# not available. Get the same fonts as the Alpine base from Alpine. The fonts
+# are data files, so this stage runs on the build platform.
+FROM --platform=$BUILDPLATFORM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS fonts
+RUN apk add --no-cache msttcorefonts-installer && \
+    update-ms-fonts && \
+    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
+
+FROM ${DHI_REF}
+
+COPY --from=fonts /usr/share/fonts/truetype/msttcorefonts /usr/share/fonts/truetype/msttcorefonts
+
+# The DHI base already has git, openssl (c_rehash for the custom certificates
+# flow in the entrypoint) and ca-certificates. No blanket `apt-get upgrade`:
+# patched packages come from a bump of the pinned DHI digest.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        openssh-client \
+        graphicsmagick \
+        tini \
+        tzdata \
+        librdkafka1 && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /root/.npm /root/.cache
+
+# DHI Debian ships node at /usr/bin. Symlink it to /usr/local/bin so the path
+# matches what the cloud launch and AppArmor profile expect.
+RUN mkdir -p /usr/local/bin && ln -sf /usr/bin/node /usr/local/bin/node
+
+WORKDIR /home/node
+# DHI Debian sets the npm prefix to /usr, and DHI Alpine sets it to /usr/local.
+# Use /usr/local on both, so that `npm install -g` modules are require()-able
+# through the same NODE_PATH.
+ENV NPM_CONFIG_PREFIX=/usr/local
+ENV NODE_PATH=/usr/local/lib/node_modules
+# glibc malloc arenas add idle RSS over musl. Two arenas recover about a third
+# of the difference.
+ENV MALLOC_ARENA_MAX=2
+EXPOSE 5678/tcp

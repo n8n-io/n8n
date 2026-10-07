@@ -30,6 +30,7 @@ variable "N8N_PC_TAGS" { default = "" }
 variable "RUNNERS_TAGS" { default = "" }
 variable "RUNNERS_DISTROLESS_TAGS" { default = "" }
 variable "BASE_TAGS" { default = "" }
+variable "BASE_DEBIAN_TAGS" { default = "" }
 
 variable "PLATFORMS" { default = "" }
 
@@ -91,6 +92,14 @@ target "base" {
   dockerfile = "docker/images/n8n-base/Dockerfile"
   args       = { DHI_REF = DHI_REF }
   tags       = tags(BASE_TAGS, "n8nio/base:${NODE_VERSION}")
+}
+
+# The glibc base. Users build on top of it to add vendor libraries. The DHI
+# reference is the Dockerfile default.
+target "base-debian" {
+  inherits   = ["_context"]
+  dockerfile = "docker/images/n8n-base/Dockerfile.debian"
+  tags       = tags(BASE_DEBIAN_TAGS, "n8nio/base:${NODE_VERSION}-debian")
 }
 
 group "default" { targets = ["n8n", "runners"] }

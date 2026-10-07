@@ -174,7 +174,7 @@ These only run if specific files changed:
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
-| `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
+| `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian` | `build-base-image.yml` | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
