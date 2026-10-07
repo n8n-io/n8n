@@ -1,14 +1,26 @@
 import { expect, test } from '@playwright/test';
 
-import { FILES, hook, ReproStack, Scenario, signal, until, waitForExit } from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+import {
+	chain,
+	FILES,
+	hook,
+	includes,
+	is,
+	nodes,
+	RigStack,
+	Scenario,
+	signal,
+	until,
+	waitForExit,
+	webhookPath,
+} from '@n8n/test-rig';
 
 const GRACE_S = 5;
 
-test('stalled job that succeeded: main settles the execution and shuts down cleanly', async ({}, testInfo) => {
+test('stalled job that succeeded: main settles the execution and shuts down cleanly', async () => {
 	test.setTimeout(300_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'stalled-success',
 		workers: 1,
 		runners: 'internal',
@@ -32,20 +44,20 @@ test('stalled job that succeeded: main settles the execution and shuts down clea
 			},
 		],
 	});
-	const s = new Scenario('stalled-success-leak', repro, testInfo.outputPath());
+	const s = new Scenario('stalled-success-leak', rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
 		const path = webhookPath('stalled-success');
 		const marker = `marker-${Date.now()}`;
-		await repro.createWorkflow(
+		await rig.api.createWorkflow(
 			chain('stalled success', [
 				nodes.webhook(path, 'lastNode'),
 				nodes.code('Reply', `return [{ json: { marker: '${marker}' } }];`),
 			]),
 		);
 
-		const worker = repro.worker(1);
+		const worker = rig.worker(1);
 		const drop = hook([worker], 'lock-renew-drop');
 		const complete = hook([worker], 'job-before-complete');
 		await s.step('armed', async () => {
@@ -53,20 +65,20 @@ test('stalled job that succeeded: main settles the execution and shuts down clea
 			await complete.arm();
 		});
 
-		await repro.waitForWebhook(path);
+		await rig.api.waitForWebhook(path);
 		const hit = complete.waitHit(30_000);
-		const request = repro.webhookInBackground(path);
+		const request = rig.api.webhookInBackground(path);
 		const { detail } = await hit;
 		s.mark('hit', detail);
 		const jobId = String(detail.jobId);
 		const executionId = String(detail.executionId);
-		const rowBeforeStall = await repro.execution(executionId);
+		const rowBeforeStall = await rig.db.execution(executionId);
 
-		await until('lock expired', async () => !(await repro.bullJob(jobId)).lock, 60_000);
+		await until('lock expired', async () => !(await rig.redis.bullJob(jobId)).lock, 60_000);
 		s.mark('lock-expired');
 		await until(
 			'stall sweep failed the job',
-			async () => !(await repro.bull()).active.includes(jobId),
+			async () => !(await rig.redis.bull()).active.includes(jobId),
 			60_000,
 		);
 		s.mark('job-failed-by-sweep');
@@ -81,7 +93,7 @@ test('stalled job that succeeded: main settles the execution and shuts down clea
 		const response = responded ?? (await request.result);
 		s.mark('webhook-settled', response.status);
 
-		const main = repro.main();
+		const main = rig.main();
 		const sigtermAt = await signal(main, 'SIGTERM');
 		s.mark('main-sigterm');
 		const exit = await waitForExit(main, (GRACE_S + 15) * 1000);
@@ -92,7 +104,7 @@ test('stalled job that succeeded: main settles the execution and shuts down clea
 			jobId,
 			executionId,
 			rowBeforeStall,
-			execution: await repro.execution(executionId),
+			execution: await rig.db.execution(executionId),
 			webhook: {
 				status: response.status,
 				hasMarker: response.body.includes(marker),
@@ -105,15 +117,19 @@ test('stalled job that succeeded: main settles the execution and shuts down clea
 		});
 
 		expect(rowBeforeStall.status, 'execution succeeded before the stall').toBe('success');
-		if (s.variant === 'after') {
-			expect.soft(response.status, 'webhook response status').toBe(200);
-			expect.soft(response.body, 'webhook response body').toContain(marker);
-			expect.soft(s.result.mainTimedOut, 'main shutdown timed out').toBe(false);
-			expect.soft(exit?.exitCode, 'main exit code').toBe(0);
-		} else {
-			expect.soft(response.status, 'webhook never answered').toBe(0);
-			expect.soft(s.result.mainTimedOut, 'main shutdown timed out').toBe(true);
-			expect.soft(exit?.exitCode, 'main exit code').toBe(1);
-		}
+		const failed = s.verify({
+			after: [
+				['webhook response status', response.status, is(200)],
+				['webhook response body', response.body, includes(marker)],
+				['main shutdown timed out', s.result.mainTimedOut, is(false)],
+				['main exit code', exit?.exitCode, is(0)],
+			],
+			before: [
+				['webhook never answered', response.status, is(0)],
+				['main shutdown timed out', s.result.mainTimedOut, is(true)],
+				['main exit code', exit?.exitCode, is(1)],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });

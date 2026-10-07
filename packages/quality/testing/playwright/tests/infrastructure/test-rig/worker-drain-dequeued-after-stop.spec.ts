@@ -1,12 +1,24 @@
 import { expect, test } from '@playwright/test';
 
-import { FILES, hook, ReproStack, Scenario, signal, waitForExit, waitForLog } from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+import {
+	chain,
+	FILES,
+	hook,
+	is,
+	isNot,
+	nodes,
+	RigStack,
+	Scenario,
+	signal,
+	waitForExit,
+	waitForLog,
+	webhookPath,
+} from '@n8n/test-rig';
 
-test('worker drain: a job handed to the worker after stop began runs on another worker', async ({}, testInfo) => {
+test('worker drain: a job handed to the worker after stop began runs on another worker', async () => {
 	test.setTimeout(300_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'dequeued-after-stop',
 		workers: 2,
 		runners: 'internal',
@@ -27,12 +39,12 @@ test('worker drain: a job handed to the worker after stop began runs on another 
 			},
 		],
 	});
-	const s = new Scenario('worker-drain-dequeued-after-stop', repro, testInfo.outputPath());
+	const s = new Scenario('worker-drain-dequeued-after-stop', rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
 		const path = webhookPath('after-stop');
-		await repro.createWorkflow(
+		await rig.api.createWorkflow(
 			chain('dequeued after stop', [
 				nodes.webhook(path),
 				nodes.code(
@@ -42,11 +54,11 @@ test('worker drain: a job handed to the worker after stop began runs on another 
 			]),
 		);
 
-		const workers = repro.workers();
+		const workers = rig.workers();
 		const job = hook(workers, 'job-before-handler');
 		await s.step('armed', async () => await job.arm());
 		const hit = job.waitHit(30_000);
-		await s.step('webhook', async () => await repro.webhook(path));
+		await s.step('webhook', async () => await rig.api.webhook(path));
 		const { container: draining, detail } = await hit;
 		await job.disarm(draining);
 		const other = workers.find((w) => w !== draining);
@@ -75,7 +87,7 @@ test('worker drain: a job handed to the worker after stop began runs on another 
 
 		const exit = await waitForExit(draining, 60_000);
 		s.mark('exited', exit);
-		const execution = await repro.waitForExecution(executionId, 90_000);
+		const execution = await rig.db.waitForExecution(executionId, 90_000);
 		const logs = await s.collectLogs();
 		const drainingName = `worker-${workers.indexOf(draining) + 1}`;
 		const otherName = `worker-${workers.indexOf(other!) + 1}`;
@@ -93,17 +105,21 @@ test('worker drain: a job handed to the worker after stop began runs on another 
 			exitAfterSigtermMs: exit ? exit.exitedAt - sigtermAt : null,
 		});
 
-		if (s.variant === 'after') {
-			expect.soft(handedBack, 'handler hands the job back').toBe(true);
-			expect.soft(s.result.startedOnDraining, 'job started on the draining worker').toBe(false);
-			expect.soft(s.result.startedOnOther, 'job started on the other worker').toBe(true);
-			expect.soft(execution.status, 'execution status').toBe('success');
-			expect.soft(s.result.stallLogged, 'main logs a stalled job').toBe(false);
-			expect.soft(exit?.exitCode, 'draining worker exit code').toBe(0);
-		} else {
-			expect.soft(s.result.startedOnDraining, 'job started on the draining worker').toBe(true);
-			expect.soft(s.result.startedOnOther, 'job started on the other worker').toBe(false);
-			expect.soft(execution.status, 'execution status').not.toBe('success');
-		}
+		const failed = s.verify({
+			after: [
+				['handler hands the job back', handedBack, is(true)],
+				['job started on the draining worker', s.result.startedOnDraining, is(false)],
+				['job started on the other worker', s.result.startedOnOther, is(true)],
+				['execution status', execution.status, is('success')],
+				['main logs a stalled job', s.result.stallLogged, is(false)],
+				['draining worker exit code', exit?.exitCode, is(0)],
+			],
+			before: [
+				['job started on the draining worker', s.result.startedOnDraining, is(true)],
+				['job started on the other worker', s.result.startedOnOther, is(false)],
+				['execution status', execution.status, isNot('success')],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });

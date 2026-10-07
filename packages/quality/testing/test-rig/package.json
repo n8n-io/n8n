@@ -1,0 +1,37 @@
+{
+  "name": "@n8n/test-rig",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Runs n8n stacks under test control: in-process hooks, signals, network faults, probes, scenarios and chaos runs",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:docker": "vitest run --config vitest.docker.config.ts",
+    "test:watch": "vitest",
+    "scenarios": "tsx src/cli/run.ts",
+    "chaos": "tsx src/cli/chaos.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@n8n/utils": "workspace:*",
+    "n8n-containers": "workspace:*",
+    "nanoid": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
+  }
+}

@@ -1,14 +1,26 @@
 import { expect, test } from '@playwright/test';
 
-import { FILES, hook, ReproStack, Scenario, signal, waitForExit, waitForLog } from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+import {
+	below,
+	chain,
+	FILES,
+	hook,
+	is,
+	nodes,
+	RigStack,
+	Scenario,
+	signal,
+	waitForExit,
+	waitForLog,
+	webhookPath,
+} from '@n8n/test-rig';
 
 const GRACE_S = 5;
 
-test('worker drain: a job whose run rejects no longer holds the drain', async ({}, testInfo) => {
+test('worker drain: a job whose run rejects no longer holds the drain', async () => {
 	test.setTimeout(300_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'rejected-run',
 		workers: 1,
 		runners: 'internal',
@@ -26,18 +38,18 @@ test('worker drain: a job whose run rejects no longer holds the drain', async ({
 			},
 		],
 	});
-	const s = new Scenario('worker-drain-rejected-run', repro, testInfo.outputPath());
+	const s = new Scenario('worker-drain-rejected-run', rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
 		const path = webhookPath('rejected');
-		await repro.createWorkflow(chain('rejected run', [nodes.webhook(path), nodes.noOp('Done')]));
+		await rig.api.createWorkflow(chain('rejected run', [nodes.webhook(path), nodes.noOp('Done')]));
 
-		const worker = repro.worker(1);
+		const worker = rig.worker(1);
 		const point = hook([worker], 'run-reject');
 		await s.step('armed', async () => await point.arm());
 		const hit = point.waitHit(30_000);
-		await s.step('webhook', async () => await repro.webhook(path));
+		await s.step('webhook', async () => await rig.api.webhook(path));
 		const executionId = String((await hit).detail.executionId);
 		s.mark('hit', executionId);
 		await waitForLog([worker], `Worker errored while running execution ${executionId} `, 30_000);
@@ -57,17 +69,19 @@ test('worker drain: a job whose run rejects no longer holds the drain', async ({
 			exitAfterSigtermMs: exit ? exit.exitedAt - sigtermAt : null,
 		});
 
-		if (s.variant === 'after') {
-			expect.soft(s.result.drainWaited, 'drain waits on the rejected job').toBe(false);
-			expect.soft(s.result.shutdownTimedOut, 'shutdown timed out').toBe(false);
-			expect.soft(exit?.exitCode, 'worker exit code').toBe(0);
-			expect
-				.soft(Number(s.result.exitAfterSigtermMs), 'exit inside the window')
-				.toBeLessThan(GRACE_S * 1000);
-		} else {
-			expect.soft(s.result.drainWaited, 'drain waits on the rejected job').toBe(true);
-			expect.soft(s.result.shutdownTimedOut, 'shutdown timed out').toBe(true);
-			expect.soft(exit?.exitCode, 'worker exit code').toBe(1);
-		}
+		const failed = s.verify({
+			after: [
+				['drain waits on the rejected job', s.result.drainWaited, is(false)],
+				['shutdown timed out', s.result.shutdownTimedOut, is(false)],
+				['worker exit code', exit?.exitCode, is(0)],
+				['exit inside the window', s.result.exitAfterSigtermMs, below(GRACE_S * 1000)],
+			],
+			before: [
+				['drain waits on the rejected job', s.result.drainWaited, is(true)],
+				['shutdown timed out', s.result.shutdownTimedOut, is(true)],
+				['worker exit code', exit?.exitCode, is(1)],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });

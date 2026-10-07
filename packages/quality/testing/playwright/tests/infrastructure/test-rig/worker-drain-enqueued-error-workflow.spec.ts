@@ -1,14 +1,27 @@
 import { expect, test } from '@playwright/test';
 
-import { FILES, hook, ReproStack, Scenario, signal, waitForExit, waitForLog } from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+import {
+	chain,
+	excludes,
+	FILES,
+	hook,
+	includes,
+	is,
+	nodes,
+	RigStack,
+	Scenario,
+	signal,
+	waitForExit,
+	waitForLog,
+	webhookPath,
+} from '@n8n/test-rig';
 
 const GRACE_S = 10;
 
-test('worker drain: an error workflow enqueued during the drain stays queued', async ({}, testInfo) => {
+test('worker drain: an error workflow enqueued during the drain stays queued', async () => {
 	test.setTimeout(300_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'enqueued-error-wf',
 		workers: 1,
 		runners: 'internal',
@@ -23,16 +36,16 @@ test('worker drain: an error workflow enqueued during the drain stays queued', a
 			},
 		],
 	});
-	const s = new Scenario('worker-drain-enqueued-error-workflow', repro, testInfo.outputPath());
+	const s = new Scenario('worker-drain-enqueued-error-workflow', rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
-		const errorWorkflowId = await repro.createWorkflow(
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
+		const errorWorkflowId = await rig.api.createWorkflow(
 			chain('error handler', [nodes.errorTrigger(), nodes.noOp('Handled')]),
 			{ activate: 'try' },
 		);
 		const path = webhookPath('enqueued-error');
-		await repro.createWorkflow(
+		await rig.api.createWorkflow(
 			chain(
 				'throws on purpose',
 				[nodes.webhook(path), nodes.code('Throw', "throw new Error('failing on purpose');")],
@@ -40,11 +53,11 @@ test('worker drain: an error workflow enqueued during the drain stays queued', a
 			),
 		);
 
-		const worker = repro.worker(1);
+		const worker = rig.worker(1);
 		const point = hook([worker], 'enqueue-before-add');
 		await s.step('armed', async () => await point.arm());
 		const hit = point.waitHit(30_000);
-		await s.step('webhook', async () => await repro.webhook(path));
+		await s.step('webhook', async () => await rig.api.webhook(path));
 		const { detail } = await hit;
 		s.mark('hit', detail);
 		const errorExecutionId = String(detail.executionId);
@@ -62,8 +75,8 @@ test('worker drain: an error workflow enqueued during the drain stays queued', a
 
 		const exit = await waitForExit(worker, (GRACE_S + 15) * 1000);
 		s.mark('exited', exit);
-		const errorExecution = await repro.execution(errorExecutionId);
-		const bull = await repro.bull(errorJobId);
+		const errorExecution = await rig.db.execution(errorExecutionId);
+		const bull = await rig.redis.bull(errorJobId);
 		const logs = await s.collectLogs();
 		const cancelled = logs['worker-1'].includes(
 			`in-process executions that could not finish before shutdown (execution IDs: ${errorExecutionId})`,
@@ -80,14 +93,18 @@ test('worker drain: an error workflow enqueued during the drain stays queued', a
 		});
 
 		expect(errorJobId, 'error workflow enqueued').not.toBe('');
-		if (s.variant === 'after') {
-			expect.soft(cancelled, 'drain cancels the error workflow').toBe(false);
-			expect.soft(bull.wait, 'error workflow job waits for another worker').toContain(errorJobId);
-			expect.soft(errorExecution.status, 'error workflow execution status').toBe('new');
-		} else {
-			expect.soft(cancelled, 'drain cancels the error workflow').toBe(true);
-			expect.soft(bull.wait, 'error workflow job removed').not.toContain(errorJobId);
-			expect.soft(bull.job?.exists, 'error workflow job key removed').toBe(false);
-		}
+		const failed = s.verify({
+			after: [
+				['drain cancels the error workflow', cancelled, is(false)],
+				['error workflow job waits for another worker', bull.wait, includes(errorJobId)],
+				['error workflow execution status', errorExecution.status, is('new')],
+			],
+			before: [
+				['drain cancels the error workflow', cancelled, is(true)],
+				['error workflow job removed', bull.wait, excludes(errorJobId)],
+				['error workflow job key removed', bull.job?.exists, is(false)],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });

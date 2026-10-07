@@ -1,17 +1,33 @@
 import { expect, test } from '@playwright/test';
 
-import { FILES, hook, ReproStack, Scenario, signal, waitForExit, waitForLog } from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+import {
+	chain,
+	FILES,
+	hook,
+	is,
+	isNot,
+	nodes,
+	RigStack,
+	Scenario,
+	signal,
+	waitForExit,
+	waitForLog,
+	webhookPath,
+} from '@n8n/test-rig';
 
-const EXTERNAL = process.env.REPRO_RUNNERS === 'external';
+const EXTERNAL = process.env.TEST_RIG_RUNNERS === 'external';
+const RUNNERS = EXTERNAL ? 'external' : 'internal';
+const NAME = EXTERNAL
+	? 'worker-drain-detached-subworkflow-external'
+	: 'worker-drain-detached-subworkflow';
 
-test('worker drain: detached sub-workflow finishes before the worker exits', async ({}, testInfo) => {
+test('worker drain: detached sub-workflow finishes before the worker exits', async () => {
 	test.setTimeout(300_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'detached-sub',
 		workers: 1,
-		runners: EXTERNAL ? 'external' : 'internal',
+		runners: RUNNERS,
 		scale: 3,
 		hooks: [
 			{
@@ -23,15 +39,11 @@ test('worker drain: detached sub-workflow finishes before the worker exits', asy
 			},
 		],
 	});
-	const s = new Scenario(
-		EXTERNAL ? 'worker-drain-detached-subworkflow-external' : 'worker-drain-detached-subworkflow',
-		repro,
-		testInfo.outputPath(),
-	);
+	const s = new Scenario(NAME, rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
-		const childId = await repro.createWorkflow(
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
+		const childId = await rig.api.createWorkflow(
 			chain('detached child', [
 				nodes.subWorkflowTrigger(),
 				nodes.code('Child Code', 'return [{ json: { child: true } }];'),
@@ -39,27 +51,27 @@ test('worker drain: detached sub-workflow finishes before the worker exits', asy
 			{ activate: 'try' },
 		);
 		const path = webhookPath('detached');
-		const parentId = await repro.createWorkflow(
+		const parentId = await rig.api.createWorkflow(
 			chain('detached parent', [
 				nodes.webhook(path),
 				nodes.executeWorkflow('Start Child', childId, false),
 			]),
 		);
 
-		const worker = repro.worker(1);
+		const worker = rig.worker(1);
 		const point = hook([worker], 'task-before-request');
 		await s.step('armed', async () => await point.arm());
 
 		const hit = point.waitHit(30_000);
-		await s.step('webhook', async () => await repro.webhook(path));
+		await s.step('webhook', async () => await rig.api.webhook(path));
 		const { detail } = await hit;
 		s.mark('hit', detail);
 		const childExecutionId = String(detail.executionId);
 
-		const [parentExecutionId] = await repro.executionsOf(parentId);
+		const [parentExecutionId] = await rig.db.executionsOf(parentId);
 		const parent = await s.step(
 			'parent-done',
-			async () => await repro.waitForExecution(parentExecutionId, 30_000),
+			async () => await rig.db.waitForExecution(parentExecutionId, 30_000),
 		);
 
 		const stopWatching = new AbortController();
@@ -79,8 +91,8 @@ test('worker drain: detached sub-workflow finishes before the worker exits', asy
 
 		const exit = await exited;
 		s.mark('exited', exit);
-		const child = await repro.waitForExecution(childExecutionId, 30_000);
-		const taskTimedOut = await repro.executionDataContains(
+		const child = await rig.db.waitForExecution(childExecutionId, 30_000);
+		const taskTimedOut = await rig.db.executionDataContains(
 			childExecutionId,
 			'Task request timed out',
 		);
@@ -98,16 +110,20 @@ test('worker drain: detached sub-workflow finishes before the worker exits', asy
 			exitAfterSigtermMs: exit ? exit.exitedAt - sigtermAt : null,
 		});
 
-		expect(parent.status, 'parent execution status').toBe('success');
-		if (s.variant === 'after') {
-			expect.soft(anchor, 'drain waits for the child').toBe('drain-waits');
-			expect.soft(child.status, 'child execution status').toBe('success');
-			expect.soft(taskTimedOut, 'child failed on its task request').toBe(false);
-			expect.soft(exit?.exitCode, 'worker exit code').toBe(0);
-		} else {
-			expect.soft(anchor, 'worker stops without waiting for the child').not.toBe('drain-waits');
-			expect.soft(child.status, 'child execution status').toBe('error');
-			expect.soft(taskTimedOut, 'child failed on its task request').toBe(true);
-		}
+		const failed = s.verify({
+			always: [['parent execution status', parent.status, is('success')]],
+			after: [
+				['drain waits for the child', anchor, is('drain-waits')],
+				['child execution status', child.status, is('success')],
+				['child failed on its task request', taskTimedOut, is(false)],
+				['worker exit code', exit?.exitCode, is(0)],
+			],
+			before: [
+				['worker stops without waiting for the child', anchor, isNot('drain-waits')],
+				['child execution status', child.status, is('error')],
+				['child failed on its task request', taskTimedOut, is(true)],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });

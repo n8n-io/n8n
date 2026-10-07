@@ -59,7 +59,7 @@
 		"before": "n8nio/n8n:2.38.3",
 		"after": "n8nio/n8n:2.38.4",
 		"env": {
-			"REPRO_RUNNERS": "external"
+			"TEST_RIG_RUNNERS": "external"
 		}
 	},
 	"worker-drain-detached-subworkflow-external": {
@@ -68,7 +68,7 @@
 		"before": "n8nio/n8n:2.38.7",
 		"after": "n8nio/n8n:2.39.0",
 		"env": {
-			"REPRO_RUNNERS": "external"
+			"TEST_RIG_RUNNERS": "external"
 		}
 	},
 	"worker-drain-dequeued-after-stop": {

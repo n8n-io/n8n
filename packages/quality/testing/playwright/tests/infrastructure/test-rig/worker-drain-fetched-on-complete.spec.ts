@@ -1,12 +1,23 @@
 import { expect, test } from '@playwright/test';
 
-import { FILES, hook, ReproStack, Scenario, signal, until, waitForExit } from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+import {
+	chain,
+	FILES,
+	hook,
+	is,
+	nodes,
+	RigStack,
+	Scenario,
+	signal,
+	until,
+	waitForExit,
+	webhookPath,
+} from '@n8n/test-rig';
 
-test('worker drain: a job fetched on completing another goes back to the queue', async ({}, testInfo) => {
+test('worker drain: a job fetched on completing another goes back to the queue', async () => {
 	test.setTimeout(300_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'fetched-on-complete',
 		workers: 2,
 		runners: 'internal',
@@ -32,12 +43,12 @@ test('worker drain: a job fetched on completing another goes back to the queue',
 			},
 		],
 	});
-	const s = new Scenario('worker-drain-fetched-on-complete', repro, testInfo.outputPath());
+	const s = new Scenario('worker-drain-fetched-on-complete', rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
 		const path = webhookPath('on-complete');
-		const workflowId = await repro.createWorkflow(
+		const workflowId = await rig.api.createWorkflow(
 			chain('fetched on complete', [
 				nodes.webhook(path),
 				nodes.noOp('Pause'),
@@ -45,21 +56,21 @@ test('worker drain: a job fetched on completing another goes back to the queue',
 			]),
 		);
 
-		const workers = repro.workers();
+		const workers = rig.workers();
 		const busy = hook(workers, 'node-before-run');
 		await busy.arm();
 
 		const first = busy.waitHit(30_000);
-		await repro.webhook(path);
+		await rig.api.webhook(path);
 		const { container: draining } = await first;
 		const other = workers.find((w) => w !== draining)!;
 		const second = busy.waitHit(30_000);
-		await repro.webhook(path);
+		await rig.api.webhook(path);
 		await second;
 		s.mark('both-workers-busy');
 
-		await repro.webhook(path);
-		await until('third job waits', async () => (await repro.bull()).wait.length === 1, 30_000);
+		await rig.api.webhook(path);
+		await until('third job waits', async () => (await rig.redis.bull()).wait.length === 1, 30_000);
 		s.mark('third-job-waits');
 
 		const fetch = hook([draining], 'fetch-on-complete');
@@ -76,7 +87,7 @@ test('worker drain: a job fetched on completing another goes back to the queue',
 		const anchor = await s.race('anchor', {
 			'back-in-wait': until(
 				'job back in wait',
-				async () => (await repro.bull()).wait.includes(jobId),
+				async () => (await rig.redis.bull()).wait.includes(jobId),
 				60_000,
 			),
 			exited,
@@ -86,12 +97,12 @@ test('worker drain: a job fetched on completing another goes back to the queue',
 
 		const exit = await exited;
 		s.mark('exited', exit);
-		const executionIds = await repro.executionsOf(workflowId);
-		const executionId = (await repro.redis('HGET', `bull:jobs:${jobId}`, 'data')).match(
+		const executionIds = await rig.db.executionsOf(workflowId);
+		const executionId = (await rig.redis.redis('HGET', `bull:jobs:${jobId}`, 'data')).match(
 			/"executionId":"(\d+)"/,
 		)?.[1];
 		const thirdId = executionId ?? executionIds[2];
-		const execution = await repro.waitForExecution(thirdId, 90_000);
+		const execution = await rig.db.waitForExecution(thirdId, 90_000);
 		const logs = await s.collectLogs();
 		const started = `started execution ${thirdId} `;
 
@@ -107,15 +118,19 @@ test('worker drain: a job fetched on completing another goes back to the queue',
 			exitAfterSigtermMs: exit ? exit.exitedAt - sigtermAt : null,
 		});
 
-		if (s.variant === 'after') {
-			expect.soft(anchor, 'job goes back to wait before the worker exits').toBe('back-in-wait');
-			expect.soft(execution.status, 'execution status').toBe('success');
-			expect.soft(s.result.startedOnOther, 'job started on the other worker').toBe(true);
-			expect.soft(s.result.stallLogged, 'main logs a stalled job').toBe(false);
-			expect.soft(exit?.exitCode, 'draining worker exit code').toBe(0);
-		} else {
-			expect.soft(anchor, 'worker exits with the job still active').toBe('exited');
-			expect.soft(execution.stalledError, 'execution fails as stalled').toBe(true);
-		}
+		const failed = s.verify({
+			after: [
+				['job goes back to wait before the worker exits', anchor, is('back-in-wait')],
+				['execution status', execution.status, is('success')],
+				['job started on the other worker', s.result.startedOnOther, is(true)],
+				['main logs a stalled job', s.result.stallLogged, is(false)],
+				['draining worker exit code', exit?.exitCode, is(0)],
+			],
+			before: [
+				['worker exits with the job still active', anchor, is('exited')],
+				['execution fails as stalled', execution.stalledError, is(true)],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });

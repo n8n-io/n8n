@@ -1,14 +1,27 @@
 import { expect, test } from '@playwright/test';
 
-import { FILES, hook, ReproStack, Scenario, signal, waitForExit, waitForLog } from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+import {
+	below,
+	chain,
+	FILES,
+	hook,
+	includes,
+	is,
+	nodes,
+	RigStack,
+	Scenario,
+	signal,
+	waitForExit,
+	waitForLog,
+	webhookPath,
+} from '@n8n/test-rig';
 
 const GRACE_S = 10;
 
-test('worker drain: a worker does not wait on the error workflow it enqueued', async ({}, testInfo) => {
+test('worker drain: a worker does not wait on the error workflow it enqueued', async () => {
 	test.setTimeout(300_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'own-error-wf',
 		workers: 1,
 		runners: 'internal',
@@ -24,16 +37,16 @@ test('worker drain: a worker does not wait on the error workflow it enqueued', a
 			},
 		],
 	});
-	const s = new Scenario('worker-drain-own-error-workflow', repro, testInfo.outputPath());
+	const s = new Scenario('worker-drain-own-error-workflow', rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
-		const errorWorkflowId = await repro.createWorkflow(
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
+		const errorWorkflowId = await rig.api.createWorkflow(
 			chain('error handler', [nodes.errorTrigger(), nodes.noOp('Handled')]),
 			{ activate: 'try' },
 		);
 		const path = webhookPath('own-error');
-		await repro.createWorkflow(
+		await rig.api.createWorkflow(
 			chain(
 				'fails on purpose',
 				[
@@ -45,11 +58,11 @@ test('worker drain: a worker does not wait on the error workflow it enqueued', a
 			),
 		);
 
-		const worker = repro.worker(1);
+		const worker = rig.worker(1);
 		const point = hook([worker], 'node-before-run');
 		await s.step('armed', async () => await point.arm());
 		const hit = point.waitHit(30_000);
-		await s.step('webhook', async () => await repro.webhook(path));
+		await s.step('webhook', async () => await rig.api.webhook(path));
 		const failingExecutionId = String((await hit).detail.executionId);
 		s.mark('hit', failingExecutionId);
 
@@ -67,9 +80,9 @@ test('worker drain: a worker does not wait on the error workflow it enqueued', a
 
 		const exit = await waitForExit(worker, (GRACE_S + 15) * 1000);
 		s.mark('exited', exit);
-		const failing = await repro.execution(failingExecutionId);
-		const errorExecution = await repro.execution(errorExecutionId);
-		const bull = await repro.bull(errorJobId);
+		const failing = await rig.db.execution(failingExecutionId);
+		const errorExecution = await rig.db.execution(errorExecutionId);
+		const bull = await rig.redis.bull(errorJobId);
 		const logs = await s.collectLogs();
 
 		s.set({
@@ -86,17 +99,19 @@ test('worker drain: a worker does not wait on the error workflow it enqueued', a
 
 		expect(errorExecutionId, 'error workflow enqueued').not.toBe('');
 		expect.soft(failing.status, 'failing execution status').toBe('error');
-		if (s.variant === 'after') {
-			expect.soft(exit?.exitCode, 'worker exit code').toBe(0);
-			expect
-				.soft(Number(s.result.exitAfterSigtermMs), 'exit inside the window')
-				.toBeLessThan(GRACE_S * 1000);
-			expect.soft(s.result.shutdownTimedOut, 'shutdown timed out').toBe(false);
-			expect.soft(bull.wait, 'error workflow job waits for another worker').toContain(errorJobId);
-			expect.soft(errorExecution.status, 'error workflow execution status').toBe('new');
-		} else {
-			expect.soft(s.result.shutdownTimedOut, 'shutdown timed out').toBe(true);
-			expect.soft(exit?.exitCode, 'worker exit code').toBe(1);
-		}
+		const failed = s.verify({
+			after: [
+				['worker exit code', exit?.exitCode, is(0)],
+				['exit inside the window', s.result.exitAfterSigtermMs, below(GRACE_S * 1000)],
+				['shutdown timed out', s.result.shutdownTimedOut, is(false)],
+				['error workflow job waits for another worker', bull.wait, includes(errorJobId)],
+				['error workflow execution status', errorExecution.status, is('new')],
+			],
+			before: [
+				['shutdown timed out', s.result.shutdownTimedOut, is(true)],
+				['worker exit code', exit?.exitCode, is(1)],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });

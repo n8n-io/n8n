@@ -1,24 +1,28 @@
 import { expect, test } from '@playwright/test';
 
 import {
+	chain,
 	FILES,
 	hook,
-	ReproStack,
+	is,
+	isNot,
+	nodes,
+	RigStack,
 	Scenario,
 	signal,
 	startAgain,
 	waitForExit,
 	waitForLog,
-} from './harness';
-import { chain, nodes, webhookPath } from './workflows';
+	webhookPath,
+} from '@n8n/test-rig';
 
 const WORKER_GRACE_S = 25;
 const STOP_TIMEOUT_S = 30;
 
-test('ECS-style stop: a node needs a runner after the worker and runner sidecar got SIGTERM', async ({}, testInfo) => {
+test('ECS-style stop: a node needs a runner after the worker and runner sidecar got SIGTERM', async () => {
 	test.setTimeout(400_000);
 
-	const repro = await ReproStack.start({
+	const rig = await RigStack.start({
 		name: 'ecs-runner-gone',
 		workers: 1,
 		runners: 'external',
@@ -38,12 +42,12 @@ test('ECS-style stop: a node needs a runner after the worker and runner sidecar 
 			},
 		],
 	});
-	const s = new Scenario('ecs-style-stop-runner-gone', repro, testInfo.outputPath());
+	const s = new Scenario('ecs-style-stop-runner-gone', rig, test.info().outputPath());
 
-	await s.run(testInfo, async () => {
-		await repro.signIn();
+	await s.run(test.info(), async () => {
+		await rig.api.signIn();
 		const path = webhookPath('ecs-gone');
-		await repro.createWorkflow(
+		await rig.api.createWorkflow(
 			chain('ecs runner gone', [
 				nodes.webhook(path),
 				nodes.code('First Task', 'return [{ json: { first: true } }];'),
@@ -51,12 +55,12 @@ test('ECS-style stop: a node needs a runner after the worker and runner sidecar 
 			]),
 		);
 
-		const worker = repro.worker(1);
-		const runner = repro.runner();
+		const worker = rig.worker(1);
+		const runner = rig.runner();
 		const point = hook([worker], 'node-before-run');
 		await point.arm();
 		const hit = point.waitHit(30_000);
-		const response = await s.step('webhook', async () => await repro.webhook(path));
+		const response = await s.step('webhook', async () => await rig.api.webhook(path));
 		expect(response.status, `webhook response: ${response.body}`).toBe(200);
 		const executionId = String((await hit).detail.executionId);
 		s.mark('before-next-task', executionId);
@@ -79,15 +83,15 @@ test('ECS-style stop: a node needs a runner after the worker and runner sidecar 
 			workerExit = await waitForExit(worker, 10_000);
 		}
 		const runnerExit = await runnerExited;
-		const atStop = await repro.execution(executionId);
-		const bullAtStop = await repro.bull();
+		const atStop = await rig.db.execution(executionId);
+		const bullAtStop = await rig.redis.bull();
 		const logsAtStop = await s.collectLogs();
 
 		await s.step('replaced', async () => {
 			await startAgain(runner);
 			await startAgain(worker);
 		});
-		const final = await repro.waitForExecution(executionId, 90_000);
+		const final = await rig.db.waitForExecution(executionId, 90_000);
 		const logs = await s.collectLogs();
 
 		s.set({
@@ -100,22 +104,26 @@ test('ECS-style stop: a node needs a runner after the worker and runner sidecar 
 			atStop,
 			activeAtStop: bullAtStop.active,
 			final,
-			requestTimedOut: await repro.executionDataContains(executionId, 'Task request timed out'),
+			requestTimedOut: await rig.db.executionDataContains(executionId, 'Task request timed out'),
 			stallLogged: logs.main.includes('stalled more than maxStalledCount'),
 			workerShutdownTimedOut: logsAtStop['worker-1'].includes('Shutdown timed out after'),
 		});
 
-		if (s.variant === 'after') {
-			expect.soft(killed, 'worker still up at the stop timeout').toBe(false);
-			expect.soft(workerExit?.exitCode, 'worker exit code').toBe(0);
-			expect.soft(bullAtStop.active, 'job left active after the stop').toEqual([]);
-			expect.soft(s.result.stallLogged, 'main logs a stalled job').toBe(false);
-			expect.soft(final.stalledError, 'execution failed as stalled').toBe(false);
-			expect.soft(final.status, 'execution status').not.toBe('crashed');
-		} else {
-			expect.soft(runnerExit?.exitCode, 'runner exit code on SIGTERM').toBe(143);
-			expect.soft(workerExit?.exitCode, 'worker exit code').toBe(1);
-			expect.soft(final.status, 'execution status').toBe('crashed');
-		}
+		const failed = s.verify({
+			after: [
+				['worker still up at the stop timeout', killed, is(false)],
+				['worker exit code', workerExit?.exitCode, is(0)],
+				['job left active after the stop', bullAtStop.active, is([])],
+				['main logs a stalled job', s.result.stallLogged, is(false)],
+				['execution failed as stalled', final.stalledError, is(false)],
+				['execution status', final.status, isNot('crashed')],
+			],
+			before: [
+				['runner exit code on SIGTERM', runnerExit?.exitCode, is(143)],
+				['worker exit code', workerExit?.exitCode, is(1)],
+				['execution status', final.status, is('crashed')],
+			],
+		});
+		expect(failed).toEqual([]);
 	});
 });
