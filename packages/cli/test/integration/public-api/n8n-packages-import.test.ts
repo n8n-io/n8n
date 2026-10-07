@@ -38,9 +38,7 @@ import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
-// Must run before `setupTestServer`: registering the public API router eagerly constructs
-// `N8nPackagesPublicController`'s DI graph (down to the credential matchers), which would
-// otherwise capture the real `CredentialTypes` singleton before this mock replaces it.
+// Must run before `setupTestServer`, which constructs the controller and captures the real singleton.
 const credentialTypesMock = mockInstance(CredentialTypes);
 credentialTypesMock.recognizes.mockReturnValue(true);
 
