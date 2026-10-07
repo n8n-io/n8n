@@ -117,7 +117,9 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 	);
 	expect(precedes(getByText(restartLine), destructiveHeading)).toBe(true);
 	expect(queryByText(/no longer need this data/)).not.toBeInTheDocument();
-	expect(queryByRole('button', { name: /delete data|Continue/ })).not.toBeInTheDocument();
+	expect(
+		queryByRole('button', { name: /Apply data table changes|Continue/ }),
+	).not.toBeInTheDocument();
 });
 
 it('asks to confirm data deletion when only destructive changes block apply', async () => {
@@ -145,7 +147,7 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(queryByText(restartLine)).not.toBeInTheDocument();
 	expect(queryByRole('table')).not.toBeInTheDocument();
 	expect(queryByRole('status')).not.toBeInTheDocument();
-	const apply = getByRole('button', { name: 'Apply and delete data' });
+	const apply = getByRole('button', { name: 'Apply data table changes' });
 	expect(apply).toBeEnabled();
 	await userEvent.click(apply);
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
@@ -183,11 +185,11 @@ it('shows destructive changes above the bindings and continues with data deletio
 		),
 	).toBe(true);
 	expect(getByRole('status')).toHaveTextContent('1 item still needs setup');
-	expect(getByRole('button', { name: 'Apply and delete data' })).toBeDisabled();
+	expect(getByRole('button', { name: 'Apply data table changes' })).toBeDisabled();
 
 	await userEvent.click(getByRole('button', { name: 'Create Source credential' }));
 	expect(getByRole('status')).toHaveTextContent('All items are ready');
-	await userEvent.click(getByRole('button', { name: 'Apply and delete data' }));
+	await userEvent.click(getByRole('button', { name: 'Apply data table changes' }));
 
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
 	expect(continueApplyPromotion).toHaveBeenCalledWith(
@@ -200,7 +202,7 @@ it('shows destructive changes above the bindings and continues with data deletio
 	expect(getByRole('heading', { name: 'Destructive changes' })).toBeInTheDocument();
 	expect(within(getByRole('table')).getByText('Resolved')).toBeInTheDocument();
 	expect(queryByText(restartLine)).not.toBeInTheDocument();
-	expect(getByRole('button', { name: 'Apply and delete data' })).toBeEnabled();
+	expect(getByRole('button', { name: 'Apply data table changes' })).toBeEnabled();
 	await waitFor(() =>
 		expect(getByRole('heading', { level: 2, name: 'Resolve bindings' })).toHaveFocus(),
 	);
