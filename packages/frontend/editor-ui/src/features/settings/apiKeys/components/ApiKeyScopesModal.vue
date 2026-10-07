@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { ApiKey } from '@n8n/api-types';
-import { N8nDialog, N8nText } from '@n8n/design-system';
+import { N8nDialog, N8nDialogBody, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	apiKey: ApiKey | null;
@@ -31,10 +31,11 @@ const scopes = computed(() => props.apiKey?.scopes ?? []);
 		:open="open"
 		:header="title"
 		size="medium"
+		:container-class="$style.dialog"
 		data-test-id="api-key-scopes-modal"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.body">
+		<N8nDialogBody :class="$style.scroll">
 			<N8nText v-if="!scopes.length" size="small" color="text-light">
 				{{ i18n.baseText('settings.api.scopes.modal.empty') }}
 			</N8nText>
@@ -43,16 +44,17 @@ const scopes = computed(() => props.apiKey?.scopes ?? []);
 					{{ scope }}
 				</li>
 			</ul>
-		</div>
+		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
+.dialog {
 	max-height: 50vh;
+	overflow: hidden;
+}
+
+.scroll {
 	overflow-y: auto;
 }
 
