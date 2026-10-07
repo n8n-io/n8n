@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), CONSTRAINT "FK_f45d0535a2ed59b6c2dd6da98a0" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), "sourceTaskId" varchar(32), CONSTRAINT "FK_f45d0535a2ed59b6c2dd6da98a0" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "ag
 | id | varchar(32) |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | objective | TEXT |  | false |  |  |  |
+| sourceTaskId | varchar(32) |  | true |  |  |  |
 | timezone | varchar(64) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -36,6 +37,7 @@ CREATE TABLE "agent_task_definition" ("id" varchar(32) PRIMARY KEY NOT NULL, "ag
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_agent_task_definition_agentId_sourceTaskId | CREATE INDEX "IDX_agent_task_definition_agentId_sourceTaskId" ON "agent_task_definition" ("agentId", "sourceTaskId")  |
 | IDX_f45d0535a2ed59b6c2dd6da98a | CREATE INDEX "IDX_f45d0535a2ed59b6c2dd6da98a" ON "agent_task_definition" ("agentId")  |
 | sqlite_autoindex_agent_task_definition_1 | PRIMARY KEY (id) |
 
@@ -53,6 +55,7 @@ erDiagram
   varchar_32_ id PK
   varchar_128_ name
   TEXT objective
+  varchar_32_ sourceTaskId
   varchar_64_ timezone
   datetime_3_ updatedAt
 }
@@ -68,6 +71,7 @@ erDiagram
   TEXT schema
   datetime_3_ setupCompletedAt
   TEXT skills
+  varchar_36_ sourceAgentId
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId

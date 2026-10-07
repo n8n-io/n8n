@@ -10,6 +10,7 @@
 | id | varchar(32) |  | false |  |  | Application-generated task ID referenced from agent JSON config |
 | name | varchar(128) |  | false |  |  |  |
 | objective | text |  | false |  |  | User-authored instruction sent to the agent when this task runs |
+| sourceTaskId | varchar(32) |  | true |  |  | Source ID recorded by package import |
 | timezone | varchar(64) |  | true |  |  | IANA timezone the cron is evaluated in; null falls back to the instance timezone |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -31,6 +32,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_agent_task_definition_agentId_sourceTaskId | CREATE INDEX "IDX_agent_task_definition_agentId_sourceTaskId" ON public.agent_task_definition USING btree ("agentId", "sourceTaskId") |
 | IDX_f45d0535a2ed59b6c2dd6da98a | CREATE INDEX "IDX_f45d0535a2ed59b6c2dd6da98a" ON public.agent_task_definition USING btree ("agentId") |
 | PK_1756c11c637903e97629a7a784a | CREATE UNIQUE INDEX "PK_1756c11c637903e97629a7a784a" ON public.agent_task_definition USING btree (id) |
 
@@ -48,6 +50,7 @@ erDiagram
   varchar_32_ id
   varchar_128_ name
   text objective
+  varchar_32_ sourceTaskId
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
@@ -63,6 +66,7 @@ erDiagram
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
+  varchar_36_ sourceAgentId
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId

@@ -15,6 +15,7 @@
 | schema | json |  | true |  |  |  |
 | setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
 | skills | json | '{}'::json | false |  |  |  |
+| sourceAgentId | varchar(36) |  | true |  |  | Source ID recorded by package import |
 | tools | json | '{}'::json | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | versionId | varchar(36) |  | true |  |  |  |
@@ -43,6 +44,7 @@
 | ---- | ---------- |
 | IDX_a30d560207c4071d98aa03c179 | CREATE INDEX "IDX_a30d560207c4071d98aa03c179" ON public.agents USING btree ("projectId") |
 | IDX_agents_projectId | CREATE INDEX "IDX_agents_projectId" ON public.agents USING btree ("projectId") |
+| IDX_agents_projectId_sourceAgentId | CREATE INDEX "IDX_agents_projectId_sourceAgentId" ON public.agents USING btree ("projectId", "sourceAgentId") |
 | PK_9c653f28ae19c5884d5baf6a1d9 | CREATE UNIQUE INDEX "PK_9c653f28ae19c5884d5baf6a1d9" ON public.agents USING btree (id) |
 
 ## Relations
@@ -85,6 +87,7 @@ erDiagram
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
+  varchar_36_ sourceAgentId
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
@@ -223,6 +226,7 @@ erDiagram
   varchar_32_ id
   varchar_128_ name
   text objective
+  varchar_32_ sourceTaskId
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
