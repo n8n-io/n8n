@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
-import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInput,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -13,8 +20,6 @@ import {
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
-import { createEventBus } from '@n8n/utils/event-bus';
-import Modal from '@/app/components/Modal.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { onMounted } from 'vue';
 
@@ -32,14 +37,22 @@ const props = defineProps<{
 	};
 }>();
 
-const modalBus = createEventBus();
-
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[WORKFLOW_DESCRIPTION_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	if (uiStore.modalsById[WORKFLOW_DESCRIPTION_MODAL_KEY]?.open !== true) return;
+	uiStore.closeModal(WORKFLOW_DESCRIPTION_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 
@@ -167,12 +180,12 @@ const saveDescription = async () => {
 };
 
 const cancel = () => {
-	modalBus.emit('close');
+	closeDialog();
 };
 
 const save = async () => {
 	await saveDescription();
-	modalBus.emit('close');
+	closeDialog();
 };
 
 const handleKeyDown = async (event: KeyboardEvent) => {
@@ -203,49 +216,49 @@ onMounted(() => {
 </script>
 
 <template>
-	<Modal
-		:name="WORKFLOW_DESCRIPTION_MODAL_KEY"
-		:title="modalTitle"
-		width="500"
-		:class="$style.container"
-		:event-bus="modalBus"
-		:close-on-click-modal="false"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="modalTitle"
+		:close-on-overlay-click="false"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div
-				:class="$style['description-edit-content']"
-				data-test-id="workflow-description-edit-content"
-			>
-				<div :class="$style.field">
-					<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.description') }}</N8nText>
-					<N8nInput
-						ref="descriptionInput"
-						v-model="descriptionValue"
-						:rows="6"
-						data-test-id="workflow-description-input"
-						type="textarea"
-						@keydown="handleKeyDown"
-					/>
-					<N8nText size="small" color="text-base" data-test-id="descriptionTooltip">
-						{{ textareaTip }}
-					</N8nText>
-				</div>
-				<div v-if="showTags" :class="$style.field">
-					<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.tag_plural') }}</N8nText>
-					<WorkflowTagsDropdown
-						v-model="tagIds"
-						:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
-						data-test-id="workflow-tags-dropdown"
-					/>
+		<N8nDialogBody>
+			<div data-test-id="workflowDescription-modal">
+				<div
+					:class="$style['description-edit-content']"
+					data-test-id="workflow-description-edit-content"
+				>
+					<div :class="$style.field">
+						<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.description') }}</N8nText>
+						<N8nInput
+							ref="descriptionInput"
+							v-model="descriptionValue"
+							:rows="6"
+							data-test-id="workflow-description-input"
+							type="textarea"
+							@keydown="handleKeyDown"
+						/>
+						<N8nText size="small" color="text-base" data-test-id="descriptionTooltip">
+							{{ textareaTip }}
+						</N8nText>
+					</div>
+					<div v-if="showTags" :class="$style.field">
+						<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.tag_plural') }}</N8nText>
+						<WorkflowTagsDropdown
+							v-model="tagIds"
+							:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
+							data-test-id="workflow-tags-dropdown"
+						/>
+					</div>
 				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style['popover-footer']">
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
-					:size="'small'"
 					:disabled="isSaving"
 					data-test-id="workflow-description-cancel-button"
 					@click="cancel"
@@ -259,8 +272,8 @@ onMounted(() => {
 					@click="save"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
