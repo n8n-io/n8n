@@ -148,7 +148,7 @@ oneOf:
         type: string
       targetId:
         type: string
-        description: Target credential id for an explicit credential binding.
+        description: 'Target credential id: for `not_found`, the explicit binding that could not be resolved; for `type_mismatch`, the credential id that was resolved — via an explicit binding or automatic matching — but has the wrong type.'
       expectedType:
         type: string
         description: "For `type_mismatch`: the credential type the package's workflow node requires."
@@ -326,6 +326,136 @@ oneOf:
         items:
           type: string
         description: 'For `schema-incompatible` under the `fail` policy: target columns not in the package schema.'
+      overwriteChanges:
+        type: array
+        items:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - add-column
+                column:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - column
+                - type
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - remove-column
+                column:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - true
+              required:
+                - kind
+                - column
+                - type
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - change-column-type
+                column:
+                  type: string
+                from:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                to:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                destructive:
+                  type: boolean
+                  enum:
+                    - true
+              required:
+                - kind
+                - column
+                - from
+                - to
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - reorder-columns
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - destructive
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - rename-table
+                from:
+                  type: string
+                to:
+                  type: string
+                destructive:
+                  type: boolean
+                  enum:
+                    - false
+              required:
+                - kind
+                - from
+                - to
+                - destructive
+          description: A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a matched target table's schema. `destructive` operations delete the data in a column.
+        description: 'For `schema-incompatible`: the changes `overwrite` would make to the target table.'
+      missingScope:
+        type: string
+        enum:
+          - dataTable:create
+          - dataTable:update
+        description: 'For `permission-denied`: the project scope the user lacks.'
+      conflictingTableId:
+        type: string
+        description: 'For `name-conflict`: the other table that holds or claims the name.'
+      currentName:
+        type: string
+        description: "For a rename `name-conflict`: the matched table's current name."
       usedByWorkflows:
         type: array
         items:
@@ -334,7 +464,7 @@ oneOf:
       - type
       - kind
       - usedByWorkflows
-    description: A data table referenced by the package's workflows that could not be resolved against the target project, under `dataTableMissingMode=must-preexist` or `dataTableSchemaConflictPolicy`.
+    description: A data table referenced by the package's workflows that could not be resolved against the target project — under `dataTableMissingMode=must-preexist` or `dataTableSchemaConflictPolicy`, or because the data table module is disabled on this instance, or the caller lacks the scope the resolution needs.
   - type: object
     properties:
       type:

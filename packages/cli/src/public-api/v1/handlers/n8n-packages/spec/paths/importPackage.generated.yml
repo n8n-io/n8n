@@ -108,7 +108,7 @@ requestBody:
               - must-preexist
               - do-nothing
             default: create
-            description: 'Controls what happens when a referenced data table has no match in the target project. `create` (default) creates it from the package schema, keeping the source id, with no rows; requires the `dataTable:create` scope. `must-preexist` rejects the import. `do-nothing` skips creation of missing tables — matched tables are still validated for schema compatibility and can still block the import. Matched tables are always used as-is: never renamed, altered, or filled.'
+            description: Controls what happens when a referenced data table has no match in the target project. `create` (default) creates it from the package schema, keeping the source id, with no rows; requires the `dataTable:create` scope. `must-preexist` rejects the import. `do-nothing` skips creation of missing tables. Under the `keep-existing`, `fail`, and `overwrite-non-destructive` schema conflict policies, matched tables are still validated for schema compatibility and can still block the import. The import never imports table rows. Matched tables change only under `dataTableSchemaConflictPolicy=overwrite` or `overwrite-non-destructive`, which keep their rows.
           dataTableSchemaConflictPolicy:
             type: string
             enum:
@@ -117,7 +117,12 @@ requestBody:
               - overwrite
               - overwrite-non-destructive
             default: keep-existing
-            description: "How strictly a matched data table's schema is compared. `keep-existing` (default) accepts a target table that has every package column with the same name and type, even when the target table also has additional columns of its own. `fail` is the strict drift-detection choice: any difference, including such target-only columns, rejects the import. Under `keep-existing`, `fail`, and `overwrite-non-destructive`, a missing package column or a type mismatch always rejects, and the target table never changes except as `overwrite-non-destructive` allows below. `overwrite` changes the matched target table to match the package schema — renaming the table, and adding, removing, and retyping columns — which can delete data in removed or retyped columns while preserving rows; applies to every workflow that uses the table. A blocked `keep-existing`, `fail`, or `overwrite-non-destructive` import lists what `overwrite` would have changed under `overwriteChanges`. `overwrite-non-destructive` makes the same changes as `overwrite` only when none of them deletes data — removing or retyping a column (a target-only or renamed column counts as removed); if any matched table's change would delete data, nothing is written. Needs the `dataTable:update` scope only when a matched table actually changes."
+            description: |-
+              How strictly a matched data table's schema is compared. `keep-existing` (default) accepts a target table that has every package column with the same name and type. The target table can have extra columns. `fail` rejects any difference, including target-only columns. Under `keep-existing` and `fail`, a missing package column or a type mismatch rejects the import, and the target table does not change.
+
+              `overwrite` changes the matched target table to match the package and can delete data in specific columns while preserving rows. Removing, retyping, or renaming a column deletes the data in that column. The changes apply to all workflows that use the table. A blocked `keep-existing`, `fail`, or `overwrite-non-destructive` import lists them in `overwriteChanges`. Requires the `dataTable:update` scope only when a matched table changes.
+
+              `overwrite-non-destructive` makes the same changes as `overwrite`, but only when none of them deletes data — removing or retyping a column (a target-only or renamed column counts as removed). If any matched table's change would delete data, the import writes nothing.
           variableMissingMode:
             type: string
             enum:
@@ -404,9 +409,13 @@ responses:
                 created:
                   type: integer
                   minimum: 0
+                updated:
+                  type: integer
+                  minimum: 0
               required:
                 - matched
                 - created
+                - updated
             variables:
               type: object
               properties:
@@ -498,7 +507,7 @@ responses:
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
-    description: Import blocked by at least one conflict among the issues — a workflow source-id conflict, a folder conflict, a tag conflict (rename drift or name collision), a variable whose bundled value differs from the resolved target, or a selected destination also named for deletion.
+    description: Import blocked by at least one conflict among the issues — a workflow source-id conflict, a folder conflict, a tag conflict (rename drift or name collision), a data table conflict (id owned by another project, or a name that another table in the project has), a variable whose bundled value differs from the resolved target, or a selected destination also named for deletion.
     content:
       application/json:
         schema:
