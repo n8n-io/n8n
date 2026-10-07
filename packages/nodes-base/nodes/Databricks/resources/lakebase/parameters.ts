@@ -341,4 +341,39 @@ export const lakebaseParameters: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+				// The saved schema is what core validates against, not a fresh read
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['insert'] },
+		},
+	},
 ];
