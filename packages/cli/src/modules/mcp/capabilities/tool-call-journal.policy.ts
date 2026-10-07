@@ -6,6 +6,8 @@
  * A call that has an intent but no outcome re-runs only when it is safe to run twice.
  */
 
+import type { ToolDefinition } from '../mcp.types';
+
 export type ReplayPolicy = 'safe' | 'unsafe';
 
 export type JournalStatus = 'intent' | 'completed' | 'failed';
@@ -14,11 +16,11 @@ export type JournalRecord = { status: JournalStatus; replay: ReplayPolicy };
 
 export type JournalAction = 'run' | 'return-result' | 'return-error' | 'return-interrupted';
 
-export type ToolReplayAnnotations = {
-	readOnlyHint?: boolean;
-	idempotentHint?: boolean;
-	destructiveHint?: boolean;
-};
+/** The MCP tool hints that decide the replay policy. */
+export type ToolReplayAnnotations = Pick<
+	NonNullable<ToolDefinition['config']['annotations']>,
+	'readOnlyHint' | 'idempotentHint' | 'destructiveHint'
+>;
 
 /** Text the model sees for an interrupted call (en-GB, no internals). */
 export const INTERRUPTED_TOOL_MESSAGE =

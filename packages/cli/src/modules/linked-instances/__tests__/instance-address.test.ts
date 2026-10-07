@@ -41,6 +41,9 @@ describe('normaliseInstanceAddress', () => {
 			['http://127.10.20.30:5678', 'http://127.10.20.30:5678', '127.10.20.30', true],
 			['http://127.1:5678', 'http://127.0.0.1:5678', '127.0.0.1', true],
 			['localhost:5678/home', 'https://localhost:5678', 'localhost', true],
+			['localhost:5678', 'https://localhost:5678', 'localhost', true],
+			['acme.app.n8n.cloud:8/home', 'https://acme.app.n8n.cloud:8', 'acme.app.n8n.cloud', false],
+			['[fe80::1]:5678', 'https://[fe80::1]:5678', '[fe80::1]', false],
 			['192.168.1.10', 'https://192.168.1.10', '192.168.1.10', false],
 			['10.0.0.5:5678', 'https://10.0.0.5:5678', '10.0.0.5', false],
 			['  acme.app.n8n.cloud \n', 'https://acme.app.n8n.cloud', 'acme.app.n8n.cloud', false],
@@ -77,6 +80,16 @@ describe('normaliseInstanceAddress', () => {
 			['https://user:pw@host', 'has-credentials'],
 			['https://user@acme.app.n8n.cloud', 'has-credentials'],
 			['http://user:pw@localhost:5678', 'has-credentials'],
+			// Without a scheme, the part before the colon is a user name and not a scheme.
+			['user:pw@host', 'has-credentials'],
+			['user:pw@acme.app.n8n.cloud:5678/home', 'has-credentials'],
+			['user:5678@acme.app.n8n.cloud', 'has-credentials'],
+			['user@acme.app.n8n.cloud', 'has-credentials'],
+			['https://:secret@acme.app.n8n.cloud', 'has-credentials'],
+			// An "@" after the path, query or hash does not make the scheme a user name.
+			['data:text/plain,a@b', 'unsupported-protocol'],
+			['sms:+15550100?body=a@b', 'unsupported-protocol'],
+			['tel:+15550100#a@b', 'unsupported-protocol'],
 			['http://example.com', 'insecure-http'],
 			['http://localhost.example.com', 'insecure-http'],
 			['http://127.0.0.1.example.com', 'insecure-http'],
@@ -141,10 +154,15 @@ describe('isLoopbackHostname', () => {
 		},
 	);
 
-	it.each(['example.com', '128.0.0.1', '10.0.0.1', '[::2]', 'localhost.example.com', '::1'])(
-		'does not treat %s as loopback',
-		(host) => {
-			expect(isLoopbackHostname(host)).toBe(false);
-		},
-	);
+	it.each([
+		'example.com',
+		'128.0.0.1',
+		'10.0.0.1',
+		'10.127.0.0.1',
+		'[::2]',
+		'localhost.example.com',
+		'::1',
+	])('does not treat %s as loopback', (host) => {
+		expect(isLoopbackHostname(host)).toBe(false);
+	});
 });

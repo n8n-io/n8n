@@ -1,7 +1,7 @@
 import type { CronExpression } from 'n8n-workflow';
 
 import type { ScheduleTrigger } from '../schedule-phrase';
-import { describeSchedule, parseSchedulePhrase, scheduleToCron } from '../schedule-phrase';
+import { describeScheduleTrigger, parseSchedulePhrase, scheduleToCron } from '../schedule-phrase';
 
 type PositiveCase = {
 	text: string;
@@ -110,6 +110,27 @@ const POSITIVE_CASES: PositiveCase[] = [
 		description: 'Every 2 hours',
 		cron: '0 */2 * * *',
 		matchedText: 'every 2 hours',
+	},
+	{
+		text: 'every 15 minutes at 9',
+		trigger: { mode: 'everyX', unit: 'minutes', value: 15 },
+		description: 'Every 15 minutes',
+		cron: '*/15 * * * *',
+		matchedText: 'every 15 minutes',
+	},
+	{
+		text: 'every minute at 9',
+		trigger: { mode: 'everyMinute' },
+		description: 'Every minute',
+		cron: '* * * * *',
+		matchedText: 'every minute',
+	},
+	{
+		text: 'hourly at 9',
+		trigger: { mode: 'everyHour', minute: 0 },
+		description: 'Every hour',
+		cron: '0 * * * *',
+		matchedText: 'hourly',
 	},
 	// Days
 	{
@@ -429,6 +450,173 @@ const POSITIVE_CASES: PositiveCase[] = [
 		cron: '15 9 * * 1-5',
 		matchedText: 'every weekday at 9:15',
 	},
+	// Edge cases
+	{
+		text: 'every day at midday',
+		trigger: day(12),
+		description: 'Every day at 12:00',
+		cron: '0 12 * * *',
+		matchedText: 'every day at midday',
+	},
+	// "0" is midnight on the 24-hour clock, so the evening does not move it to 12:00.
+	{
+		text: 'every evening at 0',
+		trigger: day(0),
+		description: 'Every day at 00:00',
+		cron: '0 0 * * *',
+		matchedText: 'every evening at 0',
+	},
+	{
+		text: 'send it daily please',
+		trigger: day(9),
+		description: 'Every day at 09:00',
+		cron: '0 9 * * *',
+		matchedText: 'daily',
+	},
+	{
+		text: 'daily and weekly',
+		trigger: day(9),
+		description: 'Every day at 09:00',
+		cron: '0 9 * * *',
+		matchedText: 'daily',
+	},
+	// Three digits are not a time, so the default time applies.
+	{
+		text: 'every day at 123',
+		trigger: day(9),
+		description: 'Every day at 09:00',
+		cron: '0 9 * * *',
+		matchedText: 'every day',
+	},
+	{
+		text: 'at 9am, every day',
+		trigger: day(9),
+		description: 'Every day at 09:00',
+		cron: '0 9 * * *',
+		matchedText: 'at 9am, every day',
+	},
+	{
+		text: 'at 7am, every day',
+		trigger: day(7),
+		description: 'Every day at 07:00',
+		cron: '0 7 * * *',
+		matchedText: 'at 7am, every day',
+	},
+	{
+		text: 'every working days',
+		trigger: weekdays(9),
+		description: 'Every weekday at 09:00',
+		cron: '0 9 * * 1-5',
+		matchedText: 'every working days',
+	},
+	{
+		text: 'each  day at 8',
+		trigger: day(8),
+		description: 'Every day at 08:00',
+		cron: '0 8 * * *',
+		matchedText: 'each  day at 8',
+	},
+	{
+		text: 'every Friday  evening',
+		trigger: week(5, 18),
+		description: 'Every Friday at 18:00',
+		cron: '0 18 * * 5',
+		matchedText: 'every Friday  evening',
+	},
+	{
+		text: 'every week day at 8',
+		trigger: weekdays(8),
+		description: 'Every weekday at 08:00',
+		cron: '0 8 * * 1-5',
+		matchedText: 'every week day at 8',
+	},
+	{
+		text: 'weekly, on Fridays',
+		trigger: week(5),
+		description: 'Every Friday at 09:00',
+		cron: '0 9 * * 5',
+		matchedText: 'weekly, on Fridays',
+	},
+	{
+		text: 'every week ,on Tuesday at 10am',
+		trigger: week(2, 10),
+		description: 'Every Tuesday at 10:00',
+		cron: '0 10 * * 2',
+		matchedText: 'every week ,on Tuesday at 10am',
+	},
+	{
+		text: 'every month, on the 15th',
+		trigger: month(15),
+		description: 'Every month on day 15 at 09:00',
+		cron: '0 9 15 * *',
+		matchedText: 'every month, on the 15th',
+	},
+	{
+		text: 'monthly, on day 3 at 7pm',
+		trigger: month(3, 19),
+		description: 'Every month on day 3 at 19:00',
+		cron: '0 19 3 * *',
+		matchedText: 'monthly, on day 3 at 7pm',
+	},
+	// A time in an earlier sentence does not belong to the schedule.
+	{
+		text: 'The demo was at 3pm. Every Monday I send a report',
+		trigger: week(1),
+		description: 'Every Monday at 09:00',
+		cron: '0 9 * * 1',
+		matchedText: 'Every Monday',
+	},
+	{
+		text: 'the demo was at 3pm. every Monday I send a report',
+		trigger: week(1),
+		description: 'Every Monday at 09:00',
+		cron: '0 9 * * 1',
+		matchedText: 'every Monday',
+	},
+	{
+		text: 'The demo was at 3 p.m. Every Monday I send a report',
+		trigger: week(1),
+		description: 'Every Monday at 09:00',
+		cron: '0 9 * * 1',
+		matchedText: 'Every Monday',
+	},
+	// The dot of "p.m." is part of the time when the sentence continues.
+	{
+		text: 'at 8 p.m. every day',
+		trigger: day(20),
+		description: 'Every day at 20:00',
+		cron: '0 20 * * *',
+		matchedText: 'at 8 p.m. every day',
+	},
+	{
+		text: 'AT 8 P.M. every day',
+		trigger: day(20),
+		description: 'Every day at 20:00',
+		cron: '0 20 * * *',
+		matchedText: 'AT 8 P.M. every day',
+	},
+	{
+		text: 'at 9 p.m., every day',
+		trigger: day(21),
+		description: 'Every day at 21:00',
+		cron: '0 21 * * *',
+		matchedText: 'at 9 p.m., every day',
+	},
+	// A skipped-week phrase in another sentence does not block the schedule.
+	{
+		text: 'We meet every other week. Every Monday at 9 I send a report',
+		trigger: week(1),
+		description: 'Every Monday at 09:00',
+		cron: '0 9 * * 1',
+		matchedText: 'Every Monday at 9',
+	},
+	{
+		text: 'every Monday. Every other week we also meet',
+		trigger: week(1),
+		description: 'Every Monday at 09:00',
+		cron: '0 9 * * 1',
+		matchedText: 'every Monday',
+	},
 ];
 
 const NEGATIVE_CASES = [
@@ -463,6 +651,25 @@ const NEGATIVE_CASES = [
 	'everyday tasks',
 	'send daily emails',
 	'the monthly-report is late',
+	// Day 0 does not exist.
+	'every month on the 0th',
+	'every month, on the 31st',
+	// Not supported: a schedule trigger cannot skip weeks.
+	'every other week',
+	'every other week on Mondays',
+	'every  other  week on Mondays',
+	'every other week, on Thursdays at 10',
+	'every 2 weeks on Fridays at 9',
+	'every 12 weeks on Fridays',
+	'every 2nd week on Fridays',
+	'every second week on Fridays',
+	'Every Other Week On Mondays',
+	'at 9 every other week on Mondays',
+	'fortnightly on Mondays',
+	'on Mondays every other week',
+	'on Mondays, Every Other Week',
+	'on Mondays at 9, every 3 weeks',
+	'every Monday, every other weekend',
 ];
 
 describe('parseSchedulePhrase', () => {
@@ -533,19 +740,19 @@ describe('scheduleToCron', () => {
 	});
 });
 
-describe('describeSchedule', () => {
+describe('describeScheduleTrigger', () => {
 	it('describes modes that the parser does not return', () => {
-		expect(describeSchedule({ mode: 'everyHour', minute: 30 })).toBe(
+		expect(describeScheduleTrigger({ mode: 'everyHour', minute: 30 })).toBe(
 			'Every hour at 30 minutes past the hour',
 		);
 		expect(
-			describeSchedule({ mode: 'custom', cronExpression: '0 9 * * 1 ' as CronExpression }),
+			describeScheduleTrigger({ mode: 'custom', cronExpression: '0 9 * * 1 ' as CronExpression }),
 		).toBe('Custom schedule (0 9 * * 1)');
 	});
 
 	it('names an out-of-range weekday by its number', () => {
-		expect(describeSchedule(week(7))).toBe('Every day 7 at 09:00');
-		expect(describeSchedule(week(1.5))).toBe('Every day 1.5 at 09:00');
-		expect(describeSchedule(week(-1))).toBe('Every day -1 at 09:00');
+		expect(describeScheduleTrigger(week(7))).toBe('Every day 7 at 09:00');
+		expect(describeScheduleTrigger(week(1.5))).toBe('Every day 1.5 at 09:00');
+		expect(describeScheduleTrigger(week(-1))).toBe('Every day -1 at 09:00');
 	});
 });

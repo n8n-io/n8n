@@ -60,7 +60,14 @@ const TIME =
 		.source;
 
 const TIME_AFTER = new RegExp(String.raw`^[\s,]+${TIME}`, 'i');
-const TIME_BEFORE = new RegExp(String.raw`${TIME}[\s,]+$`, 'i');
+const TIME_BEFORE = new RegExp(String.raw`(?<time>${TIME})[\s,]+$`, 'i');
+
+// Not supported: a trigger cannot skip weeks, so a phrase next to "every other week",
+// "every 2 weeks" or "fortnightly" is not a schedule.
+const SKIPPED_WEEKS = /(?:every\s+(?:other|second|\d+(?:st|nd|rd|th)?)\s+weeks?|fortnightly)/
+	.source;
+const SKIPPED_WEEKS_BEFORE = new RegExp(String.raw`${SKIPPED_WEEKS}[\s,]+$`, 'i');
+const SKIPPED_WEEKS_AFTER = new RegExp(String.raw`^[\s,]+${SKIPPED_WEEKS}`, 'i');
 
 const rule = (source: string, timed: boolean, build: Rule['build']): Rule => ({
 	pattern: new RegExp(source, 'gi'),
@@ -120,13 +127,13 @@ const RULES: readonly Rule[] = [
 		...clock,
 	})),
 	rule(
-		String.raw`(?:${EVERY}(?:weekday|working\s+day|business\s+day)s?\b|\bon\s+weekdays\b)${PERIOD}`,
+		String.raw`(?:${EVERY}(?:week\s*day|working\s+day|business\s+day)s?\b|\bon\s+weekdays\b)${PERIOD}`,
 		true,
 		(_, clock) => ({ mode: 'weekdays', ...clock }),
 	),
 	rule(String.raw`${EVERY}${DAY}s?\b${PERIOD}`, true, onWeekday),
 	rule(String.raw`\bon\s+${DAY}s\b${PERIOD}`, true, onWeekday),
-	rule(String.raw`(?:\bweekly|${EVERY}week)\s+on\s+${DAY}s?\b${PERIOD}`, true, onWeekday),
+	rule(String.raw`(?:\bweekly|${EVERY}week)[\s,]+on\s+${DAY}s?\b${PERIOD}`, true, onWeekday),
 	rule(String.raw`(?:${EVERY}week\b|\bweekly${ADVERB_END})`, true, (_, clock) => ({
 		mode: 'everyWeek',
 		weekday: 1,
@@ -138,13 +145,13 @@ const RULES: readonly Rule[] = [
 		onDayOfMonth,
 	),
 	rule(
-		String.raw`(?:${EVERY}month|\bmonthly)\s+on\s+(?:the\s+)?(?:day\s+)?${ORDINAL}`,
+		String.raw`(?:${EVERY}month|\bmonthly)[\s,]+on\s+(?:the\s+)?(?:day\s+)?${ORDINAL}`,
 		true,
 		onDayOfMonth,
 	),
 	// Skip "every month" when a day of the month belongs to it, so an invalid day stays unparsed.
 	rule(
-		String.raw`(?<!\bof\s+)(?:${EVERY}month\b|\bmonthly${ADVERB_END})(?!\s+on\s+(?:the\s+)?(?:day\s+)?\d)`,
+		String.raw`(?<!\bof\s+)(?:${EVERY}month\b|\bmonthly${ADVERB_END})(?![\s,]+on\s+(?:the\s+)?(?:day\s+)?\d)`,
 		true,
 		(_, clock) => ({ mode: 'everyMonth', dayOfMonth: 1, ...clock }),
 	),
@@ -190,10 +197,25 @@ function toExplicitTime(groups: Groups): ExplicitTime | undefined {
 	return { hour, minute, isBareHour: ampm === undefined };
 }
 
-type TimedSpan = { time: ExplicitTime; start: number; end: number };
+/** The matched text, with the explicit time when the phrase has one. */
+type Span = { time?: ExplicitTime; start: number; end: number };
 
-/** A time can come straight after the phrase ("every day at 8") or straight before it ("at 8 every day"). */
-function findTime(text: string, found: Found): TimedSpan | undefined {
+/**
+ * A dot after a plain time ("at 3pm.") ends a sentence. After "a.m." or "p.m." the dot is part
+ * of the time, unless a capital letter follows ("at 3 p.m. Every Monday").
+ */
+function endsSentence(time: string, nextCharacter: string): boolean {
+	if (!time.endsWith('.')) return false;
+	const isAbbreviation = time.toLowerCase().endsWith('.m.');
+	return !isAbbreviation || nextCharacter !== nextCharacter.toLowerCase();
+}
+
+/**
+ * A time can come straight after the phrase ("every day at 8") or straight before it ("at 8 every day").
+ * A time before the phrase never belongs to an earlier sentence.
+ */
+function findTime(text: string, found: Found): Span {
+	const untimed: Span = { start: found.start, end: found.end };
 	const after = TIME_AFTER.exec(text.slice(found.end));
 	const timeAfter = after?.groups ? toExplicitTime(after.groups) : undefined;
 	if (after && timeAfter) {
@@ -201,9 +223,15 @@ function findTime(text: string, found: Found): TimedSpan | undefined {
 	}
 
 	const before = TIME_BEFORE.exec(text.slice(0, found.start));
-	const timeBefore = before?.groups ? toExplicitTime(before.groups) : undefined;
-	if (before && timeBefore) return { time: timeBefore, start: before.index, end: found.end };
-	return undefined;
+	if (!before?.groups || endsSentence(before.groups.time, text.charAt(found.start))) return untimed;
+	const timeBefore = toExplicitTime(before.groups);
+	return timeBefore ? { time: timeBefore, start: before.index, end: found.end } : untimed;
+}
+
+function isNextToSkippedWeeks(text: string, start: number, end: number): boolean {
+	return (
+		SKIPPED_WEEKS_BEFORE.test(text.slice(0, start)) || SKIPPED_WEEKS_AFTER.test(text.slice(end))
+	);
 }
 
 function resolveClock(period: string | undefined, time: ExplicitTime | undefined): Clock {
@@ -238,7 +266,7 @@ function describeHourly(minute: number): string {
 }
 
 /** en-GB description with a zero-padded 24-hour clock. */
-export function describeSchedule(trigger: ScheduleTrigger): string {
+export function describeScheduleTrigger(trigger: ScheduleTrigger): string {
 	switch (trigger.mode) {
 		case 'everyMinute':
 			return 'Every minute';
@@ -290,19 +318,22 @@ export function scheduleToCron(trigger: ScheduleTrigger): string {
 /**
  * Finds the first schedule phrase in a message, for example "every weekday at 8"
  * or "each Monday morning". Returns undefined when the message has none. Never throws.
+ * Returns undefined for "every other week" and "every N weeks", which a trigger cannot express.
  */
 export function parseSchedulePhrase(text: string): SchedulePhrase | undefined {
 	if (typeof text !== 'string') return undefined;
 	const found = findEarliestMatch(text);
 	if (!found) return undefined;
 
-	const span = found.rule.timed ? findTime(text, found) : undefined;
-	const trigger = found.rule.build(found.groups, resolveClock(found.groups.period, span?.time));
+	const span = found.rule.timed ? findTime(text, found) : { start: found.start, end: found.end };
+	if (isNextToSkippedWeeks(text, span.start, span.end)) return undefined;
+
+	const trigger = found.rule.build(found.groups, resolveClock(found.groups.period, span.time));
 	if (!trigger) return undefined;
 
 	return {
 		trigger,
-		description: describeSchedule(trigger),
-		matchedText: text.slice(span?.start ?? found.start, span?.end ?? found.end),
+		description: describeScheduleTrigger(trigger),
+		matchedText: text.slice(span.start, span.end),
 	};
 }

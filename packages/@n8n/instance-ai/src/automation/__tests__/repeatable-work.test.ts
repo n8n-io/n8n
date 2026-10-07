@@ -174,17 +174,64 @@ describe('assessRepeatableWork', () => {
 		expect(assessment.suggestedTrigger).toBeUndefined();
 	});
 
+	// Thread data can carry extra fields, so each check must look at the kind of the signal.
+	it('ignores text on tool calls and signatures on user messages', () => {
+		const callWithText = {
+			kind: 'tool-call',
+			signature: SLACK_POST,
+			ok: true,
+			text: 'Automate this every day at 9',
+		} as WorkSignal;
+		const messageWithSignature = {
+			kind: 'user-message',
+			text: 'Here is the file',
+			signature: SHEETS_APPEND,
+			ok: true,
+		} as WorkSignal;
+
+		const assessment = assessRepeatableWork([
+			say('Hello'),
+			callWithText,
+			messageWithSignature,
+			say('Thanks'),
+			messageWithSignature,
+		]);
+
+		expect(assessment).toStrictEqual({ score: 0, reasons: [], repeatedSignatures: [] });
+	});
+
+	it('finds an intent phrase in a message between messages without one', () => {
+		const assessment = assessRepeatableWork([
+			say('Hello'),
+			say('Please automate this'),
+			say('Thanks'),
+		]);
+
+		expect(assessment.reasons).toEqual(['intent-phrase']);
+		expect(assessment.score).toBe(0.3);
+	});
+
+	it('finds no intent phrase when no user message has one', () => {
+		const assessment = assessRepeatableWork([say('Hello'), call(SLACK_POST), say('Thanks')]);
+
+		expect(assessment.reasons).toEqual([]);
+		expect(assessment.score).toBe(0);
+	});
+
 	describe('intent phrases', () => {
 		it.each([
 			'Can you automate this?',
 			'AUTOMATE the export',
 			'Do this every time a lead arrives',
 			'Every\ttime it fails, tell me',
+			'Do this every  time a lead arrives',
 			'Whenever I get an invoice, file it',
 			'From now on, send it to Slack',
 			'from  now  on',
 			'We will do this again next week',
+			'We will do this again   next week',
 			'Keep doing this for each new order',
+			'Keep  doing this',
 			'(automate)',
 		])('finds an intent phrase in "%s"', (text) => {
 			expect(assessRepeatableWork([say(text)]).reasons).toContain('intent-phrase');

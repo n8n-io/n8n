@@ -30,7 +30,7 @@ export type RepeatableWorkAssessment = {
 
 export const REPEATABLE_WORK_THRESHOLD = 0.6;
 
-/** Each reason counts once. The key order is the order of `reasons`. */
+/** Each reason that is present adds its weight once. */
 const REASON_WEIGHTS: Readonly<Record<RepeatableReason, number>> = {
 	'schedule-phrase': 0.6,
 	'intent-phrase': 0.3,
@@ -38,6 +38,7 @@ const REASON_WEIGHTS: Readonly<Record<RepeatableReason, number>> = {
 	'one-off-success': 0.2,
 };
 
+/** The order of `reasons` in an assessment. */
 const REASON_ORDER: readonly RepeatableReason[] = [
 	'schedule-phrase',
 	'intent-phrase',
@@ -48,18 +49,6 @@ const REASON_ORDER: readonly RepeatableReason[] = [
 // Lookarounds instead of `\b`, so that letters with accents also block a match ("réautomate").
 const INTENT_PHRASE =
 	/(?<![\p{L}\p{N}_])(?:automate|every\s+time|whenever|from\s+now\s+on|again\s+next|keep\s+doing)(?![\p{L}\p{N}_])/iu;
-
-type MessageFindings = { hasIntent: boolean; lastSchedule?: SchedulePhrase };
-
-function scanUserMessages(signals: readonly WorkSignal[]): MessageFindings {
-	const findings: MessageFindings = { hasIntent: false };
-	for (const signal of signals) {
-		if (signal.kind !== 'user-message') continue;
-		findings.hasIntent ||= INTENT_PHRASE.test(signal.text);
-		findings.lastSchedule = parseSchedulePhrase(signal.text) ?? findings.lastSchedule;
-	}
-	return findings;
-}
 
 /** A blank signature does not identify a tool call, so it never counts as a repeat. */
 function findRepeatedSignatures(signals: readonly WorkSignal[]): string[] {
@@ -86,11 +75,17 @@ function toScore(reasons: readonly RepeatableReason[]): number {
  * so the order of tool calls and one-off runs has no effect. Never throws.
  */
 export function assessRepeatableWork(signals: readonly WorkSignal[]): RepeatableWorkAssessment {
-	const { hasIntent, lastSchedule } = scanUserMessages(signals);
+	const texts = signals
+		.filter((signal) => signal.kind === 'user-message')
+		.map((signal) => signal.text);
+	// A later message can change the schedule ("Actually, make it every day at 7"), so the last one wins.
+	const suggestedTrigger = texts
+		.map((text) => parseSchedulePhrase(text))
+		.findLast((schedule) => schedule !== undefined);
 	const repeatedSignatures = findRepeatedSignatures(signals);
 	const present: Record<RepeatableReason, boolean> = {
-		'schedule-phrase': lastSchedule !== undefined,
-		'intent-phrase': hasIntent,
+		'schedule-phrase': suggestedTrigger !== undefined,
+		'intent-phrase': texts.some((text) => INTENT_PHRASE.test(text)),
 		'repeated-tool-call': repeatedSignatures.length > 0,
 		'one-off-success': signals.some((signal) => signal.kind === 'one-off-success'),
 	};
@@ -99,7 +94,7 @@ export function assessRepeatableWork(signals: readonly WorkSignal[]): Repeatable
 	return {
 		score: toScore(reasons),
 		reasons,
-		...(lastSchedule ? { suggestedTrigger: lastSchedule } : {}),
+		...(suggestedTrigger ? { suggestedTrigger } : {}),
 		repeatedSignatures,
 	};
 }

@@ -1,5 +1,5 @@
 export {
-	describeSchedule,
+	describeScheduleTrigger,
 	parseSchedulePhrase,
 	scheduleToCron,
 	type SchedulePhrase,

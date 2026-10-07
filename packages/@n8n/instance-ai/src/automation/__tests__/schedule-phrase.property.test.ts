@@ -123,6 +123,8 @@ const weekdaysArb = timed(
 				'on weekdays',
 				'every working day',
 				'every business day',
+				'every week day',
+				'every working days',
 			),
 			periodArb,
 		)
@@ -144,6 +146,8 @@ const namedDayArb = timed(
 				(name: string) => `on ${name}s`,
 				(name: string) => `weekly on ${name}s`,
 				(name: string) => `every week on ${name}`,
+				(name: string) => `weekly, on ${name}s`,
+				(name: string) => `every week, on ${name}`,
 			),
 			periodArb,
 		)
@@ -180,6 +184,8 @@ const monthArb = timed(
 					(day: number) => `every month on the ${ordinal(day)}`,
 					(day: number) => `monthly on the ${ordinal(day)}`,
 					(day: number) => `every month on day ${day}`,
+					(day: number) => `every month, on the ${ordinal(day)}`,
+					(day: number) => `monthly, on day ${day}`,
 				),
 			)
 			.map(([dayOfMonth, form]) => ({
@@ -205,6 +211,29 @@ const casingArb = fc.constantFrom(
 const validPhraseArb: fc.Arbitrary<GeneratedPhrase> = fc
 	.tuple(fc.oneof(intervalArb, dayArb, weekdaysArb, namedDayArb, weekArb, monthArb), casingArb)
 	.map(([phrase, casing]) => ({ text: casing(phrase.text), expected: phrase.expected }));
+
+// A trigger cannot skip weeks, so these phrases make a schedule next to them unsupported.
+const skippedWeeksArb = fc.oneof(
+	fc.constantFrom('every other week', 'every second week', 'every 2nd week', 'fortnightly'),
+	fc.integer({ min: 2, max: 52 }).map((weeks) => `every ${weeks} weeks`),
+);
+const separatorArb = fc.constantFrom(' ', ', ', '  ');
+
+// Times that end with a dot, as at the end of a sentence.
+const sentenceEndArb = fc.oneof(
+	fc
+		.record({ hour: fc.integer({ min: 1, max: 12 }), pm: fc.boolean(), space: fc.boolean() })
+		.map(({ hour, pm, space }) => ({
+			text: `The demo was at ${hour}${space ? ' ' : ''}${pm ? 'pm' : 'am'}.`,
+			isAbbreviation: false,
+		})),
+	fc.record({ hour: fc.integer({ min: 1, max: 12 }), pm: fc.boolean() }).map(({ hour, pm }) => ({
+		text: `The demo was at ${hour} ${pm ? 'p.m.' : 'a.m.'}`,
+		isAbbreviation: true,
+	})),
+);
+
+const capitalise = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
 const SCHEDULE_WORDS = new Set(
 	[
@@ -326,6 +355,36 @@ describe('parseSchedulePhrase properties', () => {
 
 				expect(reparsed?.trigger).toEqual(result?.trigger);
 				expect(reparsed?.description).toBe(result?.description);
+			}),
+		);
+	});
+
+	it('never parses a phrase next to a skipped-week phrase', () => {
+		fc.assert(
+			fc.property(
+				validPhraseArb,
+				skippedWeeksArb,
+				separatorArb,
+				fc.boolean(),
+				({ text }, skipped, separator, before) => {
+					const input = before ? `${skipped}${separator}${text}` : `${text}${separator}${skipped}`;
+
+					expect(parseSchedulePhrase(input)).toBeUndefined();
+				},
+			),
+		);
+	});
+
+	// A plain "3pm." always ends a sentence. "3 p.m." ends one only before a capital letter.
+	it('never takes a time from an earlier sentence', () => {
+		fc.assert(
+			fc.property(validPhraseArb, sentenceEndArb, ({ text }, sentence) => {
+				const phrase = sentence.isAbbreviation ? capitalise(text) : text;
+				const expected = parseSchedulePhrase(phrase);
+
+				expect(parseSchedulePhrase(`${sentence.text} ${phrase}`)?.trigger).toEqual(
+					expected?.trigger,
+				);
 			}),
 		);
 	});

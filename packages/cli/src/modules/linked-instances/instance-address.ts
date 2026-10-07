@@ -20,6 +20,8 @@ export const INSTANCE_MCP_PATH = '/mcp-server/http';
 const SCHEME_PREFIX = /^[a-z][a-z0-9+.-]*:/i;
 // The URL parser reads "localhost:5678" as scheme "localhost". Users mean host and port.
 const HOST_AND_PORT = /^[^/?#@:]+:\d+(?:[/?#]|$)/;
+// The URL parser reads "user:pw@host" as scheme "user". Users mean credentials and a host.
+const USER_INFO_WITHOUT_SCHEME = /^[^/?#]+@/;
 // The URL parser silently removes tabs and newlines. Reject them so a typo does not pass.
 const WHITESPACE = /\s/;
 // The URL parser writes every IPv4 form ("127.1", "0x7f.0.0.1") as four decimal parts.
@@ -32,7 +34,10 @@ export function isLoopbackHostname(hostname: string): boolean {
 }
 
 function withScheme(address: string): string {
-	const hasScheme = SCHEME_PREFIX.test(address) && !HOST_AND_PORT.test(address);
+	const hasScheme =
+		SCHEME_PREFIX.test(address) &&
+		!HOST_AND_PORT.test(address) &&
+		!USER_INFO_WITHOUT_SCHEME.test(address);
 	return hasScheme ? address : `https://${address}`;
 }
 

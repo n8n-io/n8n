@@ -181,7 +181,20 @@ export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
-export * from './automation';
+export {
+	assessRepeatableWork,
+	describeScheduleTrigger,
+	isRepeatableEnough,
+	parseSchedulePhrase,
+	REPEATABLE_WORK_THRESHOLD,
+	scheduleToCron,
+	type RepeatableReason,
+	type RepeatableWorkAssessment,
+	type SchedulePhrase,
+	type ScheduleTrigger,
+	type WeekdaysTrigger,
+	type WorkSignal,
+} from './automation';
 export {
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,

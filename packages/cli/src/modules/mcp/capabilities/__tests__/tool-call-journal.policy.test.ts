@@ -1,3 +1,4 @@
+import type { ToolDefinition } from '../../mcp.types';
 import {
 	decideJournalAction,
 	INTERRUPTED_TOOL_MESSAGE,
@@ -87,6 +88,14 @@ describe('replayPolicyFromAnnotations', () => {
 		} as unknown as ToolReplayAnnotations;
 
 		expect(replayPolicyFromAnnotations(annotations)).toBe('unsafe');
+	});
+
+	it('reads the hints from the annotations of an MCP tool definition', () => {
+		const config = {
+			annotations: { title: 'Get workflow', readOnlyHint: true, openWorldHint: false },
+		} satisfies Pick<ToolDefinition['config'], 'annotations'>;
+
+		expect(replayPolicyFromAnnotations(config.annotations)).toBe('safe');
 	});
 
 	it('treats a non-boolean destructive hint as not set', () => {
