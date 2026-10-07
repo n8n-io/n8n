@@ -36,6 +36,7 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
+import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -821,7 +822,22 @@ export class McpService {
 			);
 		}
 
+		this.registerCapabilities(registerTool, user, auth);
+
 		return server;
+	}
+
+	/**
+	 * Capabilities check their own scope, so `TOOLS_BY_SCOPE` does not list them. They use the
+	 * same instrumented registrar as the other tools, so each call emits `mcp-tool-called`.
+	 */
+	private registerCapabilities(registerTool: RegisterToolFn, user: User, auth?: McpAuthContext) {
+		const grantedScopes = auth?.grantedScopes;
+		for (const capability of Container.get(CapabilityRegistry).list('mcp')) {
+			if (grantedScopes === undefined || grantedScopes.includes(capability.scope)) {
+				capability.registerOn(registerTool, { user });
+			}
+		}
 	}
 
 	/**

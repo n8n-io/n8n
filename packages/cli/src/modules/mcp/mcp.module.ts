@@ -21,6 +21,15 @@ export class McpModule implements ModuleInterface {
 		const { ProtectedResourceRegistry } = await import('@/services/protected-resource.registry.js');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
 		Container.get(ProtectedResourceRegistry).register(Container.get(McpProtectedResource));
+
+		// Capabilities are defined once. The MCP server offers each one that has the 'mcp' surface.
+		const { CapabilityRegistry } = await import(
+			'@/services/capabilities/capability-registry.service.js'
+		);
+		const { parseScheduleCapability } = await import(
+			'@/services/capabilities/parse-schedule.capability.js'
+		);
+		Container.get(CapabilityRegistry).register(parseScheduleCapability);
 	}
 
 	/**
