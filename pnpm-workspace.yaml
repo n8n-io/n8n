@@ -450,8 +450,8 @@ overrides:
   ip-address@10: 10.3.1
   brace-expansion@5: 5.0.9
   '@tootallnate/once@2': 2.0.1
-  '@vue/server-renderer@3.5.26': 3.5.40
-  '@vue/shared@3.5.26': 3.5.40
+  '@vue/server-renderer@3.5.26': 3.5.42
+  '@vue/shared@3.5.26': 3.5.42
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   '@daytona/sdk@0.205.1>@aws-sdk/client-s3': 3.808.0
