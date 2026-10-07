@@ -21,6 +21,7 @@ import {
 	vectorSearchParameters,
 	jobOperations,
 	jobParameters,
+	lakebaseParameters,
 } from './resources';
 
 import { router } from './actions/router';
@@ -112,6 +113,7 @@ export class Databricks implements INodeType {
 			...modelServingParameters,
 			...vectorSearchParameters,
 			...jobParameters,
+			...lakebaseParameters,
 		],
 	};
 
