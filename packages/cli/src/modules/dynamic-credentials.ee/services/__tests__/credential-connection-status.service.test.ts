@@ -1,5 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
+	CredentialsRepository,
+	OperationContext,
 	ProjectRelationRepository,
 	RoleRepository,
 	SharedCredentialsRepository,
@@ -31,6 +33,7 @@ const makeEntry = (credentialId: string, userId: string, data = ''): DynamicCred
 
 describe('CredentialConnectionStatusService', () => {
 	const repository = mock<DynamicCredentialUserEntryRepository>();
+	const credentialsRepository = mock<CredentialsRepository>();
 	const userRepository = mock<UserRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const roleService = mock<RoleService>();
@@ -42,6 +45,7 @@ describe('CredentialConnectionStatusService', () => {
 
 	const service = new CredentialConnectionStatusService(
 		repository,
+		credentialsRepository,
 		userRepository,
 		sharedCredentialsRepository,
 		roleService,
@@ -149,6 +153,23 @@ describe('CredentialConnectionStatusService', () => {
 			await service.cleanupOrphanedEntriesForUsers(['user-1'], em);
 
 			expect(repository.deleteByPairs).not.toHaveBeenCalled();
+		});
+
+		it('threads the operation context through cleanup queries', async () => {
+			const ctx: OperationContext = {};
+			repository.findPairsForUsers.mockResolvedValueOnce([
+				{ credentialId: CRED_ID, userId: 'deleted-user' },
+			]);
+			repository.findUsersWithRoleScopes.mockResolvedValueOnce([]);
+
+			await service.cleanupOrphanedEntriesForUsers(['deleted-user'], ctx);
+
+			expect(repository.findPairsForUsers).toHaveBeenCalledWith(['deleted-user'], undefined, ctx);
+			expect(repository.findUsersWithRoleScopes).toHaveBeenCalledWith(['deleted-user'], ctx);
+			expect(repository.deletePairsInContext).toHaveBeenCalledWith(
+				[{ credentialId: CRED_ID, userId: 'deleted-user' }],
+				ctx,
+			);
 		});
 	});
 

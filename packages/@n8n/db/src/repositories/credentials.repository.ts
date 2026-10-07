@@ -1,7 +1,12 @@
 import { assertClearedFor, credentialContentSubject, credentialSubject } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
+import type {
+	EntityManager,
+	FindManyOptions,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -21,7 +26,10 @@ import {
 	type CredentialDependencyFilter,
 } from './credential-dependency.repository';
 import { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
-import { SharedCredentialsRepository } from './shared-credentials.repository';
+import {
+	findCredentialUserPairsWithAccess,
+	SharedCredentialsRepository,
+} from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
@@ -33,6 +41,24 @@ export class CredentialIdConflictError extends UserError {
 	constructor() {
 		super('A credential with this ID already exists');
 	}
+}
+
+export async function findGloballyConnectableCredentialIds(
+	manager: EntityManager,
+	credentialIds: string[],
+): Promise<string[]> {
+	if (credentialIds.length === 0) return [];
+	const credentials = await manager.find(CredentialsEntity, {
+		where: {
+			id: In(credentialIds),
+			isGlobal: true,
+			usageScope: 'project',
+			isResolvable: true,
+			pendingAuthorizationExpiresAt: IsNull(),
+		},
+		select: ['id'],
+	});
+	return credentials.map(({ id }) => id);
 }
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
@@ -71,6 +97,27 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		private readonly credentialDependencyRepository: CredentialDependencyRepository,
 	) {
 		super(CredentialsEntity, dataSource.manager, transactionRunner);
+	}
+
+	async findPairsWithCredentialAccess(
+		pairs: Array<{ credentialId: string; userId: string }>,
+		scope: Scope,
+		credentialRoles: string[],
+		ctx: OperationContext,
+	): Promise<Array<{ credentialId: string; userId: string }>> {
+		return await findCredentialUserPairsWithAccess(
+			this.managerFor(ctx),
+			pairs,
+			scope,
+			credentialRoles,
+		);
+	}
+
+	async findGloballyConnectableIds(
+		credentialIds: string[],
+		ctx: OperationContext,
+	): Promise<string[]> {
+		return await findGloballyConnectableCredentialIds(this.managerFor(ctx), credentialIds);
 	}
 
 	async insertProjectCredentialWithOwner(

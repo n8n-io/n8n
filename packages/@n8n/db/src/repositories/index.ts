@@ -27,6 +27,7 @@ export {
 export {
 	CredentialsRepository,
 	CredentialIdConflictError,
+	findGloballyConnectableCredentialIds,
 	type CredentialSharingRelation,
 } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
