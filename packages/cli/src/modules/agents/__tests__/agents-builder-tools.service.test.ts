@@ -591,7 +591,12 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: false,
 				stage: 'stale',
-				errors: [expect.objectContaining({ path: '(root)' })],
+				errors: [
+					expect.objectContaining({
+						path: '(root)',
+						message: expect.stringContaining('This result carries the current config'),
+					}),
+				],
 				config: concurrentConfig,
 				configHash: getAgentConfigHash(concurrentConfig),
 			});

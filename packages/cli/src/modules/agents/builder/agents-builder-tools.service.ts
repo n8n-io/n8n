@@ -104,8 +104,9 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 
 const BASE_CONFIG_HASH_RULE =
 	'Requires baseConfigHash: the configHash from the latest agent-context with type "config" result, ' +
-	'or from the latest successful builder result that returned one (write_config, patch_config, ' +
-	'create_skills, or a stale failure), whichever came last. ';
+	'or from the latest builder result that returned one (write_config, patch_config, create_skills, ' +
+	'create_tasks, finish_setup, configure_channel, verify_mcp_server with credentialApplied: true, ' +
+	'or a stale failure), whichever came last. ';
 
 const BASE_CONFIG_HASH_FIELD_DESCRIPTION =
 	'Latest configHash from agent-context with type "config" or from the latest builder result that ' +
@@ -1374,7 +1375,12 @@ export class AgentsBuilderToolsService {
 			const errors = [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }];
 			if (!(e instanceof ConflictError)) return { ok: false, stage: 'schema', errors };
 			const current = await this.getConfigSnapshot(agentId, projectId).catch(() => null);
-			return { ok: false, stage: 'stale', errors, ...(current ?? {}) };
+			return {
+				ok: false,
+				stage: 'stale',
+				errors: current ? [STALE_CONFIG_ERROR] : errors,
+				...(current ?? {}),
+			};
 		}
 	}
 
