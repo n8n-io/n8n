@@ -48,7 +48,10 @@ import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { PrepareWorkflowAgentForEval } from '@/modules/agents/agent-runtime-instrumentation';
+import type {
+	AgentRuntimeInstrumentation,
+	PrepareWorkflowAgentForEval,
+} from '@/modules/agents/agent-runtime-instrumentation';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -100,6 +103,22 @@ const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 interface RunBudget {
 	totalMs: number;
 	deadlineAt: number;
+}
+
+type CalledAgentMocks = Pick<AgentRuntimeInstrumentation, 'mcpFetch' | 'webSearch'>;
+
+/** What the agents a workflow calls share during one eval run. */
+interface CalledAgentRun {
+	mockHandler: EvalLlmMockHandler;
+	nodeResults: Record<string, InstanceAiEvalNodeResult>;
+	timings: EvalTimings;
+	hints: MockHints;
+	scenarioHints?: string;
+	credentialsHelper: EvalMockedCredentialsHelper;
+	/** MCP and web-search fakes by calling node and agent config. */
+	mocks: Map<string, Promise<CalledAgentMocks>>;
+	/** Agent sessions this run has already called. */
+	sessions: Set<string>;
 }
 
 /** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
@@ -654,53 +673,29 @@ export class EvalExecutionService {
 				executionData,
 				pinData,
 				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => {
-					credentialsHelper = new EvalMockedCredentialsHelper(
+					const runCredentialsHelper = new EvalMockedCredentialsHelper(
 						additionalData.credentialsHelper,
 						serverUrl,
 						this.logger,
 						vendorLlmRouting?.subNodeToRoot,
 					);
-					additionalData.credentialsHelper = credentialsHelper;
+					credentialsHelper = runCredentialsHelper;
+					additionalData.credentialsHelper = runCredentialsHelper;
 					additionalData.evalLlmMockHandler = this.createInterceptingHandler(
 						mockHandler,
 						nodeResults,
 						timings,
 					);
-					additionalData.executeAgent = async (
-						source,
-						message,
-						executionId,
-						threadId,
-						agentAdditionalData,
-						mode,
-						outputSchema,
-						workflowContext,
-						invocationContext,
-					) => {
-						if (!workflowContext) {
-							throw new UnexpectedError(
-								'An eval run cannot attribute an agent call without its node',
-							);
-						}
-						return await executeAgent(
-							source,
-							message,
-							executionId,
-							threadId,
-							agentAdditionalData,
-							mode,
-							outputSchema,
-							workflowContext,
-							invocationContext,
-							this.prepareCalledAgent(workflowContext.callingNodeName, {
-								mockHandler,
-								nodeResults,
-								timings,
-								hints,
-								scenarioHints,
-							}),
-						);
-					};
+					additionalData.executeAgent = this.createEvalExecuteAgent({
+						mockHandler,
+						nodeResults,
+						timings,
+						hints,
+						scenarioHints,
+						credentialsHelper: runCredentialsHelper,
+						mocks: new Map(),
+						sessions: new Set(),
+					});
 				},
 			};
 
@@ -1054,87 +1049,146 @@ export class EvalExecutionService {
 	}
 
 	/**
+	 * Replaces `executeAgent` for a run. `attributeTo` records the calls of an
+	 * agent that a called agent's tool runs under that called agent's node.
+	 */
+	private createEvalExecuteAgent(
+		run: CalledAgentRun,
+		attributeTo?: string,
+	): NonNullable<IWorkflowExecuteAdditionalData['executeAgent']> {
+		return async (
+			source,
+			message,
+			executionId,
+			threadId,
+			agentAdditionalData,
+			mode,
+			outputSchema,
+			workflowContext,
+			invocationContext,
+		) => {
+			if (!workflowContext) {
+				throw new UnexpectedError('An eval run cannot attribute an agent call without its node');
+			}
+			const callingNode = attributeTo ?? workflowContext.callingNodeName;
+			const session = `${source.agentId ?? `inline:${workflowContext.callingNodeName}`}:${threadId}`;
+			const continuesSession =
+				workflowContext.hasCallerSessionId === true && run.sessions.has(session);
+			run.sessions.add(session);
+			return await executeAgent(
+				source,
+				message,
+				executionId,
+				threadId,
+				agentAdditionalData,
+				mode,
+				outputSchema,
+				workflowContext,
+				invocationContext,
+				this.prepareCalledAgent(callingNode, run, continuesSession),
+			);
+		};
+	}
+
+	/**
 	 * Fakes the I/O of an agent the workflow calls, as the Agent eval does: tools,
 	 * MCP servers and web search are mocked; the model call stays real.
 	 */
 	private prepareCalledAgent(
 		callingNode: string,
-		run: {
-			mockHandler: EvalLlmMockHandler;
-			nodeResults: Record<string, InstanceAiEvalNodeResult>;
-			timings: EvalTimings;
-			hints: MockHints;
-			scenarioHints?: string;
-		},
+		run: CalledAgentRun,
+		continuesSession: boolean,
 	): PrepareWorkflowAgentForEval {
-		const record = (request: InstanceAiEvalInterceptedRequest) => {
-			this.mockedEntry(run.nodeResults, callingNode).interceptedRequests.push(request);
+		const warn = (feature: string, reason: string) => {
+			const warning = `"${callingNode}" calls an Agent; the eval turned off its ${feature}: ${reason}`;
+			if (!run.hints.warnings.includes(warning)) run.hints.warnings.push(warning);
 		};
 		return async (original: AgentJsonConfig) => {
 			const { config, skippedFeatures } = pruneConfigForEval(original);
 			for (const { feature, reason } of skippedFeatures) {
-				// One run has no earlier turns to recall, so memory being off changes nothing.
-				if (feature === 'memory') continue;
-				const warning = `"${callingNode}" calls an Agent; the eval turned off its ${feature}: ${reason}`;
-				if (!run.hints.warnings.includes(warning)) run.hints.warnings.push(warning);
+				// Memory matters only to a call that continues an earlier session of this run.
+				if (feature !== 'memory') warn(feature, reason);
+				else if (continuesSession) warn(feature, 'this call does not see its earlier turns.');
 			}
-			const mcpServers = config.mcpServers ?? [];
-			const mockContext = {
-				agentInstructions: config.instructions,
-				scenarioHints: run.scenarioHints,
-				globalContext: run.hints.globalContext,
-				logger: this.logger,
-			};
 			return {
 				config,
 				instrumentation: {
+					...(await this.calledAgentMocks(callingNode, config, run)),
 					configureToolAdditionalData: (toolData) => {
-						toolData.credentialsHelper = new EvalMockedCredentialsHelper(
-							toolData.credentialsHelper,
-							undefined,
-							this.logger,
-						);
+						toolData.credentialsHelper = run.credentialsHelper;
 						toolData.evalLlmMockHandler = this.createInterceptingHandler(
 							run.mockHandler,
 							run.nodeResults,
 							run.timings,
 							callingNode,
 						);
+						toolData.executeAgent = this.createEvalExecuteAgent(run, callingNode);
 					},
-					mcpFetch: createMcpMockFetch({
-						...mockContext,
-						servers: mcpServers.map(({ name, url, description }) => ({ name, url, description })),
-						knownToolsByServer: await resolveCanonicalMcpCatalogs(
-							mcpServers,
-							this.moduleRegistry,
-							this.logger,
-						),
-						onToolCall: (call) =>
-							record({
-								url:
-									mcpServers.find((server) => server.name === call.serverName)?.url ??
-									call.serverName,
-								method: 'POST',
-								nodeType: `mcp:${call.serverName}`,
-								requestBody: call.args,
-								mockResponse: call.result,
-							}),
-					}),
-					webSearch: createWebSearchMock({
-						...mockContext,
-						onSearch: (args, result) =>
-							record({
-								url: 'mock://web-search',
-								method: 'POST',
-								nodeType: 'web-search:fallback',
-								requestBody: args,
-								mockResponse: result,
-							}),
-					}),
-					transformDelegatedAgentConfig: (childConfig) => pruneConfigForEval(childConfig).config,
+					transformDelegatedAgentConfig: (childConfig, { subAgentId }) => {
+						const pruned = pruneConfigForEval(childConfig);
+						for (const { feature, reason } of pruned.skippedFeatures) {
+							if (feature !== 'memory') warn(`sub-agent ${subAgentId}'s ${feature}`, reason);
+						}
+						return pruned.config;
+					},
 				},
 			};
 		};
+	}
+
+	/** One MCP and web-search fake per node and agent config, so repeated calls share one MCP catalog. */
+	private async calledAgentMocks(
+		callingNode: string,
+		config: AgentJsonConfig,
+		run: CalledAgentRun,
+	): Promise<CalledAgentMocks> {
+		const mcpServers = config.mcpServers ?? [];
+		const key = JSON.stringify([callingNode, config.instructions, mcpServers]);
+		const cached = run.mocks.get(key);
+		if (cached) return await cached;
+
+		const record = (request: InstanceAiEvalInterceptedRequest) => {
+			this.mockedEntry(run.nodeResults, callingNode).interceptedRequests.push(request);
+		};
+		const mockContext = {
+			agentInstructions: config.instructions,
+			scenarioHints: run.scenarioHints,
+			globalContext: run.hints.globalContext,
+			logger: this.logger,
+		};
+		const mocks = (async (): Promise<CalledAgentMocks> => ({
+			mcpFetch: createMcpMockFetch({
+				...mockContext,
+				servers: mcpServers.map(({ name, url, description }) => ({ name, url, description })),
+				knownToolsByServer: await resolveCanonicalMcpCatalogs(
+					mcpServers,
+					this.moduleRegistry,
+					this.logger,
+				),
+				onToolCall: (call) =>
+					record({
+						url:
+							mcpServers.find((server) => server.name === call.serverName)?.url ?? call.serverName,
+						method: 'POST',
+						nodeType: `mcp:${call.serverName}`,
+						requestBody: call.args,
+						mockResponse: call.result,
+					}),
+			}),
+			webSearch: createWebSearchMock({
+				...mockContext,
+				onSearch: (args, result) =>
+					record({
+						url: 'mock://web-search',
+						method: 'POST',
+						nodeType: 'web-search:fallback',
+						requestBody: args,
+						mockResponse: result,
+					}),
+			}),
+		}))();
+		run.mocks.set(key, mocks);
+		return await mocks;
 	}
 
 	/** A node's entry, marked mocked: `checkNodeConfig` may have pre-created it as 'real'. */
@@ -1170,7 +1224,7 @@ export class EvalExecutionService {
 			const entry = this.mockedEntry(nodeResults, attributeTo ?? node.name);
 			let response = await timings.time(
 				'http-mock',
-				node.name,
+				attributeTo ?? node.name,
 				async () => await mockHandler(requestOptions, node),
 			);
 

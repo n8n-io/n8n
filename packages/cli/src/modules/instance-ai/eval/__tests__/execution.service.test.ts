@@ -2086,16 +2086,44 @@ describe('EvalExecutionService', () => {
 			executeAgent: (...args: unknown[]) => Promise<unknown>;
 		};
 
-		it('runs the called agent with fake I/O and records it under the calling node', async () => {
+		let runData: AgentCallData | undefined;
+
+		/** Makes the run call an agent through the swapped `executeAgent`, once per entry. */
+		function callAgentsDuringRun(...calls: Array<[threadId: string, workflowContext: object]>) {
+			workflowRunner.run.mockImplementation(async (data) => {
+				const ad = makeMockedAdditionalData() as AgentCallData;
+				runData = ad;
+				await data.configureAdditionalData?.(ad as never);
+				for (const [threadId, workflowContext] of calls) {
+					await ad.executeAgent(
+						{ agentId: 'agent-1' },
+						'hi',
+						'exec-1',
+						threadId,
+						ad,
+						'evaluation',
+						undefined,
+						workflowContext,
+						undefined,
+					);
+				}
+				return DB_EXECUTION_ID;
+			});
+		}
+
+		beforeEach(() => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
 			createLlmMockHandlerMock.mockReturnValue(
 				vi.fn().mockResolvedValue({ body: { ok: true }, headers: {}, statusCode: 200 }),
 			);
+		});
+
+		it('runs the called agent with fake I/O and records it under the calling node', async () => {
 			let prepared: Awaited<ReturnType<PrepareWorkflowAgentForEval>> | undefined;
+			const toolData = makeMockedAdditionalData();
 			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
 				const prepareForEval = args[9] as PrepareWorkflowAgentForEval;
 				prepared = await prepareForEval(agentConfig);
-				const toolData = makeMockedAdditionalData();
 				prepared.instrumentation.configureToolAdditionalData?.(toolData as never, {
 					toolName: 'slack',
 					toolKind: 'node',
@@ -2116,22 +2144,7 @@ describe('EvalExecutionService', () => {
 				);
 				return { response: 'done' };
 			});
-			workflowRunner.run.mockImplementation(async (data) => {
-				const ad = makeMockedAdditionalData() as AgentCallData;
-				await data.configureAdditionalData?.(ad as never);
-				await ad.executeAgent(
-					{ agentId: 'agent-1' },
-					'hi',
-					'exec-1',
-					'thread-1',
-					ad,
-					'evaluation',
-					undefined,
-					{ callingNodeName: callingNode },
-					undefined,
-				);
-				return DB_EXECUTION_ID;
-			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
@@ -2158,8 +2171,69 @@ describe('EvalExecutionService', () => {
 				'web-search:fallback',
 			]);
 			expect(result.nodeResults.slack).toBeUndefined();
+			// The run's helper reports credentials the tools needed mocked.
+			expect(toolData.credentialsHelper).toBe(runData?.credentialsHelper);
 			// Memory goes off without a flag; a lost capability gets one.
 			expect(result.hints.warnings).toEqual([expect.stringContaining('vectorStores')]);
+		});
+
+		it('reuses one set of fakes per node and flags memory when a call continues a session', async () => {
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				await (args[9] as PrepareWorkflowAgentForEval)(agentConfig);
+				return { response: 'done' };
+			});
+			const session = { callingNodeName: callingNode, hasCallerSessionId: true };
+			callAgentsDuringRun(['session-1', session], ['session-1', session]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(createMcpMockFetch).toHaveBeenCalledTimes(1);
+			expect(createWebSearchMock).toHaveBeenCalledTimes(1);
+			expect(result.hints.warnings).toEqual([
+				expect.stringContaining('vectorStores'),
+				expect.stringContaining('memory'),
+			]);
+		});
+
+		it("flags sub-agent features and mocks agents that the called agent's tools call", async () => {
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				const { instrumentation } = await (args[9] as PrepareWorkflowAgentForEval)(agentConfig);
+				const toolData = makeMockedAdditionalData() as AgentCallData;
+				instrumentation.configureToolAdditionalData?.(toolData as never, {
+					toolName: 'triage',
+					toolKind: 'workflow',
+				});
+				const { callingNodeName } = args[7] as { callingNodeName: string };
+				if (callingNodeName === callingNode) {
+					instrumentation.transformDelegatedAgentConfig?.(agentConfig, { subAgentId: 'child-1' });
+					await toolData.executeAgent(
+						{ agentId: 'agent-2' },
+						'hi',
+						'exec-1',
+						'thread-2',
+						toolData,
+						'evaluation',
+						undefined,
+						{ callingNodeName: 'Inner Message' },
+						undefined,
+					);
+				} else {
+					await toolData.evalLlmMockHandler?.(
+						{ url: 'https://slack.com/api/chat.postMessage', method: 'POST' },
+						toolNode,
+					);
+				}
+				return { response: 'done' };
+			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(
+				result.nodeResults[callingNode].interceptedRequests.map((request) => request.nodeType),
+			).toEqual(['n8n-nodes-base.slack']);
+			expect(result.nodeResults['Inner Message']).toBeUndefined();
+			expect(result.hints.warnings).toContainEqual(expect.stringContaining('sub-agent child-1'));
 		});
 	});
 

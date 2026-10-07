@@ -1434,7 +1434,7 @@ describe('AgentWorkflowExecutionService', () => {
 		}
 
 		it('compiles a stored agent from the eval config and seams, without chat integrations', async () => {
-			const { service, agentRepository, reconstructionService } = makeService();
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ integrations }));
 			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
 			const { prepareForEval, instrumentation } = makePrepareForEval();
@@ -1460,6 +1460,15 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(entity.schema).toEqual(evalConfig);
 			expect(entity.integrations).toEqual([]);
 			expect(passedInstrumentation).toBe(instrumentation);
+			// Run telemetry describes the config that ran, not the stored one.
+			expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					telemetry: expect.objectContaining({
+						configuration: expect.objectContaining({ channels: [] }),
+					}),
+				}),
+				expect.anything(),
+			);
 		});
 
 		it('compiles an inline agent from the eval config and seams', async () => {

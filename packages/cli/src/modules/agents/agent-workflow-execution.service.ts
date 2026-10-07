@@ -676,6 +676,7 @@ export class AgentWorkflowExecutionService {
 		// Keep the original intent if deletion happens during preparation.
 		const sessionMode = await this.turnExecutionService.getSessionMode(threadId);
 		const { agentData, credentialProvider } = await this.loadWorkflowAgent(params);
+		const instrumentation = await this.applyEvalSetup(agentData, prepareForEval);
 		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
 		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 
@@ -692,7 +693,6 @@ export class AgentWorkflowExecutionService {
 			telemetry: { userId: telemetryUserId, runType, configuration: telemetryConfiguration },
 		};
 
-		const instrumentation = await this.applyEvalSetup(agentData, prepareForEval);
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolated(
 			agentData,
