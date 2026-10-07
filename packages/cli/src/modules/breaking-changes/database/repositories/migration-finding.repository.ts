@@ -1,4 +1,9 @@
-import type { BreakingChangeVersion, MigrationFindingStatus } from '@n8n/api-types';
+import {
+	migrationFindingTriageStatusSchema,
+	type BreakingChangeVersion,
+	type MigrationFindingStatus,
+	type MigrationFindingTriageStatus,
+} from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -14,10 +19,19 @@ import { MigrationFinding, type MigrationFindingId } from '../entities/migration
 /** A finding the scan detected. New findings always start as `open`. */
 export type NewMigrationFinding = Pick<MigrationFinding, 'targetVersion' | 'ruleId' | 'workflowId'>;
 
-/** An open finding with the workflow columns the report shows. */
-export type OpenMigrationFinding = Pick<MigrationFinding, 'id' | 'ruleId' | 'workflowId'> & {
+/** A finding in a status a user can set, with the workflow columns the report shows. */
+export type TriageableMigrationFinding = Pick<MigrationFinding, 'id' | 'ruleId' | 'workflowId'> & {
+	status: MigrationFindingTriageStatus;
 	workflow: Pick<WorkflowEntity, 'id' | 'name' | 'activeVersionId' | 'updatedAt'>;
 };
+
+const TRIAGE_STATUSES = migrationFindingTriageStatusSchema.options;
+
+function hasTriageStatus(
+	finding: MigrationFinding,
+): finding is MigrationFinding & { status: MigrationFindingTriageStatus } {
+	return migrationFindingTriageStatusSchema.safeParse(finding.status).success;
+}
 
 export interface OpenFindingCount {
 	ruleId: string;
@@ -108,35 +122,92 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/**
-	 * Open findings of one rule for the version, each with its workflow's report columns.
-	 * `workflowIds` limits the list to those workflows; `undefined` lists all.
+	 * Rules with at least one won't fix finding for the version. `workflowIds`
+	 * limits the search to those workflows; `undefined` searches all.
 	 */
-	async listOpenForRule(
+	async listRuleIdsWithWontFix(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[] | undefined,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		const ruleIds = new Set<string>();
+		for (const chunk of chunksOrAll(workflowIds)) {
+			const query = this.managerFor(ctx)
+				.createQueryBuilder(MigrationFinding, 'finding')
+				.select('DISTINCT finding.ruleId', 'ruleId')
+				.where('finding.targetVersion = :targetVersion', { targetVersion })
+				.andWhere('finding.status = :status', { status: 'wont_fix' });
+			if (chunk) query.andWhere('finding.workflowId IN (:...workflowIds)', { workflowIds: chunk });
+			const rows = await query.getRawMany<{ ruleId: string }>();
+			for (const row of rows) ruleIds.add(row.ruleId);
+		}
+		return [...ruleIds];
+	}
+
+	/**
+	 * Findings of one rule for the version in a status a user can set (open and
+	 * won't fix), each with its workflow's report columns. `workflowIds` limits
+	 * the list to those workflows; `undefined` lists all.
+	 */
+	async listTriageableForRule(
 		targetVersion: BreakingChangeVersion,
 		ruleId: string,
 		workflowIds: string[] | undefined,
 		ctx: OperationContext,
-	): Promise<OpenMigrationFinding[]> {
-		const findings: OpenMigrationFinding[] = [];
+	): Promise<TriageableMigrationFinding[]> {
+		const findings: MigrationFinding[] = [];
 		for (const chunk of chunksOrAll(workflowIds)) {
 			const rows = await this.managerFor(ctx).find(MigrationFinding, {
 				select: {
 					id: true,
 					ruleId: true,
 					workflowId: true,
+					status: true,
 					workflow: { id: true, name: true, activeVersionId: true, updatedAt: true },
 				},
 				where: {
 					targetVersion,
 					ruleId,
-					status: 'open',
+					status: In(TRIAGE_STATUSES),
 					...(chunk ? { workflowId: In(chunk) } : {}),
 				},
 				relations: { workflow: true },
 			});
 			findings.push(...rows);
 		}
-		return findings.sort((a, b) => a.id - b.id);
+		// The query already filters by status. The guard only narrows the type.
+		return findings.sort((a, b) => a.id - b.id).filter(hasTriageStatus);
+	}
+
+	/**
+	 * Sets the status a user picked on one finding. Returns `false` when the finding
+	 * does not exist or is in a status only the scan sets, for example `fixed`.
+	 * `statusChangedAt` moves only when the status actually changes.
+	 */
+	async setTriageStatus(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+		workflowId: string,
+		status: MigrationFindingTriageStatus,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const manager = this.managerFor(ctx);
+		const finding = await manager.findOne(MigrationFinding, {
+			select: { id: true, status: true },
+			where: { targetVersion, ruleId, workflowId, status: In(TRIAGE_STATUSES) },
+		});
+		if (!finding) return false;
+		if (finding.status === status) return true;
+
+		// The update matches only the statuses a user can set, so a sync that marks
+		// the finding fixed in the meantime is not overwritten. Then no row changes
+		// and the caller gets `false`.
+		const result = await manager.update(
+			MigrationFinding,
+			{ id: finding.id, status: In(TRIAGE_STATUSES) },
+			{ status, statusChangedAt: new Date() },
+		);
+		return (result.affected ?? 0) > 0;
 	}
 
 	/**

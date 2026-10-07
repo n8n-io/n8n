@@ -1,10 +1,12 @@
 import type {
 	BreakingChangeLightReportResult,
 	BreakingChangeReportQueryDto,
-	BreakingChangeWorkflowRuleResult,
+	BreakingChangeRuleDetailResult,
 } from '@n8n/api-types';
 import type { WorkflowSharingService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -15,6 +17,7 @@ import type { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import type { IBreakingChangeRule } from '../types';
 import type { MigrationFindingQueryService } from '../query/migration-finding-query.service';
 import type { MigrationFindingSyncService } from '../sync/migration-finding-sync.service';
+import type { MigrationFindingTriageService } from '../triage/migration-finding-triage.service';
 
 const req = mock<AuthenticatedRequest>();
 const res = mock<Response>();
@@ -42,7 +45,7 @@ function lightReport(generatedAt: Date): BreakingChangeLightReportResult {
 	};
 }
 
-function ruleResult(ruleId: string): BreakingChangeWorkflowRuleResult {
+function ruleResult(ruleId: string): BreakingChangeRuleDetailResult {
 	return {
 		ruleId,
 		ruleTitle: 'Title',
@@ -60,6 +63,7 @@ describe('BreakingChangesController', () => {
 	let syncService: MockProxy<MigrationFindingSyncService>;
 	let queryService: MockProxy<MigrationFindingQueryService>;
 	let ruleRegistry: MockProxy<RuleRegistry>;
+	let triageService: MockProxy<MigrationFindingTriageService>;
 	let workflowSharingService: MockProxy<WorkflowSharingService>;
 	let controller: BreakingChangesController;
 
@@ -68,6 +72,7 @@ describe('BreakingChangesController', () => {
 		syncService = mock<MigrationFindingSyncService>();
 		queryService = mock<MigrationFindingQueryService>();
 		ruleRegistry = mock<RuleRegistry>();
+		triageService = mock<MigrationFindingTriageService>();
 		workflowSharingService = mock<WorkflowSharingService>();
 		workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue(['wf-1', 'wf-2']);
 		req.user = admin;
@@ -76,6 +81,7 @@ describe('BreakingChangesController', () => {
 			syncService,
 			queryService,
 			ruleRegistry,
+			triageService,
 			workflowSharingService,
 		);
 	});
@@ -261,6 +267,39 @@ describe('BreakingChangesController', () => {
 			).rejects.toBeInstanceOf(NotFoundError);
 			expect(syncService.syncIfStale).not.toHaveBeenCalled();
 			expect(queryService.getRuleFindings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('PATCH /report/:ruleId/workflows/:workflowId', () => {
+		it('passes the rule, workflow and status to the triage service and returns nothing', async () => {
+			triageService.setStatus.mockResolvedValue(undefined);
+
+			const result = await controller.updateFindingStatus(req, res, 'removed-nodes-v3', 'wf-1', {
+				status: 'wont_fix',
+			});
+
+			expect(result).toBeUndefined();
+			expect(triageService.setStatus).toHaveBeenCalledWith('removed-nodes-v3', 'wf-1', 'wont_fix');
+			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+		});
+
+		it('passes on a not-found error from the triage service', async () => {
+			triageService.setStatus.mockRejectedValue(new NotFoundError('Finding not found.'));
+
+			await expect(
+				controller.updateFindingStatus(req, res, 'removed-nodes-v3', 'wf-1', { status: 'open' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+		});
+
+		it('requires the global breakingChanges:migrate scope', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				BreakingChangesController as Controller,
+			);
+
+			expect(metadata.routes.get('updateFindingStatus')?.accessScope).toEqual({
+				scope: 'breakingChanges:migrate',
+				globalOnly: true,
+			});
 		});
 	});
 });

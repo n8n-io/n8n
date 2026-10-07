@@ -1,13 +1,23 @@
 import {
 	BreakingChangeLightReportResult,
 	BreakingChangeReportQueryDto,
+	BreakingChangeRuleDetailResult,
 	BreakingChangeVersion,
-	BreakingChangeWorkflowRuleResult,
+	UpdateMigrationFindingStatusRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 import { WorkflowSharingService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
-import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
+import {
+	Body,
+	Get,
+	RestController,
+	GlobalScope,
+	Query,
+	Patch,
+	Post,
+	Param,
+} from '@n8n/decorators';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
@@ -19,6 +29,7 @@ import {
 	type ReportScope,
 } from './query/migration-finding-query.service';
 import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
+import { MigrationFindingTriageService } from './triage/migration-finding-triage.service';
 import { isWorkflowLevelRule } from './types';
 
 /** The version the report targets when the request names none. */
@@ -31,6 +42,7 @@ export class BreakingChangesController {
 		private readonly syncService: MigrationFindingSyncService,
 		private readonly queryService: MigrationFindingQueryService,
 		private readonly ruleRegistry: RuleRegistry,
+		private readonly triageService: MigrationFindingTriageService,
 		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
@@ -93,7 +105,7 @@ export class BreakingChangesController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('ruleId') ruleId: string,
-	): Promise<BreakingChangeWorkflowRuleResult> {
+	): Promise<BreakingChangeRuleDetailResult> {
 		// The page names the rule but not the version, so the rule decides. Only
 		// workflow rules have a detail page; an instance rule is rejected before the
 		// stale check, which can be a full scan.
@@ -105,6 +117,19 @@ export class BreakingChangesController {
 		const scope = await this.scopeFor(req.user);
 		await this.syncService.syncIfStale(version);
 		return await this.queryService.getRuleFindings(version, ruleId, scope);
+	}
+
+	/** Sets the status a user picks for the finding of one rule on one workflow. */
+	@Patch('/report/:ruleId/workflows/:workflowId')
+	@GlobalScope('breakingChanges:migrate')
+	async updateFindingStatus(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('ruleId') ruleId: string,
+		@Param('workflowId') workflowId: string,
+		@Body body: UpdateMigrationFindingStatusRequestDto,
+	): Promise<void> {
+		await this.triageService.setStatus(ruleId, workflowId, body.status);
 	}
 
 	/**

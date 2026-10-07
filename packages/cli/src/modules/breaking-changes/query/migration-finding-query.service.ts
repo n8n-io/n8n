@@ -1,6 +1,8 @@
 import type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeLightReportResult,
+	BreakingChangeRuleDetailResult,
+	BreakingChangeRuleDetailWorkflow,
 	BreakingChangeVersion,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeWorkflowRuleResult,
@@ -81,9 +83,10 @@ export class MigrationFindingQueryService {
 		const instanceRules = rules.filter(isInstanceRule);
 		const filter = workflowFilter(scope);
 
-		const [counts, totalAffectedWorkflows, sync, totalWorkflows, instanceResults] =
+		const [counts, wontFixRuleIds, totalAffectedWorkflows, sync, totalWorkflows, instanceResults] =
 			await Promise.all([
 				this.findingRepository.countOpenByRule(targetVersion, filter, {}),
+				this.findingRepository.listRuleIdsWithWontFix(targetVersion, filter, {}),
 				this.findingRepository.countDistinctOpenWorkflows(targetVersion, filter, {}),
 				this.syncRepository.getForVersion(targetVersion, {}),
 				scope.kind === 'instance' ? this.workflowRepository.count() : scope.workflowIds.length,
@@ -94,13 +97,16 @@ export class MigrationFindingQueryService {
 					: [],
 			]);
 		const countByRule = new Map(counts.map((row) => [row.ruleId, row.count]));
+		const hasWontFix = new Set(wontFixRuleIds);
 
 		// Today's scan lists only rules that affect at least one workflow. Keep
 		// that shape so the overview does not change when it reads from the table.
+		// A rule with only won't fix findings stays listed with a count of zero:
+		// its detail page is the only place to set them back to open.
 		const workflowResults: LightWorkflowResult[] = [];
 		for (const rule of workflowRules) {
 			const nbAffectedWorkflows = countByRule.get(rule.id) ?? 0;
-			if (nbAffectedWorkflows === 0) continue;
+			if (nbAffectedWorkflows === 0 && !hasWontFix.has(rule.id)) continue;
 			workflowResults.push({ ...(await this.describeRule(rule)), nbAffectedWorkflows });
 		}
 
@@ -120,18 +126,21 @@ export class MigrationFindingQueryService {
 		};
 	}
 
-	/** The detail of one workflow rule: every open finding in scope with its workflow, statistics and issues. */
+	/**
+	 * The detail of one workflow rule: every open and won't fix finding in scope
+	 * with its status, workflow, statistics and issues.
+	 */
 	async getRuleFindings(
 		targetVersion: BreakingChangeVersion,
 		ruleId: string,
 		scope: ReportScope,
-	): Promise<BreakingChangeWorkflowRuleResult> {
+	): Promise<BreakingChangeRuleDetailResult> {
 		const rule = this.ruleRegistry.getRule(ruleId);
 		if (!rule || !isWorkflowLevelRule(rule)) {
 			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
 		}
 
-		const findings = await this.findingRepository.listOpenForRule(
+		const findings = await this.findingRepository.listTriageableForRule(
 			targetVersion,
 			ruleId,
 			workflowFilter(scope),
@@ -149,7 +158,7 @@ export class MigrationFindingQueryService {
 				? await this.issuesFromScan(targetVersion, rule)
 				: await this.issuesFromRecheck(rule, workflows);
 
-		const affectedWorkflows: BreakingChangeAffectedWorkflow[] = [];
+		const affectedWorkflows: BreakingChangeRuleDetailWorkflow[] = [];
 		for (const finding of findings) {
 			affectedWorkflows.push({
 				id: finding.workflowId,
@@ -159,6 +168,7 @@ export class MigrationFindingQueryService {
 				...summarizeExecutionStatistics(statisticsByWorkflow.get(finding.workflowId) ?? []),
 				// A workflow the rule no longer flags stays listed, without issues, until the next sync.
 				issues: issuesByWorkflow.get(finding.workflowId) ?? [],
+				status: finding.status,
 			});
 		}
 

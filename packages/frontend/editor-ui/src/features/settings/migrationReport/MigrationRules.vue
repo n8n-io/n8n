@@ -24,7 +24,7 @@ import EmptyTab from './components/EmptyTab.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import type { BreakingChangeRuleImpact } from '@n8n/api-types';
+import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -48,12 +48,19 @@ const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
 const targetVersionDisplay = `${targetVersionMajor}.0.0`;
 const documentationUrl = `https://docs.n8n.io/${targetVersionMajor}-0-breaking-changes/`;
 
+type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
+
+// A rule with only won't fix findings has no open findings left, so it counts as resolved.
+function isOpenRule(rule: WorkflowRuleResult) {
+	return rule.nbAffectedWorkflows > 0;
+}
+
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
 		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext, versionQuery);
 		// set tab based on available issues
 		if (
-			response.report.workflowResults.length === 0 &&
+			!response.report.workflowResults.some(isOpenRule) &&
 			response.report.instanceResults.length > 0
 		) {
 			currentTab.value = 'instance-issues';
@@ -64,6 +71,10 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 	return await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 }, undefined);
 
+const openWorkflowRulesCount = computed(
+	() => state.value?.report.workflowResults.filter(isOpenRule).length ?? 0,
+);
+
 async function refreshReport() {
 	await execute(0, true);
 }
@@ -72,9 +83,7 @@ const tabs = computed(() => {
 	const workflowIssues = {
 		label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
 		value: 'workflow-issues',
-		tag: state.value?.report.workflowResults.length
-			? String(state.value.report.workflowResults.length)
-			: undefined,
+		tag: openWorkflowRulesCount.value ? String(openWorkflowRulesCount.value) : undefined,
 	};
 	if (!canManageReport) return [workflowIssues];
 	return [
@@ -133,12 +142,13 @@ const impactOrder: Record<BreakingChangeRuleImpact, number> = {
 	capabilityRemoved: 3,
 };
 
+// Resolved rules come last. They stay listed so a user can open them and undo a won't fix.
 const sortedWorkflowResults = computed(() => {
 	if (!state.value?.report.workflowResults) return [];
 	return orderBy(
 		state.value.report.workflowResults,
-		[(issue) => impactOrder[issue.ruleImpact]],
-		['asc'],
+		[(issue) => (isOpenRule(issue) ? 0 : 1), (issue) => impactOrder[issue.ruleImpact]],
+		['asc', 'asc'],
 	);
 });
 
@@ -234,7 +244,7 @@ const sortedInstanceResults = computed(() => {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 			<template v-else-if="currentTab === 'workflow-issues'">
-				<template v-if="state?.report.workflowResults.length === 0">
+				<template v-if="state && openWorkflowRulesCount === 0">
 					<EmptyTab>
 						<template #title>{{
 							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
@@ -246,7 +256,7 @@ const sortedInstanceResults = computed(() => {
 						}}</template>
 					</EmptyTab>
 				</template>
-				<N8nSettingsRowGroup v-else>
+				<N8nSettingsRowGroup v-if="sortedWorkflowResults.length > 0">
 					<N8nSettingsRow v-for="issue in sortedWorkflowResults" :key="issue.ruleId">
 						<template #info>
 							<div :class="$style.CardTitleContainer">
@@ -287,9 +297,11 @@ const sortedInstanceResults = computed(() => {
 							>
 								<span :class="$style.NoLineBreak">
 									{{
-										i18n.baseText('settings.migrationReport.workflowsCount', {
-											interpolate: { count: issue.nbAffectedWorkflows },
-										})
+										isOpenRule(issue)
+											? i18n.baseText('settings.migrationReport.workflowsCount', {
+													interpolate: { count: issue.nbAffectedWorkflows },
+												})
+											: i18n.baseText('settings.migrationReport.resolved')
 									}}
 									<N8nIcon icon="chevron-right" :size="24" />
 								</span>

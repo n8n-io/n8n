@@ -2,7 +2,7 @@ import { assertClearedFor, credentialContentSubject, credentialSubject } from '@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { DataSource, ILike, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
@@ -442,7 +442,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
-			filter.name = Like(`%${filter.name}%`);
+			filter.name = ILike(`%${filter.name}%`);
 		}
 
 		if (typeof filter?.type === 'string' && filter?.type !== '') {

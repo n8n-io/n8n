@@ -3,6 +3,7 @@ import type {
 	BreakingChangeVersion,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeWorkflowRuleResult,
+	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
@@ -24,7 +25,7 @@ import type { MigrationFindingSync } from '../../database/entities/migration-fin
 import type { MigrationFindingSyncRepository } from '../../database/repositories/migration-finding-sync.repository';
 import type {
 	MigrationFindingRepository,
-	OpenMigrationFinding,
+	TriageableMigrationFinding,
 } from '../../database/repositories/migration-finding.repository';
 import type {
 	BreakingChangeRuleMetadata,
@@ -94,12 +95,13 @@ function instanceRule(id: string): IBreakingChangeInstanceRule {
 	};
 }
 
-function openFinding(
+function triageableFinding(
 	id: number,
 	ruleId: string,
-	workflow: OpenMigrationFinding['workflow'],
-): OpenMigrationFinding {
-	return { id, ruleId, workflowId: workflow.id, workflow };
+	workflow: TriageableMigrationFinding['workflow'],
+	status: MigrationFindingTriageStatus = 'open',
+): TriageableMigrationFinding {
+	return { id, ruleId, workflowId: workflow.id, status, workflow };
 }
 
 function workflowWithNodes(id: string, nodeTypes: string[]): WorkflowEntity {
@@ -152,8 +154,9 @@ describe('MigrationFindingQueryService', () => {
 		workflowRepository.findByIds.mockResolvedValue([]);
 		workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
 		findingRepository.countOpenByRule.mockResolvedValue([]);
+		findingRepository.listRuleIdsWithWontFix.mockResolvedValue([]);
 		findingRepository.countDistinctOpenWorkflows.mockResolvedValue(0);
-		findingRepository.listOpenForRule.mockResolvedValue([]);
+		findingRepository.listTriageableForRule.mockResolvedValue([]);
 		syncRepository.getForVersion.mockResolvedValue(null);
 
 		service = new MigrationFindingQueryService(
@@ -198,6 +201,28 @@ describe('MigrationFindingQueryService', () => {
 			expect(result.report.targetVersion).toBe(TARGET_VERSION);
 			expect(result.totalWorkflows).toBe(10);
 			expect(result.shouldCache).toBe(false);
+		});
+
+		it('lists a rule with only wont_fix findings with a count of zero', async () => {
+			findingRepository.countOpenByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
+			findingRepository.listRuleIdsWithWontFix.mockResolvedValue(['rule-a', 'rule-b']);
+
+			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
+
+			expect(findingRepository.listRuleIdsWithWontFix).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				undefined,
+				expect.anything(),
+			);
+			expect(
+				result.report.workflowResults.map(({ ruleId, nbAffectedWorkflows }) => ({
+					ruleId,
+					nbAffectedWorkflows,
+				})),
+			).toEqual([
+				{ ruleId: 'rule-a', nbAffectedWorkflows: 3 },
+				{ ruleId: 'rule-b', nbAffectedWorkflows: 0 },
+			]);
 		});
 
 		it('counts each affected workflow once across rules', async () => {
@@ -284,20 +309,25 @@ describe('MigrationFindingQueryService', () => {
 	});
 
 	describe('getRuleFindings', () => {
-		it('returns one workflow per open finding with its statistics and the issues of that rule', async () => {
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'rule-a', {
+		it('returns one workflow per open or wont_fix finding with its status, statistics and the issues of that rule', async () => {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
 					id: 'wf-1',
 					name: 'First',
 					activeVersionId: 'version-1',
 					updatedAt: UPDATED_AT,
 				}),
-				openFinding(2, 'rule-a', {
-					id: 'wf-2',
-					name: 'Second',
-					activeVersionId: null,
-					updatedAt: UPDATED_AT,
-				}),
+				triageableFinding(
+					2,
+					'rule-a',
+					{
+						id: 'wf-2',
+						name: 'Second',
+						activeVersionId: null,
+						updatedAt: UPDATED_AT,
+					},
+					'wont_fix',
+				),
 			]);
 			workflowRepository.findByIds.mockResolvedValue([
 				workflowWithNodes('wf-1', ['n8n-nodes-base.a', 'n8n-nodes-base.other', 'n8n-nodes-base.a']),
@@ -310,7 +340,7 @@ describe('MigrationFindingQueryService', () => {
 
 			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
-			expect(findingRepository.listOpenForRule).toHaveBeenCalledWith(
+			expect(findingRepository.listTriageableForRule).toHaveBeenCalledWith(
 				TARGET_VERSION,
 				'rule-a',
 				undefined,
@@ -342,6 +372,7 @@ describe('MigrationFindingQueryService', () => {
 						expect.objectContaining({ nodeId: 'wf-1-node-0', nodeName: 'n8n-nodes-base.a 0' }),
 						expect.objectContaining({ nodeId: 'wf-1-node-2', nodeName: 'n8n-nodes-base.a 2' }),
 					],
+					status: 'open',
 				},
 				{
 					id: 'wf-2',
@@ -351,6 +382,7 @@ describe('MigrationFindingQueryService', () => {
 					lastExecutedAt: undefined,
 					lastUpdatedAt: UPDATED_AT,
 					issues: [expect.objectContaining({ nodeId: 'wf-2-node-0' })],
+					status: 'wont_fix',
 				},
 			]);
 			expect(breakingChangeService.detect).not.toHaveBeenCalled();
@@ -358,8 +390,8 @@ describe('MigrationFindingQueryService', () => {
 
 		it('lists only the findings of the workflows in scope', async () => {
 			const scope: ReportScope = { kind: 'workflows', workflowIds: ['wf-2'] };
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(2, 'rule-a', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(2, 'rule-a', {
 					id: 'wf-2',
 					name: 'Second',
 					activeVersionId: null,
@@ -369,7 +401,7 @@ describe('MigrationFindingQueryService', () => {
 
 			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', scope);
 
-			expect(findingRepository.listOpenForRule).toHaveBeenCalledWith(
+			expect(findingRepository.listTriageableForRule).toHaveBeenCalledWith(
 				TARGET_VERSION,
 				'rule-a',
 				['wf-2'],
@@ -379,8 +411,8 @@ describe('MigrationFindingQueryService', () => {
 		});
 
 		it('lists a finding whose rule no longer fires on the current workflow with no issues', async () => {
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'rule-a', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
 					id: 'wf-1',
 					name: 'Already fixed',
 					activeVersionId: null,
@@ -407,8 +439,8 @@ describe('MigrationFindingQueryService', () => {
 				},
 			};
 			ruleRegistry.getRule.mockReturnValue(throwingRule);
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'rule-a', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
 					id: 'wf-1',
 					name: 'Broken',
 					activeVersionId: null,
@@ -433,14 +465,14 @@ describe('MigrationFindingQueryService', () => {
 		it('takes the issues of a batch rule from a scan of that rule alone, keyed by workflow', async () => {
 			const rule = batchRule('batch-rule');
 			ruleRegistry.getRule.mockReturnValue(rule);
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'batch-rule', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'batch-rule', {
 					id: 'wf-1',
 					name: 'Still affected',
 					activeVersionId: null,
 					updatedAt: UPDATED_AT,
 				}),
-				openFinding(2, 'batch-rule', {
+				triageableFinding(2, 'batch-rule', {
 					id: 'wf-2',
 					name: 'No longer in the scan',
 					activeVersionId: null,
@@ -471,8 +503,8 @@ describe('MigrationFindingQueryService', () => {
 
 		it('lists every finding of a batch rule without issues when the rule now affects nothing', async () => {
 			ruleRegistry.getRule.mockReturnValue(batchRule('batch-rule'));
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'batch-rule', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'batch-rule', {
 					id: 'wf-1',
 					name: 'Fixed since the sync',
 					activeVersionId: null,
@@ -492,7 +524,7 @@ describe('MigrationFindingQueryService', () => {
 			await expect(
 				service.getRuleFindings(TARGET_VERSION, 'missing-rule', INSTANCE),
 			).rejects.toThrow(NotFoundError);
-			expect(findingRepository.listOpenForRule).not.toHaveBeenCalled();
+			expect(findingRepository.listTriageableForRule).not.toHaveBeenCalled();
 		});
 
 		it('rejects an instance rule id with a not-found error', async () => {
