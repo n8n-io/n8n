@@ -9,6 +9,7 @@ import type { INodeExecutionData } from 'n8n-workflow';
 import {
 	Expression,
 	isNodeClassInstance,
+	SEND_AND_WAIT_OPERATION,
 	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
@@ -66,7 +67,7 @@ function toStepResult(
 		return { wait: { resumeBinding: 'execution' } };
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
-		throw new UnsupportedWaitError(context.getNode().name);
+		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
 	}
 	// `toISOString` throws a bare RangeError on an invalid date.
 	if (Number.isNaN(waitTill.getTime())) {
@@ -99,6 +100,12 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
+		// The response to a send-and-wait message needs a step-bound resume request,
+		// which engine v2 does not have yet. Fail before the node sends the message.
+		if (node.parameters.operation === SEND_AND_WAIT_OPERATION) {
+			throw new UnsupportedWaitError(node.name, 'an approval');
+		}
+
 		const execution = toV1Execution(
 			stepData.graph,
 			stepData.outputsByNode,
