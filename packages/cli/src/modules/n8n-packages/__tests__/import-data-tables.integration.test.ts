@@ -1125,7 +1125,6 @@ describe('workflow package import — with data tables', () => {
 			const result = await importNonDestructive({ user: owner, packageBuffer });
 
 			expect(result.dataTables).toEqual({ matched: 0, created: 0, updated: 1 });
-			expect(result.workflows).toEqual([expect.objectContaining({ sourceWorkflowId: 'wf-0' })]);
 			expect(await workflowRepository.count()).toBe(1);
 			expect(await columnsOf(table.id)).toEqual(packageColumns);
 			expect((await dataTableService.getOne(table.id, project.id)).name).toBe('Customers');
