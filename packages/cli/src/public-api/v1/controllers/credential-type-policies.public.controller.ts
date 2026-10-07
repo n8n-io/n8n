@@ -1,16 +1,16 @@
 import {
-	CreatePolicyDocumentDto,
+	CreateCredentialTypePolicyDocumentDto,
 	ListNodeTypePolicyDocumentsQueryDto,
-	PolicyAttachmentsPublicDto,
-	PolicyDocumentListPublicDto,
-	PolicyDocumentPublicDto,
-	PolicyDocumentWriteResultPublicDto,
-	PolicyEffectivePublicDto,
-	PolicyEffectiveWriteResultPublicDto,
-	PutInstancePolicyDto,
-	PutProjectPolicyDto,
+	CredentialTypePolicyAttachmentsPublicDto,
+	CredentialTypePolicyDocumentListPublicDto,
+	CredentialTypePolicyDocumentPublicDto,
+	CredentialTypePolicyDocumentWriteResultPublicDto,
+	CredentialTypePolicyEffectivePublicDto,
+	CredentialTypePolicyEffectiveWriteResultPublicDto,
+	PutCredentialTypeInstancePolicyDto,
+	PutCredentialTypeProjectPolicyDto,
 	ReplaceAttachmentsDto,
-	UpdatePolicyDocumentDto,
+	UpdateCredentialTypePolicyDocumentDto,
 	credentialTypePolicyIdParamSchema,
 	credentialTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
@@ -50,7 +50,7 @@ import {
 
 const tags = ['CredentialTypePolicy'];
 
-function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicDto {
+function toPublicDocument(policy: TypeAvailabilityPolicy): CredentialTypePolicyDocumentPublicDto {
 	return {
 		id: policy.id,
 		kind: policy.kind,
@@ -91,9 +91,9 @@ export class CredentialTypePoliciesPublicController {
 		'Returns the composed instance-scope policy: its default action and the rules of every attached policy document in evaluation order. An instance that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyEffectivePublicDto)
+	@ApiResponse(200, CredentialTypePolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getCredentialTypeInstancePolicy(): Promise<PolicyEffectivePublicDto> {
+	async getCredentialTypeInstancePolicy(): Promise<CredentialTypePolicyEffectivePublicDto> {
 		const effective = await (await this.service()).getEffectivePolicy(CREDENTIAL_TYPES_KIND, null);
 
 		return {
@@ -113,14 +113,14 @@ export class CredentialTypePoliciesPublicController {
 		'Sets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
+	@ApiResponse(200, CredentialTypePolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async putCredentialTypeInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: PutInstancePolicyDto,
-	): Promise<PolicyEffectiveWriteResultPublicDto> {
+		@Body dto: PutCredentialTypeInstancePolicyDto,
+	): Promise<CredentialTypePolicyEffectiveWriteResultPublicDto> {
 		const result = await (await this.service()).setEffectivePolicy(
 			CREDENTIAL_TYPES_KIND,
 			null,
@@ -147,13 +147,13 @@ export class CredentialTypePoliciesPublicController {
 		"Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyEffectivePublicDto)
+	@ApiResponse(200, CredentialTypePolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
 	async getCredentialTypeProjectPolicy(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
-	): Promise<PolicyEffectivePublicDto> {
+	): Promise<CredentialTypePolicyEffectivePublicDto> {
 		const effective = await (await this.service()).getEffectivePolicy(
 			CREDENTIAL_TYPES_KIND,
 			projectId,
@@ -176,15 +176,15 @@ export class CredentialTypePoliciesPublicController {
 		"Sets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
+	@ApiResponse(200, CredentialTypePolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async putCredentialTypeProjectPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
-		@Body dto: PutProjectPolicyDto,
-	): Promise<PolicyEffectiveWriteResultPublicDto> {
+		@Body dto: PutCredentialTypeProjectPolicyDto,
+	): Promise<CredentialTypePolicyEffectiveWriteResultPublicDto> {
 		const result = await (await this.service()).setEffectivePolicy(
 			CREDENTIAL_TYPES_KIND,
 			projectId,
@@ -209,13 +209,13 @@ export class CredentialTypePoliciesPublicController {
 	@ApiSummary('List credential type policy documents')
 	@ApiDescription('Returns a cursor-paginated list of reusable policy documents.')
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyDocumentListPublicDto)
+	@ApiResponse(200, CredentialTypePolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
 	async listCredentialTypePolicyDocuments(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListNodeTypePolicyDocumentsQueryDto,
-	): Promise<PolicyDocumentListPublicDto> {
+	): Promise<CredentialTypePolicyDocumentListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination(query);
 
 		const { items, count } = await (await this.service()).listPolicyDocumentsPage(
@@ -239,13 +239,13 @@ export class CredentialTypePoliciesPublicController {
 		'Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(201, PolicyDocumentWriteResultPublicDto)
+	@ApiResponse(201, CredentialTypePolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(503)
 	async createCredentialTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: CreatePolicyDocumentDto,
-	): Promise<PolicyDocumentWriteResultPublicDto> {
+		@Body dto: CreateCredentialTypePolicyDocumentDto,
+	): Promise<CredentialTypePolicyDocumentWriteResultPublicDto> {
 		const { policy, warnings } = await (await this.service()).createPolicyDocument(
 			CREDENTIAL_TYPES_KIND,
 			dto.rules,
@@ -261,14 +261,14 @@ export class CredentialTypePoliciesPublicController {
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('Retrieve a credential type policy document')
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyDocumentPublicDto)
+	@ApiResponse(200, CredentialTypePolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async getCredentialTypePolicyDocument(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
-	): Promise<PolicyDocumentPublicDto> {
+	): Promise<CredentialTypePolicyDocumentPublicDto> {
 		const policy = await (await this.service()).getPolicyDocument(CREDENTIAL_TYPES_KIND, policyId);
 		if (!policy) {
 			throw new NotFoundError(`Policy document not found: ${policyId}`);
@@ -286,7 +286,7 @@ export class CredentialTypePoliciesPublicController {
 		"Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyDocumentWriteResultPublicDto)
+	@ApiResponse(200, CredentialTypePolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
@@ -294,8 +294,8 @@ export class CredentialTypePoliciesPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
-		@Body dto: UpdatePolicyDocumentDto,
-	): Promise<PolicyDocumentWriteResultPublicDto> {
+		@Body dto: UpdateCredentialTypePolicyDocumentDto,
+	): Promise<CredentialTypePolicyDocumentWriteResultPublicDto> {
 		const { policy, warnings } = await (await this.service()).updatePolicyDocument(
 			CREDENTIAL_TYPES_KIND,
 			policyId,
@@ -337,7 +337,7 @@ export class CredentialTypePoliciesPublicController {
 		"Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PolicyAttachmentsPublicDto)
+	@ApiResponse(200, CredentialTypePolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async replaceCredentialTypePolicyAttachments(
@@ -345,7 +345,7 @@ export class CredentialTypePoliciesPublicController {
 		_res: Response,
 		@Param('scopeId', credentialTypePolicyScopeIdParamSchema) scopeId: string,
 		@Body dto: ReplaceAttachmentsDto,
-	): Promise<PolicyAttachmentsPublicDto> {
+	): Promise<CredentialTypePolicyAttachmentsPublicDto> {
 		const result = await (await this.service()).replaceAttachments(
 			CREDENTIAL_TYPES_KIND,
 			scopeId,

@@ -1,8 +1,8 @@
 import {
-	CreatePolicyDocumentDto,
-	PutInstancePolicyDto,
+	CreateCredentialTypePolicyDocumentDto,
+	PutCredentialTypeInstancePolicyDto,
 	ReplaceAttachmentsDto,
-	UpdatePolicyDocumentDto,
+	UpdateCredentialTypePolicyDocumentDto,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -55,7 +55,7 @@ export class CredentialTypePolicyInstanceController {
 	async putInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: PutInstancePolicyDto,
+		@Body dto: PutCredentialTypeInstancePolicyDto,
 	) {
 		const result = await this.service.setEffectivePolicy(
 			CREDENTIAL_TYPES_KIND,
@@ -80,7 +80,7 @@ export class CredentialTypePolicyInstanceController {
 	async createPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body dto: CreatePolicyDocumentDto,
+		@Body dto: CreateCredentialTypePolicyDocumentDto,
 	) {
 		const { policy, warnings } = await this.service.createPolicyDocument(
 			CREDENTIAL_TYPES_KIND,
@@ -117,7 +117,7 @@ export class CredentialTypePolicyInstanceController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId') policyId: string,
-		@Body dto: UpdatePolicyDocumentDto,
+		@Body dto: UpdateCredentialTypePolicyDocumentDto,
 	) {
 		const { policy, warnings } = await this.service.updatePolicyDocument(
 			CREDENTIAL_TYPES_KIND,
