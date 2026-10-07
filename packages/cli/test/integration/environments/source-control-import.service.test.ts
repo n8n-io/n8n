@@ -2138,6 +2138,61 @@ describe('SourceControlImportService', () => {
 				).resolves.toBeNull();
 			});
 
+			describe('preview', () => {
+				const pullStatus = (id: string, file: string) =>
+					mock<SourceControlledFile>({ id, file, type: 'workflow', status: 'modified' });
+
+				beforeEach(() => {
+					mockPolicyEnforcementService.evaluateContentImport.mockReset();
+					mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+				});
+
+				it("evaluates against the remote owner's project, and writes nothing", async () => {
+					const importingUser = await getGlobalOwner();
+					const team = await createTeamProject('Policy team');
+					const workflow: IWorkflowToImport = {
+						...makeWorkflowImport(),
+						owner: { type: 'team', teamId: team.id, teamName: team.name },
+					};
+					const status = pullStatus(workflow.id, putWorkflowFile(workflow.id, workflow));
+					const violation = { kind: 'node-type-unavailable', checkId: 'c', message: 'no' };
+					mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({
+						violations: [violation],
+					});
+
+					await service.previewContentImportPolicy([status], importingUser.id);
+
+					expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith(
+						expect.objectContaining({ projectId: team.id }),
+					);
+					expect(status.contentImportPolicy).toEqual({ violations: [violation], checkErrors: [] });
+					expect(mockPolicyEnforcementService.enforceContentImport).not.toHaveBeenCalled();
+					await expect(
+						workflowRepository.findOne({ where: { id: workflow.id } }),
+					).resolves.toBeNull();
+				});
+
+				it('does not create the team project a pull would create', async () => {
+					const importingUser = await getGlobalOwner();
+					const teamId = nanoid();
+					const workflow: IWorkflowToImport = {
+						...makeWorkflowImport(),
+						owner: { type: 'team', teamId, teamName: 'Not yet here' },
+					};
+					const file = putWorkflowFile(workflow.id, workflow);
+
+					await service.previewContentImportPolicy(
+						[pullStatus(workflow.id, file)],
+						importingUser.id,
+					);
+
+					expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith(
+						expect.objectContaining({ projectId: teamId }),
+					);
+					await expect(projectRepository.findOneBy({ id: teamId })).resolves.toBeNull();
+				});
+			});
+
 			// A check that cannot answer is an infrastructure fault, not a property of one workflow.
 			it('fails the pull when the policy layer errors', async () => {
 				const importingUser = await getGlobalOwner();

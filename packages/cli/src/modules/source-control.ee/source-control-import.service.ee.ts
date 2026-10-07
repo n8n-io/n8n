@@ -23,7 +23,7 @@ import {
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import type { PolicyCleared } from '@n8n/decorators';
+import type { ContentImportContext, PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
@@ -32,7 +32,7 @@ import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { AutoPublishMode } from 'n8n-workflow';
+import type { AutoPublishMode, INode } from 'n8n-workflow';
 import {
 	shouldAutoPublishWorkflow,
 	jsonParse,
@@ -79,6 +79,7 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { SourceControlContextFactory } from './source-control-context.factory';
+import { getNonDeletedResources } from './source-control-resource-helper';
 import {
 	getCredentialExportPath,
 	getDataTableColumnKey,
@@ -120,6 +121,25 @@ const toStatusOwner = (project: Project | undefined): StatusResourceOwner | unde
 	}
 	return undefined;
 };
+
+/** Shared by the pull and its preview, so both evaluate the same input. */
+const workflowImportPolicyContext = (
+	workflow: { id: string; name: string; nodes: INode[] },
+	projectId: string,
+): ContentImportContext => ({
+	workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+	projectId,
+	transport: 'source-control',
+});
+
+const credentialImportPolicyContext = (
+	credential: { id: string | null; type: string },
+	projectId: string,
+): ContentImportContext => ({
+	credential: { id: credential.id, type: credential.type },
+	projectId,
+	transport: 'source-control',
+});
 
 /**
  * How long a pull waits for one workflow's unpublish to settle before it gives
@@ -871,11 +891,10 @@ export class SourceControlImportService {
 		let cleared: PolicyCleared<'contentImport'>;
 		try {
 			cleared = await this.policyEnforcementService.enforceContentImport(
-				{
-					workflow: { id, name: importedWorkflow.name, nodes },
-					projectId: targetOwnerProject.id,
-					transport: 'source-control',
-				},
+				workflowImportPolicyContext(
+					{ id, name: importedWorkflow.name, nodes },
+					targetOwnerProject.id,
+				),
 				{ kind: 'user', user: { id: userId } },
 			);
 		} catch (error) {
@@ -1065,6 +1084,55 @@ export class SourceControlImportService {
 		}
 	}
 
+	/**
+	 * Marks each incoming workflow and credential that the pull would skip, by setting its
+	 * `contentImportPolicy`. Evaluates only: it writes nothing and creates no project.
+	 */
+	async previewContentImportPolicy(files: SourceControlledFile[], userId: string): Promise<void> {
+		if (!this.policyEnforcementService.hasChecksFor('contentImport')) return;
+
+		const workflows = getNonDeletedResources(files, 'workflow');
+		const credentials = getNonDeletedResources(files, 'credential');
+		if (workflows.length === 0 && credentials.length === 0) return;
+
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
+		const projectIdByOwner = new Map<string, Promise<string>>();
+		const targetProjectId = async (owner: RemoteResourceOwner | null | undefined) => {
+			const key = JSON.stringify(owner ?? null);
+			let projectId = projectIdByOwner.get(key);
+			if (!projectId) {
+				projectId = this.findTargetOwnerProjectId(owner, personalProject.id);
+				projectIdByOwner.set(key, projectId);
+			}
+			return await projectId;
+		};
+
+		const evaluate = async (file: SourceControlledFile, context: ContentImportContext) => {
+			const { violations, checkErrors = [] } =
+				await this.policyEnforcementService.evaluateContentImport(context);
+			if (violations.length > 0 || checkErrors.length > 0) {
+				file.contentImportPolicy = { violations, checkErrors };
+			}
+		};
+
+		await mapInBatches(workflows, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
+			const { id, name, nodes, owner } = await this.parseWorkflowFromFile(file.file);
+			if (!id || !nodes) return;
+
+			const projectId = await targetProjectId(owner);
+			await evaluate(file, workflowImportPolicyContext({ id, name, nodes }, projectId));
+		});
+
+		await mapInBatches(credentials, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
+			const { id, type, ownedBy } = jsonParse<ExportableCredential>(
+				await fsReadFile(file.file, { encoding: 'utf8' }),
+			);
+
+			const projectId = await targetProjectId(ownedBy);
+			await evaluate(file, credentialImportPolicyContext({ id: id ?? null, type }, projectId));
+		});
+	}
+
 	async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
@@ -1127,11 +1195,10 @@ export class SourceControlImportService {
 				let cleared: PolicyCleared<'contentImport'>;
 				try {
 					cleared = await this.policyEnforcementService.enforceContentImport(
-						{
-							credential: { id: credential.id ?? null, type },
-							projectId: targetOwnerProject.id,
-							transport: 'source-control',
-						},
+						credentialImportPolicyContext(
+							{ id: credential.id ?? null, type },
+							targetOwnerProject.id,
+						),
 						{ kind: 'user', user: { id: userId } },
 					);
 				} catch (error) {
@@ -2107,6 +2174,19 @@ export class SourceControlImportService {
 		const isSharedResource =
 			remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
 		return isSharedResource ? await this.createTeamProject(remoteOwner) : fallbackProject;
+	}
+
+	/** Read-only twin of `resolveTargetOwnerProject`: the pull creates a missing team project with the team id. */
+	private async findTargetOwnerProjectId(
+		remoteOwner: RemoteResourceOwner | null | undefined,
+		fallbackProjectId: string,
+	): Promise<string> {
+		const project = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
+		if (project) return project.id;
+
+		const isSharedResource =
+			remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
+		return isSharedResource ? remoteOwner.teamId : fallbackProjectId;
 	}
 
 	private async findOwnerProjectInLocalDb(owner: RemoteResourceOwner | IWorkflowToImport['owner']) {

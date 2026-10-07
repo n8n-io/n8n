@@ -963,4 +963,77 @@ describe('SourceControlPullModal', () => {
 			expect(wrapper.getByText('Active Workflow')).toBeInTheDocument();
 		});
 	});
+
+	describe('policy-blocked items', () => {
+		const blockedWorkflow: SourceControlledFile = {
+			...sampleFiles[0],
+			id: 'blocked-workflow',
+			name: 'Blocked Workflow',
+			status: 'created',
+			contentImportPolicy: {
+				violations: [
+					{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'Not allowed' },
+				],
+				checkErrors: [],
+			},
+		};
+
+		it('flags a blocked item and says it will not be pulled', () => {
+			const { getByTestId } = renderModal({
+				pinia,
+				props: { data: { eventBus, status: [blockedWorkflow, sampleFiles[1]] } },
+			});
+
+			expect(getByTestId('source-control-pull-policy-blocked')).toHaveTextContent(
+				'Blocked by policy',
+			);
+			expect(getByTestId('source-control-pull-policy-callout')).toHaveTextContent(
+				"1 item is blocked by a policy and won't be pulled.",
+			);
+		});
+
+		it('lists blocked items in their own group after the pullable ones', () => {
+			const { getAllByTestId, getByTestId } = renderModal({
+				pinia,
+				props: { data: { eventBus, status: [blockedWorkflow, sampleFiles[0]] } },
+			});
+
+			const group = getByTestId('source-control-pull-policy-group');
+			const [pullable, blocked] = getAllByTestId('pull-modal-item');
+
+			expect(group).toHaveTextContent('Not pulled · blocked by policy (1)');
+			expect(pullable).toHaveTextContent(sampleFiles[0].name);
+			expect(blocked).toHaveTextContent('Blocked Workflow');
+			expect(
+				group.compareDocumentPosition(pullable) & Node.DOCUMENT_POSITION_PRECEDING,
+			).toBeTruthy();
+			expect(
+				group.compareDocumentPosition(blocked) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+		});
+
+		it('shows no policy flag when nothing is blocked', () => {
+			const { queryByTestId } = renderModal({
+				pinia,
+				props: { data: { eventBus, status: sampleFiles } },
+			});
+
+			expect(queryByTestId('source-control-pull-policy-blocked')).not.toBeInTheDocument();
+			expect(queryByTestId('source-control-pull-policy-callout')).not.toBeInTheDocument();
+			expect(queryByTestId('source-control-pull-policy-group')).not.toBeInTheDocument();
+		});
+
+		it('does not mark a blocked workflow for auto-publish', async () => {
+			const wrapper = renderModal({
+				pinia,
+				props: { data: { eventBus, status: [blockedWorkflow] } },
+			});
+
+			await userEvent.click(wrapper.getByTestId('auto-publish-select'));
+			await waitFor(() => expect(wrapper.getAllByText('On').length).toBeGreaterThan(0));
+			await userEvent.click(wrapper.getAllByText('On')[0]);
+
+			expect(wrapper.queryByText('Auto-publish')).not.toBeInTheDocument();
+		});
+	});
 });

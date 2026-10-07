@@ -2909,6 +2909,163 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
+	describe('previewContentImportPolicy', () => {
+		const userId = 'user-id-123';
+		const personalProject = Object.assign(new Project(), {
+			id: 'personal-project-id',
+			type: 'personal',
+		});
+		const nodes = [
+			{
+				id: 'node-1',
+				name: 'Node 1',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		];
+		const violation: PolicyViolation = {
+			kind: 'node-type-unavailable',
+			checkId: 'test.check',
+			message: 'not allowed',
+		};
+
+		const file = (overrides: Partial<SourceControlledFile>): SourceControlledFile => ({
+			file: '/mock/file.json',
+			id: 'id',
+			name: 'name',
+			type: 'workflow',
+			status: 'created',
+			location: 'remote',
+			conflict: false,
+			updatedAt: '',
+			...overrides,
+		});
+
+		const givenFiles = (contents: Record<string, unknown>) => {
+			fsReadFile.mockImplementation(async (path) => JSON.stringify(contents[path as string]));
+		};
+
+		beforeEach(() => {
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(personalProject);
+			policyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+		});
+
+		it('reads nothing when no content-import check is registered', async () => {
+			policyEnforcementService.hasChecksFor.mockReturnValueOnce(false);
+
+			await service.previewContentImportPolicy([file({})], userId);
+
+			expect(fsReadFile).not.toHaveBeenCalled();
+			expect(policyEnforcementService.evaluateContentImport).not.toHaveBeenCalled();
+		});
+
+		it('evaluates an incoming workflow with the same context the pull enforces', async () => {
+			givenFiles({ '/mock/wf.json': { id: 'wf1', name: 'Workflow 1', nodes } });
+			const files = [file({ file: '/mock/wf.json', id: 'wf1' })];
+
+			await service.previewContentImportPolicy(files, userId);
+
+			expect(policyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+				workflow: { id: 'wf1', name: 'Workflow 1', nodes },
+				projectId: personalProject.id,
+				transport: 'source-control',
+			});
+		});
+
+		it('marks a blocked workflow and leaves an allowed one unmarked', async () => {
+			givenFiles({
+				'/mock/blocked.json': { id: 'blocked', name: 'Blocked', nodes },
+				'/mock/allowed.json': { id: 'allowed', name: 'Allowed', nodes },
+			});
+			policyEnforcementService.evaluateContentImport.mockImplementation(async (context) =>
+				'workflow' in context && context.workflow.id === 'blocked'
+					? { violations: [violation] }
+					: { violations: [] },
+			);
+			const blocked = file({ file: '/mock/blocked.json', id: 'blocked' });
+			const allowed = file({ file: '/mock/allowed.json', id: 'allowed' });
+
+			await service.previewContentImportPolicy([blocked, allowed], userId);
+
+			expect(blocked.contentImportPolicy).toEqual({ violations: [violation], checkErrors: [] });
+			expect(allowed.contentImportPolicy).toBeUndefined();
+		});
+
+		it('skips deleted files and other resource types', async () => {
+			const files = [
+				file({ id: 'deleted', status: 'deleted' }),
+				file({ id: 'tags', type: 'tags' }),
+				file({ id: 'variables', type: 'variables' }),
+			];
+
+			await service.previewContentImportPolicy(files, userId);
+
+			expect(fsReadFile).not.toHaveBeenCalled();
+			expect(policyEnforcementService.evaluateContentImport).not.toHaveBeenCalled();
+		});
+
+		it('targets a team project the pull has not created yet, without creating it', async () => {
+			projectRepository.findOne.mockResolvedValue(null);
+			givenFiles({
+				'/mock/wf.json': {
+					id: 'wf1',
+					name: 'Workflow 1',
+					nodes,
+					owner: { type: 'team', teamId: 'new-team', teamName: 'New team' },
+				},
+			});
+
+			await service.previewContentImportPolicy(
+				[file({ file: '/mock/wf.json', id: 'wf1' })],
+				userId,
+			);
+
+			expect(policyEnforcementService.evaluateContentImport).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'new-team' }),
+			);
+			expect(projectRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('evaluates an incoming credential and keeps the checks that could not answer', async () => {
+			const checkErrors = [{ checkId: 'test.check', correlationId: 'corr-1' }];
+			policyEnforcementService.evaluateContentImport.mockResolvedValue({
+				violations: [],
+				checkErrors,
+			});
+			givenFiles({ '/mock/cred.json': { id: 'cred1', type: 'slackApi', ownedBy: null } });
+			const credential = file({ file: '/mock/cred.json', id: 'cred1', type: 'credential' });
+
+			await service.previewContentImportPolicy([credential], userId);
+
+			expect(policyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+				credential: { id: 'cred1', type: 'slackApi' },
+				projectId: personalProject.id,
+				transport: 'source-control',
+			});
+			expect(credential.contentImportPolicy).toEqual({ violations: [], checkErrors });
+		});
+
+		it('resolves each owner once', async () => {
+			const owner = { type: 'team', teamId: 'team-1', teamName: 'Team 1' };
+			projectRepository.findOne.mockResolvedValue(
+				Object.assign(new Project(), { id: 'team-1', type: 'team' }),
+			);
+			givenFiles({
+				'/mock/a.json': { id: 'a', name: 'A', nodes, owner },
+				'/mock/b.json': { id: 'b', name: 'B', nodes, owner },
+			});
+
+			await service.previewContentImportPolicy(
+				[file({ file: '/mock/a.json', id: 'a' }), file({ file: '/mock/b.json', id: 'b' })],
+				userId,
+			);
+
+			expect(projectRepository.findOne).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getRemoteVariablesFromFile', () => {
 		it('should parse variables file correctly', async () => {
 			globMock.mockResolvedValue(['/mock/variables.json']);

@@ -19,8 +19,11 @@ import {
 	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
+	isBlockedByPolicy,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '../sourceControl.utils';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
+import { PolicyViolationList } from '@n8n/frontend-module-type-availability-policies';
 import type { SourceControlTreeRow } from '../sourceControl.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
@@ -38,6 +41,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nHeading,
+	N8nHoverCard,
 	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
@@ -53,6 +57,9 @@ type SourceControlledFileWithProject = SourceControlledFile & {
 	project?: ProjectListItem;
 	willBeAutoPublished?: boolean;
 };
+type PullModalRow =
+	| SourceControlTreeRow<SourceControlledFileWithProject>
+	| { id: string; type: 'policyGroup'; count: number; depth: 0 };
 const props = defineProps<{
 	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
@@ -67,6 +74,7 @@ const route = useRoute();
 const router = useRouter();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const { labelOf: policyViolationLabelOf } = usePolicyViolationLabels();
 
 const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
 
@@ -193,6 +201,7 @@ const sortedWorkflows = computed(() =>
 		willBeAutoPublished:
 			file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
 			file.status !== 'deleted' &&
+			!isBlockedByPolicy(file) &&
 			shouldAutoPublishWorkflow({
 				isNewWorkflow: file.status === 'created',
 				isLocalPublished: file.isLocalPublished ?? false,
@@ -202,8 +211,12 @@ const sortedWorkflows = computed(() =>
 	})),
 );
 
+const pullableWorkflows = computed(() =>
+	sortedWorkflows.value.filter((file) => !isBlockedByPolicy(file)),
+);
+
 const { visibleWorkflowRows, isFolderCollapsed, toggleFolderCollapse } =
-	useWorkflowTreeRows(sortedWorkflows);
+	useWorkflowTreeRows(pullableWorkflows);
 
 const sortedCredentials = useSourceControlFileList({
 	files: computed(() => groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || []),
@@ -236,6 +249,8 @@ const dataTableWarningMessage = computed(() => {
 	});
 });
 
+const policyBlockedCount = computed(() => status.value.filter(isBlockedByPolicy).length);
+
 // Active data source based on tab
 const activeDataSourceFiltered = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
@@ -250,17 +265,29 @@ const activeDataSourceFiltered = computed(() => {
 	return [];
 });
 
-const activeRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(() => {
-	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return visibleWorkflowRows.value;
-	}
+const toFileRow = (file: SourceControlledFileWithProject): PullModalRow => ({
+	id: `file:${file.id}`,
+	type: 'file',
+	file,
+	depth: 0,
+});
 
-	return activeDataSourceFiltered.value.map((file) => ({
-		id: `file:${file.id}`,
-		type: 'file' as const,
-		file,
-		depth: 0,
-	}));
+/** Blocked items go in their own group at the end, so they read as left out of the pull. */
+const activeRows = computed<PullModalRow[]>(() => {
+	const files = activeDataSourceFiltered.value;
+	const blocked = files.filter(isBlockedByPolicy);
+	const pullableRows =
+		activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow
+			? visibleWorkflowRows.value
+			: files.filter((file) => !isBlockedByPolicy(file)).map(toFileRow);
+
+	if (blocked.length === 0) return pullableRows;
+
+	return [
+		...pullableRows,
+		{ id: 'policy-blocked-group', type: 'policyGroup', count: blocked.length, depth: 0 },
+		...blocked.map(toFileRow),
+	];
 });
 
 const filtersNoResultText = computed(() => {
@@ -371,6 +398,7 @@ async function pullWorkfolder() {
 			const workflowResults = pullStatus.filter(
 				(file) =>
 					file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+					!isBlockedByPolicy(file) &&
 					workflowsToAutoPublish.some((w) => w.id === file.id),
 			);
 
@@ -453,6 +481,19 @@ onMounted(() => {
 		</template>
 		<template #content>
 			<div style="display: flex; flex-direction: column; height: 100%">
+				<N8nCallout
+					v-if="policyBlockedCount > 0"
+					theme="warning"
+					class="mb-xs"
+					data-test-id="source-control-pull-policy-callout"
+				>
+					{{
+						i18n.baseText('settings.sourceControl.modals.pull.policyBlockedCallout', {
+							adjustToNumber: policyBlockedCount,
+							interpolate: { count: `${policyBlockedCount}` },
+						})
+					}}
+				</N8nCallout>
 				<div :class="$style.autoPublishSection">
 					<N8nText tag="div" bold size="medium" color="text-dark">
 						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.title') }}
@@ -519,7 +560,11 @@ onMounted(() => {
 											:active="active"
 											:size-dependencies="[
 												row.type,
-												row.type === 'file' ? row.file.name : row.name,
+												row.type === 'file'
+													? row.file.name
+													: row.type === 'folder'
+														? row.name
+														: row.count,
 												row.id,
 												row.depth,
 											]"
@@ -553,6 +598,19 @@ onMounted(() => {
 												</button>
 											</div>
 											<div
+												v-else-if="row.type === 'policyGroup'"
+												:class="$style.policyGroupRow"
+												data-test-id="source-control-pull-policy-group"
+											>
+												<N8nText tag="span" size="small" bold color="text-dark">
+													{{
+														i18n.baseText('settings.sourceControl.modals.pull.policyBlockedGroup', {
+															interpolate: { count: `${row.count}` },
+														})
+													}}
+												</N8nText>
+											</div>
+											<div
 												v-else
 												:class="[
 													$style.listItem,
@@ -564,7 +622,12 @@ onMounted(() => {
 													:class="[$style.itemContent]"
 													:style="{ paddingLeft: `${row.depth * 16}px` }"
 												>
-													<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
+													<N8nText
+														tag="div"
+														bold
+														:color="isBlockedByPolicy(row.file) ? 'text-light' : 'text-dark'"
+														:class="[$style.listItemName]"
+													>
 														<RouterLink
 															v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.credential"
 															target="_blank"
@@ -613,6 +676,39 @@ onMounted(() => {
 													</div>
 												</div>
 												<span :class="[$style.badges]">
+													<N8nHoverCard
+														v-if="isBlockedByPolicy(row.file)"
+														side="top"
+														:open-delay="200"
+														max-width="320px"
+													>
+														<template #trigger>
+															<N8nBadge
+																variant="warning"
+																size="xsmall"
+																data-test-id="source-control-pull-policy-blocked"
+															>
+																{{
+																	i18n.baseText('settings.sourceControl.modals.pull.policyBlocked')
+																}}
+															</N8nBadge>
+														</template>
+														<template #content>
+															<div :class="$style.policyCard">
+																<N8nText tag="p" size="small" color="text-dark">
+																	{{
+																		i18n.baseText(
+																			'settings.sourceControl.modals.pull.policyBlocked.tooltip',
+																		)
+																	}}
+																</N8nText>
+																<PolicyViolationList
+																	:violations="row.file.contentImportPolicy?.violations ?? []"
+																	:label-of="policyViolationLabelOf"
+																/>
+															</div>
+														</template>
+													</N8nHoverCard>
 													<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
 														{{ getStatusText(row.file.status) }}
 													</N8nBadge>
@@ -884,5 +980,18 @@ onMounted(() => {
 
 .rowNoBorder {
 	border-bottom: 0;
+}
+
+.policyGroupRow {
+	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--2xs);
+	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
+}
+
+.policyCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
 }
 </style>

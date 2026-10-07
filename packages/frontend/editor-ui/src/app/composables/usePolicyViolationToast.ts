@@ -4,8 +4,11 @@ import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { PolicyViolationList } from '@n8n/frontend-module-type-availability-policies';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import {
+	CREDENTIAL_TYPE_SUBJECT,
+	NODE_TYPE_SUBJECT,
+	usePolicyViolationLabels,
+} from '@/app/composables/usePolicyViolationLabels';
 import type { INodeUi } from '@/Interface';
 import { hasNodeCredentialFilled } from '@/app/utils/nodes/nodeTransforms';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,9 +23,6 @@ type PolicyRefusedAction = 'save' | 'publish' | 'execute';
 
 let activeToast: { handle: NotificationHandle; refusedAction: PolicyRefusedAction } | undefined;
 
-const NODE_TYPE_SUBJECT = 'nodeType';
-const CREDENTIAL_TYPE_SUBJECT = 'credentialType';
-
 const NODE_MATCHER: Record<string, ((subject: string) => (node: INodeUi) => boolean) | undefined> =
 	{
 		[NODE_TYPE_SUBJECT]: (subject) => (node) => node.type === subject,
@@ -33,20 +33,8 @@ export function usePolicyViolationToast() {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
-	const nodeTypesStore = useNodeTypesStore();
-	const credentialsStore = useCredentialsStore();
 	const uiStore = useUIStore();
-
-	function displayNameOf({ subject, subjectType }: PolicyViolation): string | undefined {
-		if (subject === undefined) return undefined;
-
-		if (subjectType === NODE_TYPE_SUBJECT) return nodeTypesStore.getNodeType(subject)?.displayName;
-		if (subjectType === CREDENTIAL_TYPE_SUBJECT) {
-			return credentialsStore.getCredentialTypeByName(subject)?.displayName;
-		}
-
-		return undefined;
-	}
+	const { labelOf } = usePolicyViolationLabels();
 
 	function isOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
 		return (
@@ -80,7 +68,7 @@ export function usePolicyViolationToast() {
 				duration: 0,
 				message: h(PolicyViolationList, {
 					violations,
-					labelOf: displayNameOf,
+					labelOf,
 					isJumpable: (violation: PolicyViolation) =>
 						isOpenOnCanvas(documentId) && nodeIdsFor(violation, documentId).length > 0,
 					onJump: (violation: PolicyViolation) => {

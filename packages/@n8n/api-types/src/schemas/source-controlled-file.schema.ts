@@ -61,7 +61,7 @@ export const SourceControlledFileSchema = z.object({
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
 	publishingError: z.string().optional(),
 	publishingErrorDetails: workflowPublishBlockedDetailsSchema.optional(),
-	/** Advisory only — never blocks the pull. */
+	/** On a pull status, what the pull would skip. On a pull result, what it skipped. */
 	contentImportPolicy: contentImportPolicyResultSchema.optional(),
 });
 
