@@ -125,7 +125,7 @@
     "change-case": "4.1.2",
     "class-transformer": "0.5.1",
     "class-validator": "0.14.0",
-    "compression": "1.8.1",
+    "compression": "1.8.2",
     "convict": "6.2.5",
     "cookie-parser": "1.4.7",
     "csrf": "3.1.0",
