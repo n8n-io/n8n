@@ -99,9 +99,7 @@ test.describe(
 			await expect(n8n.page).not.toHaveURL(/\/debug/);
 		});
 
-		test('should handle pinned data conflicts during execution import @engine:v2', async ({
-			n8n,
-		}) => {
+		test('should handle pinned data conflicts during execution import', async ({ n8n }) => {
 			await createBasicWorkflow(n8n, URLS.SUCCESS);
 			// Generous timeouts: these runs wait on a real request to an external host
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL, {
