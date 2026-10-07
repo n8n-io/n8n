@@ -1,0 +1,20 @@
+packages/cli/src/controller.registry.ts
+  s_8631ec10eb1199::t_f21cd718c74abf 32
+  s_8631ec10eb1199::t_7eec3ed6b6f3dc 86-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c6a7eb1f75138bb289e627b9ebf0a3d28bdff3ab",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

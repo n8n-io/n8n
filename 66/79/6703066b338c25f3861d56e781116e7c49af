@@ -1,0 +1,29 @@
+packages/cli/src/modules/community-packages/__tests__/community-packages.lifecycle.service.test.ts
+  s_96a34872dbe881::t_4e5a89edaf6475 315
+packages/cli/test/integration/public-api/community-packages.test.ts
+  s_96a34872dbe881::t_65a03309b8efd6 257-258,277-278,370
+packages/@n8n/api-types/src/dto/community-packages/community-package-public.openapi.ts
+  s_96a34872dbe881::t_efbf833c8fa665 10,17
+packages/cli/src/modules/mcp/tools/workflow-builder/install-community-node.tool.ts
+  s_96a34872dbe881::t_6d01f48ac292d7 204
+packages/cli/src/public-api/v1/controllers/community-packages.public.controller.ts
+  s_96a34872dbe881::t_efbf833c8fa665 65,87
+packages/cli/src/modules/mcp/__tests__/install-community-node.tool.test.ts
+  s_96a34872dbe881::t_6d01f48ac292d7 115,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66796703066b338c25f3861d56e781116e7c49af",
+  "prompts": {},
+  "sessions": {
+    "s_96a34872dbe881": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0a0ae870ffelL9WC91kyWJvEI",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

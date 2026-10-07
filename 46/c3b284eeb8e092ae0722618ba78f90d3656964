@@ -1,0 +1,19 @@
+packages/cli/src/modules/ldap.ee/ldap.controller.ee.ts
+  s_5faaac1057ba03::t_db7649181be323 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "46c3b284eeb8e092ae0722618ba78f90d3656964",
+  "prompts": {},
+  "sessions": {
+    "s_5faaac1057ba03": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "74c7eb69-dea4-4acf-a985-01e950ced5f9",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
