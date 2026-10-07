@@ -11,13 +11,11 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
+import type { CredentialTypes } from '@/credential-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@n8n/backend-services';
-
-// Make the gateway-fetch retry backoff instant so retry tests do not actually sleep.
-vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
 
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 
@@ -79,6 +77,7 @@ function makeService({
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
+	credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(true) }),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -101,6 +100,7 @@ function makeService({
 		userRepository,
 		urlService,
 		outboundHttp,
+		credentialTypes,
 	);
 }
 
@@ -262,8 +262,8 @@ describe('AiGatewayService', () => {
 		});
 
 		it('mints a token pinned to the gateway host for a gateway-hosted MCP server', async () => {
-			// Only the token is requested (no live gateway lookup): the persisted
-			// registry binding authorizes the type. The token's egress is pinned to
+			// Only the token is requested (no live gateway lookup): the registered
+			// credential type authorizes the mint. The token's egress is pinned to
 			// the gateway host so it can't leak elsewhere.
 			requestMock.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
 			const service = makeService();
@@ -278,6 +278,25 @@ describe('AiGatewayService', () => {
 				allowedHttpRequestDomains: 'domains',
 				allowedDomains: 'gateway.test',
 			});
+		});
+
+		it('mints only for an MCP credential type the registry registered', async () => {
+			const credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(false) });
+			const service = makeService({ credentialTypes });
+
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'unknownMcpGatewayApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('does not mint for the base MCP Gateway credential type', async () => {
+			const service = makeService();
+
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'mcpGatewayApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 
 		it('still requires a licence for a gateway-hosted MCP server', async () => {
@@ -883,58 +902,41 @@ describe('AiGatewayService', () => {
 		});
 	});
 
-	describe('getN8nConnectMcpServers()', () => {
-		it('maps the gateway MCP servers to registry entries', async () => {
+	describe('fetchN8nConnectMcpServers()', () => {
+		it('maps the gateway MCP servers to registry entries with a prefixed slug', async () => {
 			requestMock.mockResolvedValueOnce(ok(MOCK_MCP_SERVERS));
 			const service = makeService();
 
-			const servers = await service.getN8nConnectMcpServers();
+			const servers = await service.fetchN8nConnectMcpServers();
 
 			expect(servers).toHaveLength(1);
 			expect(servers[0]).toMatchObject({
-				slug: 'firecrawl',
+				slug: 'n8n-connect-firecrawl',
 				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+				// The URL keeps the gateway's own slug.
 				remotes: [{ type: 'streamable-http', url: 'http://gateway.test/v1/gateway/mcp/firecrawl' }],
 			});
 		});
 
-		it('returns an empty list when the gateway is unreachable after retries', async () => {
+		it('throws when the gateway is unreachable, so the registry refresh retries', async () => {
 			requestMock.mockRejectedValue(new Error('gateway down'));
 			const service = makeService();
 
-			expect(await service.getN8nConnectMcpServers()).toEqual([]);
-			expect(requestMock).toHaveBeenCalledTimes(5);
+			await expect(service.fetchN8nConnectMcpServers()).rejects.toThrow('gateway down');
 		});
 
-		it('recovers from a transient failure and still returns the servers', async () => {
-			requestMock
-				.mockRejectedValueOnce(new Error('transient blip'))
-				.mockResolvedValueOnce(ok(MOCK_MCP_SERVERS));
-			const service = makeService();
-
-			const servers = await service.getN8nConnectMcpServers();
-
-			expect(servers).toHaveLength(1);
-			expect(servers[0]).toMatchObject({
-				slug: 'firecrawl',
-				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
-			});
-			expect(requestMock).toHaveBeenCalledTimes(2);
-		});
-
-		it('does not retry a settled failure (non-2xx response)', async () => {
+		it('throws on a non-2xx response', async () => {
 			requestMock.mockResolvedValue(fail(400));
 			const service = makeService();
 
-			expect(await service.getN8nConnectMcpServers()).toEqual([]);
-			expect(requestMock).toHaveBeenCalledTimes(1);
+			await expect(service.fetchN8nConnectMcpServers()).rejects.toThrow(UserError);
 		});
 
-		it('returns an empty list when n8n Connect is disabled', async () => {
-			const service = makeService({ aiGatewayEnabled: false });
+		it('throws on an invalid response', async () => {
+			requestMock.mockResolvedValue(ok({ servers: [{ slug: 'firecrawl' }] }));
+			const service = makeService();
 
-			expect(await service.getN8nConnectMcpServers()).toEqual([]);
-			expect(requestMock).not.toHaveBeenCalled();
+			await expect(service.fetchN8nConnectMcpServers()).rejects.toThrow(UserError);
 		});
 	});
 

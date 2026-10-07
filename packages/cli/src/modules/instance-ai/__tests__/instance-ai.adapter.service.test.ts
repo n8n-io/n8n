@@ -7519,6 +7519,37 @@ describe('MCP registry discovery', () => {
 			expect(await context.mcpService!.getServers(['databricks-genie'])).toEqual([]);
 		});
 
+		// This path connects with a stored credential only, and an n8n Connect
+		// server has none, so `createConnection` refuses it like a templated row.
+		it('drops an n8n Connect server from search results', async () => {
+			stubContainer({
+				registrySearch: vi
+					.fn()
+					.mockResolvedValue([
+						registryHit,
+						{ ...registryHit, slug: 'n8n-connect-firecrawl', authentication: 'none' },
+					]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
+
+			const results = await context.mcpService!.search(['drive', 'firecrawl']);
+
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+		});
+
+		it('drops an n8n Connect server from an exact slug lookup', async () => {
+			stubContainer({
+				registryGetBySlugs: vi
+					.fn()
+					.mockResolvedValue([
+						{ ...registryServer, slug: 'n8n-connect-firecrawl', authType: '__aiGatewayManaged' },
+					]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
+
+			expect(await context.mcpService!.getServers(['n8n-connect-firecrawl'])).toEqual([]);
+		});
+
 		it('drops a server without a usable connection from an exact slug lookup', async () => {
 			stubContainer({
 				registryGetBySlugs: vi.fn().mockResolvedValue([{ ...registryServer, remotes: [] }]),

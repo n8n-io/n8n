@@ -21,6 +21,10 @@ export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
+// Base credential an n8n Connect MCP server's synthetic type extends. The suffix
+// is load-bearing: the MCP runtime picks the gateway auth strategy from the
+// credential type name (`isMcpGatewayAuthentication`).
+export const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
 
 export function getMcpRegistryCredentialTypeName(
 	server: McpRegistryServer,
@@ -150,7 +154,9 @@ export function prepareMcpRegistryConnection({
 			ok: false,
 			error: {
 				code: 'missing_access_token',
-				message: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
+				message: isMcpGatewayAuthentication(credentialType)
+					? `Credential type "${credentialType}" does not contain a Gateway credits token`
+					: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
 			},
 		};
 	}

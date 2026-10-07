@@ -10,6 +10,7 @@ import type {
 import {
 	getMcpRegistryCredentialTypeName,
 	getMcpRegistryGatewayCredentialTypeName,
+	MCP_BASE_GATEWAY_CREDENTIAL_NAME,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 	getConfiguredEndpointUrl,
@@ -35,11 +36,6 @@ export {
 	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
 } from './mcp-registry-connection';
-
-// Base credential an n8n Connect MCP server's synthetic type extends. The suffix
-// is load-bearing: the MCP runtime picks the gateway auth strategy from the
-// credential type name (`isMcpGatewayAuthentication`).
-const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
 
 /**
  * Predicate that tells whether a credential type name is registered in the runtime.

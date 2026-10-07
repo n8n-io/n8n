@@ -37,11 +37,7 @@ function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
 	instanceType?: 'main' | 'worker';
-	/**
-	 * `isEnabled` flag on the gateway service mock. Reads are gated by
-	 * `getN8nConnectMcpServers` returning `[]` when n8n Connect is off, so override
-	 * that mock to exercise the gateway overlay.
-	 */
+	/** `isEnabled` flag on the gateway service mock: whether n8n Connect is on. */
 	aiGatewayEnabled?: boolean;
 };
 
@@ -61,7 +57,7 @@ function createService(options: CreateServiceOptions = {}) {
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 	const aiGatewayService = mock<AiGatewayService>({
 		isEnabled: vi.fn().mockReturnValue(options.aiGatewayEnabled ?? true),
-		getN8nConnectMcpServers: vi.fn().mockResolvedValue([]),
+		fetchN8nConnectMcpServers: vi.fn().mockResolvedValue([]),
 	});
 
 	if (options.storedServers === null) {
@@ -123,48 +119,110 @@ describe('McpRegistryService', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('n8n Connect MCP overlay', () => {
-		it('merges n8n Connect MCP servers from the gateway, without persisting them', async () => {
-			const { service, repository, aiGatewayService } = createService();
-			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([n8nConnectMockServer]);
+	describe('n8n Connect MCP servers', () => {
+		/** Registry metadata that matches the default stored rows, so only the gateway changes. */
+		const unchangedMetadata: McpRegistryServerMetadata[] = [notionMockServer, linearMockServer].map(
+			({ slug, version, updatedAt }) => ({ slug, version, updatedAt }),
+		);
 
-			await service.init();
-			const servers = await service.getAll();
+		it('reads stored n8n Connect rows like registry rows', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, n8nConnectMockServer],
+			});
 
-			expect(servers).toContainEqual(n8nConnectMockServer);
-			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
-		});
-
-		it('omits n8n Connect MCP servers when the gateway returns none (n8n Connect off)', async () => {
-			const { service, aiGatewayService } = createService();
-			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([]);
-
-			const servers = await service.getAll();
-
-			expect(servers).toEqual([notionMockServer, linearMockServer]);
-		});
-
-		it('resolves an n8n Connect MCP server by slug from the overlay', async () => {
-			const { service, aiGatewayService } = createService();
-			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([n8nConnectMockServer]);
-
+			expect(await service.getAll()).toEqual([notionMockServer, n8nConnectMockServer]);
 			expect(await service.get(n8nConnectMockServer.slug)).toEqual(n8nConnectMockServer);
 			expect(await service.getBySlugs([n8nConnectMockServer.slug])).toEqual([n8nConnectMockServer]);
 		});
 
-		it('drops an n8n Connect MCP server that is stored in the DB, so it cannot duplicate the overlay', async () => {
-			const storedManaged: McpRegistryServer = {
-				...n8nConnectMockServer,
-				slug: 'stored-managed',
-			};
-			const { service, aiGatewayService } = createService({
-				storedServers: [notionMockServer, storedManaged],
+		it('hides stored n8n Connect rows while n8n Connect is off', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, n8nConnectMockServer],
+				aiGatewayEnabled: false,
 			});
-			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([]);
 
 			expect(await service.getAll()).toEqual([notionMockServer]);
-			expect(await service.get('stored-managed')).toBeUndefined();
-			expect(await service.getBySlugs(['stored-managed'])).toEqual([]);
+			expect(await service.get(n8nConnectMockServer.slug)).toBeUndefined();
+			expect(await service.getBySlugs([n8nConnectMockServer.slug])).toEqual([]);
+		});
+
+		it('refreshFromApi stores a new n8n Connect server and publishes reload', async () => {
+			const { service, apiClient, aiGatewayService, repository, publisher } = createService();
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+			aiGatewayService.fetchN8nConnectMcpServers.mockResolvedValue([n8nConnectMockServer]);
+
+			await service.refreshFromApi();
+
+			expect(repository.upsertFetchedServers).toHaveBeenCalledWith(
+				[toEntity(n8nConnectMockServer)],
+				DB_NOW,
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
+		});
+
+		it('refreshFromApi skips the write when the n8n Connect servers are unchanged', async () => {
+			const { service, apiClient, aiGatewayService, repository } = createService({
+				storedServers: [notionMockServer, linearMockServer, n8nConnectMockServer],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+			aiGatewayService.fetchN8nConnectMcpServers.mockResolvedValue([n8nConnectMockServer]);
+
+			await service.refreshFromApi();
+
+			// The registry metadata does not list the gateway row, and it is not deprecated.
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
+		});
+
+		it('refreshFromApi updates an n8n Connect row whose content changed under the same version', async () => {
+			const { service, apiClient, aiGatewayService, repository } = createService({
+				storedServers: [notionMockServer, linearMockServer, n8nConnectMockServer],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+			const moved: McpRegistryServer = {
+				...n8nConnectMockServer,
+				remotes: [{ type: 'streamable-http', url: 'https://gateway.new/v1/gateway/mcp/notion' }],
+			};
+			aiGatewayService.fetchN8nConnectMcpServers.mockResolvedValue([moved]);
+
+			await service.refreshFromApi();
+
+			expect(repository.upsertFetchedServers).toHaveBeenCalledWith([toEntity(moved)], DB_NOW);
+		});
+
+		it('refreshFromApi deprecates an n8n Connect row the gateway no longer lists', async () => {
+			const { service, apiClient, repository } = createService({
+				storedServers: [notionMockServer, linearMockServer, n8nConnectMockServer],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+
+			await service.refreshFromApi();
+
+			const [[entities]] = repository.upsertFetchedServers.mock.calls;
+			expect(entities).toEqual([
+				expect.objectContaining({ slug: n8nConnectMockServer.slug, status: 'deprecated' }),
+			]);
+		});
+
+		it('refreshFromApi leaves the n8n Connect rows alone while n8n Connect is off', async () => {
+			const { service, apiClient, aiGatewayService, repository } = createService({
+				storedServers: [notionMockServer, linearMockServer, n8nConnectMockServer],
+				aiGatewayEnabled: false,
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+
+			await service.refreshFromApi();
+
+			expect(aiGatewayService.fetchN8nConnectMcpServers).not.toHaveBeenCalled();
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
+		});
+
+		it('refreshFromApi rethrows a gateway failure and writes nothing', async () => {
+			const { service, apiClient, aiGatewayService, repository } = createService();
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+			aiGatewayService.fetchN8nConnectMcpServers.mockRejectedValue(new Error('gateway down'));
+
+			await expect(service.refreshFromApi()).rejects.toThrow('gateway down');
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
 		});
 	});
 

@@ -15,6 +15,13 @@ const serverStatuses = ['active', 'deprecated'] as const;
  */
 export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
 
+/**
+ * Slug prefix of an n8n Connect MCP server row. Both sources store their rows in
+ * one table keyed by slug, so the prefix stops a gateway server from replacing
+ * a registry server with the same slug.
+ */
+export const N8N_CONNECT_MCP_SLUG_PREFIX = 'n8n-connect-';
+
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 

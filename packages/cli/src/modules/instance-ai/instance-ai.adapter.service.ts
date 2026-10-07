@@ -180,6 +180,7 @@ import {
 } from '@/modules/mcp-registry/node-description-transform';
 import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import {
@@ -831,10 +832,12 @@ export class InstanceAiAdapterService {
 	private createMcpAdapter(user: User): InstanceAiMcpService {
 		// Templated rows are dropped rather than offered: this path reads credentials
 		// without resolving expressions, so `createConnection` refuses them. Offering
-		// one would walk the user to a credential picker and then an error.
+		// one would walk the user to a credential picker and then an error. An n8n
+		// Connect server (the only kind that asks for no credential) is dropped for
+		// the same reason: this path connects with a stored credential only.
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
 			servers
-				.filter((server) => !server.isTemplated)
+				.filter((server) => !server.isTemplated && server.authentication !== 'none')
 				.map((server) => ({
 					slug: server.slug,
 					title: server.title,
@@ -858,6 +861,7 @@ export class InstanceAiAdapterService {
 				return servers
 					.filter((server) => {
 						if (server.status !== 'active') return false;
+						if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) return false;
 						const connection = resolveMcpRegistryConnection(server);
 						return connection !== null && !connection.isTemplated;
 					})
