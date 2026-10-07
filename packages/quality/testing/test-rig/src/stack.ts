@@ -20,6 +20,8 @@ export interface StackOptions {
 	scale: number;
 	hooks?: HookSpec[];
 	env?: Record<string, string>;
+	/** n8n image for this stack. The runners image stays the one TEST_IMAGE_N8N selects, so use it with internal runners. */
+	image?: string;
 }
 
 const byName = (containers: Container[]) =>
@@ -52,6 +54,7 @@ export class RigStack {
 			postgres: true,
 			mains,
 			workers: options.workers,
+			image: options.image,
 			// A busy Docker VM can take well over the default 60 s to migrate and start.
 			startupTimeoutMs: 180_000,
 			env: {
