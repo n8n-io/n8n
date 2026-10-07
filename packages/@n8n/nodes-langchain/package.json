@@ -67,6 +67,7 @@
       "dist/credentials/MinimaxApi.credentials.js",
       "dist/credentials/MoonshotApi.credentials.js",
       "dist/credentials/LemonadeApi.credentials.js",
+      "dist/credentials/NebiusApi.credentials.js",
       "dist/credentials/NvidiaApi.credentials.js",
       "dist/credentials/OllamaApi.credentials.js",
       "dist/credentials/OpenRouterApi.credentials.js",
@@ -85,6 +86,7 @@
       "dist/credentials/ChatHubVectorStorePineconeApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/llms/LmChatNebius/LmChatNebius.node.js",
       "dist/nodes/vendors/AlibabaCloud/AlibabaCloud.node.js",
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",

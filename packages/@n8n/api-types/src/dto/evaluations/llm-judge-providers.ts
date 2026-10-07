@@ -114,6 +114,11 @@ export const LLM_JUDGE_PROVIDERS: LlmJudgeProvider[] = [
 		displayName: 'Lemonade Chat Model',
 		credentialTypes: [{ name: 'lemonadeApi', displayName: 'Lemonade' }],
 	},
+	{
+		nodeType: '@n8n/n8n-nodes-langchain.lmChatNebius',
+		displayName: 'Nebius Token Factory Chat Model',
+		credentialTypes: [{ name: 'nebiusApi', displayName: 'Nebius Token Factory' }],
+	},
 ];
 
 /** Chat-model node types accepted as a config-eval judge provider. */

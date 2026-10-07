@@ -23,6 +23,7 @@ describe('LlmJudgeProviderRegistry (fixed-list)', () => {
 			'@n8n/n8n-nodes-langchain.lmChatMinimax',
 			'@n8n/n8n-nodes-langchain.lmChatMoonshot',
 			'@n8n/n8n-nodes-langchain.lmChatLemonade',
+			'@n8n/n8n-nodes-langchain.lmChatNebius',
 		];
 		const actual = registry.listProviders().map((p) => p.nodeType);
 		expect(actual.sort()).toEqual([...expectedNodeTypes].sort());
