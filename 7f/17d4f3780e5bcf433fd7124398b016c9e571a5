@@ -1,0 +1,51 @@
+packages/@n8n/mcp-browser-extension/src/ui/tokens.scss
+  s_a1754b97ab455e::t_80f8b669b24242 9
+  s_a1754b97ab455e::t_08bf7302d96254 32-47
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.vue
+  s_a1754b97ab455e::t_08bf7302d96254 59-63
+packages/frontend/@n8n/design-system/src/types/button.ts
+  s_a1754b97ab455e::t_08bf7302d96254 10
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.test.ts
+  s_a1754b97ab455e::t_d338b517f1f622 1
+  s_a1754b97ab455e::t_36e238c9a1ed5d 5
+  s_a1754b97ab455e::t_d427ee963c0d11 2-4,6-36
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.test.ts
+  s_a1754b97ab455e::t_80f8b669b24242 10-14
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  s_a1754b97ab455e::t_08bf7302d96254 32,240,245,252-253,257-258
+packages/frontend/@n8n/design-system/src/css/_tokens.legacy.scss
+  s_a1754b97ab455e::t_08bf7302d96254 107-110
+packages/frontend/@n8n/design-system/src/components/N8nLogo/Logo.test.ts
+  s_a1754b97ab455e::t_36e238c9a1ed5d 5
+  s_a1754b97ab455e::t_d338b517f1f622 1
+  s_a1754b97ab455e::t_a4d105cb7ba9f9 6-8,11-49
+packages/frontend/@n8n/design-system/src/css/message-box.scss
+  s_a1754b97ab455e::t_08bf7302d96254 183-185,230,235,241-242
+  s_a1754b97ab455e::t_80f8b669b24242 200-202,212-214,221-223
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_a1754b97ab455e::t_08bf7302d96254 362,366
+packages/frontend/@n8n/design-system/src/components/N8nCard/Card.test.ts
+  s_a1754b97ab455e::t_0c65f05fd3a5f4 2,8-30
+packages/frontend/@n8n/design-system/src/components/N8nCard/Card.vue
+  s_a1754b97ab455e::t_c20c7c45c954a7 2,20,26,30
+packages/frontend/@n8n/design-system/src/components/N8nLogo/Logo.vue
+  s_a1754b97ab455e::t_02ffd09c9e08c3 50,77,99
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.vue
+  s_a1754b97ab455e::t_6fd8fb01203a4e 79-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f17d4f3780e5bcf433fd7124398b016c9e571a5",
+  "prompts": {},
+  "sessions": {
+    "s_a1754b97ab455e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a10cd7-25bf-76ed-98aa-172c46c0afc3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
