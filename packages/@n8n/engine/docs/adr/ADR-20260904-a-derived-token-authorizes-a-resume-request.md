@@ -201,6 +201,10 @@ sequenceDiagram
   routes do. A v1 id is numeric, and a v2 id is a UUID. Therefore an execution-bound resume URL
   carries the execution id in its path, and a step-bound resume URL and an approval callback carry
   the step id. An id of the wrong shape reaches an engine that rejects the token.
+- The control plane cannot tell an execution-bound resume URL from a step-bound one. Both carry a
+  UUID in the same place, and only the token says which kind it is. Therefore the data plane offers
+  a single endpoint for all kinds of resume request. The endpoint uses the id in the request, and
+  the data plane reads the kind from the token.
 - Every resume request also carries the identity token of the control plane that forwards it, like
   every other call from the control plane to the data plane. The data plane resumes an execution
   only if the execution belongs to the tenant of that identity token. The trust layer between the
