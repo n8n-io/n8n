@@ -373,22 +373,21 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		return id;
 	}
 
-	/** Keeps the order of today's references array in `position`. */
+	/** Files carry no order of their own; readers and the content hash sort them by path. */
 	private async insertFiles(
 		{ escape, runQuery }: MigrationContext,
 		skillVersionId: string,
 		body: SkillBody,
 	) {
-		const columns = ['skillVersionId', 'path', 'position', 'content', 'sizeBytes']
+		const columns = ['skillVersionId', 'path', 'content', 'sizeBytes']
 			.map((c) => escape.columnName(c))
 			.join(', ');
-		for (const [position, reference] of (body.references ?? []).entries()) {
+		for (const reference of body.references ?? []) {
 			await runQuery(
-				`INSERT INTO ${escape.tableName('skill_file')} (${columns}) VALUES (:skillVersionId, :path, :position, :content, :sizeBytes)`,
+				`INSERT INTO ${escape.tableName('skill_file')} (${columns}) VALUES (:skillVersionId, :path, :content, :sizeBytes)`,
 				{
 					skillVersionId,
 					path: reference.path,
-					position,
 					content: reference.content,
 					sizeBytes: Buffer.byteLength(reference.content, 'utf8'),
 				},
@@ -469,13 +468,20 @@ function toSkillBody(raw: unknown): SkillBody | null {
 		if (tools.length > 0) body.allowedTools = tools;
 	}
 	if (Array.isArray(references)) {
-		const files = references.filter(
-			(reference): reference is SkillReference =>
+		// (skillVersionId, path) is the primary key: a repeated path keeps its first copy,
+		// as the API's own validation would have refused the second.
+		const files = new Map<string, SkillReference>();
+		for (const reference of references) {
+			if (
 				isRecord(reference) &&
 				typeof reference.path === 'string' &&
-				typeof reference.content === 'string',
-		);
-		if (files.length > 0) body.references = files;
+				typeof reference.content === 'string' &&
+				!files.has(reference.path)
+			) {
+				files.set(reference.path, { path: reference.path, content: reference.content });
+			}
+		}
+		if (files.size > 0) body.references = [...files.values()];
 	}
 	return body;
 }
@@ -491,7 +497,8 @@ function toFrontmatterJson(body: SkillBody): string | null {
 }
 
 /**
- * Identity of a version's content, name included. File order is part of the content.
+ * Identity of a version's content, name included. Files are sorted by path, so upload
+ * order does not change the hash.
  * Must produce the same value as `skillContentHash` in the agents module, so a publish
  * after the migration finds the migrated versions by hash.
  */
@@ -510,7 +517,9 @@ function contentHash(body: SkillBody): string {
 								.map((key) => [key, frontmatter[key]]),
 						)
 					: null,
-				files: (body.references ?? []).map((reference) => [reference.path, reference.content]),
+				files: (body.references ?? [])
+					.map((reference) => [reference.path, reference.content])
+					.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
 			}),
 		)
 		.digest('hex');

@@ -103,7 +103,6 @@ erDiagram
   TEXT content
   datetime_3_ createdAt
   varchar_512_ path PK
-  INTEGER position
   INTEGER sizeBytes
   varchar skillVersionId PK
   datetime_3_ updatedAt

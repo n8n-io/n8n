@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill_file" ("skillVersionId" varchar NOT NULL, "path" varchar(512) NOT NULL, "position" integer NOT NULL, "content" text NOT NULL, "sizeBytes" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_e9ab50b795ec8858702b7333d13" FOREIGN KEY ("skillVersionId") REFERENCES "skill_version" ("id") ON DELETE CASCADE, PRIMARY KEY ("skillVersionId", "path"))
+CREATE TABLE "skill_file" ("skillVersionId" varchar NOT NULL, "path" varchar(512) NOT NULL, "content" text NOT NULL, "sizeBytes" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_e9ab50b795ec8858702b7333d13" FOREIGN KEY ("skillVersionId") REFERENCES "skill_version" ("id") ON DELETE CASCADE, PRIMARY KEY ("skillVersionId", "path"))
 ```
 
 </details>
@@ -18,7 +18,6 @@ CREATE TABLE "skill_file" ("skillVersionId" varchar NOT NULL, "path" varchar(512
 | content | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | path | varchar(512) |  | false |  |  |  |
-| position | INTEGER |  | false |  |  |  |
 | sizeBytes | INTEGER |  | false |  |  |  |
 | skillVersionId | varchar |  | false |  | [skill_version](skill_version.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -49,7 +48,6 @@ erDiagram
   TEXT content
   datetime_3_ createdAt
   varchar_512_ path PK
-  INTEGER position
   INTEGER sizeBytes
   varchar skillVersionId PK
   datetime_3_ updatedAt

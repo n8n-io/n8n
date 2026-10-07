@@ -127,7 +127,6 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 			.withColumns(
 				column('skillVersionId').uuid.primary,
 				column('path').varchar(512).primary.comment('Relative path, references/*.md in v1'),
-				column('position').int.notNull.comment('Order of the file in the skill, from 0'),
 				column('content').text.notNull,
 				column('sizeBytes').int.notNull.comment('UTF-8 byte length of content'),
 			)

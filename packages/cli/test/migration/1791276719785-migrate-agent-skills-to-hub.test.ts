@@ -29,7 +29,7 @@ type VersionRow = {
 	frontmatter: string | null;
 	contentHash: string;
 };
-type FileRow = { skillVersionId: string; path: string; position: number; content: string };
+type FileRow = { skillVersionId: string; path: string; content: string };
 type DependencyRow = { agentId: string; skillId: string; skillVersionId: string | null };
 type PinRow = { agentVersionId: string; skillRefId: string; skillVersionId: string };
 
@@ -242,8 +242,8 @@ describe('MigrateAgentSkillsToHub Migration', () => {
 				'allowed-tools': 'search',
 			});
 
-			const files = await select<FileRow>(context, 'skill_file', ['skillVersionId', 'position']);
-			// Two files on the draft row and two on v1, in the order of the references array.
+			const files = await select<FileRow>(context, 'skill_file', ['skillVersionId', 'path']);
+			// Two files on the draft row and two on v1.
 			expect(files).toHaveLength(4);
 			expect(files.filter((f) => f.skillVersionId === saved[0].id).map((f) => f.path)).toEqual([
 				'references/tone.md',
@@ -366,6 +366,36 @@ describe('MigrateAgentSkillsToHub Migration', () => {
 				{ id: 'hist-1' },
 			);
 			expect(asJson<Record<string, SkillBody>>(history[0].skills)).toEqual({ skill_a: v1 });
+		});
+	});
+
+	it('treats the same files in another order as the same version', async () => {
+		const tone = { path: 'references/tone.md', content: 'Warm.' };
+		const words = { path: 'references/words.md', content: 'Plain.' };
+		await withContext(async (context) => {
+			await insertProject(context, 'team-1', 'team');
+			await insertAgent(context, {
+				id: 'agent-1',
+				projectId: 'team-1',
+				refs: ['skill_a'],
+				skills: { skill_a: body('Brand voice', 'Be warm.', { references: [words, tone] }) },
+			});
+			await insertHistory(context, {
+				versionId: 'hist-1',
+				agentId: 'agent-1',
+				skills: { skill_a: body('Brand voice', 'Be warm.', { references: [tone, words] }) },
+				createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			});
+		});
+
+		await runSingleMigration(MIGRATION_NAME);
+
+		await withContext(async (context) => {
+			const versions = await select<VersionRow>(context, 'skill_version', ['skillId']);
+			// One saved version: the draft's reordered files do not count as an edit.
+			expect(savedVersions(versions).map((v) => v.version)).toEqual([1]);
+			const draft = versions.find((v) => v.version === null);
+			expect(draft?.contentHash).toBe(savedVersions(versions)[0].contentHash);
 		});
 	});
 
@@ -557,7 +587,13 @@ describe('MigrateAgentSkillsToHub Migration', () => {
 					skill_a: {
 						...body('Brand voice', 'Be warm.'),
 						allowedTools: 'search',
-						references: [{ path: 'references/ok.md', content: 'Fine.' }, { path: 42 }, 'bad'],
+						references: [
+							{ path: 'references/ok.md', content: 'Fine.' },
+							{ path: 42 },
+							'bad',
+							// A repeated path keeps its first copy: (skillVersionId, path) is the key.
+							{ path: 'references/ok.md', content: 'Second copy.' },
+						],
 					},
 				},
 				createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -590,9 +626,12 @@ describe('MigrateAgentSkillsToHub Migration', () => {
 			const versions = await select<VersionRow>(context, 'skill_version', ['skillId']);
 			// The string `allowedTools` is dropped, so there is no frontmatter.
 			expect(versions.every((v) => v.frontmatter === null)).toBe(true);
-			const files = await select<FileRow>(context, 'skill_file', ['skillVersionId', 'position']);
+			const files = await select<FileRow>(context, 'skill_file', ['skillVersionId', 'path']);
 			// Only the well-formed reference survives, on the draft row and on v1.
-			expect(files.map((f) => f.path)).toEqual(['references/ok.md', 'references/ok.md']);
+			expect(files.map((f) => [f.path, f.content])).toEqual([
+				['references/ok.md', 'Fine.'],
+				['references/ok.md', 'Fine.'],
+			]);
 
 			// The broken row is left as it is.
 			if (context.isSqlite) {

@@ -10,10 +10,6 @@ export class SkillFile extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 512 })
 	path: string;
 
-	/** Order of the file in the skill, from 0. */
-	@Column({ type: 'int' })
-	position: number;
-
 	@Column({ type: 'text' })
 	content: string;
 

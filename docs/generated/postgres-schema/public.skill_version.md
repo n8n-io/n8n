@@ -99,7 +99,6 @@ erDiagram
   text content
   timestamp_3__with_time_zone createdAt
   varchar_512_ path
-  integer position
   integer sizeBytes
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt

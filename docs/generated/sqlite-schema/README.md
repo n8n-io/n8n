@@ -131,7 +131,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 7 |  | table |
-| [skill_file](skill_file.md) | 7 |  | table |
+| [skill_file](skill_file.md) | 6 |  | table |
 | [skill_version](skill_version.md) | 11 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
 | [test_case_execution](test_case_execution.md) | 16 |  | table |
@@ -1625,7 +1625,6 @@ erDiagram
   TEXT content
   datetime_3_ createdAt
   varchar_512_ path PK
-  INTEGER position
   INTEGER sizeBytes
   varchar skillVersionId PK
   datetime_3_ updatedAt
