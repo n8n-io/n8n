@@ -6,10 +6,12 @@ import { Container } from '@n8n/di';
 
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
+import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { productionChatMemoryResourceId } from '@/modules/agents/utils/agent-memory-scope';
 import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
 
@@ -295,6 +297,71 @@ describe('production n8n Chat HTTP route', () => {
 			.post(`${base}/${queued.id}/steer`)
 			.send({ executionId: randomUUID() })
 			.expect(409);
+	});
+
+	async function seedBackgroundJob(agentId: string, threadId: string, ownerId: string) {
+		const repository = Container.get(AgentBackgroundJobRepository);
+		return await repository.save(
+			repository.create({
+				id: randomUUID(),
+				kind: 'subagent',
+				status: 'completed',
+				parentAgentId: agentId,
+				parentThreadId: threadId,
+				parentResourceId: productionChatMemoryResourceId(ownerId),
+				parentPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: ownerId }),
+				title: 'Research',
+				subAgentId: 'sub-agent-1',
+				childThreadId: randomUUID(),
+				result: 'Done',
+				settledAt: new Date(),
+			}),
+		);
+	}
+
+	it("lets a chat-only member read their own thread's background tasks", async () => {
+		const owner = await createOwner();
+		const chatUser = await createMember();
+		const { project, agent } = await createAgent(owner.id);
+		await linkUserToProject(chatUser, project, 'project:chatUser');
+		await activateChat(agent.id);
+		const { thread } = await createThread(agent.id, project.id, chatUser.id, 'n8n_chat_production');
+		const base = `/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}/background-tasks`;
+
+		const empty = await server.authAgentFor(chatUser).get(base).expect(200);
+		expect(empty.body.data.tasks).toEqual([]);
+
+		await seedBackgroundJob(agent.id, thread.id, chatUser.id);
+		const seeded = await server.authAgentFor(chatUser).get(base).expect(200);
+		expect(seeded.body.data.tasks).toEqual([
+			expect.objectContaining({ id: expect.any(String), title: 'Research', status: 'completed' }),
+		]);
+	});
+
+	it("returns an empty list for a session that has no thread yet, and 404s another user's thread", async () => {
+		const owner = await createOwner();
+		const other = await createMember();
+		const { project, agent } = await createAgent(owner.id);
+		await linkUserToProject(other, project, 'project:editor');
+		await activateChat(agent.id);
+		const { thread } = await createThread(agent.id, project.id, owner.id, 'n8n_chat_production');
+
+		const newSessionUrl = `/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${randomUUID()}/background-tasks`;
+		const empty = await server.authAgentFor(owner).get(newSessionUrl).expect(200);
+		expect(empty.body.data.tasks).toEqual([]);
+
+		const foreignUrl = `/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}/background-tasks`;
+		await server.authAgentFor(other).get(foreignUrl).expect(404);
+	});
+
+	it('rejects stopping background tasks while the feature flag is off', async () => {
+		const owner = await createOwner();
+		const { project, agent } = await createAgent(owner.id);
+		await activateChat(agent.id);
+		const { thread } = await createThread(agent.id, project.id, owner.id, 'n8n_chat_production');
+		const url = `/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}/background-tasks/stop`;
+
+		await server.authAgentFor(owner).post(url).expect(400);
 	});
 
 	it('removes production reads when the agent is unpublished', async () => {

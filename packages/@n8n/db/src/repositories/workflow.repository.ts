@@ -214,8 +214,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
+		ctx: OperationContext = {},
 	) {
-		return await this.findOne({
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
 			where,
 			relations: options?.relations,
 		});
@@ -459,6 +460,16 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	async findByIdInContext(workflowId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(WorkflowEntity, {
 			where: { id: workflowId },
+		});
+	}
+
+	async findForContentUpdate(workflowId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
+		return await manager.findOne(WorkflowEntity, {
+			where: { id: workflowId },
+			// Allow transfer FK checks while the transfer holds the owner row.
+			lock: lockRows ? { mode: 'for_no_key_update' } : undefined,
 		});
 	}
 

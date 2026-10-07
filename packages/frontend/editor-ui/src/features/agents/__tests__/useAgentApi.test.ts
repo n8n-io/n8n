@@ -12,6 +12,7 @@ import {
 	getN8nChatThread,
 	removeAgentQueuedMessage,
 	reorderAgentQueuedMessage,
+	resumeAgentBackgroundJob,
 	steerAgentQueuedMessage,
 	stopAgentBackgroundJobs,
 	updateAgentQueuedMessage,
@@ -106,6 +107,54 @@ describe('useAgentApi', () => {
 			method,
 			`/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks${suffix}`,
 		);
+	});
+
+	describe('background task routes on both channels', () => {
+		it.each([
+			{ request: getAgentBackgroundJobs, method: 'GET', suffix: '' },
+			{ request: stopAgentBackgroundJobs, method: 'POST', suffix: '/stop' },
+		])(
+			'builds the n8n-chat background-tasks URL for $method',
+			async ({ request, method, suffix }) => {
+				vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
+				await request(restApiContext, 'project-1', 'agent-1', 'thread-1', 'n8n-chat');
+				expect(makeRestApiRequest).toHaveBeenCalledWith(
+					restApiContext,
+					method,
+					`/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1/background-tasks${suffix}`,
+				);
+			},
+		);
+
+		it('defaults resumeAgentBackgroundJob to the chat channel and switches to n8n-chat', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue(undefined);
+			const payload = { runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } };
+
+			await resumeAgentBackgroundJob(restApiContext, 'project-1', 'agent-1', 'thread-1', payload);
+			await resumeAgentBackgroundJob(
+				restApiContext,
+				'project-1',
+				'agent-1',
+				'thread-1',
+				payload,
+				'n8n-chat',
+			);
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls).toEqual([
+				[
+					restApiContext,
+					'POST',
+					'/projects/project-1/agents/v2/agent-1/chat/thread-1/background-tasks/resume',
+					payload,
+				],
+				[
+					restApiContext,
+					'POST',
+					'/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1/background-tasks/resume',
+					payload,
+				],
+			]);
+		});
 	});
 
 	it('requests the monthly budget spend for the agent', async () => {

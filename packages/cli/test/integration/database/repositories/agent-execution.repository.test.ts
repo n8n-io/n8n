@@ -1576,7 +1576,9 @@ describe('AgentExecutionRepository', () => {
 			timeline,
 		});
 		await repository.update(executionId, {
-			updatedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS - 1),
+			updatedAt: new Date(
+				Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS * 1000 - 1,
+			),
 		});
 		const sweeper = new AgentInterruptedExecutionSweeper(
 			mockLogger(),

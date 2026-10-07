@@ -74,8 +74,8 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	/**
 	 * `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'`
-	 * talks to the published n8n Chat channel. See `capabilities` for what
-	 * that channel cannot do.
+	 * talks to the published n8n Chat channel. See `capabilities` for the
+	 * differences between channels.
 	 */
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
@@ -116,13 +116,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const { showError } = useToast();
 	const channel = params.channel ?? ref<AgentChatChannel>('chat');
 	/**
-	 * What the current channel supports. n8n Chat has no background-task
-	 * route, and no single default thread to fall back to — `previewHistory`
-	 * gates that fallback.
+	 * What the current channel supports. n8n Chat has no single default thread
+	 * to fall back to like the builder's test chat — `previewHistory` gates
+	 * that fallback.
 	 */
 	const capabilities = computed(() => ({
-		backgroundTasks: channel.value !== 'n8n-chat',
 		previewHistory: channel.value !== 'n8n-chat',
+		/** n8n Chat has no session detail view to link a background job's trace to. */
+		traceLinks: channel.value !== 'n8n-chat',
 	}));
 
 	const messages = ref<ChatMessage[]>([]);

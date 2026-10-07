@@ -1,40 +1,57 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService } from '@n8n/backend-services';
 import { DeploymentKeyRepository, isUniqueConstraintError } from '@n8n/db';
 import type { DeploymentKey } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { JWK } from 'jose';
+import { JsonWebTokenError } from 'jsonwebtoken';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { JsonWebKey, KeyObject } from 'node:crypto';
-import { createPrivateKey, generateKeyPair } from 'node:crypto';
+import { createPrivateKey, createPublicKey, generateKeyPair } from 'node:crypto';
 import { promisify } from 'node:util';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, type JwtPayload } from '@/services/jwt.service';
 
 import {
+	ACCESS_TOKEN_TYPES,
 	OAUTH_SIGNING_ALGORITHM,
 	OAUTH_SIGNING_CURVE,
 	OAUTH_SIGNING_KEY_USE,
-	OAUTH_SIGNING_KEYS_CACHE_KEY,
 	RETIRED_SIGNING_KEY_GRACE_MS,
+	SIGNING_KEYS_REFRESH_MS,
+	UNKNOWN_KID_REFRESH_MS,
 } from './oauth-signing-key.constants';
 
 const generateKeyPairAsync = promisify(generateKeyPair);
 
-/** A signing key as the shared cache holds it. It never holds the private key. */
+/** A signing key as process memory holds it. It never holds the private key. */
 type PublishedSigningKey = {
 	kid: string;
 	publicJwk: JWK;
+	publicKey: KeyObject;
 	active: boolean;
 	/** Epoch ms of the last row update. For an inactive key, this is when it was retired. */
 	updatedAt: number;
 };
 
+type PublishedKeyList = {
+	keys: PublishedSigningKey[];
+	/** Epoch ms of the database read. */
+	readAt: number;
+};
+
 type ActiveSigningKey = {
 	kid: string;
 	privateKey: KeyObject;
+};
+
+type VerifyAccessTokenOptions = {
+	/** The `kid` header value. Its type is not checked yet. */
+	kid: unknown;
+	audiences: string[];
+	issuer: string;
 };
 
 /** The only JWK members safe to publish for an EC signing key. */
@@ -47,17 +64,25 @@ const PUBLIC_JWK_FIELDS = ['kty', 'crv', 'x', 'y', 'kid', 'alg', 'use'] as const
  * `deployment_key.id` are the same nanoid, as for the JWE keys.
  *
  * Signing is synchronous: {@link initialize} loads the private key into
- * memory once. The public keys are read through the shared cache, so any
- * process can publish them without the private key.
+ * memory once. Each process also keeps the public keys in memory, so
+ * verification does not call Redis or the database for each token. Workers
+ * read the public keys on first use and never keep a private key. A process
+ * that creates a key tells the others to drop their list.
  */
 @Service()
 export class OAuthSigningKeyService {
 	private activeKey: ActiveSigningKey | null = null;
 
+	private publishedKeys: PublishedKeyList | null = null;
+
+	private pendingRead: Promise<PublishedKeyList> | null = null;
+
+	/** Goes up on each reload, so a read that started before it is not kept. */
+	private keysGeneration = 0;
+
 	constructor(
 		private readonly deploymentKeyRepository: DeploymentKeyRepository,
 		private readonly cipher: Cipher,
-		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
 	) {}
@@ -93,7 +118,7 @@ export class OAuthSigningKeyService {
 		}
 
 		const { kid, privateKey } = this.activeKey;
-		return this.jwtService.signForResourceWithKey(payload, audience, privateKey, {
+		return this.jwtService.signForResource(payload, audience, privateKey, {
 			algorithm: OAUTH_SIGNING_ALGORITHM,
 			header: { alg: OAUTH_SIGNING_ALGORITHM, typ: 'at+jwt', kid },
 		});
@@ -102,37 +127,112 @@ export class OAuthSigningKeyService {
 	/**
 	 * Public JWKs of the active key and of the keys retired within
 	 * {@link RETIRED_SIGNING_KEY_GRACE_MS}. The window is checked on every
-	 * call, so a cached list does not keep a retired key alive.
+	 * call, so the in-memory list does not keep a retired key alive.
 	 */
 	async getPublicJwks(): Promise<JWK[]> {
 		const keys = await this.loadPublishedKeys();
 		return keys.map((key) => key.publicJwk);
 	}
 
-	private async loadPublishedKeys(): Promise<PublishedSigningKey[]> {
-		const keys = await this.cacheService.get<PublishedSigningKey[]>(OAUTH_SIGNING_KEYS_CACHE_KEY, {
-			refreshFn: async () => await this.readPublishedKeys(),
-		});
+	/**
+	 * Verifies a token that carries a `kid` header. The key comes from this
+	 * service's own list, and the algorithm comes from the key, never from
+	 * the token header. There is no fallback to the HMAC secret.
+	 */
+	async verifyAccessToken(
+		token: string,
+		{ kid, audiences, issuer }: VerifyAccessTokenOptions,
+	): Promise<JwtPayload> {
+		if (typeof kid !== 'string' || kid.length === 0) {
+			throw new JsonWebTokenError('kid is invalid');
+		}
+
+		const key = await this.findPublishedKey(kid);
+		if (!key) {
+			throw new JsonWebTokenError('kid is unknown');
+		}
+
+		const verified = this.jwtService.verifyForResource(
+			token,
+			audiences as [string, ...string[]],
+			key.publicKey,
+			{ algorithms: [OAUTH_SIGNING_ALGORITHM], issuer },
+		);
+
+		const { typ } = verified.header;
+		if (typeof typ !== 'string' || !ACCESS_TOKEN_TYPES.some((t) => t === typ.toLowerCase())) {
+			throw new JsonWebTokenError('typ is invalid');
+		}
+
+		const { payload } = verified;
+		if (typeof payload !== 'object' || typeof payload.exp !== 'number') {
+			throw new JsonWebTokenError('exp is missing');
+		}
+
+		return payload;
+	}
+
+	/**
+	 * A kid that is not in the list reads the list again, because another
+	 * process may have created the key since this process read it.
+	 */
+	private async findPublishedKey(kid: string): Promise<PublishedSigningKey | undefined> {
+		const keys = await this.loadPublishedKeys(SIGNING_KEYS_REFRESH_MS);
+		const key = keys.find((k) => k.kid === kid);
+		if (key) return key;
+
+		const refreshed = await this.loadPublishedKeys(UNKNOWN_KID_REFRESH_MS);
+		return refreshed.find((k) => k.kid === kid);
+	}
+
+	/** Reads the list again only when it is older than `maxAgeMs`. */
+	private async loadPublishedKeys(
+		maxAgeMs = SIGNING_KEYS_REFRESH_MS,
+	): Promise<PublishedSigningKey[]> {
+		let list = this.publishedKeys;
+		if (!list || Date.now() - list.readAt >= maxAgeMs) {
+			list = await this.readPublishedKeys();
+		}
 
 		const now = Date.now();
-		return (keys ?? []).filter(
+		return list.keys.filter(
 			(key) => key.active || now - key.updatedAt <= RETIRED_SIGNING_KEY_GRACE_MS,
 		);
 	}
 
-	/** Returns `undefined` when there are no keys, so an empty list is never cached. */
-	private async readPublishedKeys(): Promise<PublishedSigningKey[] | undefined> {
+	/** Concurrent callers share one database read. */
+	private async readPublishedKeys(): Promise<PublishedKeyList> {
+		if (!this.pendingRead) {
+			const generation = this.keysGeneration;
+			this.pendingRead = this.readPublishedKeyRows()
+				.then((list) => {
+					if (generation === this.keysGeneration) this.publishedKeys = list;
+					return list;
+				})
+				.finally(() => {
+					if (generation === this.keysGeneration) this.pendingRead = null;
+				});
+		}
+		return await this.pendingRead;
+	}
+
+	private async readPublishedKeyRows(): Promise<PublishedKeyList> {
 		const rows = await this.deploymentKeyRepository.findOAuthSigningKeys();
 		const keys = rows
 			.filter((row) => row.algorithm === OAUTH_SIGNING_ALGORITHM)
-			.map((row) => ({
-				kid: row.id,
-				publicJwk: toPublicJwk(this.readPrivateJwk(row)),
-				active: row.status === 'active',
-				updatedAt: new Date(row.updatedAt).getTime(),
-			}));
+			.map((row) => {
+				const publicJwk = toPublicJwk(this.readPrivateJwk(row));
+				const { kty, crv, x, y } = publicJwk;
+				return {
+					kid: row.id,
+					publicJwk,
+					publicKey: createPublicKey({ key: { kty, crv, x, y }, format: 'jwk' }),
+					active: row.status === 'active',
+					updatedAt: new Date(row.updatedAt).getTime(),
+				};
+			});
 
-		return keys.length > 0 ? keys : undefined;
+		return { keys, readAt: Date.now() };
 	}
 
 	private readPrivateJwk(row: DeploymentKey): JsonWebKey {
@@ -170,15 +270,50 @@ export class OAuthSigningKeyService {
 				encryptedPrivate,
 				OAUTH_SIGNING_ALGORITHM,
 			);
-			// Another process may hold a list read before this key existed.
-			await this.cacheService.delete(OAUTH_SIGNING_KEYS_CACHE_KEY);
-
-			this.logger.info('Generated new OAuth access-token signing key', { kid: id });
 		} catch (error) {
 			if (!isUniqueConstraintError(error)) throw error;
 
+			// The winner already told the other processes.
 			this.logger.debug('OAuth signing key insert raced with another process; re-reading winner');
+			return;
 		}
+
+		this.logger.info('Generated new OAuth access-token signing key', { kid: id });
+
+		this.reloadPublishedKeys();
+		await this.broadcastReloadSigningKeysCommand();
+	}
+
+	/**
+	 * Not limited to multi-main: workers and webhook processes verify tokens
+	 * too. Outside queue mode the publisher does nothing.
+	 */
+	private async broadcastReloadSigningKeysCommand(): Promise<void> {
+		try {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			await Container.get(Publisher).publishCommand({ command: 'reload-oauth-signing-keys' });
+		} catch (error) {
+			// The key is already stored. The other processes read it when their list expires.
+			this.logger.warn('Failed to tell other processes about the new OAuth signing key', {
+				error,
+			});
+		}
+	}
+
+	/**
+	 * Drops the list. The next call reads it from the database.
+	 *
+	 * This does not reload the private key, which {@link initialize} loads
+	 * once. That is safe only while a key is created only when no key is
+	 * active. Key rotation must also reload the private key here. If it does
+	 * not, a process signs with the retired key, and its tokens fail after
+	 * {@link RETIRED_SIGNING_KEY_GRACE_MS}.
+	 */
+	@OnPubSubEvent('reload-oauth-signing-keys')
+	reloadPublishedKeys(): void {
+		this.keysGeneration++;
+		this.publishedKeys = null;
+		this.pendingRead = null;
 	}
 }
 

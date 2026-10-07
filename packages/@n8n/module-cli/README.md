@@ -5,6 +5,7 @@ Interactive scaffolder for n8n modules.
 ```bash
 pnpm n8n-module-sdk create                    # prompts for name and stack
 pnpm n8n-module-sdk create my-feature --stack=frontend
+pnpm n8n-module-sdk create my-feature --stack=backend
 ```
 
 `create` writes `packages/modules/<name>/<frontend|backend>`.
@@ -28,11 +29,11 @@ the next `format:check` in CI fails on a module nobody touched by hand.
 
 ## Backend
 
-Backend modules can run from a built workspace package at
-`packages/modules/<name>/backend`. Register the package with a lazy import in
-`packages/cli/src/modules/modules.manifest.ts`. The scaffolder does not create
-this package shape yet. Use `@n8n/backend-module-insights` as the current
-example.
+The scaffolder creates a built workspace package at `packages/modules/<name>/backend`. It also
+adds the runtime dependency to `packages/cli/package.json`, adds a lazy import to
+`packages/cli/src/modules/modules.manifest.ts`, and adds the module id to the validated list in
+`@n8n/backend-common`. The generated entrypoint is empty. Add only the lifecycle methods that the
+module needs. Read `scripts/backend-module/backend-module-guide.md` for backend patterns.
 
 ## No build step
 

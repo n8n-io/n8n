@@ -360,9 +360,6 @@ async function moveQueueItem(items: AgentChatQueueItem[], from: number, to: numb
 	if (queueOrder.value !== reordered) return;
 	queueOrder.value = undefined;
 }
-const backgroundJobsActive = computed(
-	() => capabilities.value.backgroundTasks && props.backgroundJobsActive,
-);
 const {
 	jobs: backgroundJobs,
 	respondToApproval,
@@ -372,7 +369,8 @@ const {
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
-	active: () => backgroundJobsActive.value,
+	active: () => props.backgroundJobsActive,
+	channel: () => props.channel,
 	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
 });
 const canStopBackgroundJobs = computed(() =>
@@ -483,7 +481,7 @@ const backgroundJobStatuses = computed(() => ({
 }));
 
 const backgroundApproval = computed(() => {
-	if (!backgroundJobsActive.value) return undefined;
+	if (!props.backgroundJobsActive) return undefined;
 	for (const job of backgroundJobs.value) {
 		if (job.status !== 'suspended' || !job.approval) continue;
 		const input = parseApprovalInput(job.approval.suspendPayload);
@@ -574,7 +572,7 @@ const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
 );
 watch(
 	() =>
-		backgroundJobsActive.value &&
+		props.backgroundJobsActive &&
 		backgroundInProgress.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
@@ -601,7 +599,7 @@ const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
-	() => backgroundJobsActive.value && backgroundJobs.value.length > 0,
+	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
 );
 
 function focusInput(options?: FocusOptions) {
@@ -1281,7 +1279,7 @@ onBeforeUnmount(() => {
 						</ul>
 						<div :class="$style.backgroundJobActions">
 							<N8nLink
-								v-if="continueSessionId"
+								v-if="continueSessionId && capabilities.traceLinks"
 								:to="backgroundTraceRoute"
 								theme="text"
 								size="small"
@@ -1365,7 +1363,9 @@ onBeforeUnmount(() => {
 							v-if="currentPlan"
 							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
 							:plan="currentPlan"
-							:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
+							:trace-route="
+								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+							"
 						/>
 					</template>
 					<template #above>
