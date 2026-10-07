@@ -2,6 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { SystemTaskClass } from '@n8n/decorators';
 
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
+import { isTrimmingEnabled } from '@/services/pruning/workflow-history-compaction.utils';
 
 /**
  * Return the main command's own system tasks, owned by no backend module.
@@ -10,9 +11,6 @@ import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<SystemTaskClass[]> {
 	const { WorkflowHistoryCompactionOptimizeTask } = await import(
 		'@/services/pruning/workflow-history-compaction-optimize.task.js'
-	);
-	const { WorkflowHistoryCompactionTrimTask } = await import(
-		'@/services/pruning/workflow-history-compaction-trim.task.js'
 	);
 	const { WorkflowHistoryPruningTask } = await import(
 		'@/services/pruning/workflow-history-pruning.task.js'
@@ -24,10 +22,16 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 	const tasks: SystemTaskClass[] = [
 		ActivityPruningTask,
 		WorkflowHistoryCompactionOptimizeTask,
-		WorkflowHistoryCompactionTrimTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
 	];
+
+	if (isTrimmingEnabled(globalConfig.workflowHistory, globalConfig.workflowHistoryCompaction)) {
+		const { WorkflowHistoryCompactionTrimTask } = await import(
+			'@/services/pruning/workflow-history-compaction-trim.task.js'
+		);
+		tasks.push(WorkflowHistoryCompactionTrimTask);
+	}
 
 	if (globalConfig.license.autoRenewalEnabled) {
 		const { LicenseRenewalTask } = await import('@/license/license-renewal.task.js');

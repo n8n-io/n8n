@@ -19,6 +19,7 @@ const configWith = ({
 	useWorkflowPublicationService = true,
 	autoRenewalEnabled = true,
 	diagnosticsEnabled = true,
+	historyPruneTimeHours = -1,
 	dbType = 'postgresdb',
 } = {}) =>
 	mock<GlobalConfig>({
@@ -26,6 +27,8 @@ const configWith = ({
 		workflows: { useWorkflowPublicationService },
 		license: { autoRenewalEnabled },
 		diagnostics: { enabled: diagnosticsEnabled },
+		workflowHistory: { pruneTime: historyPruneTimeHours },
+		workflowHistoryCompaction: { trimmingMinimumAgeDays: 6 },
 		database: { type: dbType as GlobalConfig['database']['type'] },
 	});
 
@@ -35,9 +38,9 @@ it('should return every main task when all features are on', async () => {
 	expect(tasks).toEqual([
 		ActivityPruningTask,
 		WorkflowHistoryCompactionOptimizeTask,
-		WorkflowHistoryCompactionTrimTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
+		WorkflowHistoryCompactionTrimTask,
 		LicenseRenewalTask,
 		ExecutionPruningSoftDeleteTask,
 		TelemetryPulseTask,
@@ -57,6 +60,13 @@ it('should leave out execution pruning soft delete when pruning is off', async (
 
 	expect(tasks).not.toContain(ExecutionPruningSoftDeleteTask);
 	expect(tasks).toContain(WorkflowPublicationOutboxCleanupTask);
+});
+
+it('should leave out the history trim when the prune horizon is shorter than the trim window', async () => {
+	const tasks = await mainSystemTasks(configWith({ historyPruneTimeHours: 24 }));
+
+	expect(tasks).not.toContain(WorkflowHistoryCompactionTrimTask);
+	expect(tasks).toContain(WorkflowHistoryCompactionOptimizeTask);
 });
 
 it('should leave out outbox cleanup when the publication service is off', async () => {
