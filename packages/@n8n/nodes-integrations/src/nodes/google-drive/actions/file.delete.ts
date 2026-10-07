@@ -6,7 +6,7 @@ export const deleteFile = file.action('delete', {
 	action: 'Delete a file',
 	summary: 'Move a file or folder to the trash, or delete it for good.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		fileId: ref(driveFileId).title('File'),
 		permanently: t

@@ -16,10 +16,9 @@ const output = t.json().hint('The parsed response body; an array body emits one 
 export const sendRequest = httpRequest.action('send', {
 	// Major 2: an array response gives one item per element, so the action is 1:N, not per-item.
 	// Major 3: the action declares that it reaches the host of `url`.
-	version: 3,
 	// Minor 1: fullResponse and neverError, as the legacy node has them.
 	// Minor 2: schema, the declared body that types the items.
-	minor: 2,
+	version: '3.2.0',
 	action: 'Send a request',
 	summary: 'POST, PUT, PATCH, or DELETE to any HTTP API.',
 	flow: { effect: 'write', cardinality: '1:N', idempotent: false },

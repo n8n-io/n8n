@@ -53,8 +53,8 @@ flowchart LR
 | Version | Of what | Where | At run time |
 |---|---|---|---|
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
-| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets the major and the minor. Freeze sets the patch: the newest published patch of that minor, plus one when the bundle changed. A build without `N8N_NODE_CONTRACTS_REGISTRY_URL` sets patch 0, so `tolerant` does not take that HEAD for a pin of an older bundle of the same minor | Yes: a workflow pins it |
-| credential version | the content | `semver` of the credential manifest; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
+| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Freeze writes it and reads no registry. Publish refuses a published version with other manifest bytes | Yes: a workflow pins it |
+| credential version | the content | `semver` of the credential manifest, from `defineCredential({ version })`; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
 | SDK version | `@n8n/node-sdk` | `sdk` in each manifest | No: for traceability only |
 | n8n version | the product | — | Only through the Node Contract range it supports |
 

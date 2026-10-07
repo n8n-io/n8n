@@ -13,7 +13,7 @@ export const createFolder = folder.action('create', {
 	action: 'Create a folder',
 	summary: 'Create a folder in Google Drive.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		name: t.str().with({ minLength: 1 }).title('Folder Name'),
 		parentId: ref(driveFolderId).title('Parent Folder').default('root'),

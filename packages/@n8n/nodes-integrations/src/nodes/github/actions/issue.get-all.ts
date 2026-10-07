@@ -34,7 +34,7 @@ export const getManyIssues = issueResource.action('getAll', {
 	// A private repository needs it; a public one does not.
 	scopes: ['repo'],
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		filters: filters.default({ state: 'open', sort: 'created', direction: 'desc' }),
 		includePullRequests: t

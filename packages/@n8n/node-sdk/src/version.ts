@@ -3,6 +3,7 @@ import { UnexpectedError, UserError, type IDataObject, type INodeParameters } fr
 
 import {
 	inputCountOf,
+	parseSemver,
 	usesBinary,
 	usesBinaryKeyPattern,
 	usesHostImports,
@@ -17,6 +18,8 @@ import { canonicalJson, hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
 import type { MockRoute } from './testing';
 import { matches } from './validate';
+
+export { parseSemver, type Semver } from './define';
 
 /**
  * A Node Contract version, `major.minor.patch`: the one version of the spec (`spec/wit` and
@@ -245,23 +248,6 @@ export const contractHash = (contract: ContractDocument) =>
 			...(contract.runtime ? { runtime: contract.runtime } : {}),
 		}),
 	);
-
-/** A `major.minor.patch` version. */
-export interface Semver {
-	/** Bumps for a breaking change. */
-	readonly major: number;
-	/** Bumps for an additive change. */
-	readonly minor: number;
-	/** Bumps for a change that keeps the contract. */
-	readonly patch: number;
-}
-
-/** Reads `major.minor.patch`. It throws a `UserError` for any other text, e.g. a prerelease. */
-export function parseSemver(text: string): Semver {
-	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(text);
-	if (!match) throw new UserError(`${text} is not a major.minor.patch version`);
-	return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
-}
 
 /** Negative when `a` is older than `b`. */
 export function compareSemver(a: string, b: string): number {

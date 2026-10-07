@@ -33,7 +33,7 @@ async function senderAddress(http: Http) {
 }
 
 export const sendGmailMessage = message.action('send', {
-	minor: 1,
+	version: '1.1.0',
 	action: 'Send a message',
 	summary: 'Send an email.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },

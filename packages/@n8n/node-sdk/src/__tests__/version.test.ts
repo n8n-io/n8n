@@ -36,13 +36,7 @@ import {
 	type JsonSchema,
 	type Shape,
 } from '../index';
-import {
-	checkPublish,
-	lastPublishedIn,
-	publishAction,
-	publishPackage,
-	replayFixtures,
-} from '../publish';
+import { checkPublish, publishAction, publishPackage, replayFixtures } from '../publish';
 import { isVersionManifest, parseStoreIndex, storeFilesOfDir, storeReader } from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
@@ -413,16 +407,14 @@ describe('generateNodeModule', () => {
 });
 
 interface EchoOptions {
-	version?: number;
-	minor?: number;
+	version?: string;
 	input?: string;
 	text?: string;
 	migrate?: string;
 }
 
 const echoSource = ({
-	version = 1,
-	minor = 0,
+	version = '1.0.0',
 	input = '{ text: str() }',
 	text = 'input.text',
 	migrate = '',
@@ -435,8 +427,7 @@ import { shout } from './shout';
 const demo = defineNode({ id: 'demo', displayName: 'Demo', baseUrl: 'https://demo.test' });
 
 export const echo = demo.action('echo', {
-	version: ${version},
-	minor: ${minor},
+	version: '${version}',
 	action: 'Echo',
 	summary: 'Echo the text.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
@@ -474,20 +465,10 @@ const contextOf = (metadata: ITaskMetadata[] = []) =>
 
 const dirs = { root: '', registry: '', entry: '', shout: '' };
 
-const freeze = async (options: EchoOptions = {}, last?: VersionManifest) => {
+const freeze = async (options: EchoOptions = {}) => {
 	await writeFile(dirs.entry, echoSource(options));
-	const line = last && { version: last.semver, manifest: `sha256:${sha256(last.semver)}` };
-	return await freezeAction(dirs.entry, 'echo', async () =>
-		line ? { ...line, bundle: `sha256:${last.bundleHash}` } : undefined,
-	);
+	return await freezeAction(dirs.entry, 'echo');
 };
-
-/** A frozen version of the same contract with other bytes. */
-const olderBundleOf = (manifest: VersionManifest, semver = manifest.semver): VersionManifest => ({
-	...manifest,
-	semver,
-	bundleHash: sha256('older bytes'),
-});
 
 const writeShout = async (body: string) =>
 	await writeFile(dirs.shout, `export const shout = (text: string) => ${body};\n`);
@@ -504,34 +485,22 @@ afterAll(async () => {
 });
 
 describe('freezeAction', () => {
-	it('computes the patch from the last version of the same major and minor', async () => {
+	it('writes the version of the source, with its major as the contract version', async () => {
 		await writeShout('text.toUpperCase()');
-		const { manifest } = await freeze();
-		const semverAfter = async (last: VersionManifest, options: EchoOptions = {}) =>
-			(await freeze(options, last)).manifest.semver;
-
-		expect(manifest.semver).toBe('1.0.0');
-		expect(await semverAfter(manifest)).toBe('1.0.0');
-		expect(await semverAfter(olderBundleOf(manifest))).toBe('1.0.1');
-		expect(await semverAfter(olderBundleOf(manifest, '1.0.4'))).toBe('1.0.5');
-		expect(await semverAfter(olderBundleOf(manifest, '1.0.4'), { minor: 1 })).toBe('1.1.0');
-	});
-
-	it('asks for the last version of the major and minor of the source', async () => {
-		await writeShout('text.toUpperCase()');
-		const asked: unknown[] = [];
-		await writeFile(dirs.entry, echoSource({ version: 2, minor: 3 }));
-		await freezeAction(dirs.entry, 'echo', async (...head) => {
-			asked.push(head);
-			return undefined;
+		expect((await freeze()).manifest).toMatchObject({ semver: '1.0.0', contract: { version: 1 } });
+		expect((await freeze({ version: '2.3.1' })).manifest).toMatchObject({
+			semver: '2.3.1',
+			contract: { version: 2 },
 		});
-		expect(asked).toEqual([['demo.echo', 2, 3]]);
+		await expect(freeze({ version: '2.3' })).rejects.toThrow(
+			'2.3 is not a major.minor.patch version',
+		);
 	});
 
-	it('takes no patch in the source', () => {
+	it('takes no minor beside the version', () => {
 		demo.action('echo', {
-			// @ts-expect-error freeze computes the patch
-			patch: 1,
+			// @ts-expect-error the version holds the minor
+			minor: 1,
 			action: 'Echo',
 			summary: 'Echo the text.',
 			flow: FLOW,
@@ -550,7 +519,7 @@ describe('checkPublish', () => {
 
 	it('refuses a bump lower than the computed change', async () => {
 		const prev = await v1();
-		const next = await freeze({ minor: 1, input: '{ text: str(), prefix: str() }' });
+		const next = await freeze({ version: '1.1.0', input: '{ text: str(), prefix: str() }' });
 		await expect(checkPublish(prev, next, fixturesOf('HELLO!'))).rejects.toThrow(
 			'is a minor bump from 1.0.0, but the change is major (major: input.prefix added as required)',
 		);
@@ -558,7 +527,7 @@ describe('checkPublish', () => {
 
 	it('refuses a patch whose contract hash moved', async () => {
 		const prev = await v1();
-		const next = await freeze({}, olderBundleOf(prev));
+		const next = await freeze({ version: '1.0.1' });
 		const moved: FrozenAction = {
 			...next,
 			manifest: { ...next.manifest, contractHash: sha256('other contract') },
@@ -576,7 +545,7 @@ describe('checkPublish', () => {
 		const input =
 			"{ text: str(), note: str().optional(), body: t.variant('kind', { a: { a: str(), inner: t.variant('mode', { x: { x: str() } }).title('Inner').optional() } }).title('Body').optional(), rows: t.arr(t.obj({ a: str() })).title('Rows').optional(), meta: t.record(str()).title('Meta').optional() }";
 		const prev = (await freeze({ input })).manifest;
-		const next = await freeze({ input }, olderBundleOf(prev));
+		const next = await freeze({ input, version: '1.0.1' });
 		const withUi = (ui: VersionManifest['ui']): FrozenAction => ({
 			...next,
 			manifest: { ...next.manifest, ui },
@@ -621,7 +590,7 @@ describe('checkPublish', () => {
 		await expect(checkPublish(prev, await freeze(), fixturesOf('HELLO!'))).rejects.toThrow(
 			'must be newer',
 		);
-		const patch = await freeze({}, olderBundleOf(prev));
+		const patch = await freeze({ version: '1.0.1' });
 		await expect(checkPublish(prev, patch, fixturesOf('hello!'))).rejects.toThrow(
 			'demo.echo@1.0.1 fails its fixtures: demo.echo@1.0.1 fixture "echo": output [{"text":"HELLO!"}]',
 		);
@@ -690,7 +659,7 @@ describe('checkPublish', () => {
 
 	it('needs migrate and a fixture pair for a major that breaks old input', async () => {
 		const prev = await v1();
-		const v2 = { version: 2, input: '{ message: str() }', text: 'input.message' };
+		const v2 = { version: '2.0.0', input: '{ message: str() }', text: 'input.message' };
 		const migrate = 'migrate: (fromMajor, params) => ({ message: params.text }),';
 		const executions = [
 			{
@@ -740,7 +709,7 @@ const { obj } = t;
 const str = () => t.str().title('Text');
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 export const ping = demo.trigger('ping', {
-	version: ${version},
+	version: '${version}.0.0',
 	trigger: 'On ping',
 	summary: 'Starts on each ping.',
 	input: ${input},
@@ -829,7 +798,10 @@ export const read = demo.action('read', {
 
 	it('takes a major without migrate when the old input still fits', async () => {
 		const prev = await v1();
-		const next = await freeze({ version: 2, input: '{ text: str(), prefix: str().optional() }' });
+		const next = await freeze({
+			version: '2.0.0',
+			input: '{ text: str(), prefix: str().optional() }',
+		});
 		await expect(checkPublish(prev, next, fixturesOf('HELLO!'))).resolves.toMatchObject({
 			kind: 'minor',
 		});
@@ -902,8 +874,12 @@ describe('published versions', () => {
 		// The same bytes again: a no-op.
 		await expect(publish(fixturesOf('HELLO!'))).resolves.toEqual(v100);
 
-		// The helper changes: the same contract with other bytes ships as the next patch.
+		// The helper changes: other bytes need a new version in the source.
 		await writeShout("text + '?'");
+		await expect(publish(fixturesOf('hello!?'))).rejects.toThrow(
+			'demo.echo@1.0.0 is published with other bytes; bump the version in source',
+		);
+		await writeFile(dirs.entry, echoSource({ version: '1.0.1' }));
 		const v101 = await publish(fixturesOf('hello!?'));
 		expect(v101.semver).toBe('1.0.1');
 		expect(v101.contractHash).toBe(v100.contractHash);
@@ -911,11 +887,14 @@ describe('published versions', () => {
 		await expect(publish(fixturesOf('hello!?'))).resolves.toEqual(v101);
 
 		// A contract change needs a minor or a major in the source.
-		await writeFile(dirs.entry, echoSource({ input: '{ text: str(), prefix: str().optional() }' }));
+		await writeFile(
+			dirs.entry,
+			echoSource({ version: '1.0.2', input: '{ text: str(), prefix: str().optional() }' }),
+		);
 		await expect(publish(fixturesOf('hello!?'))).rejects.toThrow(
 			'demo.echo@1.0.2 is a patch bump from 1.0.1, but the change is minor',
 		);
-		await writeFile(dirs.entry, echoSource());
+		await writeFile(dirs.entry, echoSource({ version: '1.0.1' }));
 
 		const registry = storeReader(storeFilesOfDir(dirs.registry));
 		const opened = await Promise.all(
@@ -939,12 +918,7 @@ describe('published versions', () => {
 		expect(issues.flat()).toEqual([]);
 
 		const old = opened.find(({ manifest }) => manifest.semver === '1.0.0');
-		const indexOnly = {
-			...registry,
-			blob: async () => await Promise.reject(new Error('no blob')),
-			readManifest: async () => await Promise.reject(new Error('no manifest')),
-		};
-		const head = await freezeAction(dirs.entry, 'echo', lastPublishedIn(indexOnly));
+		const head = await freezeAction(dirs.entry, 'echo');
 		expect(head.manifest).toEqual(v101);
 		if (!old) throw new Error('1.0.0 is not published');
 		const pinned = hostRuntime({ versionLoader: async () => frozenOf(old.manifest, old.bundle) });

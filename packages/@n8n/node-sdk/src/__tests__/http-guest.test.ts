@@ -186,7 +186,7 @@ describe('the HTTP guest', () => {
 		const { paging: __, ...properties } = input.properties ?? {};
 		const source = {
 			...JSON.parse(config),
-			minor: 2,
+			version: '1.2.0',
 			contract: { ...contract, input: { ...input, properties } },
 		};
 		const frozen = await freezeHttpGuest({

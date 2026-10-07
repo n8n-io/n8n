@@ -8,7 +8,7 @@ export const createIssue = issueResource.action('create', {
 	summary: 'Open a new issue in a repository.',
 	scopes: ['repo'],
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		title: t.str().with({ minLength: 1 }).title('Title'),
 		body: t.str().hint('Markdown').default('').title('Body'),

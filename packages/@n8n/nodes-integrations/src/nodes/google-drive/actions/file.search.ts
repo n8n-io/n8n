@@ -22,7 +22,7 @@ export const searchFiles = file.action('search', {
 	action: 'Search files and folders',
 	summary: 'Find files and folders by name, folder, and type.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		nameContains: t.str().title('Name Contains').hint('Part of the name').optional(),
 		query: t

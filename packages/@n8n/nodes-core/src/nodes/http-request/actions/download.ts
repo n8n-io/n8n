@@ -6,7 +6,7 @@ import { common, commonUi } from '../request';
 // An own action, not a `get` option: `get` gives JSON items, this gives one file per item.
 export const downloadFile = httpRequest.action('download', {
 	// Major 2: the action declares that it reaches the host of `url`.
-	version: 2,
+	version: '2.0.0',
 	action: 'Download a file',
 	summary: 'GET a URL and keep the response body as a file. The bytes go to n8n binary storage.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },

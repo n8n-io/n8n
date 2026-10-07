@@ -14,7 +14,7 @@ import {
 
 export const getGmailMessage = message.action('get', {
 	// Major 2: `simplify: false` gives the full parsed mail.
-	version: 2,
+	version: '2.0.0',
 	action: 'Get a message',
 	summary: 'Get one message by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },

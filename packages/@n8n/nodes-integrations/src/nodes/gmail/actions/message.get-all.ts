@@ -62,11 +62,10 @@ const idPage = t
 
 export const getManyGmailMessages = message.action('getAll', {
 	// Major 2: `simplify: false` gives the full parsed mail.
-	version: 2,
+	version: '2.1.0',
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
-	minor: 1,
 	input: {
 		filters: filters.optional(),
 		paging,

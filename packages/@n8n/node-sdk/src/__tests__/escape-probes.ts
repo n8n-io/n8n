@@ -150,7 +150,7 @@ export const parsersProbe = spec(
 	{ input: { file: binary() }, imports: ['parsers'] },
 );
 export const migrateProbe = spec(async ({ input }) => ({ value: input.message }), {
-	version: 2,
+	version: '2.0.0',
 	input: { message: str() },
 	migrate: (fromMajor: number, params: any) => ({ message: String(params.text) }),
 });

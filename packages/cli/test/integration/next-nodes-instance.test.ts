@@ -297,7 +297,7 @@ describe('next node versions of this instance', () => {
 			const { semver, config } = await service().configOf(ID);
 
 			expect(semver).toBe('2.0.0');
-			expect(config).toMatchObject({ minor: 0, contract: { id: ID, version: 2 } });
+			expect(config).toMatchObject({ version: '2.0.0', contract: { id: ID, version: 2 } });
 			await expect(service().configOf('acme.unknown')).rejects.toThrow('has not published');
 		});
 

@@ -120,7 +120,7 @@ const input = {
 
 export const readSheetRows = sheet.action('read', {
 	// Minor 1: an ID of any length, and the ID after /d/ in a URL.
-	minor: 3,
+	version: '1.3.0',
 	action: 'Get rows',
 	summary: 'Read rows, optionally only those matching column filters.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

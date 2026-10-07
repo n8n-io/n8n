@@ -10,7 +10,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
-import type { FrozenAction, LastVersionOf } from '@n8n/node-sdk/freeze';
+import type { FrozenAction } from '@n8n/node-sdk/freeze';
 import type { ExecutionFixture, VersionManifest } from '@n8n/node-sdk/registry';
 import { isRecord } from '@n8n/utils/is-record';
 import type { JsonSchema } from '@n8n/workflow-sdk';
@@ -54,8 +54,6 @@ interface CustomVersion {
 	readonly manifest: VersionManifest;
 }
 
-const majorMinorOf = (semver: string) => semver.split('.').map(Number);
-
 /**
  * The custom actions of this instance: HTTP guest versions that a user made in the form. They are
  * `private` rows of the node contracts store, so the contract loader serves them as node types
@@ -88,21 +86,16 @@ export class NextNodesInstanceService {
 			.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 	}
 
-	/** The newest custom version of an id, of one major and minor when given. */
+	/** The newest custom version of an id, of one major when given. */
 	private newestOf(
 		versions: readonly CustomVersion[],
 		id: string,
 		major?: number,
-		minor?: number,
 	): CustomVersion | undefined {
-		return versions.find(({ manifest }) => {
-			const [, ofMinor] = majorMinorOf(manifest.semver);
-			return (
-				manifest.id === id &&
-				(major === undefined || manifest.contract.version === major) &&
-				(minor === undefined || ofMinor === minor)
-			);
-		});
+		return versions.find(
+			({ manifest }) =>
+				manifest.id === id && (major === undefined || manifest.contract.version === major),
+		);
 	}
 
 	/** The versions of this instance, newest first. */
@@ -205,38 +198,34 @@ export class NextNodesInstanceService {
 		config: unknown,
 		versions: readonly CustomVersion[],
 	): Promise<FrozenAction> {
-		const lastOf: LastVersionOf = async (id, major, minor) => {
-			const last = this.newestOf(versions, id, major, minor);
-			return (
-				last && {
-					version: last.manifest.semver,
-					manifest: last.row.digest,
-					bundle: `sha256:${last.manifest.bundleHash}`,
-				}
-			);
-		};
 		const contract = isRecord(config) && isRecord(config.contract) ? config.contract : undefined;
 		const latest =
 			typeof contract?.id === 'string' ? this.newestOf(versions, contract.id) : undefined;
-		if (!isRecord(config) || !contract || !latest) return await this.freeze(config, lastOf);
-		const [major = 1, minor = 0] = majorMinorOf(latest.manifest.semver);
-		const as = async (version: number, nextMinor: number) =>
-			await this.freeze(
-				{ ...config, minor: nextMinor, contract: { ...contract, version } },
-				lastOf,
-			);
-		const same = await as(major, minor);
-		const { diffContracts } = await import('@n8n/node-sdk/registry');
+		if (!isRecord(config) || !contract || !latest) return await this.freeze(config);
+		const { diffContracts, parseSemver } = await import('@n8n/node-sdk/registry');
+		const { major, minor, patch } = parseSemver(latest.manifest.semver);
+		const as = async (version: number, nextMinor: number, nextPatch: number) =>
+			await this.freeze({
+				...config,
+				version: `${version}.${nextMinor}.${nextPatch}`,
+				contract: { ...contract, version },
+			});
+		const same = await as(major, minor, patch);
 		const diff = diffContracts(latest.manifest.contract, same.manifest.contract);
-		if (diff.kind === 'patch') return same;
-		if (diff.kind === 'minor') return await as(major, minor + 1);
+		// The same config keeps its version, so publish refuses it as known.
+		if (diff.kind === 'patch') {
+			return same.manifest.bundleHash === latest.manifest.bundleHash
+				? same
+				: await as(major, minor, patch + 1);
+		}
+		if (diff.kind === 'minor') return await as(major, minor + 1, 0);
 		if (diff.breaksInput) {
 			const changes = diff.changes.map(({ text }) => text).join('; ');
 			throw new UserError(
 				`This change stops the action from running in workflows that use it (${changes}). Keep the inputs, or make a new action.`,
 			);
 		}
-		return await as(major + 1, 0);
+		return await as(major + 1, 0, 0);
 	}
 
 	/**
@@ -382,7 +371,7 @@ export class NextNodesInstanceService {
 	 * Freezes a config with the shipped node it extends and n8n's credential types, with the hosts
 	 * of their credential manifests, as the runtime takes them.
 	 */
-	private async freeze(config: unknown, lastOf?: LastVersionOf) {
+	private async freeze(config: unknown) {
 		const { freezeHttpGuest } = await import('@n8n/node-sdk/freeze');
 		const typeOf = customActionCredentialTypeOf((name) => this.credentialTypes.recognizes(name));
 		const contract = isRecord(config) && isRecord(config.contract) ? config.contract : {};
@@ -398,7 +387,6 @@ export class NextNodesInstanceService {
 			),
 		);
 		return await freezeHttpGuest(config, {
-			lastOf,
 			parentOf: parentNode,
 			credentialTypeOf: (name) => {
 				const type = typeOf(name);

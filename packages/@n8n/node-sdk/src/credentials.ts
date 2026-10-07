@@ -569,8 +569,8 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	/** The n8n type name. Saved credentials and workflows refer to it, so it never changes. */
 	readonly name: Name;
 	/**
-	 * `major.minor.0` from the source. Freeze computes the patch of the credential manifest. Actions
-	 * pin the major. A compat type has none: its legacy class defines it.
+	 * `major.minor.patch` from the source. Actions pin the major. A compat type has none: its
+	 * legacy class defines it.
 	 */
 	readonly semver?: string;
 	/** The type name in the n8n UI, e.g. `Notion API`. */
@@ -1067,19 +1067,13 @@ export function defineCredential<
 	/** The name of the legacy n8n type this replaces, e.g. `notionApi`, so stored data resolves. */
 	readonly legacyName?: Name;
 	/**
-	 * The major. Bump it when stored data or a saved workflow can break: a new required field, a
-	 * new host, a new scheme.
+	 * `major.minor.patch`. Bump the major when stored data or a saved workflow can break: a new
+	 * required field, a new host, a new scheme. Bump the minor for an additive change, e.g. a new
+	 * optional field, and the patch for a change of text only.
 	 *
-	 * @defaultValue `1`
+	 * @defaultValue `'1.0.0'`
 	 */
-	readonly version?: number;
-	/**
-	 * Bump for an additive change, e.g. a new optional field. A change of text only needs no
-	 * bump: freeze takes the next patch.
-	 *
-	 * @defaultValue `0`
-	 */
-	readonly minor?: number;
+	readonly version?: `${number}.${number}.${number}`;
 	/** The type name in the n8n UI, e.g. `Notion API`. */
 	readonly displayName: string;
 	/** The n8n docs page, e.g. `notion`. */
@@ -1141,7 +1135,7 @@ export function defineCredential<
 	return checked({
 		id: spec.id,
 		name,
-		semver: `${spec.version ?? 1}.${spec.minor ?? 0}.0`,
+		semver: spec.version ?? '1.0.0',
 		displayName: spec.displayName,
 		...(spec.docs ? { documentationUrl: spec.docs } : {}),
 		...(spec.fields ? { fields: spec.fields } : {}),

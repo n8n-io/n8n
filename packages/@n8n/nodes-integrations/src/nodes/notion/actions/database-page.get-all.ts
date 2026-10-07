@@ -218,7 +218,7 @@ const queryPage = t
 	.with({ additionalProperties: true });
 
 export const getManyDatabasePages = databasePage.action('getAll', {
-	minor: 4,
+	version: '1.4.0',
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

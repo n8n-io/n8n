@@ -8,7 +8,7 @@ export const updateIssue = issueResource.action('update', {
 	summary: 'Change the title, body, state, labels or assignees of an issue. Unset fields stay.',
 	scopes: ['repo'],
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		issueNumber: t
 			.int()

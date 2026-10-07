@@ -21,7 +21,7 @@ import {
 
 export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 	// Minor 1: an ID of any length, and the ID after /d/ in a URL.
-	minor: 3,
+	version: '1.3.0',
 	action: 'Append or update row',
 	summary: 'Upsert: update the row whose matchOn column equals the value in values, else append.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },

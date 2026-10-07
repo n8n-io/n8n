@@ -116,8 +116,8 @@ An author writes `defineNode` and one `node.action(...)` per operation, then run
 `pnpm freeze` in each first-party package (part of `build`) calls `freezePackage`. It finds the
 contracts in the exports of `src/nodes/<node>/actions/*.ts`, with no list. It bundles each action
 and writes its manifest, bundle and fixtures into `dist/store`.
-`pnpm publish:contracts` calls `publishPackage`. Freeze sets the patch number and the lowest
-Node Contract version that the bundle needs. The same source gives the same bytes. The release
+`pnpm publish:contracts` calls `publishPackage`. Freeze takes the version from the source and
+sets the lowest Node Contract version that the bundle needs. The same source gives the same bytes. The release
 ships this store, so its versions are first-party with no key check. Details:
 [node-contract.md, Versions](node-contract.md#versions) and
 [Store layout](node-contract.md#store-layout).
@@ -225,7 +225,7 @@ and `contractNodeLoadersOf` gives it to the loader of each first-party package.
 |---|---|---|---|
 | Node Contract | `2.9.0` | The spec. Freeze writes the lowest that a bundle needs | Whether this n8n can run the bundle |
 | Action major | `notion.databasePage.getAll@1` | The author; a new permission forces a new major | The n8n `typeVersion`. A saved node keeps its major |
-| Action minor and patch | `1.2.3` | The author (minor), freeze (patch) | Which bundle a node runs inside its major |
+| Action minor and patch | `1.2.3` | The author, in the source | Which bundle a node runs inside its major |
 | Pin | `INode.contract` (`{ version, digest }`) | The host, at each save | The exact version that a saved node runs |
 
 A new permission always needs a new major, so an update never widens what a node may do. Full

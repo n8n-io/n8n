@@ -22,16 +22,7 @@ import {
 	type NativeManifest,
 } from './manifest';
 import { evaluateBundle, isHostModule, VALIDATOR_MODULE } from './runtime';
-import {
-	addToStore,
-	embeddedStoreDirOf,
-	manifestTextOf,
-	storeFilesOfUrl,
-	storeReader,
-	type SourcePackage,
-	type StoreReader,
-	type StoreRecord,
-} from './store';
+import { addToStore, embeddedStoreDirOf, manifestTextOf, type SourcePackage } from './store';
 import { matches } from './validate';
 import {
 	compareSemver,
@@ -172,66 +163,14 @@ export interface FrozenAction {
 	readonly action: Action | Trigger;
 }
 
-/**
- * The index line of the newest frozen version of an id in one major and minor, e.g. the newest
- * published one. Freeze computes the patch from it.
- */
-export type LastVersionOf = (
-	id: string,
-	major: number,
-	minor: number,
-) => Promise<Pick<StoreRecord, 'version' | 'manifest' | 'bundle'> | undefined>;
-
-/**
- * The source holds the major and the minor, because they are decisions. The patch follows the
- * last version: the same content keeps its version, other content takes the next patch. The
- * content of a version with a bundle is the bundle; of any other version, the manifest. A change
- * without a new minor also takes the next patch, and the publish gate refuses it.
- */
-async function semverOf(
-	{ id, major, minor }: { readonly id: string; readonly major: number; readonly minor: number },
-	lastOf: LastVersionOf | undefined,
-	isSame: (last: Pick<StoreRecord, 'manifest' | 'bundle'>, version: string) => boolean,
-) {
-	const last = await lastOf?.(id, major, minor);
-	if (!last) return `${major}.${minor}.0`;
-	const previous = parseSemver(last.version);
-	const patch =
-		previous.major !== major || previous.minor !== minor
-			? 0
-			: previous.patch + (isSame(last, last.version) ? 0 : 1);
-	return `${major}.${minor}.${patch}`;
-}
-
-const manifestDigestOf = (manifest: CredentialManifest | NativeManifest) =>
-	`sha256:${sha256(manifestTextOf(manifest))}`;
-
-/** The version of a manifest without a bundle: the same manifest bytes keep the last version. */
-async function bundleLessSemverOf<M extends CredentialManifest | NativeManifest>(
-	manifestAt: (semver: string) => M,
-	major: number,
-	minor: number,
-	lastOf: LastVersionOf | undefined,
-): Promise<M> {
-	const { id } = manifestAt(`${major}.${minor}.0`);
-	const semver = await semverOf(
-		{ id, major, minor },
-		lastOf,
-		(last, version) => last.manifest === manifestDigestOf(manifestAt(version)),
-	);
-	return manifestAt(semver);
-}
+/** The version that the source sets. Only an action that the host makes has none. */
+const semverOf = (source: Action | Trigger) => source.semver ?? `${source.version}.0.0`;
 
 /**
  * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
- * same bytes, so a release build reproduces the HEAD bundle the registry holds. Without `lastOf`,
- * no version is frozen before, so the patch is 0.
+ * same bytes, so a release build reproduces the HEAD bundle the registry holds.
  */
-export async function freezeAction(
-	entryFile: string,
-	exportName: string,
-	lastOf?: LastVersionOf,
-): Promise<FrozenAction> {
+export async function freezeAction(entryFile: string, exportName: string): Promise<FrozenAction> {
 	const { build } = await import('esbuild');
 	const result = await build({
 		stdin: {
@@ -303,11 +242,6 @@ export async function freezeAction(
 	}
 	const credentials = credentialPinsOf(action);
 	const bundleHash = sha256(bundle);
-	const semver = await semverOf(
-		{ id: action.id, major: action.version, minor: action.minor ?? 0 },
-		lastOf,
-		(last) => last.bundle === `sha256:${bundleHash}`,
-	);
 	const errorOf = typeof action.node.errorOf === 'string' ? action.node.errorOf : undefined;
 	const required = requiredNodeContractOf(
 		contract,
@@ -317,7 +251,7 @@ export async function freezeAction(
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
 		id: action.id,
-		semver,
+		semver: semverOf(action),
 		// The host gives the validator module since 2.9.0.
 		nodeContract:
 			imported.includes(VALIDATOR_MODULE) && compareSemver(required, '2.9.0') < 0
@@ -342,8 +276,6 @@ export async function freezeAction(
 export async function freezeHttpGuest(
 	config: unknown,
 	options: {
-		/** The newest version of the same major and minor, for the patch. Absent: patch 0. */
-		readonly lastOf?: LastVersionOf;
 		/** The node that a config `extends`, as a copy takes it. Absent: no config may extend. */
 		readonly parentOf?: (nodeId: string) => ParentNode | undefined;
 		/** The icon of the node that a config extends, e.g. `node:n8n-nodes-base.github`. */
@@ -373,11 +305,7 @@ export async function freezeHttpGuest(
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
 		id: action.id,
-		semver: await semverOf(
-			{ id: action.id, major: action.version, minor: action.minor ?? 0 },
-			options.lastOf,
-			(last) => last.bundle === `sha256:${bundleHash}`,
-		),
+		semver: semverOf(action),
 		nodeContract: HTTP_GUEST_NODE_CONTRACT,
 		sdk: sdkVersion(),
 		...(credentials.length ? { credentials } : {}),
@@ -522,31 +450,17 @@ function assertCredentialHost(baseUrl: string | undefined, type: AnyCredentialTy
 	}
 }
 
-/**
- * The credential manifest of a type, or none for a compat type. The type gives the major and the
- * minor; the patch follows `lastOf`, as for an action.
- */
-export async function freezeCredential(
-	type: AnyCredentialType,
-	lastOf?: LastVersionOf,
-): Promise<CredentialManifest | undefined> {
-	const sdk = sdkVersion();
-	const head = credentialManifestOf(type, sdk);
-	if (!head) return undefined;
-	const { major, minor } = parseSemver(head.semver);
-	return await bundleLessSemverOf((semver) => ({ ...head, semver }), major, minor, lastOf);
-}
+/** The credential manifest of a type, with the version of its source, or none for a compat type. */
+export const freezeCredential = (type: AnyCredentialType): CredentialManifest | undefined =>
+	credentialManifestOf(type, sdkVersion());
 
 /**
  * The manifest of a native action or trigger: its contract and the legacy node that runs it. It
- * has no bundle. The patch follows `lastOf`, as for an action.
+ * has no bundle.
  *
  * @throws a `UserError` for a contract that is not native.
  */
-export async function freezeNative(
-	source: Action | Trigger,
-	lastOf?: LastVersionOf,
-): Promise<NativeManifest> {
+export function freezeNative(source: Action | Trigger): NativeManifest {
 	const binding = source.native;
 	const contract = toContract(source);
 	const kind = manifestKindOf(contract);
@@ -557,13 +471,12 @@ export async function freezeNative(
 	const trigger = 'kind' in source && source.kind === 'native' ? source : undefined;
 	const reply = trigger?.reply;
 	const replyContract = trigger && replyContractOf(trigger);
-	const sdk = sdkVersion();
-	const manifestAt = (semver: string): NativeManifest => ({
+	return {
 		kind,
 		id: source.id,
-		semver,
+		semver: semverOf(source),
 		nodeContract: '2.5.0',
-		sdk,
+		sdk: sdkVersion(),
 		...(credentials.length ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		contract,
@@ -577,21 +490,8 @@ export async function freezeNative(
 					},
 				}
 			: {}),
-	});
-	return await bundleLessSemverOf(manifestAt, source.version, source.minor ?? 0, lastOf);
+	};
 }
-
-/** The index line of the newest version of an id in one major and minor in a store. It reads the index only. */
-export const lastPublishedIn =
-	(store: StoreReader): LastVersionOf =>
-	async (id, major, minor) =>
-		(await store.records(id))
-			.filter(({ version }) => {
-				const semver = parseSemver(version);
-				return semver.major === major && semver.minor === minor;
-			})
-			.sort((a, b) => compareSemver(a.version, b.version))
-			.at(-1);
 
 /**
  * The credential types of contracts that are not compat types, one for each id. Each one has a
@@ -695,30 +595,20 @@ export interface FrozenPackage {
  * Freezes the HEAD of each action, trigger, credential type and native contract of a package
  * into the store in `outDir`, by default the embedded store of the package. It replaces the
  * store in `outDir`: n8n loads every version there, so a removed contract must not stay from an
- * older build. The registry is the one record of published patches: with
- * `N8N_NODE_CONTRACTS_REGISTRY_URL`, each patch follows the newest published one, and without
- * it, each HEAD is patch 0. It finds the contracts in the action files (`contractsOfPackage`).
+ * older build. Each version comes from the source. It finds the contracts in the action files
+ * (`contractsOfPackage`).
  */
 export async function freezePackage(
 	pkg: Pick<SourcePackage, 'name' | 'dir'>,
 	outDir = embeddedStoreDirOf(pkg),
 ): Promise<FrozenPackage> {
-	const registryUrl = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
-	const lastOf = registryUrl
-		? lastPublishedIn(storeReader(storeFilesOfUrl(registryUrl, async (url) => await fetch(url))))
-		: undefined;
 	const { entries, natives: sources } = await contractsOfPackage(pkg);
 	const types = credentialTypesOf([...entries.map(({ action }) => action), ...sources]);
-	const [frozen, credentials, natives] = await Promise.all([
-		Promise.all(
-			entries.map(
-				async ({ entryFile, exportName }) => await freezeAction(entryFile, exportName, lastOf),
-			),
-		),
-		Promise.all(types.map(async (type) => await freezeCredential(type, lastOf))),
-		Promise.all(sources.map(async (native) => await freezeNative(native, lastOf))),
-	]);
-	const credentialManifests = credentials.flatMap((manifest) => manifest ?? []);
+	const frozen = await Promise.all(
+		entries.map(async ({ entryFile, exportName }) => await freezeAction(entryFile, exportName)),
+	);
+	const credentialManifests = types.flatMap((type) => freezeCredential(type) ?? []);
+	const natives = sources.map(freezeNative);
 	rmSync(outDir, { recursive: true, force: true });
 	await addToStore(outDir, [
 		...frozen.map(({ manifest, bundle }) => ({ manifestText: manifestTextOf(manifest), bundle })),

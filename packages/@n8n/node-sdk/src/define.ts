@@ -1785,19 +1785,35 @@ export interface ActionRuntime {
 	readonly addons?: readonly string[];
 }
 
+/** A `major.minor.patch` version. */
+export interface Semver {
+	/** Bumps for a breaking change. */
+	readonly major: number;
+	/** Bumps for an additive change. */
+	readonly minor: number;
+	/** Bumps for a change that keeps the contract. */
+	readonly patch: number;
+}
+
+/** Reads `major.minor.patch`. It throws a `UserError` for any other text, e.g. a prerelease. */
+export function parseSemver(text: string): Semver {
+	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(text);
+	if (!match) throw new UserError(`${text} is not a major.minor.patch version`);
+	return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
+}
+
+/** The version that the author writes. A built contract keeps the major as `version`. */
+interface SourceVersion {
+	/**
+	 * `major.minor.patch`. The major is the n8n `typeVersion`: bump it for a breaking contract
+	 * change. Bump the minor for an additive contract change, and the patch for any other change.
+	 *
+	 * @defaultValue `'1.0.0'`
+	 */
+	readonly version?: `${number}.${number}.${number}`;
+}
+
 interface ContractSpec<Own extends Shape, O extends AnySchema, Sc extends string> {
-	/**
-	 * Integer major. It is the n8n `typeVersion`. Bump it for a breaking contract change.
-	 *
-	 * @defaultValue `1`
-	 */
-	readonly version?: number;
-	/**
-	 * Bump for an additive contract change. Freeze computes the patch from the bundle.
-	 *
-	 * @defaultValue `0`
-	 */
-	readonly minor?: number;
 	/** One sentence for agents and search, at most 120 characters. */
 	readonly summary: string;
 	/** The scopes of the node's credential that this contract needs. */
@@ -1920,7 +1936,8 @@ export type ActionSpec<
 	R extends AnySchema = AnySchema,
 	Cr = unknown,
 > = ActionSpecBase<Own, Full, O, F, Sc, Outs, H, Im, Ins> &
-	ActionBinding<Full, O, F, P, Outs, Im, Ins, R, Cr>;
+	ActionBinding<Full, O, F, P, Outs, Im, Ins, R, Cr> &
+	SourceVersion;
 
 /** What every contract has after its node built it. */
 interface Built {
@@ -1934,8 +1951,13 @@ interface Built {
 	readonly resourceFields?: readonly string[];
 	/** The operation, or the trigger event. */
 	readonly operation: string;
-	/** The major: `version` of the spec, or 1. */
+	/** The major of `semver`. */
 	readonly version: number;
+	/**
+	 * `version` of the spec, or `1.0.0`. An action that the host makes from a manifest has none:
+	 * the manifest has the version.
+	 */
+	readonly semver?: string;
 	/** The JSON Schema of the full input, the resource input included. */
 	readonly inputSchema: JsonSchema;
 	/** The names of the credential types of the node. */
@@ -1955,7 +1977,9 @@ export type Action<
 	Outs extends ActionOutputs | undefined = ActionOutputs | undefined,
 	Im extends readonly HostImport[] = readonly HostImport[],
 	Ins extends ActionInputs | undefined = ActionInputs | undefined,
-> = ActionSpec<S, S, O, F, string, string, Outs, string, Im, Ins> & Built;
+> = ActionSpecBase<S, S, O, F, string, Outs, string, Im, Ins> &
+	ActionBinding<S, O, F, string, Outs, Im, Ins> &
+	Built;
 
 type TriggerHead<Own extends Shape, O extends AnySchema, Sc extends string> = ContractSpec<
 	Own,
@@ -2069,10 +2093,11 @@ export type TriggerSpec<
 	K extends string = string,
 	T = unknown,
 	P = unknown,
-> = TriggerHead<Own, O, Sc> & {
-	/** The layout and widgets of the n8n form, as the `ui` of an action. */
-	readonly ui?: ActionUi<NoInfer<Full>>;
-} & (
+> = TriggerHead<Own, O, Sc> &
+	SourceVersion & {
+		/** The layout and widgets of the n8n form, as the `ui` of an action. */
+		readonly ui?: ActionUi<NoInfer<Full>>;
+	} & (
 		| (WebhookSource<RunInput<Full>, Infer<O>, K> & EmitRule<RunInput<Full>, Infer<O>>)
 		| PollSource<RunInput<Full>, T, Infer<O>, P>
 		| NativeSource<keyof Full & string>
@@ -2132,13 +2157,14 @@ export interface ResourcePath {
 function built(
 	node: NodeDefinition,
 	path: ActionPath,
-	spec: Pick<ContractSpec<Shape, AnySchema, string>, 'version' | 'input' | 'scopes'>,
+	spec: Pick<ContractSpec<Shape, AnySchema, string>, 'input' | 'scopes'> & SourceVersion,
 ) {
-	const version = spec.version ?? 1;
+	const semver = spec.version ?? '1.0.0';
 	return {
 		node,
 		id: [node.id, path.resource, path.operation].filter((part) => part !== undefined).join('.'),
-		version,
+		version: parseSemver(semver).major,
+		semver,
 		inputSchema: t.obj(spec.input).json,
 		credentialTypes: node.credential?.types.map(({ name }) => name) ?? [],
 		scopes: spec.scopes ?? [],
@@ -2213,18 +2239,19 @@ export type ProviderSpec<
 	K extends ProviderKind,
 	Sc extends string = string,
 	H extends string = string,
-> = Omit<ContractSpec<Own, AnySchema, Sc>, 'output'> & {
-	/** The label users pick, e.g. "OpenAI Chat Model". */
-	readonly action: string;
-	/** The capability kind that the provider gives, e.g. `chatModel`. */
-	readonly provides: K;
-	/** More hosts that the capability may send requests to. Without it, only the base URL hosts. */
-	readonly egress?: Egress<RunInput<Full>, H>;
-	/** The layout and widgets of the n8n form, as the `ui` of an action. */
-	readonly ui?: ActionUi<NoInfer<Full>>;
-	/** Requests of the capability use the credential and the egress of the provider. */
-	provide(context: RunContext<RunInput<Full>>): Promise<ProviderCapabilities[K]>;
-};
+> = Omit<ContractSpec<Own, AnySchema, Sc>, 'output'> &
+	SourceVersion & {
+		/** The label users pick, e.g. "OpenAI Chat Model". */
+		readonly action: string;
+		/** The capability kind that the provider gives, e.g. `chatModel`. */
+		readonly provides: K;
+		/** More hosts that the capability may send requests to. Without it, only the base URL hosts. */
+		readonly egress?: Egress<RunInput<Full>, H>;
+		/** The layout and widgets of the n8n form, as the `ui` of an action. */
+		readonly ui?: ActionUi<NoInfer<Full>>;
+		/** Requests of the capability use the credential and the egress of the provider. */
+		provide(context: RunContext<RunInput<Full>>): Promise<ProviderCapabilities[K]>;
+	};
 
 type NodeProvider<N extends NodeDefinition, RS extends Shape, Path extends ActionPath> = <
 	S extends Shape,

@@ -8,7 +8,6 @@ import { credential, defineCredential, field } from '../entry/credentials';
 import { defineNode, t } from '../index';
 import {
 	credentialChangeOf,
-	lastPublishedIn,
 	publishAction,
 	publishCredential,
 	publishNative,
@@ -32,16 +31,15 @@ import {
 	type StoreStatusRecord,
 } from '../store';
 
-const echoSource = (minor: number, text: string) => `
+const echoSource = (version: string, text: string) => `
 import { defineNode, t } from '@n8n/node-sdk';
 
 export const echo = defineNode({ id: 'demo', displayName: 'Demo' }).action('echo', {
-	version: 1,
-	minor: ${minor},
+	version: '${version}',
 	action: 'Echo',
 	summary: 'Echo the text.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
-	input: { text: t.str().title('Text')${minor > 0 ? ", suffix: t.str().title('Suffix').optional()" : ''} },
+	input: { text: t.str().title('Text')${/^\d+\.0\./.test(version) ? '' : ", suffix: t.str().title('Suffix').optional()"} },
 	output: t.obj({ text: t.str() }),
 	egress: { hosts: ['b.example.com', 'a.example.com'] },
 	async run({ input }) {
@@ -59,7 +57,11 @@ const token = defineCredential({
 	baseUrl: 'https://a.example.com',
 });
 
-const tokenWith = (spec: { displayName?: string; hosts?: string[]; version?: number }) =>
+const tokenWith = (spec: {
+	displayName?: string;
+	hosts?: string[];
+	version?: `${number}.${number}.${number}`;
+}) =>
 	defineCredential({
 		id: 'demo.token',
 		legacyName: 'demoApi',
@@ -71,8 +73,14 @@ const tokenWith = (spec: { displayName?: string; hosts?: string[]; version?: num
 		hosts: spec.hosts,
 	});
 
-const hookWith = (summary: string, version = 2.2, path = t.str().title('Path')) =>
+const hookWith = (
+	summary: string,
+	version = 2.2,
+	path = t.str().title('Path'),
+	semver: `${number}.${number}.${number}` = '1.0.0',
+) =>
 	defineNode({ id: 'demo', displayName: 'Demo' }).trigger('hook', {
+		version: semver,
 		trigger: 'On call',
 		summary,
 		input: { path },
@@ -89,8 +97,8 @@ const otherKey = generateKeyPairSync('ed25519')
 
 const dirs = { root: '', entry: '' };
 
-const freeze = async (minor = 0, text = 'input.text') => {
-	await writeFile(dirs.entry, echoSource(minor, text));
+const freeze = async (version = '1.0.0', text = 'input.text') => {
+	await writeFile(dirs.entry, echoSource(version, text));
 	return await freezeAction(dirs.entry, 'echo');
 };
 
@@ -126,7 +134,7 @@ afterAll(async () => {
 describe('the store layout', () => {
 	it('gives back the frozen manifest and bundle bytes', async () => {
 		const frozen = await freeze();
-		const credential = await freezeCredential(token);
+		const credential = freezeCredential(token);
 		if (!credential) throw new Error('demo.token has no manifest');
 		const dir = await newDir('round-trip');
 		const [record] = await addToStore(dir, [
@@ -214,21 +222,21 @@ describe('the store layout', () => {
 		await addToStore(dir, [storeVersionOf(frozen)]);
 		expect(await readFile(path.join(dir, storeIndexFileOf('demo.echo')), 'utf8')).toBe(index);
 		await expect(
-			addToStore(dir, [storeVersionOf(await freeze(0, "input.text + '!'"))]),
+			addToStore(dir, [storeVersionOf(await freeze('1.0.0', "input.text + '!'"))]),
 		).rejects.toThrow('demo.echo@1.0.0 is in the store with other bytes');
 	});
 
 	it('keeps a stored credential version and refuses other bytes for it', async () => {
 		const dir = await newDir('immutable-credential');
-		const textOf = async (type: Parameters<typeof freezeCredential>[0]) => {
-			const manifest = await freezeCredential(type);
+		const textOf = (type: Parameters<typeof freezeCredential>[0]) => {
+			const manifest = freezeCredential(type);
 			if (!manifest) throw new Error('no manifest');
 			return manifestTextOf(manifest);
 		};
-		await addToStore(dir, [{ manifestText: await textOf(token) }]);
-		await addToStore(dir, [{ manifestText: await textOf(token) }]);
+		await addToStore(dir, [{ manifestText: textOf(token) }]);
+		await addToStore(dir, [{ manifestText: textOf(token) }]);
 		await expect(
-			addToStore(dir, [{ manifestText: await textOf(tokenWith({ displayName: 'Demo' })) }]),
+			addToStore(dir, [{ manifestText: textOf(tokenWith({ displayName: 'Demo' })) }]),
 		).rejects.toThrow('demo.token@1.0.0 is in the store with other bytes');
 	});
 
@@ -249,8 +257,8 @@ describe('the store layout', () => {
 });
 
 describe('unresolvedCredentialPinsOf', () => {
-	const pinning = async () =>
-		await freezeNative(
+	const pinning = () =>
+		freezeNative(
 			defineNode({
 				id: 'demo',
 				displayName: 'Demo',
@@ -263,31 +271,29 @@ describe('unresolvedCredentialPinsOf', () => {
 				native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
 			}),
 		);
-	const credentialOf = async (type: Parameters<typeof freezeCredential>[0]) => {
-		const manifest = await freezeCredential(type);
+	const credentialOf = (type: Parameters<typeof freezeCredential>[0]) => {
+		const manifest = freezeCredential(type);
 		if (!manifest) throw new Error('no manifest');
 		return manifest;
 	};
 
-	it('pins the credential id and major', async () => {
-		expect((await pinning()).credentials).toEqual(['demo.token@1']);
+	it('pins the credential id and major', () => {
+		expect(pinning().credentials).toEqual(['demo.token@1']);
 	});
 
-	it('resolves a pin only by a credential manifest of its id and major', async () => {
-		const manifest = await pinning();
-		expect(unresolvedCredentialPinsOf(manifest, [await credentialOf(token)])).toEqual([]);
+	it('resolves a pin only by a credential manifest of its id and major', () => {
+		const manifest = pinning();
+		expect(unresolvedCredentialPinsOf(manifest, [credentialOf(token)])).toEqual([]);
 		expect(unresolvedCredentialPinsOf(manifest, [])).toEqual(['demo.token@1']);
 		expect(
-			unresolvedCredentialPinsOf(manifest, [await credentialOf(tokenWith({ version: 2 }))]),
+			unresolvedCredentialPinsOf(manifest, [credentialOf(tokenWith({ version: '2.0.0' }))]),
 		).toEqual(['demo.token@1']);
 	});
 
-	it('does not resolve a pin by a credential type that the contract does not list', async () => {
-		const manifest = await pinning();
+	it('does not resolve a pin by a credential type that the contract does not list', () => {
+		const manifest = pinning();
 		const other = { ...manifest, contract: { ...manifest.contract, credentials: ['otherApi'] } };
-		expect(unresolvedCredentialPinsOf(other, [await credentialOf(token)])).toEqual([
-			'demo.token@1',
-		]);
+		expect(unresolvedCredentialPinsOf(other, [credentialOf(token)])).toEqual(['demo.token@1']);
 	});
 });
 
@@ -305,14 +311,12 @@ describe('store status lines', () => {
 
 	const threeVersions = async () => {
 		const dir = await newDir('statuses');
-		const lastOf = lastPublishedIn(storeReader(storeFilesOfDir(dir)));
-		for (const [minor, text] of [
-			[0, 'input.text'],
-			[0, "input.text + '!'"],
-			[1, "input.text + '?'"],
+		for (const [version, text] of [
+			['1.0.0', 'input.text'],
+			['1.0.1', "input.text + '!'"],
+			['1.1.0', "input.text + '?'"],
 		] as const) {
-			await writeFile(dirs.entry, echoSource(minor, text));
-			await addToStore(dir, [storeVersionOf(await freezeAction(dirs.entry, 'echo', lastOf))]);
+			await addToStore(dir, [storeVersionOf(await freeze(version, text))]);
 		}
 		return dir;
 	};
@@ -406,13 +410,19 @@ describe('publishAction', () => {
 				privateKey,
 			});
 		const index = path.join(registry, storeIndexFileOf('demo.echo'));
-		await writeFile(dirs.entry, echoSource(0, 'input.text'));
+		await writeFile(dirs.entry, echoSource('1.0.0', 'input.text'));
 		const v100 = await publish();
 		const first = await readFile(index, 'utf8');
 		await expect(publish()).resolves.toEqual(v100);
 		expect(await readFile(index, 'utf8')).toBe(first);
 
-		await writeFile(dirs.entry, echoSource(0, 'String(input.text)'));
+		await writeFile(dirs.entry, echoSource('1.0.0', 'String(input.text)'));
+		await expect(publish()).rejects.toThrow(
+			'demo.echo@1.0.0 is published with other bytes; bump the version in source',
+		);
+		expect(await readFile(index, 'utf8')).toBe(first);
+
+		await writeFile(dirs.entry, echoSource('1.0.1', 'String(input.text)'));
 		const v101 = await publish();
 		expect(v101.semver).toBe('1.0.1');
 		const lines = (await readFile(index, 'utf8')).split('\n').filter(Boolean);
@@ -426,9 +436,7 @@ describe('publishAction', () => {
 		const text = (await reader.readManifest(records[1] as StoreRecord))?.text ?? '';
 		expect(verifyStoreSignature(records[1] as StoreRecord, text, publicKey)).toBe(true);
 		expect((await reader.catalog()).map(({ version }) => version)).toEqual(['1.0.1']);
-		expect(await lastPublishedIn(reader)('demo.echo', 1, 0)).toEqual(records[1]);
 		expect(records[1]?.bundle).toBe(`sha256:${v101.bundleHash}`);
-		expect(await lastPublishedIn(reader)('demo.echo', 1, 1)).toBeUndefined();
 	});
 });
 
@@ -444,7 +452,10 @@ describe('publishCredential', () => {
 		await expect(publish()).resolves.toEqual(v100);
 		expect(await readFile(index, 'utf8')).toBe(first);
 
-		const v101 = await publish(tokenWith({ displayName: 'Demo' }));
+		await expect(publish(tokenWith({ displayName: 'Demo' }))).rejects.toThrow(
+			'demo.token@1.0.0 is published with other bytes; bump the version in source',
+		);
+		const v101 = await publish(tokenWith({ displayName: 'Demo', version: '1.0.1' }));
 		expect([v100.semver, v101.semver]).toEqual(['1.0.0', '1.0.1']);
 		const lines = (await readFile(index, 'utf8')).split('\n').filter(Boolean);
 		expect(`${lines[0]}\n`).toBe(first);
@@ -466,13 +477,13 @@ describe('publishCredential', () => {
 		await publishCredential({ type: tokenWith({}), registryDir: registry, privateKey });
 		await expect(
 			publishCredential({
-				type: tokenWith({ hosts: ['b.example.com'] }),
+				type: tokenWith({ hosts: ['b.example.com'], version: '1.0.1' }),
 				registryDir: registry,
 				privateKey,
 			}),
 		).rejects.toThrow('demo.token@1.0.1 is a patch bump from 1.0.0, but the change is major');
 		const v200 = await publishCredential({
-			type: tokenWith({ hosts: ['b.example.com'], version: 2 }),
+			type: tokenWith({ hosts: ['b.example.com'], version: '2.0.0' }),
 			registryDir: registry,
 			privateKey,
 		});
@@ -481,8 +492,8 @@ describe('publishCredential', () => {
 });
 
 describe('credentialChangeOf', () => {
-	const manifestOf = async (fields: Parameters<typeof defineCredential>[0]['fields'], doc = '') =>
-		await freezeCredential(
+	const manifestOf = (fields: Parameters<typeof defineCredential>[0]['fields'], doc = '') =>
+		freezeCredential(
 			defineCredential({
 				id: 'demo.token',
 				displayName: 'Demo API',
@@ -497,8 +508,8 @@ describe('credentialChangeOf', () => {
 		['a new optional field', { a: t.str() }, { a: t.str(), b: t.str().optional() }, 'minor', ''],
 		['a new required field', { a: t.str() }, { a: t.str(), b: t.str() }, 'major', ''],
 		['a removed field', { a: t.str(), b: t.str() }, { a: t.str() }, 'major', ''],
-	])('rates %s', async (_what, before, after, change, doc) => {
-		const [previous, next] = [await manifestOf(before), await manifestOf(after, doc)];
+	])('rates %s', (_what, before, after, change, doc) => {
+		const [previous, next] = [manifestOf(before), manifestOf(after, doc)];
 		if (!previous || !next) throw new Error('no manifest');
 		expect(credentialChangeOf(previous, next)).toBe(change);
 	});
@@ -507,8 +518,15 @@ describe('credentialChangeOf', () => {
 describe('publishNative', () => {
 	it('appends a line without a bundle and reads the manifest back', async () => {
 		const registry = await newDir('native-registry');
-		const publish = async (summary = 'Starts on a call.') =>
-			await publishNative({ native: hookWith(summary), registryDir: registry, privateKey });
+		const publish = async (
+			summary = 'Starts on a call.',
+			semver: `${number}.${number}.${number}` = '1.0.0',
+		) =>
+			await publishNative({
+				native: hookWith(summary, 2.2, t.str().title('Path'), semver),
+				registryDir: registry,
+				privateKey,
+			});
 
 		const v100 = await publish();
 		expect(v100).toMatchObject({
@@ -520,7 +538,10 @@ describe('publishNative', () => {
 		});
 		expect(v100).not.toHaveProperty('bundleHash');
 		await expect(publish()).resolves.toEqual(v100);
-		const v101 = await publish('Starts when a caller calls.');
+		await expect(publish('Starts when a caller calls.')).rejects.toThrow(
+			'demo.hook@1.0.0 is published with other bytes; bump the version in source',
+		);
+		const v101 = await publish('Starts when a caller calls.', '1.0.1');
 		expect(v101.semver).toBe('1.0.1');
 
 		const reader = storeReader(storeFilesOfDir(registry));
@@ -545,7 +566,7 @@ describe('publishNative', () => {
 		});
 		await expect(
 			publishNative({
-				native: hookWith('Starts on a call.', 2.1),
+				native: hookWith('Starts on a call.', 2.1, t.str().title('Path'), '1.0.1'),
 				registryDir: registry,
 				privateKey,
 			}),

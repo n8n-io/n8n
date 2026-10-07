@@ -19,7 +19,7 @@ export const uploadFile = file.action('upload', {
 	action: 'Upload a file',
 	summary: 'Upload a file to Google Drive. The bytes stream from n8n binary storage.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		file: t
 			.binary()

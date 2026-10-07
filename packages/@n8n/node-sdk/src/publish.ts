@@ -25,7 +25,6 @@ import {
 	freezeAction,
 	freezeCredential,
 	freezeNative,
-	lastPublishedIn,
 	type FrozenAction,
 } from './freeze';
 import {
@@ -78,8 +77,6 @@ import {
 	type FixtureBinary,
 	type VersionManifest,
 } from './version';
-
-export { lastPublishedIn };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -542,8 +539,7 @@ const digestOf = (text: string) => `sha256:${sha256(text)}`;
 
 /**
  * Gates, signs and adds one frozen version to the registry store. A version already published
- * with the same content is a no-op: the same bundle, or for a version without a bundle the same
- * manifest bytes. Other content for a published version is refused.
+ * with the same manifest bytes is a no-op. Other bytes for a published version are refused.
  */
 async function publishVersion<M extends StoreManifest>(
 	{ registryDir, privateKey }: PublishTarget,
@@ -565,13 +561,10 @@ async function publishVersion<M extends StoreManifest>(
 	};
 	const existing = published.find(({ version }) => version === semver);
 	if (existing) {
-		const same =
-			bundle === undefined
-				? existing.manifest === digestOf(manifestText)
-				: existing.bundle === digestOf(bundle);
-		if (same) return await manifestOf(existing);
-		// Freeze took the patch from the registry, so the registry changed since then.
-		throw new UserError(`${id}@${semver} is published with other bytes; run publish again`);
+		if (existing.manifest === digestOf(manifestText)) return await manifestOf(existing);
+		throw new UserError(
+			`${id}@${semver} is published with other bytes; bump the version in source`,
+		);
 	}
 	const previous = published
 		.filter(({ version }) => compareSemver(version, semver) < 0)
@@ -591,17 +584,12 @@ async function publishVersion<M extends StoreManifest>(
 }
 
 /**
- * Freezes HEAD with the patch after the newest published one, gates it against the newest
- * published version below it, signs it, and adds it to the registry store. A version already
- * published with the same bundle is a no-op; with another bundle it is refused.
+ * Freezes HEAD, gates it against the newest published version below it, signs it, and adds it
+ * to the registry store. A version already published with the same manifest bytes is a no-op;
+ * with other bytes it is refused.
  */
 export async function publishAction(options: PublishOptions): Promise<VersionManifest> {
-	const registry = storeReader(storeFilesOfDir(options.registryDir));
-	const frozen = await freezeAction(
-		options.entryFile,
-		options.exportName,
-		lastPublishedIn(registry),
-	);
+	const frozen = await freezeAction(options.entryFile, options.exportName);
 	const fixtures = options.fixtures ?? { executions: [] };
 	return await publishVersion(
 		options,
@@ -612,8 +600,8 @@ export async function publishAction(options: PublishOptions): Promise<VersionMan
 }
 
 /**
- * Publishes the credential manifest of a type, as `publishAction` publishes an action: the patch
- * after the newest published one, the gate of `checkCredentialPublish`, and a signature.
+ * Publishes the credential manifest of a type, as `publishAction` publishes an action: the gate
+ * of `checkCredentialPublish`, and a signature.
  *
  * @throws a `UserError` for a compat type: its legacy class defines it, so it has no manifest.
  */
@@ -623,8 +611,7 @@ export async function publishCredential(
 		readonly type: AnyCredentialType;
 	},
 ): Promise<CredentialManifest> {
-	const registry = storeReader(storeFilesOfDir(options.registryDir));
-	const manifest = await freezeCredential(options.type, lastPublishedIn(registry));
+	const manifest = freezeCredential(options.type);
 	if (!manifest) throw new UserError(`${options.type.name} is a compat type and has no manifest`);
 	return await publishVersion(
 		options,
@@ -636,7 +623,7 @@ export async function publishCredential(
 
 /**
  * Publishes the manifest of a native action or trigger, as `publishAction` publishes an action:
- * the patch after the newest published one, the gate of `checkNativePublish`, and a signature.
+ * the gate of `checkNativePublish`, and a signature.
  */
 export async function publishNative(
 	options: PublishTarget & {
@@ -644,8 +631,7 @@ export async function publishNative(
 		readonly native: Action | Trigger;
 	},
 ): Promise<NativeManifest> {
-	const registry = storeReader(storeFilesOfDir(options.registryDir));
-	const manifest = await freezeNative(options.native, lastPublishedIn(registry));
+	const manifest = freezeNative(options.native);
 	return await publishVersion(
 		options,
 		{ manifest },
@@ -715,7 +701,7 @@ function statusOfArgs(args: readonly string[], at: string): StoreStatusRecord {
  * Without `args`, publishes the HEAD of each action and trigger, each credential type that is
  * not a compat type, and each native contract of a package into the registry store, one at a
  * time, and gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a
- * version already published with the same content is a no-op. With the arguments
+ * version already published with the same manifest bytes is a no-op. With the arguments
  * `<yank|revoke|deprecate> <id>@<version> <text> [<use>]`, it signs and appends one status line.
  * The registry serves the store files as they are, so `N8N_NODE_CONTRACTS_REGISTRY_URL` is a
  * `file://` folder that a static upload copies. `N8N_NODE_CONTRACTS_SIGNING_KEY_FILE` holds the

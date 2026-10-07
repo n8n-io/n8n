@@ -8,7 +8,7 @@ export const getSlackUser = user.action('get', {
 	action: 'Get a user',
 	summary: 'Get a Slack user by user ID or by email address.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
-	minor: 1,
+	version: '1.1.0',
 	scopes: ['users:read', 'users:read.email'],
 	input: {
 		user: t

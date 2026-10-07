@@ -18,7 +18,7 @@ export const commentOnIssue = issueResource.action('createComment', {
 	summary: 'Add a comment to an issue or a pull request.',
 	scopes: ['repo'],
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		issueNumber: t
 			.int()

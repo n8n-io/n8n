@@ -9,7 +9,7 @@ export const getIssue = issueResource.action('get', {
 	// A private repository needs it; a public one does not.
 	scopes: ['repo'],
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
-	minor: 1,
+	version: '1.1.0',
 	input: {
 		issueNumber: t
 			.int()

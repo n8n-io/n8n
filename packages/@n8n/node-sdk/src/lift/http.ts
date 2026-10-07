@@ -87,7 +87,12 @@ const credentialSchema = t.obj({
 
 const configSchema = t.obj({
 	contract: contractDocumentSchema,
-	minor: t.int().with({ minimum: 0 }).hint('Bump for an additive contract change').optional(),
+	version: new Schema<`${number}.${number}.${number}`>(
+		{ type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' },
+		false,
+	)
+		.hint('major.minor.patch, with contract.version as the major. Absent: <contract.version>.0.0')
+		.optional(),
 	node: t
 		.obj({
 			displayName: t.str().with({ minLength: 1 }).optional(),
@@ -438,8 +443,7 @@ export function httpGuestActionOf(config: HttpGuestConfig): Action {
 				});
 	const { effect, cardinality, idempotent } = contract.flow;
 	const spec = {
-		version: contract.version,
-		...(config.minor === undefined ? {} : { minor: config.minor }),
+		version: config.version ?? `${contract.version}.0.0`,
 		action: contract.action,
 		summary: contract.summary,
 		...(contract.scopes ? { scopes: contract.scopes } : {}),

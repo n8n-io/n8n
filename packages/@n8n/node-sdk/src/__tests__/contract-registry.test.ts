@@ -62,17 +62,16 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 	return { ...fs, link: vi.fn(fs.link) };
 });
 
-const echoSource = (minor: number, text: string, imports = '') => `
+const echoSource = (version: string, text: string, imports = '') => `
 import { defineNode, t } from '@n8n/node-sdk';
 const { obj, str } = t;
 
 export const echo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [] }).action('echo', {
-	version: 1,
-	minor: ${minor},
+	version: '${version}',
 	action: 'Echo',
 	summary: 'Echo the text.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
-	input: { text: str()${minor > 0 ? ', suffix: str().optional()' : ''} },
+	input: { text: str()${/^\d+\.0\./.test(version) ? '' : ', suffix: str().optional()'} },
 	output: obj({ text: str() }),
 	${imports}
 	async run({ input }) {
@@ -222,25 +221,16 @@ const listen = async (server: Server) =>
 beforeAll(async () => {
 	dirs.root = await mkdtemp(path.join(tmpdir(), 'contract-registry-'));
 	const entry = path.join(dirs.root, 'echo.ts');
-	const freeze = async (minor: number, text: string, last?: string, imports?: string) => {
-		await writeFile(entry, echoSource(minor, text, imports));
-		const frozen = await freezeAction(entry, 'echo', async () => {
-			const manifest = last === undefined ? undefined : frozenOf(last).manifest;
-			return (
-				manifest && {
-					version: manifest.semver,
-					manifest: '',
-					bundle: `sha256:${manifest.bundleHash}`,
-				}
-			);
-		});
+	const freeze = async (version: string, text: string, imports?: string) => {
+		await writeFile(entry, echoSource(version, text, imports));
+		const frozen = await freezeAction(entry, 'echo');
 		versions.set(frozen.manifest.semver, frozen);
 	};
-	await freeze(0, 'input.text.toUpperCase()');
-	await freeze(0, "input.text + '?'", '1.0.0');
-	await freeze(1, "input.text + (input.suffix ?? '#')");
-	await freeze(2, 'input.text', undefined, "imports: ['code'],");
-	await freeze(2, "input.text + '!'", '1.2.0', "imports: ['code'],");
+	await freeze('1.0.0', 'input.text.toUpperCase()');
+	await freeze('1.0.1', "input.text + '?'");
+	await freeze('1.1.0', "input.text + (input.suffix ?? '#')");
+	await freeze('1.2.0', 'input.text', "imports: ['code'],");
+	await freeze('1.2.1', "input.text + '!'", "imports: ['code'],");
 	dirs.registry = path.join(dirs.root, 'registry');
 	// The registry is static files.
 	registry.server.on('request', (request, response) => {
@@ -924,7 +914,7 @@ describe('importContractStore and exportContractStore', () => {
 		const dir = await sourceDir();
 		await addToStore(dir, [
 			{
-				manifestText: manifestTextOf(await freezeNative(pingCalled)),
+				manifestText: manifestTextOf(freezeNative(pingCalled)),
 				signatures: [],
 			},
 		]);
@@ -994,9 +984,10 @@ describe('importContractStore and exportContractStore', () => {
 		const entry = path.join(dirs.root, 'echo-two.ts');
 		await writeFile(
 			entry,
-			echoSource(0, 'input.text')
-				.replace('version: 1', 'version: 2')
-				.replace('flow:', "egress: { hosts: ['api.echo.test'] },\n\tflow:"),
+			echoSource('2.0.0', 'input.text').replace(
+				'flow:',
+				"egress: { hosts: ['api.echo.test'] },\n\tflow:",
+			),
 		);
 		const two = await freezeAction(entry, 'echo');
 		const storedOf = ({ manifest, bundle }: FrozenAction): StoredVersion => ({
@@ -1063,11 +1054,11 @@ describe('importContractStore and exportContractStore', () => {
 	/** A store folder with a credential manifest and a native version that pins it. */
 	const credentialAndNativeDir = async () => {
 		const dir = await sourceDir();
-		const pingCredential = await freezeCredential(pingToken);
+		const pingCredential = freezeCredential(pingToken);
 		if (!pingCredential) throw new Error('ping.token has no manifest');
 		await addToStore(
 			dir,
-			[pingCredential, await freezeNative(pingCalled)].map((manifest) => {
+			[pingCredential, freezeNative(pingCalled)].map((manifest) => {
 				const manifestText = manifestTextOf(manifest);
 				return { manifestText, signatures: [signStoreManifest(manifestText, privateKey)] };
 			}),
@@ -1119,7 +1110,7 @@ describe('contractStore with triggers and credentials', () => {
 	const ping = async () => {
 		const entry = path.join(dirs.root, 'ping.ts');
 		await writeFile(entry, pingSource);
-		const credential = await freezeCredential(pingToken);
+		const credential = freezeCredential(pingToken);
 		if (!credential) throw new Error('ping.token has no manifest');
 		return { trigger: await freezeAction(entry, 'pinged'), credential };
 	};
