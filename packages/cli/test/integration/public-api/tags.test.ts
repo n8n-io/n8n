@@ -88,6 +88,17 @@ describe('GET /tags', () => {
 		// check that we really received a different result
 		expect(response.body.data[0].id).not.toBe(response2.body.data[0].id);
 	});
+
+	test('should reject a zero limit', async () => {
+		await createTag({});
+
+		const response = await authMemberAgent.get('/tags?limit=0');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'request/query/limit Param `limit` must be a positive integer',
+		);
+	});
 });
 
 describe('GET /tags/:id', () => {

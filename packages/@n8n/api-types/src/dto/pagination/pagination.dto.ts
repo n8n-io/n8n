@@ -65,8 +65,8 @@ const createLimitValidator = (maxItems: number) =>
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `limit` must be a valid integer',
 		})
-		.refine((val) => val >= 0, {
-			message: 'Param `limit` must be a non-negative integer',
+		.refine((val) => val >= 1, {
+			message: 'Param `limit` must be a positive integer',
 		})
 		.transform((val) => Math.min(val, maxItems));
 

@@ -237,18 +237,17 @@ describe('Promotions in Public API', () => {
 		expect(response.body.message).toBe('request/body At least one field is required');
 	});
 
-	it.each(['providers', 'connections'])(
-		'returns no cursor for a zero-limit %s list',
-		async (resource) => {
-			const agent = testServer.publicApiAgentFor(owner);
-			await createConnection(agent);
+	it.each(['providers', 'connections'])('rejects a zero-limit %s list', async (resource) => {
+		const agent = testServer.publicApiAgentFor(owner);
+		await createConnection(agent);
 
-			const response = await agent.get(`/promotions/${resource}?limit=0`);
+		const response = await agent.get(`/promotions/${resource}?limit=0`);
 
-			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ data: [], nextCursor: null });
-		},
-	);
+		expect(response.status).toBe(400);
+		expect(response.body.message).toBe(
+			'request/query/limit Param `limit` must be a positive integer',
+		);
+	});
 
 	it.each([false, true])(
 		'passes the API key variable permission to Promote: %s',

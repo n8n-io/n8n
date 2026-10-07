@@ -294,6 +294,20 @@ describe('Role mapping rules in Public API', () => {
 			expect(secondPage.body.nextCursor).toBeNull();
 		});
 
+		it('rejects a zero limit with 400', async () => {
+			await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/role-mapping-rules')
+				.query({ limit: 0 });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe(
+				'request/query/limit Param `limit` must be a positive integer',
+			);
+		});
+
 		it('rejects an undecodable cursor with 400', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)

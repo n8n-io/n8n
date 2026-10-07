@@ -180,6 +180,23 @@ describe('publicApiPaginationSchema', () => {
 		expect(limit.parse('300')).toBe(MAX_ITEMS_PER_PAGE);
 	});
 
+	test('accepts a limit of one', () => {
+		expect(limit.parse('1')).toBe(1);
+	});
+
+	test.each(['0', '-1'])('rejects a limit of %s', (value) => {
+		expect(limit.safeParse(value)).toEqual(
+			expect.objectContaining({
+				success: false,
+				error: expect.objectContaining({
+					issues: expect.arrayContaining([
+						expect.objectContaining({ message: 'Param `limit` must be a positive integer' }),
+					]),
+				}),
+			}),
+		);
+	});
+
 	test('rejects a non-numeric limit', () => {
 		expect(limit.safeParse('abc').success).toBe(false);
 	});
