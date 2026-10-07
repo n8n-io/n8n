@@ -108,7 +108,11 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 	const destructiveHeading = getByRole('heading', { name: 'Destructive changes' });
 	expect(getByRole('heading', { level: 2, name: 'Apply is blocked' })).toBeInTheDocument();
 	expect(getByText(/destination project is not a team project/)).toBeInTheDocument();
-	expect(getByText('These data tables lose data when you apply.')).toBeInTheDocument();
+	expect(
+		getByText(
+			'These changes remove, rename or retype columns. The values in those columns are removed. Rows and other columns are kept.',
+		),
+	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
 	expect(getByText('Invoices')).toBeInTheDocument();
 	expect(getAllByText('Team A: Workflow A')).toHaveLength(2);
@@ -116,7 +120,7 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 		true,
 	);
 	expect(precedes(getByText(restartLine), destructiveHeading)).toBe(true);
-	expect(queryByText(/no longer need this data/)).not.toBeInTheDocument();
+	expect(queryByText(/can't be restored/)).not.toBeInTheDocument();
 	expect(
 		queryByRole('button', { name: /Apply data table changes|Continue/ }),
 	).not.toBeInTheDocument();
@@ -134,10 +138,10 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(
 		getByRole('heading', { level: 2, name: 'Review destructive changes' }),
 	).toBeInTheDocument();
-	expect(getByText('Confirm the data loss before you apply')).toBeInTheDocument();
+	expect(getByText('Check the column changes before you apply')).toBeInTheDocument();
 	expect(
 		getByText(
-			'This data table loses data when you apply. Apply only if you no longer need this data.',
+			"This change removes, renames or retypes columns. The values in the changed columns can't be restored. Rows and other columns are kept.",
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
@@ -172,7 +176,7 @@ it('shows destructive changes above the bindings and continues with data deletio
 	expect(precedes(getByRole('heading', { name: 'Destructive changes' }), getByRole('table'))).toBe(
 		true,
 	);
-	expect(getByText(/Apply only if you no longer need this data/)).toBeInTheDocument();
+	expect(getByText(/can't be restored/)).toBeInTheDocument();
 	expect(
 		precedes(
 			getByRole('heading', { level: 3, name: 'Credentials and variables' }),

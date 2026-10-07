@@ -1443,7 +1443,7 @@ describe('Apply a project selection', () => {
 		).toMatchObject({ value: 'target value' });
 	});
 
-	it('applies a selection when only an unselected workflow uses a data table whose change deletes data', async () => {
+	it('applies a selection when only an unselected workflow uses a data table whose change removes column values', async () => {
 		const { project, plainWorkflow, orders, dataTableService } = await promoteDataTableWorkflows();
 		await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
 		const columnsBefore = await dataTableService.getColumns(orders.id, project.id);
@@ -1677,7 +1677,7 @@ describe('Apply data table changes', () => {
 			: await service.applyProjectSelection(project.id, owner, { workflowIds: [workflow.id] });
 
 	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
-		'blocks a $flow apply whose data table change deletes data and writes nothing',
+		'blocks a $flow apply whose data table change removes column values and writes nothing',
 		async ({ flow }) => {
 			const promoted = await promoteDataTableWorkflows();
 			const { project, workflow, orders, dataTableService } = promoted;
@@ -1731,7 +1731,7 @@ describe('Apply data table changes', () => {
 	);
 
 	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
-		'applies a $flow data table change that deletes no data, counts the table as updated and recreates a missing table',
+		'applies a $flow data table change that removes no column values, counts the table as updated and recreates a missing table',
 		async ({ flow }) => {
 			const promoted = await promoteDataTableWorkflows();
 			const { project, orders, customers, dataTableService } = promoted;
