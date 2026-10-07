@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
@@ -7,7 +6,6 @@ import {
 import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computed, onMounted, ref } from 'vue';
@@ -19,7 +17,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowResource } from '@/Interface';
 
-import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import NodesInWorkflowTable from './NodesInWorkflowTable.vue';
 
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
@@ -36,8 +41,11 @@ const communityNodesStore = useCommunityNodesStore();
 const nodeTypesStore = useNodeTypesStore();
 const settingsStore = useSettingsStore();
 const workflowsListStore = useWorkflowsListStore();
+const uiStore = useUIStore();
 
-const modalBus = createEventBus();
+const modalOpen = computed(
+	() => uiStore.modalsById[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]?.open === true,
+);
 
 const toast = useToast();
 const i18n = useI18n();
@@ -110,6 +118,18 @@ const onModalClose = () => {
 	return !loading.value;
 };
 
+async function closeDialog() {
+	const shouldClose = onModalClose();
+	if (shouldClose === false) {
+		return;
+	}
+	uiStore.closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
 const onConfirmButtonClick = async () => {
 	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
 		await onUninstall();
@@ -141,7 +161,7 @@ const onUninstall = async () => {
 		toast.showError(error, i18n.baseText('settings.communityNodes.messages.uninstall.error'));
 	} finally {
 		loading.value = false;
-		modalBus.emit('close');
+		void closeDialog();
 	}
 };
 
@@ -187,7 +207,7 @@ const onUpdate = async () => {
 		);
 	} finally {
 		loading.value = false;
-		modalBus.emit('close');
+		void closeDialog();
 	}
 };
 
@@ -220,7 +240,7 @@ function setPackageVersion() {
 }
 
 const onClick = async () => {
-	useUIStore().closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+	uiStore.closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 };
 
 onMounted(async () => {
@@ -240,52 +260,48 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		width="640px"
-		:name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY"
-		:title="getModalContent.title"
-		:event-bus="modalBus"
-		:center="true"
-		:show-close="!loading"
-		:before-close="onModalClose"
+	<N8nDialog
+		:open="modalOpen"
+		:size="props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL ? 'medium' : 'large'"
+		:header="getModalContent.title"
+		:show-close-button="!loading"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
-			<N8nNotice
-				v-if="!isLatestPackageVerified && getModalContent.warning"
-				data-test-id="communityPackageManageConfirmModal-warning"
-				:content="getModalContent.warning"
-			/>
-			<div :class="$style.descriptionContainer">
-				<N8nText size="medium" color="text-base">
-					{{ getModalContent.description }}
-				</N8nText>
-			</div>
+		<N8nDialogBody>
+			<div :data-test-id="`${COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY}-modal`">
+				<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
+				<N8nNotice
+					v-if="!isLatestPackageVerified && getModalContent.warning"
+					data-test-id="communityPackageManageConfirmModal-warning"
+					:content="getModalContent.warning"
+				/>
+				<div :class="$style.descriptionContainer">
+					<N8nText size="medium" color="text-base">
+						{{ getModalContent.description }}
+					</N8nText>
+				</div>
 
-			<NodesInWorkflowTable
-				v-if="workflowsWithPackageNodes?.length"
-				:data="workflowsWithPackageNodes"
-			/>
-		</template>
-		<template #footer>
-			<div :class="$style.footerContainer">
-				<N8nButton
-					variant="subtle"
-					:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
-					size="large"
-					data-test-id="close-button"
-					@click="onClick"
-				/>
-				<N8nButton
-					:loading="loading"
-					:disabled="loading"
-					:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
-					size="large"
-					@click="onConfirmButtonClick"
+				<NodesInWorkflowTable
+					v-if="workflowsWithPackageNodes?.length"
+					:data="workflowsWithPackageNodes"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="subtle"
+				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
+				data-test-id="close-button"
+				@click="onClick"
+			/>
+			<N8nButton
+				:loading="loading"
+				:disabled="loading"
+				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
+				@click="onConfirmButtonClick"
+			/>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
@@ -293,12 +309,6 @@ onMounted(async () => {
 	display: flex;
 	margin: var(--spacing--sm) 0;
 	flex-direction: column;
-}
-
-.footerContainer {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
 }
 
 .descriptionIcon {
