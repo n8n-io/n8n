@@ -9257,6 +9257,8 @@
 	"promotions.modal.retry": "Retry",
 	"promotions.modal.promoteError": "Couldn't promote the selected changes",
 	"promotions.modal.promoteError.workflowsMovedCrossProject": "These workflows moved to another project: {workflows}. A selective push cannot move them. Push all projects instead.",
+	"promotions.modal.promoteError.folderTargetInUse": "Another folder on the branch still uses the path \"{target}\". Select a workflow from that folder too, or push all projects.",
+	"promotions.modal.promoteError.projectTargetInUse": "Another project on the branch still uses the path \"{target}\". Push all projects instead.",
 	"promotions.modal.toast.success.title": "Changes promoted",
 	"promotions.modal.toast.success.message": "Changes have been pushed to {branch}.",
 	"promotions.modal.toast.success.messageNewBranch": "Changes have been pushed to a new branch.",

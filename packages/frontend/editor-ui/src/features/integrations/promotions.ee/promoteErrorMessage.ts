@@ -1,4 +1,5 @@
 import {
+	parsePromotionsContainerTargetInUseMeta,
 	parsePromotionsWorkflowsMovedCrossProjectMeta,
 	type PromotableResource,
 } from '@n8n/api-types';
@@ -20,14 +21,24 @@ export function getPromoteErrorMessage(
 		return undefined;
 	}
 
-	const meta = parsePromotionsWorkflowsMovedCrossProjectMeta(error.meta);
-	if (!meta) {
-		return undefined;
+	const movedMeta = parsePromotionsWorkflowsMovedCrossProjectMeta(error.meta);
+	if (movedMeta) {
+		return i18n.baseText('promotions.modal.promoteError.workflowsMovedCrossProject', {
+			interpolate: {
+				workflows: resolveWorkflowTitles(movedMeta.workflowIds, changes),
+			},
+		});
 	}
 
-	return i18n.baseText('promotions.modal.promoteError.workflowsMovedCrossProject', {
-		interpolate: {
-			workflows: resolveWorkflowTitles(meta.workflowIds, changes),
-		},
-	});
+	const targetMeta = parsePromotionsContainerTargetInUseMeta(error.meta);
+	if (targetMeta) {
+		return i18n.baseText(
+			targetMeta.kind === 'folders'
+				? 'promotions.modal.promoteError.folderTargetInUse'
+				: 'promotions.modal.promoteError.projectTargetInUse',
+			{ interpolate: { target: targetMeta.target } },
+		);
+	}
+
+	return undefined;
 }
