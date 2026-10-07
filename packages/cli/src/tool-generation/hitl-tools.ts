@@ -201,6 +201,12 @@ export function convertNodeToHitlTool<
 			},
 		];
 
+		// Workflow validation reads required AI inputs from builderHint, not from inputs
+		item.description.builderHint = {
+			...item.description.builderHint,
+			inputs: { [NodeConnectionTypes.AiTool]: { required: true } },
+		};
+
 		// Filter and adjust properties for HITL use case
 		item.description.properties = filterHitlToolProperties(
 			item.description.properties,

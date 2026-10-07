@@ -220,6 +220,19 @@ describe('hitl-tools', () => {
 			]);
 		});
 
+		it('should mark the Tool input as required in builderHint', () => {
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+			expect(result.description.builderHint?.inputs).toEqual({
+				[NodeConnectionTypes.AiTool]: { required: true },
+			});
+		});
+
+		it('should keep the base builderHint fields', () => {
+			fullNodeWrapper.description.builderHint = { searchHint: 'Use for Slack' };
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+			expect(result.description.builderHint?.searchHint).toBe('Use for Slack');
+		});
+
 		it('should keep webhooks in description', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			expect(result.description.webhooks).toBeDefined();
