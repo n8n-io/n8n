@@ -720,6 +720,27 @@ describe('EphemeralNodeExecutor', () => {
 				},
 			]);
 
+		// The workflow it calls is policed when it starts; the stand-in node never runs.
+		it('does not police an expression evaluation, which runs no node', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+			} as unknown as INodeType);
+
+			await expect(
+				executor.evaluateExpressions(
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+						nodeTypeVersion: 2.2,
+						nodeParameters: {},
+						projectId: 'p-1',
+					},
+					{},
+					[],
+				),
+			).resolves.toEqual({});
+			expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
+		});
+
 		it('polices the node as a one-node workflow in the tool project', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: toolDescription,

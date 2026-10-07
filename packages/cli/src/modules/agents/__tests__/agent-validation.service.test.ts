@@ -647,6 +647,42 @@ describe('AgentValidationService — structured issues', () => {
 			);
 		});
 
+		it('points a credential type named by parameter at that parameter', async () => {
+			const setup = setUp();
+			const httpTool = {
+				type: 'node' as const,
+				name: 'call_api',
+				node: {
+					nodeType: 'n8n-nodes-base.httpRequest',
+					nodeTypeVersion: 4.2,
+					nodeParameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: 'githubApi',
+					},
+				},
+			};
+			setup.agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ ...runnableConfig, tools: [httpTool] }),
+			);
+			setup.agentPolicyService.evaluatePublish.mockResolvedValue({
+				violations: [blockedBy('credentialType', 'githubApi')],
+			});
+
+			const result = await setup.service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+			);
+
+			expect(result.issues).toContainEqual(
+				expect.objectContaining({
+					path: 'tools.0.node.nodeParameters.nodeCredentialType',
+					capability: { kind: 'tool', id: 'call_api', index: 0, toolType: 'node' },
+					reason: 'blocked_by_policy',
+				}),
+			);
+		});
+
 		it('reports a policy check that failed to run instead of a valid result', async () => {
 			const { service, agentPolicyService } = setUp();
 			agentPolicyService.evaluatePublish.mockResolvedValue({

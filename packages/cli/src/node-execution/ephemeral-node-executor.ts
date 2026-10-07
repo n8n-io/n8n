@@ -286,10 +286,21 @@ export class EphemeralNodeExecutor {
 	}
 
 	/**
+	 * Every node run goes through `executeNodeDirectly` or `withSupplyDataTool`, so both call
+	 * this. Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
+	 */
+	private async enforceRunPolicy(node: INode, projectId: string) {
+		await this.policyEnforcementService.enforceWorkflowStart(
+			{ workflow: { id: null, name: node.name, nodes: [node], artifactKind: 'agent' }, projectId },
+			{ kind: 'system', reason: 'execution' },
+		);
+	}
+
+	/**
 	 * Assemble the shared pieces (node, ephemeral workflow, additionalData,
 	 * execute data) both context classes need. Keeps `executeNodeDirectly` and
 	 * `withSupplyDataTool` from drifting — the setup is identical up to the
-	 * choice of context class. Every node run passes here, so it is the policy gate.
+	 * choice of context class.
 	 */
 	private async buildEphemeralContextParts(
 		tool: EphemeralWorkflowToolLike,
@@ -304,14 +315,6 @@ export class EphemeralNodeExecutor {
 			parameters: tool.nodeParameters,
 			credentials: tool.credentials ?? undefined,
 		};
-		// Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
-		await this.policyEnforcementService.enforceWorkflowStart(
-			{
-				workflow: { id: null, name: node.name, nodes: [node], artifactKind: 'agent' },
-				projectId: tool.projectId,
-			},
-			{ kind: 'system', reason: 'execution' },
-		);
 		const workflow = new Workflow({
 			nodes: [node],
 			connections: {},
@@ -350,6 +353,7 @@ export class EphemeralNodeExecutor {
 		let output: NodeOutput | undefined;
 		try {
 			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+			await this.enforceRunPolicy(parts.node, tool.projectId);
 
 			const context = new ExecuteContext(
 				parts.workflow,
@@ -515,6 +519,7 @@ export class EphemeralNodeExecutor {
 
 		try {
 			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+			await this.enforceRunPolicy(parts.node, tool.projectId);
 
 			const context = new SupplyDataContext(
 				parts.workflow,

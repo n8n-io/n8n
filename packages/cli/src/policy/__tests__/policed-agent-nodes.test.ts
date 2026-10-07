@@ -64,7 +64,7 @@ describe('toPolicedNodes', () => {
 			...slackTool,
 			node: {
 				...slackTool.node,
-				credentials: { openAiApi: { name: 'n8n', __aiGatewayManaged: true } },
+				credentials: { openAiApi: { id: null, name: 'n8n', __aiGatewayManaged: true } },
 			},
 		};
 
@@ -82,24 +82,47 @@ describe('toPolicedNodes', () => {
 		expect(toPolicedNodes([tool])[0].type).toBe('n8n-nodes-base.slackTool');
 	});
 
-	it('adds the tools of an inline agent that a Message an Agent tool embeds', () => {
-		const nested = {
+	it('carries the tool parameters, which a check can read a credential type from', () => {
+		const http = {
 			type: 'node',
-			name: 'Ask helper',
+			name: 'Call API',
 			node: {
-				nodeType: 'n8n-nodes-base.messageAnAgent',
-				nodeTypeVersion: 2,
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
 				nodeParameters: {
-					agentSource: 'inline',
-					inlineAgent: { config: { tools: [dateTimeTool, slackTool] } },
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackApi',
 				},
 			},
 		};
 
-		expect(toPolicedNodes([nested]).map((node) => [node.id, node.type])).toEqual([
-			['agent-tool-0', 'n8n-nodes-base.messageAnAgent'],
-			['agent-tool-0-0', 'n8n-nodes-base.dateTime'],
-			['agent-tool-0-1', 'n8n-nodes-base.slackTool'],
+		expect(toPolicedNodes([http])[0].parameters).toEqual({
+			authentication: 'predefinedCredentialType',
+			nodeCredentialType: 'slackApi',
+		});
+	});
+
+	it('polices a tool with keys the schema does not know', () => {
+		expect(toPolicedNodes([{ ...dateTimeTool, futureField: true }])[0].type).toBe(
+			'n8n-nodes-base.dateTime',
+		);
+	});
+
+	it('still polices a tool that fails the schema by the type and credentials it names', () => {
+		const malformed = {
+			type: 'node',
+			node: {
+				nodeType: 'n8n-nodes-base.dateTime',
+				credentials: { slackApi: { id: 'cred-1', name: 'Prod Slack' } },
+			},
+		};
+
+		expect(toPolicedNodes([malformed])).toEqual([
+			expect.objectContaining({
+				name: 'Tool 1',
+				type: 'n8n-nodes-base.dateTime',
+				credentials: { slackApi: { id: 'cred-1', name: 'Prod Slack' } },
+			}),
 		]);
 	});
 
@@ -148,6 +171,30 @@ describe('withInlineAgentToolNodes', () => {
 			'n8n-nodes-base.code',
 			'n8n-nodes-base.messageAnAgent',
 			'n8n-nodes-base.dateTime',
+		]);
+	});
+
+	it('appends the tools of inline agents nested inside agent tools, at any depth', () => {
+		const askHelper = (tools: unknown[]) => ({
+			type: 'node',
+			name: 'Ask helper',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgent',
+				nodeTypeVersion: 2,
+				nodeParameters: { agentSource: 'inline', inlineAgent: { config: { tools } } },
+			},
+		});
+		const agentNode = messageAnAgent({
+			agentSource: 'inline',
+			inlineAgent: { config: { tools: [askHelper([dateTimeTool, askHelper([slackTool])])] } },
+		} as INode['parameters']);
+
+		expect(withInlineAgentToolNodes([agentNode]).map((node) => [node.id, node.type])).toEqual([
+			['n1', 'n8n-nodes-base.messageAnAgent'],
+			['n1-tool-0', 'n8n-nodes-base.messageAnAgent'],
+			['n1-tool-0-tool-0', 'n8n-nodes-base.dateTime'],
+			['n1-tool-0-tool-1', 'n8n-nodes-base.messageAnAgent'],
+			['n1-tool-0-tool-1-tool-0', 'n8n-nodes-base.slackTool'],
 		]);
 	});
 

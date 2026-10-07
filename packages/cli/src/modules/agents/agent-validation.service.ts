@@ -33,7 +33,7 @@ import {
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
-import { toPolicedNodes } from '@/policy/policed-agent-nodes';
+import { toPolicedNodes, withInlineAgentToolNodes } from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -78,25 +78,31 @@ function issue(
 	return reason === undefined ? { code, path, capability } : { code, path, capability, reason };
 }
 
+// A node can name its credential type by parameter, with or without a credential selected.
+const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
+
+/** Where on a node's own config a violation points, or `undefined` when it is not about it. */
+function ownPolicyIssuePath(node: INode, { subject, subjectType }: PolicyViolation) {
+	if (subjectType === 'nodeType') return node.type === subject ? 'nodeType' : undefined;
+	if (subjectType !== 'credentialType' || subject === undefined) return undefined;
+	if (subject in (node.credentials ?? {})) return `credentials.${subject}`;
+	const parameter = CREDENTIAL_TYPE_PARAMETERS.find((name) => node.parameters[name] === subject);
+	return parameter ? `nodeParameters.${parameter}` : undefined;
+}
+
 /** Where on a node tool a violation points, or `undefined` when it is about something else. */
 function policyIssuePath(
-	policedNodes: INode[],
+	policedNodes: readonly INode[],
 	index: number,
-	{ subject, subjectType }: PolicyViolation,
+	violation: PolicyViolation,
 ): string | undefined {
-	if (subject === undefined) return undefined;
 	// The tool's own node comes first; any after it belong to an inline agent the tool embeds.
 	const [own, ...embedded] = policedNodes;
-	const matches = (node: INode) =>
-		(subjectType === 'nodeType' && node.type === subject) ||
-		(subjectType === 'credentialType' && subject in (node.credentials ?? {}));
-
-	if (own && matches(own)) {
-		return subjectType === 'nodeType'
-			? `tools.${index}.node.nodeType`
-			: `tools.${index}.node.credentials.${subject}`;
-	}
-	return embedded.some(matches) ? `tools.${index}.node.nodeParameters.inlineAgent` : undefined;
+	const ownPath = own ? ownPolicyIssuePath(own, violation) : undefined;
+	if (ownPath) return `tools.${index}.node.${ownPath}`;
+	return embedded.some((node) => ownPolicyIssuePath(node, violation))
+		? `tools.${index}.node.nodeParameters.inlineAgent`
+		: undefined;
 }
 
 function agentIssue(
@@ -360,7 +366,7 @@ export class AgentValidationService {
 		for (let index = 0; index < tools.length; index++) {
 			const tool = tools[index];
 			if (tool.type !== 'node') continue;
-			const policedNodes = toPolicedNodes([tool]);
+			const policedNodes = withInlineAgentToolNodes(toPolicedNodes([tool]));
 			for (const violation of violations) {
 				const path = policyIssuePath(policedNodes, index, violation);
 				if (!path) continue;
