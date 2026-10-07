@@ -1,21 +1,39 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import Modal from '@/app/components/Modal.vue';
+import { computed, ref } from 'vue';
 import { PROMPT_MFA_CODE_MODAL_KEY } from '../auth.constants';
 import { useI18n } from '@n8n/i18n';
-import { promptMfaCodeBus } from '../auth.eventBus';
+import { promptMfaCodeBus, type MfaModalClosedEventPayload } from '../auth.eventBus';
 import { type IFormInput } from '@/Interface';
-import { createFormEventBus } from '@n8n/design-system';
 import { validate as validateUuid } from 'uuid';
+import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nFormInputs } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nFormInputs,
+	createFormEventBus,
+} from '@n8n/design-system';
 
 // DynamicModalLoader's modal-state props must not reach the dialog root.
 defineOptions({ inheritAttrs: false });
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[PROMPT_MFA_CODE_MODAL_KEY]?.open === true);
 
 const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
+
+function closeDialog(returnData?: MfaModalClosedEventPayload) {
+	if (modalOpen.value !== true) return;
+	uiStore.closeModal(PROMPT_MFA_CODE_MODAL_KEY);
+	promptMfaCodeBus.emit('closed', returnData);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const formFields: IFormInput[] = [
 	{
@@ -38,12 +56,12 @@ function onSubmit(values: object) {
 		return;
 	}
 	if (validateUuid(values.mfaCodeOrMfaRecoveryCode)) {
-		promptMfaCodeBus.emit('close', {
+		closeDialog({
 			mfaRecoveryCode: values.mfaCodeOrMfaRecoveryCode,
 		});
 		return;
 	}
-	promptMfaCodeBus.emit('close', {
+	closeDialog({
 		mfaCode: values.mfaCodeOrMfaRecoveryCode,
 	});
 }
@@ -58,27 +76,22 @@ function onFormReady(isReady: boolean) {
 </script>
 
 <template>
-	<Modal
-		width="500px"
-		height="300px"
-		max-height="640px"
-		:title="i18n.baseText('mfa.prompt.code.modal.title')"
-		:event-bus="promptMfaCodeBus"
-		:name="PROMPT_MFA_CODE_MODAL_KEY"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="i18n.baseText('mfa.prompt.code.modal.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="[$style.formContainer]">
-				<N8nFormInputs
-					data-test-id="mfa-code-or-recovery-code-input"
-					:inputs="formFields"
-					:event-bus="formBus"
-					@submit="onSubmit"
-					@ready="onFormReady"
-				/>
-			</div>
-		</template>
-		<template #footer>
+		<N8nDialogBody>
+			<N8nFormInputs
+				data-test-id="mfa-code-or-recovery-code-input"
+				:inputs="formFields"
+				:event-bus="formBus"
+				@submit="onSubmit"
+				@ready="onFormReady"
+			/>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div>
 				<N8nButton
 					float="right"
@@ -89,12 +102,6 @@ function onFormReady(isReady: boolean) {
 					@click="onClickSave"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
-
-<style lang="scss" module>
-.formContainer {
-	padding-bottom: var(--spacing--xl);
-}
-</style>
