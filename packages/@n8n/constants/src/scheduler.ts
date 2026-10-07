@@ -122,6 +122,12 @@ export type ScheduledJobMisfirePolicy =
 export const DEFAULT_MISFIRE_GRACE_SECONDS = 60;
 
 /**
+ * The longest timeout a scheduled job may store, in seconds: the longest delay
+ * a Node.js timer honors.
+ */
+export const MAX_TASK_TIMEOUT_SECONDS = Math.floor((2 ** 31 - 1) / 1000);
+
+/**
  * Where a scheduled task is in its lifecycle, from waiting to run to a final outcome.
  */
 export const ScheduledTaskStatus = {

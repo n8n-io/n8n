@@ -1,4 +1,4 @@
-import { DEFAULT_MISFIRE_GRACE_SECONDS, Time } from '@n8n/constants';
+import { DEFAULT_MISFIRE_GRACE_SECONDS, MAX_TASK_TIMEOUT_SECONDS, Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -276,6 +276,8 @@ export class SchedulerConfig {
 	 * was and the next scheduled poll covers the same ground. It counts as a poll
 	 * failure, so a source that keeps timing out is polled at a widening interval.
 	 * Guards against a poll stuck on an unresponsive source running indefinitely.
+	 * A new value applies to a poll trigger the next time it is provisioned, for
+	 * example at startup or when its workflow is activated.
 	 * Must be greater than 0 and at most one day.
 	 */
 	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema.max(Time.days.toSeconds))
@@ -361,6 +363,19 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_MAX_ATTEMPTS', positiveIntSchema)
 	maxAttempts: number = 5;
+
+	/**
+	 * How long, in seconds, one run of a scheduled task may take before the
+	 * scheduler stops it and gives the run back. Defaults to 300 seconds.
+	 *
+	 * A stopped run that had not started its work counts as a failed attempt (see
+	 * {@link maxAttempts}). Some tasks set their own timeout, which wins over this one.
+	 * A new value applies to a schedule the next time it is provisioned, for
+	 * example at startup or when its workflow is activated.
+	 * Must be greater than 0 and at most 2147483 (about 24 days).
+	 */
+	@Env('N8N_SCHEDULER_TASK_TIMEOUT_SECONDS', positiveIntSchema.max(MAX_TASK_TIMEOUT_SECONDS))
+	taskTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
 
 	/**
 	 * How late, in seconds, a scheduled run may start and still count as on time. A
