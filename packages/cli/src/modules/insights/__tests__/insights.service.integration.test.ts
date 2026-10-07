@@ -1562,57 +1562,44 @@ describe('InsightsService (Integration)', () => {
 		});
 	});
 
-	describe('getDailyExecutionTotals', () => {
-		test('sums succeeded and failed executions of all workflows for each UTC day', async () => {
+	describe('getDailyBillableExecutions', () => {
+		test('reports the total on and before the first billable day, billable after it and 0 for a later day without billable executions', async () => {
 			const insightsService = Container.get(InsightsService);
-			const workflow1 = await createWorkflow({}, await createTeamProject());
-			const workflow2 = await createWorkflow({}, await createTeamProject());
-			const at = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' });
-
-			await createCompactedInsightsEvent(workflow1, {
-				type: 'success',
-				value: 3,
-				periodUnit: 'day',
-				periodStart: at('2025-06-10'),
-			});
-			await createCompactedInsightsEvent(workflow2, {
-				type: 'failure',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: at('2025-06-10'),
-			});
-			// Other types on the same day do not count as executions.
-			for (const type of ['runtime_ms', 'time_saved_min', 'billable'] as const) {
-				await createCompactedInsightsEvent(workflow1, {
+			const workflow = await createWorkflow({}, await createTeamProject());
+			const rows: Array<[InsightsByPeriod['type'], number, string]> = [
+				['success', 4, '2025-06-09T10:00:00'],
+				['success', 5, '2025-06-10T10:00:00'],
+				['runtime_ms', 900, '2025-06-10T10:00:00'],
+				['success', 2, '2025-06-11T08:00:00'],
+				['success', 5, '2025-06-11T15:00:00'],
+				['billable', 4, '2025-06-11T15:00:00'],
+				['success', 6, '2025-06-12T10:00:00'],
+				['billable', 5, '2025-06-12T10:00:00'],
+				['success', 3, '2025-06-13T10:00:00'],
+				['success', 9, '2025-06-14T10:00:00'],
+				['billable', 8, '2025-06-14T10:00:00'],
+			];
+			for (const [type, value, periodStart] of rows) {
+				await createCompactedInsightsEvent(workflow, {
 					type,
-					value: 100,
-					periodUnit: 'day',
-					periodStart: at('2025-06-10'),
+					value,
+					periodUnit: 'hour',
+					periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
 				});
 			}
-			// Hourly rows on both sides of the UTC day boundary.
-			await createCompactedInsightsEvent(workflow1, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'hour',
-				periodStart: at('2025-06-10T23:00:00'),
-			});
-			await createCompactedInsightsEvent(workflow2, {
-				type: 'failure',
-				value: 4,
-				periodUnit: 'hour',
-				periodStart: at('2025-06-11T00:00:00'),
+
+			const executions = await insightsService.getDailyBillableExecutions({
+				startDate: new Date('2025-06-10T00:00:00.000Z'),
+				endDate: new Date('2025-06-14T00:00:00.000Z'),
 			});
 
-			const totals = await insightsService.getDailyExecutionTotals({
-				startDate: at('2025-06-10').toJSDate(),
-				endDate: at('2025-06-11').toJSDate(),
-			});
-
-			expect(totals).toEqual(
+			expect(executions).toEqual(
 				new Map([
-					['2025-06-10', 6],
-					['2025-06-11', 4],
+					['2025-06-10', 5],
+					['2025-06-11', 7],
+					['2025-06-12', 5],
+					['2025-06-13', 0],
+					['2025-06-14', 8],
 				]),
 			);
 		});

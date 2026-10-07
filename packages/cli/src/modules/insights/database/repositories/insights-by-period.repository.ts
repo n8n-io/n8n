@@ -89,6 +89,27 @@ const aggregatedInsightsByTimeParser = z
 	})
 	.array();
 
+const dailyExecutionCountsParser = z
+	.object({
+		periodStart: periodStartParser,
+		total: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		billable: z
+			.union([z.number(), z.string(), z.null()])
+			.transform((value) => (value === null ? null : Number(value))),
+	})
+	.transform(({ periodStart, total, billable }) => ({
+		day: periodStart.slice(0, 10),
+		total,
+		billable,
+	}))
+	.array();
+
+type DailyExecutionCounts = z.infer<typeof dailyExecutionCountsParser>[number];
+
+const UTC_TIME_ZONE = { name: 'UTC', offsetMinutes: 0 };
+
+const EXECUTION_COUNT_TYPES = [TypeToNumber.success, TypeToNumber.failure, TypeToNumber.billable];
+
 /**
  * Identifies a caller whose insights must be limited to the workflows they can
  * read.
@@ -562,6 +583,48 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return aggregatedInsightsByTimeParser.parse(rawRows);
+	}
+
+	async getDailyExecutionCounts({
+		startDate,
+		endDate,
+	}: {
+		startDate: Date;
+		endDate: Date;
+	}): Promise<DailyExecutionCounts[]> {
+		const cte = getDateRangesCommonTableExpressionQuery({
+			dbType,
+			startDate,
+			endDate,
+			timeZone: 'UTC',
+		});
+		const periodStartExpr = this.getPeriodStartExpr('day', UTC_TIME_ZONE);
+
+		const rawRows = await this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select([
+				`${periodStartExpr} as "periodStart"`,
+				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.billable} THEN value END) AS "billable"`,
+			])
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
+			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
+			.andWhere(`insights.type IN (${EXECUTION_COUNT_TYPES.join(', ')})`)
+			.groupBy(periodStartExpr)
+			.orderBy(periodStartExpr, 'ASC')
+			.getRawMany();
+
+		return dailyExecutionCountsParser.parse(rawRows);
+	}
+
+	async getFirstBillableDay(): Promise<string | null> {
+		const result = await this.createQueryBuilder('insights')
+			.select(`MIN(${this.escapeField('periodStart')})`, 'first')
+			.where(`insights.type = ${TypeToNumber.billable}`)
+			.getRawOne<{ first: Date | string | null }>();
+
+		return result?.first ? periodStartParser.parse(result.first).slice(0, 10) : null;
 	}
 
 	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {

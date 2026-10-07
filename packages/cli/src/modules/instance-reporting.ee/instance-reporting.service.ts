@@ -386,8 +386,8 @@ export class InstanceReportingService {
 	 * cumulative ones.
 	 */
 	private async collectDataPoints(days: string[]): Promise<InstanceReportDataPoint[]> {
-		const [totals, { productionRootExecutions }] = await Promise.all([
-			this.insightsService.getDailyExecutionTotals({
+		const [billableByDay, { productionRootExecutions }] = await Promise.all([
+			this.insightsService.getDailyBillableExecutions({
 				startDate: new Date(`${days[0]}T00:00:00.000Z`),
 				endDate: new Date(`${days.at(-1)}T00:00:00.000Z`),
 			}),
@@ -403,7 +403,7 @@ export class InstanceReportingService {
 			...days.map((date) => ({
 				kind: 'daily' as const,
 				name: 'billableExecutions',
-				value: totals.get(date) ?? 0,
+				value: billableByDay.get(date) ?? 0,
 				date,
 			})),
 		];
