@@ -147,7 +147,7 @@ const config: KnipConfig = {
 			// Only named in JSDoc type imports; @stryker-mutator/core provides it.
 			ignoreDependencies: ['@stryker-mutator/api'],
 		}),
-		'packages/@n8n/benchmark': pkg({
+		'packages/quality/efficiency/scale/benchmark': pkg({
 			// The k6 runtime provides its own modules; only @types/k6 is installed.
 			ignoreDependencies: ['k6'],
 		}),
@@ -204,7 +204,7 @@ const config: KnipConfig = {
 			// Spawned as a binary through execFile.
 			ignoreDependencies: ['agent-browser'],
 		}),
-		'packages/testing/playwright': pkg({
+		'packages/quality/testing/playwright': pkg({
 			ignoreDependencies: [
 				// The e2e suite runs against the built app; the edge orders the turbo build.
 				'n8n',

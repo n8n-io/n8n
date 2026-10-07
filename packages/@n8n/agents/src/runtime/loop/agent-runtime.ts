@@ -48,9 +48,11 @@ import type {
 	ExecutionOptions,
 	ResumeOptions,
 } from '../../types/sdk/agent';
+import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
+import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-memory';
@@ -59,6 +61,7 @@ import { AgentMessageList, type SerializedMessageList } from '../model/message-l
 import { createModelTokenCounter } from '../model/model-token-counter';
 import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
+import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -118,6 +121,7 @@ interface LoopState {
 	maxIterations: number;
 	iterationCount: number;
 	reachedStopCondition: boolean;
+	guardrailStop?: GuardrailStop;
 }
 
 type ToolBatchSettlement<T> = { suspended: false } | { suspended: true; result: T };
@@ -161,7 +165,8 @@ export class AgentRuntime {
 	private toolExecutor: ToolCallExecutor;
 	private activeSkills?: ActiveSkills;
 
-	constructor(config: AgentRuntimeConfig) {
+	constructor(runtimeConfig: AgentRuntimeConfig) {
+		const config = activateSkillDependencyTools(runtimeConfig);
 		this.config = config;
 		// Keep full tool results when the memory backend cannot persist active skill IDs.
 		if (config.skillSource && (!config.memory || config.memory.skillState)) {
@@ -338,6 +343,7 @@ export class AgentRuntime {
 		const { state, list, resumeData } = await this.prepareToolResume(data, options);
 		let abortScope: AgentAbortScope | undefined;
 		let resumeClaimed = false;
+		let resumeAdmitted = false;
 
 		try {
 			// Merge persisted execution options with fresh caller options
@@ -361,6 +367,7 @@ export class AgentRuntime {
 			};
 			this.updateState({ persistence: resumeOptions.persistence });
 			await options.onResumeClaimed?.();
+			resumeAdmitted = true;
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 			const activeAbortScope = abortScope;
@@ -382,7 +389,54 @@ export class AgentRuntime {
 			if (method === 'generate') return await this.generateResumedRun(ctx);
 			return this.createResumedStream(ctx);
 		} catch (error) {
+			if (resumeClaimed && !resumeAdmitted) {
+				const suspendedState = { ...state, persistence: this.currentState.persistence };
+				await this.runState.suspend(this.runId, suspendedState);
+				this.updateState(suspendedState);
+				throw error;
+			}
 			return await this.handleResumeFailure(method, error, abortScope, resumeClaimed);
+		}
+	}
+
+	/** Resume a user pause without settling or replaying a tool call. */
+	async resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
+	): Promise<StreamResult> {
+		this.runId = options.runId;
+		const state = await this.runState.resume(this.runId);
+		if (!state || state.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
+			throw new StaleResumeError('This run is not paused');
+		}
+		if (options.hostMetadata !== undefined && !state.persistence) {
+			throw new Error('Cannot update host metadata without persistence');
+		}
+		const { runId: _runId, hostMetadata, onResumeClaimed, ...executionOptions } = options;
+		const resumeOptions: RuntimeExecutionOptions = {
+			...mergeResumeExecutionOptions(state, executionOptions),
+			persistence: mergeResumePersistence(state.persistence, hostMetadata),
+		};
+		const list = await this.restoreCheckpointMessages(state);
+		if (!(await this.runState.claimResume(this.runId, state))) {
+			throw new StaleResumeError('This run has already resumed');
+		}
+		this.updateState({
+			status: 'running',
+			finishReason: undefined,
+			persistence: resumeOptions.persistence,
+		});
+		const abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
+		try {
+			await onResumeClaimed?.();
+			await this.prepareResumeMemory(list, state.persistence);
+			return this.createResumedStream({ list, options: resumeOptions, abortScope });
+		} catch (error) {
+			abortScope.dispose();
+			// No task action has started. Keep the checkpoint available for a retry.
+			const suspendedState = { ...state, persistence: resumeOptions.persistence };
+			await this.runState.suspend(this.runId, suspendedState);
+			this.updateState(suspendedState);
+			throw error;
 		}
 	}
 
@@ -616,7 +670,7 @@ export class AgentRuntime {
 		result.runId = this.runId;
 		result.usage = this.applyCost(result.usage);
 		result.model = this.modelIdString;
-		if (!result.pendingSuspend?.length) {
+		if (!result.pendingSuspend?.length && result.finishReason !== 'paused') {
 			this.updateState({ status: 'success', messageList: list.serialize() });
 			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: result.messages });
 		}
@@ -635,8 +689,10 @@ export class AgentRuntime {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
+			// oxlint-disable-next-line typescript/no-deprecated
 			...(options?.onStepEnd || options?.onStepFinish
-				? { onStepEnd: options.onStepEnd ?? options.onStepFinish }
+				? // oxlint-disable-next-line typescript/no-deprecated
+					{ onStepEnd: options.onStepEnd ?? options.onStepFinish }
 				: {}),
 			repairToolCall: async (options) => {
 				return await fixToolCall(
@@ -724,7 +780,31 @@ export class AgentRuntime {
 
 		for (; state.iterationCount < state.maxIterations; state.iterationCount++) {
 			const hasInput = await this.consumeAdditionalInput(prepared, sink, state);
+			// A guardrail stop is terminal. The boundary above fired with
+			// canContinue: false, so the consumer released queued input instead of
+			// consuming it. End the run even if a consumer still returned messages.
+			if (state.guardrailStop) break;
 			if (state.reachedStopCondition && !hasInput) break;
+			this.assertNotAborted(prepared.abortScope);
+			if (await prepared.options?.shouldPause?.()) {
+				await this.persistSuspension(
+					{},
+					prepared.options,
+					prepared.list,
+					state.totalUsage,
+					state.maxIterations,
+					state.iterationCount,
+					'paused',
+				);
+				this.assertNotAborted(prepared.abortScope);
+				return await sink.finishSuspended({
+					suspendRunId: this.runId,
+					list: prepared.list,
+					usage: state.totalUsage,
+					suspensions: [],
+					finishReason: 'paused',
+				});
+			}
 			state.reachedStopCondition = false;
 			const settlement = await this.runLoopIteration(prepared, sink, state);
 			if (settlement.suspended) return settlement.result;
@@ -743,6 +823,7 @@ export class AgentRuntime {
 			finishReason: state.lastFinishReason,
 			usage: state.totalUsage,
 			structuredOutput: state.structuredOutput,
+			guardrail: state.guardrailStop,
 		});
 	}
 
@@ -760,7 +841,9 @@ export class AgentRuntime {
 			messages: sanitizeOffloadedToolResultsForMemory(ctx.list.turnDelta()),
 			lastCreatedAt: ctx.list.messages().at(-1)?.createdAt.getTime() ?? 0,
 			completing: state.reachedStopCondition,
-			canContinue: state.iterationCount < state.maxIterations,
+			// A guardrail stop is terminal: queued input must be released for the
+			// next run, not consumed into a run that makes no more model calls.
+			canContinue: state.iterationCount < state.maxIterations && !state.guardrailStop,
 		});
 		// Only committed input enters the live list. Its IDs and timestamps stay stable.
 		ctx.list.addInput(messages);
@@ -844,6 +927,7 @@ export class AgentRuntime {
 			persistence: ctx.options?.persistence,
 			telemetry: ctx.runTelemetry,
 			executionCounter: ctx.options?.executionCounter,
+			guardrails: ctx.options?.guardrails,
 			approvalContext: ctx.options?.approvalContext,
 			abortSignal: ctx.abortScope.signal,
 			isAborted: () => ctx.abortScope.isAborted,
@@ -889,6 +973,13 @@ export class AgentRuntime {
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
+		// A guardrail refused the call. Usage from any discarded empty attempt
+		// is already folded in; end the run without a new model turn.
+		if (!turn) {
+			state.lastFinishReason = 'guardrail';
+			state.reachedStopCondition = true;
+			return { suspended: false };
+		}
 		this.assertNotAborted(ctx.abortScope);
 		for (const message of ctx.list.inputDelta()) ctx.acceptedInputIds.add(message.id);
 
@@ -924,9 +1015,6 @@ export class AgentRuntime {
 
 	private async prepareModelCall(ctx: PreparedLoopContext) {
 		const { list, options, abortScope, staticContext } = ctx;
-		for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
-			this.deferredToolManager?.load(toolName);
-		}
 		const tools = this.context.buildToolLoopContext(
 			staticContext.aiProviderTools,
 			options?.persistence,
@@ -946,7 +1034,7 @@ export class AgentRuntime {
 			system: prompt.system,
 			messages: prompt.messages,
 			abortSignal: abortScope.signal,
-			hasTools: tools.hasTools,
+			hasTools: options?.toolsEnabled !== false && tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
 			providerOptions: staticContext.providerOptions,
@@ -975,14 +1063,33 @@ export class AgentRuntime {
 		sink: RunOutputSink<T>,
 		state: LoopState,
 		modelCallContext: ModelCallContext,
-	): Promise<ModelTurnResult> {
-		let turn = await sink.callModel(modelCallContext);
+	): Promise<ModelTurnResult | undefined> {
+		const guardrails = GuardrailRunner.from(ctx.options?.guardrails);
+		const callModel = async (): Promise<ModelTurnResult | undefined> => {
+			const guardCtx = guardrails?.modelCallContext('turn', this.modelIdString);
+			if (guardrails && guardCtx) {
+				const stop = await guardrails.before(guardCtx);
+				if (stop) {
+					state.guardrailStop = stop;
+					return undefined;
+				}
+			}
+			const turn = await sink.callModel(modelCallContext);
+			// Price the turn before guardrails see it. The finish chunk prices
+			// the summed tokens later; mergeUsage drops per-turn cost.
+			turn.usage = this.applyCost(turn.usage);
+			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
+			return turn;
+		};
+
+		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
-		for (let retry = 0; retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
+		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
 			this.recordTurnUsage(ctx, sink, state, turn);
 			this.assertNotAborted(ctx.abortScope);
-			turn = await sink.callModel(modelCallContext);
+			turn = await callModel();
 		}
+		if (!turn) return undefined;
 		this.recordTurnUsage(ctx, sink, state, turn);
 		return turn;
 	}
@@ -1178,6 +1285,7 @@ export class AgentRuntime {
 		totalUsage: TokenUsage | undefined,
 		maxIterations?: number,
 		iterationCount?: number,
+		finishReason?: 'paused',
 	): Promise<void> {
 		const checkpointOptions = buildCheckpointOptions(options, maxIterations, iterationCount);
 
@@ -1189,10 +1297,16 @@ export class AgentRuntime {
 			messageList: list.serialize(),
 			pendingToolCalls,
 			usage: totalUsage,
+			finishReason,
 			...checkpointOptions,
 		};
 		await this.runState.suspend(this.runId, state);
-		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
+		this.updateState({
+			status: 'suspended',
+			pendingToolCalls,
+			messageList: list.serialize(),
+			finishReason,
+		});
 		await this.memory.persistTurnDelta(list, options);
 	}
 

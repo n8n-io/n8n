@@ -16,12 +16,12 @@ import { NotFoundError } from '@n8n/errors';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService, CredentialsFinderService } from '@n8n/backend-services';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
 
@@ -38,6 +38,7 @@ export class EnterpriseCredentialsService {
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly licenseState: LicenseState,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	async shareWithProjects(
@@ -238,6 +239,14 @@ export class EnterpriseCredentialsService {
 			this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject);
 			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
 		}
+
+		await this.policyEnforcementService.enforceCredentialTransfer(
+			{
+				credential: { id: credential.id, type: credential.type },
+				targetProjectId: destinationProject.id,
+			},
+			{ kind: 'user', user },
+		);
 
 		// 6. validate that the destination project has access to all external secret providers
 		if (

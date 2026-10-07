@@ -215,12 +215,16 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 
 ### Persistence layer & the TypeORM boundary
 
-TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
-package or a backend module's own `database/` folder (entity/repository files).
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer**. The shared
+`@n8n/db` package and backend persistence adapters can import it. A module can
+colocate or group its entities and repositories according to its domain.
 Business logic — services, controllers, handlers, commands, factories — must not
-import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
-`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
-a new import (or an inline `eslint-disable` of the rule) fails CI.
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). The
+`typeorm-persistence-boundary` Code Health rule recognizes entity and repository
+declarations. It scans backend packages that depend on `@n8n/db` or
+`@n8n/typeorm`. Tests, migrations, and explicit helper-only adapters are
+exceptions. Existing business-logic imports stay in the shrink-only Code Health
+baseline. A new business-logic import fails CI.
 
 - **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
   `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
@@ -310,14 +314,14 @@ extends one of those layers):
 - Run that package's `pnpm lint` and `pnpm typecheck` before committing code.
   Build first when shared types or cross-package dependencies change.
 - Use Vitest for unit tests. Use
-  [Playwright](packages/testing/playwright/AGENTS.md) when a test needs its
+  [Playwright](packages/quality/testing/playwright/AGENTS.md) when a test needs its
   browser, fixtures, or managed containers.
 - For Vitest packages with `@n8n/di` decorators, use
   `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`.
 - Check import and mock side effects before running tests. Keep tests out of
   user-owned directories. Set `N8N_USER_FOLDER` to a test-owned directory before
   importing n8n settings. Clean up only paths that the test created.
-- CI runs [`@n8n/code-health`](packages/testing/code-health/README.md) static
+- CI runs [`@n8n/code-health`](packages/quality/policy/code-health/README.md) static
   analysis on PRs. It checks monorepo rules, including dependency hygiene and
   encryption-boundary coverage.
 
@@ -331,7 +335,7 @@ extends one of those layers):
 | Start a Codespace backend and share its port | `pnpm dev:up` |
 
 The root `pnpm dev` command does not start a server. See the
-[Playwright guide](packages/testing/playwright/README.md) and the
+[Playwright guide](packages/quality/testing/playwright/README.md) and the
 [Codespaces guide](.devcontainer/codespaces/README.md) for details.
 
 ### Common Development Tasks

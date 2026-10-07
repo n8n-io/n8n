@@ -93,6 +93,7 @@ export type JobFinishedProps = {
 };
 
 /** Message sent by worker to main to report a job has finished. */
+// oxlint-disable-next-line typescript/no-deprecated
 export type JobFinishedMessage = JobFinishedMessageV1 | JobFinishedMessageV2;
 
 /** @deprecated Old format without execution result details. */

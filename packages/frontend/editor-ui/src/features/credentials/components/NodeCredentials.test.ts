@@ -3575,4 +3575,164 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId(SHARED_HEADER)).not.toBeInTheDocument();
 		});
 	});
+
+	describe('a current credential the user cannot use', () => {
+		const UNUSABLE_HEADER = 'node-credentials-select-group-__credential-group-unusable';
+
+		// Fresh per test: the component writes back into the node it is given.
+		const nodeOnAlicesCredential = (): INodeUi => ({
+			...httpNode,
+			parameters: { ...httpNode.parameters },
+			credentials: { openAiApi: { id: 'alice-cred', name: "Alice's OpenAi" } },
+			issues: undefined,
+		});
+
+		const unusable = (id: string, name: string, currentUserCanUse = false) => ({
+			id,
+			name,
+			credentialType: 'openAiApi',
+			currentUserCanUse,
+			homeProject: {
+				id: 'alice-personal',
+				name: 'Alice Chen <alice@acme.io>',
+				type: 'personal' as const,
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+		});
+
+		function setUp({ flag = true, usable = true, canUse = false } = {}) {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				granularCredentialSharing: flag,
+			} as unknown as FrontendSettings;
+			projectsStore.currentProject = {
+				id: 'marketing',
+				name: 'Marketing',
+				type: 'team',
+				scopes: ['credential:create'],
+			} as Project;
+			const node = nodeOnAlicesCredential();
+			ndvStore.activeNode = node;
+			credentialsStore.state.credentials = usable
+				? {
+						'team-cred': createCredential({
+							id: 'team-cred',
+							name: 'Marketing OpenAi',
+							sharedRoute: 'project',
+						}),
+					}
+				: {};
+			// A second credential the user cannot use, which no node here references.
+			workflowDocumentStore.setUsedCredentials([
+				unusable('alice-cred', "Alice's OpenAi", canUse),
+				unusable('bob-cred', "Bob's OpenAi"),
+			]);
+
+			return renderComponent({ props: { node } }, { merge: true });
+		}
+
+		it('shows it as the current value, not selectable, with its owner named', async () => {
+			setUp();
+
+			const select = screen.getByTestId('node-credentials-select');
+			await waitFor(() =>
+				expect(within(select).getByRole('combobox')).toHaveValue("Alice's OpenAi"),
+			);
+
+			await userEvent.click(select);
+
+			expect(await screen.findByTestId(UNUSABLE_HEADER)).toHaveTextContent('Not available to you');
+			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
+			expect(option).toHaveClass('is-disabled');
+			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+			// Only the current credential stays; others the user cannot use are not offered.
+			expect(screen.queryByTestId('node-credentials-select-item-bob-cred')).not.toBeInTheDocument();
+		});
+
+		it('explains who can use it next to the field', async () => {
+			setUp();
+
+			const warning = screen.getByTestId('node-credentials-unusable-warning');
+			await userEvent.hover(warning.querySelector('svg') ?? warning);
+
+			expect(
+				await screen.findByText("Only Alice Chen can run or publish with Alice's OpenAi."),
+			).toBeInTheDocument();
+			expect(
+				screen.getByText(
+					'Switch to a credential you can use to run or publish, or ask Alice to share this one with Marketing.',
+				),
+			).toBeInTheDocument();
+		});
+
+		it('keeps the field when the user has no credential of the type to switch to', async () => {
+			setUp({ usable: false });
+
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
+			await waitFor(() =>
+				expect(
+					within(screen.getByTestId('node-credentials-select')).getByRole('combobox'),
+				).toHaveValue("Alice's OpenAi"),
+			);
+		});
+
+		it('switches this node only to a credential the user can use', async () => {
+			const replaceInvalid = vi.spyOn(workflowDocumentStore, 'replaceInvalidWorkflowCredentials');
+			const { emitted } = setUp();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(await screen.findByTestId('node-credentials-select-item-team-cred'));
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials.openAiApi).toEqual({
+				id: 'team-cred',
+				name: 'Marketing OpenAi',
+			});
+			// The old credential is valid, just not this user's, so other nodes keep it.
+			expect(replaceInvalid).not.toHaveBeenCalled();
+		});
+
+		it('shows an owner or admin who can use it the current credential under "Available to you"', async () => {
+			// An instance-wide scope makes it usable, but the scoped options do not list it.
+			setUp({ canUse: true });
+
+			const select = screen.getByTestId('node-credentials-select');
+			await waitFor(() =>
+				expect(within(select).getByRole('combobox')).toHaveValue("Alice's OpenAi"),
+			);
+			expect(screen.queryByTestId('node-credentials-unusable-warning')).not.toBeInTheDocument();
+
+			await userEvent.click(select);
+
+			expect(
+				await screen.findByTestId('node-credentials-select-group-__credential-group-yours'),
+			).toHaveTextContent('Available to you');
+			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
+			expect(option).not.toHaveClass('is-disabled');
+			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+			expect(screen.queryByTestId(UNUSABLE_HEADER)).not.toBeInTheDocument();
+		});
+
+		it('changes nothing while the feature flag is off', async () => {
+			setUp({ flag: false });
+
+			expect(screen.queryByTestId('node-credentials-unusable-warning')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(
+				await screen.findByTestId('node-credentials-select-item-team-cred'),
+			).toBeInTheDocument();
+			expect(screen.queryByTestId(UNUSABLE_HEADER)).not.toBeInTheDocument();
+			expect(
+				screen.queryByTestId('node-credentials-select-item-alice-cred'),
+			).not.toBeInTheDocument();
+		});
+	});
 });

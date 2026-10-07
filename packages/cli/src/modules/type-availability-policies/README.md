@@ -101,13 +101,14 @@ A rule of this kind is written on `/credential-type-policies` and
 `/projects/:projectId/credential-type-policies`, behind `credentialTypePolicy:manage` — its
 own permission, because blocking `oAuth2Api` is a wider lever than blocking one node.
 
-It implements all seven points:
+It implements all eight points:
 
-| Point               | What it reads                                      |
-| ------------------- | -------------------------------------------------- |
-| the five workflow points | the keys of every node's `credentials` map    |
-| `credentialSave`    | the type of the credential being written           |
-| `credentialDecrypt` | `credentialType` — the credential's own type       |
+| Point                    | What it reads                                         |
+| ------------------------ | ----------------------------------------------------- |
+| the five workflow points | the keys of every node's `credentials` map            |
+| `credentialSave`         | the type of the credential being written              |
+| `credentialTransfer`     | the credential's type, against the **target** project |
+| `credentialDecrypt`      | `credentialType` — the credential's own type          |
 
 Two differences from the node check are the point of the whole thing:
 
@@ -284,7 +285,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
-| `credential-type-policy.check.ts`                 | Credential types: all seven points, including `credentialSave`                  |
+| `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |

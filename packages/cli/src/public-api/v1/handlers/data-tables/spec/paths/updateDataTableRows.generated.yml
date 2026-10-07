@@ -1,0 +1,181 @@
+operationId: updateDataTableRows
+tags:
+  - DataTable
+summary: Update rows in a data table
+description: Update rows matching filter conditions in a data table.
+x-required-scope: dataTableRow:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          filter:
+            type: object
+            properties:
+              type:
+                anyOf:
+                  - type: string
+                    enum:
+                      - and
+                  - type: string
+                    enum:
+                      - or
+                default: and
+              filters:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    columnName:
+                      type: string
+                      minLength: 1
+                      maxLength: 63
+                      pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+                    condition:
+                      anyOf:
+                        - type: string
+                          enum:
+                            - eq
+                        - type: string
+                          enum:
+                            - neq
+                        - type: string
+                          enum:
+                            - like
+                        - type: string
+                          enum:
+                            - ilike
+                        - type: string
+                          enum:
+                            - gt
+                        - type: string
+                          enum:
+                            - gte
+                        - type: string
+                          enum:
+                            - lt
+                        - type: string
+                          enum:
+                            - lte
+                    value:
+                      anyOf:
+                        - type: string
+                        - type: number
+                        - type: boolean
+                        - type: string
+                        - {}
+                        - {}
+                  required:
+                    - columnName
+                    - condition
+                    - value
+                minItems: 1
+            required:
+              - filters
+            description: Filter conditions to match rows for update.
+          data:
+            type: object
+            additionalProperties:
+              anyOf:
+                - type: string
+                - type: number
+                - type: boolean
+                - {}
+                - type: string
+                - {}
+            description: Column values to update
+          returnData:
+            type: boolean
+            default: false
+            description: Set to true to return the updated row(s). Set to false to return true on success.
+          dryRun:
+            type: boolean
+            default: false
+            description: Set to true to preview the change without saving it.
+        required:
+          - filter
+          - data
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          anyOf:
+            - type: boolean
+              description: Returned when returnData is false and dryRun is false
+            - type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    nullable: true
+                    description: The row ID (auto-generated)
+                  createdAt:
+                    type: string
+                    nullable: true
+                    format: date-time
+                    description: The date and time the row was created
+                  updatedAt:
+                    type: string
+                    nullable: true
+                    format: date-time
+                    description: The date and time the row was last updated
+                  dryRunState:
+                    type: string
+                    enum:
+                      - before
+                      - after
+                    description: Whether this entry shows the row state before or after the change
+                required:
+                  - id
+                  - createdAt
+                  - updatedAt
+                  - dryRunState
+              description: 'Returned when dryRun is true: one entry per row per before/after state'
+            - type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The row ID (auto-generated)
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: The date and time the row was created
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    description: The date and time the row was last updated
+                required:
+                  - id
+                  - createdAt
+                  - updatedAt
+                description: A data table row with system columns (id, createdAt, updatedAt) and user-defined columns
+              description: Returned when returnData is true and dryRun is false
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

@@ -19,6 +19,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 				deletedWorkflowIds: undefined,
 				workflowConflictPolicy: 'new-version',
 				workflowIdPolicy: 'source',
+				overwriteDeletionPolicy: 'archive',
 			});
 		}
 	});
@@ -36,6 +37,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 				deletedWorkflowIds: ['WFC'],
 				workflowConflictPolicy: 'new-version',
 				workflowIdPolicy: 'source',
+				overwriteDeletionPolicy: 'archive',
 			});
 		}
 	});
@@ -104,11 +106,13 @@ describe('ImportPackageSelectionRequestDto', () => {
 				...base,
 				workflowConflictPolicy: '',
 				workflowIdPolicy: '   ',
+				overwriteDeletionPolicy: '',
 			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.workflowConflictPolicy).toBe('new-version');
 				expect(result.data.workflowIdPolicy).toBe('source');
+				expect(result.data.overwriteDeletionPolicy).toBe('archive');
 			}
 		});
 
@@ -117,17 +121,20 @@ describe('ImportPackageSelectionRequestDto', () => {
 				...base,
 				workflowConflictPolicy: 'skip',
 				workflowIdPolicy: 'new',
+				overwriteDeletionPolicy: 'hard-delete',
 			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.workflowConflictPolicy).toBe('skip');
 				expect(result.data.workflowIdPolicy).toBe('new');
+				expect(result.data.overwriteDeletionPolicy).toBe('hard-delete');
 			}
 		});
 
 		it.each([
 			{ field: 'workflowConflictPolicy', value: 'overwrite' },
 			{ field: 'workflowIdPolicy', value: 'reuse' },
+			{ field: 'overwriteDeletionPolicy', value: 'purge' },
 		])('rejects an unsupported $field value', ({ field, value }) => {
 			expect(ImportPackageSelectionRequestDto.safeParse({ ...base, [field]: value }).success).toBe(
 				false,
@@ -143,7 +150,6 @@ describe('ImportPackageSelectionRequestDto', () => {
 			folderConflictPolicy: 'overwrite',
 			tagConflictPolicy: 'fail',
 			projectConflictPolicy: 'overwrite',
-			overwriteDeletionPolicy: 'hard-delete',
 			bindings: '{"credentials":{"a":"b"}}',
 		});
 		expect(result.success).toBe(true);
@@ -154,7 +160,6 @@ describe('ImportPackageSelectionRequestDto', () => {
 			expect(result.data).not.toHaveProperty('folderConflictPolicy');
 			expect(result.data).not.toHaveProperty('tagConflictPolicy');
 			expect(result.data).not.toHaveProperty('projectConflictPolicy');
-			expect(result.data).not.toHaveProperty('overwriteDeletionPolicy');
 			expect(result.data).not.toHaveProperty('bindings');
 		}
 	});
@@ -166,6 +171,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 			'deletedWorkflowIds',
 			'workflowConflictPolicy',
 			'workflowIdPolicy',
+			'overwriteDeletionPolicy',
 		]);
 	});
 });

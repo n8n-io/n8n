@@ -633,6 +633,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
+			// Limited mode: reads omit parameter values, so a save would erase them.
+			if (context.allowSendingParameterValues === false) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [
+						'n8n Assistant cannot create or edit workflows while data sharing is turned off. Nothing was saved.',
+					],
+					remediation: createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'parameter_values_hidden',
+						guidance:
+							'Do not retry or rewrite the workflow code. Tell the user that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
+					}),
+				};
+			}
+
 			const { groupingDecision, groupingReason } = input;
 			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
 				const guidance =
@@ -701,6 +719,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			// The source was read while parameter values were hidden. Saving it would erase them.
+			if (binding.workflowId && binding.parameterValuesIncluded === false) {
+				const remediation = createRemediation({
+					category: 'code_fixable',
+					shouldEdit: false,
+					reason: 'workflow_source_refresh_required',
+					guidance:
+						'Call workflows(action="get-as-code") for this workflow before rebuilding. ' +
+						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'source_read',
+					binding,
+					targetWorkflowId: binding.workflowId,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: binding.workflowId,
+					errors: ['This workflow source may omit saved parameter values. Nothing was saved.'],
+					remediation,
+				};
+			}
+
 			if (input.workflowId && !binding.workflowId) {
 				try {
 					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
@@ -730,8 +775,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const targetWorkflowId = binding.workflowId;
 			// Only the folder-enabled schema carries the field; the narrowing keeps the
 			// handler valid for both shapes without a cast.
+			// Blank or "/" names no folder: OpenAI's strict tool schemas make models fill every field.
 			const folderPath =
-				'folderPath' in input && typeof input.folderPath === 'string'
+				'folderPath' in input &&
+				typeof input.folderPath === 'string' &&
+				/[^\s/]/.test(input.folderPath)
 					? input.folderPath
 					: undefined;
 			if (folderPath !== undefined && targetWorkflowId) {
@@ -1610,6 +1658,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 
 					failureTracker.clear(workItemKey);
+					await context.onArtifactChanged?.({
+						type: 'workflow',
+						id: saved.id,
+						...(json.name ? { name: json.name } : {}),
+					});
 
 					trackWorkflowSourceBuild(context, {
 						result: 'success',

@@ -19,13 +19,15 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn() }),
+	useToast: () => ({ showError: showQueueErrorMock }),
 }));
 
+const showQueueErrorMock = vi.fn();
 const getAgentChatQueueMock = vi.fn().mockResolvedValue({ items: [] });
 const removeAgentQueuedMessageMock = vi.fn().mockResolvedValue({ removed: true });
 const updateAgentQueuedMessageMock = vi.fn();
 const steerAgentQueuedMessageMock = vi.fn();
+const reorderAgentQueuedMessageMock = vi.fn();
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
@@ -59,6 +61,7 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 		removeAgentQueuedMessage: (...args: unknown[]) => removeAgentQueuedMessageMock(...args),
 		updateAgentQueuedMessage: (...args: unknown[]) => updateAgentQueuedMessageMock(...args),
 		steerAgentQueuedMessage: (...args: unknown[]) => steerAgentQueuedMessageMock(...args),
+		reorderAgentQueuedMessage: (...args: unknown[]) => reorderAgentQueuedMessageMock(...args),
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
 		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
@@ -202,6 +205,8 @@ beforeEach(() => {
 	getAgentChatQueueMock.mockReset().mockResolvedValue({ items: [] });
 	removeAgentQueuedMessageMock.mockReset().mockResolvedValue({ removed: true });
 	steerAgentQueuedMessageMock.mockReset().mockResolvedValue(undefined);
+	reorderAgentQueuedMessageMock.mockReset().mockResolvedValue(undefined);
+	showQueueErrorMock.mockClear();
 });
 
 const hookScopes: ReturnType<typeof effectScope>[] = [];
@@ -211,7 +216,12 @@ afterEach(() => {
 
 function buildHook(
 	continueSessionId?: string,
-	options: { newSession?: Ref<boolean>; onSessionCreated?: (sessionId: string) => void } = {},
+	options: {
+		newSession?: Ref<boolean>;
+		onSessionCreated?: (sessionId: string) => void;
+		budgetCards?: boolean;
+		channel?: Ref<'chat' | 'n8n-chat'>;
+	} = {},
 ) {
 	const scope = effectScope();
 	hookScopes.push(scope);
@@ -607,6 +617,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			'p1',
 			'a1',
 			'run-approval',
+			'chat',
 		);
 		const assistant = hook.messages.value[1];
 		expect(assistant.toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
@@ -835,6 +846,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			'p1',
 			'a1',
 			'run-approval',
+			'chat',
 		);
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
 	});
@@ -887,6 +899,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			'p1',
 			'a1',
 			'run-external',
+			'chat',
 		);
 		expect(hook.messages.value[1].status).toBe('success');
 		expect(hook.messages.value[1].toolCalls).toEqual([
@@ -1208,6 +1221,383 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		await flushPromises();
 		await nextTick();
 
+		expect(hook.isStreaming.value).toBe(false);
+	});
+
+	it('keeps the budget stop card after history replaces the transcript', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.content).toBe('partial');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
+	it('keeps a budget stop card when the stop persisted no assistant text', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.monthly');
+	});
+
+	it('does not reinsert a budget stop card on a later history refresh', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const restored = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(restored?.budgetNotices?.[0]?.code).toBe('budget.session');
+
+		// Simulate the user raising the budget: the card is cleared in memory.
+		for (const message of hook.messages.value) {
+			delete message.budgetNotices;
+		}
+
+		// A later push-triggered refresh must not bring the consumed notice back.
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'exec-1' },
+			});
+		}
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices).toBeUndefined();
+	});
+
+	it('does not restore a budget stop card into another session’s transcript', async () => {
+		const threadId = ref('thread-1');
+		const firstRefresh = Promise.withResolvers<AgentChatMessagesResponse>();
+		const secondRefresh = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock
+			.mockReturnValueOnce(firstRefresh.promise)
+			.mockReturnValueOnce(secondRefresh.promise)
+			.mockResolvedValue({
+				messages: [
+					{
+						id: 'user-1',
+						role: 'user',
+						content: [{ type: 'text', text: 'hi' }],
+						executionId: 'exec-1',
+					},
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: [{ type: 'text', text: 'partial' }],
+						executionId: 'exec-1',
+					},
+				],
+				openSuspensions: [],
+			});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const scope = effectScope();
+		hookScopes.push(scope);
+		const hook = scope.run(() =>
+			useAgentChatStream({
+				projectId: ref('p1'),
+				agentId: ref('a1'),
+				continueSessionId: threadId,
+				budgetCards: true,
+			}),
+		)!;
+
+		await hook.sendMessage('hi');
+		await flushPromises();
+		// The post-done history read for thread-1 is in flight but unresolved.
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		threadId.value = 'thread-2';
+		await flushPromises();
+		// The in-flight read holds the refresh queue; the switch queues another.
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		// The stale read for thread-1 resolves after the switch and is dropped.
+		firstRefresh.resolve({ messages: [], openSuspensions: [] });
+		await flushPromises();
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(2);
+
+		secondRefresh.resolve({
+			messages: [
+				{
+					id: 'user-2',
+					role: 'user',
+					content: [{ type: 'text', text: 'other' }],
+					executionId: 'exec-2',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['other']);
+		expect(hook.messages.value.some((message) => message.budgetNotices?.length)).toBe(false);
+
+		// Back on thread-1, the stop card restores onto its own persisted turn.
+		threadId.value = 'thread-1';
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
+	it('keeps the budget stop card when a trailing push refresh follows the restore', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const restored = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(restored?.budgetNotices?.[0]?.code).toBe('budget.session');
+
+		// The execution's terminal push can land right after the post-done
+		// refresh. Nothing dismissed the card, so this refresh must keep it.
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'exec-1' },
+			});
+		}
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
+	it('does not restore a stop cleared while the first history read is still in flight', async () => {
+		const firstRead = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock.mockReturnValueOnce(firstRead.promise);
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		// The card is up; the post-done history read has not landed yet.
+		expect(
+			hook.messages.value.find((message) => message.role === 'assistant')?.budgetNotices?.[0]?.code,
+		).toBe('budget.session');
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		// The cap increase succeeds while the read is pending: both copies go.
+		hook.clearBudgetNotices(new Set(['budget.session']));
+		expect(
+			hook.messages.value.find((message) => message.role === 'assistant')?.budgetNotices,
+		).toEqual([]);
+
+		firstRead.resolve({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices).toBeUndefined();
+	});
+
+	it('keeps a buffered alert when only the session stop is cleared', async () => {
+		const firstRead = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock.mockReturnValueOnce(firstRead.promise);
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'budget-notice', code: 'budget.alert' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		// Both cards are up on the same turn.
+		const live = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(live?.budgetNotices?.map((notice) => notice.code)).toEqual([
+			'budget.alert',
+			'budget.session',
+		]);
+
+		hook.clearBudgetNotices(new Set(['budget.session']));
+
+		firstRead.resolve({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices?.map((notice) => notice.code)).toEqual(['budget.alert']);
+	});
+
+	it('attaches a budget stop card on a guardrail finish chunk', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(hook.messages.value[1]?.budgetNotices?.[0]?.code).toBe('budget.monthly');
+	});
+
+	it('keeps the turn running when the budget alert arrives', async () => {
+		let emitMore: (events: AgentSseEvent[]) => void = () => {};
+		let closeStream: (events?: AgentSseEvent[]) => void = () => {};
+		globalThis.fetch = vi.fn(async () => {
+			const controlled = makeControllableSseResponse(
+				[{ type: 'text-delta', id: 't-1', delta: 'still going' }],
+				null,
+			);
+			emitMore = controlled.emit;
+			closeStream = controlled.close;
+			return controlled.response;
+		}) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		const pending = hook.sendMessage('hi');
+		await flushPromises();
+		emitMore([{ type: 'budget-notice', code: 'budget.alert' }]);
+		await flushPromises();
+
+		expect(hook.isStreaming.value).toBe(true);
+		expect(hook.messages.value[1]?.status).toBe('streaming');
+		expect(hook.messages.value[1]?.budgetNotices?.[0]?.code).toBe('budget.alert');
+
+		closeStream([{ type: 'done' }]);
+		await pending;
+		await flushPromises();
 		expect(hook.isStreaming.value).toBe(false);
 	});
 
@@ -2266,6 +2656,7 @@ describe('useAgentChatStream — loadHistory', () => {
 			'p1',
 			'a1',
 			'thread-1',
+			'chat',
 		);
 		const msg = hook.messages.value.at(-1)!;
 		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
@@ -3154,6 +3545,7 @@ describe('useAgentChatStream — execution recovery', () => {
 				'a1',
 				'thread-1',
 				'exec-1',
+				'chat',
 			);
 			expect(second.isCancelling.value).toBe(true);
 			expect(first.isStreaming.value).toBe(true);
@@ -3278,6 +3670,7 @@ describe('useAgentChatStream — execution recovery', () => {
 			'a1',
 			'thread-1',
 			'exec-1',
+			'chat',
 		);
 		expect(vi.mocked(fetch).mock.calls[0][1]?.signal?.aborted).toBe(false);
 		getChatMessagesMock.mockResolvedValue({
@@ -3443,6 +3836,22 @@ describe('useAgentChatStream — queued submissions', () => {
 		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
 	});
 	afterEach(() => vi.unstubAllGlobals());
+
+	it('passes the queue item id to onAccepted when the message is queued', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				makeSseResponse([{ type: 'message-queued', queueId: 'q-7', sessionId: 'thread-1' }], false),
+			),
+		);
+		const accepted = vi.fn();
+		const hook = buildHook('thread-1');
+
+		await hook.sendMessage('Hello', undefined, accepted);
+		await flushPromises();
+
+		expect(accepted).toHaveBeenCalledWith('q-7');
+	});
 
 	it('keeps the original request UUID and stream when another delivery completes as a duplicate', async () => {
 		const clientId = 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a';
@@ -3773,9 +4182,15 @@ describe('useAgentChatStream — queued submissions', () => {
 		streams[1].close([{ type: 'done', executionId: 'B' }]);
 	});
 
-	it.each([false, true])(
-		'ignores an older start after B starts (B settled: %s)',
-		async (settled) => {
+	it.each([
+		{ settled: false, unavailable: false },
+		{ settled: true, unavailable: false },
+		{ settled: false, unavailable: true },
+	])(
+		'ignores an older start with a stale queue (B settled: $settled, history unavailable: $unavailable)',
+		async ({ settled, unavailable }) => {
+			const queued = { id: '1', message: 'A', createdAt: new Date().toISOString() };
+			getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
 			const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
 			const signals: Array<AbortSignal | null> = [];
 			vi.stubGlobal(
@@ -3795,13 +4210,25 @@ describe('useAgentChatStream — queued submissions', () => {
 			const hook = buildHook('thread-1');
 			await hook.sendMessage('A');
 			await hook.sendMessage('B');
+			getChatMessagesMock.mockResolvedValue({
+				messages: [],
+				openSuspensions: [],
+				activeExecutionId: 'B',
+			});
 			streams[1].emit([{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' }]);
 			await flushPromises();
+			expect(hook.queuedMessages.value).toEqual([queued]);
 			if (settled) {
+				getChatMessagesMock.mockResolvedValue({
+					messages: [],
+					openSuspensions: [],
+					activeExecutionId: null,
+				});
 				streams[1].close([{ type: 'done', executionId: 'B' }]);
 				await flushPromises();
 			}
-			streams[0].close([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
+			if (unavailable) getChatMessagesMock.mockRejectedValueOnce(new Error('History unavailable'));
+			streams[0].emit([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
 			await flushPromises();
 			expect(signals[0]?.aborted).toBe(true);
 			expect(hook.activeExecutionId.value).toBe(settled ? null : 'B');
@@ -3812,9 +4239,117 @@ describe('useAgentChatStream — queued submissions', () => {
 				await hook.stopGenerating();
 				expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('B');
 			}
+			streams[0].close();
 			hook.detachStream();
 		},
 	);
+
+	it.each([false, true])(
+		'ignores a delayed ownership response after C starts (history recovery: %s)',
+		async (recovered) => {
+			const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
+			const fetchMock = vi.fn(async (_url, init: RequestInit) => {
+				const stream = makeControllableSseResponse(
+					[{ type: 'message-queued', queueId: String(streams.length + 1), sessionId: 'thread-1' }],
+					init.signal ?? null,
+				);
+				streams.push(stream);
+				return stream.response;
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const hook = buildHook('thread-1');
+			await hook.sendMessage('A');
+			await hook.sendMessage('B');
+			streams[1].emit([{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' }]);
+			await flushPromises();
+			await hook.sendMessage('C');
+			if (recovered) {
+				streams[1].close([{ type: 'done', executionId: 'B' }]);
+				await flushPromises();
+			}
+
+			const validation = Promise.withResolvers<AgentChatMessagesResponse>();
+			getChatMessagesMock.mockReturnValueOnce(validation.promise);
+			streams[0].emit([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
+			await flushPromises();
+			expect(hook.activeExecutionId.value).toBe(recovered ? null : 'B');
+
+			getChatMessagesMock.mockResolvedValue({
+				messages: ['B', 'C'].map((text) => ({
+					id: text,
+					executionId: text,
+					role: 'user',
+					content: [{ type: 'text', text }],
+				})),
+				openSuspensions: [],
+				activeExecutionId: 'C',
+			});
+			if (recovered) hook.refresh();
+			else
+				streams[2].emit([{ type: 'execution-started', executionId: 'C', sessionId: 'thread-1' }]);
+			await flushPromises();
+			validation.resolve({ messages: [], openSuspensions: [], activeExecutionId: 'A' });
+			await flushPromises();
+			expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true);
+			expect(hook.activeExecutionId.value).toBe('C');
+			if (recovered)
+				streams[2].emit([{ type: 'execution-started', executionId: 'C', sessionId: 'thread-1' }]);
+			streams[2].emit([{ type: 'text-delta', id: 'c-text', delta: 'C output' }]);
+			await flushPromises();
+			expect(hook.messages.value.map(({ content }) => content)).toEqual(['B', 'C', 'C output']);
+			await hook.stopGenerating();
+			expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('C');
+			hook.detachStream();
+		},
+	);
+
+	it('stops validating a delayed start after repeated ownership changes', async () => {
+		const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
+		const fetchMock = vi.fn(async (_url, init: RequestInit) => {
+			const executionId = ['A', 'B', 'C', 'D', 'E'][streams.length];
+			const event: AgentSseEvent =
+				streams.length < 2
+					? { type: 'message-queued', queueId: executionId, sessionId: 'thread-1' }
+					: { type: 'execution-started', executionId, sessionId: 'thread-1' };
+			const stream = makeControllableSseResponse([event], init.signal ?? null);
+			streams.push(stream);
+			return stream.response;
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const hook = buildHook('thread-1');
+		await hook.sendMessage('A');
+		await hook.sendMessage('B');
+		streams[1].emit([{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' }]);
+		await flushPromises();
+
+		let validation = Promise.withResolvers<AgentChatMessagesResponse>();
+		getChatMessagesMock.mockReturnValueOnce(validation.promise);
+		streams[0].emit([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
+		await flushPromises();
+		for (const executionId of ['C', 'D', 'E']) {
+			await hook.sendMessage(executionId);
+			const nextValidation = Promise.withResolvers<AgentChatMessagesResponse>();
+			getChatMessagesMock.mockReturnValueOnce(nextValidation.promise);
+			validation.resolve({ messages: [], openSuspensions: [], activeExecutionId: 'A' });
+			await flushPromises();
+			expect(hook.activeExecutionId.value).toBe(executionId);
+			validation = nextValidation;
+		}
+
+		expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true);
+		streams[4].emit([{ type: 'text-delta', id: 'e-text', delta: 'E output' }]);
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual([
+			'B',
+			'C',
+			'D',
+			'E',
+			'E output',
+		]);
+		await hook.stopGenerating();
+		expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('E');
+		hook.detachStream();
+	});
 
 	it('handles start before acceptance and preserves the original stream after a removal conflict', async () => {
 		let stream: ReturnType<typeof makeControllableSseResponse>;
@@ -3958,6 +4493,7 @@ describe('useAgentChatStream — queued submissions', () => {
 			'thread-1',
 			'1',
 			{ message: 'edited' },
+			'chat',
 		);
 		stream!.emit([
 			{
@@ -3989,6 +4525,171 @@ describe('useAgentChatStream — queued submissions', () => {
 		},
 	);
 
+	it('keeps live output once after reordering, history recovery, and timeline updates', async () => {
+		const items = ['A', 'B'].map((message, index) => ({
+			id: String(index + 1),
+			message,
+			createdAt: new Date().toISOString(),
+		}));
+		getAgentChatQueueMock.mockResolvedValue({ items });
+		const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
+		const fetchMock = vi.fn(async (_url, init: RequestInit) => {
+			const event: AgentSseEvent =
+				streams.length === 0
+					? { type: 'execution-started', executionId: 'active', sessionId: 'thread-1' }
+					: { type: 'message-queued', queueId: String(streams.length), sessionId: 'thread-1' };
+			const stream = makeControllableSseResponse([event], init.signal ?? null);
+			streams.push(stream);
+			return stream.response;
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const hook = buildHook('thread-1');
+		await hook.sendMessage('Current turn');
+		await hook.sendMessage('A');
+		await hook.sendMessage('B');
+		await flushPromises();
+		const saved = Promise.withResolvers<void>();
+		reorderAgentQueuedMessageMock.mockReturnValueOnce(saved.promise);
+		const reordering = hook.reorderQueuedMessage('1', '2', ['1', '2']);
+		expect(reorderAgentQueuedMessageMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+			'1',
+			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+		);
+		expect(hook.isReorderingQueue.value).toBe(true);
+		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['1', '2']);
+		getAgentChatQueueMock.mockResolvedValue({ items: [items[1], items[0]] });
+		saved.resolve();
+		await reordering;
+		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['2', '1']);
+		expect(hook.isReorderingQueue.value).toBe(false);
+		expect(hook.activeExecutionId.value).toBe('active');
+		expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(false);
+
+		getAgentChatQueueMock.mockResolvedValue({ items: [items[0]] });
+		streams[2].emit([
+			{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' },
+			{ type: 'text-delta', id: 'b-text', delta: 'B output' },
+		]);
+		await flushPromises();
+		expect(fetchMock.mock.calls[1][1].signal?.aborted).toBe(false);
+		expect(hook.activeExecutionId.value).toBe('B');
+		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['1']);
+		expect(hook.messages.value.map(({ content }) => content)).toEqual([
+			'Current turn',
+			'B',
+			'B output',
+		]);
+
+		const recovered: AgentChatMessagesResponse = {
+			messages: ['Current turn', 'B', 'B output', 'A'].map((text, index) => ({
+				id: `saved-${index}`,
+				role: index === 2 ? 'assistant' : 'user',
+				executionId: ['active', 'B', 'B', 'A'][index],
+				content: [{ type: 'text', text }],
+			})),
+			openSuspensions: [],
+			activeExecutionId: 'A',
+		};
+		getChatMessagesMock.mockResolvedValue(recovered);
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		streams[2].close([{ type: 'done', executionId: 'B' }]);
+		await flushPromises();
+		const validation = Promise.withResolvers<AgentChatMessagesResponse>();
+		getChatMessagesMock.mockReturnValueOnce(validation.promise);
+		streams[1].emit([
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-1',
+				inputMessageIds: ['saved-3'],
+			},
+			{ type: 'text-delta', id: 'a-text', delta: 'A output' },
+		]);
+		await flushPromises();
+		getChatMessagesMock.mockResolvedValue({
+			...recovered,
+			messages: [
+				...recovered.messages,
+				{
+					id: 'a-partial',
+					role: 'assistant',
+					executionId: 'A',
+					content: [{ type: 'text', text: 'A out' }],
+				},
+			],
+		});
+		for (let update = 0; update < 3; update++) {
+			for (const listener of [...pushListeners])
+				listener({
+					type: 'agentExecutionUpdated',
+					data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'A' },
+				});
+			await flushPromises();
+		}
+		expect(hook.messages.value.at(-1)?.content).toBe('A out');
+		getChatMessagesMock.mockReturnValue(Promise.withResolvers<AgentChatMessagesResponse>().promise);
+		validation.resolve(recovered);
+		await flushPromises();
+		streams[1].emit([{ type: 'text-delta', id: 'a-text', delta: ' continues' }]);
+		await flushPromises();
+		expect(hook.activeExecutionId.value).toBe('A');
+		expect(hook.queuedMessages.value).toEqual([]);
+		expect(hook.messages.value.map(({ content }) => content)).toEqual([
+			'Current turn',
+			'B',
+			'B output',
+			'A',
+			'A output continues',
+		]);
+		expect(hook.messages.value[3].id).toBe('saved-3');
+		await hook.stopGenerating();
+		expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('A');
+		hook.detachStream();
+	});
+
+	it('keeps a new session reorder busy when the previous session refresh completes', async () => {
+		const stale = Promise.withResolvers<{ items: [] }>();
+		getAgentChatQueueMock.mockReturnValueOnce(stale.promise);
+		const scope = effectScope();
+		hookScopes.push(scope);
+		const threadId = ref('thread-1');
+		const hook = scope.run(() =>
+			useAgentChatStream({ projectId: ref('p1'), agentId: ref('a1'), continueSessionId: threadId }),
+		)!;
+		const first = hook.reorderQueuedMessage('1', '2', ['1', '2']);
+		await flushPromises();
+		threadId.value = 'thread-2';
+		await flushPromises();
+		const saved = Promise.withResolvers<void>();
+		reorderAgentQueuedMessageMock.mockReturnValueOnce(saved.promise);
+		const second = hook.reorderQueuedMessage('3', '4', ['3', '4']);
+		stale.resolve({ items: [] });
+		await first;
+		expect(hook.isReorderingQueue.value).toBe(true);
+		saved.resolve();
+		await second;
+		expect(hook.isReorderingQueue.value).toBe(false);
+	});
+
+	it.each([
+		[409, 'agents.chat.queue.reorderUnavailable'],
+		[500, 'agents.chat.queue.reorderError'],
+	])('refreshes the queue and explains reorder failure %i', async (status, errorKey) => {
+		const item = { id: '2', message: 'Still pending', createdAt: new Date().toISOString() };
+		getAgentChatQueueMock.mockResolvedValue({ items: [item] });
+		const error = { httpStatusCode: status };
+		reorderAgentQueuedMessageMock.mockRejectedValueOnce(error);
+		const hook = buildHook('thread-1');
+		await hook.reorderQueuedMessage('1', '2', ['1', '2']);
+		expect(hook.queuedMessages.value).toEqual([item]);
+		expect(hook.isReorderingQueue.value).toBe(false);
+		expect(showQueueErrorMock).toHaveBeenCalledWith(error, errorKey);
+	});
+
 	it('restores pending inputs after reload and ignores a queue snapshot invalidated by removal', async () => {
 		const item = { id: '1', message: 'Queued', createdAt: new Date().toISOString() };
 		getAgentChatQueueMock.mockResolvedValue({ items: [item] });
@@ -4004,5 +4705,153 @@ describe('useAgentChatStream — queued submissions', () => {
 		await flushPromises();
 		expect(hook.queuedMessages.value).toEqual([]);
 		expect(hook.messages.value).toEqual([]);
+	});
+});
+
+describe('useAgentChatStream — n8n Chat channel', () => {
+	beforeEach(() => {
+		pushListeners.length = 0;
+		connectionState.isConnected = false;
+		getChatMessagesMock.mockReset().mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getTestChatMessagesMock.mockReset();
+		getAgentChatQueueMock.mockReset().mockResolvedValue({ items: [] });
+		cancelAgentChatExecutionMock.mockReset().mockResolvedValue({ cancelRequested: true });
+		cancelAgentChatRunMock.mockReset().mockResolvedValue({ cancelled: true });
+		steerAgentQueuedMessageMock.mockReset().mockResolvedValue(undefined);
+		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	function buildN8nChatHook(continueSessionId?: string) {
+		return buildHook(continueSessionId, { channel: ref('n8n-chat') });
+	}
+
+	it('posts a new message to n8n-chat instead of chat', async () => {
+		globalThis.fetch = vi.fn(async () => makeSseResponse([{ type: 'done' }])) as typeof fetch;
+
+		const hook = buildN8nChatHook();
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(fetch).toHaveBeenCalledWith(
+			'http://localhost:5678/projects/p1/agents/v2/a1/n8n-chat',
+			expect.anything(),
+		);
+	});
+
+	it('posts a resume to n8n-chat/resume instead of chat/resume', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-1',
+							runId: 'run-1',
+							toolName: 'calculator',
+							input: { type: 'approval', toolName: 'calculator', args: {} },
+						},
+					},
+					{ type: 'done' },
+				]),
+			)
+			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildN8nChatHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await flushPromises();
+		await hook.resume({ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } });
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'http://localhost:5678/projects/p1/agents/v2/a1/n8n-chat/resume',
+			expect.anything(),
+		);
+	});
+
+	it('loads history and queue, and routes queue removal, through the n8n-chat channel', async () => {
+		const hook = buildN8nChatHook('thread-1');
+		await hook.loadHistory();
+
+		expect(getChatMessagesMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'n8n-chat',
+		);
+		expect(getAgentChatQueueMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'n8n-chat',
+		);
+
+		await hook.removeQueuedMessage('q1');
+		expect(removeAgentQueuedMessageMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'q1',
+			'n8n-chat',
+		);
+	});
+
+	it('never reorders and never calls the reorder route on the n8n-chat channel', async () => {
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [
+				{ id: 'q1', message: 'one', createdAt: new Date().toISOString() },
+				{ id: 'q2', message: 'two', createdAt: new Date().toISOString() },
+			],
+		});
+		const hook = buildN8nChatHook('thread-1');
+		await hook.loadHistory();
+
+		expect(hook.capabilities.value.reorder).toBe(false);
+
+		await hook.reorderQueuedMessage('q1', 'q2', ['q1', 'q2']);
+		expect(reorderAgentQueuedMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('skips the history fetch entirely for a fresh n8n Chat with no thread', async () => {
+		const hook = buildN8nChatHook();
+		await hook.loadHistory();
+
+		expect(getChatMessagesMock).not.toHaveBeenCalled();
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		expect(hook.messages.value).toEqual([]);
+	});
+
+	it('never offers steer and never calls the steer route, even with a steerable execution', async () => {
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: 'exec-1',
+		});
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [{ id: 'q1', message: 'queued', createdAt: new Date().toISOString() }],
+			steerableExecutionId: 'exec-1',
+		});
+		const hook = buildN8nChatHook('thread-1');
+		await hook.loadHistory();
+
+		expect(hook.canSteer.value).toBe(false);
+
+		await hook.steerQueuedMessage('q1');
+		expect(steerAgentQueuedMessageMock).not.toHaveBeenCalled();
 	});
 });

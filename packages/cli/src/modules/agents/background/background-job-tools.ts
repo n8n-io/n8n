@@ -8,7 +8,12 @@ import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { readIntegrationMessageContext } from '../integrations/integration-message-context';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentBackgroundJobService } from './agent-background-job.service';
-import { PARENT_TASK_CANCELLED_REASON } from './sub-agent-background-state';
+import { EXPIRED_BACKGROUND_CHECKPOINT_ERROR } from './agent-background-job.service';
+import {
+	BACKGROUND_PAUSE_USER_TURN_KEY,
+	PARENT_TASK_CANCELLED_REASON,
+} from './sub-agent-background-state';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import type {
 	BackgroundSubAgentRunContext,
 	SubAgentBackgroundRunner,
@@ -215,7 +220,9 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 			await jobService.markMailConsumed(
 				parentThreadId,
 				jobs
-					.filter((job) => job.status !== 'running' && job.status !== 'suspended')
+					.filter(
+						(job) => job.status !== 'running' && job.status !== 'suspended' && !job.pauseRequestId,
+					)
 					.map((job) => job.id),
 			);
 			return {
@@ -224,6 +231,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					kind: job.kind,
 					title: job.title,
 					status: job.status,
+					...(job.pauseRequestId ? { userStopped: true } : {}),
 					...(job.result !== null ? { result: truncateResult(job.result) } : {}),
 					...(job.error !== null ? { error: truncateResult(job.error) } : {}),
 					startedAt: job.createdAt.toISOString(),
@@ -231,8 +239,88 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					...(job.childExecutionId !== null ? { executionId: job.childExecutionId } : {}),
 				})),
 				runningCount: jobs.filter((job) => job.status === 'running').length,
-				note: 'You have checked background jobs for this turn. Use the available results and continue independent work. If further progress depends on running jobs, end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or check again in this turn.',
+				note: 'You have checked background jobs for this turn. User-stopped jobs must wait for the combined report and a new explicit request to continue. Do not replace or resume their work automatically. Use other available results. Do not wait, sleep, or check again in this turn.',
 			};
+		})
+		.build();
+}
+
+export function createResumeBackgroundJobsTool(
+	options: Pick<
+		BackgroundJobToolsOptions,
+		'jobService' | 'backgroundRunner' | 'projectId' | 'parentAgentId' | 'runContext'
+	>,
+): BuiltTool {
+	return new Tool('resume_background_jobs')
+		.description(
+			'Resume paused sub-agents and identify cancelled workflows from the latest stop group in this Preview conversation.',
+		)
+		.systemInstruction(
+			'Call resume_background_jobs first when the latest user message explicitly asks to continue stopped tasks. Continue applies only to the latest stop group. Do not restart tasks from older stop groups unless the user explicitly asks for that work. Do not call this tool for an unrelated message or an automatic notification. Never replace paused sub-agents with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. The tool returns cancelled workflow references separately. It does not restart those workflows. Check conversation history and current jobs before repeating a workflow call, including repeated Continue requests. Call the normal workflow tool with inputs from the conversation only when a new execution is still needed. A new execution uses current configuration and starts from the beginning. Earlier actions can repeat and webhook URLs change. Continuing does not approve pending tools or bypass permissions.',
+		)
+		.input(z.object({}))
+		.handler(async (_input, ctx) => {
+			const { persistence } = ctx;
+			const executionId = persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
+			const scope = decodeAgentSandboxHostMetadata(persistence?.hostMetadata);
+			if (
+				!persistence ||
+				persistence.hostMetadata?.[BACKGROUND_PAUSE_USER_TURN_KEY] !== true ||
+				typeof executionId !== 'string' ||
+				scope?.projectId !== options.projectId
+			) {
+				return {
+					status: 'unavailable',
+					note: 'Resuming needs an explicit user request in Preview.',
+				};
+			}
+			const candidates = await options.jobService.preparePausedResume(
+				options.parentAgentId,
+				persistence.threadId,
+				persistence.resourceId,
+				executionId,
+			);
+			if (candidates.status === 'limit-reached') {
+				return {
+					status: candidates.status,
+					note: 'There are not enough active task slots for the stopped group. Wait for active tasks to finish, then ask to continue again.',
+				};
+			}
+			if (candidates.status === 'expired')
+				return { status: candidates.status, note: EXPIRED_BACKGROUND_CHECKPOINT_ERROR };
+			if (candidates.status !== 'ready') {
+				return {
+					status: candidates.status,
+					note: 'Wait for the combined status report, then ask to continue again.',
+				};
+			}
+			try {
+				const results = await Promise.allSettled(
+					candidates.jobs.map(
+						async (job) =>
+							await options.backgroundRunner.resumePaused(
+								job,
+								{
+									...options.runContext,
+									projectId: options.projectId,
+									parentAgentId: options.parentAgentId,
+								},
+								candidates.timeoutAt,
+							),
+					),
+				);
+				return {
+					status: candidates.jobs.length > 0 ? 'resumed' : 'ready',
+					jobs: results.map((result, index) => ({
+						jobId: candidates.jobs[index].id,
+						status: result.status === 'fulfilled' ? 'resumed' : 'failed',
+						...(result.status === 'rejected' ? { error: String(result.reason) } : {}),
+					})),
+					workflowsToRestart: candidates.workflowsToRestart,
+				};
+			} finally {
+				await options.jobService.releaseResumeReservations(candidates.jobs, candidates.timeoutAt);
+			}
 		})
 		.build();
 }

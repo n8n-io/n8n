@@ -101,15 +101,18 @@ describe('Agent thread grants', () => {
 		await peer.destroy();
 		// Template databases skip the migration wrapper setup.
 		await Container.get(DbConnection).migrate();
-		await source.undoLastMigration();
+		const migration = source.migrations.find(
+			(migration) => migration.constructor.name === 'CreateAgentThreadGrantTable1790837340960',
+		)!;
 		const runner = source.createQueryRunner();
 		try {
+			await migration.down(runner);
 			expect(await runner.hasTable(grants.metadata.tablePath)).toBe(false);
+			expect(await runner.manager.existsBy(threads.target, { id: 'parent' })).toBe(true);
+			await migration.up(runner);
 		} finally {
 			await runner.release();
 		}
-		expect(await threads.existsBy({ id: 'parent' })).toBe(true);
-		await Container.get(DbConnection).migrate();
 		expect(await grants.findKeys('parent')).toEqual(new Set());
 	});
 });

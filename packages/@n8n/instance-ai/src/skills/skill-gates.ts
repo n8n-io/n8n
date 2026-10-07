@@ -6,6 +6,12 @@
 export const CONFIG_EVALS_SKILL_ID = 'config-evals';
 
 /**
+ * The playbook is a `workflow-builder` reference next to `config-evals`, not
+ * inside it, so the same flag must hide it separately.
+ */
+export const CONFIG_EVAL_PLAYBOOK_SKILL_ID = 'config-eval-playbook';
+
+/**
  * Skill folder id gated by the instance-context reader. It is entirely about a block and a tool
  * that only exist when the reader is on, so listing it otherwise would advertise both.
  */
@@ -20,7 +26,9 @@ export interface InstanceAiSkillFlags {
 /** Skill ids to hide from a user's catalog given their resolved flags. */
 export function disabledInstanceAiSkillIds(flags: InstanceAiSkillFlags): string[] {
 	const disabled: string[] = [];
-	if (!flags.configEvalsEnabled) disabled.push(CONFIG_EVALS_SKILL_ID);
+	if (!flags.configEvalsEnabled) {
+		disabled.push(CONFIG_EVALS_SKILL_ID, CONFIG_EVAL_PLAYBOOK_SKILL_ID);
+	}
 	if (!flags.instanceContextEnabled) disabled.push(INSTANCE_AWARENESS_SKILL_ID);
 	return disabled;
 }

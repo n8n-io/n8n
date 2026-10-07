@@ -47,7 +47,8 @@ packages:
   # glob or they are not workspace packages at all.
   - packages/modules/**
   - packages/extensions/**
-  - packages/testing/**
+  - packages/quality/**
+  - '!packages/quality/testing/playwright/fixtures/community-packages/packages/**'
 
 catalog:
   '@ai-sdk/alibaba': ^2.0.32
@@ -80,6 +81,7 @@ catalog:
   '@chat-adapter/state-memory': 4.37.0
   '@chat-adapter/teams': 4.37.0
   '@chat-adapter/telegram': 4.37.0
+  '@chat-adapter/whatsapp': 4.37.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
@@ -502,6 +504,7 @@ patchedDependencies:
   '@confluentinc/kafka-javascript@1.9.1': patches/@confluentinc__kafka-javascript@1.9.1.patch
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
   '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
+  '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
 
 allowBuilds:
   '@biomejs/biome': false

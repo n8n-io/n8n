@@ -26,7 +26,7 @@
 	],
 	"packages/@n8n/backend-services": ["src/index.ts", "test/setup-test-folder.ts"],
 	"packages/@n8n/backend-test-utils": ["src/db/projects.ts"],
-	"packages/@n8n/benchmark": ["src/commands/list.ts"],
+	"packages/quality/efficiency/scale/benchmark": ["src/commands/list.ts"],
 	"packages/@n8n/blob-storage": [
 		"src/__tests__/azure-byte-store.test.ts",
 		"src/azure-blob/azure-blob.config.ts"
@@ -54,11 +54,6 @@
 		"src/configs/activity-log.config.ts"
 	],
 	"packages/@n8n/constants": ["src/api.ts"],
-	"packages/@n8n/crdt": [
-		"src/__tests__/helpers.ts",
-		"src/awareness/awareness.test.ts",
-		"src/awareness/index.ts"
-	],
 	"packages/@n8n/db": [
 		"src/connection/__tests__/backoff.test.ts",
 		"src/connection/backoff.ts",
@@ -68,17 +63,19 @@
 		"src/__tests__/memoized.test.ts",
 		"src/auth-handler/auth-handler-metadata.ts"
 	],
-	"packages/@n8n/di": ["src/__tests__/circular-depedency.test.ts", "src/di.ts"],
 	"packages/@n8n/engine": [
 		"src/admittance/__tests__/allow-all-admittance.test.ts",
 		"src/admittance/admittance-rejected.error.ts"
 	],
-	"packages/@n8n/errors": ["src/application.error.ts"],
 	"packages/@n8n/eslint-plugin-community-nodes": [
 		"src/plugin.ts",
 		"src/rules/ai-node-package-json.test.ts"
 	],
 	"packages/@n8n/extension-sdk": ["src/backend/define.ts"],
+	"packages/@n8n/inbound-auth": [
+		"src/__tests__/trusted-source-config.test.ts",
+		"src/trusted-source-config.ts"
+	],
 	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/instance-ai": [
 		"evaluations/__tests__/agent-report-rendering.test.ts",
@@ -206,7 +203,6 @@
 		"src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts",
 		"src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts",
 		"src/modules/favorites/favorites.service.ts",
-		"src/modules/insights/insights-collection.service.ts",
 		"src/modules/instance-ai/__tests__/agent-preview-handoff.test.ts",
 		"src/modules/instance-ai/instance-ai.adapter.service.ts",
 		"src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts",
@@ -284,11 +280,6 @@
 		"src/__tests__/credentials.test.ts",
 		"src/binary-data/binary-data.config.ts",
 		"test/helpers/constants.ts"
-	],
-	"packages/extensions/insights": [
-		"src/backend/index.ts",
-		"src/frontend/InsightsDashboard.vue",
-		"src/frontend/index.ts"
 	],
 	"packages/frontend/@n8n/chat": [
 		"src/App.vue",
@@ -376,12 +367,15 @@
 		"nodes/ActionNetwork/ActionNetwork.node.ts",
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
-	"packages/testing/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
-	"packages/testing/containers": ["services/keycloak.ts", "tests/resource-tracker.test.ts"],
-	"packages/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
-	"packages/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
-	"packages/testing/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
-	"packages/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
+	"packages/quality/policy/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/quality/environments/containers": [
+		"services/keycloak.ts",
+		"tests/resource-tracker.test.ts"
+	],
+	"packages/quality/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
+	"packages/quality/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
+	"packages/quality/policy/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
+	"packages/quality/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
 	"packages/workflow": [
 		"src/augment-object.ts",
 		"test/ExpressionExtensions/array-extensions.test.ts"

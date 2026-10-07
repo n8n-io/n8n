@@ -19,6 +19,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AgentConfigService } from './agent-config.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -30,7 +31,7 @@ export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from "When To Build vs When To Converse" (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
+Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from the "Session context" section (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
 
 When you mention the agent editor, say Sessions tab for history and Preview for live chat. Never say Runs, Executions, or Activity History for agents.
 
@@ -100,6 +101,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentThreadRepository: AgentThreadRepository,
 		private readonly agentConfig: AgentConfigService,
 		private readonly agentSkills: AgentSkillsService,
+		private readonly agentsSettingsService: AgentsSettingsService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -162,6 +164,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			streamBuild: async (agentId, message, session) => {
+				await this.agentsSettingsService.assertEnabled();
 				await assertProjectScope('agent:update');
 				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(

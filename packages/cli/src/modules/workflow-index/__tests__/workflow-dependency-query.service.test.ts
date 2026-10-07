@@ -8,8 +8,7 @@ import type {
 } from '@n8n/db';
 import { chunkIds } from '@n8n/db';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { RoleService } from '@n8n/backend-services';
+import { type CredentialsFinderService, type RoleService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { mock } from 'vitest-mock-extended';
 
@@ -146,6 +145,78 @@ describe('WorkflowDependencyQueryService', () => {
 				type: 'workflowParent',
 				projectId: undefined,
 			});
+		});
+	});
+
+	describe('getResourceDependencies with a credential the user cannot see', () => {
+		beforeEach(() => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+			dependencyRepository.find.mockResolvedValue([
+				mock({ workflowId: 'wf-1', dependencyType: 'credentialId', dependencyKey: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Personal Cred' })]);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([
+				mock({ id: 'cred-1' }),
+			]);
+		});
+
+		it('lists its name as unavailable when asked to', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1']).toEqual({
+				dependencies: [
+					{ id: 'cred-1', name: 'Personal Cred', type: 'credentialId', unavailable: true },
+				],
+				inaccessibleCount: 0,
+			});
+		});
+
+		it('lists a credential the user can see but cannot use as unavailable', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1'].dependencies).toEqual([
+				{ id: 'cred-1', name: 'Personal Cred', type: 'credentialId', unavailable: true },
+			]);
+		});
+
+		it('lists a credential the user can use as a normal dependency', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1'].dependencies).toEqual([
+				{ id: 'cred-1', name: 'Personal Cred', type: 'credentialId' },
+			]);
+		});
+
+		it('counts it as hidden when not asked to list it', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user);
+
+			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
+		});
+
+		it('counts it as hidden when credential sharing is disabled', async () => {
+			isCredSharingEnabledMock.mockReturnValue(false);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
 		});
 	});
 
