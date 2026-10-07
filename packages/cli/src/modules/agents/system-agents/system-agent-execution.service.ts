@@ -29,7 +29,9 @@ import type {
 	SystemAgentProvider,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
+	SystemAgentTurnOutcome,
 	SystemAgentTurnStatus,
+	SystemAgentWorkspaceScope,
 } from './system-agent.types';
 
 type SuspendedToolCall = Extract<
@@ -44,6 +46,13 @@ export type SystemAgentThreadStatus = 'running' | 'suspended' | 'idle';
  * queue's Preview access rules accept the session.
  */
 const SYSTEM_AGENT_SOURCE = 'chat';
+
+/** The workspace lease of one turn, bound to the source that gave it. */
+interface TurnWorkspace {
+	lease: unknown;
+	/** Report the turn outcome to the source. It never throws. */
+	release(outcome: SystemAgentTurnOutcome): Promise<void>;
+}
 
 function combineSignals(signal: AbortSignal, extra: AbortSignal | undefined): AbortSignal {
 	return extra ? AbortSignal.any([signal, extra]) : signal;
@@ -77,7 +86,7 @@ export class SystemAgentExecutionService {
 	) {}
 
 	/** Register a provider and make sure its instance agent row exists. */
-	async register(provider: SystemAgentProvider): Promise<void> {
+	async register<TLease>(provider: SystemAgentProvider<TLease>): Promise<void> {
 		await this.agentRepository.ensureInstanceAgent(provider.agentId, provider.name);
 		this.registry.register(provider);
 	}
@@ -201,6 +210,22 @@ export class SystemAgentExecutionService {
 			user.id,
 		);
 		if (!deleted) throw new NotFoundError('Session not found');
+		await this.destroyThreadWorkspace(agentId, thread.id, user.id);
+	}
+
+	/**
+	 * Delete the sandbox of a deleted thread through the workspace source of
+	 * the provider. A host that deletes threads on its own path calls this too.
+	 * A failure is logged: the thread is already gone.
+	 */
+	async destroyThreadWorkspace(agentId: string, threadId: string, userId?: string): Promise<void> {
+		const source = this.registry.get(agentId)?.workspace;
+		if (!source?.destroy) return;
+		try {
+			await source.destroy({ agentId, threadId, ...(userId ? { userId } : {}) });
+		} catch (error) {
+			this.logger.warn('System agent workspace destroy failed', { agentId, threadId, error });
+		}
 	}
 
 	async isBusy(thread: AgentExecutionThread): Promise<boolean> {
@@ -315,45 +340,59 @@ export class SystemAgentExecutionService {
 		signal.throwIfAborted();
 		const { resourceId } = payload;
 		const attachments = payload.attachments ?? [];
-		const handle = await provider.prepareTurn({
-			type: 'start',
-			user,
-			thread,
-			resourceId,
-			abortSignal: signal,
-			executionId: admission.executionId,
-			message: payload.message,
-			attachments,
-			options: payload.options ?? {},
+		const workspace = await this.acquireWorkspace(provider, thread, user);
+		const handle = await this.prepareOrRelease(workspace, signal, async () => {
+			const prepared = await provider.prepareTurn({
+				type: 'start',
+				user,
+				thread,
+				resourceId,
+				abortSignal: signal,
+				...(workspace ? { workspace: workspace.lease } : {}),
+				executionId: admission.executionId,
+				message: payload.message,
+				attachments,
+				options: payload.options ?? {},
+			});
+			if (attachments.length > 0) {
+				// Messages keep file references. The runtime loads bytes from binary data per call.
+				prepared.agent.fileStore(
+					this.attachmentService.getFileStore(
+						{ agentId: thread.agentId, projectId: thread.projectId },
+						prepared.agent.snapshot.model.provider ?? '',
+					),
+				);
+			}
+			return prepared;
 		});
 		const text = handle.input ?? payload.message;
-		if (attachments.length > 0) {
-			// Messages keep file references. The runtime loads bytes from binary data per call.
-			handle.agent.fileStore(
-				this.attachmentService.getFileStore(
-					{ agentId: thread.agentId, projectId: thread.projectId },
-					handle.agent.snapshot.model.provider ?? '',
-				),
-			);
-		}
 		const input =
 			attachments.length > 0 && typeof text === 'string'
 				? buildInboundUserMessage(text, attachments)
 				: text;
 		const abortSignal = combineSignals(signal, handle.runOptions?.abortSignal);
-		await this.runTurn(provider, thread, handle, send, abortSignal, admission, async () => ({
-			type: 'start',
-			input,
-			options: {
-				persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
-				...handle.runOptions,
-				abortSignal,
-			},
-			recording: {
-				...claim.recording,
-				...(handle.hideUserMessage ? { hideUserMessageFromTranscript: true } : {}),
-			},
-		}));
+		await this.runTurn(
+			provider,
+			thread,
+			handle,
+			workspace,
+			send,
+			abortSignal,
+			admission,
+			async () => ({
+				type: 'start',
+				input,
+				options: {
+					persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
+					...handle.runOptions,
+					abortSignal,
+				},
+				recording: {
+					...claim.recording,
+					...(handle.hideUserMessage ? { hideUserMessageFromTranscript: true } : {}),
+				},
+			}),
+		);
 	}
 
 	/** Resume a suspended tool call. Runs the continuation in the background. */
@@ -383,18 +422,26 @@ export class SystemAgentExecutionService {
 		if (checkpoint.persistence?.resourceId !== resourceId) {
 			throw new NotFoundError('Session not found');
 		}
+		const checkpointHostMetadata = checkpoint.persistence.hostMetadata ?? {};
 		const controller = new AbortController();
-		const handle = await provider.prepareTurn({
-			type: 'resume',
-			user: params.user,
-			thread,
-			resourceId,
-			abortSignal: controller.signal,
-			runId,
-			toolCallId: pending.toolCallId,
-			checkpointHostMetadata: checkpoint.persistence.hostMetadata ?? {},
-			resumeData: params.resumeData,
-		});
+		const workspace = await this.acquireWorkspace(provider, thread, params.user);
+		const handle = await this.prepareOrRelease(
+			workspace,
+			controller.signal,
+			async () =>
+				await provider.prepareTurn({
+					type: 'resume',
+					user: params.user,
+					thread,
+					resourceId,
+					abortSignal: controller.signal,
+					...(workspace ? { workspace: workspace.lease } : {}),
+					runId,
+					toolCallId: pending.toolCallId,
+					checkpointHostMetadata,
+					resumeData: params.resumeData,
+				}),
+		);
 		const recording: StartExecutionParams = {
 			threadId: thread.id,
 			agentId: thread.agentId,
@@ -411,6 +458,7 @@ export class SystemAgentExecutionService {
 			provider,
 			thread,
 			handle,
+			workspace,
 			params.send ?? (() => {}),
 			abortSignal,
 			undefined,
@@ -531,10 +579,65 @@ export class SystemAgentExecutionService {
 		});
 	}
 
+	/**
+	 * Get the workspace lease for one turn from the source of the provider.
+	 * Returns `undefined` when the provider has no source or the source gives
+	 * no lease. A failed acquisition fails the turn before it is prepared.
+	 */
+	private async acquireWorkspace(
+		provider: SystemAgentProvider,
+		thread: AgentExecutionThread,
+		user: User,
+	): Promise<TurnWorkspace | undefined> {
+		const source = provider.workspace;
+		if (!source) return undefined;
+		const scope: SystemAgentWorkspaceScope = {
+			agentId: thread.agentId,
+			threadId: thread.id,
+			projectId: thread.projectId,
+			user,
+		};
+		const lease = await source.acquire(scope);
+		if (lease === undefined) return undefined;
+		return {
+			lease,
+			release: async (outcome) => {
+				if (!source.release) return;
+				try {
+					await source.release(scope, lease, outcome);
+				} catch (error) {
+					this.logger.warn('System agent workspace release failed', {
+						threadId: thread.id,
+						error,
+					});
+				}
+			},
+		};
+	}
+
+	/**
+	 * Prepare a turn. When the preparation fails, release the lease before the
+	 * error goes up, so that the source does not keep a lease for a turn that
+	 * never ran.
+	 */
+	private async prepareOrRelease(
+		workspace: TurnWorkspace | undefined,
+		signal: AbortSignal,
+		prepare: () => Promise<SystemAgentTurnHandle>,
+	): Promise<SystemAgentTurnHandle> {
+		try {
+			return await prepare();
+		} catch (error) {
+			await workspace?.release({ status: signal.aborted ? 'cancelled' : 'errored', error });
+			throw error;
+		}
+	}
+
 	private async runTurn(
 		provider: SystemAgentProvider,
 		thread: AgentExecutionThread,
 		handle: SystemAgentTurnHandle,
+		workspace: TurnWorkspace | undefined,
 		send: (event: AgentSseEvent) => void,
 		abortSignal: AbortSignal,
 		admission: AgentExecutionAdmission | undefined,
@@ -582,6 +685,7 @@ export class SystemAgentExecutionService {
 					error: settleError,
 				});
 			}
+			await workspace?.release({ status, executionId, error });
 			if (status !== 'suspended' && status !== 'cancelled') {
 				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });
 			}
