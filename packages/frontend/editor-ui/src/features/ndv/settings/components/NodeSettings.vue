@@ -34,6 +34,7 @@ import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
+import { useCredentialSharing } from '@/features/credentials/composables/useCredentialSharing';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	RestrictedNodePanel,
@@ -65,6 +66,8 @@ import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
@@ -179,6 +182,16 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
+const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
+/**
+ * With credential sharing, the picker stays usable on a node locked by a
+ * credential the user cannot use, so they can switch to one they can. The
+ * parameters stay locked: editing them while the node runs on the owner's
+ * account would let the owner later publish changed logic as themselves.
+ */
+const isCredentialPickerReadOnly = computed(() =>
+	isCredentialSharingEnabled.value ? props.readOnly : isReadOnly.value,
+);
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => node.value?.type);
 
@@ -189,7 +202,7 @@ const nodeType = computed(() =>
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
 
 const nodeTypeName = computed(() => node.value?.type);
-const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
+const { canUpdatePackage, hasUpdateAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -279,6 +292,12 @@ const showQuickConnectBanner = computed(
 		!isReadOnly.value &&
 		!isDemoPreview.value &&
 		!props.isEmbeddedInCanvas,
+);
+
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: () => node.value?.type });
+const showGatewayCreditsPromotion = computed(
+	() =>
+		!!promotionText.value && !isReadOnly.value && !isDemoPreview.value && !props.isEmbeddedInCanvas,
 );
 
 const showNoParametersNotice = computed(
@@ -439,6 +458,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
+			nodeHelpers.updateNodeInputIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
@@ -460,7 +480,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		workflowDocumentStore?.value?.setNodeValue({
 			name: _node.name,
 			key: topLevelKey,
-			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+			// Keep the node separate from values that inputs can mutate before emitting an edit.
+			value: deepCopy(nodeValues.value[topLevelKey]) as NodeParameterValue,
 		});
 	} else {
 		// A property on the node itself changed
@@ -739,9 +760,12 @@ function handleSelectAction(params: INodeParameters) {
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
-					i18n.baseText('nodeSettings.hasForeignCredential', {
-						interpolate: { owner: credentialOwnerName },
-					})
+					i18n.baseText(
+						isCredentialSharingEnabled
+							? 'nodeSettings.hasForeignCredential.canSwitch'
+							: 'nodeSettings.hasForeignCredential',
+						{ interpolate: { owner: credentialOwnerName } },
+					)
 				"
 			/>
 			<FreeAiCreditsCallout />
@@ -755,7 +779,7 @@ function handleSelectAction(params: INodeParameters) {
 			<NodeCredentials
 				v-if="openPanel === 'credential'"
 				:node="node"
-				:readonly="isReadOnly"
+				:readonly="isCredentialPickerReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
 				:hide-ask-assistant="hideCredentialHelp"
@@ -785,10 +809,15 @@ function handleSelectAction(params: INodeParameters) {
 						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
+					<GatewayCreditsPromotion
+						v-if="showGatewayCreditsPromotion"
+						:text="promotionText ?? ''"
+						:class="$style.gatewayCreditsPromotion"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
-						:readonly="isReadOnly"
+						:readonly="isCredentialPickerReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 						:hide-ask-assistant="hideCredentialHelp"
@@ -827,7 +856,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+					v-if="canUpdatePackage && hasUpdateAvailable"
 					data-test-id="update-available"
 					:package-name="packageName"
 					style="margin-top: var(--spacing--sm)"
@@ -887,6 +916,7 @@ function handleSelectAction(params: INodeParameters) {
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
+			:node-type-name="nodeTypeName"
 			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>
@@ -910,6 +940,10 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .quickConnectBanner {
+	margin-top: var(--spacing--sm);
+}
+
+.gatewayCreditsPromotion {
 	margin-top: var(--spacing--sm);
 }
 

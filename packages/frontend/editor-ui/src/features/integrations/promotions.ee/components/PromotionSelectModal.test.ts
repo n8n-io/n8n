@@ -1,3 +1,5 @@
+import type { PromotePackageResultDto } from '@n8n/api-types';
+import { blocked, credential, variable } from '../__tests__/bindings.fixtures';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -14,12 +16,22 @@ import { useUIStore } from '@/app/stores/ui.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
+import type * as PromotionsApi from '../promotions.api';
 
 const { confirm, showMessage, showError } = vi.hoisted(() => ({
 	confirm: vi.fn(),
 	showMessage: vi.fn(),
 	showError: vi.fn(),
 }));
+
+const api = vi.hoisted(() => ({
+	promoteProjectSelection: vi.fn<typeof PromotionsApi.promoteProjectSelection>(),
+}));
+
+vi.mock('../promotions.api', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../promotions.api')>();
+	return { ...actual, promoteProjectSelection: api.promoteProjectSelection };
+});
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm }),
@@ -55,9 +67,25 @@ const mockChanges = [
 /** The endpoint wraps the rows with the commit they were read from. */
 const changesBody = (changes: unknown[]) => ({ commitSha: 'a'.repeat(40), changes });
 
+const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
+	({
+		connectionId: 'connection-1',
+		configId: 'config-promote',
+		counts: {
+			workflows: 2,
+			folders: 0,
+			credentials: 0,
+			dataTables: 0,
+			variables: 0,
+			tags: 0,
+		},
+		git: { commitSha: 'abc123', branchName },
+	}) satisfies PromotePackageResultDto;
+
 const renderComponent = createComponentRenderer(PromotionSelectModal, {
 	global: {
 		stubs: {
+			N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
 			Modal: {
 				template: `
 					<div>
@@ -77,6 +105,7 @@ describe('PromotionSelectModal', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		vi.clearAllMocks();
+		api.promoteProjectSelection.mockResolvedValue(promoteResult('release/main'));
 		server = createServer({ environment: 'test' });
 		server.get('/rest/promotions/project-1/changes/promote', () => ({
 			data: changesBody(mockChanges),
@@ -142,7 +171,7 @@ describe('PromotionSelectModal', () => {
 		expect(submitButton).toBeDisabled();
 	});
 
-	it('should keep promotion unavailable after selecting a change', async () => {
+	it('should enable promote after selecting a change', async () => {
 		const { findAllByTestId, findByTestId } = renderComponent({
 			pinia,
 			props: {
@@ -155,8 +184,95 @@ describe('PromotionSelectModal', () => {
 		await userEvent.click(rows[0]);
 
 		const submitButton = await findByTestId('promotion-submit');
-		expect(submitButton).toBeDisabled();
+		expect(submitButton).toBeEnabled();
 		expect(submitButton).toHaveTextContent('Promote 1 change');
+	});
+
+	it('should promote the selected workflow ids and close on success', async () => {
+		const emitSpy = vi.spyOn(promotionEventBus, 'emit');
+		const uiStore = useUIStore();
+		const { findAllByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		const rows = await findAllByTestId('promotion-change-row');
+		await userEvent.click(rows[0]);
+		await userEvent.click(await findByTestId('promotion-submit'));
+
+		await waitFor(() =>
+			expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'project-1', {
+				workflowIds: ['wf-001'],
+			}),
+		);
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Changes promoted',
+			message: 'Changes have been pushed to release/main.',
+			type: 'success',
+		});
+		expect(emitSpy).toHaveBeenCalledWith('promoted', { projectId: 'project-1' });
+		expect(emitSpy).not.toHaveBeenCalledWith('applied', expect.anything());
+		expect(uiStore.closeModal).toHaveBeenCalledWith(PROMOTION_SELECT_MODAL_KEY);
+		emitSpy.mockRestore();
+	});
+
+	it('should say a new branch when promote created a promotion branch', async () => {
+		api.promoteProjectSelection.mockResolvedValueOnce(
+			promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
+		);
+		const { findAllByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		await userEvent.click((await findAllByTestId('promotion-change-row'))[0]);
+		await userEvent.click(await findByTestId('promotion-submit'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Changes have been pushed to a new branch.',
+				}),
+			),
+		);
+	});
+
+	it('should show an error and keep the selection when promote fails', async () => {
+		const failure = new Error('git is unreachable');
+		api.promoteProjectSelection.mockRejectedValueOnce(failure);
+		let changeListLoads = 0;
+		server.get('/rest/promotions/project-1/changes/promote', () => {
+			changeListLoads += 1;
+			return { data: changesBody(mockChanges) };
+		});
+
+		const uiStore = useUIStore();
+		const { findAllByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		const rows = await findAllByTestId('promotion-change-row');
+		await userEvent.click(rows[0]);
+		const submitButton = await findByTestId('promotion-submit');
+		expect(submitButton).toHaveTextContent('Promote 1 change');
+		await userEvent.click(submitButton);
+
+		await waitFor(() => expect(showError).toHaveBeenCalledWith(failure, expect.any(String)));
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(changeListLoads).toBe(1);
+		expect(submitButton).toHaveTextContent('Promote 1 change');
+		expect(submitButton).toBeEnabled();
 	});
 
 	it('should show changed by name', async () => {
@@ -205,7 +321,7 @@ describe('PromotionSelectModal', () => {
 		await userEvent.click(selectAll);
 
 		const submitButton = await findByTestId('promotion-submit');
-		expect(submitButton).toBeDisabled();
+		expect(submitButton).toBeEnabled();
 		expect(submitButton.textContent).toContain('Promote 2 changes');
 
 		server.get('/rest/promotions/project-1/changes/promote', () => ({
@@ -457,12 +573,25 @@ describe('PromotionSelectModal', () => {
 			);
 		});
 
+		it('opens all blocked bindings and keeps Apply paused', async () => {
+			const result = blocked({ missingBindings: [credential, variable] });
+			server.post('/api/v1/promotions/connections/connection-1/apply', () => result);
+			const { findByTestId, findAllByText, findByText } = renderComponent({
+				pinia,
+				props: applyProps,
+			});
+			await findByText('Payment Handler');
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await findByText('Resolve bindings');
+			await findAllByText(credential.name);
+			await findAllByText(variable.name);
+			await findAllByText('Team B');
+			expect(useUIStore().closeModal).not.toHaveBeenCalled();
+			expect(applied).not.toHaveBeenCalled();
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
 		it.each([
-			{
-				result: { status: 'blocked', preflight: {} },
-				message:
-					'Some credentials or variables are not set up on this instance yet. Nothing was changed.',
-			},
 			{
 				result: { status: 'source-changed' },
 				message: 'The source changed since this preview. Refresh and review the changes again.',

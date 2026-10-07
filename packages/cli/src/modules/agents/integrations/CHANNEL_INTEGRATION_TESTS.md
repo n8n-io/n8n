@@ -74,6 +74,41 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   by id). Linear's "mention" is an **agent-session** event, not a comment — see the contract note
   below.
 
+#### Teams setup, outside the adapter
+
+The Teams **setup** path is tested separately from the channel, because none of
+it goes through the adapter:
+
+- `teams-manifest.service.test.ts` validates the generated manifest against
+  Microsoft's published schema, vendored at
+  `platforms/teams/__tests__/fixtures/MicrosoftTeams.schema.v1.16.json` so the
+  test needs no network. The schema is **draft-04**, hence `ajv-draft-04`. Icon
+  checks decode the bundled PNGs with `node:zlib` rather than adding a decoder.
+- `teams-credential-check.service.test.ts` asserts the shape of the token
+  request — the tenant-scoped URL, the Bot Framework scope, the
+  client-credentials grant — and that the reply carries an access token. The
+  token itself is opaque in the test and is not validated. A 200 carrying no
+  token counts as a failure.
+- **`[TeamsAdapter] Failed to fetch user info from Graph API` is expected.** The
+  adapter calls `GET /users/{aadObjectId}` with the bot's app-only token, and a
+  fresh Entra app registration has no Graph permissions. It warns, caches a
+  negative result so it does not retry per message, and returns null.
+
+  The only thing lost is `message.author.email`. The author's name and id come
+  from the activity payload, so routing, sessions and replies are unaffected.
+
+  Curing it needs `User.Read.All` granted on the **Entra app registration**, with
+  admin consent. The Teams manifest cannot grant it: manifest permissions are
+  resource-specific, scoped to one team or chat and consented by its owner, while
+  this is a tenant-wide directory read. `User.ReadBasic.All` would be the lighter
+  ask but is delegated-only, so app-only has no smaller option. We do not ask for
+  it — tenant-wide directory read is a poor trade for one optional field.
+
+- The bundled icons live in `platforms/teams/assets/`. `copyAgentIntegrationAssets`
+  in `packages/cli/scripts/build.mjs` discovers every `platforms/*/assets`
+  directory; a platform that hardcodes itself out of that list works in dev,
+  where assets are read from `src`, and ships without them.
+
 ## Test Layout
 
 ```text

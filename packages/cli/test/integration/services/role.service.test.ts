@@ -10,13 +10,11 @@ import {
 	MANDATORY_INSTANCE_SCOPES,
 } from '@n8n/permissions';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
+import { RoleDeletionCheckProxy, RoleService } from '@n8n/backend-services';
 
 import {
 	createRole,

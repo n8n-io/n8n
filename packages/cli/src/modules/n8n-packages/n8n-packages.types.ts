@@ -135,10 +135,12 @@ export const DataTableMissingMode = {
 } as const;
 
 export const DataTableSchemaConflictPolicy = {
-	/** Accepts a matched target able that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
+	/** Accepts a matched target table that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
+	/** Changes a matched target table to match the package schema: renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. */
+	Overwrite: 'overwrite',
 } as const;
 
 export const VariableMissingMode = {
@@ -255,6 +257,8 @@ export type ImportRequest = {
 	folderId?: string;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
+	/** Omit to import the whole package. */
+	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
@@ -264,6 +268,39 @@ export type ImportRequest = {
 	ImportTagProperties;
 
 export type ImportPackageRequest = ImportRequest & {
+	packageBuffer: Buffer;
+};
+
+/**
+ * Import only the selected workflows. Do not add referenced sub-workflows to the selection.
+ *
+ * Delete only within the destination project, even under `merge`. Ignore absent or archived IDs.
+ * References to deleted workflows remain unchanged.
+ */
+export interface ImportSelection {
+	/** Source project ID from the package. */
+	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
+	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
+	deletedWorkflowIds?: string[];
+}
+
+/**
+ * Match or create the destination project from the package. Callers cannot override its location.
+ * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`, and
+ * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`).
+ */
+export type ImportSelectionRequest = {
+	user: User;
+	apiKeyScopes?: string[];
+	bindings?: Partial<PackageImportBindings>;
+	workflowConflictPolicy?: WorkflowConflictPolicy;
+	workflowIdPolicy?: WorkflowIdPolicy;
+	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
+};
+
+export type ImportPackageSelectionRequest = ImportSelectionRequest & {
 	packageBuffer: Buffer;
 };
 
@@ -375,6 +412,7 @@ export type ImportPackageEventCounts = {
 	dataTables: {
 		matched: number;
 		created: number;
+		updated: number;
 		requirements: number;
 	};
 	variables: {
@@ -520,6 +558,7 @@ export type BlockingIssue =
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
+	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
@@ -548,6 +587,13 @@ export type BlockingIssue =
 export interface WorkflowRemovalFailure {
 	workflowId: string;
 	name: string;
+	projectId: string;
+}
+
+/** A selected workflow also named for explicit removal. */
+export interface WorkflowRemovalConflict {
+	sourceWorkflowId: string;
+	workflowId: string;
 	projectId: string;
 }
 
@@ -638,6 +684,7 @@ export interface ImportVariableSummary {
 export interface ImportDataTableSummary {
 	matched: number;
 	created: number;
+	updated: number;
 }
 
 /** Tag names (not ids), grouped by how the import resolved them. */

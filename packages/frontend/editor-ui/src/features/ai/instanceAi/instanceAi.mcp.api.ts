@@ -4,6 +4,7 @@ import type {
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolsResponse,
 	McpRegistryServerResponse,
+	McpToolPermissions,
 } from '@n8n/api-types';
 
 export interface CreateMcpConnectionBody {
@@ -13,9 +14,7 @@ export interface CreateMcpConnectionBody {
 
 export interface UpdateMcpConnectionBody {
 	credentialId?: string;
-	inclusionMode?: 'all' | 'selected' | 'except';
-	selectedTools?: string[];
-	excludedTools?: string[];
+	toolPermissions?: McpToolPermissions;
 }
 
 export async function fetchMcpRegistryServers(

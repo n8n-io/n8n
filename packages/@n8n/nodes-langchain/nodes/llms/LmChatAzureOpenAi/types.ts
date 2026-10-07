@@ -31,6 +31,7 @@ export interface AzureOpenAIOptions {
 	temperature?: number;
 	topP?: number;
 	responseFormat?: 'text' | 'json_object';
+	extraBody?: string;
 }
 
 /**
@@ -41,7 +42,7 @@ export interface AzureOpenAIBaseModelConfig {
 	azureOpenAIApiVersion: string;
 	azureOpenAIEndpoint?: string;
 	/**
-	 * Full OpenAI-compatible base URL for Azure AI Foundry
+	 * Full OpenAI-compatible base URL for Microsoft Foundry
 	 * (`*.services.ai.azure.com/openai/v1`). When set, the node uses ChatOpenAI
 	 * against this URL instead of AzureChatOpenAI's deployment-based path.
 	 */
@@ -66,6 +67,13 @@ export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig
 
 /** Audience for the node's inference requests. */
 export const AZURE_OPENAI_INFERENCE_AUDIENCE = 'https://cognitiveservices.azure.com';
+
+/**
+ * The audience in the form `getBearerTokenProvider` takes. It is only required by that API:
+ * `N8nOAuth2TokenCredential` ignores the scopes it is handed and asks for the audience as the
+ * `resource` body parameter, which is what the v1.0 token endpoint reads.
+ */
+export const AZURE_OPENAI_INFERENCE_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
 
 /**
  * Audience for the Foundry deployments-list call. Each tenant's Entra ID app
@@ -108,5 +116,5 @@ export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialDat
 	endpointType?: 'classic' | 'foundry';
 	foundryEndpoint?: string;
 	tenantId: string;
-	oauthTokenData: TokenData;
+	oauthTokenData?: TokenData;
 };

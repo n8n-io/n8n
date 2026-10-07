@@ -4,8 +4,7 @@ import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/dec
 import type { Response } from 'express';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';

@@ -128,18 +128,16 @@ import { proxyFetch } from '@n8n/ai-utilities';
 
 const testEgressFilter = mock<NodeEgressFilter>();
 
-describe('microsoft-utils', () => {
-	beforeAll(async () => {
-		const actualMcpUtils = await vi.hoisted(
-			async () => await import('../../../mcp/McpClientTool/utils.js'),
-		);
+vi.mock('../../../mcp/McpClientTool/utils', async (importOriginal) => {
+	const actualMcpUtils = await importOriginal<typeof import('../../../mcp/McpClientTool/utils')>();
+	return {
+		createCallTool: vi.fn(),
+		mcpToolToDynamicTool: vi.fn(),
+		buildMcpToolName: actualMcpUtils.buildMcpToolName,
+	};
+});
 
-		vi.mock('../../../mcp/McpClientTool/utils', async () => ({
-			createCallTool: vi.fn(),
-			mcpToolToDynamicTool: vi.fn(),
-			buildMcpToolName: actualMcpUtils.buildMcpToolName,
-		}));
-	});
+describe('microsoft-utils', () => {
 	describe('createMicrosoftAgentApplication', () => {
 		const mockCredentials: MicrosoftAgent365Credentials = {
 			clientId: 'test-client-id',

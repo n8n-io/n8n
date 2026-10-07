@@ -6,7 +6,7 @@ import {
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Query, Body, Patch, Param, Licensed } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { WorkflowHistoryRequest } from '@/requests';

@@ -16,6 +16,7 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
+import { trackAndRethrowToolError } from '../tool-error.utils';
 
 const nodeRequestSchema = z.object({
 	nodeId: z.string().describe('The node type ID (e.g. "n8n-nodes-base.gmail")'),
@@ -113,12 +114,7 @@ export const createGetWorkflowNodeTypesTool = (
 				structuredContent: structured,
 			};
 		} catch (error) {
-			telemetryPayload.results = {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+			trackAndRethrowToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

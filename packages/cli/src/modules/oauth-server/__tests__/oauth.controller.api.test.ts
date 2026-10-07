@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -40,6 +40,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint: expect.stringContaining('/mcp-oauth/token'),
 			registration_endpoint: expect.stringContaining('/mcp-oauth/register'),
 			revocation_endpoint: expect.stringContaining('/mcp-oauth/revoke'),
+			jwks_uri: expect.stringMatching(/\/rest\/\.well-known\/jwks\.json$/),
 			response_types_supported: ['code'],
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
@@ -68,6 +69,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint,
 			registration_endpoint,
 			revocation_endpoint,
+			jwks_uri,
 		} = response.body;
 
 		expect(issuer).toMatch(/^https?:\/\//);
@@ -75,6 +77,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 		expect(token_endpoint).toBe(`${issuer}/mcp-oauth/token`);
 		expect(registration_endpoint).toBe(`${issuer}/mcp-oauth/register`);
 		expect(revocation_endpoint).toBe(`${issuer}/mcp-oauth/revoke`);
+		expect(jwks_uri).toBe(`${issuer}/rest/.well-known/jwks.json`);
 	});
 
 	test('should include all required OAuth 2.1 fields', async () => {
@@ -727,8 +730,11 @@ describe('Full authorization-code flow (PKCE)', () => {
 		// grantable subset. `communityPackage:install` is advertised in discovery,
 		// which is unauthenticated and describes what the resource supports, but it
 		// is withheld at consent here because the community-packages module is
-		// inactive in the test instance.
-		const grantedScopes = supportedScopes.filter((scope) => scope !== 'communityPackage:install');
+		// inactive in the test instance. `aiPreference:*` is withheld too: the test
+		// instance has no PostHog, so no user is in the preferences experiment arm.
+		const grantedScopes = supportedScopes.filter(
+			(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
+		);
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent

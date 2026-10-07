@@ -18,10 +18,14 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 
-const props = withDefaults(defineProps<{ disabled?: boolean; threadId?: string }>(), {
-	disabled: false,
-	threadId: undefined,
-});
+const props = withDefaults(
+	defineProps<{ disabled?: boolean; isStreaming?: boolean; threadId?: string }>(),
+	{
+		disabled: false,
+		isStreaming: false,
+		threadId: undefined,
+	},
+);
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -32,6 +36,9 @@ const { menuItems, disconnectedConnectionCount, refreshAppliedPreferences } =
 	);
 
 const tooltip = computed(() => {
+	if (props.disabled && props.isStreaming) {
+		return i18n.baseText('instanceAi.inputMenu.stopResponse');
+	}
 	const count = disconnectedConnectionCount.value;
 	if (count === 0) return i18n.baseText('instanceAi.inputMenu.open');
 	if (count === 1) return i18n.baseText('instanceAi.inputMenu.connectionNeedsAttention');
@@ -83,21 +90,15 @@ function handleUpdateDropdownModelValue(open: boolean) {
 			@update:model-value="handleUpdateDropdownModelValue"
 		>
 			<template #trigger>
-				<span :class="$style.trigger">
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="medium"
-						icon-size="large"
-						:disabled="props.disabled"
-						:aria-label="tooltip"
-					/>
-					<span
-						v-if="disconnectedConnectionCount > 0"
-						:class="$style.triggerStatusDot"
-						aria-hidden="true"
-					/>
-				</span>
+				<N8nIconButton
+					icon="plus"
+					variant="ghost"
+					size="medium"
+					icon-size="large"
+					:disabled="props.disabled"
+					:aria-label="tooltip"
+					:class="[$style.trigger, { [$style.triggerWithStatus]: disconnectedConnectionCount > 0 }]"
+				/>
 			</template>
 
 			<template #item-leading="{ item, ui }">
@@ -168,8 +169,8 @@ function handleUpdateDropdownModelValue(open: boolean) {
 
 <style lang="scss" module>
 .triggerTooltip {
-	max-width: none;
-	white-space: nowrap;
+	max-width: calc(100vw - 2 * var(--spacing--sm));
+	white-space: normal;
 }
 
 .trigger {
@@ -177,10 +178,11 @@ function handleUpdateDropdownModelValue(open: boolean) {
 	display: inline-flex;
 }
 
-.triggerStatusDot {
+.triggerWithStatus::after {
+	content: '';
 	position: absolute;
-	top: 2px;
-	right: 2px;
+	top: var(--spacing--5xs);
+	right: var(--spacing--5xs);
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;

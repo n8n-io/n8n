@@ -8,7 +8,7 @@ import type { MockInstance } from 'vitest';
 import { captor, mock } from 'vitest-mock-extended';
 import { type WebSocket, Server as WSServer } from 'ws';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
 import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types';

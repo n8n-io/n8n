@@ -12,7 +12,7 @@ import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-cor
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ServiceUnavailableError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';

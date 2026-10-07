@@ -6,7 +6,7 @@ import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';
@@ -14,7 +14,7 @@ import { PromotionProviderRepository } from '@/modules/promotions.ee/database/re
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 describe('Promotions in Public API', () => {
@@ -749,6 +749,286 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(400);
 			expect(response.body.message).toContain('not cloned');
 		});
+	});
+
+	describe('selective promote', () => {
+		const promoteResult = {
+			connectionId: 'conn1',
+			configId: 'config1',
+			counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+		};
+
+		it('requires the push API-key scope', async () => {
+			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+			const response = await testServer
+				.publicApiAgentFor(restrictedOwner)
+				.post('/promotions/projects/proj1/promote')
+				.send({ workflowIds: ['w1'] });
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects a user without the push grant', async () => {
+			// The key carries the push scope, but a member's role does not grant it.
+			const member = await createMemberWithApiKey({ scopes: ['gitConnection:push'] });
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/promotions/projects/proj1/promote')
+				.send({ workflowIds: ['w1'] });
+			expect(response.status).toBe(403);
+		});
+
+		it('requires a licensed and active module', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			testServer.license.disable('feat:gitConnections');
+			expect(
+				(await agent.post('/promotions/projects/proj1/promote').send({ workflowIds: ['w1'] }))
+					.status,
+			).toBe(403);
+			testServer.license.enable('feat:gitConnections');
+			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+			try {
+				const project = await createTeamProject('Team project', owner);
+				expect(
+					(
+						await agent
+							.post(`/promotions/projects/${project.id}/promote`)
+							.send({ workflowIds: ['w1'] })
+					).status,
+				).toBe(503);
+			} finally {
+				active.mockRestore();
+			}
+		});
+
+		it('rejects an empty selection with 400', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(`/promotions/projects/${project.id}/promote`)
+				.send({ workflowIds: [] });
+			expect(response.status).toBe(400);
+		});
+
+		it('forwards the selection and the variable-list grant to the service', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const promote = vi
+				.spyOn(Container.get(PromotionsService), 'promoteProjectSelection')
+				.mockResolvedValue(promoteResult);
+			try {
+				const withVars = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:push', 'variable:list'] }),
+				);
+				const withoutVars = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+				);
+
+				const first = await withVars
+					.post(`/promotions/projects/${project.id}/promote`)
+					.send({ workflowIds: ['w1', 'w2'], commitMessage: 'Promote checkout flow' });
+				expect(first.status, JSON.stringify(first.body)).toBe(200);
+				expect(first.body).toEqual(promoteResult);
+				expect(promote).toHaveBeenLastCalledWith(
+					project.id,
+					expect.objectContaining({ id: expect.any(String) }),
+					expect.objectContaining({
+						workflowIds: ['w1', 'w2'],
+						commitMessage: 'Promote checkout flow',
+						canExportVariableValues: true,
+					}),
+				);
+
+				const second = await withoutVars
+					.post(`/promotions/projects/${project.id}/promote`)
+					.send({ workflowIds: ['w1'] });
+				expect(second.status, JSON.stringify(second.body)).toBe(200);
+				expect(promote).toHaveBeenLastCalledWith(
+					project.id,
+					expect.anything(),
+					// No commitMessage key when the client omits it; the service applies the default.
+					expect.objectContaining({ canExportVariableValues: false }),
+				);
+			} finally {
+				promote.mockRestore();
+			}
+		});
+
+		it('reaches the service and reports the missing instance connection with 404', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(`/promotions/projects/${project.id}/promote`)
+				.send({ workflowIds: ['w1'] });
+			expect(response.status).toBe(404);
+		});
+	});
+
+	describe('selective apply', () => {
+		const selectionBody = {
+			workflowIds: ['w1', 'w2'],
+			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
+		};
+
+		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+			const response = await testServer
+				.publicApiAgentFor(restrictedOwner)
+				.post(`/promotions/projects/proj1/${route}`)
+				.send(selectionBody);
+			expect(response.status).toBe(403);
+		});
+
+		it.each(['apply', 'apply/continue'])(
+			'%s rejects a user without the pull grant',
+			async (route) => {
+				// The key carries the pull scope, but a member's role does not grant it.
+				const member = await createMemberWithApiKey({ scopes: ['gitConnection:pull'] });
+				const response = await testServer
+					.publicApiAgentFor(member)
+					.post(`/promotions/projects/proj1/${route}`)
+					.send(selectionBody);
+				expect(response.status).toBe(403);
+			},
+		);
+
+		it.each(['apply', 'apply/continue'])(
+			'%s requires a licensed and active module',
+			async (route) => {
+				const agent = testServer.publicApiAgentFor(owner);
+				testServer.license.disable('feat:gitConnections');
+				expect(
+					(await agent.post(`/promotions/projects/proj1/${route}`).send(selectionBody)).status,
+				).toBe(403);
+				testServer.license.enable('feat:gitConnections');
+				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+				try {
+					expect(
+						(await agent.post(`/promotions/projects/proj1/${route}`).send(selectionBody)).status,
+					).toBe(503);
+				} finally {
+					active.mockRestore();
+				}
+			},
+		);
+
+		it('rejects an empty selection with 400 on both routes', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			expect(
+				(await agent.post('/promotions/projects/proj1/apply').send({ workflowIds: [] })).status,
+			).toBe(400);
+			expect(
+				(
+					await agent
+						.post('/promotions/projects/proj1/apply/continue')
+						.send({ workflowIds: [], expectedSource: selectionBody.expectedSource })
+				).status,
+			).toBe(400);
+		});
+
+		it('requires workflowIds and a supported source on Continue', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			for (const body of [
+				{ expectedSource: selectionBody.expectedSource }, // no workflowIds
+				{ workflowIds: ['w1'] }, // no expectedSource
+				{ ...selectionBody, force: true }, // unexpected field
+				{
+					workflowIds: ['w1'],
+					expectedSource: { ...selectionBody.expectedSource, commitSha: 'HEAD' },
+				},
+			]) {
+				const response = await agent.post('/promotions/projects/proj1/apply/continue').send(body);
+				expect(response.status, JSON.stringify(response.body)).toBe(400);
+			}
+		});
+
+		it.each(['blocked', 'applied', 'source-changed'] as const)(
+			'returns the %s contract through both selective apply routes with only the pull scope',
+			async (status) => {
+				const consumers = [
+					{
+						project: { id: 'project1', name: 'Orders' },
+						workflows: [{ id: 'w1', name: 'Process order' }],
+					},
+				];
+				const warnings = [
+					{
+						kind: 'variable',
+						code: 'variable-shadowed',
+						name: 'API_URL',
+						scope: { kind: 'global' },
+						consumers,
+					},
+				];
+				const result = ApplyPackageResultDto.parse({
+					status,
+					connectionId: 'conn1',
+					configId: selectionBody.expectedSource.configId,
+					git: { branchName: 'main', commitSha: selectionBody.expectedSource.commitSha },
+					preflight: {
+						missingProjects: [],
+						missingBindings: [
+							{
+								kind: 'variable',
+								name: 'API_URL',
+								variableType: 'string',
+								scope: { kind: 'global' },
+								sourceValue: '',
+								consumers,
+							},
+						],
+						accessRequirements: [],
+						conflicts: [],
+						warnings,
+					},
+					warnings,
+					counts: {
+						projects: { created: 0, updated: 0, skipped: 0, deleted: 0 },
+						folders: { created: 0, skipped: 0, removed: 0 },
+						workflows: {
+							created: 0,
+							updated: 0,
+							skipped: 0,
+							archived: 0,
+							deleted: 0,
+							publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+						},
+						credentials: { matched: 0, stubbed: 0 },
+						dataTables: { matched: 0, created: 0 },
+						variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
+						tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
+					},
+				});
+				const service = Container.get(PromotionsService);
+				const initial = vi.spyOn(service, 'applyProjectSelection').mockResolvedValue(result);
+				const continuation = vi
+					.spyOn(service, 'continueApplyProjectSelection')
+					.mockResolvedValue(result);
+				try {
+					const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+					const agent = testServer.publicApiAgentFor(restrictedOwner);
+					for (const route of ['apply', 'apply/continue']) {
+						const response = await agent
+							.post(`/promotions/projects/proj1/${route}`)
+							.send(selectionBody);
+						expect(response.status, JSON.stringify(response.body)).toBe(200);
+						expect(response.body).toEqual(result);
+					}
+					expect(initial).toHaveBeenCalledWith(
+						'proj1',
+						expect.objectContaining({ id: restrictedOwner.id }),
+						selectionBody,
+					);
+					expect(continuation).toHaveBeenCalledWith(
+						'proj1',
+						expect.objectContaining({ id: restrictedOwner.id }),
+						selectionBody,
+					);
+				} finally {
+					initial.mockRestore();
+					continuation.mockRestore();
+				}
+			},
+		);
 	});
 
 	describe('package operations', () => {

@@ -2,7 +2,7 @@ import { credentialContentSubject, type PolicySubject } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Container } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { In, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsEntity, SharedCredentials } from '../../entities';
@@ -47,6 +47,47 @@ describe('CredentialsRepository', () => {
 		await expect(credentialsRepository.findGlobalProjectCredentialIds([])).resolves.toEqual([]);
 
 		expect(entityManager.find).not.toHaveBeenCalled();
+	});
+
+	describe('findNamesByIds', () => {
+		it('returns the id and name for each matching credential', async () => {
+			const credentials = [mock<CredentialsEntity>({ id: 'cred-1', name: 'Cred One' })];
+			entityManager.find.mockResolvedValueOnce(credentials);
+
+			const result = await credentialsRepository.findNamesByIds(['cred-1', 'cred-2']);
+
+			expect(result).toEqual(credentials);
+			expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: In(['cred-1', 'cred-2']) },
+				select: ['id', 'name'],
+			});
+		});
+
+		it('does not query for an empty id list', async () => {
+			await expect(credentialsRepository.findNamesByIds([])).resolves.toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findExistingIds', () => {
+		it('returns only the ids that still have a row', async () => {
+			entityManager.find.mockResolvedValueOnce([mock<CredentialsEntity>({ id: 'cred-1' })]);
+
+			const result = await credentialsRepository.findExistingIds(['cred-1', 'deleted-cred']);
+
+			expect(result).toEqual(['cred-1']);
+			expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: In(['cred-1', 'deleted-cred']) },
+				select: ['id'],
+			});
+		});
+
+		it('does not query for an empty id list', async () => {
+			await expect(credentialsRepository.findExistingIds([])).resolves.toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
 	});
 
 	it('loads only binding metadata and preserves credential and project pairs', async () => {
@@ -299,8 +340,18 @@ describe('CredentialsRepository', () => {
 
 			const callArg = entityManager.find.mock.calls[0]?.[1];
 			expect(callArg?.where).toEqual([
-				{ type: Like('%githubApi%'), shared: { projectId: 'p1' }, usageScope: 'project' },
-				{ type: Like('%githubApi%'), usageScope: 'project', isGlobal: true },
+				{
+					type: Like('%githubApi%'),
+					shared: { projectId: 'p1' },
+					usageScope: 'project',
+					pendingAuthorizationExpiresAt: IsNull(),
+				},
+				{
+					type: Like('%githubApi%'),
+					usageScope: 'project',
+					isGlobal: true,
+					pendingAuthorizationExpiresAt: IsNull(),
+				},
 			]);
 			expect(entityManager.count).toHaveBeenCalledWith(CredentialsEntity, {
 				where: callArg?.where,

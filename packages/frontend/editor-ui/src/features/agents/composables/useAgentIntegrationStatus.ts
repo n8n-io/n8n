@@ -1,11 +1,12 @@
 import { ref, type Ref } from 'vue';
-import type {
-	AgentApproval,
-	AgentChannelRuntimeStatus,
-	AgentDisconnectIntegrationResponse,
-	AgentIntegrationConnectResponse,
-	AgentIntegrationStatusEntry,
-	AgentIntegrationSettings,
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentApproval,
+	type AgentChannelRuntimeStatus,
+	type AgentDisconnectIntegrationResponse,
+	type AgentIntegrationConnectResponse,
+	type AgentIntegrationStatusEntry,
+	type AgentIntegrationSettings,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -176,7 +177,14 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
-				applyStatus(state, integrationTypes, result.integrations ?? [], 'server');
+				// The report keeps n8n Chat while only the published version has it.
+				// The builder edits the draft, so a draft without it is unavailable.
+				const integrations = (result.integrations ?? []).filter(
+					(integration) =>
+						integration.type !== N8N_CHAT_INTEGRATION_TYPE ||
+						result.n8nChat?.draftEnabled !== false,
+				);
+				applyStatus(state, integrationTypes, integrations, 'server');
 			} catch {
 				// Mark only types the server hasn't answered for as `unknown` — a
 				// transient network failure shouldn't claim that a channel the server

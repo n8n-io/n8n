@@ -1,4 +1,5 @@
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -11,19 +12,20 @@ import { LicenseMetricsRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { License } from '@/license';
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
-import { InsightsService } from '@/modules/insights/insights.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { createOwner } from '@test-integration/db/users';
+import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
+import { InsightsService } from '@n8n/backend-module-insights';
+import { InsightsConfig } from '@n8n/backend-module-insights/config';
+import { packagedModules } from '@/modules/modules.manifest';
 
-import type { InstanceReportDataPoint } from '../database/entities/instance-monitoring-report';
+import type {
+	InstanceMonitoringReport,
+	InstanceReportDataPoint,
+} from '../database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
-import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
+import { InstanceReportingTask } from '../instance-reporting.task';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
 import {
@@ -46,9 +48,6 @@ const NEXT_SLOT = '2026-03-27T07:42:00.000Z';
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
-/** Room for the fake clock's drift while `vi.waitFor` polls. */
-const CLOCK_TOLERANCE_MS = 10 * Time.seconds.toMilliseconds;
-
 interface ReportPayload {
 	batchId: string;
 	dataPoints: InstanceReportDataPoint[];
@@ -62,27 +61,18 @@ const unreachable = (): Route => ({
 
 const accepted = (): Route => ({ method: 'POST', pathname: INSTANCE_REPORTS_PATH, status: 201 });
 
-/** The private arming hook, spied on so a test can tell when a pass has finished. */
-type SchedulerInternals = { scheduleNext(delayMs: number): void };
+const tooLarge = (): Route => ({ method: 'POST', pathname: INSTANCE_REPORTS_PATH, status: 413 });
 
 interface Harness {
-	scheduler: InstanceReportingScheduler;
-	/** Every resolved request the fake receiver saw. */
+	task: InstanceReportingTask;
 	httpRequest: ReturnType<typeof createFakeOutboundHttp>['httpRequest'];
-	/**
-	 * Called once a pass has finished its last database write, so its call count
-	 * marks "pass over, next timer armed". Pending fake timers cannot serve as
-	 * that signal: the SQLite pool arms a transient timeout for every query.
-	 */
-	scheduleNext: MockInstance<SchedulerInternals['scheduleNext']>;
 }
 
 describe('instance reporting retries', () => {
 	let repository: InstanceMonitoringReportRepository;
-	let schedulers: InstanceReportingScheduler[] = [];
 
 	beforeAll(async () => {
-		await testModules.loadModules(['insights', 'instance-reporting']);
+		await testModules.loadModules(['insights', 'instance-reporting'], packagedModules);
 		await testDb.init();
 
 		repository = Container.get(InstanceMonitoringReportRepository);
@@ -97,13 +87,11 @@ describe('instance reporting retries', () => {
 		await testDb.truncate([
 			'InstanceMonitoringReport',
 			'Settings',
-			'User',
 			'InsightsByPeriod',
 			'InsightsMetadata',
 			'WorkflowEntity',
 			'Project',
 		]);
-		await createOwner();
 		await Container.get(SettingsRepository).upsertByKey(
 			CENTRAL_INSTANCE_MONITORING_SETTINGS_KEY,
 			JSON.stringify({ reportTime: REPORT_TIME }),
@@ -111,15 +99,12 @@ describe('instance reporting retries', () => {
 			{},
 		);
 
-		// Only what the scheduler uses. `setImmediate` and `nextTick` stay real so
-		// the database driver's I/O still completes under the fake clock.
-		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+		vi.useFakeTimers({ toFake: ['Date'] });
 		vi.setSystemTime(new Date(AFTER_SLOT));
+		vi.spyOn(repository, 'readDbNow').mockImplementation(async () => new Date());
 	});
 
 	afterEach(() => {
-		for (const scheduler of schedulers) scheduler.shutdown();
-		schedulers = [];
 		vi.useRealTimers();
 		vi.restoreAllMocks();
 	});
@@ -139,43 +124,19 @@ describe('instance reporting retries', () => {
 		const service = new InstanceReportingService(
 			Container.get(InstanceReportingConfig),
 			repository,
+			Container.get(InstanceReportingSettingsService),
 			Container.get(InsightsService),
+			Container.get(InsightsConfig),
 			instanceSettings,
-			Container.get(OwnershipService),
 			Container.get(LicenseMetricsRepository),
 			mock<License>({ loadCertStr: async () => 'license-cert' }),
 			mockLogger(),
 			eventService,
 			outboundHttp,
 		);
-		const scheduler = new InstanceReportingScheduler(
-			service,
-			repository,
-			Container.get(InstanceReportingSettingsService),
-			instanceSettings,
-			eventService,
-			mockLogger(),
-		);
-		schedulers.push(scheduler);
+		const task = new InstanceReportingTask(service);
 
-		const scheduleNext = vi.spyOn(scheduler as unknown as SchedulerInternals, 'scheduleNext');
-
-		return { scheduler, httpRequest, scheduleNext };
-	}
-
-	/** Wait until the scheduler has completed `passes` passes and armed the next one. */
-	async function armed({ scheduleNext }: Harness, passes: number) {
-		await vi.waitFor(() => expect(scheduleNext).toHaveBeenCalledTimes(passes), {
-			timeout: 5_000,
-		});
-	}
-
-	/** Assert the delay the scheduler last armed lands on `slot`. */
-	function expectArmedFor({ scheduleNext }: Harness, slot: string) {
-		const delay = scheduleNext.mock.lastCall?.[0] ?? Number.NaN;
-		const target = new Date(slot).getTime();
-		expect(Date.now() + delay).toBeGreaterThanOrEqual(target - CLOCK_TOLERANCE_MS);
-		expect(Date.now() + delay).toBeLessThanOrEqual(target + CLOCK_TOLERANCE_MS);
+		return { task, httpRequest };
 	}
 
 	function sentPayload({ httpRequest }: Harness, index: number): ReportPayload {
@@ -188,36 +149,46 @@ describe('instance reporting retries', () => {
 		);
 	}
 
-	/**
-	 * The database stamps `createdAt` with the real clock, not the fake one, so
-	 * a row from a fake "yesterday" reads as today's. Pin it to the day meant.
-	 */
-	async function stampCreatedAt(id: string, createdAt: Date) {
-		await repository.update({ id }, { createdAt });
+	async function createPendingOn(createdAt: Date, dataPoints: InstanceReportDataPoint[]) {
+		const report = await repository.createPending(dataPoints, createdAt);
+		if (!report) throw new Error(`A report was already created on ${createdAt.toISOString()}`);
+		// The database stamps `createdAt` with the real clock, not the fake one.
+		await repository.update({ id: report.id }, { createdAt });
+
+		return report;
 	}
 
 	/** A delivered report that covers `day`, generated the morning after it. */
 	async function seedDeliveredReport(day: string) {
-		const report = await repository.createPending([
-			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
-			{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
-		]);
-		await repository.markDelivered(report.id, new Date());
-		await stampCreatedAt(
-			report.id,
+		const report = await createPendingOn(
 			new Date(new Date(`${day}T07:43:00.000Z`).getTime() + Time.days.toMilliseconds),
+			[
+				{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
+				{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
+			],
 		);
+		const claimedAt = await repository.claimForSend(report.id);
+		if (!claimedAt) throw new Error('Could not claim the report');
+		await repository.markDelivered(report.id, new Date());
 		return report;
 	}
 
 	async function seedDailyExecutions(totalsByDay: Record<string, number>) {
+		await seedCompactedExecutions('day', totalsByDay);
+	}
+
+	/** Executions as insights holds them after compaction, keyed by period start. */
+	async function seedCompactedExecutions(
+		periodUnit: 'hour' | 'day' | 'week',
+		totalsByPeriodStart: Record<string, number>,
+	) {
 		const workflow = await createWorkflow({}, await createTeamProject());
-		for (const [day, value] of Object.entries(totalsByDay)) {
+		for (const [periodStart, value] of Object.entries(totalsByPeriodStart)) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value,
-				periodUnit: 'day',
-				periodStart: DateTime.fromISO(day, { zone: 'utc' }),
+				periodUnit,
+				periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
 			});
 		}
 	}
@@ -230,7 +201,7 @@ describe('instance reporting retries', () => {
 			createdAt,
 		}: { attempts: number; lastAttemptAt: Date; createdAt: Date },
 	) {
-		const report = await repository.createPending([
+		const report = await createPendingOn(createdAt, [
 			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
 			{ kind: 'daily', name: 'billableExecutions', value: 5, date: day },
 		]);
@@ -238,7 +209,6 @@ describe('instance reporting retries', () => {
 			{ id: report.id },
 			{ attempts, lastError: 'ECONNREFUSED', lastAttemptAt },
 		);
-		await stampCreatedAt(report.id, createdAt);
 		return report;
 	}
 
@@ -261,8 +231,7 @@ describe('instance reporting retries', () => {
 	test('delivers on the third attempt once the receiver is reachable again', async () => {
 		const harness = makeHarness([unreachable(), unreachable(), accepted()]);
 
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		await expect(repository.count()).resolves.toBe(1);
@@ -270,20 +239,18 @@ describe('instance reporting retries', () => {
 		expect(report).toMatchObject({ status: 'pending', attempts: 1 });
 		expect(report.lastError).toEqual(expect.any(String));
 		expect(report.lastAttemptAt).toEqual(expect.any(Date));
-		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
 
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 2);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
 		await expect(repository.findOneByOrFail({ id: report.id })).resolves.toMatchObject({
 			status: 'pending',
 			attempts: 2,
 		});
-		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
 
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 3);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(3);
 		await expect(repository.findOneByOrFail({ id: report.id })).resolves.toMatchObject({
@@ -301,10 +268,9 @@ describe('instance reporting retries', () => {
 		}
 
 		// The day is settled, so the scheduler now waits for tomorrow's slot.
-		expectArmedFor(harness, NEXT_SLOT);
-		await vi.advanceTimersByTimeAsync(Time.hours.toMilliseconds);
+		vi.setSystemTime(Date.now() + Time.hours.toMilliseconds);
+		await harness.task.run();
 		expect(harness.httpRequest).toHaveBeenCalledTimes(3);
-		expect(harness.scheduleNext).toHaveBeenCalledTimes(3);
 		await expect(repository.count()).resolves.toBe(1);
 	});
 
@@ -315,28 +281,24 @@ describe('instance reporting retries', () => {
 
 		const harness = makeHarness([unreachable(), unreachable(), unreachable(), accepted()]);
 
-		harness.scheduler.start();
-		await armed(harness, 1);
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 2);
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 3);
+		await expect(harness.task.run()).rejects.toThrow();
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(MAX_ATTEMPTS);
 		const [abandoned] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
 		expect(abandoned).toMatchObject({ attempts: MAX_ATTEMPTS });
 		expect(dailyPoints(sentPayload(harness, 0))).toEqual([{ date: '2026-03-25', value: 5 }]);
-		// Keep the abandoned row on the day it was made, or tomorrow reads as settled too.
-		await stampCreatedAt(abandoned.id, new Date(AFTER_SLOT));
 
 		// The next pass finds the day settled and moves on to tomorrow's slot.
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 4);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 		expect(harness.httpRequest).toHaveBeenCalledTimes(MAX_ATTEMPTS);
-		expectArmedFor(harness, NEXT_SLOT);
 
-		await vi.advanceTimersByTimeAsync(new Date(NEXT_SLOT).getTime() - Date.now());
-		await armed(harness, 5);
+		vi.setSystemTime(new Date(NEXT_SLOT));
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(MAX_ATTEMPTS + 1);
 		const backfill = sentPayload(harness, MAX_ATTEMPTS);
@@ -354,14 +316,42 @@ describe('instance reporting retries', () => {
 		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-26');
 	});
 
+	test('gives up on a rejected report after one attempt and covers the day again in the next report', async () => {
+		await seedDeliveredReport('2026-03-24');
+		await seedDailyExecutions({ '2026-03-25': 5, '2026-03-26': 7 });
+
+		const harness = makeHarness([tooLarge(), accepted()]);
+
+		await harness.task.run();
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+		const [rejected] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
+		expect(rejected).toMatchObject({ attempts: 1 });
+
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+
+		vi.setSystemTime(new Date(NEXT_SLOT));
+		await harness.task.run();
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
+		const backfill = sentPayload(harness, 1);
+		expect(backfill.batchId).not.toBe(rejected.id);
+		expect(dailyPoints(backfill)).toEqual([
+			{ date: '2026-03-25', value: 5 },
+			{ date: '2026-03-26', value: 7 },
+		]);
+		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-26');
+	});
+
 	test('carries a daily point for every day of a downtime gap in one report', async () => {
 		await seedDeliveredReport('2026-03-22');
 		// Nothing for 03-24: a day with no executions has no insights row at all.
 		await seedDailyExecutions({ '2026-03-23': 4, '2026-03-25': 9 });
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		const payload = sentPayload(harness, 0);
@@ -379,28 +369,133 @@ describe('instance reporting retries', () => {
 		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-25');
 	});
 
-	test('caps a long gap at 30 days and still reads every day on its own', async () => {
+	test('backfills a gap longer than 30 days and still reads every day on its own', async () => {
 		await seedDeliveredReport('2026-01-01');
-		await seedDailyExecutions({ '2026-02-24': 6, '2026-03-25': 8 });
+		await seedDailyExecutions({ '2026-01-10': 4, '2026-02-24': 6, '2026-03-25': 8 });
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		const points = dailyPoints(sentPayload(harness, 0));
-		expect(points).toHaveLength(30);
-		// Exact days, not weekly buckets: a 30-day range still reads as days.
-		expect(points.at(0)).toEqual({ date: '2026-02-24', value: 6 });
+		// Every day from the first data on 01-10 to 03-25. Inside that range, a day
+		// without data is a real 0.
+		expect(points).toHaveLength(75);
+		expect(points.at(0)).toEqual({ date: '2026-01-10', value: 4 });
+		// Exact days, not weekly buckets, although the gap is longer than 30 days.
+		expect(points.find((point) => point.date === '2026-02-24')).toEqual({
+			date: '2026-02-24',
+			value: 6,
+		});
 		expect(points.at(-1)).toEqual({ date: '2026-03-25', value: 8 });
-		expect(points.slice(1, -1).every((point) => point.value === 0)).toBe(true);
+		expect(points.filter((point) => point.value !== 0)).toHaveLength(3);
+	});
+
+	test('carries the insights history on the first report, but no day older than the hourly compaction threshold', async () => {
+		// With a threshold of 30 days, compaction folded every hour before 02-24
+		// into daily rows, and older days into weekly rows.
+		const insightsConfig = Container.get(InsightsConfig);
+		const { compactionHourlyToDailyThresholdDays } = insightsConfig;
+		insightsConfig.compactionHourlyToDailyThresholdDays = 30;
+		onTestFinished(() => {
+			insightsConfig.compactionHourlyToDailyThresholdDays = compactionHourlyToDailyThresholdDays;
+		});
+
+		await seedCompactedExecutions('week', { '2026-01-19': 700 });
+		await seedCompactedExecutions('day', { '2026-02-20': 5, '2026-02-23': 6 });
+		await seedCompactedExecutions('hour', {
+			'2026-02-24T10:00:00': 7,
+			'2026-02-25T00:00:00': 8,
+			'2026-03-10T08:00:00': 2,
+			'2026-03-10T15:00:00': 3,
+			'2026-03-25T23:00:00': 4,
+		});
+
+		const harness = makeHarness([accepted()]);
+		await harness.task.run();
+
+		const points = dailyPoints(sentPayload(harness, 0));
+		// From 29 days back to yesterday. 02-24 falls in the one day of margin.
+		expect(points).toHaveLength(29);
+		expect(points.at(0)).toEqual({ date: '2026-02-25', value: 8 });
+		expect(points.filter((point) => point.value !== 0)).toEqual([
+			{ date: '2026-02-25', value: 8 },
+			{ date: '2026-03-10', value: 5 },
+			{ date: '2026-03-25', value: 4 },
+		]);
+	});
+
+	test('carries every day since the first data once the receiver is reachable after skipped first reports', async () => {
+		await seedDailyExecutions({
+			'2026-03-20': 1,
+			'2026-03-21': 2,
+			'2026-03-22': 3,
+			'2026-03-23': 4,
+			'2026-03-24': 5,
+			'2026-03-25': 6,
+			'2026-03-26': 7,
+			'2026-03-27': 8,
+			'2026-03-28': 9,
+		});
+
+		// The receiver is unreachable for three days, then accepts.
+		const harness = makeHarness([
+			...Array.from({ length: 3 * MAX_ATTEMPTS }, unreachable),
+			accepted(),
+		]);
+
+		for (const nextSlot of [
+			'2026-03-27T07:42:00.000Z',
+			'2026-03-28T07:42:00.000Z',
+			'2026-03-29T07:42:00.000Z',
+		]) {
+			await expect(harness.task.run()).rejects.toThrow();
+			for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt++) {
+				vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+				await expect(harness.task.run()).rejects.toThrow();
+			}
+
+			const [skipped] = await repository.find({
+				where: { status: 'skipped_after_max_retries' },
+				order: { reportDate: 'DESC' },
+				take: 1,
+			});
+			expect(skipped.attempts).toBe(MAX_ATTEMPTS);
+
+			vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+			await harness.task.run();
+			vi.setSystemTime(new Date(nextSlot));
+		}
+		await harness.task.run();
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(3 * MAX_ATTEMPTS + 1);
+		// Every report started at the first day with data, not at its own yesterday.
+		for (const index of [0, MAX_ATTEMPTS, 2 * MAX_ATTEMPTS]) {
+			expect(dailyPoints(sentPayload(harness, index)).at(0)?.date).toBe('2026-03-20');
+		}
+
+		const delivered = sentPayload(harness, 3 * MAX_ATTEMPTS);
+		expect(dailyPoints(delivered)).toEqual([
+			{ date: '2026-03-20', value: 1 },
+			{ date: '2026-03-21', value: 2 },
+			{ date: '2026-03-22', value: 3 },
+			{ date: '2026-03-23', value: 4 },
+			{ date: '2026-03-24', value: 5 },
+			{ date: '2026-03-25', value: 6 },
+			{ date: '2026-03-26', value: 7 },
+			{ date: '2026-03-27', value: 8 },
+			{ date: '2026-03-28', value: 9 },
+		]);
+		await expect(repository.findOneByOrFail({ id: delivered.batchId })).resolves.toMatchObject({
+			status: 'delivered',
+		});
+		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-28');
 	});
 
 	test('resumes the retry budget and the remaining wait after a restart', async () => {
 		const before = makeHarness([unreachable()]);
 
-		before.scheduler.start();
-		await armed(before, 1);
+		await expect(before.task.run()).rejects.toThrow();
 
 		expect(before.httpRequest).toHaveBeenCalledTimes(1);
 		await expect(repository.count()).resolves.toBe(1);
@@ -408,23 +503,15 @@ describe('instance reporting retries', () => {
 		expect(report).toMatchObject({ status: 'pending', attempts: 1 });
 
 		// The process dies two minutes into the five-minute wait.
-		before.scheduler.shutdown();
-		await vi.advanceTimersByTimeAsync(2 * Time.minutes.toMilliseconds);
+		vi.setSystemTime(Date.now() + 2 * Time.minutes.toMilliseconds);
 
 		const after = makeHarness([accepted()]);
-		after.scheduler.start();
-		await armed(after, 1);
+		await after.task.run();
 
 		// Held back by the row's `lastAttemptAt` rather than attempting at once.
 		expect(after.httpRequest).not.toHaveBeenCalled();
-		// Three of the five minutes remain, less the fake clock's drift.
-		const [remainingWait] = after.scheduleNext.mock.calls[0];
-		const expectedWait = RETRY_DELAY_MS - 2 * Time.minutes.toMilliseconds;
-		expect(remainingWait).toBeGreaterThanOrEqual(expectedWait - CLOCK_TOLERANCE_MS);
-		expect(remainingWait).toBeLessThanOrEqual(expectedWait);
-
-		await vi.advanceTimersByTimeAsync(remainingWait);
-		await armed(after, 2);
+		vi.setSystemTime(Date.now() + 3 * Time.minutes.toMilliseconds);
+		await after.task.run();
 
 		expect(after.httpRequest).toHaveBeenCalledTimes(1);
 		expect(sentPayload(after, 0).batchId).toBe(report.id);
@@ -446,8 +533,7 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// The retry after midnight resends the same row. It does not make a new row.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
@@ -460,7 +546,6 @@ describe('instance reporting retries', () => {
 			attempts: 2,
 		});
 		await expect(repository.count()).resolves.toBe(1);
-		expectArmedFor(harness, '2026-03-27T23:56:00.000Z');
 	});
 
 	test('keeps retrying across the boundary, then backfills the day after it is skipped', async () => {
@@ -476,10 +561,9 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([unreachable(), unreachable(), accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 2);
+		await expect(harness.task.run()).rejects.toThrow();
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		// Two more attempts run after midnight. Then the row stops.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
@@ -489,12 +573,11 @@ describe('instance reporting retries', () => {
 		});
 
 		// The next pass finds the day settled. It waits for the next slot.
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 3);
-		expectArmedFor(harness, '2026-03-27T23:56:00.000Z');
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 
-		await vi.advanceTimersByTimeAsync(new Date('2026-03-27T23:56:00.000Z').getTime() - Date.now());
-		await armed(harness, 4);
+		vi.setSystemTime(new Date('2026-03-27T23:56:00.000Z'));
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(3);
 		const backfill = sentPayload(harness, 2);
@@ -520,8 +603,7 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// The latest row is delivered. So the code sends nothing and leaves the orphan.
 		expect(harness.httpRequest).not.toHaveBeenCalled();
@@ -556,8 +638,7 @@ describe('instance reporting retries', () => {
 		vi.setSystemTime(new Date('2026-03-29T20:59:00.000Z'));
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// Four days is past its own next slot, so it is given up, not resent — even
 		// though the time of day is still before tonight's slot.
@@ -565,11 +646,10 @@ describe('instance reporting retries', () => {
 		await expect(repository.findOneByOrFail({ id: stale.id })).resolves.toMatchObject({
 			status: 'skipped_after_max_retries',
 		});
-		expectArmedFor(harness, '2026-03-29T23:58:00.000Z');
 
 		// Tonight's slot creates one fresh report for the whole gap.
-		await vi.advanceTimersByTimeAsync(new Date('2026-03-29T23:58:00.000Z').getTime() - Date.now());
-		await armed(harness, 2);
+		vi.setSystemTime(new Date('2026-03-29T23:58:00.000Z'));
+		await harness.task.run();
 
 		const backfill = sentPayload(harness, 0);
 		expect(backfill.batchId).not.toBe(stale.id);
@@ -586,7 +666,7 @@ describe('instance reporting retries', () => {
 		expect(new Set(dates).size).toBe(dates.length);
 	});
 
-	test('caps the retry to the slot, so a failure at the end of the day backfills the same night', async () => {
+	test('expires the pending row at its next slot, even during the retry delay', async () => {
 		await setReportTime('23:58');
 
 		await seedDeliveredReport('2026-03-23');
@@ -604,18 +684,16 @@ describe('instance reporting retries', () => {
 		vi.setSystemTime(new Date('2026-03-26T23:56:00.000Z'));
 
 		const harness = makeHarness([unreachable(), accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await expect(harness.task.run()).rejects.toThrow();
 
-		// The resume fails; the next attempt is capped to the slot, two minutes away,
-		// rather than a full five minutes that would cross midnight.
+		// The resume fails two minutes before the next slot.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		expect(sentPayload(harness, 0).batchId).toBe(stale.id);
 
 		// Two minutes later, at the slot, the row is given up and a fresh report goes
 		// out the same night — not deferred to the next day's slot.
-		await vi.advanceTimersByTimeAsync(2 * Time.minutes.toMilliseconds);
-		await armed(harness, 2);
+		vi.setSystemTime(Date.now() + 2 * Time.minutes.toMilliseconds);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
 		await expect(repository.findOneByOrFail({ id: stale.id })).resolves.toMatchObject({
@@ -627,7 +705,6 @@ describe('instance reporting retries', () => {
 			{ date: '2026-03-24', value: 4 },
 			{ date: '2026-03-25', value: 6 },
 		]);
-		expectArmedFor(harness, '2026-03-27T23:58:00.000Z');
 	});
 
 	test('skips a stale row and sends a fresh report in the same pass, after the slot', async () => {
@@ -647,8 +724,7 @@ describe('instance reporting retries', () => {
 		vi.setSystemTime(new Date('2026-03-27T23:59:00.000Z'));
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// The first pass gives up the stale row and creates the new report at once.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
@@ -665,5 +741,34 @@ describe('instance reporting retries', () => {
 
 		const dates = await deliveredDailyDates();
 		expect(new Set(dates).size).toBe(dates.length);
+	});
+
+	test('resumes the report of a process that created it first and stopped', async () => {
+		const otherPoints: InstanceReportDataPoint[] = [
+			{ kind: 'cumulative', name: 'billableExecutions', value: 999 },
+		];
+		let other: InstanceMonitoringReport | undefined;
+
+		// Another process inserts today's report after this one found nothing pending.
+		const insights = Container.get(InsightsService);
+		const measure = insights.getDailyExecutionTotals.bind(insights);
+		vi.spyOn(insights, 'getDailyExecutionTotals').mockImplementation(async (args) => {
+			other = await createPendingOn(new Date(), otherPoints);
+			return await measure(args);
+		});
+
+		const harness = makeHarness([accepted()]);
+		await harness.task.run();
+
+		expect(harness.httpRequest).not.toHaveBeenCalled();
+
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+		expect(sentPayload(harness, 0)).toMatchObject({ batchId: other?.id, dataPoints: otherPoints });
+		await expect(repository.find()).resolves.toEqual([
+			expect.objectContaining({ id: other?.id, status: 'delivered' }),
+		]);
 	});
 });

@@ -60,3 +60,7 @@ export type ProjectListItem = ProjectSharingData & {
 	scopes?: Scope[];
 };
 export type ProjectsCount = Record<ProjectType, number>;
+
+export type ResourceEditorDestination =
+	| { kind: 'resolved'; project: Project }
+	| { kind: 'pending'; id: string; name: string; permissions: { create: boolean } };

@@ -22,12 +22,11 @@ vi.mock('openid-client', async (importOriginal) => {
 	};
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
@@ -396,8 +395,8 @@ describe('OidcService', () => {
 
 	describe('state redirect target', () => {
 		beforeEach(() => {
-			vi.mocked(jwtService.sign).mockImplementation((payload) => JSON.stringify(payload));
-			vi.mocked(jwtService.verify).mockImplementation((token) => JSON.parse(token));
+			vi.mocked(jwtService.sign).mockImplementation((_purpose, payload) => JSON.stringify(payload));
+			vi.mocked(jwtService.verify).mockImplementation((_purpose, token) => JSON.parse(token));
 		});
 
 		it('round-trips the in-app destination through the signed state', () => {

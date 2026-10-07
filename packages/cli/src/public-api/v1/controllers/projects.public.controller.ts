@@ -37,8 +37,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	encodeNextCursor,

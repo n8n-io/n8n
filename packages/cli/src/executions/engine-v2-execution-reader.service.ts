@@ -51,7 +51,7 @@ export interface EngineV2SearchQuery {
 const MAX_SCOPE_SIZE = 10_000;
 
 /**
- * Reads an engine 2.0 execution for display. The data plane is its only store:
+ * Reads an engine v2 execution for display. The data plane is its only store:
  * the workflow comes from the copy captured when the run started, so an edit
  * after the run does not change what the execution reports.
  */

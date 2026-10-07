@@ -3,8 +3,8 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import { BadRequestError } from '@n8n/errors';
+import { ProjectScopeService } from '@n8n/backend-services';
 
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository, type AgentListResult } from './repositories/agent.repository';

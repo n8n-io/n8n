@@ -220,7 +220,7 @@ export async function connectOpenCode(options, ensureCodespace) {
 		const health = await waitForTunnel(url, state.password, tunnel, controller.signal);
 		if (version && health.version !== version) {
 			throw new Error(
-				`OpenCode versions differ: local ${version}, server ${health.version}. Install the matching local version, or use --web or --legacy. The remote server is still running.`,
+				`OpenCode versions differ: local ${version}, server ${health.version}. Install the matching version with \`npm install -g opencode-ai@${health.version}\`, or use --web or --legacy. The remote server is still running.`,
 			);
 		}
 		const stopped = new Promise((resolve) =>

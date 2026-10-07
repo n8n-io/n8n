@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
 	createTeamProject,
@@ -21,9 +22,7 @@ import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	affixRoleToSaveCredential,
@@ -1290,6 +1289,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1389,6 +1389,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1458,6 +1459,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1529,6 +1531,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {

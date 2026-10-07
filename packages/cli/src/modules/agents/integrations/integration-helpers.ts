@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { createHmac } from 'crypto';
 
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 import type { IntegrationActionResult } from './integration-tool-types';
@@ -81,6 +82,23 @@ export function isDefined<T>(value: T | undefined): value is T {
 	return value !== undefined;
 }
 
+/**
+ * Meta requires pasting this token by hand into the webhook config, so it must
+ * be shown before a credential exists — derived from `agentId` alone, not `credentialId`.
+ *
+ * Signed with `instanceSettings.hmacSignatureSecret`, not the credential
+ * encryption key: this value is exposed on an unauthenticated endpoint, and
+ * `hmacSignatureSecret` is the existing dedicated secret this codebase already
+ * uses for that class of webhook signing (see `waiting-webhooks.ts`) — a real
+ * secret an operator can rotate independently via `N8N_HMAC_SIGNATURE_SECRET`,
+ * not a value derived from the encryption key that protects stored credentials.
+ */
+export function deriveWhatsAppVerifyToken(hmacSignatureSecret: string, agentId: string): string {
+	return createHmac('sha256', hmacSignatureSecret)
+		.update(`whatsapp:verify:${agentId}`)
+		.digest('hex');
+}
+
 export function hasUpdateIssueField(input: {
 	issueId: string;
 	teamId?: string | null;
@@ -104,4 +122,67 @@ export function hasUpdateIssueField(input: {
 		input.stateId !== undefined ||
 		input.parentId !== undefined
 	);
+}
+
+/**
+ * Zero-width joiner and the variation selectors are formatting characters that
+ * hold an emoji sequence together, so removing them breaks the glyph. Checked
+ * by code point rather than a character class, which cannot hold a combining
+ * character without becoming misleading.
+ */
+function isEmojiGlue(character: string): boolean {
+	const point = character.codePointAt(0) ?? 0;
+	return point === 0x200d || (point >= 0xfe00 && point <= 0xfe0f);
+}
+
+/** Whitespace that is also a control character, so it becomes a space first. */
+const WHITESPACE_CONTROLS = /[\t\n\v\f\r\u0085\u2028\u2029]/gu;
+
+const FORMATTING = /[\p{Cc}\p{Cf}]/gu;
+
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/**
+ * Reduces a user-chosen name to something safe to put in a vendor app listing:
+ * no stray control characters, no runs of whitespace, and within the vendor's
+ * length cap.
+ *
+ * Accented and non-Latin names survive. Slack keeps its own stricter rule,
+ * because Slack's app names are restricted where Teams' are not.
+ *
+ * `maxLength` counts code points, which is what a JSON Schema `maxLength`
+ * counts, but the cut lands on a grapheme boundary, so a flag or a joined emoji
+ * is never left half-written.
+ */
+export function sanitiseAppName(raw: string, maxLength: number, fallback: string): string {
+	const cleaned = raw
+		.replace(WHITESPACE_CONTROLS, ' ')
+		.replace(FORMATTING, (character) => (isEmojiGlue(character) ? character : ''))
+		.replace(/\s+/g, ' ')
+		.trim();
+
+	const out = truncateToCodePoints(cleaned, maxLength);
+	return out.length > 0 ? out : fallback;
+}
+
+/**
+ * Cuts to a budget of `max` code points -- what a JSON Schema `maxLength`
+ * counts -- but only on a grapheme boundary, so a flag or a joined emoji is
+ * never left half-written.
+ *
+ * Every cap on a vendor field goes through here. Capping twice with two rules
+ * is how a value that one step kept whole gets halved by the next.
+ */
+export function truncateToCodePoints(value: string, max: number): string {
+	if (Array.from(value).length <= max) return value.trim();
+
+	let out = '';
+	let points = 0;
+	for (const { segment } of GRAPHEMES.segment(value)) {
+		const size = Array.from(segment).length;
+		if (points + size > max) break;
+		out += segment;
+		points += size;
+	}
+	return out.trim();
 }

@@ -1,6 +1,8 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -18,12 +20,21 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import {
+	EventService,
+	RoleService,
+	CredentialsFinderService,
+	FolderFinderService,
+	InstanceWriteAccessService,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -60,6 +71,7 @@ import type {
 	ExecutionResult,
 	StepExecutionResult,
 	ExecutionDebugInfo,
+	NodeOutputBranch,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
@@ -116,12 +128,14 @@ import {
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
+	type AiAgentRequest,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	type IRunData,
 	type ITaskData,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -144,18 +158,19 @@ import path from 'node:path';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+
+import {
+	scopeCredentialProvider,
+	type AgentCredentialProvider,
+} from './eval/scoped-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -167,7 +182,11 @@ import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registr
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
-import { NodeCatalogService } from '@/node-catalog';
+import {
+	getModuleDisabledNodeTypes,
+	getModuleDisabledNotice,
+	NodeCatalogService,
+} from '@/node-catalog';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
@@ -177,12 +196,10 @@ import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { AiPreferenceService } from '@/services/ai-preference.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
@@ -209,7 +226,15 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
+import {
+	buildToolAgentRequest,
+	declaredToolArguments,
+	findRootsAboveOtherRoots,
+	isToolkitNode,
+	pinDataForStepRun,
+	planStepRun,
+	toExecutionItems,
+} from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
 import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -251,6 +276,21 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * Whether the engine can run this node on its own through a Tool Executor. This
+ * is the same test `runPartialWorkflow2` and `runManually` make, so it decides
+ * the same way they will. A node type that does not load is not a tool here:
+ * the run fails on the missing type either way.
+ */
+function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+	try {
+		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return NodeHelpers.isTool(description, node.parameters);
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -441,6 +481,7 @@ export class InstanceAiAdapterService {
 			 *  read on every `list()`: the harness appends credentials it creates
 			 *  mid-run, after this context is built. */
 			getCredentialIdAllowlist?: () => string[] | undefined;
+			resumeAgentBuild?: boolean;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
@@ -466,6 +507,8 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
+			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
 			 *  `save_user_preference` tool. */
@@ -473,6 +516,8 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** Effective data-sharing setting for this run. Absent → the env value. */
+			allowSendingParameterValues?: boolean;
 		},
 	): InstanceAiContext {
 		const {
@@ -481,6 +526,7 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			getCredentialIdAllowlist,
+			resumeAgentBuild = false,
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
@@ -490,16 +536,18 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
-		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter(resumeAgentBuild);
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
@@ -510,14 +558,21 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
 				setupPanelVariant,
+				allowSendingParameterValues,
 			}),
-			executionService: this.createExecutionAdapter(user, pushRef, threadId),
+			executionService: this.createExecutionAdapter(
+				user,
+				allowSendingParameterValues,
+				pushRef,
+				threadId,
+			),
 			credentialService,
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
@@ -531,7 +586,12 @@ export class InstanceAiAdapterService {
 				: {}),
 			mcpService: mcpConnectionsAvailable ? this.createMcpAdapter(user) : undefined,
 			executeNodeService: this.executeNodeService
-				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
+				? this.createExecuteNodeAdapter(
+						this.executeNodeService,
+						user,
+						allowSendingParameterValues,
+						projectId,
+					)
 				: undefined,
 			conversationHistoryService: conversationHistory,
 			// The tool and context block use the same instance gate result.
@@ -549,7 +609,7 @@ export class InstanceAiAdapterService {
 			// Optional call for the same reason as addPostProcessor?.() above:
 			// adapter tests construct the service with placeholder deps.
 			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
-			allowSendingParameterValues: this.allowSendingParameterValues,
+			allowSendingParameterValues,
 			...(builderDelegateAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
 				: {}),
@@ -562,11 +622,11 @@ export class InstanceAiAdapterService {
 							// flow creates it after this context is built), so tag Gateway
 							// spend with the concrete id the delegate hands us each turn.
 							(targetAgentId) =>
-								new AgentsCredentialProvider(
-									this.credentialsService,
-									projectId,
+								this.createAgentCredentialProvider(
 									user,
+									projectId,
 									targetAgentId,
+									getCredentialIdAllowlist,
 								),
 							credentialService,
 							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
@@ -574,6 +634,26 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 		};
+	}
+
+	/** The builder's credential list, narrowed to the eval thread's allowlist when one is set.
+	 *  The allowlist is read per list call, like the workflow builder's, so a credential the
+	 *  harness creates mid-run shows on the next card. */
+	private createAgentCredentialProvider(
+		user: User,
+		projectId: string,
+		agentId: string,
+		getCredentialIdAllowlist?: () => string[] | undefined,
+	): AgentCredentialProvider {
+		const provider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+			agentId,
+		);
+		return getCredentialIdAllowlist
+			? scopeCredentialProvider(provider, getCredentialIdAllowlist)
+			: provider;
 	}
 
 	/**
@@ -584,8 +664,15 @@ export class InstanceAiAdapterService {
 	 * (and the build-agent sub-agent tool it powers) is simply absent from the
 	 * context.
 	 */
-	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+	private getBuilderDelegateAdapter(
+		resumeAgentBuild: boolean,
+	): InstanceAiBuilderDelegateAdapterService | null {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (
+			!moduleRegistry.isActive('agents') ||
+			(!resumeAgentBuild && moduleRegistry.settings.get('agents')?.enabled === false)
+		)
+			return null;
 		try {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {
@@ -620,10 +707,14 @@ export class InstanceAiAdapterService {
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		/** Concise reply style. Applies only when the default build mode is selected. */
+		conciseStyleEnabled: boolean;
 		setupPanelEnabled: boolean;
 		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
+		/** Node attachments from either the canvas or Assistant mentions rollout. */
+		nodeContextEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
@@ -657,11 +748,15 @@ export class InstanceAiAdapterService {
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			conciseStyleEnabled:
+				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
 				? { setupPanelVariant }
 				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
+			nodeContextEnabled:
+				flags[CANVAS_NODE_CONTEXT_FLAG] === true || flags[AI_ASSISTANT_AT_MENTIONS_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
@@ -715,14 +810,18 @@ export class InstanceAiAdapterService {
 					scope,
 				});
 				if (!result.ok) return result;
-				const { id, content: saved } = result.preference;
-				return { ok: true, preference: { id, content: saved, scope } };
+				// The card names the owner, so the write returns it.
+				const { id, content: saved, userId, projectId } = result.preference;
+				return { ok: true, preference: { id, content: saved, scope, userId, projectId } };
 			},
-			recordRejection: (reason, textLength) => {
+			recordRejection: (reason, textLength, scope) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					user_id: user.id,
 					surface: 'aia',
 					reason,
-					scope_type: 'user',
+					// From the tool input, so the reported scope follows the tool instead of a constant
+					// that turns wrong the day the tool offers a second scope.
+					scope_type: scope,
 					text_length: textLength,
 				});
 			},
@@ -778,6 +877,7 @@ export class InstanceAiAdapterService {
 	private createExecuteNodeAdapter(
 		executeNodeService: ExecuteNodeService,
 		user: User,
+		allowSendingParameterValues: boolean,
 		boundProjectId?: string,
 	): InstanceAiExecuteNodeService {
 		const { resolveProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
@@ -796,7 +896,7 @@ export class InstanceAiAdapterService {
 					timeoutMs: request.timeoutMs,
 					projectId,
 				});
-				return redactExecuteNodeResult(result, this.allowSendingParameterValues);
+				return redactExecuteNodeResult(result, allowSendingParameterValues);
 			},
 		};
 	}
@@ -938,6 +1038,7 @@ export class InstanceAiAdapterService {
 			nodeUsageGateOpen?: boolean;
 			folderExploration?: boolean;
 			setupPanelVariant?: 'control' | 'variant';
+			allowSendingParameterValues?: boolean;
 		} = {},
 	): InstanceAiWorkflowService {
 		const setupExperimentProperties = options.setupPanelVariant
@@ -963,7 +1064,6 @@ export class InstanceAiAdapterService {
 			executionRepository,
 			executionPersistence,
 			license,
-			allowSendingParameterValues,
 			telemetry,
 			collaborationService,
 			policyEnforcementService,
@@ -986,7 +1086,20 @@ export class InstanceAiAdapterService {
 			scope?: 'project' | 'instance';
 		}) => options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
 		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
-		const redactParameters = !allowSendingParameterValues;
+		const redactParameters = !(
+			options.allowSendingParameterValues ?? this.allowSendingParameterValues
+		);
+		/**
+		 * Workflow reads omit parameter values in this mode, so a write from that
+		 * source would erase them. Block all workflow content writes.
+		 */
+		const assertParameterValuesAvailable = () => {
+			if (redactParameters) {
+				throw new UserError(
+					'Cannot create or edit workflows while parameter values are hidden from n8n Assistant. An instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
+				);
+			}
+		};
 
 		/**
 		 * Instance AI writes bypass the REST controller, so the editor write lock
@@ -1542,6 +1655,7 @@ export class InstanceAiAdapterService {
 				options?: { markAsAiTemporary?: boolean; folderPath?: string; folderId?: string },
 			) {
 				assertNotReadOnly();
+				assertParameterValuesAvailable();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
 				// Resolve the target folder BEFORE anything is written. A workflow that
@@ -1602,11 +1716,14 @@ export class InstanceAiAdapterService {
 
 				// The shell has no nodes, so the real content check is the `update()` below.
 				// This call is still needed: `createContent` refuses to write without a clearance.
-				const cleared = await policyEnforcementService.enforceWorkflowSave({
-					workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
-					storedWorkflow: null,
-					projectId,
-				});
+				const cleared = await policyEnforcementService.enforceWorkflowSave(
+					{
+						workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+						storedWorkflow: null,
+						projectId,
+					},
+					{ kind: 'user', user },
+				);
 
 				const saved = await workflowRepository.runInTransaction(
 					{ policyCleared: cleared },
@@ -1645,6 +1762,7 @@ export class InstanceAiAdapterService {
 				try {
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
+					// oxlint-disable-next-line typescript/no-deprecated
 					if (license.isSharingEnabled()) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,
@@ -1701,6 +1819,7 @@ export class InstanceAiAdapterService {
 				options?: { expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
+				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
@@ -1743,6 +1862,7 @@ export class InstanceAiAdapterService {
 				try {
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
+					// oxlint-disable-next-line typescript/no-deprecated
 					if (license.isSharingEnabled()) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,
@@ -1846,6 +1966,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async restoreVersion(workflowId, versionId) {
+				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 
@@ -1881,6 +2002,7 @@ export class InstanceAiAdapterService {
 
 	private createExecutionAdapter(
 		user: User,
+		allowSendingParameterValues: boolean,
 		pushRef?: string,
 		threadId?: string,
 	): InstanceAiExecutionService {
@@ -1892,7 +2014,6 @@ export class InstanceAiAdapterService {
 			executionPersistence,
 			workflowHistoryService,
 			nodeTypes,
-			allowSendingParameterValues,
 			roleService,
 			telemetry,
 			logger,
@@ -2244,7 +2365,10 @@ export class InstanceAiAdapterService {
 						includeData: true,
 						unflattenData: true,
 					});
-					priorRunData = stored?.data?.resultData?.runData;
+					// An execution with no stored run data still counts as a request to
+					// replay: `planStepRun` has to see the empty set to refuse the run
+					// rather than fall back to running the chain.
+					priorRunData = stored?.data?.resultData?.runData ?? {};
 					reusedFromExecutionId = options.reuseExecutionId;
 				}
 
@@ -2254,7 +2378,99 @@ export class InstanceAiAdapterService {
 					targetName: nodeName,
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
+					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
 				});
+
+				// The caller asked to keep the nodes above the target out of the run and
+				// the graph cannot deliver that. Running the chain anyway would execute
+				// them for real, which is the one thing the caller ruled out.
+				if (plan.unhonoredInput) {
+					const names = plan.unhonoredInput.upstreamNodeNames;
+					const upstream = names.slice(0, 10).join(', ') + (names.length > 10 ? ', …' : '');
+					if (plan.unhonoredInput.requested === 'mocked') {
+						throw new UserError(
+							`mockInput cannot keep every node above "${nodeName}" out of the run: ` +
+								`the mock leaves a Loop Over Items node unfinished, and n8n would restart it and execute these nodes for real (${upstream}). ` +
+								'Pass reuseExecutionId with an execution where the loop finished, or omit both options to run the chain on purpose.',
+						);
+					}
+					throw new UserError(
+						`Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}", ` +
+							`so the run would execute them for real (${upstream}). ` +
+							'Pick an execution where those nodes ran to completion, or omit both options to run the chain on purpose.',
+					);
+				}
+
+				// A tool runs through a virtual Tool Executor that passes it the agent
+				// request. Every other sub-node type has no such path: n8n runs it as
+				// part of the node that owns it and nowhere else.
+				let agentRequest: AiAgentRequest | undefined;
+				if (plan.rootNodeNames) {
+					const roots = plan.rootNodeNames.map((name) => `"${name}"`).join(' or ');
+					if (!isToolNode(nodeTypes, target)) {
+						throw new UserError(
+							`Node "${nodeName}" cannot run on its own — n8n runs it as part of ${roots}. ` +
+								`Run ${roots} instead: its execution records what this node returned on every ` +
+								'call it made.',
+						);
+					}
+
+					// A toolkit node holds several tools and the Tool Executor runs only the
+					// one whose name matches the request. That name is built from the node
+					// name and the server's tool name, so nothing here can name a member
+					// reliably, and a miss reports success with no result at all.
+					if (isToolkitNode(target)) {
+						throw new UserError(
+							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
+								`Run ${roots} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// The engine runs the tool through one of its Agents only. When it picks
+					// a lower one, the Agent above it and the nodes in between run for
+					// real, whatever mocked or replayed data the plan gave them.
+					const upperRoots = findRootsAboveOtherRoots(nodes, connections, plan.rootNodeNames);
+					if (upperRoots.length > 0) {
+						const upper = upperRoots.map((name) => `"${name}"`).join(' or ');
+						throw new UserError(
+							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
+								`so a step run would run ${upper} and the nodes after it again. ` +
+								`Run ${upper} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// A tool whose parameters hold `$fromAI` calls gets those values from
+					// the agent. With no arguments it runs on empty ones and fails for a
+					// reason that has nothing to do with the user's problem.
+					const expected = declaredToolArguments(target);
+					if (expected.length > 0 && options?.toolArguments === undefined) {
+						throw new UserError(
+							`Node "${nodeName}" takes its arguments from the agent, so a step run has to supply them. ` +
+								`Pass toolArguments with: ${expected.join(', ')}.`,
+						);
+					}
+
+					agentRequest = buildToolAgentRequest({ target, toolArguments: options?.toolArguments });
+				} else if (isToolNode(nodeTypes, target)) {
+					// A tool runs only through the node that owns it, and nothing owns
+					// this one: its tool output goes nowhere. `rewireGraph` then finds no
+					// node to stand in for, so the run would start, cost an execution and
+					// die on an error about a graph the caller never asked about.
+					throw new UserError(
+						`Node "${nodeName}" is a tool, and no node is connected to run it. ` +
+							'A tool runs only through the node that owns it, so connect it to an Agent ' +
+							'and run the step again.',
+					);
+				} else if (options?.toolArguments !== undefined) {
+					throw new UserError(
+						`toolArguments applies only to a tool node. "${nodeName}" runs in the main graph, ` +
+							'so its input comes from mockInput, reuseExecutionId, or the nodes above it.',
+					);
+				}
 
 				// A pinned node never executes, so the target's own pin — and any pin on
 				// a node whose output we just mocked — has to come off this run's
@@ -2289,6 +2505,7 @@ export class InstanceAiAdapterService {
 					pinData: stepPinData,
 					runData: plan.runData,
 					dirtyNodeNames: plan.dirtyNodeNames,
+					agentRequest,
 					source: 'instance_ai',
 				};
 
@@ -2315,6 +2532,9 @@ export class InstanceAiAdapterService {
 							userId: user.id,
 							dirtyNodeNames: plan.dirtyNodeNames,
 							triggerToStartFrom: runData.triggerToStartFrom,
+							// Without this a worker-run step on a tool loses the arguments and
+							// runs the tool on empty ones.
+							agentRequest,
 							source: 'instance_ai',
 						},
 						executionData: null,
@@ -2370,6 +2590,12 @@ export class InstanceAiAdapterService {
 						nodeName,
 						inputMode: plan.inputMode,
 						mockedNodeNames: plan.mockedNodeNames,
+						// A sub-node only runs through the node that owns it, so the input
+						// the caller supplied fed that node, not the sub-node. Every owner is
+						// listed, not the one that ran: `rewireGraph` picks one and reports
+						// nothing about the choice, so naming a single owner here would be a
+						// guess.
+						...(plan.rootNodeNames ? { ranThroughNodeNames: plan.rootNodeNames } : {}),
 						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
 						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
 						// Report the pins that actually fed this run, not every pin the
@@ -2403,6 +2629,9 @@ export class InstanceAiAdapterService {
 						executionId,
 						allowSendingParameterValues,
 						nodeTypes,
+						// A tool ran through the virtual Tool Executor. Report the run
+						// under the node the caller named, which is the one they can open.
+						plan.rootNodeNames ? nodeName : undefined,
 					);
 					trackStepRun(result.status, telemetryError);
 					return describe(result);
@@ -3484,7 +3713,15 @@ export class InstanceAiAdapterService {
 	private createNodeAdapter(user: User): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
-		const getNodes = async () => await this.getNodesFromCache();
+		const getAllNodes = async () => await this.getNodesFromCache();
+		// Discovery leaves out nodes whose module is off. Lookups by name keep them and say why.
+		const getNodes = async () => {
+			const nodes = await getAllNodes();
+			const disabled = new Set(getModuleDisabledNodeTypes(Container.get(ModuleRegistry)));
+			return disabled.size > 0 ? nodes.filter((n) => !disabled.has(n.name)) : nodes;
+		};
+		const getUnavailableNotice = (nodeType: string) =>
+			getModuleDisabledNotice(Container.get(ModuleRegistry), nodeType);
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
 			this.buildAiGatewayNodeMeta(config, nodeName);
@@ -3608,7 +3845,7 @@ export class InstanceAiAdapterService {
 
 			async getDescription(nodeType, version, options) {
 				const [nodes, gatewayConfig] = await Promise.all([
-					getNodes(),
+					getAllNodes(),
 					options?.includeGatewayMetadata === false ? Promise.resolve(null) : getGatewayConfig(),
 				]);
 				let desc =
@@ -3629,6 +3866,7 @@ export class InstanceAiAdapterService {
 				}
 
 				const meta = buildMeta(gatewayConfig, desc.name);
+				const unavailable = getUnavailableNotice(desc.name);
 
 				return {
 					name: desc.name,
@@ -3669,6 +3907,7 @@ export class InstanceAiAdapterService {
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
 					...(meta ? { aiGateway: meta } : {}),
+					...(unavailable ? { unavailable } : {}),
 				} satisfies NodeDescription;
 			},
 
@@ -3687,6 +3926,8 @@ export class InstanceAiAdapterService {
 					});
 
 				const result = await getDefinition(nodeType);
+				const unavailable = getUnavailableNotice(nodeType);
+				if (unavailable && !result.error) return { ...result, unavailable };
 				if (!result.error || nodeType.includes('.')) return result;
 
 				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
@@ -3699,7 +3940,7 @@ export class InstanceAiAdapterService {
 			},
 
 			getParameterIssues: async (nodeType, typeVersion, parameters) => {
-				const nodes = await getNodes();
+				const nodes = await getAllNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return {};
 
@@ -3758,7 +3999,7 @@ export class InstanceAiAdapterService {
 			},
 
 			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, _existingCredentials) => {
-				const nodes = await getNodes();
+				const nodes = await getAllNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return [];
 
@@ -4410,6 +4651,49 @@ export async function extractExecutionResult(
 	return (await extractExecutionOutcome(executionId, includeOutputData, nodeTypes)).result;
 }
 
+/** Output branches of a run that a non-main connection carried. */
+function nonMainOutputs(run: ITaskData | undefined) {
+	return Object.entries(run?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1];
+}
+
+/** Whether this is the virtual node the engine runs a tool through. */
+const isToolExecutor = (nodeName: string | undefined) => nodeName === TOOL_EXECUTOR_NODE_NAME;
+
+/** Reports the node the caller asked for in place of the virtual one. */
+function renameToolExecutor(nodeName: string | undefined, subNodeTarget?: string) {
+	return subNodeTarget && isToolExecutor(nodeName) ? subNodeTarget : nodeName;
+}
+
+/**
+ * Folds the virtual Tool Executor's run into the node the step run targeted.
+ *
+ * `rewireGraph` runs a tool through a node the workflow does not contain, and
+ * that node's name reaches the result in four places — the output data, the
+ * executed names, the last node, and a node error. None of them can be looked
+ * up or opened, because the workflow has no such node.
+ *
+ * The tool's own run is the better record: the Tool Executor re-serializes the
+ * result as one string, while the tool keeps its items. So the executor's run
+ * only stands in when the tool recorded none of its own.
+ */
+function foldToolExecutorRun(
+	runData: IRunData | undefined,
+	subNodeTarget?: string,
+): IRunData | undefined {
+	if (!runData || !subNodeTarget || !runData[TOOL_EXECUTOR_NODE_NAME]) return runData;
+
+	const folded: IRunData = {};
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (isToolExecutor(nodeName)) {
+			folded[subNodeTarget] ??= nodeRuns;
+			continue;
+		}
+		folded[nodeName] = nodeRuns;
+	}
+
+	return folded;
+}
+
 /**
  * The execution result the agent sees, plus the error string telemetry may use.
  * They differ when `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is on: that setting
@@ -4422,6 +4706,11 @@ export async function extractExecutionOutcome(
 	executionId: string,
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
+	/**
+	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
+	 * the result has to be told which node the caller actually asked for.
+	 */
+	subNodeTarget?: string,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4448,16 +4737,28 @@ export async function extractExecutionOutcome(
 	// omits. Verification uses this to tell "ran and returned nothing" apart
 	// from "never reached". Node names only, so it is safe regardless of the
 	// parameter-values privacy setting.
-	const runData = execution.data?.resultData?.runData;
+	const runData = foldToolExecutorRun(execution.data?.resultData?.runData, subNodeTarget);
 	const executedNodeNames = Object.keys(runData ?? {});
+	// `resultData` keeps only item JSON, so a node that outputs a file looks empty.
+	const binaryOutputNodeNames: string[] = [];
 	if (includeOutputData && runData) {
 		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
 		await workflow?.expression.acquireIsolate();
 		try {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (!lastRun?.data?.main) continue;
-				const branches = lastRun.data.main.map((items) => (items ?? []).map((item) => item.json));
+				// A sub-node records its run under the connection type that carried it,
+				// never `main`. Only the step run's own target is read that way: every
+				// other sub-node (a model, a memory) would otherwise put its whole
+				// exchange into the result of every ordinary run.
+				const outputs =
+					lastRun?.data?.[NodeConnectionTypes.Main] ??
+					(nodeName === subNodeTarget ? nonMainOutputs(lastRun) : undefined);
+				if (!outputs) continue;
+				if (outputs.some((items) => items?.some((item) => Object.keys(item.binary ?? {}).length))) {
+					binaryOutputNodeNames.push(nodeName);
+				}
+				const branches = outputs.map((items) => (items ?? []).map((item) => item.json));
 				const totalItems = branches.reduce((sum, items) => sum + items.length, 0);
 				if (totalItems === 0) continue;
 				if (branches.length === 1) {
@@ -4495,8 +4796,12 @@ export async function extractExecutionOutcome(
 					? wrapResultDataEntries(truncateResultData(resultData))
 					: undefined,
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+			binaryOutputNodeNames: binaryOutputNodeNames.length > 0 ? binaryOutputNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
-			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			lastNodeExecuted: renameToolExecutor(
+				execution.data?.resultData?.lastNodeExecuted,
+				subNodeTarget,
+			),
 			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
@@ -4748,41 +5053,72 @@ export async function extractNodeOutput(
 		await workflow?.expression.releaseIsolate();
 	}
 
+	// A sub-node (a model, a memory, a tool) records its run under the connection
+	// type that carried it, never `main`, and it records one run for each call
+	// its owner made. A step run on one is refused and the caller is sent here to
+	// read those calls, so all of them are read. A node in the main graph keeps
+	// to its last run: one run for each iteration of a loop is the common case
+	// there, and merging them would change what every caller already gets.
+	//
+	// The test is a non-main output on *some* run, not the absence of a main one
+	// on the last. A failed run carries no data at all — `createTaskData` sets
+	// none and only a rewired tool has it filled on the error path — so "no main
+	// output" also describes a node that failed on the last iteration of a loop.
+	// Reading every run of it would answer a question about the failed run with
+	// the output of earlier ones. A sub-node that failed on its last call is the
+	// mirror case: the calls that did return are the answer, and they are only
+	// reachable by looking past the last run.
+	const readsEveryRun = nodeRuns.some((run) => nonMainOutputs(run) !== undefined);
+	const runsRead = readsEveryRun ? nodeRuns : [lastRun];
+	const outputsPerRun = runsRead.map(
+		(run) => run?.data?.[NodeConnectionTypes.Main] ?? nonMainOutputs(run) ?? [],
+	);
+	const outputCount = Math.max(0, ...outputsPerRun.map((runOutputs) => runOutputs.length));
+
 	// One page over the items of all outputs (first output first), reported per
 	// output so a Filter's Kept and Discarded items never read as one list.
 	// Only the requested slice is materialized — avoids OOM on huge result sets.
+	// A label names the call when several were read, so two items that differ
+	// only by call are still told apart.
 	let index = 0;
 	let returnedCount = 0;
-	const outputs = (lastRun?.data?.main ?? []).map((output, outputIndex) => {
-		const items = output ?? [];
-		const firstInPage = Math.max(startIndex - index, 0);
+	const outputs: NodeOutputBranch[] = [];
+	for (let outputIndex = 0; outputIndex < outputCount; outputIndex++) {
 		const collected: unknown[] = [];
-		for (const item of items) {
-			if (index >= startIndex && returnedCount < maxItems) {
-				collected.push(item.json);
-				returnedCount++;
+		let itemsOnOutput = 0;
+
+		outputsPerRun.forEach((runOutputs, runIndex) => {
+			for (const item of runOutputs[outputIndex] ?? []) {
+				if (index >= startIndex && returnedCount < maxItems) {
+					const call = runsRead.length > 1 ? `[call ${runIndex + 1}]` : '';
+					collected.push(
+						wrapUntrustedData(
+							JSON.stringify(capItem(item.json), null, 2),
+							'execution-output',
+							`node:${nodeName}${call}[${outputIndex}][${itemsOnOutput}]`,
+						),
+					);
+					returnedCount++;
+				}
+				index++;
+				itemsOnOutput++;
 			}
-			index++;
-		}
-		return {
+		});
+
+		outputs.push({
 			index: outputIndex,
 			...(names[outputIndex] ? { name: names[outputIndex] } : {}),
-			totalItems: items.length,
-			items: collected.map((item, i) =>
-				wrapUntrustedData(
-					JSON.stringify(capItem(item), null, 2),
-					'execution-output',
-					`node:${nodeName}[${outputIndex}][${firstInPage + i}]`,
-				),
-			),
-		};
-	});
+			totalItems: itemsOnOutput,
+			items: collected,
+		});
+	}
 
 	return {
 		nodeName,
 		outputs,
 		totalItems: index,
 		returned: { from: startIndex, to: startIndex + returnedCount },
+		...(nodeRuns.length > 1 ? { totalRuns: nodeRuns.length } : {}),
 	};
 }
 

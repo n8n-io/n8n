@@ -662,6 +662,24 @@ really had one — and the agent has to guess from prose that deliberately names
 nothing. It will list workflows and pick, or ask which one, and you will score a
 clarification failure the real user never hit.
 
+#### Seeded faults must really fail
+
+`seed.priorRuns[].hints` steer the mock for the staged run's outbound calls and
+nothing else. The builder's own runs are never mocked, and Code, Set, IF, Filter
+and Merge run for real. So:
+
+- **The fault must fail in n8n.** A Code node that returns a plain object does not
+  fail; n8n wraps it as one item. Return an array of plain values, reference a
+  node that does not exist (`$('Missing')`), or throw.
+- **The fault fires before any external call.** The builder's rerun reaches a
+  fixture host and dies there (DNS, 401), so a fault behind an HTTP node is never
+  reached. Never grade the rerun itself; grade the fix with `outcomeExpectations`
+  and the harness's `executionScenarios`.
+- **An empty branch needs a Filter that keeps nothing.** Split Out over an empty
+  array still emits a placeholder item.
+- **Walk the item flow before asserting a count.** A Slack node fed three items
+  posts three times.
+
 #### Before you ship a seeded case — three checks
 
 1. **The defect still bites.** A seed whose workflow isn't broken any more makes the

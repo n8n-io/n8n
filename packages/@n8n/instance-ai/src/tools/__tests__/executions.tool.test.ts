@@ -995,6 +995,7 @@ describe('executions tool', () => {
 					...stepInput,
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
+					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
 				},
@@ -1007,9 +1008,28 @@ describe('executions tool', () => {
 				expect.objectContaining({
 					reuseExecutionId: 'exec-9',
 					mockInput: [{ text: 'hi' }],
+					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
 				}),
+			);
+		});
+
+		it('accepts a bare string as the tool arguments', async () => {
+			const context = createMockContext({ permissions: {} });
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{ ...stepInput, toolArguments: 'Napoleon' },
+				createAgentCtx({ resumeData: { approved: true } }) as never,
+			);
+
+			// A tool with one free-text input takes the query directly, not wrapped.
+			expect(context.executionService.runStep).toHaveBeenCalledWith(
+				'wf-1',
+				'Send Slack message',
+				expect.objectContaining({ toolArguments: 'Napoleon' }),
 			);
 		});
 

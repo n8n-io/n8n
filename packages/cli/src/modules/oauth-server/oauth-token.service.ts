@@ -9,6 +9,7 @@ import { Time } from '@n8n/constants';
 import { TransactionRunner, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { JsonWebTokenError } from 'jsonwebtoken';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -20,11 +21,13 @@ import type {
 } from '@/services/oauth-token-verifier-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { OAUTH_ACCESS_TOKEN_TTL_SECONDS } from './oauth-signing-key.constants';
+import { OAuthSigningKeyService } from './oauth-signing-key.service';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 import { authorizeAgainstGrant } from './resource-gate';
 import { isSameProtectedResource } from './resource-identity';
@@ -39,7 +42,7 @@ import { isSameProtectedResource } from './resource-identity';
  */
 @Service()
 export class OAuthTokenService implements OAuthTokenVerifier {
-	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
+	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = OAUTH_ACCESS_TOKEN_TTL_SECONDS;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
 	constructor(
@@ -52,6 +55,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly urlService: UrlService,
+		private readonly signingKeyService: OAuthSigningKeyService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
@@ -78,11 +82,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			);
 		}
 
-		const accessToken = this.jwtService.sign(
+		const accessToken = this.signingKeyService.signAccessToken(
 			{
 				iss: this.urlService.getInstanceBaseUrl(),
 				sub: userId,
-				aud: audience,
 				client_id: clientId,
 				jti: randomUUID(),
 				iat: Math.floor(Date.now() / 1000),
@@ -95,12 +98,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					isOAuth: true,
 				},
 			},
-			{
-				header: {
-					typ: 'at+jwt',
-					alg: 'HS256',
-				},
-			},
+			audience,
 		);
 
 		const refreshToken = randomBytes(32).toString('hex');
@@ -241,8 +239,11 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		let decoded: unknown;
 
 		try {
-			decoded = this.verifyJwtWithAllowedAudiences(token, allowedAudiences);
+			decoded = await this.verifyJwt(token, allowedAudiences);
 		} catch (error) {
+			this.logger.debug('OAuth access token failed verification', {
+				error: ensureError(error).message,
+			});
 			throw new JWTVerificationError();
 		}
 
@@ -474,18 +475,39 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return await this.resourceRegistry.getByResourceUrl(expectedAudience);
 	}
 
-	// TODO: drop legacy audiences and the per-audience fallback once all legacy
-	// tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
-	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
-		try {
-			return this.jwtService.verify(token, {
-				audience: audiences as [string, ...string[]],
+	/**
+	 * A token with a `kid` header is ES256 and verifies against the signing
+	 * keys only. A token without one is a legacy HMAC token. The `alg` header
+	 * never picks the path or the key.
+	 */
+	private async verifyJwt(token: string, audiences: string[]): Promise<unknown> {
+		const decoded = this.jwtService.decodeUnverifiedWithHeader(token);
+		if (!decoded) {
+			throw new JsonWebTokenError('jwt malformed');
+		}
+
+		if (Object.hasOwn(decoded.header, 'kid')) {
+			return await this.signingKeyService.verifyAccessToken(token, {
+				kid: decoded.header.kid,
+				audiences,
+				issuer: this.urlService.getInstanceBaseUrl(),
 			});
+		}
+
+		return this.verifyLegacyHmacJwt(token, audiences);
+	}
+
+	// TODO: remove once every process mints ES256 and the last HS256 tokens
+	// have expired. Drops the legacy audiences and the per-audience fallback
+	// for tokens minted before n8n v2.19 at the same time.
+	private verifyLegacyHmacJwt(token: string, audiences: string[]): unknown {
+		try {
+			return this.jwtService.verifyLegacyHmacAccessToken(token, audiences as [string, ...string[]]);
 		} catch (error) {
 			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
 			for (const audience of audiences) {
 				try {
-					return this.jwtService.verify(token, { audience });
+					return this.jwtService.verifyLegacyHmacAccessToken(token, audience);
 				} catch {
 					continue;
 				}

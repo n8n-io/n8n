@@ -166,3 +166,19 @@ it('shows recovery guidance after a request fails and keeps the saved row', asyn
 	expect(within(getByRole('table')).getByText('Resolved')).toBeInTheDocument();
 	expect(getByRole('button', { name: 'Continue' })).toBeEnabled();
 });
+
+it('keeps the binding dialog open when Escape closes an editor', async () => {
+	const { getAllByRole, emitted } = await renderDialog({
+		props: { open: true, blockedResult: blocked(), createBinding: vi.fn().mockResolvedValue(null) },
+	});
+	await userEvent.click(getAllByRole('button', { name: 'Create Source credential' })[0]);
+	const editor = document.createElement('div');
+	editor.setAttribute('role', 'dialog');
+	document.body.append(editor);
+	try {
+		await fireEvent.keyDown(editor, { key: 'Escape' });
+		expect(emitted('update:open')).toBeUndefined();
+	} finally {
+		editor.remove();
+	}
+});

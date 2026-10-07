@@ -6,6 +6,7 @@ import { defineComponent, h, ref, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 import type { ContextChip } from '../instanceAi.contextChip';
 import {
@@ -31,6 +32,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
+	placeholder?: string;
 	contextChip?: ContextChip | null;
 };
 
@@ -313,16 +315,21 @@ describe('InstanceAiInput', () => {
 		);
 	});
 
-	it('uses the new agent placeholder for a pending agent artifact', () => {
+	it('prefers a caller-provided placeholder text over the placeholder key', () => {
 		const { getByRole } = renderComponent({
 			props: {
-				contextChip: {
-					type: 'agent-artifact',
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					isNewAgent: true,
-					label: 'New Agent',
-				},
+				placeholder: 'Ask Support Agent…',
+				placeholderKey: 'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Support Agent…');
+	});
+
+	it('uses the new agent placeholder when the caller passes its key', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				placeholderKey: 'instanceAi.input.newAgentPlaceholder',
 			},
 		});
 
@@ -339,7 +346,6 @@ describe('InstanceAiInput', () => {
 					type: 'agent-artifact',
 					agentId: 'agent-1',
 					projectId: 'project-1',
-					isNewAgent: false,
 					label: 'Support Agent',
 				},
 			},
@@ -524,6 +530,9 @@ describe('InstanceAiInput', () => {
 				promptModified: false,
 			},
 			expect.any(Number),
+			expect.any(Function),
+			EMPTY_ASSISTANT_MENTION_COUNTS,
+			[],
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -836,6 +845,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1032,6 +1044,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1074,6 +1089,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1130,11 +1148,12 @@ describe('InstanceAiInput', () => {
 		const chip = getByTestId('instance-ai-handoff-context-chip');
 
 		expect(chip).toHaveTextContent('SEO Auditor session');
-		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
 		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
 		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
 
-		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+		const dismiss = getByTestId('instance-ai-handoff-context-chip-dismiss');
+		expect(dismiss).toHaveAccessibleName('Close');
+		await userEvent.click(dismiss);
 
 		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
 	});

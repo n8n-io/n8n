@@ -34,6 +34,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiThreadTabsRequestDto } from './instance-ai/instance-ai-thread-tabs-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -52,6 +53,14 @@ export {
 export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
+
+export {
+	AuditPublicDto,
+	GenerateAuditPublicDto,
+	SECURITY_AUDIT_CATEGORIES,
+	auditPublicSchema,
+	type AuditPublic,
+} from './audit/audit-public.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
@@ -109,10 +118,22 @@ export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
 export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
+export {
+	SamlConfigurationPublicDto,
+	UpdateSamlConfigurationPublicDto,
+} from './saml/saml-configuration-public.dto';
 
-export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
-export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
-export { LdapSyncDto } from './ldap/ldap-sync.dto';
+export {
+	LdapConfigurationPublicDto,
+	UpdateLdapConfigurationPublicDto,
+} from './ldap/ldap-configuration-public.dto';
+export {
+	LdapSyncDto,
+	LdapSyncHistoryListPublicDto,
+	LdapSyncHistoryPublicDto,
+	ListLdapSyncHistoryQueryDto,
+	RunLdapSyncPublicDto,
+} from './ldap/ldap-sync-public.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
@@ -260,6 +281,16 @@ export {
 	tagPublicSchema,
 } from './tag/tag-public.dto';
 
+export {
+	CommunityPackageListPublicDto,
+	CommunityPackagePublicDto,
+	InstallCommunityPackagePublicDto,
+	ListCommunityPackagesQueryDto,
+	UpdateCommunityPackagePublicDto,
+	communityPackagePublicSchema,
+	type CommunityPackagePublic,
+} from './community-packages/community-package-public.dto';
+
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
 export {
@@ -305,11 +336,14 @@ export {
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 export {
+	LogStreamingDestinationListPublicDto,
+	LogStreamingDestinationPublicDto,
+	LogStreamingEventTypesPublicDto,
 	PublicCreateDestinationDto,
-	PublicDestinationResponseDto,
+	type LogStreamingDestinationPublic,
 	type PublicCreateDestination,
 	type PublicDestinationType,
-} from './log-streaming/public-destination.dto';
+} from './log-streaming/log-streaming-public.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
@@ -392,12 +426,39 @@ export {
 	type RoleMembersResponse,
 } from './roles/role-members-response.dto';
 
-export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export {
+	OidcConfigurationPublicDto,
+	oidcConfigurationPublicSchema,
+	UpdateOidcConfigurationPublicDto,
+} from './oidc/oidc-configuration-public.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
-export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';
+export {
+	ClearDataTableRowsResponsePublicDto,
+	CreateDataTableColumnPublicDto,
+	CreateDataTablePublicDto,
+	CreateDataTableRowsPublicDto,
+	DataTableColumnListPublicDto,
+	DataTableColumnPublicDto,
+	DataTableListPublicDto,
+	DataTablePublicDto,
+	DataTableRowListPublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	DeleteDataTableRowsResponsePublicDto,
+	InsertDataTableRowsResponsePublicDto,
+	UpdateDataTableColumnPublicDto,
+	UpdateDataTablePublicDto,
+	UpdateDataTableRowPublicDto,
+	UpdateDataTableRowResponsePublicDto,
+	UpsertDataTableRowPublicDto,
+	UpsertDataTableRowResponsePublicDto,
+	dataTablePublicSchema,
+	dataTableRowPublicSchema,
+	type DataTablePublic,
+} from './data-table/data-table-public.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
@@ -407,25 +468,24 @@ export {
 } from './data-table/list-data-table-query.dto';
 export {
 	ListDataTableContentQueryDto,
-	PublicApiListDataTableContentQueryDto,
+	PublicApiListDataTableRowsQueryDto,
 } from './data-table/list-data-table-content-query.dto';
 export { CreateDataTableColumnDto } from './data-table/create-data-table-column.dto';
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
-export {
-	updateDataTableColumnSchema,
-	type UpdateDataTableColumnDto,
-} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	ImportPackageSelectionRequestDto,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
+export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';
 
 export * from './evaluations';
 
@@ -468,7 +528,9 @@ export {
 	workflowVersionListItemPublicSchema,
 } from './workflow-history/workflow-version-history-public.dto';
 export {
+	DeprecatedWorkflowVersionPublicDto,
 	WorkflowVersionPublicDto,
+	deprecatedWorkflowVersionPublicSchema,
 	workflowVersionPublicSchema,
 } from './workflow-history/workflow-version-public.dto';
 
@@ -554,23 +616,40 @@ export {
 	type OtlpProtocol,
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
+export {
+	OtelSettingsPublicDto,
+	OtelSettingsQueryPublicDto,
+	UpdateOtelSettingsPublicDto,
+} from './otel/otel-settings-public.dto';
+export {
+	OtelTestTraceRequestPublicDto,
+	OtelTestTraceResultPublicDto,
+} from './otel/otel-test-trace-public.dto';
 
 export {
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
+	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+	parsePromotionsWorkflowsMovedCrossProjectMeta,
+	promotionsWorkflowsMovedCrossProjectMetaSchema,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	PromoteSelectionRequestDto,
 	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,
 	type PromotableResourceType,
 	type PromoteRequest,
 	type PromotionChanges,
+	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 
-export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
+export {
+	PROMOTION_BRANCH_PREFIX,
+	promotionDisplayNameSchema,
+} from './promotions/promotion-common.dto';
 export {
 	CreatePromotionProviderDto,
 	ListPromotionProvidersQueryDto,
@@ -647,7 +726,9 @@ export {
 export {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,
@@ -656,3 +737,5 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+
+export { ScimConfigPatchDto } from './scim';

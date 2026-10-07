@@ -9,7 +9,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 19 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 20 |  | BASE TABLE |
+| [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
+| [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
@@ -19,20 +21,25 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 22 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 23 |  | BASE TABLE |
+| [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
+| [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
+| [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
+| [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
 | [public.agents](public.agents.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) | 10 |  | BASE TABLE |
-| [public.agents_messages](public.agents_messages.md) | 8 |  | BASE TABLE |
+| [public.agents_messages](public.agents_messages.md) | 12 |  | BASE TABLE |
 | [public.agents_observation_cursors](public.agents_observation_cursors.md) | 6 |  | BASE TABLE |
 | [public.agents_observation_locks](public.agents_observation_locks.md) | 7 |  | BASE TABLE |
 | [public.agents_observations](public.agents_observations.md) | 11 |  | BASE TABLE |
@@ -51,7 +58,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.chat_hub_sessions](public.chat_hub_sessions.md) | 13 |  | BASE TABLE |
 | [public.chat_hub_tools](public.chat_hub_tools.md) | 9 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
-| [public.credentials_entity](public.credentials_entity.md) | 13 |  | BASE TABLE |
+| [public.credentials_entity](public.credentials_entity.md) | 14 |  | BASE TABLE |
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
@@ -85,13 +92,16 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) | 12 |  | BASE TABLE |
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
+| [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
 | [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
-| [public.instance_monitoring_report](public.instance_monitoring_report.md) | 9 |  | BASE TABLE |
+| [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
+| [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
+| [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
 | [public.oauth_access_tokens](public.oauth_access_tokens.md) | 3 |  | BASE TABLE |
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
@@ -124,6 +134,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
+| [public.trusted_source](public.trusted_source.md) | 15 |  | BASE TABLE |
+| [public.trusted_source_identity](public.trusted_source_identity.md) | 8 |  | BASE TABLE |
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
 | [public.type_availability_policy_scope](public.type_availability_policy_scope.md) | 8 |  | BASE TABLE |
@@ -149,6 +161,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 5 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
+| [public.workflow_suggestion](public.workflow_suggestion.md) | 11 |  | BASE TABLE |
+| [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 6 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -191,6 +205,8 @@ erDiagram
 "public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_execution_message_links" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
+"public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -198,9 +214,16 @@ erDiagram
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_message_queue" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_plan" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_plan_history" }o--|| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
+"public.agent_thread_grants" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.agent_workflow_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -298,8 +321,11 @@ erDiagram
 "public.instance_ai_pending_confirmations" }o--o| "public.instance_ai_checkpoints" : "FOREIGN KEY (#quot;checkpointKey#quot;) REFERENCES instance_ai_checkpoints(key) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_thread_tabs" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
+"public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -337,6 +363,8 @@ erDiagram
 "public.test_run" }o--o| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE SET NULL"
 "public.test_run" }o--o| "public.evaluation_collection" : "FOREIGN KEY (#quot;collectionId#quot;) REFERENCES evaluation_collection(id) ON DELETE SET NULL"
 "public.trusted_key" }o--|| "public.trusted_key_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES trusted_key_source(id) ON DELETE CASCADE"
+"public.trusted_source_identity" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.trusted_source_identity" }o--|| "public.trusted_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES trusted_source(id) ON DELETE CASCADE"
 "public.type_availability_policy_attachment" }o--|| "public.type_availability_policy" : "FOREIGN KEY (#quot;policyId#quot;) REFERENCES type_availability_policy(id) ON DELETE RESTRICT"
 "public.type_availability_policy_attachment" }o--|| "public.type_availability_policy_scope" : "FOREIGN KEY (#quot;scopeId#quot;) REFERENCES type_availability_policy_scope(id) ON DELETE CASCADE"
 "public.type_availability_policy_scope" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -375,6 +403,10 @@ erDiagram
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;baselineVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
@@ -403,6 +435,7 @@ erDiagram
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
+  uuid pauseRequestId
   text result
   timestamp_3__with_time_zone settledAt
   varchar_16_ status
@@ -411,6 +444,16 @@ erDiagram
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId
+}
+"public.agent_budget_applied_call" {
+  uuid callId
+  timestamp_3__with_time_zone createdAt
+}
+"public.agent_budget_spend" {
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ key
+  double_precision totalUsd
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_channel_status" {
   varchar_36_ agentId FK
@@ -517,6 +560,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -539,6 +583,13 @@ erDiagram
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
   text userMessage
+}
+"public.agent_execution_message_links" {
+  timestamp_3__with_time_zone createdAt
+  varchar_6_ direction
+  varchar_36_ executionId FK
+  varchar_36_ messageId FK
+  integer position
 }
 "public.agent_execution_threads" {
   varchar_16_ accessScope
@@ -584,6 +635,36 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
 }
+"public.agent_message_queue" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId FK
+  bigint id
+  varchar_36_ messageId FK
+  json payload
+  integer position
+  varchar_36_ steeringExecutionId FK
+  integer steeringOrder
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_plan" {
+  timestamp_3__with_time_zone closedAt
+  timestamp_3__with_time_zone createdAt
+  json data
+  integer formatVersion
+  uuid id
+  integer revision
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_plan_history" {
+  timestamp_3__with_time_zone closedAt
+  timestamp_3__with_time_zone createdAt
+  json data
+  integer formatVersion
+  uuid planId FK
+  integer revision
+}
 "public.agent_task_definition" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
@@ -612,6 +693,12 @@ erDiagram
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
+}
+"public.agent_thread_grants" {
+  timestamp_3__with_time_zone createdAt
+  varchar_512_ grantKey
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_workflow_dependency" {
   varchar_36_ agentId FK
@@ -686,9 +773,13 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_messages" {
+  json author
   json content
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json modelContent
+  timestamp_3__with_time_zone modelContextAt
+  json origin
   varchar_255_ resourceId
   varchar_36_ role
   varchar_255_ threadId FK
@@ -876,6 +967,7 @@ erDiagram
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  timestamp_3__with_time_zone pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_128_ type
@@ -1088,7 +1180,7 @@ erDiagram
   varchar_36_ credentialId FK
   uuid id
   varchar_255_ serverSlug FK
-  json toolFilter
+  json toolPermissions
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }
@@ -1191,6 +1283,13 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }
+"public.instance_ai_thread_tabs" {
+  timestamp_3__with_time_zone createdAt
+  json state
+  uuid threadId FK
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+}
 "public.instance_ai_threads" {
   timestamp_3__with_time_zone createdAt
   uuid id
@@ -1223,6 +1322,7 @@ erDiagram
   uuid id
   timestamp_3__with_time_zone lastAttemptAt
   text lastError
+  varchar_10_ reportDate
   varchar_64_ status
   timestamp_3__with_time_zone updatedAt
 }
@@ -1245,6 +1345,23 @@ erDiagram
   varchar_50_ status
   timestamp_3__with_time_zone updatedAt
   varchar_50_ version
+}
+"public.migration_finding" {
+  timestamp_3__with_time_zone createdAt
+  integer id
+  text note
+  timestamp_3__with_time_zone notifiedAt
+  varchar_128_ ruleId
+  varchar_32_ status
+  timestamp_3__with_time_zone statusChangedAt
+  varchar_16_ targetVersion
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.migration_finding_sync" {
+  varchar_128_ ruleSetFingerprint
+  timestamp_3__with_time_zone syncedAt
+  varchar_16_ targetVersion
 }
 "public.oauth_access_tokens" {
   varchar clientId FK
@@ -1542,6 +1659,33 @@ erDiagram
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
+"public.trusted_source" {
+  text config
+  integer configVersion
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ discoveryClaimToken
+  timestamp_3__with_time_zone discoveryClaimedAt
+  varchar_36_ id
+  varchar issuer
+  timestamp_3__with_time_zone lastCheckedAt
+  text lastError
+  varchar_16_ managedBy
+  text metadata
+  varchar_128_ name
+  varchar_16_ status
+  varchar_32_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.trusted_source_identity" {
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastSeenAt
+  varchar_32_ provenance
+  varchar_36_ sourceId FK
+  varchar_16_ status
+  varchar subject
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+}
 "public.type_availability_policy" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
@@ -1779,6 +1923,27 @@ erDiagram
   smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
+}
+"public.workflow_suggestion" {
+  uuid backgroundUserId FK
+  timestamp_3__with_time_zone closedAt
+  varchar_16_ closedReason
+  timestamp_3__with_time_zone createdAt
+  json expectedBaseline
+  varchar_36_ id
+  json payload
+  varchar_36_ projectId FK
+  varchar_16_ state
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.workflow_suggestion_activity" {
+  varchar_16_ action
+  varchar_16_ author
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_36_ suggestionId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.workflows_tags" {
   varchar_36_ tagId FK

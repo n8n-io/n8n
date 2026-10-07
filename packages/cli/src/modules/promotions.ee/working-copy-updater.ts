@@ -7,14 +7,14 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, Placement } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
+import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -311,9 +311,7 @@ export class WorkingCopyUpdater {
 			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
-			throw new BadRequestError(
-				`These workflows moved to another project: ${moved.map((w) => w.id).join(', ')}. A selective push cannot move them. Push all projects instead.`,
-			);
+			throw new PromotionsWorkflowsMovedCrossProjectError(moved.map((workflow) => workflow.id));
 		}
 	}
 

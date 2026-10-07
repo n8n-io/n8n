@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	N8nActionDropdown,
@@ -17,37 +17,64 @@ import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { formatTimeAgo } from '@/app/utils/formatters/dateFormatter';
+import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
+import { useMergedChatHistory } from '@/features/agents/n8nChatPage/useMergedChatHistory';
+import {
+	chatItemRoute,
+	chatItemTitle,
+	type RecentChatItem,
+} from '@/features/agents/n8nChatPage/mergeRecentChats';
 import { clearPendingThreadHandoff } from './composables/useInstanceAiHandoff';
-import { useInstanceAiThreadHistory } from './composables/useInstanceAiThreadHistory';
-import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from './constants';
+import { INSTANCE_AI_VIEW } from './constants';
 import { useInstanceAiStore } from './instanceAi.store';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 
 useDocumentTitle().set(i18n.baseText('instanceAi.sidebar.chatHistory'));
 
-const { history, search, listRef, sentinelRef, loadMore } = useInstanceAiThreadHistory();
+const {
+	items: mergedThreads,
+	hasMore,
+	history,
+	isLoading,
+	error,
+	search,
+	listRef,
+	sentinelRef,
+	loadMore,
+} = useMergedChatHistory();
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{ id: 'rename', label: i18n.baseText('instanceAi.sidebar.renameThread'), icon: 'pencil' },
 	{ id: 'delete', label: i18n.baseText('instanceAi.sidebar.deleteThread'), icon: 'trash-2' },
 ];
 
+function itemTitle(item: RecentChatItem): string {
+	return chatItemTitle(item, i18n);
+}
+
+const itemRoute = chatItemRoute;
+
 function startRename(thread: InstanceAiThreadSummary) {
 	editingThreadId.value = thread.id;
 	editingTitle.value = thread.title;
+	// Focus once here: a function ref runs on every render and re-selects the text on each key.
+	void nextTick(() => {
+		renameInput.value?.focus();
+		renameInput.value?.select();
+	});
 }
 
-function focusRenameInput(el: unknown) {
-	if (el instanceof HTMLInputElement) {
-		el.focus();
-		el.select();
-	}
+function setRenameInput(element: unknown) {
+	renameInput.value = element instanceof HTMLInputElement ? element : null;
 }
 
 async function confirmRename(thread: InstanceAiThreadSummary) {
@@ -58,6 +85,10 @@ async function confirmRename(thread: InstanceAiThreadSummary) {
 	if (!title || title === thread.title) return;
 	try {
 		await store.renameThread(thread.id, title);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('instanceAi.threads.renameSuccess'),
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.threads.renameError'));
 	}
@@ -104,38 +135,44 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 
 			<div ref="listRef" :class="$style.list">
 				<div
-					v-for="thread in history.threads"
-					:key="thread.id"
+					v-for="item in mergedThreads"
+					:key="item.thread.id"
 					:class="$style.row"
 					data-test-id="instance-ai-history-thread"
 				>
 					<input
-						v-if="editingThreadId === thread.id"
-						:ref="focusRenameInput"
+						v-if="item.kind === 'assistant' && editingThreadId === item.thread.id"
+						:ref="setRenameInput"
 						v-model="editingTitle"
 						:class="$style.renameInput"
 						type="text"
 						maxlength="255"
-						@keydown.enter="confirmRename(thread)"
+						@keydown.enter="confirmRename(item.thread)"
 						@keydown.escape="editingThreadId = null"
-						@blur="confirmRename(thread)"
+						@blur="confirmRename(item.thread)"
 					/>
 					<template v-else>
 						<RouterLink
-							:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
+							:to="itemRoute(item)"
 							:class="$style.link"
-							:title="thread.title"
-							@dblclick.prevent="startRename(thread)"
+							:title="itemTitle(item)"
+							@dblclick.prevent="item.kind === 'assistant' && startRename(item.thread)"
 						>
-							<N8nIcon :class="$style.icon" icon="message-circle" size="medium" />
-							<N8nText :class="$style.title" size="medium">{{ thread.title }}</N8nText>
+							<template v-if="isAgentsN8nChatFlag">
+								<RecentChatIcon :class="$style.icon" :item="item" :size="20" />
+							</template>
+							<N8nIcon v-else :class="$style.icon" icon="message-circle" size="medium" />
+							<N8nText :class="$style.title" size="medium">{{ itemTitle(item) }}</N8nText>
 						</RouterLink>
-						<N8nText size="small" color="text-light">{{ formatTimeAgo(thread.updatedAt) }}</N8nText>
+						<N8nText size="small" color="text-light">{{
+							formatTimeAgo(item.thread.updatedAt)
+						}}</N8nText>
 						<N8nActionDropdown
+							v-if="item.kind === 'assistant'"
 							:items="threadActions"
 							:class="$style.actions"
 							placement="bottom-end"
-							@select="handleThreadAction($event, thread)"
+							@select="handleThreadAction($event, item.thread)"
 						>
 							<template #activator>
 								<N8nIconButton
@@ -148,10 +185,10 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 					</template>
 				</div>
 
-				<div v-if="history.loading" :class="$style.status" role="status">
+				<div v-if="isLoading" :class="$style.status" role="status">
 					<N8nText color="text-light">{{ i18n.baseText('instanceAi.threads.loading') }}</N8nText>
 				</div>
-				<div v-else-if="history.error" :class="$style.status" role="alert">
+				<div v-else-if="error" :class="$style.status" role="alert">
 					<N8nText>{{ i18n.baseText('instanceAi.threads.loadError') }}</N8nText>
 					<N8nButton
 						variant="outline"
@@ -162,8 +199,8 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 						{{ i18n.baseText('generic.retry') }}
 					</N8nButton>
 				</div>
-				<div v-else-if="history.hasMore" ref="sentinelRef" :class="$style.sentinel" />
-				<div v-else-if="history.threads.length === 0" :class="$style.status">
+				<div v-else-if="hasMore" ref="sentinelRef" :class="$style.sentinel" />
+				<div v-else-if="mergedThreads.length === 0" :class="$style.status">
 					<N8nText color="text-light">
 						{{
 							i18n.baseText(

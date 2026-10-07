@@ -11,6 +11,10 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentRepository } from './repositories/agent.repository';
+import { productionChatMemoryResourceId } from './utils/agent-memory-scope';
+import { N8N_CHAT_PRODUCTION_SOURCE } from './utils/agent-thread-access';
 import { AgentTestRunService } from './agent-test-run.service';
 import {
 	AgentBackgroundJobService,
@@ -42,6 +46,8 @@ export class AgentWorkflowToolResumeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
+		private readonly agentRepository: AgentRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -92,30 +98,34 @@ export class AgentWorkflowToolResumeService {
 	/**
 	 * Settle the background job tracking this execution, carrying a bounded
 	 * serialization of the result — the run data is in memory here, so the job
-	 * row gets its answer without a later read of the executions table. Job
-	 * results carry the last node's output only: the row does not know the
-	 * tool's `allOutputs` setting, so it keeps the tightest projection and the
-	 * execution keeps the full data. A no-op when the execution was not
-	 * backgrounded. Never throws into the execution's lifecycle.
+	 * row gets its answer without a later read of the executions table.
+	 * The service keeps the last node's output for normal results. It also
+	 * keeps earlier outputs for stop reports. A no-op when the execution was
+	 * not backgrounded. Never throws into the execution's lifecycle.
 	 */
 	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const { status, data } = ctx.runData;
 		if (!isTerminalExecutionStatus(status)) return;
 		// A success callback for a run that has not actually finished must not
 		// seal the job with partial output; reconciliation settles it later.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (status === 'success' && !ctx.runData.finished) return;
 
 		try {
 			const settlementStatus = settlementStatusForExecution(status);
 			const runData = data.resultData?.runData;
-			await this.backgroundJobService.settleWorkflowJobByExecutionId(ctx.executionId, {
-				status: settlementStatus,
-				result:
-					settlementStatus === 'completed' && runData
-						? serializeWorkflowJobResult(collectResultData(runData, false))
-						: null,
-				error: data.resultData?.error?.message ?? null,
-			});
+			await this.backgroundJobService.settleWorkflowJobByExecutionId(
+				ctx.executionId,
+				{
+					status: settlementStatus,
+					result:
+						settlementStatus === 'completed' && runData
+							? serializeWorkflowJobResult(collectResultData(runData, false))
+							: null,
+					error: data.resultData?.error?.message ?? null,
+				},
+				runData,
+			);
 		} catch (error) {
 			this.logger.error('Failed to settle workflow background job', {
 				executionId: ctx.executionId,
@@ -140,6 +150,10 @@ export class AgentWorkflowToolResumeService {
 	/** The tool handler re-reads the execution, so this payload only says why it woke. */
 	async resume(agentRun: RelatedAgentRun, status: string): Promise<void> {
 		const resumeData = { type: 'workflow_finished', value: status };
+		if (agentRun.publishedN8nChat === true) {
+			await this.resumeInProductionChat(agentRun, resumeData);
+			return;
+		}
 
 		if (agentRun.integrationType === N8N_CHAT_INTEGRATION_TYPE) {
 			await this.resumeInPreviewChat(agentRun, resumeData);
@@ -191,6 +205,49 @@ export class AgentWorkflowToolResumeService {
 		);
 	}
 
+	private async resumeInProductionChat(
+		agentRun: RelatedAgentRun,
+		resumeData: unknown,
+	): Promise<void> {
+		const user = agentRun.userId
+			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			: null;
+		if (
+			!user ||
+			!(await this.agentRepository.isN8nChatPublished(agentRun.agentId, agentRun.projectId))
+		)
+			return;
+		let executionId: string | undefined;
+		const stream = this.agentExecutionOrchestratorService.resumeForChat({
+			agentId: agentRun.agentId,
+			projectId: agentRun.projectId,
+			runId: agentRun.runId,
+			toolCallId: agentRun.toolCallId,
+			resumeData,
+			user,
+			usePublishedVersion: true,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			source: N8N_CHAT_PRODUCTION_SOURCE,
+			expectedMemory: {
+				threadId: agentRun.threadId,
+				resourceId: productionChatMemoryResourceId(user.id),
+			},
+			onExecutionRecorded: (id) => {
+				executionId = id;
+			},
+		});
+		for await (const _chunk of stream) {
+			// Persist the streamed turn before notifying the user's session.
+		}
+		if (executionId)
+			this.executionUpdateBroadcaster.notify({
+				projectId: agentRun.projectId,
+				agentId: agentRun.agentId,
+				threadId: agentRun.threadId,
+				executionId,
+			});
+	}
+
 	/**
 	 * The preview's SSE stream closed when the run suspended, so there is nothing to
 	 * stream into: draining headlessly is what records the turn, and the push then
@@ -200,7 +257,7 @@ export class AgentWorkflowToolResumeService {
 		// The draft version gates node and workflow tools by the user's access, so
 		// without the user those tools drop and the pending tool call fails to resume.
 		const user = agentRun.userId
-			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			? await this.userRepository.findByIdWithRole(agentRun.userId)
 			: null;
 		if (!user) {
 			this.logger.warn('Cannot resume preview chat run without its user', {
