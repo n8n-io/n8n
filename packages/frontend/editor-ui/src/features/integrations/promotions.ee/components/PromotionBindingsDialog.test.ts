@@ -149,6 +149,11 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(apply).toBeEnabled();
 	await userEvent.click(apply);
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.any(String),
+		expect.objectContaining({ confirmDestructiveChanges: true }),
+	);
 	expect(emitted('applied')).toEqual([[applied]]);
 });
 
@@ -185,6 +190,11 @@ it('shows destructive changes above the bindings and continues with data deletio
 	await userEvent.click(getByRole('button', { name: 'Apply and delete data' }));
 
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.any(String),
+		expect.objectContaining({ confirmDestructiveChanges: true }),
+	);
 	expect(emitted('applied')).toBeUndefined();
 	expect(getByRole('heading', { level: 2, name: 'Resolve bindings' })).toBeInTheDocument();
 	expect(getByRole('heading', { name: 'Destructive changes' })).toBeInTheDocument();

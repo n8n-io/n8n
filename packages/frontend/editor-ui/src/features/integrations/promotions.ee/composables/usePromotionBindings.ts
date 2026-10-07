@@ -219,6 +219,7 @@ export function usePromotionBindings() {
 		try {
 			const result = await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
 				expectedSource: { ...expectedSource },
+				confirmDestructiveChanges: destructiveChanges.value.length > 0 || undefined,
 			});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
