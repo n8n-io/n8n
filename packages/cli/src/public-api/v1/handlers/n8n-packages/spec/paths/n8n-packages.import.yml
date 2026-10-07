@@ -271,8 +271,7 @@ post:
                 when no change deletes data. A change deletes data when it removes
                 or retypes a column. A target-only column and a renamed column
                 count as removed columns. When a change deletes data in any matched
-                table, the import writes nothing. The error lists the planned
-                changes in `overwriteChanges`, and each change that deletes data
+                table, the import writes nothing. Each change that deletes data
                 has `destructive: true`.
 
                 `overwrite` and `overwrite-non-destructive` require the
