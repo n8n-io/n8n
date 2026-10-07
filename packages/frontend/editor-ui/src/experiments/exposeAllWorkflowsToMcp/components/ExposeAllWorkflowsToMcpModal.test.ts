@@ -1,11 +1,12 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useToast } from '@n8n/composables/useToast';
+import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { defineComponent } from 'vue';
 import ExposeAllWorkflowsToMcpModal from './ExposeAllWorkflowsToMcpModal.vue';
 
 const { trackAutoExposeToggledSpy } = vi.hoisted(() => ({
@@ -24,30 +25,7 @@ vi.mock('@n8n/composables/useToast', () => {
 	};
 });
 
-const ModalStub = defineComponent({
-	props: ['name', 'title', 'eventBus'],
-	methods: {
-		close() {
-			this.eventBus.emit('closed');
-		},
-	},
-	template: `
-		<div :data-test-id="name">
-			<h1>{{ title }}</h1>
-			<slot name="content" />
-			<slot name="footer" :close="close" />
-			<button data-test-id="expose-all-workflows-mcp-generic-close" @click="eventBus.emit('closed')" />
-		</div>
-	`,
-});
-
-const renderComponent = createComponentRenderer(ExposeAllWorkflowsToMcpModal, {
-	global: {
-		stubs: {
-			Modal: ModalStub,
-		},
-	},
-});
+const renderComponent = createComponentRenderer(ExposeAllWorkflowsToMcpModal);
 
 describe('ExposeAllWorkflowsToMcpModal', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
@@ -55,6 +33,12 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 	let experimentStore: MockedStore<typeof useExposeAllWorkflowsToMcpStore>;
 
 	const defaultProps = { data: { onExposed: vi.fn() } };
+
+	async function renderOpen(props: typeof defaultProps) {
+		const rendered = renderComponent({ pinia, props });
+		await rendered.findByTestId('expose-all-workflows-mcp-description');
+		return rendered;
+	}
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -70,10 +54,13 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 		});
 
 		mcpStore.setAutoExposeNewWorkflows.mockResolvedValue(true);
+
+		const uiStore = useUIStore();
+		uiStore.modalStateById[EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY] = { open: true };
 	});
 
-	it('renders the copy and both actions', () => {
-		const { getByText, getByTestId } = renderComponent({ pinia, props: defaultProps });
+	it('renders the copy and both actions', async () => {
+		const { getByText, getByTestId } = await renderOpen(defaultProps);
 
 		expect(getByText('Enable MCP access for all workflows?')).toBeInTheDocument();
 		expect(getByTestId('expose-all-workflows-mcp-description')).toBeInTheDocument();
@@ -84,7 +71,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 	it('exposes all workflows and tracks confirmation on confirm', async () => {
 		const user = userEvent.setup();
 		const onExposed = vi.fn();
-		const { getByTestId } = renderComponent({ pinia, props: { data: { onExposed } } });
+		const { getByTestId } = await renderOpen({ data: { onExposed } });
 
 		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
 
@@ -100,7 +87,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 
 	it('tracks decline without exposing workflows on Not now', async () => {
 		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
+		const { getByTestId } = await renderOpen(defaultProps);
 
 		await user.click(getByTestId('expose-all-workflows-mcp-not-now-button'));
 
@@ -111,9 +98,9 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 
 	it('tracks dismissal when the modal is closed without an action', async () => {
 		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
+		const { getByTestId } = await renderOpen(defaultProps);
 
-		await user.click(getByTestId('expose-all-workflows-mcp-generic-close'));
+		await user.click(getByTestId('dialog-close-button'));
 
 		expect(experimentStore.trackDismissed).toHaveBeenCalled();
 		expect(experimentStore.trackDeclined).not.toHaveBeenCalled();
@@ -123,7 +110,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 	it('shows an error toast and keeps the modal actionable when exposing fails', async () => {
 		const user = userEvent.setup();
 		mcpStore.toggleWorkflowsMcpAccess.mockRejectedValue(new Error('boom'));
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
+		const { getByTestId } = await renderOpen(defaultProps);
 
 		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
 
@@ -133,7 +120,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 
 	it('enables auto-expose only after exposing all workflows succeeds', async () => {
 		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
+		const { getByTestId } = await renderOpen(defaultProps);
 
 		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
 
