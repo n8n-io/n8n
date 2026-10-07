@@ -335,7 +335,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			onTaskTimeout: (task) => {
 				recordMetric(() => metrics.recordTaskTimeout(task.taskType));
-				emit('warn', 'Scheduler stopped a task run that reached its timeout', {
+				emit('warn', 'Scheduler task run reached its timeout', {
 					taskId: task.id,
 					taskType: task.taskType,
 					timeoutSeconds: task.timeoutSeconds,

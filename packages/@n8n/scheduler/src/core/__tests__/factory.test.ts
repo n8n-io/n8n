@@ -1907,7 +1907,7 @@ describe('createScheduler metrics', () => {
 			const { timeoutSeconds } = claimedTask();
 			const timeoutWarning = {
 				level: 'warn',
-				message: 'Scheduler stopped a task run that reached its timeout',
+				message: 'Scheduler task run reached its timeout',
 				context: { taskId: claimedTask().id, taskType: 'test-task', timeoutSeconds },
 			};
 
