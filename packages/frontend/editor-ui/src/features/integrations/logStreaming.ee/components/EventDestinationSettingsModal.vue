@@ -22,7 +22,6 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -30,7 +29,6 @@ import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.stor
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -51,12 +49,17 @@ import { useElementSize } from '@vueuse/core';
 
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nInputLabel,
 	N8nMenuItem,
 	N8nOption,
 	N8nSelect,
+	N8nSpinner,
 	N8nText,
 } from '@n8n/design-system';
 
@@ -100,7 +103,6 @@ const nodeParameters = ref(deepCopy(defaultMessageEventBusDestinationOptions) as
 const webhookDescription = ref(webhookModalDescription);
 const sentryDescription = ref(sentryModalDescription);
 const syslogDescription = ref(syslogModalDescription);
-const modalBus = ref(createEventBus());
 const headerLabel = ref(destination.label!);
 const testMessageSent = ref(false);
 const testMessageResult = ref(false);
@@ -339,6 +341,17 @@ function onModalClose() {
 	uiStore.markStateClean();
 }
 
+const modalOpen = computed(() => uiStore.modalsById[modalName]?.open === true);
+
+function closeDialog() {
+	onModalClose();
+	uiStore.closeModal(modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
 async function saveDestination() {
 	if (unchanged.value || !destination.id || !isFormValid.value) {
 		return;
@@ -379,190 +392,199 @@ const { width } = useElementSize(defNameRef);
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		:before-close="onModalClose"
-		:scrollable="true"
-		:center="true"
-		:loading="loading"
-		:min-width="isTypeAbstract ? '460px' : '70%'"
-		:max-width="isTypeAbstract ? '460px' : '70%'"
-		:min-height="isTypeAbstract ? '160px' : '650px'"
-		:max-height="isTypeAbstract ? '300px' : '650px'"
-		data-test-id="destination-modal"
+	<N8nDialog
+		:open="modalOpen"
+		:size="isTypeAbstract ? 'medium' : 'full'"
+		:container-class="isTypeAbstract ? $style.abstractDialog : $style.settingsDialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<template v-if="isTypeAbstract">
-				<div :class="$style.headerCreate">
-					<span>Add new destination</span>
-				</div>
-			</template>
-			<template v-else>
-				<div :class="$style.header">
-					<div ref="defNameRef" :class="$style.destinationInfo">
-						<N8nInlineTextEdit
-							:max-width="width - 10"
-							data-test-id="subtitle-showing-type"
-							:model-value="headerLabel"
-							:readonly="isTypeAbstract"
-							@update:model-value="onLabelChange"
-						/>
-						<N8nText size="small" tag="p" color="text-light">{{
-							!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'
-						}}</N8nText>
-					</div>
-					<div :class="$style.destinationActions">
-						<N8nButton
-							variant="subtle"
-							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
-							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
-							:title="
-								testMessageSent && testMessageResult
-									? 'Event sent and returned OK'
-									: 'Event returned with error'
-							"
-							label="Send Test-Event"
-							:disabled="!hasOnceBeenSaved || !unchanged"
-							data-test-id="destination-test-button"
-							@click="sendTestEvent"
-						/>
-						<template v-if="canManageLogStreaming">
-							<N8nIconButton
-								variant="subtle"
-								v-if="nodeParameters && hasOnceBeenSaved"
-								:title="i18n.baseText('settings.log-streaming.delete')"
-								icon="trash-2"
-								:disabled="isSaving"
-								:loading="isDeleting"
-								data-test-id="destination-delete-button"
-								@click="removeThis"
-							/>
-							<SaveButton
-								:saved="unchanged && hasOnceBeenSaved"
-								:disabled="unchanged || !isFormValid"
-								:saving-label="i18n.baseText('settings.log-streaming.saving')"
-								data-test-id="destination-save-button"
-								@click="saveDestination"
-							/>
-						</template>
-					</div>
-				</div>
-				<hr />
-			</template>
-		</template>
-		<template #content>
-			<div :class="$style.container">
+		<N8nDialogBody v-if="loading">
+			<N8nSpinner />
+		</N8nDialogBody>
+		<template v-else>
+			<N8nDialogHeader>
 				<template v-if="isTypeAbstract">
-					<N8nInputLabel
-						:class="$style.typeSelector"
-						:label="i18n.baseText('settings.log-streaming.selecttype')"
-						:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
-						:bold="false"
-						size="medium"
-						:underline="false"
-					>
-						<N8nSelect
-							ref="typeSelectRef"
-							:model-value="typeSelectValue"
-							:placeholder="typeSelectPlaceholder"
-							data-test-id="select-destination-type"
-							name="name"
-							@update:model-value="onTypeSelectInput"
-						>
-							<N8nOption
-								v-for="option in typeSelectOptions || []"
-								:key="option.value"
-								:value="option.value"
-								:label="i18n.baseText(option.label)"
-							/>
-						</N8nSelect>
-						<div class="mt-m text-right">
-							<N8nButton
-								size="large"
-								data-test-id="select-destination-button"
-								:disabled="!typeSelectValue"
-								@click="onContinueAddClicked"
-							>
-								{{ i18n.baseText(`settings.log-streaming.continue`) }}
-							</N8nButton>
-						</div>
-					</N8nInputLabel>
+					<N8nDialogTitle>Add new destination</N8nDialogTitle>
 				</template>
 				<template v-else>
-					<div :class="$style.sidebar">
-						<N8nMenuItem
-							v-for="item in sidebarItems"
-							:key="item.id"
-							:item="item"
-							:active="activeTab === item.id"
-							@click="() => onTabSelect(item.id)"
-						/>
-					</div>
-					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
-						<template v-if="isTypeWebhook">
-							<ParameterInputList
-								:parameters="webhookDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
+					<div :class="$style.header">
+						<N8nDialogTitle as-child>
+							<div ref="defNameRef" :class="$style.destinationInfo">
+								<N8nInlineTextEdit
+									:max-width="width - 10"
+									data-test-id="subtitle-showing-type"
+									:model-value="headerLabel"
+									:readonly="isTypeAbstract"
+									@update:model-value="onLabelChange"
+								/>
+								<N8nText size="small" tag="p" color="text-light">{{
+									!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'
+								}}</N8nText>
+							</div>
+						</N8nDialogTitle>
+						<div :class="$style.destinationActions">
+							<N8nButton
+								variant="subtle"
+								v-if="nodeParameters && hasOnceBeenSaved && unchanged"
+								:icon="
+									testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined
+								"
+								:title="
+									testMessageSent && testMessageResult
+										? 'Event sent and returned OK'
+										: 'Event returned with error'
+								"
+								label="Send Test-Event"
+								:disabled="!hasOnceBeenSaved || !unchanged"
+								data-test-id="destination-test-button"
+								@click="sendTestEvent"
 							/>
-						</template>
-						<template v-else-if="isTypeSyslog">
-							<ParameterInputList
-								:parameters="syslogDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-						<template v-else-if="isTypeSentry">
-							<ParameterInputList
-								:parameters="sentryDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-					</div>
-					<div v-if="activeTab === 'events'" :class="$style.mainContent">
-						<div class="">
-							<N8nInputLabel
-								class="mb-m mt-m"
-								:label="i18n.baseText('settings.log-streaming.tab.events.title')"
-								:bold="true"
-								size="medium"
-								:underline="false"
-							/>
-							<EventSelection
-								:destination-id="destination.id"
-								:readonly="!canManageLogStreaming"
-								@input="onInput"
-								@change="valueChanged"
-							/>
+							<template v-if="canManageLogStreaming">
+								<N8nIconButton
+									variant="subtle"
+									v-if="nodeParameters && hasOnceBeenSaved"
+									:title="i18n.baseText('settings.log-streaming.delete')"
+									icon="trash-2"
+									:disabled="isSaving"
+									:loading="isDeleting"
+									data-test-id="destination-delete-button"
+									@click="removeThis"
+								/>
+								<SaveButton
+									:saved="unchanged && hasOnceBeenSaved"
+									:disabled="unchanged || !isFormValid"
+									:saving-label="i18n.baseText('settings.log-streaming.saving')"
+									data-test-id="destination-save-button"
+									@click="saveDestination"
+								/>
+							</template>
 						</div>
 					</div>
 				</template>
-			</div>
+			</N8nDialogHeader>
+			<N8nDialogBody>
+				<div :class="$style.container" data-test-id="destination-modal">
+					<template v-if="isTypeAbstract">
+						<N8nInputLabel
+							:class="$style.typeSelector"
+							:label="i18n.baseText('settings.log-streaming.selecttype')"
+							:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
+							:bold="false"
+							size="medium"
+							:underline="false"
+						>
+							<N8nSelect
+								ref="typeSelectRef"
+								:model-value="typeSelectValue"
+								:placeholder="typeSelectPlaceholder"
+								data-test-id="select-destination-type"
+								name="name"
+								@update:model-value="onTypeSelectInput"
+							>
+								<N8nOption
+									v-for="option in typeSelectOptions || []"
+									:key="option.value"
+									:value="option.value"
+									:label="i18n.baseText(option.label)"
+								/>
+							</N8nSelect>
+							<div class="mt-m text-right">
+								<N8nButton
+									size="large"
+									data-test-id="select-destination-button"
+									:disabled="!typeSelectValue"
+									@click="onContinueAddClicked"
+								>
+									{{ i18n.baseText(`settings.log-streaming.continue`) }}
+								</N8nButton>
+							</div>
+						</N8nInputLabel>
+					</template>
+					<template v-else>
+						<div :class="$style.sidebar">
+							<N8nMenuItem
+								v-for="item in sidebarItems"
+								:key="item.id"
+								:item="item"
+								:active="activeTab === item.id"
+								@click="() => onTabSelect(item.id)"
+							/>
+						</div>
+						<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
+							<template v-if="isTypeWebhook">
+								<ParameterInputList
+									:parameters="webhookDescription"
+									:hide-delete="true"
+									:node-values="nodeParameters"
+									:is-read-only="!canManageLogStreaming"
+									path=""
+									@value-changed="valueChanged"
+								/>
+							</template>
+							<template v-else-if="isTypeSyslog">
+								<ParameterInputList
+									:parameters="syslogDescription"
+									:hide-delete="true"
+									:node-values="nodeParameters"
+									:is-read-only="!canManageLogStreaming"
+									path=""
+									@value-changed="valueChanged"
+								/>
+							</template>
+							<template v-else-if="isTypeSentry">
+								<ParameterInputList
+									:parameters="sentryDescription"
+									:hide-delete="true"
+									:node-values="nodeParameters"
+									:is-read-only="!canManageLogStreaming"
+									path=""
+									@value-changed="valueChanged"
+								/>
+							</template>
+						</div>
+						<div v-if="activeTab === 'events'" :class="$style.mainContent">
+							<div class="">
+								<N8nInputLabel
+									class="mb-m mt-m"
+									:label="i18n.baseText('settings.log-streaming.tab.events.title')"
+									:bold="true"
+									size="medium"
+									:underline="false"
+								/>
+								<EventSelection
+									:destination-id="destination.id"
+									:readonly="!canManageLogStreaming"
+									@input="onInput"
+									@change="valueChanged"
+								/>
+							</div>
+						</div>
+					</template>
+				</div>
+			</N8nDialogBody>
 		</template>
-	</Modal>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.labelMargins {
-	margin-bottom: 1em;
-	margin-top: 1em;
+.abstractDialog {
+	/* Previous dialog height. No spacing token. */
+	min-height: 160px;
+	max-height: 300px;
+	overflow-y: auto;
 }
+
+.settingsDialog {
+	/* Previous dialog height. No spacing token. */
+	height: 650px;
+	max-height: 650px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
 .typeSelector {
 	width: 100%;
-	margin-bottom: 1em;
-	margin-top: 1em;
 }
 
 .sidebarSwitches {
@@ -607,11 +629,6 @@ const { width } = useElementSize(defNameRef);
 	min-height: 61px;
 }
 
-.headerCreate {
-	display: flex;
-	font-size: 20px;
-}
-
 .container {
 	display: flex;
 	height: 100%;
@@ -623,7 +640,6 @@ const { width } = useElementSize(defNameRef);
 	width: 100%;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--lg);
 }
 
 .destinationActions {
@@ -631,7 +647,6 @@ const { width } = useElementSize(defNameRef);
 	flex-direction: row;
 	align-items: center;
 	margin-right: var(--spacing--xl);
-	margin-bottom: var(--spacing--lg);
 
 	> * {
 		margin-left: var(--spacing--2xs);
