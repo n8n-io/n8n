@@ -11,12 +11,23 @@ import {
 	savedCredential,
 	variable,
 } from '../__tests__/bindings.fixtures';
-import type { CreatedPromotionBinding, MissingPromotionBinding } from '../promotions.types';
+import type {
+	ContinueTarget,
+	CreatedPromotionBinding,
+	MissingPromotionBinding,
+} from '../promotions.types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' } }),
 }));
 vi.mock('../promotionsSettings.api');
+
+const instance: ContinueTarget = { kind: 'instance' };
+const selection: Extract<ContinueTarget, { kind: 'selection' }> = {
+	kind: 'selection',
+	projectId: 'team-a',
+	workflowIds: ['wf-a', 'wf-b'],
+};
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -33,7 +44,7 @@ it('resolves shared credentials once and keeps variable scopes separate', async 
 	const result = blocked({
 		missingBindings: [credential, variable, projectVariable, otherProjectVariable],
 	});
-	session.start(result);
+	session.start(result, instance);
 	expect(session.originalResult.value).toBe(result);
 	expect(session.unresolvedCount.value).toBe(4);
 	expect(session.groups.value.map((group) => group.project.id)).toEqual(['team-a', 'team-b']);
@@ -66,7 +77,7 @@ it.each([
 	['wrong type', { ...savedCredential, credentialType: 'other' }],
 ] as const)('keeps a credential unresolved when creation returns %s', async (_label, result) => {
 	const session = usePromotionBindings();
-	session.start(blocked());
+	session.start(blocked(), instance);
 	await session.createBinding(promotionBindingKey(credential), async () => result);
 	expect(session.unresolvedCount.value).toBe(1);
 	expect(session.savedResources.value).toEqual([]);
@@ -75,7 +86,7 @@ it.each([
 
 it('keeps global variables unresolved after a project variable is saved', async () => {
 	const session = usePromotionBindings();
-	session.start(blocked({ missingBindings: [variable] }));
+	session.start(blocked({ missingBindings: [variable] }), instance);
 	await session.createBinding(promotionBindingKey(variable), async (item) => {
 		expect(item).toBe(variable);
 		return {
@@ -92,7 +103,7 @@ it('keeps global variables unresolved after a project variable is saved', async 
 it('guards creation and Continue while the editor is open and recovers after failure', async () => {
 	const pending = createDeferredPromise<CreatedPromotionBinding | null>();
 	const session = usePromotionBindings();
-	session.start(blocked());
+	session.start(blocked(), instance);
 	const create = vi.fn().mockReturnValue(pending.promise);
 	const first = session.createBinding(promotionBindingKey(credential), create);
 	await session.createBinding(promotionBindingKey(credential), create);
@@ -126,6 +137,7 @@ it.each(['access', 'conflict'] as const)('blocks Continue for %s requirements', 
 						]
 					: [],
 		}),
+		instance,
 	);
 	expect(session.canContinue.value).toBe(false);
 	expect(session.unresolvedCount.value).toBe(1);
@@ -148,6 +160,7 @@ it('counts credentials with the same name and different types separately', () =>
 				referenceFiles: ['workflow.json'],
 			})),
 		}),
+		instance,
 	);
 	expect(session.unresolvedCount.value).toBe(2);
 	expect(session.canContinue.value).toBe(false);
@@ -158,7 +171,7 @@ it('submits once with the original source and allows warnings', async () => {
 	vi.mocked(continueApplyPromotion).mockReturnValue(pending.promise);
 	const session = usePromotionBindings();
 	const result = blocked({ missingBindings: [], warnings: applied.warnings });
-	session.start(result);
+	session.start(result, instance);
 	expect(session.canContinue.value).toBe(true);
 	const first = session.continueApply();
 	await session.continueApply();
@@ -168,6 +181,7 @@ it('submits once with the original source and allows warnings', async () => {
 		result.connectionId,
 		{ expectedSource: { configId: result.configId, ...result.git } },
 	);
+	expect(continueApplyProjectSelection).not.toHaveBeenCalled();
 	pending.resolve(applied);
 	expect(await first).toBe(applied);
 	expect(session.canContinue.value).toBe(false);
@@ -179,7 +193,7 @@ it('continues a selection through the project endpoint', async () => {
 	vi.mocked(continueApplyProjectSelection).mockResolvedValue(applied);
 	const session = usePromotionBindings();
 	const result = blocked({ missingBindings: [] });
-	session.start(result, { projectId: 'team-a', workflowIds: ['wf-a', 'wf-b'] });
+	session.start(result, selection);
 	expect(session.canContinue.value).toBe(true);
 	expect(await session.continueApply()).toBe(applied);
 	expect(continueApplyProjectSelection).toHaveBeenCalledTimes(1);
@@ -198,7 +212,7 @@ it('continues a selection through the project endpoint', async () => {
 it('reconciles a blocked selection result and stops on a source change', async () => {
 	const session = usePromotionBindings();
 	const initial = blocked({ missingBindings: [] });
-	session.start(initial, { projectId: 'team-a', workflowIds: ['wf-a'] });
+	session.start(initial, { ...selection, workflowIds: ['wf-a'] });
 	const next = blocked({ missingBindings: [credential] });
 	vi.mocked(continueApplyProjectSelection).mockResolvedValueOnce(next);
 	await session.continueApply();
@@ -220,7 +234,7 @@ it('reconciles a blocked selection result and stops on a source change', async (
 it('replaces blockers and preserves saved rows after another blocked result', async () => {
 	const session = usePromotionBindings();
 	const result = blocked({ missingBindings: [credential, variable] });
-	session.start(result);
+	session.start(result, instance);
 	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
 	await session.createBinding(promotionBindingKey(variable), async () => ({
 		kind: 'variable',
@@ -247,7 +261,7 @@ it('replaces blockers and preserves saved rows after another blocked result', as
 it('stops after a source change without retrying', async () => {
 	const session = usePromotionBindings();
 	const initial = blocked({ missingBindings: [] });
-	session.start(initial);
+	session.start(initial, instance);
 	const changed = {
 		...initial,
 		status: 'source-changed' as const,
@@ -265,7 +279,7 @@ it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 
 	'keeps saved items after a request fails: %s',
 	async (error) => {
 		const session = usePromotionBindings();
-		session.start(blocked());
+		session.start(blocked(), instance);
 		await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
 		vi.mocked(continueApplyPromotion).mockRejectedValue(error);
 		await session.continueApply();
@@ -279,13 +293,13 @@ it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 
 it('ignores an editor result from a closed session', async () => {
 	const pending = createDeferredPromise<CreatedPromotionBinding | null>();
 	const session = usePromotionBindings();
-	session.start(blocked());
+	session.start(blocked(), instance);
 	const creating = session.createBinding(
 		promotionBindingKey(credential),
 		async () => await pending.promise,
 	);
 	session.end();
-	session.start(blocked());
+	session.start(blocked(), instance);
 	pending.resolve(savedCredential);
 	await creating;
 	expect(session.savedResources.value).toEqual([]);

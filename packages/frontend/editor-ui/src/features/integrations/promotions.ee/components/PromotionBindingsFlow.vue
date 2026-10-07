@@ -6,6 +6,7 @@ import { usePromotionBindingCreation } from '../composables/usePromotionBindingC
 import type {
 	AppliedResult,
 	BlockedApplyResult,
+	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatedPromotionProject,
 	SourceChangedResult,
@@ -14,8 +15,7 @@ import type {
 const props = defineProps<{
 	open: boolean;
 	blockedResult: BlockedApplyResult;
-	// Forwarded to the dialog when the apply resumes a workflow selection.
-	continueWith?: { projectId: string; workflowIds: string[] };
+	continueWith: ContinueTarget;
 }>();
 const emit = defineEmits<{
 	'update:open': [open: boolean];

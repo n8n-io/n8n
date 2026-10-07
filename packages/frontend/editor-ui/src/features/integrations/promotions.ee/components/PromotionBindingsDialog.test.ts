@@ -19,7 +19,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 vi.mock('../promotionsSettings.api');
 
-const renderComponent = createComponentRenderer(PromotionBindingsDialog);
+const renderComponent = createComponentRenderer(PromotionBindingsDialog, {
+	props: { continueWith: { kind: 'instance' } },
+});
 
 async function renderDialog(options: Parameters<typeof renderComponent>[0]) {
 	const result = renderComponent(options);
@@ -100,7 +102,7 @@ it('forwards continueWith so Continue resumes the selection', async () => {
 			open: true,
 			blockedResult: initial,
 			createBinding: vi.fn(),
-			continueWith: { projectId: 'team-a', workflowIds: ['wf-a', 'wf-b'] },
+			continueWith: { kind: 'selection', projectId: 'team-a', workflowIds: ['wf-a', 'wf-b'] },
 		},
 	});
 	await userEvent.click(getByRole('button', { name: 'Continue' }));

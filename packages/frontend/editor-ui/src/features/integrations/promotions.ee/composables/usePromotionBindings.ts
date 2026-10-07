@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
 import type {
 	BlockedApplyResult,
+	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatePromotionBinding,
 	MissingPromotionBinding,
@@ -33,9 +34,6 @@ type PromotionBindingsError =
 	| { kind: 'creationMismatch' }
 	// The UI uses the cause to show why Continue failed.
 	| { kind: 'continue'; cause: unknown };
-
-// Set when the paused apply came from a workflow selection, not a whole branch.
-type ContinueSelection = { projectId: string; workflowIds: string[] };
 
 type BindingGroup = {
 	project: PromotionBindingConsumer['project'];
@@ -74,7 +72,7 @@ export function usePromotionBindings() {
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
 	let connectionId: string | undefined;
-	let continueSelection: ContinueSelection | undefined;
+	let continueTarget: ContinueTarget | undefined;
 
 	function statusOf(key: string, projectId: string): BindingStatus {
 		if (missingKeys.value.has(key)) return 'missing';
@@ -143,11 +141,11 @@ export function usePromotionBindings() {
 		);
 	}
 
-	function start(result: BlockedApplyResult, continueWith?: ContinueSelection) {
+	function start(result: BlockedApplyResult, target: ContinueTarget) {
 		session++;
 		originalResult.value = result;
 		connectionId = result.connectionId;
-		continueSelection = continueWith;
+		continueTarget = target;
 		expectedSource = { configId: result.configId, ...result.git };
 		knownBindings.value = new Map();
 		createdBindings.value = new Map();
@@ -197,24 +195,24 @@ export function usePromotionBindings() {
 	}
 
 	async function continueApply() {
-		if (!canContinue.value || !connectionId || !expectedSource) return;
+		if (!canContinue.value || !connectionId || !expectedSource || !continueTarget) return;
 		const currentSession = session;
 		isSubmitting.value = true;
 		error.value = null;
 		try {
-			// A selection continues through the project endpoint; a whole branch through the connection.
-			const result = continueSelection
-				? await continueApplyProjectSelection(
-						rootStore.publicApiContext,
-						continueSelection.projectId,
-						{
-							workflowIds: continueSelection.workflowIds,
+			const result =
+				continueTarget.kind === 'selection'
+					? await continueApplyProjectSelection(
+							rootStore.publicApiContext,
+							continueTarget.projectId,
+							{
+								workflowIds: continueTarget.workflowIds,
+								expectedSource: { ...expectedSource },
+							},
+						)
+					: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
 							expectedSource: { ...expectedSource },
-						},
-					)
-				: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
-						expectedSource: { ...expectedSource },
-					});
+						});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
 			if (result.status === 'source-changed') sourceChanged.value = true;

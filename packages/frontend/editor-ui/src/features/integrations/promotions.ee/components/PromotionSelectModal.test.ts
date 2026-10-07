@@ -663,7 +663,7 @@ describe('PromotionSelectModal', () => {
 						PromotionBindingsFlow: {
 							props: ['continueWith'],
 							template:
-								'<div data-test-id="continue-with">{{ continueWith.workflowIds.join(",") }}</div>',
+								'<div data-test-id="continue-with">{{ continueWith.kind }}:{{ continueWith.workflowIds.join(",") }}</div>',
 						},
 					},
 				},
@@ -681,7 +681,7 @@ describe('PromotionSelectModal', () => {
 			expect(applyButton).toHaveTextContent('Apply 1 change');
 			resolveApply(blocked({ missingBindings: [credential] }));
 
-			expect(await findByTestId('continue-with')).toHaveTextContent('wf-001');
+			expect(await findByTestId('continue-with')).toHaveTextContent('selection:wf-001');
 			expect(await findByTestId('continue-with')).not.toHaveTextContent('wf-002');
 		});
 

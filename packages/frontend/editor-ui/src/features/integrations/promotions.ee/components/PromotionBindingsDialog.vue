@@ -15,6 +15,7 @@ import { usePromotionBindings } from '../composables/usePromotionBindings';
 import type {
 	AppliedResult,
 	BlockedApplyResult,
+	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatePromotionBinding,
 	MissingPromotionBinding,
@@ -25,8 +26,7 @@ const props = defineProps<{
 	open: boolean;
 	blockedResult: BlockedApplyResult;
 	createBinding: CreatePromotionBinding;
-	// Present when the apply resumes a workflow selection instead of a whole branch.
-	continueWith?: { projectId: string; workflowIds: string[] };
+	continueWith: ContinueTarget;
 }>();
 
 const emit = defineEmits<{

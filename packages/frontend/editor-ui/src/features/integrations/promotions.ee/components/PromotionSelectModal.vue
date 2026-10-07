@@ -528,7 +528,11 @@ onMounted(async () => {
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
-		:continue-with="{ projectId: props.data.projectId, workflowIds: blockedWorkflowIds }"
+		:continue-with="{
+			kind: 'selection',
+			projectId: props.data.projectId,
+			workflowIds: blockedWorkflowIds,
+		}"
 		@update:open="
 			(open) => {
 				if (!open) blockedResult = undefined;

@@ -109,19 +109,21 @@ describe('ApplyInstanceDialog', () => {
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
 
-	it('reloads the project list after the binding flow applies', async () => {
+	it('continues the whole instance and reloads the project list after the binding flow applies', async () => {
 		api.applyPromotion.mockResolvedValue(blocked({ missingBindings: [credential] }));
 		const projectsStore = useProjectsStore();
 		const { findByTestId, emitted } = renderComponent({
 			global: {
 				stubs: {
 					PromotionBindingsFlow: defineComponent({
+						props: { continueWith: { type: Object, required: true } },
 						emits: ['applied'],
 						setup:
-							(_, { emit }) =>
+							(props, { emit }) =>
 							() =>
 								h('button', {
 									'data-test-id': 'stub-applied',
+									'data-continue-kind': props.continueWith.kind,
 									onClick: () => emit('applied', applied),
 								}),
 					}),
@@ -130,7 +132,9 @@ describe('ApplyInstanceDialog', () => {
 		});
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
-		await userEvent.click(await findByTestId('stub-applied'));
+		const flow = await findByTestId('stub-applied');
+		expect(flow).toHaveAttribute('data-continue-kind', 'instance');
+		await userEvent.click(flow);
 
 		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
 		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
