@@ -1,0 +1,25 @@
+# @n8n/backend-module-hello-world
+
+Backend feature module. The n8n runtime loads the module through the lazy import in
+`packages/cli/src/modules/modules.manifest.ts`.
+
+```bash
+pnpm turbo typecheck --filter=@n8n/backend-module-hello-world
+pnpm turbo lint --filter=@n8n/backend-module-hello-world
+pnpm turbo test --filter=@n8n/backend-module-hello-world
+```
+
+Go through Turbo. It builds this package's workspace dependencies first.
+
+Read `scripts/backend-module/backend-module-guide.md` for the module lifecycle, REST controller,
+service, repository, entity, configuration, and testing patterns.
+
+## Import rules
+
+- Do not import from `packages/cli` or from the `n8n` package.
+- Declare each workspace and third-party import in this package.
+- Export APIs for other packages from `src/index.ts`.
+- Keep the module entrypoint in the `./module` export. Do not export it from `src/index.ts`.
+  Importing the entrypoint runs the `@BackendModule` decorator.
+- Use dynamic imports inside the module entrypoint. This keeps disabled modules unloaded.
+- Keep TypeORM imports in entity and repository files.

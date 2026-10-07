@@ -6,4 +6,5 @@ import type { PackagedModules } from '@n8n/backend-common';
  */
 export const packagedModules: PackagedModules = {
 	insights: async () => await import('@n8n/backend-module-insights/module'),
+	'hello-world': async () => await import('@n8n/backend-module-hello-world/module'),
 };
