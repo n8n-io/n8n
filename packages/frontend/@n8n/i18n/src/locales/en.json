@@ -1202,6 +1202,7 @@
 	"credentialEdit.credentialSharing.onlyYou": "Only you",
 	"credentialEdit.credentialSharing.onlyOwner": "Only {name}",
 	"credentialEdit.credentialSharing.share": "Share",
+	"credentialEdit.credentialSharing.shareWith": "Share with {project}",
 	"credentialSelectModal.addNewCredential": "Add new credential",
 	"credentialSelectModal.continue": "Continue",
 	"credentialSelectModal.searchForApp": "Search for app...",
