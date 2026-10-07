@@ -259,7 +259,7 @@ describe('JobProcessor', () => {
 
 		await expect(jobProcessor.processJob(job)).rejects.toThrow('workflow run rejected');
 
-		expect(jobProcessor.getRunningJobIds()).toEqual([]);
+		expect(jobProcessor.getTrackedJobIds()).toEqual([]);
 	});
 
 	describe('jobs in preflight', () => {
@@ -296,7 +296,7 @@ describe('JobProcessor', () => {
 
 			const processing = jobProcessor.processJob(job);
 
-			expect(jobProcessor.getRunningJobIds()).toContain('job-1');
+			expect(jobProcessor.getTrackedJobIds()).toContain('job-1');
 			expect(jobProcessor.getRunningJobsSummary()).toEqual([]);
 			expect(jobProcessor.getJobsInPreflight()).toEqual([
 				{ jobId: 'job-1', executionId: 'exec-1' },
@@ -304,7 +304,7 @@ describe('JobProcessor', () => {
 
 			settleExecution();
 			await processing;
-			expect(jobProcessor.getRunningJobIds()).not.toContain('job-1');
+			expect(jobProcessor.getTrackedJobIds()).not.toContain('job-1');
 			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
 		});
 
@@ -349,7 +349,7 @@ describe('JobProcessor', () => {
 			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).not.toEqual([]));
 
 			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
-			expect(jobProcessor.getRunningJobIds()).toContain('job-1');
+			expect(jobProcessor.getTrackedJobIds()).toContain('job-1');
 		});
 
 		it('should stop tracking a job when loading its execution fails', async () => {
@@ -363,7 +363,7 @@ describe('JobProcessor', () => {
 
 			await expect(jobProcessor.processJob(job)).rejects.toThrow('database unavailable');
 
-			expect(jobProcessor.getRunningJobIds()).not.toContain('job-1');
+			expect(jobProcessor.getTrackedJobIds()).not.toContain('job-1');
 			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
 		});
 	});
@@ -2625,13 +2625,13 @@ describe('JobProcessor', () => {
 
 			// Flush the microtasks processJob runs before it starts tracking the job.
 			await vi.advanceTimersByTimeAsync(0);
-			expect(jobProcessor.getRunningJobIds()).toContain(String(job.id));
+			expect(jobProcessor.getTrackedJobIds()).toContain(String(job.id));
 
 			rejectRun(new Error('worker crashed'));
 			await assertion;
 
 			// The running-job entry must be gone, not left dangling as still "running".
-			expect(jobProcessor.getRunningJobIds()).not.toContain(String(job.id));
+			expect(jobProcessor.getTrackedJobIds()).not.toContain(String(job.id));
 
 			// The watchdog must be cleared too: advancing past the workflow timeout must not
 			// trigger a delayed, spurious cancellation of an already-failed execution.
@@ -2745,11 +2745,11 @@ describe('JobProcessor', () => {
 			void jobProcessor.processJob(job);
 
 			await vi.advanceTimersByTimeAsync(0);
-			expect(jobProcessor.getRunningJobIds()).toContain(String(job.id));
+			expect(jobProcessor.getTrackedJobIds()).toContain(String(job.id));
 
 			jobProcessor.stopJob(job.id);
 
-			expect(jobProcessor.getRunningJobIds()).not.toContain(String(job.id));
+			expect(jobProcessor.getTrackedJobIds()).not.toContain(String(job.id));
 		});
 
 		it('keeps a stop reported as manual when the timeout elapses before the run settles', async () => {
@@ -2867,7 +2867,7 @@ describe('JobProcessor', () => {
 			await vi.advanceTimersByTimeAsync(10_000);
 
 			expect(cancel).not.toHaveBeenCalled();
-			expect(jobProcessor.getRunningJobIds()).not.toContain(String(job.id));
+			expect(jobProcessor.getTrackedJobIds()).not.toContain(String(job.id));
 			expect(eventService.emit).not.toHaveBeenCalledWith('execution-cancelled', expect.anything());
 		});
 
