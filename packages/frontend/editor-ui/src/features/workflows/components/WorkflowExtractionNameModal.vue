@@ -1,15 +1,20 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { ExtractableSubgraphData } from 'n8n-workflow';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 
-import { N8nButton, N8nFormInput } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nFormInput,
+} from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -22,7 +27,19 @@ const DEFAULT_WORKFLOW_NAME = 'My Sub-workflow';
 
 const i18n = useI18n();
 const toast = useToast();
-const modalBus = createEventBus();
+const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]?.open === true,
+);
+
+function closeDialog() {
+	if (uiStore.modalsById[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]?.open !== true) return;
+	uiStore.closeModal(WORKFLOW_EXTRACTION_NAME_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const workflowExtraction = useWorkflowExtraction();
 const workflowName = ref(DEFAULT_WORKFLOW_NAME);
@@ -48,53 +65,43 @@ const onSubmit = async () => {
 	} catch (e) {
 		toast.showError(e, i18n.baseText('workflowExtraction.error.failure'));
 	} finally {
-		modalBus.emit('close');
+		closeDialog();
 	}
 };
-
-const inputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
-
-onMounted(() => {
-	// With modals normal focusing via `props.focus-initially` on N8nFormInput does not work
-	setTimeout(() => {
-		inputRef.value?.inputRef?.select();
-		inputRef.value?.inputRef?.focus();
-	});
-});
 </script>
 
 <template>
-	<Modal
-		max-width="540px"
-		:title="
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="
 			i18n.baseText('workflowExtraction.modal.description', {
 				adjustToNumber: props.data.subGraph.length,
 			})
 		"
-		:event-bus="modalBus"
-		:name="WORKFLOW_EXTRACTION_NAME_MODAL_KEY"
-		:center="true"
-		:close-on-click-modal="false"
+		:close-on-overlay-click="false"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<N8nFormInput
-				ref="inputRef"
-				v-model="workflowName"
-				name="key"
-				label=""
-				max-length="128"
-				focus-initially
-				@enter="onSubmit"
-			/>
-		</template>
-		<template #footer="{ close }">
+		<N8nDialogBody>
+			<div data-test-id="workflowExtractionName-modal">
+				<N8nFormInput
+					v-model="workflowName"
+					name="key"
+					label=""
+					max-length="128"
+					focus-initially
+					@enter="onSubmit"
+				/>
+			</div>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
 					float="right"
 					data-test-id="cancel-button"
-					@click="close"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					:label="i18n.baseText('generic.confirm')"
@@ -104,8 +111,8 @@ onMounted(() => {
 					@click="onSubmit"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
