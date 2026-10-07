@@ -55,9 +55,7 @@ export class SystemTaskHandler implements TaskHandler {
 			jobId: task.jobId,
 		});
 
-		// Non-idempotent work is pinned to one attempt, so a dispatch marker can
-		// never prevent a redelivery. Stamping it before the run would only record
-		// a thrown run as succeeded and drop its error message.
-		return report.notDispatched();
+		// The marker is stamped only after the run, so a thrown run is recorded as failed.
+		return report.dispatched();
 	}
 }

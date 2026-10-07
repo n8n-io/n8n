@@ -99,20 +99,23 @@ describe('SystemTaskHandler', () => {
 	});
 
 	it.each(['idempotent', 'non-idempotent'] as const)(
-		'never marks %s work dispatched',
+		'marks %s work dispatched only after the run',
 		async (effects) => {
-			const { task, report, handler } = setup(effects);
+			const { task, handler } = setup(effects);
+			let runCountAtDispatch: number | undefined;
+			const report = createDispatchReporter(() => {
+				runCountAtDispatch = task.runCount;
+			});
 
 			await handler.execute(claimed, report, new AbortController().signal);
 
 			expect(task.runCount).toBe(1);
-			expect(report.notDispatched).toHaveBeenCalled();
-			expect(report.dispatched).not.toHaveBeenCalled();
+			expect(runCountAtDispatch).toBe(1);
 		},
 	);
 
 	it.each(['idempotent', 'non-idempotent'] as const)(
-		'returns the notDispatched token for %s work',
+		'returns the dispatched token for %s work',
 		async (effects) => {
 			const task = new DummySystemTask();
 			task.effects = effects;
@@ -128,7 +131,7 @@ describe('SystemTaskHandler', () => {
 
 			const returned = await handler.execute(claimed, report, new AbortController().signal);
 
-			expect(returned).toBe(report.notDispatched());
+			expect(returned).toBe(report.dispatched());
 		},
 	);
 
