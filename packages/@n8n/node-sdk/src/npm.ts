@@ -1,7 +1,9 @@
 /**
  * One npm package for each contract version. The tarball holds `package.json`, `manifest.json`
  * (the exact manifest bytes, so the digest does not change), `bundle.cjs` and `fixtures.json` when
- * the version has them, and `signatures.json` (ed25519 over the manifest bytes).
+ * the version has them. The `n8n` field of `package.json` holds the index line of the version,
+ * with the ed25519 signatures of the manifest bytes, so a host lists versions from the packument.
+ * A package from before that field has `signatures.json` instead.
  */
 import { isRecord } from '@n8n/utils/is-record';
 import { execFile } from 'node:child_process';
@@ -97,7 +99,17 @@ export function npmPackageOf(
 	},
 ): Record<string, string> {
 	const manifestText = manifestTextOf(manifest);
+	const fixturesText = fixtures === undefined ? undefined : jsonText(fixtures);
 	const sdk = 'sdk' in manifest ? manifest.sdk : undefined;
+	const {
+		version: _,
+		manifest: digest,
+		...index
+	} = storeRecordOf({
+		manifestText,
+		fixtures: fixturesText,
+		signatures: [signStoreManifest(manifestText, options.privateKey)],
+	});
 	const packageJson = {
 		name: npmNameOf(manifest.id, options.scope),
 		version: manifest.semver,
@@ -107,20 +119,13 @@ export function npmPackageOf(
 			? { dependencies: { [npmNameOf(SDK_RUNTIME_ID, options.scope)]: sdk.version } }
 			: {}),
 		// Publish compares `digest` with the manifest, so it needs no tarball for a known version.
-		n8n: {
-			id: manifest.id,
-			kind: manifest.kind,
-			digest: npmDigestOf(manifest),
-			manifest: 'manifest.json',
-			...(bundle === undefined ? {} : { bundle: 'bundle.cjs' }),
-		},
+		n8n: { ...index, digest },
 	};
 	return {
 		'package.json': jsonText(packageJson),
 		'manifest.json': manifestText,
 		...(bundle === undefined ? {} : { 'bundle.cjs': bundle }),
-		...(fixtures === undefined ? {} : { 'fixtures.json': jsonText(fixtures) }),
-		'signatures.json': jsonText([signStoreManifest(manifestText, options.privateKey)]),
+		...(fixturesText === undefined ? {} : { 'fixtures.json': fixturesText }),
 	};
 }
 
@@ -158,6 +163,8 @@ export interface NpmPublished {
 	readonly deprecated?: string;
 	/** When the version was published, as an ISO date. */
 	readonly published?: string;
+	/** The `n8n` field of the package.json. */
+	readonly n8n: Readonly<Record<string, unknown>>;
 }
 
 /** How a host reads an npm registry. */
@@ -218,6 +225,7 @@ export async function npmVersionsOf(
 				tarball: stringOf(dist.tarball),
 				deprecated: stringOf(entry.deprecated),
 				published: stringOf(time[version]),
+				n8n,
 			},
 		];
 	});
@@ -261,13 +269,27 @@ const INDEX_FILE = /^index\/(.+)\.ndjson$/;
 const REVOKED = /^revoked:\s*/;
 
 /**
+ * The index line of a version from the `n8n` field of its packument entry, or `undefined` when
+ * the package is from before that field.
+ */
+const packumentLineOf = ({ version, published, n8n }: NpmPublished) => {
+	if (n8n.nodeContract === undefined) return undefined;
+	const { digest: manifest, ...index } = n8n;
+	return { ...index, version, manifest, ...(published === undefined ? {} : { published }) };
+};
+
+/**
  * The contract packages of an npm registry as a store. The index of an id has one line for each
- * version, from the files of its tarball, and one status line for each deprecated version. Each
- * tarball downloads once. The reader checks each blob against the digest that the package states.
+ * version, from the `n8n` field of the packument, and one status line for each deprecated version.
+ * A tarball downloads once, when a blob of its version is read. A package from before the `n8n`
+ * index fields downloads its tarball for the index. The reader checks each blob against the
+ * digest that the package states.
  */
 export function npmStoreReader(registry: string, options: NpmReadOptions = {}): StoreReader {
 	/** The blobs of the downloaded tarballs, by store file. */
 	const blobs = new Map<string, Buffer>();
+	/** The version of each blob file that an index line names, so that a blob read downloads it. */
+	const versionsOfBlob = new Map<string, NpmPublished>();
 	/** The index line of each version, by tarball URL. A published version never changes. */
 	const lines = new Map<string, Promise<string | undefined>>();
 
@@ -319,6 +341,22 @@ export function npmStoreReader(registry: string, options: NpmReadOptions = {}): 
 		});
 	};
 
+	/** The index line of a version. Only a package from before the `n8n` index fields downloads. */
+	const indexLineOf = async (version: NpmPublished) => {
+		const line = packumentLineOf(version);
+		if (line === undefined) return await lineOf(version);
+		try {
+			const files = [version.n8n.digest, version.n8n.bundle, version.n8n.fixtures].map((digest) =>
+				typeof digest === 'string' ? storeBlobFileOf(digest) : undefined,
+			);
+			files.forEach((file) => file && versionsOfBlob.set(file, version));
+			return JSON.stringify(line);
+		} catch {
+			// A version with a bad digest is not in the index.
+			return undefined;
+		}
+	};
+
 	const statusOf = (
 		id: string,
 		{ version, deprecated, published }: NpmPublished,
@@ -336,11 +374,15 @@ export function npmStoreReader(registry: string, options: NpmReadOptions = {}): 
 
 	return storeReader(async (file) => {
 		const id = INDEX_FILE.exec(file)?.[1];
-		if (id === undefined) return blobs.get(file);
+		if (id === undefined) {
+			const version = versionsOfBlob.get(file);
+			if (!blobs.has(file) && version) await lineOf(version);
+			return blobs.get(file);
+		}
 		const versions = (await npmVersionsOf(registry, npmNameOf(id, options.scope), options)).filter(
 			(version) => version.id === id,
 		);
-		const versionLines = await Promise.all(versions.map(lineOf));
+		const versionLines = await Promise.all(versions.map(indexLineOf));
 		const statusLines = versions.flatMap((version) =>
 			statusOf(id, version).map((status) => JSON.stringify(status)),
 		);

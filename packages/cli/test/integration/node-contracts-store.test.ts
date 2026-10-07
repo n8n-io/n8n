@@ -1,6 +1,7 @@
 import {
 	manifestTextOf,
 	npmNameOf,
+	npmPackageOf,
 	parseManifest,
 	signStoreManifest,
 	type VersionManifest as Manifest,
@@ -30,6 +31,7 @@ import {
 	NodeContractsStore,
 	nodeContractsRuntime,
 } from '@/node-contracts-registry';
+import { pinNodeContracts } from '@/node-contracts-run';
 import { NodeContractsSync } from '@/node-contracts-sync';
 import { Push } from '@/push';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -40,6 +42,7 @@ import * as utils from './shared/utils';
 const GET = '@n8n/nodes-core.httpRequestGet';
 const NAME = npmNameOf('httpRequest.get');
 const OLDER = '2.0.0';
+const MINOR = '3.1.0';
 
 const keys = generateKeyPairSync('ed25519', {
 	publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -86,14 +89,18 @@ const writeRegistry = async () => {
 		[...registry.versions.values()].map(async ({ manifest, version }) => {
 			const route = `${NAME}/-/${manifest.semver}.tgz`;
 			const n8n = { id: manifest.id, digest: digestOf(version.manifestText) };
-			const packageJson = { name: NAME, version: manifest.semver, n8n };
-			const files = {
-				'package.json': JSON.stringify(packageJson),
-				'manifest.json': version.manifestText,
-				'bundle.cjs': version.bundle,
-				'signatures.json': JSON.stringify(version.signatures),
-			};
+			// The older major keeps the package files from before the index fields in `n8n`.
+			const files =
+				manifest.semver === OLDER
+					? {
+							'package.json': JSON.stringify({ name: NAME, version: manifest.semver, n8n }),
+							'manifest.json': version.manifestText,
+							'bundle.cjs': version.bundle,
+							'signatures.json': JSON.stringify(version.signatures),
+						}
+					: npmPackageOf({ manifest, bundle: version.bundle }, { privateKey: keys.privateKey });
 			registry.files.set(route, await tgzOf(files));
+			const packageJson = JSON.parse(files['package.json'] ?? '{}') as object;
 			return [manifest.semver, { ...packageJson, dist: { tarball: `${registry.url}/${route}` } }];
 		}),
 	);
@@ -136,6 +143,10 @@ beforeAll(async () => {
 	if (!headVersion) throw new Error('httpRequest.get is not bundled');
 	const head = signed(manifestTextOf(headVersion.manifest), await headVersion.readBundle());
 	registry.versions.set(OLDER, older);
+	registry.versions.set(
+		MINOR,
+		signed(manifestTextOf({ ...head.manifest, semver: MINOR }), head.version.bundle),
+	);
 	registry.versions.set(head.manifest.semver, head);
 	registry.server.on('request', (request, response) => {
 		if (request.url?.startsWith('/echo?')) {
@@ -369,5 +380,33 @@ describe('node contracts store', () => {
 		} finally {
 			instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
 		}
+	});
+
+	it('locks a range to a version that only the registry has, and runs that version', async () => {
+		const minor = registry.versions.get(MINOR);
+		const [head] = versionsOf('httpRequest.get');
+		if (!minor || !head) throw new Error(`${MINOR} is not published`);
+		const [node] = await pinNodeContracts([
+			{
+				id: 'get',
+				name: 'Get',
+				type: GET,
+				typeVersion: 3,
+				contract: { range: '~3.1.0', version: head.manifest.semver, digest: head.digest },
+				position: [0, 0],
+				parameters: { url: `${registry.url}/echo?name=Ada` },
+			},
+		]);
+		expect(node?.contract).toEqual({ range: '~3.1.0', ...pinOf(minor) });
+		if (!node) throw new Error('no node');
+
+		const workflow = await createWorkflow(
+			{ name: 'Get on 3.1', nodes: [node], connections: {} },
+			state.owner,
+		);
+		expect(await runToEnd(workflow)).toMatchObject({
+			status: 'success',
+			ran: expect.objectContaining({ version: MINOR }),
+		});
 	});
 });

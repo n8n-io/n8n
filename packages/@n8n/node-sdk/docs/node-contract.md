@@ -158,11 +158,11 @@ another id.
 
 | File | Content |
 |---|---|
-| `package.json` | Generated: `name`, `version` (the manifest `semver`), `description` (the summary), `license`, `repository` and `author` of the source package, and `n8n: { id, kind, digest, manifest, bundle? }`. `digest` is `sha256:` of the manifest bytes |
+| `package.json` | Generated: `name`, `version` (the manifest `semver`), `description` (the summary), `license`, `repository` and `author` of the source package, and `n8n`: the index line of the version without `version` and `manifest`, with the `fixtures` digest and the ed25519 `signatures` of the manifest bytes, and `digest` (`sha256:` of the manifest bytes) |
 | `manifest.json` | The exact manifest bytes, so the digest is the store digest |
 | `bundle.cjs` | The bundle, when the version has one |
 | `fixtures.json` | The fixtures that publish replayed, when the version has them |
-| `signatures.json` | The ed25519 signatures of the manifest bytes, in the form of an index line |
+| `signatures.json` | Only in a package from before the index fields of `n8n`: the ed25519 signatures of the manifest bytes |
 
 Publish adds only the versions that the registry does not have. It reads the packument. It
 skips a published version with the same `n8n.digest`, and refuses one with another digest
@@ -170,10 +170,13 @@ skips a published version with the same `n8n.digest`, and refuses one with anoth
 published version below it. Publish reads that manifest from its tarball, and checks it against
 its digest. During the POC the registry is a local Verdaccio: publish refuses `registry.npmjs.*`.
 
-n8n reads the same packages (`npmStoreReader`). For an id, it reads the packument and downloads
-the tarball of each version once. It makes the index line from `manifest.json` and
-`signatures.json`, and checks each blob against its digest: the manifest against `n8n.digest`,
-the bundle against `bundleHash`. It sends the token to the registry host only.
+n8n reads the same packages (`npmStoreReader`). For an id, it makes the index lines from the
+`n8n` fields of the packument, so a list of versions (e.g. the candidates of a save) downloads
+no tarball. It downloads the tarball of a version once, when it reads a blob of that version, and
+checks each blob against its digest: the manifest against `n8n.digest`, the bundle against
+`bundleHash`. For a package from before the index fields, it downloads the tarball to make the
+index line from `manifest.json` and `signatures.json`. It sends the token to the registry host
+only.
 
 | Variable | What |
 |---|---|

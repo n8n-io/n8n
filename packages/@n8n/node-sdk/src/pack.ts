@@ -25,16 +25,7 @@ import {
 	type NativeManifest,
 	type SdkManifest,
 } from './manifest';
-import {
-	DEFAULT_NPM_SCOPE,
-	npmDigestOf,
-	npmManifestTextOf,
-	npmNameOf,
-	npmRegistryOf,
-	npmStoreReader,
-	npmTarballFile,
-	npmVersionsOf,
-} from './npm';
+import { DEFAULT_NPM_SCOPE, npmDigestOf, npmRegistryOf, npmStoreReader } from './npm';
 import { evaluateBundle, isHostModule, SDK_MODULES, VALIDATOR_MODULE } from './runtime';
 import {
 	addToStore,
@@ -42,6 +33,7 @@ import {
 	manifestTextOf,
 	type SourcePackage,
 	type StoreManifest,
+	type StoreReader,
 	type StoreVersion,
 } from './store';
 import { matches } from './validate';
@@ -690,15 +682,6 @@ export interface PackedPackage {
 	readonly natives: readonly NativeManifest[];
 }
 
-/** The version of a HEAD that the registry has, or `undefined` when it has none. */
-async function publishedOf(registry: string, scope: string, { id, semver }: StoreManifest) {
-	const name = npmNameOf(id, scope);
-	const published = (await npmVersionsOf(registry, name)).find(
-		(entry) => entry.version === semver && entry.id === id,
-	);
-	return published && { name, published };
-}
-
 /**
  * What a published version must keep, next to the contract hash, to stand for a HEAD: the
  * bundle, or all of a credential but its old `sdk` text.
@@ -733,36 +716,36 @@ export function assertPublishedMatches(published: StoreManifest, head: StoreMani
  * match, see `assertPublishedMatches`. Any other change fails: it needs a new version.
  */
 async function shippedOf<M extends StoreManifest>(
-	registry: string,
-	scope: string,
+	reader: StoreReader,
 	local: { readonly manifest: M; readonly bundle?: string },
 	parse: (text: string) => M,
 	log: (line: string) => void,
 ): Promise<{ readonly manifest: M } & StoreVersion> {
 	const { manifest, bundle } = local;
-	const found = await publishedOf(registry, scope, manifest);
-	if (!found || found.published.digest === npmDigestOf(manifest)) {
+	const record = (await reader.records(manifest.id)).find(
+		({ version }) => version === manifest.semver,
+	);
+	if (!record || record.manifest === npmDigestOf(manifest)) {
 		return { manifest, manifestText: manifestTextOf(manifest), bundle };
 	}
-	const manifestText = await npmManifestTextOf(found.published, found.name);
-	const published = parse(manifestText);
+	const read = await reader.readManifest(record);
+	if (!read)
+		throw new UserError(`The npm registry has no tarball of ${record.id}@${record.version}`);
+	const published = parse(read.text);
 	assertPublishedMatches(published, manifest);
-	const response = await fetch(found.published.tarball ?? '', {
-		headers: process.env.NPM_TOKEN ? { authorization: `Bearer ${process.env.NPM_TOKEN}` } : {},
-	});
-	const tgz = new Uint8Array(await response.arrayBuffer());
+	const textOf = async (digest?: string) =>
+		digest === undefined ? undefined : (await reader.blob(digest))?.toString('utf8');
 	log(`${manifest.id}@${manifest.semver} has unpublished changes; bump the version to ship them`);
 	return {
 		manifest: published,
-		manifestText,
-		bundle: npmTarballFile(tgz, 'bundle.cjs'),
-		fixtures: npmTarballFile(tgz, 'fixtures.json'),
+		manifestText: read.text,
+		bundle: await textOf(record.bundle),
+		fixtures: await textOf(record.fixtures),
 	};
 }
 
 /** The SDK runtime of a `sha256:<hex>` digest from the registry, which a shipped manifest pins. */
-async function registrySdkOf(registry: string, scope: string, digest: string) {
-	const reader = npmStoreReader(registry, { scope });
+async function registrySdkOf(reader: StoreReader, digest: string) {
 	const record = (await reader.records(SDK_RUNTIME_ID)).find(({ bundle }) => bundle === digest);
 	const read = record && (await reader.readManifest(record));
 	const bundle = await reader.blob(digest);
@@ -795,14 +778,14 @@ export async function packPackage(
 	const credentialManifests = types.flatMap((type) => packCredential(type) ?? []);
 	const natives = sources.map(packNative);
 	const url = process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY;
-	const registry = url ? npmRegistryOf(url) : undefined;
 	const scope = process.env.N8N_NODE_CONTRACTS_NPM_SCOPE ?? DEFAULT_NPM_SCOPE;
+	const registry = url ? npmStoreReader(npmRegistryOf(url), { scope }) : undefined;
 	const ship = async <M extends StoreManifest>(
 		local: { readonly manifest: M; readonly bundle?: string },
 		parse: (text: string) => M,
 	) =>
 		registry
-			? await shippedOf(registry, scope, local, parse, log)
+			? await shippedOf(registry, local, parse, log)
 			: { ...local, manifestText: manifestTextOf(local.manifest) };
 	const [shipped, shippedCredentials, shippedNatives] = await Promise.all([
 		Promise.all(packed.map(async (version) => await ship(version, parseManifest))),
@@ -824,9 +807,7 @@ export async function packPackage(
 		),
 	];
 	const publishedSdks = registry
-		? await Promise.all(
-				pinnedSdks.map(async (digest) => await registrySdkOf(registry, scope, digest)),
-			)
+		? await Promise.all(pinnedSdks.map(async (digest) => await registrySdkOf(registry, digest)))
 		: [];
 	rmSync(outDir, { recursive: true, force: true });
 	await addToStore(outDir, [

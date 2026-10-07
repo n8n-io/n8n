@@ -31,7 +31,7 @@ export {
 	type VersionManifest,
 } from '../version';
 export { canonicalJson } from '../schema';
-export { npmNameOf, npmRegistryOf, npmStoreReader } from '../npm';
+export { npmNameOf, npmPackageOf, npmRegistryOf, npmStoreReader } from '../npm';
 export { checkCredentialType } from '../credentials';
 export {
 	parseCredentialManifest,

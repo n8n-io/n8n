@@ -11,6 +11,7 @@ import {
 	npmNameOf,
 	npmPackageOf,
 	npmRegistryOf,
+	npmStoreReader,
 	npmTarballFile,
 	npmVersionsOf,
 } from '../npm';
@@ -116,7 +117,7 @@ describe('npmRegistryOf', () => {
 });
 
 describe('npmPackageOf', () => {
-	it('holds the exact manifest bytes, the bundle, the fixtures and a signature', async () => {
+	it('holds the exact manifest bytes, the bundle, the fixtures and an index line with a signature', async () => {
 		await writeFile(dirs.entry, echoSource('1.2.3', 'input.text'));
 		const { manifest, bundle } = await packAction(dirs.entry, 'echo');
 		const files = npmPackageOf(
@@ -130,7 +131,6 @@ describe('npmPackageOf', () => {
 			'fixtures.json',
 			'manifest.json',
 			'package.json',
-			'signatures.json',
 		]);
 		expect(files['manifest.json']).toBe(manifestText);
 		expect(files['bundle.cjs']).toBe(bundle);
@@ -143,14 +143,53 @@ describe('npmPackageOf', () => {
 			n8n: {
 				id: 'demo.echoText',
 				kind: 'action',
+				nodeContract: manifest.nodeContract,
+				bundle: `sha256:${manifest.bundleHash}`,
+				contractHash: manifest.contractHash,
+				permissions: { egress: [], imports: [] },
+				fixtures: `sha256:${sha256(files['fixtures.json'] ?? '')}`,
+				signatures: [expect.objectContaining({ key: expect.any(String) })],
 				digest: `sha256:${sha256(manifestText)}`,
-				manifest: 'manifest.json',
-				bundle: 'bundle.cjs',
 			},
 		});
-		const signatures = JSON.parse(files['signatures.json'] ?? '') as StoreSignature[];
+		const { signatures } = (JSON.parse(files['package.json'] ?? '') as { n8n: Json }).n8n as {
+			signatures: StoreSignature[];
+		};
 		expect(verifyStoreSignature({ signatures }, manifestText, publicKey)).toBe(true);
 	});
+});
+
+describe('npmStoreReader', () => {
+	it('lists versions from the packument, and downloads a tarball only to read a version', async () => {
+		const urls: string[] = [];
+		const reader = npmStoreReader(fake().url, {
+			fetch: async (url, init) => {
+				urls.push(url);
+				return await fetch(url, init);
+			},
+		});
+		const put = async (version: string) => {
+			await writeFile(dirs.entry, echoSource(version, 'input.text'));
+			const packed = await packAction(dirs.entry, 'echo');
+			fake().put(npmPackageOf({ ...packed, fixtures: echoFixtures }, { privateKey }));
+			return packed;
+		};
+		await put('1.0.0');
+		const { manifest, bundle } = await put('1.0.1');
+		const tarballs = () => urls.filter((url) => url.endsWith('.tgz'));
+
+		const records = await reader.records('demo.echoText');
+		expect(records.map(({ version }) => version)).toEqual(['1.0.0', '1.0.1']);
+		expect(tarballs()).toEqual([]);
+
+		const v101 = records[1];
+		if (!v101) throw new Error('no 1.0.1');
+		const read = await reader.readManifest(v101);
+		expect(read?.text).toBe(manifestTextOf(manifest));
+		expect((await reader.blob(v101.bundle ?? ''))?.toString('utf8')).toBe(bundle);
+		expect(tarballs()).toEqual([expect.stringContaining('demo.echo-text-1.0.1.tgz')]);
+		expect(verifyStoreSignature(v101, read?.text ?? '', publicKey)).toBe(true);
+	}, 60_000);
 });
 
 describe('publishAction', () => {
