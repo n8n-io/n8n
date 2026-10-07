@@ -31,6 +31,13 @@ export const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 64 * 1024;
  */
 export const IMPORT_PACKAGE_MAX_PARTS = IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 2;
 
+/**
+ * `package` file + every documented selection form field, plus one because busboy rejects
+ * the request when the part count reaches (not exceeds) the limit.
+ */
+export const IMPORT_PACKAGE_SELECTION_MAX_PARTS =
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS.length + 2;
+
 export function createN8nPackageMulterOptions(globalConfig: GlobalConfig): multer.Options {
 	const maxFileSizeBytes = globalConfig.endpoints.payloadSizeMax * 1024 * 1024;
 	return {

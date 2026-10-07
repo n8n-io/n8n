@@ -3,24 +3,39 @@ import {
 	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from '../import-package-request.dto';
 
+function withPackageFile<T extends Record<string, unknown>>(fields: T) {
+	return {
+		package: {
+			fieldname: 'package',
+			originalname: 'export.n8np',
+			mimetype: 'application/gzip',
+			size: 5,
+			buffer: new Uint8Array([1, 2, 3, 4, 5]),
+		},
+		...fields,
+	};
+}
+
 describe('ImportPackageSelectionRequestDto', () => {
-	const base = {
+	const base = withPackageFile({
 		selectedProjectId: 'P1',
 		selectedWorkflowIds: '["WFA","WFB"]',
-	};
+	});
 
 	it('parses selectedWorkflowIds from a JSON array string and defaults the overridable policies', () => {
 		const result = ImportPackageSelectionRequestDto.safeParse(base);
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data).toEqual({
-				selectedProjectId: 'P1',
-				selectedWorkflowIds: ['WFA', 'WFB'],
-				deletedWorkflowIds: undefined,
-				workflowConflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				overwriteDeletionPolicy: 'archive',
-			});
+			expect(result.data).toEqual(
+				withPackageFile({
+					selectedProjectId: 'P1',
+					selectedWorkflowIds: ['WFA', 'WFB'],
+					deletedWorkflowIds: undefined,
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'source',
+					overwriteDeletionPolicy: 'archive',
+				}),
+			);
 		}
 	});
 
@@ -31,22 +46,26 @@ describe('ImportPackageSelectionRequestDto', () => {
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data).toEqual({
-				selectedProjectId: 'P1',
-				selectedWorkflowIds: ['WFA', 'WFB'],
-				deletedWorkflowIds: ['WFC'],
-				workflowConflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				overwriteDeletionPolicy: 'archive',
-			});
+			expect(result.data).toEqual(
+				withPackageFile({
+					selectedProjectId: 'P1',
+					selectedWorkflowIds: ['WFA', 'WFB'],
+					deletedWorkflowIds: ['WFC'],
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'source',
+					overwriteDeletionPolicy: 'archive',
+				}),
+			);
 		}
 	});
 
 	it('accepts an empty selectedWorkflowIds array', () => {
-		const result = ImportPackageSelectionRequestDto.safeParse({
-			selectedProjectId: 'P1',
-			selectedWorkflowIds: '[]',
-		});
+		const result = ImportPackageSelectionRequestDto.safeParse(
+			withPackageFile({
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: '[]',
+			}),
+		);
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.selectedWorkflowIds).toEqual([]);
@@ -64,6 +83,16 @@ describe('ImportPackageSelectionRequestDto', () => {
 		}
 	});
 
+	it('rejects a missing package', () => {
+		const { package: _package, ...rest } = base;
+		expect(ImportPackageSelectionRequestDto.safeParse(rest).success).toBe(false);
+	});
+
+	it('rejects an absent selectedWorkflowIds key', () => {
+		const { selectedWorkflowIds: _selectedWorkflowIds, ...rest } = base;
+		expect(ImportPackageSelectionRequestDto.safeParse(rest).success).toBe(false);
+	});
+
 	it.each([
 		{ name: 'missing (blank)', selectedWorkflowIds: '' },
 		{ name: 'invalid JSON', selectedWorkflowIds: 'not json' },
@@ -74,8 +103,9 @@ describe('ImportPackageSelectionRequestDto', () => {
 		{ name: 'a whitespace-only element', selectedWorkflowIds: '["WFA","   "]' },
 	])('rejects selectedWorkflowIds that is $name', ({ selectedWorkflowIds }) => {
 		expect(
-			ImportPackageSelectionRequestDto.safeParse({ selectedProjectId: 'P1', selectedWorkflowIds })
-				.success,
+			ImportPackageSelectionRequestDto.safeParse(
+				withPackageFile({ selectedProjectId: 'P1', selectedWorkflowIds }),
+			).success,
 		).toBe(false);
 	});
 
@@ -90,11 +120,14 @@ describe('ImportPackageSelectionRequestDto', () => {
 	});
 
 	it.each([
-		{ name: 'absent', request: { selectedWorkflowIds: '["WFA"]' } },
-		{ name: 'empty', request: { selectedProjectId: '', selectedWorkflowIds: '["WFA"]' } },
+		{ name: 'absent', request: withPackageFile({ selectedWorkflowIds: '["WFA"]' }) },
+		{
+			name: 'empty',
+			request: withPackageFile({ selectedProjectId: '', selectedWorkflowIds: '["WFA"]' }),
+		},
 		{
 			name: 'whitespace-only',
-			request: { selectedProjectId: '   ', selectedWorkflowIds: '["WFA"]' },
+			request: withPackageFile({ selectedProjectId: '   ', selectedWorkflowIds: '["WFA"]' }),
 		},
 	])('rejects a $name selectedProjectId', ({ request }) => {
 		expect(ImportPackageSelectionRequestDto.safeParse(request).success).toBe(false);
@@ -142,7 +175,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 		});
 	});
 
-	it('does not accept a target projectId/folderId, the locked cherry-pick policies, nor bindings', () => {
+	it('rejects a target projectId/folderId, the locked cherry-pick policies, and bindings', () => {
 		const result = ImportPackageSelectionRequestDto.safeParse({
 			...base,
 			projectId: 'proj-1',
@@ -152,16 +185,8 @@ describe('ImportPackageSelectionRequestDto', () => {
 			projectConflictPolicy: 'overwrite',
 			bindings: '{"credentials":{"a":"b"}}',
 		});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			// The DTO strips unknown fields instead of rejecting the request.
-			expect(result.data).not.toHaveProperty('projectId');
-			expect(result.data).not.toHaveProperty('folderId');
-			expect(result.data).not.toHaveProperty('folderConflictPolicy');
-			expect(result.data).not.toHaveProperty('tagConflictPolicy');
-			expect(result.data).not.toHaveProperty('projectConflictPolicy');
-			expect(result.data).not.toHaveProperty('bindings');
-		}
+		// The strict DTO rejects an unrecognized key instead of silently stripping it.
+		expect(result.success).toBe(false);
 	});
 
 	it('lists the selection fields as multipart form fields', () => {

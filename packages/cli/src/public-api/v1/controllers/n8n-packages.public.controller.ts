@@ -1,4 +1,9 @@
-import { ImportBlockedErrorDto, ImportPackageRequestDto, ImportResultDto } from '@n8n/api-types';
+import {
+	ImportBlockedErrorDto,
+	ImportPackageRequestDto,
+	ImportPackageSelectionRequestDto,
+	ImportResultDto,
+} from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -22,6 +27,7 @@ import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-c
 import {
 	IMPORT_PACKAGE_FIELD_SIZE_BYTES,
 	IMPORT_PACKAGE_MAX_PARTS,
+	IMPORT_PACKAGE_SELECTION_MAX_PARTS,
 } from '@/modules/n8n-packages/utils/import-package-upload';
 
 const tags = ['N8nPackage'];
@@ -60,6 +66,38 @@ const IMPORT_422_DESCRIPTION =
 	'Import blocked by non-conflict issues only — for example unresolved credentials or ' +
 	'variables, node types this instance does not have, a delete the caller may not perform, or ' +
 	'variable stubs whose creation would exceed the instance variable quota.';
+
+const IMPORT_SELECTION_SUMMARY = 'Beta: Import a selected subset of workflows from an n8n package';
+const IMPORT_SELECTION_DESCRIPTION =
+	'**Beta** — breaking changes may still occur without major version bump. ' +
+	'Imports a chosen subset of workflows from one source project of a gzip-compressed tar ' +
+	'package (`.n8np`), instead of the whole package. Send the archive as the multipart field ' +
+	'`package`. The import is **additive** (cherry-pick): it never removes a workflow the ' +
+	'selection omits. It creates or updates only the workflows named in `selectedWorkflowIds`, ' +
+	'and deletes only the destination workflows named in `deletedWorkflowIds`. ' +
+	'`selectedProjectId` names the single source project the selection is scoped to (its id as ' +
+	'it appears in the package). The selected workflows are written into the instance project ' +
+	'whose id matches that source project, which is created if it does not yet exist; there is ' +
+	'no separate target-project field. `selectedWorkflowIds` are source ids within that project; ' +
+	'ids that belong to another project are dropped. `deletedWorkflowIds` are destination ids in ' +
+	'the same project; an absent id is a tolerated no-op, and a delete needs the ' +
+	'`workflow:delete` scope. A delete id must not match the destination id of a selected ' +
+	'workflow, including when `workflowConflictPolicy=skip`. This overlap returns a 409 before ' +
+	'any writes. The package must be a project package (a workflow package is rejected with a ' +
+	'400). The cherry-pick conflict policies (folder, tag, and project) are fixed and are not ' +
+	'accepted here; only `workflowConflictPolicy`, `workflowIdPolicy`, and ' +
+	'`overwriteDeletionPolicy` are configurable. Maximum upload size is ' +
+	'`N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The caller is authorised through the ' +
+	'`workflow:import` scope.';
+
+const IMPORT_SELECTION_409_DESCRIPTION =
+	'Import blocked by at least one conflict among the issues — for example a workflow ' +
+	'source-id conflict under `workflowConflictPolicy=fail`, or a selected destination also ' +
+	'named for deletion (`workflow-removal-conflict`).';
+const IMPORT_SELECTION_422_DESCRIPTION =
+	'Import blocked by non-conflict issues only — for example a delete the caller may not ' +
+	'perform (`workflow-removal-forbidden`), unresolved credentials, or node types this ' +
+	'instance does not have.';
 
 @PublicApiController('/n8n-packages')
 export class N8nPackagesPublicController {
@@ -106,6 +144,61 @@ export class N8nPackagesPublicController {
 				reason: classifyPackageFailure(error),
 				...(projectId ? { projectId } : {}),
 				...(folderId ? { folderId } : {}),
+			});
+			throw error;
+		}
+	}
+
+	@Post('/import-selection')
+	@ApiKeyScope('workflow:import')
+	@ApiSummary(IMPORT_SELECTION_SUMMARY)
+	@ApiDescription(IMPORT_SELECTION_DESCRIPTION)
+	@ApiTags(tags)
+	@ApiResponse(200, ImportResultDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409, {
+		dto: ImportBlockedErrorDto,
+		description: IMPORT_SELECTION_409_DESCRIPTION,
+	})
+	@ApiErrorResponse(422, {
+		dto: ImportBlockedErrorDto,
+		description: IMPORT_SELECTION_422_DESCRIPTION,
+	})
+	async importPackageSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body({
+			mediaType: 'multipart/form-data',
+			uploadLimits: () => uploadLimits(IMPORT_PACKAGE_SELECTION_MAX_PARTS),
+		})
+		body: ImportPackageSelectionRequestDto,
+	): Promise<ImportResult> {
+		const {
+			package: file,
+			selectedProjectId,
+			selectedWorkflowIds,
+			deletedWorkflowIds,
+			...policies
+		} = body;
+
+		try {
+			return await this.n8nPackagesService.importPackageSelection(
+				{
+					user: req.user,
+					apiKeyScopes: req.tokenGrant?.apiKeyScopes,
+					packageBuffer: Buffer.from(file.buffer),
+					...policies,
+				},
+				{
+					selectedProjectId,
+					selectedWorkflowIds,
+					...(deletedWorkflowIds !== undefined ? { deletedWorkflowIds } : {}),
+				},
+			);
+		} catch (error) {
+			this.eventService.emit('n8n-package-import-failed', {
+				user: req.user,
+				reason: classifyPackageFailure(error),
 			});
 			throw error;
 		}
