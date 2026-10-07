@@ -318,6 +318,9 @@ export function toErrorWorkflowContext(
  * can re-verify its token after the protected resource stops resolving. It is listed
  * here so `maybeBindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
  * the identifier validates it against its own local schema.
+ *
+ * `binding` names the `trusted_source_identity` row (`sourceId`, `subject`) the caller
+ * was admitted through, so every resolve re-checks that the binding is still active.
  */
 export const N8NOAuthMetadataSchema = z.object({
 	source: z.literal('n8n-oauth'),
@@ -331,6 +334,7 @@ export const N8NOAuthMetadataSchema = z.object({
 			executeAccessWorkflowId: z.string().optional(),
 		})
 		.optional(),
+	binding: z.object({ sourceId: z.string(), subject: z.string() }).optional(),
 });
 
 export type IN8NOAuthMetadata = z.output<typeof N8NOAuthMetadataSchema>;

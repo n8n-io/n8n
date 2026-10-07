@@ -424,6 +424,35 @@ describe('ExecutionContextService', () => {
 			});
 		});
 
+		it('seals the trusted-source binding the caller came through', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const grant = { audiences: ['https://api/r'], executeAccessWorkflowId: 'workflow-1' };
+			const binding = { sourceId: 'source-1', subject: 'idp-alice' };
+
+			await service.buildTriggerIdentityCredentials(
+				'oauth-token-jwt',
+				'https://api/r',
+				grant,
+				'user-123',
+				binding,
+			);
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: {
+					source: 'n8n-oauth',
+					resource: 'https://api/r',
+					establishedAt: expect.any(Number),
+					executionPath: [],
+					grant,
+					subject: 'user-123',
+					binding,
+				},
+			});
+		});
+
 		it('omits the subject and grant when neither is provided (legacy token-only carrier)', async () => {
 			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
 
@@ -476,6 +505,22 @@ describe('ExecutionContextService', () => {
 			);
 
 			expect(pathOf(bound)).toEqual(['exec-root']);
+		});
+
+		it('keeps the grant and the binding through the bind', async () => {
+			const grant = { audiences: ['r'], executeAccessWorkflowId: 'wf-1' };
+			const binding = { sourceId: 'source-1', subject: 'idp-alice' };
+
+			const bound = await service.maybeBindExecutionId(
+				contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123', grant, binding }),
+				'exec-root',
+			);
+
+			expect(JSON.parse(bound.credentials as string).metadata).toMatchObject({
+				executionPath: ['exec-root'],
+				grant,
+				binding,
+			});
 		});
 
 		it('appends a child execution id, preserving the inherited path', async () => {

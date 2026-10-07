@@ -140,12 +140,15 @@ export class ExecutionContextService {
 	 * `identity` as evidence; `grant` lets the run re-verify that token after the
 	 * protected resource stops resolving (see {@link OAuthResourceGrant}), and `subject`
 	 * seals the resolved n8n user so a bound run resolves without re-verifying the token.
+	 * `binding` names the trusted-source identity the caller came through, so a resolve
+	 * fails once that binding is no longer active.
 	 */
 	async buildTriggerIdentityCredentials(
 		token: string,
 		resource: string,
 		grant?: OAuthResourceGrant,
 		subject?: string,
+		binding?: IN8NOAuthMetadata['binding'],
 	): Promise<string> {
 		const metadata: IN8NOAuthMetadata = {
 			source: 'n8n-oauth',
@@ -154,6 +157,7 @@ export class ExecutionContextService {
 			executionPath: [],
 			...(grant ? { grant } : {}),
 			...(subject ? { subject } : {}),
+			...(binding ? { binding } : {}),
 		};
 		const payload: ICredentialContext = {
 			version: 1,

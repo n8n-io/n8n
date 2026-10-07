@@ -6,7 +6,7 @@ import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
-import { UserRepository } from '@n8n/db';
+import { TrustedSourceGate } from '@n8n/inbound-auth';
 
 /**
  * The `source` values this identifier accepts, declared once so the schemas below and
@@ -50,6 +50,8 @@ const N8nOAuthMetadataSchema = z.object({
 	subject: z.string().optional(),
 	establishedAt: z.number().optional(),
 	executionPath: z.array(z.string()).optional(),
+	/** The `trusted_source_identity` row the caller came through; re-checked on every resolve. */
+	binding: z.object({ sourceId: z.string(), subject: z.string() }).optional(),
 });
 
 /** Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it. */
@@ -105,7 +107,7 @@ export class N8NIdentifier implements ITokenIdentifier {
 		private readonly logger: Logger,
 		private readonly authService: AuthService,
 		private readonly oauthTokenVerifierProxy: OAuthTokenVerifierProxy,
-		private readonly userRepository: UserRepository,
+		private readonly trustedSourceGate: TrustedSourceGate,
 	) {}
 
 	async validateOptions(_: Record<string, unknown>): Promise<void> {
@@ -148,32 +150,31 @@ export class N8NIdentifier implements ITokenIdentifier {
 					throw new CredentialResolverError('Sealed identity is not valid for this execution');
 				}
 
-				const grant = metadataResult.data.grant;
-				if (grant) {
-					// Re-take the grant's live workflow:execute decision (token-independent) so a
-					// principal whose access was revoked after sealing stops resolving. This also
-					// covers existence/disabled — a denied user resolves to `false`.
-					const authorized = await this.oauthTokenVerifierProxy.authorizeSealedGrant(userId, grant);
-					if (!authorized) {
-						throw new CredentialResolverError(
-							`Invalid OAuth token for resource ${metadataResult.data.resource}`,
-						);
-					}
-					return userId;
-				}
-
-				// Grant-less sealed carrier (legacy): no execute gate to re-take, so confirm the
-				// principal still exists and is enabled. Keep "missing" and "disabled"
-				// indistinguishable to the caller (no account enumeration) and never surface the
-				// internal user id in the error.
-				const user = await this.userRepository.findOneBy({ id: userId });
-				if (!user || user.disabled) {
+				const { grant, binding } = metadataResult.data;
+				if (!grant) {
+					// Every surface that seals a subject also seals a grant, so this is a bug upstream.
+					this.logger.warn('Sealed identity has a subject but no grant', {
+						resource: metadataResult.data.resource,
+					});
 					throw new CredentialResolverError(
 						`Invalid OAuth token for resource ${metadataResult.data.resource}`,
 					);
 				}
 
-				return user.id;
+				// Re-take the live decision without the token, so a principal that was disabled,
+				// lost workflow:execute, or was offboarded at its trusted source stops resolving.
+				// Keep every denial indistinguishable to the caller and never surface the user id.
+				const authorized = await this.trustedSourceGate.authorizeSealed({
+					userId,
+					grant,
+					binding,
+				});
+				if (!authorized) {
+					throw new CredentialResolverError(
+						`Invalid OAuth token for resource ${metadataResult.data.resource}`,
+					);
+				}
+				return userId;
 			}
 
 			// No sealed subject: verify the token. The grant is looked up afresh on every
@@ -206,11 +207,12 @@ export class N8NIdentifier implements ITokenIdentifier {
 	/**
 	 * Best-effort: the n8n user this identity represents, so the redaction layer can
 	 * grant that user access to their own run — including one that failed before a
-	 * private credential resolved. Identification only: unlike {@link resolve} it does
-	 * no execution binding or grant enforcement and never throws. Returns undefined
-	 * when the identity is not an n8n user or cannot be validated, so the run stays
-	 * redacted for everyone. Derives from the same carrier as resolution, so the
-	 * redaction owner cannot drift from the user the credentials resolve as.
+	 * private credential resolved. A sealed identity must still pass the grant and its
+	 * trusted-source binding, but unlike {@link resolve} this does no execution binding
+	 * and never throws. Returns undefined when the identity is not an n8n user or cannot
+	 * be validated, so the run stays redacted for everyone. Derives from the same carrier
+	 * as resolution, so the redaction owner cannot drift from the user the credentials
+	 * resolve as.
 	 */
 	async identify(context: ICredentialContext): Promise<string | undefined> {
 		const metadataResult = N8NIdentifierMetadataSchema.safeParse(context.metadata);
@@ -223,7 +225,16 @@ export class N8NIdentifier implements ITokenIdentifier {
 			}
 
 			if (metadataResult.data.source === 'n8n-oauth') {
-				if (metadataResult.data.subject) return metadataResult.data.subject;
+				const { subject, grant, binding } = metadataResult.data;
+				if (subject) {
+					if (!grant) return undefined;
+					const authorized = await this.trustedSourceGate.authorizeSealed({
+						userId: subject,
+						grant,
+						binding,
+					});
+					return authorized ? subject : undefined;
+				}
 				const verified = await this.oauthTokenVerifierProxy.verifyOAuthAccessToken(
 					context.identity,
 					metadataResult.data.resource,
