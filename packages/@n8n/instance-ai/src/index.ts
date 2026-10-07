@@ -181,6 +181,7 @@ export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
+export * from './automation';
 export {
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
