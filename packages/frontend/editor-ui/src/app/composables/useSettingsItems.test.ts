@@ -13,7 +13,7 @@ const isQueueModeEnabled = ref(false);
 const balance = ref<number>();
 const moduleSettings = ref<Record<string, unknown>>({});
 // `ui.store` stamps `available: true` onto every module item before exposing it.
-const settingsSidebarItems = ref<Array<{ id: string; available: boolean }>>([]);
+const settingsSidebarItems = ref<Array<{ id: string; available: boolean; order?: number }>>([]);
 const activeModules = ref<string[]>([]);
 const promotionsFlag = ref('false');
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
@@ -95,11 +95,11 @@ describe('useSettingsItems', () => {
 			activeModules.value = ['promotions'];
 			promotionsFlag.value = 'true';
 			vi.mocked(hasPermission).mockReturnValue(true);
-			// Module items arrive in module registration order.
+			// Module items.
 			settingsSidebarItems.value = [
-				{ id: 'settings-chat-hub', available: true },
-				{ id: 'settings-instance-ai', available: true },
-				{ id: 'settings-agents', available: true },
+				{ id: 'settings-chat-hub', available: true, order: 200 },
+				{ id: 'settings-instance-ai', available: true, order: 210 },
+				{ id: 'settings-agents', available: true, order: 220 },
 			];
 
 			const ids = useSettingsItems().settingsItems.value.map(({ id }) => id);
@@ -132,19 +132,52 @@ describe('useSettingsItems', () => {
 		});
 	});
 
+	describe('module item order', () => {
+		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
+
+		it('places a module item between the shell items with the nearest orders', () => {
+			settingsSidebarItems.value = [{ id: 'settings-module', available: true, order: 25 }];
+
+			const ids = idsOf();
+
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-personal') + 1);
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-users') - 1);
+		});
+
+		it('places a module item without order last', () => {
+			settingsSidebarItems.value = [{ id: 'settings-module', available: true }];
+
+			expect(idsOf().at(-1)).toBe('settings-module');
+		});
+
+		it('keeps registration order for equal orders', () => {
+			settingsSidebarItems.value = [
+				{ id: 'settings-first', available: true, order: 25 },
+				{ id: 'settings-second', available: true, order: 25 },
+				{ id: 'settings-third', available: true },
+				{ id: 'settings-fourth', available: true },
+			];
+
+			const ids = idsOf();
+
+			expect(ids.indexOf('settings-second')).toBe(ids.indexOf('settings-first') + 1);
+			expect(ids.indexOf('settings-fourth')).toBe(ids.indexOf('settings-third') + 1);
+		});
+	});
+
 	describe('the Context item', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 
-		it('sits directly after the module-registered MCP item', () => {
+		it('sorts between module items with a lower and a higher order', () => {
 			settingsSidebarItems.value = [
-				{ id: 'settings-mcp', available: true },
-				{ id: 'settings-chat', available: true },
+				{ id: 'settings-mcp', available: true, order: 290 },
+				{ id: 'settings-chat', available: true, order: 310 },
 			];
 
 			const ids = idsOf();
 
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-mcp') + 1);
-			expect(ids.indexOf('settings-context')).toBeLessThan(ids.indexOf('settings-chat'));
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-chat') - 1);
 		});
 
 		it('is hidden when the flag is off, because the route guard does not run here', () => {
@@ -153,13 +186,10 @@ describe('useSettingsItems', () => {
 			expect(idsOf()).not.toContain('settings-context');
 		});
 
-		it('falls back to the end when the MCP module is inactive', () => {
+		it('is last when no module item is registered', () => {
 			settingsSidebarItems.value = [];
 
-			const ids = idsOf();
-
-			expect(ids).not.toContain('settings-mcp');
-			expect(ids.at(-1)).toBe('settings-context');
+			expect(idsOf().at(-1)).toBe('settings-context');
 		});
 
 		it('carries the preview label', () => {

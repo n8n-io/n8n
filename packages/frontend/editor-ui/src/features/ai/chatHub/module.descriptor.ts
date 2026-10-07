@@ -195,6 +195,7 @@ export const ChatModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-chat-hub',
+			order: 200,
 			icon: 'message-circle',
 			label: i18n.baseText('settings.chatHub'),
 			position: 'top',
