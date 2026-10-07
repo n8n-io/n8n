@@ -319,6 +319,28 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
+	 * A container the branch holds under another project moved between projects.
+	 * Moving it would carry that project's workflows along, so a selective push
+	 * refuses it. A project's own directory may move (a rename).
+	 */
+	private assertNoCrossProjectContainerMoves(
+		branch: BranchLayout,
+		projectId: string,
+		moves: readonly ContainerMove[],
+	): void {
+		const projectTarget = branch.projects?.find((p) => p.id === projectId)?.target;
+		const foreign = moves.find(
+			({ from }) =>
+				projectTarget === undefined || !(from === projectTarget || isUnder(from, projectTarget)),
+		);
+		if (foreign) {
+			throw new BadRequestError(
+				`"${foreign.from}" belongs to another project on the branch. A selective push cannot move it. Push all projects instead.`,
+			);
+		}
+	}
+
+	/**
 	 * Overlay the staging export onto `exportFolder`. Pass `branch` from
 	 * `assertSelectionFitsBranch` for the same folder and selection.
 	 * File work runs on a copy, then the copy replaces the
@@ -351,6 +373,8 @@ export class WorkingCopyUpdater {
 			const otherProjectTargets = (existing.projects ?? [])
 				.filter((p) => p.id !== selection.projectId)
 				.map((p) => p.target);
+			const moves = containerMoves(existing, staging);
+			this.assertNoCrossProjectContainerMoves(existing, selection.projectId, moves);
 			const remaining: BranchLayout = {
 				...existing,
 				workflows: (existing.workflows ?? []).filter(
@@ -397,7 +421,7 @@ export class WorkingCopyUpdater {
 			}
 
 			// After the cleanups above, which address branch paths.
-			await this.relocateBranchContainers(workFolder, containerMoves(existing, staging));
+			await this.relocateBranchContainers(workFolder, moves);
 
 			await this.overlayDirectory(stagingFolder, workFolder, outOfScopeInStaging);
 			await writeImportManifest({
@@ -405,6 +429,7 @@ export class WorkingCopyUpdater {
 				staging,
 				sourceId: this.instanceSettings.instanceId,
 				selectedWorkflowIds: selection.workflowIds,
+				containerMoves: moves,
 			});
 
 			const backupPath = path.join(tempBase, `.${path.basename(exportFolder)}-bak-${randomUUID()}`);

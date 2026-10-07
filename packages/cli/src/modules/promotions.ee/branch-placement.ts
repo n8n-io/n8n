@@ -41,6 +41,12 @@ export function containerMoves(existing: BranchLayout, staging: PackageManifest)
 	return moves.sort((a, b) => b.from.length - a.from.length);
 }
 
+/** Rewrite a branch path through the deepest move that covers it. */
+export function remapPath(target: string, moves: readonly ContainerMove[]): string {
+	const move = moves.find((m) => target === m.from || isUnder(target, m.from));
+	return move ? `${move.to}${target.slice(move.from.length)}` : target;
+}
+
 /**
  * Workflow directories to remove before the overlay writes: deleted workflows,
  * and selected workflows the branch already holds (so a rename drops the old
