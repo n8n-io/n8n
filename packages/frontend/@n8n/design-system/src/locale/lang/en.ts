@@ -287,4 +287,13 @@ export default {
 	'aiAssistant.versionCard.restoreModal.days': '{count} days',
 	'aiAssistant.versionCard.restoreModal.showVersion': 'Show version',
 	'aiAssistant.versionCard.restoreModal.restore': 'Restore',
+	'commandBar.ariaLabel': 'Command bar',
+	'commandBar.placeholder': 'Search or type a command',
+	'commandBar.close': 'Close',
+	'commandBar.back': 'Back',
+	'commandBar.changeType': 'Change type',
+	'commandBar.openInNewTab': 'Open in new tab',
+	'commandBar.noResults': 'No results',
+	'commandBar.noResultsIn': 'No results in {type}',
+	'commandBar.searchAll': 'Search all',
 } as N8nLocale;
