@@ -12,6 +12,7 @@
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
     "build:unchecked": "turbo run build:unchecked",
+    "publish:contracts": "pnpm --workspace-concurrency=1 --filter @n8n/nodes-core --filter @n8n/nodes-integrations run publish:contracts",
     "build:n8n": "node scripts/build-n8n.mjs",
     "build:deploy": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",

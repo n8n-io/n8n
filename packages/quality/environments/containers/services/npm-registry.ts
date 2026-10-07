@@ -23,7 +23,10 @@ const PORT = 4873;
 /**
  * Offline Verdaccio: no uplink, so nothing is proxied from npmjs.org. Every
  * package a test installs has to be published into it first, which is the
- * point: tests control exactly which package versions exist.
+ * point: tests control exactly which package versions exist. Node contract
+ * packages (`@n8n-nodes/*`) are immutable. Verdaccio checks the unpublish
+ * permission for `npm deprecate` too, so only the user `n8n-maintainer` has it,
+ * to yank and revoke. An empty `unpublish` list falls back to `publish`.
  */
 const VERDACCIO_CONFIG = `
 storage: /verdaccio/storage/data
@@ -33,6 +36,10 @@ auth:
     file: /verdaccio/storage/htpasswd
     max_users: 100
 packages:
+  '@n8n-nodes/*':
+    access: $all
+    publish: $authenticated
+    unpublish: n8n-maintainer
   '**':
     access: $all
     publish: $authenticated

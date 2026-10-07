@@ -63,6 +63,38 @@ credential types come from `node.credential`. `new` writes an `AGENTS.md` that e
 `--credential-env TODO` reads the field `apiKey` from `TODO_API_KEY`.
 `--credential-file` reads `{ "type": "todoApi", "data": { "apiKey": "..." } }`.
 
+## Local npm registry
+
+During the POC, contract versions go to a local Verdaccio only. Run these steps from the repository root:
+
+```sh
+# 1. Start Verdaccio. Without TESTCONTAINERS_RYUK_DISABLED, the container stops when the command exits.
+TESTCONTAINERS_RYUK_DISABLED=true pnpm --filter n8n-containers services --services npmRegistry
+export N8N_NODE_CONTRACTS_NPM_REGISTRY=http://localhost:<port>  # the URL that step 1 prints
+
+# 2. Get a token. Each start gives an empty registry, so do this step after each start.
+export NPM_TOKEN=$(curl -s -X PUT -H 'content-type: application/json' \
+  -d '{"name":"n8n-maintainer","password":"n8n-maintainer"}' \
+  "$N8N_NODE_CONTRACTS_NPM_REGISTRY/-/user/org.couchdb.user:n8n-maintainer" \
+  | sed -n 's/.*"token": *"\([^"]*\)".*/\1/p')
+
+# 3. Make a signing key one time.
+openssl genpkey -algorithm ed25519 -out ~/n8n-contracts-dev.pem
+export N8N_NODE_CONTRACTS_SIGNING_KEY_FILE=~/n8n-contracts-dev.pem
+
+# 4. Publish the HEAD of each contract of nodes-core and nodes-integrations.
+pnpm publish:contracts
+```
+
+A second `pnpm publish:contracts` publishes only the new versions. Start n8n with
+`N8N_NODE_CONTRACTS_NPM_REGISTRY` set, and it lists and runs the registry versions. Stop the
+registry with `pnpm --filter n8n-containers services:clean`. This deletes all versions.
+
+The registry refuses an unpublish of an `@n8n-nodes/*` package. Verdaccio ties `npm deprecate` to
+the unpublish permission, so only `n8n-maintainer` can yank or revoke
+(`pnpm --filter @n8n/nodes-core publish:contracts yank <id>@<version> <reason>`). That user must
+not unpublish a contract package.
+
 ## Credentials
 
 ```ts
