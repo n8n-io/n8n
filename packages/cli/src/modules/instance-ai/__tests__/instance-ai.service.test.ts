@@ -274,7 +274,7 @@ import {
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
-import { InstanceAiSandboxService } from '../sandbox';
+import { AssistantSandboxWorkspaceSource, InstanceAiSandboxService } from '../sandbox';
 
 // The service reads Agents module services through getters. Tests build the
 // service with `Object.create` and assign doubles, so turn the getters into
@@ -544,6 +544,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setupPanelByThread: Map<string, boolean>;
 			schedulePlannedTasks: Mock;
 			sandboxService: InstanceAiSandboxService;
+			workspaceSource: AssistantSandboxWorkspaceSource;
 			browserSessionService: { findMcpServer: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: Mock };
@@ -621,6 +622,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+		});
+		service.workspaceSource = new AssistantSandboxWorkspaceSource(service.sandboxService, {
+			isAvailable: () => service.settingsService.getSandboxStatus().workflowBuilderAvailable,
+			resolveConfig: async (user) => await service.sandboxService.resolveSandboxConfig(user),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -883,6 +888,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setupPanelByThread: Map<string, boolean>;
 			schedulePlannedTasks: Mock;
 			sandboxService: InstanceAiSandboxService;
+			workspaceSource: AssistantSandboxWorkspaceSource;
 			browserSessionService: { findMcpServer: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: Mock };
@@ -955,6 +961,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+		});
+		service.workspaceSource = new AssistantSandboxWorkspaceSource(service.sandboxService, {
+			isAvailable: () => service.settingsService.getSandboxStatus().workflowBuilderAvailable,
+			resolveConfig: async (user) => await service.sandboxService.resolveSandboxConfig(user),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -2393,7 +2403,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			clear: Mock;
 		};
 		memoryTaskRegistry: { clearThread: Mock };
-		sandboxService: { destroySandbox: Mock };
+		systemAgents: { destroyThreadWorkspace: Mock };
 		temporaryWorkflowService: { reapForThreadCleanup: Mock };
 		logger: { warn: Mock };
 		clearThreadState: (threadId: string) => Promise<void>;
@@ -2417,7 +2427,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			clear: vi.fn(),
 		};
 		service.memoryTaskRegistry = { clearThread: vi.fn() };
-		service.sandboxService = { destroySandbox: vi.fn(async () => {}) };
+		service.systemAgents = { destroyThreadWorkspace: vi.fn(async () => {}) };
 		service.temporaryWorkflowService = { reapForThreadCleanup: vi.fn(async () => {}) };
 		service.logger = { warn: vi.fn() };
 
@@ -2426,6 +2436,22 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('clearThreadState hands the sandbox delete to the Agents runtime', async () => {
+		const service = buildService();
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return { isActive: () => false };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+
+		await service.clearThreadState('thread-a');
+
+		expect(service.systemAgents.destroyThreadWorkspace).toHaveBeenCalledWith(
+			'n8n-assistant',
+			'thread-a',
+			undefined,
+		);
 	});
 
 	it('clearThreadState deletes agent-builder sessions when the agents module is active', async () => {

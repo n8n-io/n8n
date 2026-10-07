@@ -16,14 +16,17 @@ import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
 
-interface SystemAgentTurnBase {
+interface SystemAgentTurnBase<TWorkspace> {
 	user: User;
 	thread: AgentExecutionThread;
 	resourceId: string;
 	abortSignal: AbortSignal;
+	/** The lease from the provider's workspace source, when it has one. */
+	workspace?: TWorkspace;
 }
 
-export interface SystemAgentStartTurn extends SystemAgentTurnBase {
+export interface SystemAgentStartTurn<TWorkspace = unknown>
+	extends SystemAgentTurnBase<TWorkspace> {
 	type: 'start';
 	/** Execution id when the queue admitted the turn. */
 	executionId?: string;
@@ -33,7 +36,8 @@ export interface SystemAgentStartTurn extends SystemAgentTurnBase {
 	options: SystemAgentTurnOptions;
 }
 
-export interface SystemAgentResumeTurn extends SystemAgentTurnBase {
+export interface SystemAgentResumeTurn<TWorkspace = unknown>
+	extends SystemAgentTurnBase<TWorkspace> {
 	type: 'resume';
 	runId: string;
 	toolCallId: string;
@@ -42,7 +46,9 @@ export interface SystemAgentResumeTurn extends SystemAgentTurnBase {
 	resumeData: unknown;
 }
 
-export type SystemAgentTurn = SystemAgentStartTurn | SystemAgentResumeTurn;
+export type SystemAgentTurn<TWorkspace = unknown> =
+	| SystemAgentStartTurn<TWorkspace>
+	| SystemAgentResumeTurn<TWorkspace>;
 
 export type SystemAgentTurnStatus = 'completed' | 'suspended' | 'errored' | 'cancelled';
 
@@ -68,17 +74,49 @@ export interface SystemAgentTurnHandle {
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
 }
 
+/** The sandbox scope of one thread of a system agent. */
+export interface SystemAgentWorkspaceScope {
+	agentId: string;
+	threadId: string;
+	projectId: string;
+	user: User;
+}
+
+/**
+ * Supplies the sandbox workspace of a system agent. The provider keeps its own
+ * sandbox identity, images and lifecycle. The runtime only reports when a turn
+ * starts and ends, and when a thread is deleted. The lease is opaque to the
+ * runtime: it passes it to `prepareTurn` and back to `release`.
+ */
+export interface SystemAgentWorkspaceSource<TWorkspace = unknown> {
+	/**
+	 * The workspace lease for one turn. Do not start a sandbox here: start it on
+	 * first use, so turns that do not use the sandbox stay cheap.
+	 */
+	acquire(scope: SystemAgentWorkspaceScope): Promise<TWorkspace | undefined>;
+	/** The turn settled. The source can let the sandbox sleep or drop cached handles. */
+	release?(
+		scope: SystemAgentWorkspaceScope,
+		workspace: TWorkspace,
+		outcome: SystemAgentTurnOutcome,
+	): Promise<void>;
+	/** The thread was deleted. Delete its sandbox. */
+	destroy?(scope: { agentId: string; threadId: string; userId?: string }): Promise<void>;
+}
+
 /**
  * A code-defined, instance-level agent. The Agents runtime owns the queue,
  * steering, checkpoints, HITL resume and recording. The provider builds a
  * fresh runtime for each turn and decides who can use the agent.
  */
-export interface SystemAgentProvider {
+export interface SystemAgentProvider<TWorkspace = unknown> {
 	readonly agentId: string;
 	readonly name: string;
+	/** Sandbox workspace source. Without it, the agent's turns have no sandbox. */
+	readonly workspace?: SystemAgentWorkspaceSource<TWorkspace>;
 	/** Whether the user can use this agent in the given working project. */
 	authorize(user: User, projectId: string): Promise<boolean>;
-	prepareTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle>;
+	prepareTurn(turn: SystemAgentTurn<TWorkspace>): Promise<SystemAgentTurnHandle>;
 	/** Turn options for a message sent through the generic Agents chat endpoints. */
 	chatTurnOptions?(
 		user: User,

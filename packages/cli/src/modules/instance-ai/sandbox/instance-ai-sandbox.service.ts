@@ -526,6 +526,15 @@ export class InstanceAiSandboxService {
 		});
 	}
 
+	/**
+	 * Drop this process's handle for a thread. The remote sandbox stays: a later
+	 * turn on any main reattaches it by name, or creates a new one.
+	 */
+	forgetSandbox(threadId: string, reason: string): void {
+		const entry = this.sandboxes.get(threadId);
+		if (entry) this.evictSandboxEntry(threadId, entry, reason);
+	}
+
 	/** Destroy and remove the shared runtime workspace for a thread. */
 	async destroySandbox(
 		threadId: string,

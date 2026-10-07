@@ -24,6 +24,7 @@ import type {
 	SystemAgentProvider,
 	SystemAgentTurn,
 	SystemAgentTurnHandle,
+	SystemAgentWorkspaceSource,
 } from '../system-agent.types';
 
 const AGENT_ID = 'test-assistant';
@@ -60,7 +61,10 @@ function suspendedCheckpoint(resourceId = 'draft-chat:user-1') {
 	};
 }
 
-function setup(chunks: AgentExecutionStreamChunk[] = []) {
+function setup(
+	chunks: AgentExecutionStreamChunk[] = [],
+	workspace?: SystemAgentWorkspaceSource,
+) {
 	const registry = new SystemAgentRegistry();
 	const threadRepository = mock<AgentExecutionThreadRepository>();
 	const executionRepository = mock<AgentExecutionRepository>();
@@ -83,6 +87,7 @@ function setup(chunks: AgentExecutionStreamChunk[] = []) {
 		authorize: vi.fn(async () => true),
 		prepareTurn: vi.fn(async (_turn: SystemAgentTurn) => handle),
 		normalizeResumeData: vi.fn((data: unknown) => ({ normalized: data })),
+		...(workspace ? { workspace } : {}),
 	} satisfies SystemAgentProvider;
 	registry.register(provider);
 
@@ -95,6 +100,7 @@ function setup(chunks: AgentExecutionStreamChunk[] = []) {
 		yield* chunks;
 	});
 
+	const txRunner = mock<TransactionRunner>();
 	const service = new SystemAgentExecutionService(
 		mock<Logger>(),
 		registry,
@@ -105,7 +111,7 @@ function setup(chunks: AgentExecutionStreamChunk[] = []) {
 		messageQueue,
 		mock<AgentChatExecutionService>(),
 		checkpointStorage,
-		mock<TransactionRunner>(),
+		txRunner,
 		mock(),
 	);
 
@@ -121,8 +127,30 @@ function setup(chunks: AgentExecutionStreamChunk[] = []) {
 		turnExecutionService,
 		messageQueue,
 		checkpointStorage,
+		txRunner,
 	};
 }
+
+function workspaceSource() {
+	const lease = { id: 'lease-1' };
+	return {
+		lease,
+		source: {
+			acquire: vi.fn(async () => lease),
+			release: vi.fn(async () => {}),
+			destroy: vi.fn(async () => {}),
+		} satisfies SystemAgentWorkspaceSource<typeof lease>,
+	};
+}
+
+const suspendedChunk = {
+	type: 'tool-call-suspended',
+	runId: 'run-1',
+	toolCallId: 'tc-1',
+	toolName: 'ask-user',
+	input: {},
+	suspendPayload: { requestId: 'req-1' },
+} as unknown as AgentExecutionStreamChunk;
 
 function claimFor(options: Record<string, unknown> = {}): ClaimedAgentMessage {
 	return {
@@ -442,6 +470,95 @@ describe('SystemAgentExecutionService', () => {
 					send: vi.fn(),
 				}),
 			).rejects.toThrow('This action is no longer waiting for input');
+		});
+	});
+
+	describe('workspace source', () => {
+		const scope = { agentId: AGENT_ID, threadId: 'thread-1', projectId: 'project-1', user };
+
+		it('passes the acquired lease to the turn and releases it with the outcome', async () => {
+			const { source, lease } = workspaceSource();
+			const { service, provider } = setup([suspendedChunk], source);
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(source.acquire).toHaveBeenCalledWith(scope);
+			expect(provider.prepareTurn).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'start', workspace: lease }),
+			);
+			expect(source.release).toHaveBeenCalledWith(
+				scope,
+				lease,
+				expect.objectContaining({ status: 'suspended' }),
+			);
+		});
+
+		it('acquires a lease for a resume turn', async () => {
+			const { source, lease } = workspaceSource();
+			const { service, provider, checkpointStorage } = setup([textChunk], source);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+
+			const result = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+			});
+			await result.done;
+
+			expect(provider.prepareTurn).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'resume', workspace: lease }),
+			);
+			expect(source.release).toHaveBeenCalledWith(
+				scope,
+				lease,
+				expect.objectContaining({ status: 'completed' }),
+			);
+		});
+
+		it('does not release when the source gave no lease', async () => {
+			const { source } = workspaceSource();
+			source.acquire.mockResolvedValue(undefined as never);
+			const { service } = setup([textChunk], source);
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(source.release).not.toHaveBeenCalled();
+		});
+
+		it('keeps the turn result when the release fails', async () => {
+			const { source } = workspaceSource();
+			source.release.mockRejectedValue(new Error('sandbox gone'));
+			const { service, onSettled } = setup([textChunk], source);
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(onSettled).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
+		});
+
+		it('destroys the sandbox of a deleted thread', async () => {
+			const { source } = workspaceSource();
+			const { service, txRunner } = setup([], source);
+			txRunner.run.mockResolvedValue({ status: 'deleted' } as never);
+
+			await service.deleteThread(AGENT_ID, user, 'thread-1');
+
+			expect(source.destroy).toHaveBeenCalledWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
+		});
+
+		it('keeps a busy thread and its sandbox', async () => {
+			const { source } = workspaceSource();
+			const { service, txRunner } = setup([], source);
+			txRunner.run.mockResolvedValue({ status: 'busy' } as never);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(
+				'Stop the current turn',
+			);
+			expect(source.destroy).not.toHaveBeenCalled();
 		});
 	});
 

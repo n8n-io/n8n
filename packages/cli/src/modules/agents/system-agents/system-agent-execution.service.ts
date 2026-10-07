@@ -30,6 +30,7 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnStatus,
+	SystemAgentWorkspaceScope,
 } from './system-agent.types';
 
 function combineSignals(signal: AbortSignal, extra: AbortSignal | undefined): AbortSignal {
@@ -170,6 +171,25 @@ export class SystemAgentExecutionService {
 		if (result?.status === 'busy') {
 			throw new UserError('Stop the current turn before you delete this conversation');
 		}
+		await this.destroyThreadWorkspace(agentId, threadId, user.id);
+	}
+
+	/**
+	 * Delete the sandbox of a deleted thread through the provider's workspace
+	 * source. Hosts that delete threads on their own path call this too.
+	 */
+	async destroyThreadWorkspace(agentId: string, threadId: string, userId?: string): Promise<void> {
+		const source = this.registry.get(agentId)?.workspace;
+		if (!source?.destroy) return;
+		try {
+			await source.destroy({ agentId, threadId, userId });
+		} catch (error) {
+			this.logger.warn('Instance agent workspace destroy failed', { threadId, error });
+		}
+	}
+
+	private workspaceScope(thread: AgentExecutionThread, user: User): SystemAgentWorkspaceScope {
+		return { agentId: thread.agentId, threadId: thread.id, projectId: thread.projectId, user };
 	}
 
 	async isBusy(thread: AgentExecutionThread): Promise<boolean> {
@@ -265,12 +285,14 @@ export class SystemAgentExecutionService {
 		const provider = this.getProvider(thread.agentId);
 		signal.throwIfAborted();
 		const resourceId = payload.resourceId;
+		const workspace = await provider.workspace?.acquire(this.workspaceScope(thread, user));
 		const turn: SystemAgentTurn = {
 			type: 'start',
 			user,
 			thread,
 			resourceId,
 			abortSignal: signal,
+			workspace,
 			executionId: admission.executionId,
 			message: payload.message,
 			attachments: payload.attachments ?? [],
@@ -292,7 +314,7 @@ export class SystemAgentExecutionService {
 			attachments.length > 0 && typeof text === 'string'
 				? buildInboundUserMessage(text, attachments)
 				: text;
-		await this.runTurn(provider, thread, handle, send, admission, async () => ({
+		await this.runTurn(provider, thread, user, workspace, handle, send, admission, async () => ({
 			type: 'start',
 			input,
 			options: {
@@ -340,12 +362,14 @@ export class SystemAgentExecutionService {
 			throw new NotFoundError('Session not found');
 		}
 		const controller = new AbortController();
+		const workspace = await provider.workspace?.acquire(this.workspaceScope(thread, params.user));
 		const handle = await provider.prepareTurn({
 			type: 'resume',
 			user: params.user,
 			thread,
 			resourceId,
 			abortSignal: controller.signal,
+			workspace,
 			runId,
 			toolCallId: pending.toolCallId,
 			checkpointHostMetadata: checkpoint.persistence.hostMetadata ?? {},
@@ -365,6 +389,8 @@ export class SystemAgentExecutionService {
 		const done = this.runTurn(
 			provider,
 			thread,
+			params.user,
+			workspace,
 			handle,
 			params.send ?? (() => {}),
 			undefined,
@@ -478,6 +504,8 @@ export class SystemAgentExecutionService {
 	private async runTurn(
 		provider: SystemAgentProvider,
 		thread: AgentExecutionThread,
+		user: User,
+		workspace: unknown,
 		handle: SystemAgentTurnHandle,
 		send: (event: AgentSseEvent) => void,
 		admission: AgentExecutionAdmission | undefined,
@@ -524,6 +552,20 @@ export class SystemAgentExecutionService {
 					threadId: thread.id,
 					error: settleError,
 				});
+			}
+			if (workspace !== undefined && provider.workspace?.release) {
+				try {
+					await provider.workspace.release(this.workspaceScope(thread, user), workspace, {
+						status,
+						executionId,
+						error,
+					});
+				} catch (releaseError) {
+					this.logger.warn('Instance agent workspace release failed', {
+						threadId: thread.id,
+						error: releaseError,
+					});
+				}
 			}
 			if (status !== 'suspended' && status !== 'cancelled') {
 				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });

@@ -29,16 +29,22 @@ import {
 	type AssistantTurnDefaults,
 } from './assistant-turn-options';
 import { InstanceAiService } from './instance-ai.service';
+import type { AssistantSandboxLease } from './sandbox';
 
 /**
  * The n8n Assistant as an instance agent. The Agents runtime runs it; this
  * module only builds each turn and grants the Assistant its services.
  */
 @Service()
-export class AssistantAgentProvider implements SystemAgentProvider {
+export class AssistantAgentProvider implements SystemAgentProvider<AssistantSandboxLease> {
 	readonly agentId = ASSISTANT_AGENT_ID;
 
 	readonly name = ASSISTANT_AGENT_NAME;
+
+	/** The Assistant keeps its own sandbox lifecycle; the Agents runtime drives it. */
+	get workspace() {
+		return this.instanceAiService.workspaceSource;
+	}
 
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
@@ -52,7 +58,7 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 		return await userHasScopes(user, ['project:read'], false, { projectId });
 	}
 
-	async prepareTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle> {
+	async prepareTurn(turn: SystemAgentTurn<AssistantSandboxLease>): Promise<SystemAgentTurnHandle> {
 		if (turn.type === 'start' && turn.attachments.length > 0) {
 			// The model input refers to the stored files; the Agents runtime loads
 			// their bytes per model call. The bytes loaded here stay in memory for
@@ -68,7 +74,9 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 		return await this.instanceAiService.prepareAssistantTurn(turn);
 	}
 
-	private async loadFileAttachments(turn: Extract<SystemAgentTurn, { type: 'start' }>) {
+	private async loadFileAttachments(
+		turn: Extract<SystemAgentTurn<AssistantSandboxLease>, { type: 'start' }>,
+	) {
 		const files: InstanceAiFileAttachment[] = [];
 		for (const ref of turn.attachments) {
 			const attachment = await this.attachments.getForAgent(ref.id, {

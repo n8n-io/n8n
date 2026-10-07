@@ -9,7 +9,7 @@ import type {
 	AgentEventData,
 	MemoryTaskUsageReport,
 } from '@n8n/agents';
-import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -224,7 +224,11 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOutcome,
 } from '../agents/system-agents/system-agent.types';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import {
+	AssistantSandboxWorkspaceSource,
+	InstanceAiSandboxService,
+	type AssistantSandboxLease,
+} from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { isStreamTransportError } from './stream-transport-error';
 import {
@@ -605,6 +609,9 @@ export class InstanceAiService {
 	/** Owns the per-thread runtime sandbox/workspace lifecycle. */
 	private readonly sandboxService: InstanceAiSandboxService;
 
+	/** The Assistant sandbox, as the Agents runtime sees it. */
+	readonly workspaceSource: AssistantSandboxWorkspaceSource;
+
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
@@ -717,6 +724,15 @@ export class InstanceAiService {
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
 			},
+		});
+		this.workspaceSource = new AssistantSandboxWorkspaceSource(this.sandboxService, {
+			isAvailable: () => this.settingsService.getSandboxStatus().workflowBuilderAvailable,
+			resolveConfig: async (user, threadId) =>
+				await this.instanceAiErrorReporter.withBoundary(
+					'instance-ai-sandbox-setup',
+					{ threadId, userId: user.id },
+					async () => await this.sandboxService.resolveSandboxConfig(user),
+				),
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const restEndpoint = globalConfig.endpoints.rest;
@@ -1132,7 +1148,8 @@ export class InstanceAiService {
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
 		await this.deleteAgentBuilderSessions(threadId);
-		await this.sandboxService.destroySandbox(threadId, 'thread_cleanup', userId);
+		// The Agents runtime routes this to the Assistant workspace source.
+		await this.systemAgents.destroyThreadWorkspace(ASSISTANT_AGENT_ID, threadId, userId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 	}
 
@@ -1473,6 +1490,7 @@ export class InstanceAiService {
 		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
 		resumeAgentBuild = false,
 		turnOptions: Partial<AssistantTurnOptions> = {},
+		workspaceLease?: AssistantSandboxLease,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await this.resolveThreadProjectId(threadId);
@@ -1704,63 +1722,49 @@ export class InstanceAiService {
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
-		const sandboxStatus = this.settingsService.getSandboxStatus();
-		if (sandboxStatus.workflowBuilderAvailable) {
-			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
-				'instance-ai-sandbox-setup',
-				{ threadId, runId, userId: user.id, messageGroupId },
-				async () => await this.sandboxService.resolveSandboxConfig(user),
-			);
+		// Agents turns bring a lease from the workspace source. Planned-task
+		// dispatch runs outside a turn, so it gets its own lease.
+		const sandbox =
+			workspaceLease ??
+			(await this.workspaceSource.acquire({
+				agentId: ASSISTANT_AGENT_ID,
+				threadId,
+				projectId: boundProjectId,
+				user,
+			}));
+		if (sandbox) {
+			workspaceRoot = sandbox.workspaceRoot;
 
-			if (sandboxConfig.enabled) {
-				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
+			const scopeWorkspaceForAgent = async (
+				workspace: Workspace | undefined,
+			): Promise<Workspace | undefined> => {
+				if (!workspace) return undefined;
+				const root = await getWorkspaceRoot(workspace);
+				return createScopedWorkspace(workspace, root);
+			};
 
-				let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
-				const getSandboxEntry = async () => {
-					sandboxEntryPromise ??= this.sandboxService
-						.getOrCreateWorkspaceEntry(threadId, user)
-						.catch((error: unknown) => {
-							sandboxEntryPromise = undefined;
-							throw error;
-						});
-
-					return await sandboxEntryPromise;
-				};
-				const getSetupSandboxEntry = async () => {
-					return await this.sandboxService.getOrCreateWorkspace(threadId, user, context);
-				};
-
-				const scopeWorkspaceForAgent = async (
-					workspace: Workspace | undefined,
-				): Promise<Workspace | undefined> => {
-					if (!workspace) return undefined;
-					const root = await getWorkspaceRoot(workspace);
-					return createScopedWorkspace(workspace, root);
-				};
-
-				runtimeWorkspace = createLazyRuntimeWorkspace({
-					// Empty + stable across resumes: sandbox/filesystem guidance lives in
-					// the system prompt's `## Sandbox workspace` section. Passing '' here
-					// (instead of omitting) keeps the lazy workspace from falling back to
-					// resolution-dependent live `getInstructions()` text, which would
-					// shift the cached prompt prefix across rebuilds/resumes.
-					sandboxInstructions: '',
-					filesystemInstructions: '',
-					ensureWorkspace: async () =>
-						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
-				});
-				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
-					id: 'instance-ai-runtime-skill-workspace',
-					name: 'Instance AI runtime skill workspace',
-					ensureWorkspace: async () =>
-						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
-				});
-				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: allRuntimeSkills,
-					workspace: runtimeSkillWorkspace,
-					logger: this.logger,
-				});
-			}
+			runtimeWorkspace = createLazyRuntimeWorkspace({
+				// Empty + stable across resumes: sandbox/filesystem guidance lives in
+				// the system prompt's `## Sandbox workspace` section. Passing '' here
+				// (instead of omitting) keeps the lazy workspace from falling back to
+				// resolution-dependent live `getInstructions()` text, which would
+				// shift the cached prompt prefix across rebuilds/resumes.
+				sandboxInstructions: '',
+				filesystemInstructions: '',
+				ensureWorkspace: async () =>
+					await scopeWorkspaceForAgent((await sandbox.getSetupEntry(context))?.workspace),
+			});
+			const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
+				id: 'instance-ai-runtime-skill-workspace',
+				name: 'Instance AI runtime skill workspace',
+				ensureWorkspace: async () =>
+					await scopeWorkspaceForAgent((await sandbox.getEntry())?.workspace),
+			});
+			runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
+				source: allRuntimeSkills,
+				workspace: runtimeSkillWorkspace,
+				logger: this.logger,
+			});
 		}
 
 		context.workspace = runtimeWorkspace;
@@ -2745,7 +2749,9 @@ export class InstanceAiService {
 	}
 
 	/** Build one Assistant turn for the Agents runtime. */
-	async prepareAssistantTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle> {
+	async prepareAssistantTurn(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+	): Promise<SystemAgentTurnHandle> {
 		const options =
 			turn.type === 'start'
 				? readAssistantTurnOptions(turn.options)
@@ -2760,7 +2766,7 @@ export class InstanceAiService {
 	}
 
 	private async prepareStartTurn(
-		turn: Extract<SystemAgentTurn, { type: 'start' }>,
+		turn: Extract<SystemAgentTurn<AssistantSandboxLease>, { type: 'start' }>,
 		options: AssistantTurnOptions,
 	): Promise<SystemAgentTurnHandle> {
 		const { user, message } = turn;
@@ -2864,6 +2870,7 @@ export class InstanceAiService {
 			experimentGates,
 			false,
 			options,
+			turn.workspace,
 		);
 		const {
 			context,
@@ -3141,7 +3148,7 @@ export class InstanceAiService {
 	}
 
 	private async prepareResumeTurn(
-		turn: Extract<SystemAgentTurn, { type: 'resume' }>,
+		turn: Extract<SystemAgentTurn<AssistantSandboxLease>, { type: 'resume' }>,
 		options: AssistantTurnOptions,
 	): Promise<SystemAgentTurnHandle> {
 		const { user } = turn;
@@ -3183,6 +3190,7 @@ export class InstanceAiService {
 			undefined,
 			this.isAgentBuilderSuspension(pending?.toolName, pendingPayload),
 			options,
+			turn.workspace,
 		);
 		const { context, orchestrationContext, modelId } = environment;
 		const promptVersion = orchestrationContext.promptConfiguration?.version;
