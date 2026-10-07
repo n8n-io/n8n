@@ -3,6 +3,7 @@ packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
 packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
   s_8631ec10eb1199::t_e350ea01271b9a 116-120,135-136,145-146,156-161,166-170,175-179,183-191,196-208,213-219,222-226,231-236,266-277,284-301,306-312,316-321,325-334
   s_8631ec10eb1199::t_61ea1115959eb9 244-247,252-253
+  s_8631ec10eb1199::t_612166d6c8b60f 248-251,254-259
 packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
   s_8631ec10eb1199::t_e350ea01271b9a 15-33,35-363,365-418
 packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
