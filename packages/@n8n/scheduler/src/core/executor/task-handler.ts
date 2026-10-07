@@ -86,7 +86,8 @@ export function createDispatchReporter(onDispatch: () => void): DispatchReporter
  *
  * At the timeout, `signal` aborts with a `TaskTimeoutError` and the lease is no
  * longer renewed, whether or not the handler dispatched. A run that did not
- * dispatch counts as a failed attempt. A run that dispatched completes.
+ * dispatch counts as a failed attempt. A run that dispatched completes. A
+ * handler that returns cleanly after the abort still completes the occurrence.
  */
 export interface TaskHandler {
 	/** @param deadline The `performance.now()` time at which `signal` aborts with a `TaskTimeoutError`. */
