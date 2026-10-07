@@ -187,24 +187,20 @@ export function createRouteWatcher(
 	};
 }
 
-/** Short label for output: the route, with the steer for `clarify`, after the answered question. */
+/** Short label for output: the route, with the steer for `clarify` and `answer`, after the answered question. */
 export function routeLabel(resolution: RouteResolution): string {
-	const label =
-		resolution.route === 'clarify' ? `clarify:${resolution.steer ?? 'none'}` : resolution.route;
+	const { route, steer } = resolution;
+	const label = route === 'clarify' || route === 'answer' ? `${route}:${steer ?? 'none'}` : route;
 	return resolution.question ? `${routeLabel(resolution.question)}>${label}` : label;
 }
 
+// `<route>:agent` passes a steer toward an Agent; `<route>:open` passes any steer except workflow only.
 function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolution): boolean {
-	switch (token) {
-		case 'clarify':
-			return route === 'clarify';
-		case 'clarify:agent':
-			return route === 'clarify' && (steer === 'agent' || steer === 'both');
-		case 'clarify:open':
-			return route === 'clarify' && steer !== undefined && steer !== 'workflow';
-		default:
-			return route === token;
-	}
+	const [tokenRoute, tokenSteer] = token.split(':');
+	if (route !== tokenRoute) return false;
+	if (tokenSteer === 'agent') return steer === 'agent' || steer === 'both';
+	if (tokenSteer === 'open') return steer !== undefined && steer !== 'workflow';
+	return true;
 }
 
 /** The user proxy answers a question that the case accepts. */
