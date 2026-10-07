@@ -17,6 +17,15 @@ export {
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export {
+	ProjectOwnedResourceScopeResolverRegistry,
+	type ProjectOwnedResourceScopeResolver,
+} from './services/project-owned-resource-scope-resolver.registry';
+export {
+	ScopeAccessService,
+	type ScopeAccessRequest,
+	type ScopeAccessResource,
+} from './services/scope-access.service';
+export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
 } from './services/ownership-transfer-handler.registry';

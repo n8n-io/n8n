@@ -1,14 +1,17 @@
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { ProjectRelation, Role } from '../entities';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class ProjectRelationRepository extends Repository<ProjectRelation> {
-	constructor(dataSource: DataSource) {
-		super(ProjectRelation, dataSource.manager);
+export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ProjectRelation, dataSource.manager, transactionRunner);
 	}
 
 	async findPersonalOwnerEmails(projectIds: string[]): Promise<Map<string, string>> {
@@ -51,8 +54,8 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		return projectRelations.map((pr) => pr.projectId);
 	}
 
-	async getAccessibleProjectsByRoles(userId: string, roles: string[]) {
-		const projectRelations = await this.find({
+	async getAccessibleProjectsByRoles(userId: string, roles: string[], ctx: OperationContext = {}) {
+		const projectRelations = await this.managerFor(ctx).find(ProjectRelation, {
 			where: { userId, role: { slug: In(roles) } },
 		});
 

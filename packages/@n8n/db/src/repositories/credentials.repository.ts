@@ -73,6 +73,13 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		super(CredentialsEntity, dataSource.manager, transactionRunner);
 	}
 
+	async isInstanceCredential(credentialId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(CredentialsEntity, {
+			id: credentialId,
+			usageScope: 'instance',
+		});
+	}
+
 	async insertProjectCredentialWithOwner(
 		credential: Pick<
 			CredentialsEntity,

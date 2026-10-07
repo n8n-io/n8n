@@ -19,6 +19,7 @@ import {
 	ScopeRepository,
 	GLOBAL_ADMIN_ROLE,
 	isUniqueConstraintError,
+	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope, Role as RoleDTO, RoleNamespace } from '@n8n/permissions';
@@ -466,6 +467,18 @@ export class RoleService {
 		return loadRoles
 			? await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, loadRoles)
 			: await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
+	}
+
+	async rolesWithScopeInContext(
+		namespace: RoleNamespace,
+		scopes: Scope | Scope[],
+		context: OperationContext,
+	): Promise<string[]> {
+		return await this.rolesWithScope(
+			namespace,
+			scopes,
+			async () => await this.roleRepository.findAllInContext(context),
+		);
 	}
 
 	isRoleLicensed(role: string) {
