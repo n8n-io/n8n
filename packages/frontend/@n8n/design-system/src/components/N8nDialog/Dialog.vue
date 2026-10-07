@@ -52,6 +52,12 @@ export interface DialogProps {
 	 */
 	disableOutsidePointerEvents?: boolean;
 	/**
+	 * Close the dialog when the user clicks outside it.
+	 * Escape and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnOverlayClick?: boolean;
+	/**
 	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
@@ -98,6 +104,7 @@ withDefaults(defineProps<DialogProps>(), {
 	size: 'medium',
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
+	closeOnOverlayClick: true,
 	showCloseButton: true,
 	stacked: false,
 });
@@ -125,6 +132,7 @@ const handleOpenChange = (value: boolean) => {
 				:force-mount="forceMount"
 				:trap-focus="trapFocus"
 				:disable-outside-pointer-events="disableOutsidePointerEvents"
+				:close-on-overlay-click="closeOnOverlayClick"
 				:show-close-button="showCloseButton"
 				:aria-label="ariaLabel"
 				:aria-description="ariaDescription"

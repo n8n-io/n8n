@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import { useAttrs } from 'vue';
-
-defineOptions({ name: 'DialogBody', inheritAttrs: false });
-
-const attrs = useAttrs();
-
-function forwardedAttrs() {
-	const { class: _class, ...rest } = attrs;
-	return rest;
-}
+defineOptions({ name: 'DialogBody' });
 </script>
 
 <template>
-	<div v-bind="forwardedAttrs()" :class="[$style.body, attrs.class]" data-slot="dialog-body">
+	<div :class="$style.body" data-slot="dialog-body">
 		<slot />
 	</div>
 </template>

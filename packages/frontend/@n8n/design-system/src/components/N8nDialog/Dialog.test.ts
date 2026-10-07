@@ -541,6 +541,37 @@ describe('N8nDialog', () => {
 			});
 		});
 
+		describe('closeOnOverlayClick', () => {
+			async function clickOverlay() {
+				const dialog = document.querySelector('[role="dialog"]');
+				const overlay = dialog?.previousElementSibling;
+				if (!overlay) throw new Error('Dialog overlay was not rendered');
+				await userEvent.setup().click(overlay);
+			}
+
+			it('closes when the user clicks the overlay', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, queryByRole } = renderDialog();
+
+				await user.click(getByTestId('dialog-trigger'));
+				await clickOverlay();
+
+				await waitFor(() => {
+					expect(queryByRole('dialog')).not.toBeInTheDocument();
+				});
+			});
+
+			it('stays open when closeOnOverlayClick is false', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, getByRole } = renderDialog({ closeOnOverlayClick: false });
+
+				await user.click(getByTestId('dialog-trigger'));
+				await clickOverlay();
+
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+		});
+
 		describe('disableOutsidePointerEvents', () => {
 			it('should have disableOutsidePointerEvents enabled by default', async () => {
 				const user = userEvent.setup();

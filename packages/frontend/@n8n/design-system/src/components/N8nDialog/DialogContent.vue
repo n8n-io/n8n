@@ -36,6 +36,12 @@ export interface DialogContentProps {
 	 */
 	disableOutsidePointerEvents?: boolean;
 	/**
+	 * Close the dialog when the user clicks outside it.
+	 * Escape and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnOverlayClick?: boolean;
+	/**
 	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
@@ -65,6 +71,7 @@ const props = withDefaults(defineProps<DialogContentProps>(), {
 	size: 'medium',
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
+	closeOnOverlayClick: true,
 	showCloseButton: true,
 });
 
@@ -104,6 +111,9 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 function handleInteractOutside(e: Event) {
 	const target = e.target as HTMLElement | null;
 	if (target?.closest('.el-popper, .el-select-dropdown, .el-overlay')) {
+		e.preventDefault();
+	}
+	if (!props.closeOnOverlayClick) {
 		e.preventDefault();
 	}
 	emit('interactOutside', e);

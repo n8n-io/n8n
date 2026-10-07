@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import { useAttrs } from 'vue';
-
-defineOptions({ name: 'DialogFooter', inheritAttrs: false });
-
-const attrs = useAttrs();
-
-function forwardedAttrs() {
-	const { class: _class, ...rest } = attrs;
-	return rest;
-}
+defineOptions({ name: 'DialogFooter' });
 </script>
 
 <template>
-	<footer v-bind="forwardedAttrs()" :class="[$style.footer, attrs.class]" data-slot="dialog-footer">
+	<footer :class="$style.footer" data-slot="dialog-footer">
 		<slot />
 	</footer>
 </template>

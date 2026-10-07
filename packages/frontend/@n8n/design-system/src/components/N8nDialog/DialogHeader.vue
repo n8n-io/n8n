@@ -1,24 +1,17 @@
 <script setup lang="ts">
-import { computed, inject, useAttrs } from 'vue';
+import { computed, inject } from 'vue';
 
 import { dialogCloseButtonKey } from './dialogContext';
 
-defineOptions({ name: 'DialogHeader', inheritAttrs: false });
+defineOptions({ name: 'DialogHeader' });
 
-const attrs = useAttrs();
 const closeButton = inject(dialogCloseButtonKey, null);
 const showCloseButton = computed(() => closeButton?.show.value ?? false);
-
-function forwardedAttrs() {
-	const { class: _class, ...rest } = attrs;
-	return rest;
-}
 </script>
 
 <template>
 	<header
-		v-bind="forwardedAttrs()"
-		:class="[$style.header, showCloseButton && $style.headerWithClose, attrs.class]"
+		:class="[$style.header, showCloseButton && $style.headerWithClose]"
 		data-slot="dialog-header"
 	>
 		<slot />
