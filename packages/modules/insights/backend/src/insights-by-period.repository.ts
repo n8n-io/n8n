@@ -15,7 +15,10 @@ import { DateTime } from 'luxon';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
+import {
+	getDateRangesCommonTableExpressionQuery,
+	getDateRangesSelectQuery,
+} from './insights-by-period-query.helper';
 import { InsightsByPeriod } from './insights-by-period.entity';
 import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from './insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from './insights-shared';
@@ -592,11 +595,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate: Date;
 		endDate: Date;
 	}): Promise<DailyExecutionCounts[]> {
-		const cte = getDateRangesCommonTableExpressionQuery({
+		const firstDay = DateTime.fromJSDate(startDate, { zone: 'utc' }).startOf('day');
+		const cte = getDateRangesSelectQuery({
 			dbType,
-			startDate,
-			endDate,
-			timeZone: 'UTC',
+			prevStartDateTime: firstDay,
+			startDateTime: firstDay,
+			endDateTime: DateTime.fromJSDate(endDate, { zone: 'utc' }).plus({ days: 1 }).startOf('day'),
 		});
 		const periodStartExpr = this.getPeriodStartExpr('day', UTC_TIME_ZONE);
 

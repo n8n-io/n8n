@@ -665,6 +665,23 @@ describe('InsightsByPeriodRepository', () => {
 				]);
 			});
 
+			test('includes the whole end day when the end date is today', async () => {
+				vi.useFakeTimers({ toFake: ['Date'] });
+				vi.setSystemTime(new Date('2026-03-21T12:00:00.000Z'));
+				onTestFinished(() => {
+					vi.useRealTimers();
+				});
+				await seed(await newWorkflow(), [
+					['success', 1, '2026-03-20T10:00:00'],
+					['success', 2, '2026-03-21T15:00:00'],
+				]);
+
+				await expect(repository.getDailyExecutionCounts({ startDate, endDate })).resolves.toEqual([
+					{ day: '2026-03-20', total: 1, billable: null },
+					{ day: '2026-03-21', total: 2, billable: null },
+				]);
+			});
+
 			test('returns no row for a day without executions', async () => {
 				await seed(await newWorkflow(), [
 					['success', 1, '2026-03-20T10:00:00'],
