@@ -1,6 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { MAX_INTEGER_32BITS_SIGNED, type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
+import {
+	MAX_INTEGER_32BITS_SIGNED,
+	MAX_TASK_TIMEOUT_SECONDS,
+	type ScheduledJobMisfirePolicy,
+	Time,
+} from '@n8n/constants';
 import type {
 	EntityManager,
 	NewScheduledJob,
@@ -61,6 +66,11 @@ export interface ProvisionRequest {
 	misfireGraceSeconds?: number;
 	/** Retry ceiling stamped on each occurrence; omit to inherit the instance setting. */
 	maxAttempts?: number;
+	/**
+	 * How long one run of an occurrence may take before the executor stops it.
+	 * Omit to inherit the instance setting.
+	 */
+	timeoutSeconds?: number;
 	/**
 	 * How many of the job's occurrences may run at the same time. Omit or pass
 	 * `null` for no limit.
@@ -175,6 +185,7 @@ export class DurableJobProvisioner {
 	 * @throws {InvalidOwnerIdError} when the owner id is empty or too long to store.
 	 * @throws {InvalidOwnerMemberIdError} when the owner member id is empty or too long to store.
 	 * @throws {UserError} when the concurrency limit is not a whole number of at least 1.
+	 * @throws {UserError} when the timeout is not a whole number from 1 to the timer limit.
 	 * @returns what the call inserted, redefined, left unchanged and removed.
 	 */
 	async provision({ desired, ...scope }: ProvisionRequest): Promise<ProvisionSummary> {
@@ -251,6 +262,7 @@ export class DurableJobProvisioner {
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
 		maxAttempts: requestedMaxAttempts,
+		timeoutSeconds: requestedTimeoutSeconds,
 		concurrencyLimit: requestedConcurrencyLimit,
 	}: ProvisionScope): RunInProvisionTransaction {
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
@@ -258,6 +270,9 @@ export class DurableJobProvisioner {
 			owner,
 		);
 		const maxAttempts = requestedMaxAttempts ?? this.globalConfig.scheduler.maxAttempts;
+		const timeoutSeconds = resolveTimeoutSeconds(
+			requestedTimeoutSeconds ?? this.globalConfig.scheduler.taskTimeoutSeconds,
+		);
 		const concurrencyLimit = resolveConcurrencyLimit(requestedConcurrencyLimit);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
@@ -274,14 +289,20 @@ export class DurableJobProvisioner {
 				const existingRows = await this.jobs.findManyByOwner(manager, owner);
 				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
+				const outdatedTimeoutJobIds: number[] = [];
 				const outdatedPayloadJobIds: number[] = [];
 				for (const row of existingRows) {
 					const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
 					if (graceChanged) {
 						outdatedGraceJobIds.push(row.id);
 					}
+					const timeoutChanged = row.timeoutSeconds !== timeoutSeconds;
+					if (timeoutChanged) {
+						outdatedTimeoutJobIds.push(row.id);
+					}
 					if (
 						graceChanged ||
+						timeoutChanged ||
 						row.misfirePolicy !== misfirePolicy ||
 						row.maxAttempts !== maxAttempts ||
 						row.concurrencyLimit !== concurrencyLimit
@@ -298,6 +319,7 @@ export class DurableJobProvisioner {
 				// needs this to pick up a change to them on its own.
 				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
 					maxAttempts,
+					timeoutSeconds,
 					misfirePolicy,
 					misfireGraceSeconds,
 					concurrencyLimit,
@@ -309,6 +331,12 @@ export class DurableJobProvisioner {
 					manager,
 					outdatedGraceJobIds,
 					misfireGraceSeconds,
+				);
+				// A running occurrence keeps the timeout it was claimed with.
+				await this.tasks.updateTimeoutForPendingJobs(
+					manager,
+					outdatedTimeoutJobIds,
+					timeoutSeconds,
 				);
 				return await work({
 					findExisting: async () =>
@@ -330,6 +358,7 @@ export class DurableJobProvisioner {
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
 								maxAttempts,
+								timeoutSeconds,
 								misfirePolicy,
 								misfireGraceSeconds,
 								concurrencyLimit,
@@ -342,6 +371,7 @@ export class DurableJobProvisioner {
 							...scheduleColumns(schedule),
 							nextRunAt,
 							maxAttempts,
+							timeoutSeconds,
 							misfirePolicy,
 							misfireGraceSeconds,
 							concurrencyLimit,
@@ -454,6 +484,22 @@ function resolveConcurrencyLimit(requested: number | null | undefined): number |
 	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_CONCURRENCY_LIMIT) {
 		throw new UserError('Scheduled job concurrency limit is outside the range the column holds', {
 			extra: { concurrencyLimit: requested, maxConcurrencyLimit: MAX_CONCURRENCY_LIMIT },
+		});
+	}
+	return requested;
+}
+
+/**
+ * Check a timeout against what the executor can enforce: a whole number of seconds
+ * from 1 to {@link MAX_TASK_TIMEOUT_SECONDS}.
+ *
+ * @throws {UserError} when the timeout falls outside that range. A timeout of 0
+ * stops every run as soon as it starts.
+ */
+function resolveTimeoutSeconds(requested: number): number {
+	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_TASK_TIMEOUT_SECONDS) {
+		throw new UserError('Scheduled job timeout is outside the range the scheduler enforces', {
+			extra: { timeoutSeconds: requested, maxTimeoutSeconds: MAX_TASK_TIMEOUT_SECONDS },
 		});
 	}
 	return requested;
