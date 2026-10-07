@@ -81,6 +81,7 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		'inbox',
 		'instance-ai',
 		'agents',
 		'scim',

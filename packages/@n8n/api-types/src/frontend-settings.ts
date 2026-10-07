@@ -6,6 +6,7 @@ import type {
 	ChatProviderSettingsDto,
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
+import type { InboxSettings } from './inbox';
 import type { InsightsDateRange } from './schemas/insights.schema';
 import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
@@ -239,6 +240,7 @@ export interface FrontendSettings {
 		enforced: boolean;
 	};
 	workflowReviews?: WorkflowReviewsPolicy;
+	inbox?: InboxSettings;
 	folders: {
 		enabled: boolean;
 	};

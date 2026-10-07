@@ -57,11 +57,11 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
-	it.each(['instance-ai', 'agents'])('should include %s by default', (moduleName) => {
+	it.each(['instance-ai', 'agents', 'inbox'])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
 	});
 
-	it.each(['instance-ai', 'agents'])(
+	it.each(['instance-ai', 'agents', 'inbox'])(
 		'should allow opting out of the default %s module via env var',
 		(moduleName) => {
 			process.env.N8N_DISABLED_MODULES = moduleName;
@@ -102,6 +102,7 @@ describe('eligibleModules', () => {
 			'runtime-credentials',
 			'mcp-registry',
 			'workflow-reviews',
+			'inbox',
 			'instance-ai',
 			'agents',
 			'scim',
@@ -142,6 +143,7 @@ describe('eligibleModules', () => {
 			'runtime-credentials',
 			'mcp-registry',
 			'workflow-reviews',
+			'inbox',
 			'instance-ai',
 			'agents',
 			'scim',

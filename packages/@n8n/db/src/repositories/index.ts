@@ -126,7 +126,7 @@ export {
 export { WorkflowReviewLifecycleRepository } from './workflow-review-lifecycle.repository';
 export {
 	WorkflowReviewInboxRepository,
-	type InboxCursor,
+	type WorkflowReviewInboxBoundary,
 	type InboxVisibility,
 } from './workflow-review-inbox.repository';
 export {

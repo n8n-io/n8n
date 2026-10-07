@@ -4,13 +4,13 @@ import { MCPModule } from '@n8n/frontend-module-mcp/mcp.module';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
-import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descriptor';
 import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 import { OtelModule } from '@n8n/frontend-module-otel';
 import { InsightsModule } from '@n8n/frontend-module-insights/insights.module';
 import { PromotionsModule } from '@/features/integrations/promotions.ee/module.descriptor';
 import { ContextModule } from '@/features/settings/context/module.descriptor';
 import { TypeAvailabilityPoliciesModule } from '@n8n/frontend-module-type-availability-policies';
+import { InboxModule } from '@n8n/frontend-module-inbox';
 
 /**
  * The static list is the design, not a placeholder (design §9). n8n self-hosted
@@ -35,10 +35,10 @@ export const modules: FrontendModuleDescription[] = [
 	InstanceAiModule,
 	AgentsModule,
 	OtelModule,
-	WorkflowReviewsModule,
 	InstanceRegistryModule,
 	InsightsModule,
 	PromotionsModule,
 	ContextModule,
 	TypeAvailabilityPoliciesModule,
+	InboxModule,
 ];

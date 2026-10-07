@@ -12,6 +12,7 @@ import { useBackendStatus } from '@/app/composables/useBackendStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
+import { useInboxSync } from '@/app/composables/useInboxSync';
 import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
 import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
 // Experiment cleanup (119_surface_assistant_on_workflow_error)
@@ -67,6 +68,7 @@ useHistoryHelper(route, workflowDocumentId);
 
 // Initialize workflow diff routing management
 useWorkflowDiffRouting();
+useInboxSync();
 
 useTelemetryInitializer();
 

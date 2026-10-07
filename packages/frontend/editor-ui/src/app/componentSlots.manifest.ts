@@ -11,6 +11,13 @@ import { defineAsyncComponent } from 'vue';
  */
 export const registerComponentSlots = () => {
 	componentRegistry.register(
+		'workflow-diff',
+		defineAsyncComponent(
+			async () => await import('@/features/workflows/workflowDiff/WorkflowDiffSlot.vue'),
+		),
+	);
+
+	componentRegistry.register(
 		'project-filter',
 		defineAsyncComponent(
 			async () => await import('@/features/collaboration/projects/components/ProjectFilter.vue'),

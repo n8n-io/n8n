@@ -1,5 +1,6 @@
 import {
 	selfHealingResultContentSchema,
+	type InboxSelfHealingItem,
 	type SelfHealingExecutionReference,
 	type SelfHealingResultContent,
 	type SelfHealingResultDetail,
@@ -7,16 +8,20 @@ import {
 	type WorkflowSuggestionAppliedVersion,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
+import { RoleService } from '@n8n/backend-services';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
+	UserRepository,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { Scope } from '@n8n/permissions';
 import { z } from 'zod';
 
+import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import {
 	WorkflowSuggestionService,
@@ -62,7 +67,37 @@ export class SelfHealingResultService {
 		private readonly ownership: SharedWorkflowRepository,
 		private readonly executionReferences: SelfHealingExecutionReferenceService,
 		private readonly txRunner: TransactionRunner,
+		private readonly users: UserRepository,
+		private readonly roles: RoleService,
 	) {}
+
+	private async getInboxAccess(userId: string) {
+		const user = await this.users.findByIdWithRole(userId);
+		if (!user || user.disabled) {
+			throw new ForbiddenError('Workflow edit access is required.');
+		}
+		const scopes: Scope[] = ['workflow:read', 'workflow:update'];
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roles.rolesWithScope('project', scopes),
+			this.roles.rolesWithScope('workflow', scopes),
+		]);
+		return { user, scopes, projectRoles, workflowRoles };
+	}
+
+	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxSelfHealingItem[]> {
+		const rows = await this.results.listForInbox(await this.getInboxAccess(user.id), query);
+		return rows.map((row) => ({
+			...row,
+			type: 'self_healing_result',
+			createdAt: row.createdAt.toISOString(),
+			updatedAt: row.updatedAt.toISOString(),
+			completedAt: row.completedAt.toISOString(),
+		}));
+	}
+
+	async countForInbox(user: User) {
+		return await this.results.countForInbox(await this.getInboxAccess(user.id));
+	}
 
 	private async prepare(input: CompleteSelfHealingResult) {
 		const references = referenceSchema.parse(input);

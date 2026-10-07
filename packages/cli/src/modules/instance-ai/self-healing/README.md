@@ -73,11 +73,15 @@ Normal chat ownership and tool permissions apply. Do not copy the background con
 
 ## Availability
 
-Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to load review routes.
+Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup to load review routes.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
 The rollout flag is separate from the future switch for new investigations. Saved review services
 do not check investigation enablement or Assistant model availability.
 
-The inbox will provide result listing, pagination, counts, refresh, and seed examples.
+The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
+It reads counts through `countForInbox()`. Both use current editor access and original-project ownership.
+The source selects rows before applying the shared pagination boundary and limit.
+The shared API uses `GET /inbox` and `GET /inbox/summary`.
+Open and Closed derive from result dismissal and suggestion closure. Inbox reads do not change either state.
 The review UI will provide review screens and chat and editor navigation.
 The investigation producer will run investigations and submit completed results.

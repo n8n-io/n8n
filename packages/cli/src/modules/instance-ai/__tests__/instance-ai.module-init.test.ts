@@ -5,6 +5,9 @@ import { Service } from '@n8n/di';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
+import { InboxSourceRegistry } from '../../inbox/inbox-source.registry';
+import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
+
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -40,6 +43,9 @@ vi.mock('../instance-ai-event-relay.service', () => ({
 vi.mock('../event-bus/interrupted-run-sweeper', () => ({
 	InterruptedRunSweeper: vi.fn(),
 }));
+vi.mock('../self-healing/self-healing-result.service', () => ({
+	SelfHealingResultService: vi.fn(),
+}));
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
@@ -59,8 +65,10 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 });
 
 describe('InstanceAiModule.init', () => {
-	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
+	it('registers saved reviews only when self-healing is enabled', async () => {
+		const config = mockInstance(InstanceAiConfig, { selfHealingEnabled: false });
+		const sources = mockInstance(InboxSourceRegistry);
+		mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
 		mockInstance(SandboxSettingsService);
 		mockInstance(InstanceAiSettingsService);
@@ -75,13 +83,17 @@ describe('InstanceAiModule.init', () => {
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(loadResultController).not.toHaveBeenCalled();
+		expect(sources.register).not.toHaveBeenCalled();
 
-		config.workflowSuggestionsEnabled = true;
+		config.selfHealingEnabled = true;
 		await new InstanceAiModule().init();
 
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(loadResultController).toHaveBeenCalledOnce();
+		expect(sources.register).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'self_healing_result' }),
+		);
 	});
 
 	afterEach(() => {

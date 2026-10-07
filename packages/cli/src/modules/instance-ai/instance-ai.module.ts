@@ -31,8 +31,19 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
-		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
+		if (Container.get(InstanceAiConfig).selfHealingEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
+			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
+			const { SelfHealingResultService } = await import(
+				'./self-healing/self-healing-result.service.js'
+			);
+			const results = Container.get(SelfHealingResultService);
+			Container.get(InboxSourceRegistry).register({
+				type: 'self_healing_result',
+				isEnabled: async () => Container.get(InstanceAiConfig).selfHealingEnabled,
+				list: async (user, query) => await results.listForInbox(user, query),
+				count: async (user) => await results.countForInbox(user),
+			});
 			const { WorkflowSuggestionEventRelay } = await import(
 				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
 			);

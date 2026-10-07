@@ -26,6 +26,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { InboxService } from '@/modules/inbox/inbox.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -139,6 +140,7 @@ export class FrontendService {
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly inboxService: InboxService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -654,6 +656,9 @@ export class FrontendService {
 		} else {
 			delete this.settings.workflowReviews;
 		}
+		this.settings.inbox = this.moduleRegistry.isActive('inbox')
+			? await this.inboxService.getSettings()
+			: { enabled: false, availableTypes: [], failedTypes: [] };
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 

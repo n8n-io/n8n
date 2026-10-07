@@ -12,6 +12,7 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
+import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
@@ -196,6 +197,7 @@ describe('FrontendService', () => {
 	});
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+	const inboxService = mock<InboxService>();
 
 	const createMockService = () => {
 		Container.set(
@@ -229,6 +231,7 @@ describe('FrontendService', () => {
 				aiUsageService,
 				workflowRepository,
 				workflowReviewPolicyService,
+				inboxService,
 			),
 			license,
 		};
@@ -237,6 +240,7 @@ describe('FrontendService', () => {
 	beforeEach(() => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(false);
 		globalConfig.diagnostics.enabled = false;
 		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
@@ -270,6 +274,44 @@ describe('FrontendService', () => {
 	});
 
 	describe('getSettings', () => {
+		it('refreshes Inbox availability from registered sources on each request', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			inboxService.getSettings
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: ['workflow_review'],
+					failedTypes: [],
+				})
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				});
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: [],
+				failedTypes: ['workflow_review'],
+			});
+			expect(inboxService.getSettings).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not query Inbox sources when its module is inactive', async () => {
+			const { service } = createMockService();
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+			expect(inboxService.getSettings).not.toHaveBeenCalled();
+		});
+
 		it('should return frontend settings', async () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();

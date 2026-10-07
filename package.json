@@ -44,6 +44,7 @@
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
+    "seed:inbox": "node scripts/instance-seeding/seedInbox.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",
     "seed:account:check": "node scripts/instance-seeding/checkPreferenceProfile.mjs",
     "seed:test": "node --test scripts/instance-seeding/*.test.mjs",

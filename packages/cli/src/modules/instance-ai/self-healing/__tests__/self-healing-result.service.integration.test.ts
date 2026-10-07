@@ -682,3 +682,184 @@ it('returns report details without changing the result or workflow', async () =>
 	expect(await results.findOneByOrFail({ id: result.id })).toEqual(result);
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
+
+describe('Inbox source reads', () => {
+	it.each([
+		['fix_ready', true],
+		['needs_you', true],
+		['needs_you', false],
+		['could_not_fix', false],
+	] as const)(
+		'lists one compact row for %s with suggestion=%s',
+		async (outcome, withSuggestion) => {
+			const { user, original, result, input } = await fixture(outcome, withSuggestion);
+			const rows = await service.listForInbox(user, { state: 'open', limit: 10 });
+			expect(rows).toEqual([
+				{
+					type: 'self_healing_result',
+					id: result.id,
+					state: 'open',
+					projectId: result.projectId,
+					workflowId: original.id,
+					workflowName: original.name,
+					outcome,
+					summary: input.summary,
+					createdAt: result.createdAt.toISOString(),
+					updatedAt: result.updatedAt.toISOString(),
+					completedAt: result.completedAt.toISOString(),
+				},
+			]);
+			expect(await service.countForInbox(user)).toEqual({ open: 1, closed: 0 });
+		},
+	);
+
+	it('filters inaccessible rows before the limit and counts', async () => {
+		const visible = await fixture();
+		const hidden = await fixture();
+		await results.update(visible.result.id, { createdAt: new Date('2026-10-01T00:00:00Z') });
+		await results.update(hidden.result.id, { createdAt: new Date('2026-10-02T00:00:00Z') });
+
+		const rows = await service.listForInbox(visible.user, { state: 'open', limit: 1 });
+		expect(rows.map((row) => row.id)).toEqual([visible.result.id]);
+		expect(await service.countForInbox(visible.user)).toEqual({ open: 1, closed: 0 });
+	});
+
+	it('uses current roles when a globally readable user does not have update access', async () => {
+		const { result, original, project } = await fixture();
+		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const readOnlyRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+			roleType: 'global',
+		});
+		await Container.get(UserRepository).update(reviewer.id, { role: readOnlyRole });
+
+		expect(await service.listForInbox(reviewer, { state: 'open', limit: 10 })).toEqual([]);
+		expect(await service.countForInbox(reviewer)).toEqual({ open: 0, closed: 0 });
+		await expect(service.getDetail(reviewer, project.id, original.id, result.id)).rejects.toThrow();
+	});
+
+	it('includes direct workflow shares and removes revoked shares', async () => {
+		const { result, original, project } = await fixture();
+		const editor = await createUser();
+		await shareWorkflowWithUsers(original, [editor]);
+		expect(await service.listForInbox(editor, { state: 'open', limit: 10 })).toEqual([
+			expect.objectContaining({ id: result.id }),
+		]);
+		expect(await service.countForInbox(editor)).toEqual({ open: 1, closed: 0 });
+		await expect(
+			service.getDetail(editor, project.id, original.id, result.id),
+		).resolves.toBeDefined();
+
+		const personal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			editor.id,
+		);
+		await Container.get(SharedWorkflowRepository).delete({
+			workflowId: original.id,
+			projectId: personal.id,
+		});
+		expect(await service.listForInbox(editor, { state: 'open', limit: 10 })).toEqual([]);
+		expect(await service.countForInbox(editor)).toEqual({ open: 0, closed: 0 });
+	});
+
+	it('uses custom project scopes and requires both read and update', async () => {
+		const { user, result, original } = await fixture();
+		const editor = await createUser();
+		const team = await createTeamProject(undefined, user);
+		const customEditor = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
+		const customViewer = await createCustomRoleWithScopeSlugs(['workflow:read']);
+		await linkUserToProject(editor, team, customEditor.slug);
+		await Container.get(SharedWorkflowRepository).save({
+			workflowId: original.id,
+			projectId: team.id,
+			role: 'workflow:editor',
+		});
+		expect(await service.countForInbox(editor)).toEqual({ open: 1, closed: 0 });
+		expect(await service.listForInbox(editor, { state: 'open', limit: 10 })).toEqual([
+			expect.objectContaining({ id: result.id }),
+		]);
+		await linkUserToProject(editor, team, customViewer.slug);
+		expect(await service.listForInbox(editor, { state: 'open', limit: 10 })).toEqual([]);
+		expect(await service.countForInbox(editor)).toEqual({ open: 0, closed: 0 });
+	});
+
+	it('hides results after the workflow moves out of the saved project', async () => {
+		const { user, project, original } = await fixture();
+		const destination = await createTeamProject(undefined, user);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: original.id, projectId: project.id },
+			{ projectId: destination.id },
+		);
+		expect(await service.listForInbox(user, { state: 'open', limit: 10 })).toEqual([]);
+		expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 0 });
+	});
+
+	it('rejects a disabled user before listing or counting', async () => {
+		const { user } = await fixture();
+		await Container.get(UserRepository).update(user.id, { disabled: true });
+		await expect(service.listForInbox(user, { state: 'open', limit: 10 })).rejects.toThrow();
+		await expect(service.countForInbox(user)).rejects.toThrow();
+	});
+
+	it.each(['dismissed', 'applied', 'discarded', 'outdated'] as const)(
+		'derives Closed from the existing %s state',
+		async (state) => {
+			const { user, project, original, result } = await fixture(
+				state === 'dismissed' ? 'needs_you' : 'fix_ready',
+				state !== 'dismissed',
+			);
+			if (state === 'dismissed') await service.dismiss(user, project.id, original.id, result.id);
+			else if (state === 'applied')
+				await actions.apply(user, project.id, original.id, result.suggestionId!);
+			else if (state === 'discarded')
+				await actions.discard(user, project.id, original.id, result.suggestionId!);
+			else {
+				await workflows.update(original.id, { settings: { executionTimeout: 90 } });
+				await suggestionService.reconcileWorkflow(original.id);
+			}
+			expect(await service.listForInbox(user, { state: 'open', limit: 10 })).toEqual([]);
+			expect(await service.listForInbox(user, { state: 'closed', limit: 10 })).toEqual([
+				expect.objectContaining({ id: result.id, state: 'closed' }),
+			]);
+			expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 1 });
+		},
+	);
+
+	it('applies all shared boundary modes to tied result timestamps', async () => {
+		const { user, result, input } = await fixture();
+		const second = await service.complete(input);
+		const third = await service.complete(input);
+		const createdAt = new Date('2026-10-07T00:00:00.000Z');
+		for (const row of [result, second, third]) await results.update(row.id, { createdAt });
+		const all = await service.listForInbox(user, { state: 'open', limit: 10 });
+		const boundary = { createdAt, id: all[0].id };
+
+		expect(
+			await service.listForInbox(user, {
+				state: 'open',
+				limit: 10,
+				boundary: { mode: 'beforeTime', createdAt },
+			}),
+		).toEqual([]);
+		expect(
+			await service.listForInbox(user, {
+				state: 'open',
+				limit: 10,
+				boundary: { mode: 'atOrBeforeTime', createdAt },
+			}),
+		).toEqual(all);
+		expect(
+			await service.listForInbox(user, {
+				state: 'open',
+				limit: 10,
+				boundary: { mode: 'afterItem', ...boundary },
+			}),
+		).toEqual(all.slice(1));
+		await results.delete(boundary.id);
+		expect(
+			await service.listForInbox(user, {
+				state: 'open',
+				limit: 10,
+				boundary: { mode: 'afterItem', ...boundary },
+			}),
+		).toEqual(all.slice(1));
+	});
+});

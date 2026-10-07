@@ -39,7 +39,7 @@ const workflowValidationService = mockInstance(WorkflowValidationService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflow-reviews', 'workflows'],
 	enabledFeatures: ['feat:workflowReviews'],
-	modules: ['workflow-reviews'],
+	modules: ['workflow-reviews', 'inbox'],
 });
 
 let owner: User;
@@ -145,29 +145,29 @@ async function seedOrphanedOpenReview() {
 	return orphan;
 }
 
-describe('GET /workflow-review-requests/summary', () => {
+describe('GET /inbox/summary', () => {
 	test('counts open and closed reviews for the instance owner', async () => {
 		await seedInboxRequests();
 
-		const response = await ownerAgent.get('/workflow-review-requests/summary').expect(200);
+		const response = await ownerAgent.get('/inbox/summary').expect(200);
 
-		expect(response.body.data).toEqual({ open: 1, closed: 1 });
+		expect(response.body.data.counts).toEqual({ open: 1, closed: 1 });
 	});
 
 	test('counts the reviews an assigned reviewer was asked to look at', async () => {
 		await seedInboxRequests();
 
-		const response = await memberAgent.get('/workflow-review-requests/summary').expect(200);
+		const response = await memberAgent.get('/inbox/summary').expect(200);
 
-		expect(response.body.data).toEqual({ open: 1, closed: 1 });
+		expect(response.body.data.counts).toEqual({ open: 1, closed: 1 });
 	});
 
 	test('counts nothing for an uninvolved project member', async () => {
 		await seedInboxRequests();
 
-		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
+		const response = await viewerAgent.get('/inbox/summary').expect(200);
 
-		expect(response.body.data).toEqual({ open: 0, closed: 0 });
+		expect(response.body.data.counts).toEqual({ open: 0, closed: 0 });
 	});
 
 	test('counts a requester their own review even without publish scope', async () => {
@@ -178,9 +178,9 @@ describe('GET /workflow-review-requests/summary', () => {
 		});
 		await linkToNewWorkflow(ownRequest.id);
 
-		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
+		const response = await viewerAgent.get('/inbox/summary').expect(200);
 
-		expect(response.body.data).toEqual({ open: 1, closed: 0 });
+		expect(response.body.data.counts).toEqual({ open: 1, closed: 0 });
 	});
 
 	test('still counts an open review orphaned by a workflow hard delete until a sweep closes it', async () => {
@@ -188,28 +188,29 @@ describe('GET /workflow-review-requests/summary', () => {
 		await seedOrphanedOpenReview();
 
 		// Owner exercises the whole-inbox scope, member the involvement filter
-		const ownerResponse = await ownerAgent.get('/workflow-review-requests/summary').expect(200);
-		expect(ownerResponse.body.data).toEqual({ open: 2, closed: 1 });
+		const ownerResponse = await ownerAgent.get('/inbox/summary').expect(200);
+		expect(ownerResponse.body.data.counts).toEqual({ open: 2, closed: 1 });
 
-		const memberResponse = await memberAgent.get('/workflow-review-requests/summary').expect(200);
-		expect(memberResponse.body.data).toEqual({ open: 2, closed: 1 });
+		const memberResponse = await memberAgent.get('/inbox/summary').expect(200);
+		expect(memberResponse.body.data.counts).toEqual({ open: 2, closed: 1 });
 	});
 
-	test('refuses the counts once an admin turns reviews off', async () => {
+	test('omits review counts once an admin turns reviews off', async () => {
 		await policyService.set(false);
 
-		await ownerAgent.get('/workflow-review-requests/summary').expect(403);
+		const response = await ownerAgent.get('/inbox/summary').expect(200);
+		expect(response.body.data).toMatchObject({
+			counts: { open: 0, closed: 0 },
+			disabledSources: ['workflow_review'],
+		});
 	});
 });
 
-describe('GET /workflow-review-requests/inbox', () => {
+describe('GET /inbox', () => {
 	test('shows the instance owner every open review', async () => {
 		const { openRequest, openWorkflow } = await seedInboxRequests();
 
-		const response = await ownerAgent
-			.get('/workflow-review-requests/inbox')
-			.query({ state: 'open', limit: 15 })
-			.expect(200);
+		const response = await ownerAgent.get('/inbox').query({ state: 'open', limit: 15 }).expect(200);
 
 		expect(response.body.data.data).toHaveLength(1);
 		expect(response.body.data.data[0]).toMatchObject({
@@ -226,7 +227,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 	test('shows nothing to an uninvolved project member', async () => {
 		await seedInboxRequests();
 
-		const response = await viewerAgent.get('/workflow-review-requests/inbox').expect(200);
+		const response = await viewerAgent.get('/inbox').expect(200);
 
 		expect(response.body.data.data).toEqual([]);
 		expect(response.body.data.hasMore).toBe(false);
@@ -238,7 +239,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 		// Owner exercises the whole-inbox scope, member the involvement filter
 		const ownerResponse = await ownerAgent
-			.get('/workflow-review-requests/inbox')
+			.get('/inbox')
 			.query({ state: 'open', limit: 15 })
 			.expect(200);
 		expect(ownerResponse.body.data.data.map((row: { id: string }) => row.id).sort()).toEqual(
@@ -246,7 +247,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		);
 
 		const memberResponse = await memberAgent
-			.get('/workflow-review-requests/inbox')
+			.get('/inbox')
 			.query({ state: 'open', limit: 15 })
 			.expect(200);
 		expect(memberResponse.body.data.data.map((row: { id: string }) => row.id).sort()).toEqual(
@@ -258,7 +259,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		const { closedRequest } = await seedInboxRequests();
 
 		const response = await ownerAgent
-			.get('/workflow-review-requests/inbox')
+			.get('/inbox')
 			.query({ state: 'closed', limit: 15 })
 			.expect(200);
 
@@ -268,10 +269,11 @@ describe('GET /workflow-review-requests/inbox', () => {
 		]);
 	});
 
-	test('refuses everything once an admin turns reviews off', async () => {
+	test('omits review rows once an admin turns reviews off', async () => {
 		await policyService.set(false);
 
-		await ownerAgent.get('/workflow-review-requests/inbox').expect(403);
+		const response = await ownerAgent.get('/inbox').expect(200);
+		expect(response.body.data).toMatchObject({ data: [], disabledSources: ['workflow_review'] });
 	});
 
 	test('pages through the inbox with a cursor', async () => {
@@ -287,17 +289,14 @@ describe('GET /workflow-review-requests/inbox', () => {
 		);
 		await linkToNewWorkflow(secondRequest.id);
 
-		const firstPage = await ownerAgent
-			.get('/workflow-review-requests/inbox')
-			.query({ state: 'open', limit: 1 })
-			.expect(200);
+		const firstPage = await ownerAgent.get('/inbox').query({ state: 'open', limit: 1 }).expect(200);
 
 		expect(firstPage.body.data.data).toHaveLength(1);
 		expect(firstPage.body.data.hasMore).toBe(true);
 		expect(firstPage.body.data.nextCursor).toBeTruthy();
 
 		const secondPage = await ownerAgent
-			.get('/workflow-review-requests/inbox')
+			.get('/inbox')
 			.query({
 				state: 'open',
 				limit: 1,
@@ -327,10 +326,10 @@ describe('GET /workflow-review-requests/inbox', () => {
 			{},
 		);
 
-		const memberResponse = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
+		const memberResponse = await memberAgent.get('/inbox').expect(200);
 		expect(memberResponse.body.data.data).toEqual([]);
 
-		const ownerResponse = await ownerAgent.get('/workflow-review-requests/inbox').expect(200);
+		const ownerResponse = await ownerAgent.get('/inbox').expect(200);
 		expect(ownerResponse.body.data.data).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -353,7 +352,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		);
 		await linkToNewWorkflow(ownRequest.id, otherProject);
 
-		const response = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
+		const response = await memberAgent.get('/inbox').expect(200);
 
 		expect(response.body.data.data).toEqual([]);
 	});
@@ -363,10 +362,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		await linkUserToProject(projectAdmin, teamProject, 'project:admin');
 		const { openRequest } = await seedInboxRequests();
 
-		const response = await testServer
-			.authAgentFor(projectAdmin)
-			.get('/workflow-review-requests/inbox')
-			.expect(200);
+		const response = await testServer.authAgentFor(projectAdmin).get('/inbox').expect(200);
 
 		expect(response.body.data.data).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: openRequest.id })]),
@@ -386,10 +382,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		);
 		await linkToNewWorkflow(secondRequest.id);
 
-		const firstPage = await ownerAgent
-			.get('/workflow-review-requests/inbox')
-			.query({ state: 'open', limit: 1 })
-			.expect(200);
+		const firstPage = await ownerAgent.get('/inbox').query({ state: 'open', limit: 1 }).expect(200);
 		const cursor = firstPage.body.data.nextCursor as string;
 		const firstId = firstPage.body.data.data[0].id as string;
 
@@ -397,7 +390,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		await requestRepository.delete({ id: firstId });
 
 		const secondPage = await ownerAgent
-			.get('/workflow-review-requests/inbox')
+			.get('/inbox')
 			.query({ state: 'open', limit: 1, cursor })
 			.expect(200);
 
@@ -415,10 +408,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		});
 		await linkToNewWorkflow(request.id);
 
-		const response = await ownerAgent
-			.get('/workflow-review-requests/inbox')
-			.query({ state: 'open', limit: 15 })
-			.expect(200);
+		const response = await ownerAgent.get('/inbox').query({ state: 'open', limit: 15 }).expect(200);
 
 		const item = response.body.data.data.find((row: { id: string }) => row.id === request.id);
 		expect(item.requester).toEqual({
@@ -470,10 +460,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		await userRepository.delete({ id: departedCreator.id });
 		await userRepository.delete({ id: departedReviewer.id });
 
-		const response = await ownerAgent
-			.get('/workflow-review-requests/inbox')
-			.query({ state: 'open', limit: 15 })
-			.expect(200);
+		const response = await ownerAgent.get('/inbox').query({ state: 'open', limit: 15 }).expect(200);
 
 		const rows = response.body.data.data as Array<{
 			id: string;
@@ -496,6 +483,49 @@ describe('GET /workflow-review-requests/inbox', () => {
 		expect(withoutCreator.reviewers).toEqual([]);
 	});
 
+	test('includes authored and assigned reviews in one list', async () => {
+		const mine = await seedReview({ projectId: teamProject.id, author: member, title: 'Mine' });
+		const theirs = await seedReview({
+			projectId: teamProject.id,
+			author: owner,
+			title: 'Assigned',
+		});
+		await reviewerRepository.addReviewers(
+			{ workflowReviewRequestId: theirs.id, userIds: [member.id] },
+			{},
+		);
+		const response = await memberAgent.get('/inbox').expect(200);
+		expect(response.body.data.data.map((row: { id: string }) => row.id).sort()).toEqual(
+			[mine.id, theirs.id].sort(),
+		);
+	});
+
+	test('keeps co-authored reviews visible', async () => {
+		const request = await seedReview({
+			projectId: teamProject.id,
+			author: owner,
+			title: 'Co-authored',
+		});
+		await authorRepository.addAuthor(
+			{ workflowReviewRequestId: request.id, userId: member.id },
+			{},
+		);
+		const response = await memberAgent.get('/inbox').expect(200);
+		expect(response.body.data.data).toEqual([expect.objectContaining({ id: request.id })]);
+	});
+
+	test('shows a requester the review for a workflow shared only with them', async () => {
+		const sharedWorkflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(sharedWorkflow, [member]);
+		const request = await seedReview({
+			projectId: ownerProject.id,
+			workflowId: sharedWorkflow.id,
+			author: member,
+			title: 'Shared with me',
+		});
+		const response = await memberAgent.get('/inbox').expect(200);
+		expect(response.body.data.data).toEqual([expect.objectContaining({ id: request.id })]);
+	});
 	describe('category filter', () => {
 		/** Mirrors the create endpoint: a requester always gets an author row too. */
 		async function openReviewBy(
@@ -521,7 +551,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			query: Record<string, unknown>,
 		): Promise<{ ids: string[]; hasMore: boolean; nextCursor: string | null }> {
 			const response = await agent
-				.get('/workflow-review-requests/inbox')
+				.get('/inbox')
 				.query({ state: 'open', limit: 15, ...query })
 				.expect(200);
 			return {
@@ -701,15 +731,8 @@ describe('GET /workflow-review-requests/inbox', () => {
 			expect(authoredPage.nextCursor).toBeNull();
 		});
 
-		// The category filter ignores `state`, even though the editor sends it only
-		// for open reviews.
-		test('filters closed reviews by category too', async () => {
-			const closedMine = await openReviewBy(member.id, 'Closed mine', 'closed');
-			await openReviewBy(owner.id, 'Closed theirs', 'closed');
-
-			expect((await inbox(memberAgent, { state: 'closed', category: 'authored' })).ids).toEqual([
-				closedMine.id,
-			]);
+		test('rejects categories on the Closed list', async () => {
+			await memberAgent.get('/inbox').query({ state: 'closed', category: 'authored' }).expect(400);
 		});
 	});
 });

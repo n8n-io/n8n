@@ -343,7 +343,7 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
-			workflowSuggestionsEnabled: false,
+			selfHealingEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
@@ -800,10 +800,10 @@ describe('GlobalConfig', () => {
 	it.each([
 		['true', true],
 		['false', false],
-	])('should parse workflow suggestions enabled=%s', (value, expected) => {
-		process.env = { N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED: value };
+	])('should parse self-healing enabled=%s', (value, expected) => {
+		process.env = { N8N_INSTANCE_AI_SELF_HEALING_ENABLED: value };
 
-		expect(Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled).toBe(expected);
+		expect(Container.get(GlobalConfig).instanceAi.selfHealingEnabled).toBe(expected);
 	});
 
 	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {

@@ -10,6 +10,15 @@ import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-pr
 export class WorkflowReviewsModule implements ModuleInterface {
 	async init() {
 		await import('./workflow-review-requests.controller.js');
+		const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
+		const { WorkflowReviewInboxService } = await import('./workflow-review-inbox.service.js');
+		const inbox = Container.get(WorkflowReviewInboxService);
+		Container.get(InboxSourceRegistry).register({
+			type: 'workflow_review',
+			isEnabled: async () => await inbox.isInboxAvailable(),
+			list: async (user, query) => await inbox.listForInbox(user, query),
+			count: async (user) => await inbox.getInboxSummaryForUser(user),
+		});
 		const { WorkflowReviewPublishGuard } = await import(
 			'./workflow-review-publish-guard.service.js'
 		);

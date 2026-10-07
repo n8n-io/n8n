@@ -1,4 +1,21 @@
 {
+	"inbox.title": "Inbox",
+	"inbox.tabs.open": "Open",
+	"inbox.tabs.closed": "Closed",
+	"inbox.source.workflowReview": "Workflow review",
+	"inbox.outcome.fixReady": "Fix ready",
+	"inbox.outcome.needsAttention": "Needs attention",
+	"inbox.outcome.couldNotFix": "Could not fix",
+	"inbox.partial": "Some items couldn’t load. Retry to refresh the inbox.",
+	"inbox.loadError": "The inbox couldn’t load. Try again.",
+	"inbox.loadMore": "Load more",
+	"inbox.empty.open": "No open items",
+	"inbox.empty.closed": "No closed items",
+	"inbox.empty.body": "Workflow reviews and Assistant results will appear here",
+	"inbox.noSelection.title": "Select an item",
+	"inbox.noSelection.body": "Open a review or an Assistant result to see its details",
+	"inbox.resultUnavailable.title": "Result details are unavailable",
+	"inbox.resultUnavailable.body": "You can return to this result when its review view is available",
 	"_reusableBaseText": {
 		"cancel": "Cancel",
 		"codeNodeEditor": {

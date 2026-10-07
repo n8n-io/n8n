@@ -24,8 +24,7 @@ import {
 } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
-import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { INBOX_VIEW, useInboxStore } from '@n8n/frontend-module-inbox';
 import {
 	AGENT_N8N_CHAT_VIEW,
 	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
@@ -212,13 +211,22 @@ function onChatItemClick(item: RecentChatItem): void {
 	agentTelemetry.trackClickedSidebarItem({ item: 'chat', chatType: item.kind });
 }
 
-const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
+const inboxStore = useInboxStore();
+const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
+watch(
+	isInboxVisible,
+	(visible) => {
+		if (visible) void inboxStore.fetchSummary();
+	},
+	{ immediate: true },
+);
 
-const workflowReviews = computed<IMenuItem>(() => ({
-	id: 'workflow-reviews',
-	icon: 'message-square-text',
-	label: locale.baseText('workflowReviews.menu.title'),
-	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
+const inbox = computed<IMenuItem>(() => ({
+	id: 'inbox',
+	icon: 'inbox',
+	label: locale.baseText('inbox.title'),
+	route: { to: { name: INBOX_VIEW } },
+	notification: inboxStore.badgeCount !== null && inboxStore.badgeCount > 0,
 }));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
@@ -290,11 +298,11 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="isWorkflowReviewsNavVisible"
-				:item="workflowReviews"
+				v-if="isInboxVisible"
+				:item="inbox"
 				:compact="props.collapsed"
-				:active="sidebarActiveTabId === 'workflow-reviews'"
-				data-test-id="project-workflow-reviews-menu-item"
+				:active="sidebarActiveTabId === 'inbox'"
+				data-test-id="project-inbox-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

@@ -65,120 +65,64 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 		authorizationService.resolveInboxVisibility.mockResolvedValueOnce(visibility);
 	}
 
-	it('returns paginated data with hasMore and nextCursor', async () => {
+	it('returns ordered source rows without slicing or creating a public cursor', async () => {
 		mockVisibility();
-		const rows = [
+		const rows = ['second', 'first'].map((id) =>
 			mock<WorkflowReviewRequest>({
-				id: 'req-2',
+				id,
 				projectId: 'proj-1',
-				title: 'Second',
-				decision: 'pending',
+				title: id,
 				state: 'open',
-				createdAt: new Date('2024-01-02T00:00:00.000Z'),
-				updatedAt: new Date('2024-01-02T00:00:00.000Z'),
-			}),
-			mock<WorkflowReviewRequest>({
-				id: 'req-1',
-				projectId: 'proj-1',
-				title: 'First',
 				decision: 'pending',
-				state: 'open',
-				createdAt: new Date('2024-01-01T00:00:00.000Z'),
-				updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+				createdAt: new Date('2026-10-07T00:00:00.000Z'),
+				updatedAt: new Date('2026-10-07T00:00:00.000Z'),
 			}),
-		];
+		);
 		workflowReviewInboxRepository.findRequests.mockResolvedValue(rows);
 		workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
-			new Map([['req-2', { workflowName: 'Linked workflow', workflowVersionId: 'ver-2' }]]),
+			new Map([['second', { workflowName: 'Linked workflow', workflowVersionId: 'ver-2' }]]),
 		);
 
-		const result = await service.listForInbox(user, { limit: 1 });
+		const result = await service.listForInbox(user, { state: 'open', limit: 2 });
 
 		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith({
 			visibility: involvedVisibility,
 			state: 'open',
+			category: undefined,
 			limit: 2,
-			cursor: undefined,
+			boundary: undefined,
 		});
-		expect(result.data).toHaveLength(1);
-		expect(result.data[0]?.workflowName).toBe('Linked workflow');
-		expect(result.data[0]?.workflowVersionId).toBe('ver-2');
-		expect(result.hasMore).toBe(true);
-		// nextCursor encodes the last row's keyset boundary (createdAt + id).
-		const expectedCursor = Buffer.from('2024-01-02T00:00:00.000Z|req-2', 'utf8').toString(
-			'base64url',
-		);
-		expect(result.nextCursor).toBe(expectedCursor);
-		// Participants are only resolved for the page, never for the lookahead row.
-		expect(participantResolver.resolve).toHaveBeenCalledWith([rows[0]]);
+		expect(result.map((row) => row.id)).toEqual(['second', 'first']);
+		expect(result[0]).toMatchObject({ type: 'workflow_review', workflowName: 'Linked workflow' });
+		expect(participantResolver.resolve).toHaveBeenCalledWith(rows);
 	});
 
-	it('decodes the incoming cursor into a keyset boundary', async () => {
+	it.each([
+		{ mode: 'beforeTime', createdAt: new Date('2026-10-07T00:00:00.000Z') },
+		{ mode: 'atOrBeforeTime', createdAt: new Date('2026-10-07T00:00:00.000Z') },
+		{ mode: 'afterItem', createdAt: new Date('2026-10-07T00:00:00.000Z'), id: 'last' },
+	] as const)('passes the $mode boundary to its repository', async (boundary) => {
 		mockVisibility();
 		workflowReviewInboxRepository.findRequests.mockResolvedValue([]);
 		workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 			new Map(),
 		);
-		const cursor = Buffer.from('2024-01-02T00:00:00.000Z|req-2', 'utf8').toString('base64url');
 
-		await service.listForInbox(user, { limit: 15, cursor });
+		await service.listForInbox(user, { state: 'closed', limit: 16, boundary });
 
-		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
-			expect.objectContaining({
-				cursor: { createdAt: new Date('2024-01-02T00:00:00.000Z'), id: 'req-2' },
-			}),
-		);
+		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith({
+			visibility: involvedVisibility,
+			state: 'closed',
+			category: undefined,
+			limit: 16,
+			boundary,
+		});
 	});
 
-	it('rejects a malformed cursor', async () => {
-		mockVisibility();
-		const cursor = Buffer.from('not-a-valid-cursor', 'utf8').toString('base64url');
-
-		await expect(service.listForInbox(user, { limit: 15, cursor })).rejects.toThrow(
-			'Invalid pagination cursor',
-		);
-	});
-
-	describe('category', () => {
-		beforeEach(() => {
-			workflowReviewInboxRepository.findRequests.mockResolvedValue([]);
-			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
-				new Map(),
-			);
-		});
-
-		it.each(['authored', 'waiting'] as const)(
-			'passes category %s through with the requesting user',
-			async (category) => {
-				mockVisibility();
-
-				await service.listForInbox(user, { limit: 15, category });
-
-				expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
-					expect.objectContaining({ category: { userId: 'user-1', category } }),
-				);
-			},
-		);
-
-		it('derives the user from the request, never from the query', async () => {
-			mockVisibility();
-			const otherUser = mock<User>({ id: 'user-2', role: { slug: 'global:member', scopes: [] } });
-
-			await service.listForInbox(otherUser, { limit: 15, category: 'authored' });
-
-			expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
-				expect.objectContaining({ category: { userId: 'user-2', category: 'authored' } }),
-			);
-		});
-
-		it('leaves the query unfiltered when the category is omitted', async () => {
-			mockVisibility();
-
-			await service.listForInbox(user, { limit: 15 });
-
-			expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
-				expect.objectContaining({ category: undefined }),
-			);
-		});
+	it('checks the live policy before reading rows', async () => {
+		workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
+		expect(await service.isInboxAvailable()).toBe(false);
+		await expect(service.listForInbox(user, { state: 'open', limit: 10 })).rejects.toThrow();
+		expect(workflowReviewInboxRepository.findRequests).not.toHaveBeenCalled();
 	});
 });
