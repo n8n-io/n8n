@@ -30,7 +30,12 @@ function toCpus(quota: string | undefined, period: string | undefined): number |
 	return q / p;
 }
 
-/** CPU quota as a number of CPUs, for example `0.5`, or `null` when n8n has none. */
+/**
+ * CPU quota as a number of CPUs, for example `0.5`, or `null` when n8n has none.
+ *
+ * TODO: `null` also means "could not read the cgroup files". Report a source
+ * field (`cgroup_v2`, `cgroup_v1`, `none`, `unreadable`) so telemetry can tell the two apart.
+ */
 export function getCpuLimit(): number | null {
 	try {
 		return parseCpuMax(readFileSync('/sys/fs/cgroup/cpu.max', 'utf8'));
