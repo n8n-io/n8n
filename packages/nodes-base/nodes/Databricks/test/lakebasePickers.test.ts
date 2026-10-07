@@ -10,6 +10,11 @@ import type {
 import { mockDeep } from 'vitest-mock-extended';
 
 import { resolveLakebaseSchemaUrl, resolveLakebaseTableUrl } from '../actions/lakebase/helpers';
+
+// The shared Lakebase transport waits before its schema-cache retry
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
+}));
 import {
 	getLakebaseBranches,
 	getLakebaseDatabases,
@@ -160,17 +165,46 @@ describe('listSearch -> getLakebaseProjects', () => {
 		expect(result).toEqual({ results: [] });
 	});
 
-	it.each(['SPIKE', 'spike-test'])(
-		'filters the fetched page by display name or id, ignoring case (%s)',
-		async (filter) => {
-			const context = createLoadOptionsContext();
-			apiMock(context).mockResolvedValue(projectsPage);
+	it('scans the following pages for a filter, matching display name or id without case', async () => {
+		const context = createLoadOptionsContext();
+		apiMock(context)
+			.mockResolvedValueOnce(projectsPage)
+			.mockResolvedValueOnce({ projects: [{ project_id: 'other' }, { project_id: 'spike-two' }] });
 
-			const { results } = await getLakebaseProjects.call(context, filter);
+		const result = await getLakebaseProjects.call(context, 'SPIKE');
 
-			expect(results).toEqual([{ name: 'Spike Test', value: 'spike-test' }]);
-		},
-	);
+		expect(apiMock(context)).toHaveBeenCalledTimes(2);
+		expect(apiMock(context)).toHaveBeenNthCalledWith(
+			2,
+			'databricksOAuth2Api',
+			expect.objectContaining({ qs: { page_size: 100, page_token: 'p2' } }),
+		);
+		expect(result).toEqual({
+			results: [
+				{ name: 'Spike Test', value: 'spike-test' },
+				{ name: 'spike-two', value: 'spike-two' },
+			],
+		});
+	});
+
+	it('stops a filtered scan after ten pages and hands back the token where it stopped', async () => {
+		const context = createLoadOptionsContext();
+		apiMock(context).mockResolvedValue(projectsPage);
+
+		const result = await getLakebaseProjects.call(context, 'nothing-matches');
+
+		expect(apiMock(context)).toHaveBeenCalledTimes(10);
+		expect(result).toEqual({ results: [], paginationToken: 'p2' });
+	});
+
+	it('fetches one page when no filter is set', async () => {
+		const context = createLoadOptionsContext();
+		apiMock(context).mockResolvedValue(projectsPage);
+
+		await getLakebaseProjects.call(context);
+
+		expect(apiMock(context)).toHaveBeenCalledTimes(1);
+	});
 
 	it('uses the access-token credential when PAT auth is selected', async () => {
 		const context = createLoadOptionsContext();
@@ -333,18 +367,18 @@ describe('listSearch -> getLakebaseTables', () => {
 		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 
-	it('refuses personal access token auth before any request', async () => {
+	it('refuses personal access token auth through the shared transport', async () => {
 		const context = createLoadOptionsContext(selectedSchema);
 		context.getNodeParameter.mockReturnValue('accessToken');
+		apiMock(context).mockResolvedValueOnce(endpointsResponse);
 
 		const promise = getLakebaseTables.call(context);
 
 		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
 		await expect(promise).rejects.toMatchObject({
-			message:
-				'Set Authentication to OAuth2 to list Lakebase tables, or enter the table name By ID',
+			message: 'Lakebase requires OAuth2 authentication',
 		});
-		expect(apiMock(context)).not.toHaveBeenCalled();
+		expect(apiMock(context)).toHaveBeenCalledTimes(1);
 	});
 
 	it('lists the tables of the schema document, skipping internal objects', async () => {
@@ -362,6 +396,7 @@ describe('listSearch -> getLakebaseTables', () => {
 					Accept: 'application/openapi+json, application/json',
 				}),
 			}),
+			{ oauth2: { skipRefreshWhileTokenIsFresh: true } },
 		);
 		expect(result).toEqual({
 			results: [
@@ -385,6 +420,7 @@ describe('listSearch -> getLakebaseTables', () => {
 			2,
 			'databricksOAuth2Api',
 			expect.objectContaining({ url: expect.stringMatching(/\/my%20schema\/openapi\.json$/) }),
+			expect.anything(),
 		);
 	});
 
@@ -397,7 +433,7 @@ describe('listSearch -> getLakebaseTables', () => {
 		expect(results).toEqual([{ name: 'orders', value: 'orders' }]);
 	});
 
-	it('rewrites a PGRST205 error to name the OpenAPI specification setting', async () => {
+	it('rewrites a PGRST205 error to name the OpenAPI specification setting after the transport retry', async () => {
 		const context = createLoadOptionsContext(selectedSchema);
 		const error = apiErrorFromBody(404, {
 			code: 'PGRST205',
@@ -405,9 +441,14 @@ describe('listSearch -> getLakebaseTables', () => {
 			hint: null,
 			details: null,
 		});
-		apiMock(context).mockResolvedValueOnce(endpointsResponse).mockRejectedValueOnce(error);
+		apiMock(context)
+			.mockResolvedValueOnce(endpointsResponse)
+			.mockRejectedValueOnce(error)
+			.mockRejectedValueOnce(error);
 
 		await expect(getLakebaseTables.call(context)).rejects.toBe(error);
+
+		expect(apiMock(context)).toHaveBeenCalledTimes(3);
 
 		expect(error.message).toBe(
 			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',

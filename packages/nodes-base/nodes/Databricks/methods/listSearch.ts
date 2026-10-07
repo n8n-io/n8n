@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IHttpRequestOptions,
@@ -20,7 +20,13 @@ import {
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
-import { resolveLakebaseRestBase } from '../transport';
+import {
+	collectPages,
+	lakebaseApiRequest,
+	resolveLakebaseRestBase,
+	toPage,
+	type Page,
+} from '../transport';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
@@ -566,6 +572,7 @@ export async function getRuns(
 }
 
 const LAKEBASE_PAGE_SIZE = 100;
+const LAKEBASE_SEARCH_MAX_PAGES = 10;
 // Internal tables the Data API lists under Ignore privileges; a user table named databricks_* is still reachable By ID
 const INTERNAL_TABLE_PREFIX = /^databricks_/;
 
@@ -588,36 +595,54 @@ const byText = (filter: string | undefined) => {
 		item.value.toLowerCase().includes(needle);
 };
 
-async function fetchLakebasePage<T>(
+// The management API has no name filter, so a search scans pages the way getJobs does
+async function listLakebase<P, T>(
 	context: ILoadOptionsFunctions,
 	path: string,
-	pageToken?: string,
-): Promise<T> {
+	entries: (page: P) => T[] | undefined,
+	filter: string | undefined,
+	paginationToken: string | undefined,
+): Promise<Page<T>> {
 	const credentialType = getActiveCredentialType(context);
 	const host = await getHost(context, credentialType);
-	return await fetchListPage<T>(
-		context,
-		credentialType,
-		host,
-		path,
-		{ page_size: LAKEBASE_PAGE_SIZE },
-		pageToken,
+	const fetchPage = async (pageToken?: string) => {
+		const page = await fetchListPage<P & { next_page_token?: string }>(
+			context,
+			credentialType,
+			host,
+			path,
+			{ page_size: LAKEBASE_PAGE_SIZE },
+			pageToken,
+		);
+		return toPage(entries(page), page.next_page_token);
+	};
+	return await collectPages(
+		fetchPage,
+		{ deadlineEpochMs: Infinity, maxPages: filter ? LAKEBASE_SEARCH_MAX_PAGES : 1 },
+		paginationToken,
 	);
 }
+
+type LakebaseProject = { project_id: string; status?: { display_name?: string } };
+type LakebaseBranch = { branch_id: string; status?: { default?: boolean } };
+type LakebaseDatabase = { database_id: string; status?: { postgres_database?: string } };
 
 export async function getLakebaseProjects(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const page = await fetchLakebasePage<{
-		projects?: Array<{ project_id: string; status?: { display_name?: string } }>;
-		next_page_token?: string;
-	}>(this, '/api/2.0/postgres/projects', paginationToken);
-	const results = (page.projects ?? [])
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		'/api/2.0/postgres/projects',
+		(page: { projects?: LakebaseProject[] }) => page.projects,
+		filter,
+		paginationToken,
+	);
+	const results = items
 		.map((p) => ({ name: p.status?.display_name || p.project_id, value: p.project_id }))
 		.filter(byText(filter));
-	return { results, paginationToken: page.next_page_token };
+	return { results, paginationToken: nextPageToken };
 }
 
 export async function getLakebaseBranches(
@@ -630,12 +655,16 @@ export async function getLakebaseBranches(
 		return { results: [{ name: 'Please Select a Project First', value: '' }] };
 	}
 
-	const page = await fetchLakebasePage<{
-		branches?: Array<{ branch_id: string; status?: { default?: boolean } }>;
-		next_page_token?: string;
-	}>(this, `/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches`, paginationToken);
-	// Locators cannot preselect, so the default branch leads the list instead
-	const results = (page.branches ?? [])
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		`/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches`,
+		(page: { branches?: LakebaseBranch[] }) => page.branches,
+		filter,
+		paginationToken,
+	);
+	// A locator cannot preselect a single branch: `default` is a static literal and the
+	// editor never writes a value from a search response. Leading with the default branch is the fallback.
+	const results = items
 		.sort((a, b) => (b.status?.default ? 1 : 0) - (a.status?.default ? 1 : 0))
 		.map((b) => ({
 			name: b.branch_id,
@@ -643,7 +672,7 @@ export async function getLakebaseBranches(
 			description: b.status?.default ? 'Default branch' : undefined,
 		}))
 		.filter(byText(filter));
-	return { results, paginationToken: page.next_page_token };
+	return { results, paginationToken: nextPageToken };
 }
 
 export async function getLakebaseDatabases(
@@ -659,19 +688,18 @@ export async function getLakebaseDatabases(
 		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
 	}
 
-	const page = await fetchLakebasePage<{
-		databases?: Array<{ database_id: string; status?: { postgres_database?: string } }>;
-		next_page_token?: string;
-	}>(
+	const { items, nextPageToken } = await listLakebase(
 		this,
 		`/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches/${encodeURIComponent(branch)}/databases`,
+		(page: { databases?: LakebaseDatabase[] }) => page.databases,
+		filter,
 		paginationToken,
 	);
 	// The Data API path uses the Postgres database name, which can differ from the resource id
-	const results = (page.databases ?? [])
+	const results = items
 		.map((d) => ({ name: d.database_id, value: d.status?.postgres_database || d.database_id }))
 		.filter(byText(filter));
-	return { results, paginationToken: page.next_page_token };
+	return { results, paginationToken: nextPageToken };
 }
 
 // No management endpoint lists Postgres schemas; other schemas go through By ID
@@ -699,18 +727,12 @@ export async function getLakebaseTables(
 	if (!schema) {
 		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
-	if (getActiveCredentialType(this) === 'databricksApi') {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Set Authentication to OAuth2 to list Lakebase tables, or enter the table name By ID',
-		);
-	}
-
 	try {
 		const base = await resolveLakebaseRestBase(this, project, branch);
-		const doc: { components?: { schemas?: Record<string, unknown> } } = await databricksApiRequest(
+		// Same transport as the operations, so the PAT guard, token refresh and schema-cache retry
+		// live in one place. A disabled OpenAPI spec answers PGRST205, so that error shows after the one retry.
+		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
 			this,
-			'databricksOAuth2Api',
 			{
 				method: 'GET',
 				url: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}/openapi.json`,
