@@ -2,6 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 const showForLakebase = { resource: ['lakebase'] };
 const showForGetAll = { resource: ['lakebase'], operation: ['getAll'] };
+const showForExecuteFunction = { resource: ['lakebase'], operation: ['executeFunction'] };
 
 export const lakebaseParameters: INodeProperties[] = [
 	{
@@ -125,6 +126,7 @@ export const lakebaseParameters: INodeProperties[] = [
 		description: 'The table in the schema',
 		displayOptions: {
 			show: showForLakebase,
+			hide: { operation: ['executeFunction'] },
 		},
 		modes: [
 			{
@@ -147,6 +149,97 @@ export const lakebaseParameters: INodeProperties[] = [
 
 	// Everything below this line belongs to the operations, not to PR #40407.
 	// Keep the locators above unmodified so that PR rebases in cleanly.
+	{
+		displayName: 'Function',
+		name: 'lakebaseFunction',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description: 'The Postgres function in the schema',
+		displayOptions: {
+			show: showForExecuteFunction,
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getLakebaseFunctions',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. spike_add',
+			},
+		],
+	},
+	{
+		displayName: 'Specify Arguments',
+		name: 'specifyArguments',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{ name: 'Using Fields Below', value: 'fields' },
+			{ name: 'Using JSON', value: 'json' },
+		],
+		default: 'fields',
+		description:
+			'Use the form the node builds from the schema document, or send a JSON object when the document is off',
+		displayOptions: {
+			show: showForExecuteFunction,
+		},
+	},
+	{
+		displayName: 'Arguments',
+		name: 'functionArguments',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		description:
+			'Leave an optional argument blank, or remove it, to use its default in the function. A boolean argument always sends its switch value.',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseFunction.value',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseFunctionArguments',
+				mode: 'add',
+				fieldWords: {
+					singular: 'argument',
+					plural: 'arguments',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+				supportAutoMap: false,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { ...showForExecuteFunction, specifyArguments: ['fields'] },
+		},
+	},
+	{
+		displayName: 'Arguments (JSON)',
+		name: 'argumentsJson',
+		type: 'json',
+		default: '{}',
+		placeholder: '{ "a": 1, "b": 2 }',
+		description: 'A JSON object with one key for each argument',
+		displayOptions: {
+			show: { ...showForExecuteFunction, specifyArguments: ['json'] },
+		},
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

@@ -15,6 +15,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import { execute as executeQuery } from '../actions/databricksSql/executeQuery.operation';
 import { makePermissionErrorLegible, permissionHintFor } from '../actions/helpers';
 import { execute as runJob } from '../actions/job/run.operation';
+import { Databricks } from '../Databricks.node';
 import { getCatalogs, getJobs, getRuns, getSchemas } from '../methods/listSearch';
 import { jobParameters } from '../resources/job/parameters';
 
@@ -1470,5 +1471,28 @@ describe('listSearch -> getJobs', () => {
 
 		expect(apiMock(context)).toHaveBeenCalledTimes(10);
 		expect(result).toEqual({ results: [], paginationToken: 'more' });
+	});
+});
+
+describe('Lakebase -> Execute Function method wiring', () => {
+	const databricks = new Databricks();
+	const property = (name: string) => databricks.description.properties.find((p) => p.name === name);
+
+	// Lint validates loadOptionsMethod names only, so these two are pinned here
+	it('resolves the function picker to a listSearch method', () => {
+		const listMode = property('lakebaseFunction')?.modes?.find((mode) => mode.name === 'list');
+		const method = listMode?.typeOptions
+			?.searchListMethod as keyof typeof databricks.methods.listSearch;
+
+		expect(method).toBeDefined();
+		expect(typeof databricks.methods.listSearch[method]).toBe('function');
+	});
+
+	it('resolves the argument form to a resourceMapping method', () => {
+		const method = property('functionArguments')?.typeOptions?.resourceMapper
+			?.resourceMapperMethod as keyof typeof databricks.methods.resourceMapping;
+
+		expect(method).toBeDefined();
+		expect(typeof databricks.methods.resourceMapping[method]).toBe('function');
 	});
 });
