@@ -6,10 +6,12 @@ import { hook } from './hooks/control';
 import { FILES } from './hooks/spec';
 import { docker, freeze, logs, signal, startAgain, waitForExit, waitForLog } from './process';
 import { is, Scenario } from './scenario';
-import { RigStack } from './stack';
+import { RigStack, stopAllStacks } from './stack';
 import { chain, nodes, webhookPath } from './workflows';
 
 const FAKE_LICENCE = 'test-rig-fake-licence';
+
+afterEach(async () => await stopAllStacks());
 
 describe('rig smoke', () => {
 	let dir: string;

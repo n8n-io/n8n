@@ -1,6 +1,8 @@
 import { checkWorkload } from './invariants';
-import { RigStack } from './stack';
+import { RigStack, stopAllStacks } from './stack';
 import { Workload } from './workload';
+
+afterEach(async () => await stopAllStacks());
 
 describe('workload', () => {
 	it('records one effect per accepted request on a healthy stack', async () => {

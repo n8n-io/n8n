@@ -1,6 +1,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+import { sleep } from '@n8n/utils/sleep';
+
 import type { Container } from './process';
 import { docker } from './process';
 
@@ -37,12 +39,16 @@ async function ensureNetemImage() {
 	}
 }
 
-/** Runs shell commands in the network namespace of a container, from a short-lived sidecar. */
-async function inNetwork(container: Container, commands: string[]) {
+/**
+ * Runs shell commands in the network namespace of a container, from a short-lived
+ * sidecar. The sidecar runs detached and is polled, because an attached `docker run`
+ * can stay open after the container has exited.
+ */
+async function inNetwork(container: Container, commands: string[], timeoutMs = 30_000) {
 	await ensureNetemImage();
-	await docker(
+	const id = await docker(
 		'run',
-		'--rm',
+		'-d',
 		'--net',
 		`container:${container.getId()}`,
 		'--cap-add',
@@ -52,6 +58,22 @@ async function inNetwork(container: Container, commands: string[]) {
 		'-c',
 		commands.join(' && '),
 	);
+	try {
+		const deadline = Date.now() + timeoutMs;
+		for (;;) {
+			const [status, code] = (
+				await docker('inspect', '--format', '{{.State.Status}} {{.State.ExitCode}}', id)
+			).split(' ');
+			if (status === 'exited' || status === 'dead') {
+				if (code !== '0') throw new Error(`tc failed (${code}): ${await docker('logs', id)}`);
+				return;
+			}
+			if (Date.now() > deadline) throw new Error(`tc did not finish in ${timeoutMs}ms`);
+			await sleep(100);
+		}
+	} finally {
+		await docker('rm', '-f', id).catch(() => undefined);
+	}
 }
 
 async function networksOf(container: Container): Promise<Record<string, { IPAddress: string }>> {

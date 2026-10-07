@@ -4,7 +4,7 @@ import { observeHookedMethods } from './catalogue';
 import { parseHookLine } from './control';
 import { loadManifest } from '../cli/manifest';
 import { logs } from '../process';
-import { RigStack } from '../stack';
+import { RigStack, stopAllStacks } from '../stack';
 import { chain, nodes, webhookPath } from '../workflows';
 
 const images = [
@@ -18,6 +18,8 @@ const images = [
 		(image) => spawnSync('docker', ['image', 'inspect', image], { stdio: 'ignore' }).status === 0,
 	)
 	.sort();
+
+afterEach(async () => await stopAllStacks());
 
 describe.each(images)('%s', (image) => {
 	it('has every method the scenarios hook', async () => {

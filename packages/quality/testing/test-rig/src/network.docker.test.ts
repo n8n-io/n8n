@@ -1,6 +1,6 @@
 import { network } from './network';
 import type { Container } from './process';
-import { RigStack } from './stack';
+import { RigStack, stopAllStacks } from './stack';
 
 const CONNECT = `const net = require('net');
 const started = Date.now();
@@ -13,6 +13,8 @@ async function connectMs(container: Container): Promise<string> {
 	const { output } = await container.exec(['node', '-e', CONNECT]);
 	return output.trim().split('\n').at(-1) ?? '';
 }
+
+afterEach(async () => await stopAllStacks());
 
 describe('network faults', () => {
 	it('delays, cuts and restores the link from main to Postgres', async () => {
