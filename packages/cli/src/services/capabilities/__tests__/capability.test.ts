@@ -8,6 +8,7 @@ import type { RegisterToolFn, ToolDefinition, ToolHandlerResult } from '@/module
 import {
 	type CapabilityContext,
 	type CapabilitySurface,
+	type CapabilityToolDefinition,
 	DEFAULT_CAPABILITY_SURFACES,
 	defineCapability,
 } from '../capability';
@@ -40,7 +41,7 @@ const whoAmI = (surfaces?: readonly CapabilitySurface[]) =>
 		name: 'who_am_i',
 		scope: 'workflow:read',
 		surfaces,
-		build: ({ user }: CapabilityContext): ToolDefinition<typeof whoAmIShape> => ({
+		build: ({ user }: CapabilityContext): CapabilityToolDefinition<typeof whoAmIShape> => ({
 			name: 'who_am_i',
 			config: { description: 'Returns the acting user', inputSchema: whoAmIShape },
 			handler: () => ({ content: [{ type: 'text', text: user.id }] }),
@@ -63,7 +64,7 @@ describe('defineCapability', () => {
 	it('does not build the tool until a surface registers it', () => {
 		const build = vi.fn(() => ({
 			name: 'lazy_tool',
-			config: {},
+			config: { inputSchema: {} },
 			handler: () => ({ content: [] }),
 		}));
 		const capability = defineCapability({ name: 'lazy_tool', scope: 'workflow:read', build });
@@ -74,7 +75,7 @@ describe('defineCapability', () => {
 		capability.registerOn(collectingRegister().register, { user });
 
 		expect(build).toHaveBeenCalledTimes(1);
-		expect(build).toHaveBeenCalledWith({ user });
+		expect(build).toHaveBeenCalledWith({ user, surface: 'mcp' });
 	});
 
 	it('offers the capability on every surface by default', () => {
@@ -100,7 +101,11 @@ describe('defineCapability', () => {
 		const capability = defineCapability({
 			name: 'renamed_tool',
 			scope: 'tag:read',
-			build: () => ({ name: 'other_name', config: {}, handler: () => ({ content: [] }) }),
+			build: () => ({
+				name: 'other_name',
+				config: { inputSchema: {} },
+				handler: () => ({ content: [] }),
+			}),
 		});
 		const { register, tools } = collectingRegister();
 
@@ -116,7 +121,7 @@ describe('defineCapability', () => {
 				defineCapability({
 					name,
 					scope: 'workflow:read',
-					build: () => ({ name, config: {}, handler: () => ({ content: [] }) }),
+					build: () => ({ name, config: { inputSchema: {} }, handler: () => ({ content: [] }) }),
 				}),
 			).toThrow(UnexpectedError);
 		},
@@ -129,7 +134,7 @@ describe('defineCapability', () => {
 			defineCapability({
 				name,
 				scope: 'workflow:read',
-				build: () => ({ name, config: {}, handler: () => ({ content: [] }) }),
+				build: () => ({ name, config: { inputSchema: {} }, handler: () => ({ content: [] }) }),
 			}).name,
 		).toBe(name);
 	});
@@ -147,7 +152,7 @@ describe('defineCapability', () => {
 		const capability = defineCapability({
 			name: 'count_things',
 			scope: 'workflow:read',
-			build: (): ToolDefinition<typeof shape> => ({
+			build: (): CapabilityToolDefinition<typeof shape> => ({
 				name: 'count_things',
 				config: { inputSchema: shape },
 				// `count` is a number and `label` is optional here. A wrong type fails `tsc`.
@@ -164,5 +169,60 @@ describe('defineCapability', () => {
 
 		expect(tools[0].config.inputSchema).toBe(shape);
 		expect(textOf(await callHandler(tools[0], { count: 3 }))).toBe('items: 3');
+	});
+});
+
+describe('defineCapability on the Assistant surface', () => {
+	const surfaceProbe = (options: { alwaysLoaded?: boolean } = {}) => {
+		const build = vi.fn(
+			({ user, surface }: CapabilityContext): CapabilityToolDefinition<typeof whoAmIShape> => ({
+				name: 'surface_probe',
+				config: { inputSchema: whoAmIShape },
+				handler: () => ({ content: [{ type: 'text', text: `${user.id}@${surface}` }] }),
+			}),
+		);
+		const capability = defineCapability({
+			name: 'surface_probe',
+			scope: 'workflow:read',
+			assistant: options,
+			build,
+		});
+		return { build, capability };
+	};
+
+	it('tells the tool which surface runs it', async () => {
+		const { build, capability } = surfaceProbe();
+		const user = makeUser('frank');
+		const { register, tools } = collectingRegister();
+
+		capability.registerOn(register, { user });
+		const { tool } = capability.toAssistantTool({ user });
+
+		expect(build.mock.calls.map(([context]) => context.surface)).toEqual(['mcp', 'assistant']);
+		expect(textOf(await callHandler(tools[0], {}))).toBe('frank@mcp');
+		expect(await tool.handler?.({}, {})).toBe('frank@assistant');
+	});
+
+	it('defers the Assistant tool unless the capability asks to stay loaded', () => {
+		const user = makeUser('gina');
+
+		expect(surfaceProbe().capability.toAssistantTool({ user }).alwaysLoaded).toBe(false);
+		expect(
+			surfaceProbe({ alwaysLoaded: true }).capability.toAssistantTool({ user }).alwaysLoaded,
+		).toBe(true);
+	});
+
+	it('does not build an Assistant tool for a capability that only MCP clients get', () => {
+		const capability = whoAmI(['mcp']);
+
+		expect(() => capability.toAssistantTool({ user: makeUser('hal') })).toThrow(UnexpectedError);
+	});
+
+	it('uses the capability name and falls back to it as the description', () => {
+		const { tool } = surfaceProbe().capability.toAssistantTool({ user: makeUser('ida') });
+
+		expect(tool.name).toBe('surface_probe');
+		expect(tool.description).toBe('surface_probe');
+		expect(tool.mcpAnnotations).toBeUndefined();
 	});
 });

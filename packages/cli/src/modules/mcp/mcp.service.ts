@@ -1,4 +1,4 @@
-import type { InputRequiredResult, McpServer } from '@modelcontextprotocol/server';
+import type { McpServer } from '@modelcontextprotocol/server';
 import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_APPS_FLAG,
@@ -61,6 +61,7 @@ import {
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
+import { runAuditedToolCall } from './mcp-tool-call-audit';
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
@@ -166,62 +167,6 @@ type McpAppTelemetryResolution = {
 	telemetry: McpAppTelemetryConfig;
 	instanceOrigin?: string;
 };
-
-/** Mirrors the SDK's `isInputRequiredResult` without a value import of the SDK at boot. */
-function isInputRequired(result: ToolHandlerResult | undefined): result is InputRequiredResult {
-	return result !== undefined && 'resultType' in result && result.resultType === 'input_required';
-}
-
-/**
- * There is no standard failure contract across MCP tools: most set MCP's
- * `isError` flag, but several catch their own errors and return a normal
- * result marked only in the structured output, via `status: 'error'`
- * (`execute_workflow`, `test_workflow`) or just an `error` message string
- * (`publish_workflow`, `unpublish_workflow`, `get_execution`). A string
- * `structuredContent.error` is set by every handled-failure shape and never
- * on success, so it doubles as failure marker and message source, with the
- * first text content item as fallback.
- */
-function getToolCallOutcome(result: ToolHandlerResult | undefined): {
-	status: 'success' | 'error';
-	errorMessage?: string;
-} {
-	if (!result) return { status: 'success' };
-	// A multi-round-trip handler asked the client for input; the write it reports on, if any,
-	// has already been recorded by the handler itself.
-	if (isInputRequired(result)) return { status: 'success' };
-
-	// v2 types structuredContent as an arbitrary JSON value; narrow to an
-	// object before reading the failure markers off it.
-	const structured =
-		typeof result.structuredContent === 'object' && result.structuredContent !== null
-			? (result.structuredContent as Record<string, unknown>)
-			: undefined;
-	const errorMessage = typeof structured?.error === 'string' ? structured.error : undefined;
-	if (result.isError !== true && structured?.status !== 'error' && errorMessage === undefined) {
-		return { status: 'success' };
-	}
-
-	if (errorMessage !== undefined) return { status: 'error', errorMessage };
-
-	for (const item of result.content ?? []) {
-		if (item.type === 'text') return { status: 'error', errorMessage: item.text };
-	}
-
-	return { status: 'error' };
-}
-
-/**
- * Reads a `workflowId` off a tool's arguments or its structured output. Most
- * tools take the workflow they act on as an argument, but the ones that create
- * a workflow only report it back (`create_workflow_from_code`), so both sides
- * are checked.
- */
-function getWorkflowId(source: unknown): string | undefined {
-	if (!source || typeof source !== 'object' || !('workflowId' in source)) return undefined;
-	const workflowId = source.workflowId;
-	return typeof workflowId === 'string' ? workflowId : undefined;
-}
 
 @Service()
 export class McpService {
@@ -365,37 +310,13 @@ export class McpService {
 			// through a generic callable and narrow the result back to a tool result.
 			const invoke = tool.handler as (...handlerArgs: unknown[]) => Promise<ToolHandlerResult>;
 
-			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
-				const workflowId = getWorkflowId(handlerArgs[0]);
-
-				try {
-					const result = await invoke(...handlerArgs);
-					const { status, errorMessage } = getToolCallOutcome(result);
-					this.eventService.emit('mcp-tool-called', {
-						user,
-						toolName: tool.name,
-						workflowId:
-							workflowId ??
-							(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
-						status,
-						errorMessage,
-						...auth?.caller,
-						clientName: clientInfo?.name,
-					});
-					return result;
-				} catch (error) {
-					this.eventService.emit('mcp-tool-called', {
-						user,
-						toolName: tool.name,
-						workflowId,
-						status: 'error',
-						errorMessage: error instanceof Error ? error.message : String(error),
-						...auth?.caller,
-						clientName: clientInfo?.name,
-					});
-					throw error;
-				}
-			};
+			const instrumentedHandler = async (...handlerArgs: unknown[]) =>
+				await runAuditedToolCall(
+					this.eventService,
+					{ user, toolName: tool.name, clientName: clientInfo?.name, caller: auth?.caller },
+					handlerArgs[0],
+					async () => await invoke(...handlerArgs),
+				);
 
 			const { inputSchema, outputSchema, ...config } = tool.config;
 			return server.registerTool(

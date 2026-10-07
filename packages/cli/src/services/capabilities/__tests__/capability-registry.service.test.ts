@@ -11,7 +11,7 @@ const capabilityNamed = (name: string, surfaces?: readonly CapabilitySurface[]) 
 		name,
 		scope: 'workflow:read',
 		surfaces,
-		build: () => ({ name, config: {}, handler: () => ({ content: [] }) }),
+		build: () => ({ name, config: { inputSchema: {} }, handler: () => ({ content: [] }) }),
 	});
 
 const names = (registry: CapabilityRegistry, surface: CapabilitySurface) =>

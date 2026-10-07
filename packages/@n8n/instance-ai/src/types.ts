@@ -2288,7 +2288,15 @@ export interface CreateInstanceAgentOptions {
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Host capabilities offered to the orchestrator. Each tool runs as the acting user. Their names
+	 * are reserved before MCP tools are added, so an MCP server cannot replace a capability.
+	 */
+	capabilityTools?: InstanceAiCapabilityTool[];
 }
+
+/** A host capability built for one run. `alwaysLoaded` keeps it out of deferred tool search. */
+export type InstanceAiCapabilityTool = { tool: BuiltTool; alwaysLoaded: boolean };
 
 export type ResolvedUserDecision = {
 	question: string;

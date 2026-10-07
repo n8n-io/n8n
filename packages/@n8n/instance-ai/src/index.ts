@@ -601,6 +601,7 @@ export type {
 	VertexAnthropicModelConfig,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
+	InstanceAiCapabilityTool,
 	TaskStorage,
 	PlannedTask,
 	PlannedTaskKind,

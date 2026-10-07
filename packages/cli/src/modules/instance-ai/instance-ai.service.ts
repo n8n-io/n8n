@@ -140,6 +140,7 @@ import {
 } from '@/services/ai-preference.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
+import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
 
@@ -152,6 +153,7 @@ import {
 } from './instance-context.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { toAssistantTool } from './capabilities/assistant-capability-bridge';
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -3696,6 +3698,10 @@ export class InstanceAiService {
 			checkpointStore: this.assistantCheckpointStore,
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+			// The same capabilities that MCP clients get, built for this user.
+			capabilityTools: Container.get(CapabilityRegistry)
+				.list('assistant')
+				.map((capability) => toAssistantTool(capability, { user }, this.eventService)),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both

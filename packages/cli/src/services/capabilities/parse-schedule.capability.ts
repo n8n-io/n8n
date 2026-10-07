@@ -3,9 +3,7 @@ import type { ScheduleTrigger } from '@n8n/instance-ai';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import z from 'zod';
 
-import type { ToolDefinition } from '@/modules/mcp/mcp.types';
-
-import { defineCapability } from './capability';
+import { type CapabilityToolDefinition, defineCapability } from './capability';
 
 export const PARSE_SCHEDULE_CAPABILITY_NAME = 'parse_schedule';
 
@@ -89,7 +87,7 @@ export async function parseSchedule(text: string): Promise<ParseScheduleResult> 
 	};
 }
 
-const parseScheduleTool: ToolDefinition<typeof inputSchema> = {
+const parseScheduleTool: CapabilityToolDefinition<typeof inputSchema> = {
 	name: PARSE_SCHEDULE_CAPABILITY_NAME,
 	config: {
 		description:

@@ -269,7 +269,7 @@ describe('McpService capabilities', () => {
 				surfaces: ['assistant'],
 				build: () => ({
 					name: 'assistant_only_tool',
-					config: {},
+					config: { inputSchema: {} },
 					handler: () => ({ content: [] }),
 				}),
 			}),

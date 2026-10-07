@@ -6,6 +6,7 @@ import {
 } from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
+import { collectCapabilityTools } from './capability-tools';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
@@ -60,7 +61,7 @@ function resolveModalSessionModelId(
 
 function splitDeferredTools(
 	tools: InstanceAiToolRegistry,
-	options: { isCheckpointFollowUp?: boolean } = {},
+	options: { isCheckpointFollowUp?: boolean; extraCoreToolNames?: ReadonlySet<string> } = {},
 ) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
@@ -68,6 +69,7 @@ function splitDeferredTools(
 	for (const [name, tool] of tools) {
 		if (
 			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
+			options.extraCoreToolNames?.has(name) ||
 			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
 		) {
 			coreTools.set(name, tool);
@@ -152,11 +154,18 @@ export async function createInstanceAgent(
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools.
-	const reservedToolNames = new Set<string>([
+	const nativeToolNames = [
 		...getActiveOrchestratorDomainToolNames(domainContext),
 		...orchestrationTools.keys(),
-	]);
+	];
+	const capabilityTools = collectCapabilityTools(
+		options.capabilityTools ?? [],
+		nativeToolNames,
+		context.logger,
+	);
+
+	// Keep MCP tools from shadowing domain, orchestration or capability tools.
+	const reservedToolNames = new Set<string>([...nativeToolNames, ...capabilityTools.tools.keys()]);
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools = createToolRegistry();
@@ -182,6 +191,7 @@ export async function createInstanceAgent(
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
 		orchestrationTools,
+		capabilityTools.tools,
 		safeLocalMcpTools,
 		safeMcpTools,
 	);
@@ -194,6 +204,7 @@ export async function createInstanceAgent(
 		}) ?? allOrchestratorTools;
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools, {
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
+		extraCoreToolNames: capabilityTools.alwaysLoadedNames,
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
