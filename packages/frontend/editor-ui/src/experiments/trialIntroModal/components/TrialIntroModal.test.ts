@@ -9,10 +9,7 @@ import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { defineComponent } from 'vue';
 import TrialIntroModal from './TrialIntroModal.vue';
-
-const mockCloseDialog = vi.fn();
 
 const mockShowError = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
@@ -29,29 +26,7 @@ vi.mock('@/experiments/trialIntroModal/useTrialCountdown', async () => {
 	};
 });
 
-const ModalStub = defineComponent({
-	props: ['name', 'title', 'eventBus', 'closeOnClickModal', 'closeOnPressEscape'],
-	setup: () => ({ closeDialog: mockCloseDialog }),
-	template: `
-		<div
-			:data-test-id="name"
-			:data-close-on-click-modal="String(closeOnClickModal)"
-			:data-close-on-press-escape="String(closeOnPressEscape)"
-		>
-			<slot name="header" :close-dialog="closeDialog" />
-			<slot name="content" />
-			<slot name="footer" />
-		</div>
-	`,
-});
-
-const renderComponent = createComponentRenderer(TrialIntroModal, {
-	global: {
-		stubs: {
-			Modal: ModalStub,
-		},
-	},
-});
+const renderComponent = createComponentRenderer(TrialIntroModal);
 
 const trialPlan: Cloud.PlanData = {
 	planId: 1,
@@ -83,11 +58,12 @@ describe('TrialIntroModal', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
-		mockCloseDialog.mockClear();
 		mockShowError.mockClear();
 		mockCountdownText = '13d 2h 5m';
 
 		pinia = createTestingPinia();
+		const uiStore = useUIStore();
+		uiStore.modalStateById[TRIAL_INTRO_MODAL_KEY] = { open: true };
 
 		const cloudPlanStore = mockedStore(useCloudPlanStore);
 		cloudPlanStore.currentPlanData = trialPlan;
@@ -112,12 +88,18 @@ describe('TrialIntroModal', () => {
 		});
 	});
 
+	async function renderModal() {
+		const rendered = renderComponent({ pinia });
+		await rendered.findByTestId('trial-intro-step-1');
+		return rendered;
+	}
+
 	async function goToStepTwo(getByTestId: (id: string) => HTMLElement) {
 		await userEvent.click(getByTestId('trial-intro-upgrade-now-button'));
 	}
 
-	it('renders step 1 with formatted quotas and tracks the initial view', () => {
-		const { getByRole, getByTestId, getByText } = renderComponent({ pinia });
+	it('renders step 1 with formatted quotas and tracks the initial view', async () => {
+		const { getByRole, getByTestId, getByText } = await renderModal();
 
 		expect(
 			getByRole('heading', { level: 1, name: 'Your free trial has started' }),
@@ -138,49 +120,47 @@ describe('TrialIntroModal', () => {
 		expect(trialIntroModalStore.trackModalViewed).toHaveBeenCalledWith(1);
 	});
 
-	it('only allows explicit modal actions to dismiss it', () => {
-		const { getByTestId } = renderComponent({ pinia });
+	it('only allows explicit modal actions to dismiss it', async () => {
+		const uiStore = mockedStore(useUIStore);
+		const { getByTestId } = await renderModal();
 
-		expect(getByTestId(TRIAL_INTRO_MODAL_KEY)).toHaveAttribute(
-			'data-close-on-click-modal',
-			'false',
-		);
-		expect(getByTestId(TRIAL_INTRO_MODAL_KEY)).toHaveAttribute(
-			'data-close-on-press-escape',
-			'false',
-		);
+		await userEvent.keyboard('{Escape}');
+
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(getByTestId('trial-intro-close-button')).toBeInTheDocument();
 	});
 
 	it('closes from the header close button', async () => {
-		const { getByTestId } = renderComponent({ pinia });
+		const uiStore = mockedStore(useUIStore);
+		const { getByTestId } = await renderModal();
 
 		await userEvent.click(getByTestId('trial-intro-close-button'));
 
-		expect(mockCloseDialog).toHaveBeenCalledTimes(1);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(TRIAL_INTRO_MODAL_KEY);
 	});
 
-	it('hides the AI credits card when the plan has no license features', () => {
+	it('hides the AI credits card when the plan has no license features', async () => {
 		const cloudPlanStore = mockedStore(useCloudPlanStore);
 		cloudPlanStore.currentPlanData = { ...trialPlan, licenseFeatures: undefined };
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = await renderModal();
 
 		expect(queryByTestId('trial-intro-stat-ai-credits')).not.toBeInTheDocument();
 		expect(getByTestId('trial-intro-stat-executions')).toBeInTheDocument();
 		expect(getByTestId('trial-intro-stat-days')).toBeInTheDocument();
 	});
 
-	it('hides the countdown pill when no countdown text is available', () => {
+	it('hides the countdown pill when no countdown text is available', async () => {
 		mockCountdownText = undefined;
 
-		const { queryByTestId } = renderComponent({ pinia });
+		const { queryByTestId } = await renderModal();
 
 		expect(queryByTestId('trial-intro-countdown-pill')).not.toBeInTheDocument();
 	});
 
 	it('closes the modal when Start building is clicked', async () => {
 		const uiStore = mockedStore(useUIStore);
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = await renderModal();
 
 		await userEvent.click(getByTestId('trial-intro-start-building-button'));
 
@@ -188,7 +168,7 @@ describe('TrialIntroModal', () => {
 	});
 
 	it('advances to step 2 when Upgrade now is clicked and tracks the step change', async () => {
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = await renderModal();
 
 		await goToStepTwo(getByTestId);
 
@@ -207,7 +187,7 @@ describe('TrialIntroModal', () => {
 		const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 		trialIntroModalStore.starterOffer = { ...starterOffer, prices: undefined };
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = await renderModal();
 		await goToStepTwo(getByTestId);
 
 		expect(queryByTestId('trial-intro-price-annual')).not.toBeInTheDocument();
@@ -215,7 +195,7 @@ describe('TrialIntroModal', () => {
 		expect(getByTestId('trial-intro-save-badge')).toHaveTextContent('Save with annual');
 	});
 
-	it('hides quota stats that report unlimited via negative values', () => {
+	it('hides quota stats that report unlimited via negative values', async () => {
 		const cloudPlanStore = mockedStore(useCloudPlanStore);
 		cloudPlanStore.currentPlanData = {
 			...trialPlan,
@@ -223,7 +203,7 @@ describe('TrialIntroModal', () => {
 			licenseFeatures: { 'quota:instanceAiCredits': -1 },
 		};
 
-		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		const { getByTestId, queryByTestId } = await renderModal();
 
 		expect(queryByTestId('trial-intro-stat-ai-credits')).not.toBeInTheDocument();
 		expect(queryByTestId('trial-intro-stat-executions')).not.toBeInTheDocument();
@@ -231,7 +211,7 @@ describe('TrialIntroModal', () => {
 	});
 
 	it('formats prices after the amount for suffix currencies', async () => {
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = await renderModal();
 		await goToStepTwo(getByTestId);
 
 		expect(getByTestId('trial-intro-price-annual')).toHaveTextContent('18€');
@@ -244,7 +224,7 @@ describe('TrialIntroModal', () => {
 		const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 		trialIntroModalStore.offerCurrency = { code: 'USD', symbol: '$', position: 'prefix' };
 
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = await renderModal();
 		await goToStepTwo(getByTestId);
 
 		expect(getByTestId('trial-intro-price-annual')).toHaveTextContent('$18');
@@ -252,7 +232,7 @@ describe('TrialIntroModal', () => {
 	});
 
 	it('returns to step 1 when Back is clicked', async () => {
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = await renderModal();
 		await goToStepTwo(getByTestId);
 
 		await userEvent.click(getByTestId('trial-intro-back-button'));
@@ -264,7 +244,7 @@ describe('TrialIntroModal', () => {
 		const cloudPlanStore = mockedStore(useCloudPlanStore);
 		const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = await renderModal();
 		await goToStepTwo(getByTestId);
 
 		await userEvent.click(getByTestId('trial-intro-upgrade-cta'));
@@ -282,7 +262,7 @@ describe('TrialIntroModal', () => {
 		const failure = new Error('network down');
 		cloudPlanStore.generateCloudDashboardAutoLoginLink.mockRejectedValue(failure);
 
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = await renderModal();
 		await goToStepTwo(getByTestId);
 
 		await userEvent.click(getByTestId('trial-intro-upgrade-cta'));
@@ -296,7 +276,7 @@ describe('TrialIntroModal', () => {
 	it('passes the selected period to the upgrade return path', async () => {
 		const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 
-		const { getByTestId } = renderComponent({ pinia });
+		const { getByTestId } = await renderModal();
 		await goToStepTwo(getByTestId);
 
 		expect(getByTestId('trial-intro-period-annual')).toHaveAttribute('aria-checked', 'true');
@@ -316,7 +296,7 @@ describe('TrialIntroModal', () => {
 		it('tracks upgrade now, period selection, and back', async () => {
 			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 
-			const { getByTestId } = renderComponent({ pinia });
+			const { getByTestId } = await renderModal();
 
 			await userEvent.click(getByTestId('trial-intro-upgrade-now-button'));
 			expect(trialIntroModalStore.trackModalInteraction).toHaveBeenCalledWith('upgrade_now');
@@ -338,7 +318,7 @@ describe('TrialIntroModal', () => {
 			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 			const uiStore = mockedStore(useUIStore);
 
-			const { getByTestId } = renderComponent({ pinia });
+			const { getByTestId } = await renderModal();
 
 			await userEvent.click(getByTestId('trial-intro-start-building-button'));
 
@@ -348,8 +328,9 @@ describe('TrialIntroModal', () => {
 
 		it('tracks close with the step it happened on', async () => {
 			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
+			const uiStore = mockedStore(useUIStore);
 
-			const { getByTestId } = renderComponent({ pinia });
+			const { getByTestId } = await renderModal();
 			await goToStepTwo(getByTestId);
 
 			await userEvent.click(getByTestId('trial-intro-close-button'));
@@ -357,13 +338,13 @@ describe('TrialIntroModal', () => {
 			expect(trialIntroModalStore.trackModalInteraction).toHaveBeenCalledWith('close', {
 				step: 2,
 			});
-			expect(mockCloseDialog).toHaveBeenCalled();
+			expect(uiStore.closeModal).toHaveBeenCalledWith(TRIAL_INTRO_MODAL_KEY);
 		});
 
 		it('tracks the final upgrade click with the selected period', async () => {
 			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 
-			const { getByTestId } = renderComponent({ pinia });
+			const { getByTestId } = await renderModal();
 			await goToStepTwo(getByTestId);
 			await userEvent.click(getByTestId('trial-intro-period-monthly'));
 
