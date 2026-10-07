@@ -30,8 +30,6 @@ interface Props {
 	data: {
 		projectId: string;
 		direction: PromotionDirection;
-		/** The instance connection and its Apply config. Only the `apply` direction needs it. */
-		apply?: { connectionId: string; configId: string; branchName: string };
 	};
 }
 
@@ -56,6 +54,7 @@ const blockedWorkflowIds = shallowRef<string[]>([]);
 const {
 	changes,
 	commitSha,
+	source,
 	filteredChanges,
 	isLoading,
 	isSubmitting,
@@ -268,8 +267,6 @@ async function onSourceChanged() {
 
 /** Applies only the selected workflows. Unselected content on the instance is left as is. */
 async function onApplySelected() {
-	const { apply } = props.data;
-	if (!apply) return;
 	const confirmed = await message.confirm(
 		i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
 		i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
@@ -285,10 +282,10 @@ async function onApplySelected() {
 	isApplying.value = true;
 	const workflowIds = Array.from(selectedIds.value);
 	try {
-		// Pin the reviewed commit: a branch that moved since the preview is reported, not applied.
-		const expectedSource = commitSha.value
-			? { configId: apply.configId, branchName: apply.branchName, commitSha: commitSha.value }
-			: undefined;
+		// Pin the reviewed commit on the source the preview resolved: a branch that moved since
+		// the preview is reported, not applied.
+		const expectedSource =
+			commitSha.value && source.value ? { ...source.value, commitSha: commitSha.value } : undefined;
 		const result = await applyProjectSelection(rootStore.publicApiContext, props.data.projectId, {
 			workflowIds,
 			expectedSource,

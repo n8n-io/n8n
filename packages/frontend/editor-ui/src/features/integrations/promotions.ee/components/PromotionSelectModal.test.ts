@@ -64,8 +64,11 @@ const mockChanges = [
 	},
 ];
 
-/** The endpoint wraps the rows with the commit they were read from. */
-const changesBody = (changes: unknown[]) => ({ commitSha: 'a'.repeat(40), changes });
+/** The endpoint wraps the rows with the source and commit they were read from. */
+const changesBody = (
+	changes: unknown[],
+	source = { configId: 'config-1', branchName: 'main' },
+) => ({ commitSha: 'a'.repeat(40), source, changes });
 
 const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 	({
@@ -422,7 +425,6 @@ describe('PromotionSelectModal', () => {
 			data: {
 				projectId: 'project-1',
 				direction: 'apply' as const,
-				apply: { connectionId: 'connection-1', configId: 'config-1', branchName: 'main' },
 			},
 		};
 		const applyChanges = vi.fn(() => ({ data: changesBody(mockChanges) }));
@@ -475,6 +477,28 @@ describe('PromotionSelectModal', () => {
 			await userEvent.click(rows[0]);
 
 			expect(await findByTestId('promotion-apply-selected')).toHaveTextContent('Apply 1 change');
+		});
+
+		it('should pin the source the preview resolved for the project', async () => {
+			// A project with its own connection previews against that connection's config.
+			server.get('/rest/promotions/project-1/changes/apply', () => ({
+				data: changesBody(mockChanges, { configId: 'config-project', branchName: 'production' }),
+			}));
+			mockedStore(useProjectsStore).fetchProject.mockResolvedValue(
+				createTestProject({ id: 'project-1' }),
+			);
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+			await selectAll(findByTestId);
+
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
+
+			await waitFor(() => expect(applyPackage).toHaveBeenCalledTimes(1));
+			expect(applyPackage.mock.results[0].value.receivedBody.expectedSource).toEqual({
+				configId: 'config-project',
+				branchName: 'production',
+				commitSha: 'a'.repeat(40),
+			});
 		});
 
 		it('should not apply when the user cancels the confirmation', async () => {

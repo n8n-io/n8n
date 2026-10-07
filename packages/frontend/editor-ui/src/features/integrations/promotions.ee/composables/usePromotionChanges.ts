@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import type {
 	PromotableResource,
 	PromotePackageResultDto,
+	PromotionChanges,
 	PromotionDirection,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -12,6 +13,9 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 
 	const changes = ref<PromotableResource[]>([]);
 	const commitSha = ref<string | null>(null);
+	// The config and branch the backend resolved for this project. An apply pins this
+	// source, so it has to be the one the preview used.
+	const source = ref<PromotionChanges['source'] | null>(null);
 	const isLoading = ref(false);
 	const isSubmitting = ref(false);
 	const error = ref<Error | null>(null);
@@ -54,6 +58,7 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 			const result = await getPromotableChanges(rootStore.restApiContext, projectId, direction);
 			changes.value = result.changes;
 			commitSha.value = result.commitSha;
+			source.value = result.source;
 			reconcileSelection();
 			lastRefreshedAt.value = new Date().toISOString();
 		} catch (e) {
@@ -102,6 +107,7 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 	return {
 		changes,
 		commitSha,
+		source,
 		filteredChanges,
 		isLoading,
 		isSubmitting,
