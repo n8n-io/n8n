@@ -53,23 +53,30 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 		const n8nWorkflowTypes = new Set<string>();
 		let importsExecutionContext = false;
 
-		return {
-			ImportDeclaration(node) {
-				if (node.source.value === 'n8n-workflow') {
-					node.specifiers.forEach((specifier) => {
-						if (
-							specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-							specifier.imported.type === AST_NODE_TYPES.Identifier
-						) {
-							n8nWorkflowTypes.add(specifier.local.name);
-							if (EXECUTION_CONTEXT_TYPES.has(specifier.imported.name)) {
-								importsExecutionContext = true;
-							}
-						}
-					});
+		// Collect n8n-workflow imports up front. ESLint visits nodes in source order, so a
+		// `helpers` access above its import statement would otherwise be checked before the
+		// import is seen.
+		for (const statement of context.sourceCode.ast.body) {
+			if (
+				statement.type !== AST_NODE_TYPES.ImportDeclaration ||
+				statement.source.value !== 'n8n-workflow'
+			) {
+				continue;
+			}
+			for (const specifier of statement.specifiers) {
+				if (
+					specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+					specifier.imported.type === AST_NODE_TYPES.Identifier
+				) {
+					n8nWorkflowTypes.add(specifier.local.name);
+					if (EXECUTION_CONTEXT_TYPES.has(specifier.imported.name)) {
+						importsExecutionContext = true;
+					}
 				}
-			},
+			}
+		}
 
+		return {
 			MemberExpression(node) {
 				if (
 					node.property.type === AST_NODE_TYPES.Identifier &&

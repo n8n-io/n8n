@@ -352,6 +352,33 @@ class ExampleApi {
 			],
 		},
 		{
+			name: 'execution context used above its import statement',
+			code: `
+async function apiRequest(context: IExecuteFunctions, options) {
+	return await context.helpers.request(options);
+}
+
+import type { IExecuteFunctions } from 'n8n-workflow';`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'request', replacement: 'httpRequest' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'request', replacement: 'httpRequest' },
+							output: `
+async function apiRequest(context: IExecuteFunctions, options) {
+	return await context.helpers.httpRequest(options);
+}
+
+import type { IExecuteFunctions } from 'n8n-workflow';`,
+						},
+					],
+				},
+			],
+		},
+		{
 			name: 'credential test context passed in as a parameter',
 			code: `
 import type { ICredentialTestFunctions } from 'n8n-workflow';
