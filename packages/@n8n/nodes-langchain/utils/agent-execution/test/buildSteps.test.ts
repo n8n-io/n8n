@@ -920,10 +920,7 @@ describe('buildSteps', () => {
 						action: {
 							actionType: 'ExecutionNodeAction',
 							nodeName: 'Calculator',
-							input: {
-								id: 'call_omitted_1',
-								input: { expression: '2+2' },
-							},
+							input: { expression: '2+2' },
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_omitted_1',
 							metadata: {
@@ -964,6 +961,50 @@ describe('buildSteps', () => {
 					input: { expression: '2+2' },
 				},
 			]);
+		});
+
+		it('should replay the tool call arguments in the tool_use block', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Research Agent',
+							input: { topic: 'solar panels', depth: 2 },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_args_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: 'I should research the topic.',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_args',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'done' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			const message = result[0].action.messageLog![0];
+			expect(message.content[1]).toEqual({
+				type: 'tool_use',
+				id: 'call_args_1',
+				name: 'Research_Agent',
+				input: { topic: 'solar panels', depth: 2 },
+			});
 		});
 
 		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {

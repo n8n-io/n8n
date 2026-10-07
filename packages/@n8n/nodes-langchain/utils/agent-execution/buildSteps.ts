@@ -111,16 +111,13 @@ function buildAnthropicContentBlocks(
 					data: thinkingContent,
 				};
 
-	// Create tool_use block (required for Anthropic when using structured content)
-	const toolInputData = toolInput.input;
+	// Create tool_use block (required for Anthropic when using structured content).
+	// toolInput holds the tool call arguments, the same object the non-thinking path sends as args.
 	const toolUseBlock: ToolUseContentBlock = {
 		type: 'tool_use',
 		id: toolId,
 		name: toolName,
-		input:
-			toolInputData && typeof toolInputData === 'object'
-				? (toolInputData as Record<string, unknown>)
-				: {},
+		input: toolInput,
 	};
 
 	return [thinkingBlock, toolUseBlock];
