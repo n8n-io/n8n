@@ -377,6 +377,28 @@ resume reattached the same sandbox (prebaked skills found); thread delete
 reached the source with no errors. The remote delete itself was not
 observed.
 
+**How the Assistant sandbox is kept between turns:**
+
+| Layer | Lifetime | Notes |
+|---|---|---|
+| Lease | One turn | `acquire` builds a new lease per turn. It remembers its sandbox entry for the rest of that turn only. |
+| Process cache (`InstanceAiSandboxService.sandboxes`) | Until idle for `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` (default 15 minutes, reset on each use), a settings change, thread delete, or a suspended turn (A10 release) | Per main, in memory. Also remembers that the one-time workspace setup is done. |
+| Remote sandbox | Daytona stops it after `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` (default 15). With `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true`, stop deletes it. Otherwise auto-delete after 7 days (default). | Name derived from the thread id. A turn without a cached handle (other main, restart, idle drop, after a suspend) looks it up by name, reattaches or restarts it, or creates a new one. |
+
+The SDK attach point already exists: `Agent.workspace(ws)` in `@n8n/agents`.
+The Assistant used it before A10. A10 only adds runtime-owned lifecycle
+events on the system-agent path, where the Agents runtime did not know a
+sandbox existed.
+
+**Known gap (not fixed, also on `master`):** the process cache keeps a handle
+for 15 minutes regardless of the Daytona auto-stop time. With a shorter
+auto-stop (for example `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES=1`) and
+ephemeral sandboxes, the sandbox is deleted while the handle is still cached.
+A turn in that window can fail with "sandbox not found" (a suspended turn is
+safe, because A10 drops the handle). Possible fix: cap the cache TTL at the
+auto-stop time when auto-stop is set. With the defaults (both 15 minutes)
+the timers match.
+
 **Open points:**
 
 - The runtime does not attach the workspace to the SDK agent. The provider
