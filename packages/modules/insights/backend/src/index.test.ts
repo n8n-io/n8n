@@ -7,8 +7,9 @@ describe('public API', () => {
 
 		expect(moduleMetadata.get('insights')).toBeUndefined();
 
-		await import('./index.js');
+		const publicApi = await import('./index.js');
 
 		expect(moduleMetadata.get('insights')).toBeUndefined();
+		expect(Object.keys(publicApi)).toEqual(['InsightsService']);
 	});
 });
