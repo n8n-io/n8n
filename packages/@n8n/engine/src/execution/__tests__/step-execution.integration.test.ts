@@ -203,6 +203,7 @@ describe('step execution (integration)', () => {
 			mode: 'production',
 			iteration: 0,
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 		});
 	});
 

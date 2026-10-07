@@ -266,12 +266,18 @@ export class OAuthServerService implements OAuthServerProvider {
 		// base URL, so a client_id that isn't can never resolve to one. Skip the resolver
 		// sweep + lazy upsert for anything else, so the unauthenticated /authorize path
 		// can't be used to fan out DB lookups on arbitrary client_ids.
-		if (!this.isTriggerResourceClientId(clientId)) {
+		if (clientId.length > MAX_REDIRECT_URI_LENGTH || !this.isTriggerResourceClientId(clientId)) {
 			return undefined;
 		}
 
 		const resource = await this.resourceRegistry.getByResourceUrl(clientId);
 		if (!resource?.isFirstParty) {
+			return undefined;
+		}
+
+		// The lookup ignores the query string, so without this check each `?x=N` variant adds a new row.
+		const resourceUrls = resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
+		if (!resourceUrls.includes(clientId)) {
 			return undefined;
 		}
 

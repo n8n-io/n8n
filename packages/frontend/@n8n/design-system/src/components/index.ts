@@ -49,6 +49,11 @@ export type {
 	DropdownMenuPlacement,
 } from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
+export {
+	default as N8nApprovalCard,
+	type ApprovalCardLabels,
+	type ApprovalOption,
+} from './N8nApprovalCard';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { BADGE_SIZE, BADGE_VARIANT } from './N8nBadge/Badge.type';
@@ -120,6 +125,8 @@ export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
+export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
 export type { SettingsRowConfigureProps } from './N8nSettingsRowConfigure';
 export { default as N8nSettingsRowGroup } from './N8nSettingsRowGroup';

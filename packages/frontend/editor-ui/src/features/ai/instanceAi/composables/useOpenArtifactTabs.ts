@@ -1,5 +1,6 @@
 import {
 	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
+	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
 	type InstanceAiThreadTab,
 	type InstanceAiThreadTabRef,
 	type InstanceAiThreadTabsState,
@@ -28,6 +29,32 @@ function tabKey(tab: InstanceAiThreadTabRef) {
 	return `${tab.type}:${tab.id}`;
 }
 
+/**
+ * Close the leftmost tabs over the stored limit, but never a tab in `keepKeys`.
+ * A state over the limit fails to save, and the tabs would be lost on reload.
+ */
+function fitWithinTabLimit(layout: TabsLayout, keepKeys: Set<string>): TabsLayout {
+	if (layout.tabs.length <= MAX_INSTANCE_AI_THREAD_OPEN_TABS) return layout;
+	const tabs = [...layout.tabs];
+	const dropped: InstanceAiThreadTabRef[] = [];
+	for (let i = 0; i < tabs.length && tabs.length > MAX_INSTANCE_AI_THREAD_OPEN_TABS; ) {
+		if (keepKeys.has(tabKey(tabs[i]))) {
+			i++;
+			continue;
+		}
+		const [tab] = tabs.splice(i, 1);
+		dropped.push({ type: tab.type, id: tab.id });
+	}
+	const droppedKeys = new Set(dropped.map(tabKey));
+	return {
+		tabs,
+		closedTabs: [
+			...layout.closedTabs.filter((closed) => !droppedKeys.has(tabKey(closed))),
+			...dropped,
+		].slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
+	};
+}
+
 function toStoredTab(tab: ArtifactTab): InstanceAiThreadTab {
 	return {
 		type: tab.type,
@@ -43,9 +70,10 @@ function fromStoredTab(tab: InstanceAiThreadTab): ArtifactTab {
 
 /**
  * The tabs a user has open in a thread, on top of the artifacts the thread
- * produced. Until the user changes the tabs, every artifact is open. After
+ * produced. Until the thread has stored tabs, every artifact is open. After
  * that, the stored layout keeps its order and its closed tabs, and artifacts
- * that are new since then open at the end.
+ * that are new since then open at the end. The server stores the tabs when the
+ * agent changes an artifact.
  */
 export function useOpenArtifactTabs({
 	artifactTabs,
@@ -57,12 +85,15 @@ export function useOpenArtifactTabs({
 	/** Whether the preview panel is open. Each save stores the value at that time. */
 	previewOpen?: () => boolean | undefined;
 }) {
-	// `null` until the user changes the tabs or a stored layout loads.
+	// `null` until a stored layout loads or the tabs are stored for the first time.
 	const layout = shallowRef<TabsLayout | null>(null);
 	const storedActiveTab = ref<InstanceAiThreadTabRef | null>(null);
 	// `undefined` when the stored state has no preview preference.
 	const storedPreviewOpen = ref<boolean>();
 	const isLoaded = ref(!storage);
+	// True only when the load succeeded and found no stored tabs. A failed load
+	// must not count, or storing the default tabs would overwrite the stored ones.
+	let hasNoStoredTabs = false;
 
 	const openTabs = computed((): ArtifactTab[] => {
 		const artifacts = artifactTabs();
@@ -143,18 +174,54 @@ export function useOpenArtifactTabs({
 		return true;
 	}
 
+	/**
+	 * Open a tab for any resource, for example one picked from the project.
+	 * The tab opens at the end, or stays where it is when it is open already.
+	 */
+	function openTab(tab: ArtifactTab) {
+		const current = currentLayout();
+		const key = tabKey(tab);
+		const isOpen = openTabs.value.some((open) => tabKey(open) === key);
+		layout.value = fitWithinTabLimit(
+			{
+				tabs: isOpen ? current.tabs : [...openTabs.value.map(toStoredTab), toStoredTab(tab)],
+				closedTabs: current.closedTabs.filter((closed) => tabKey(closed) !== key),
+			},
+			new Set([key]),
+		);
+	}
+
+	/** Move an open tab to a new position in the tab order. */
+	function moveTab(tabId: string, toIndex: number) {
+		const tabs = [...openTabs.value];
+		const fromIndex = tabs.findIndex((tab) => tab.id === tabId);
+		if (fromIndex === -1) return;
+		const target = Math.max(0, Math.min(toIndex, tabs.length - 1));
+		if (target === fromIndex) return;
+
+		const [moved] = tabs.splice(fromIndex, 1);
+		tabs.splice(target, 0, moved);
+		layout.value = { tabs: tabs.map(toStoredTab), closedTabs: currentLayout().closedTabs };
+	}
+
 	// --- Storage ---
 
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
 	let pendingActiveTabId: string | undefined;
 
 	function buildState(activeTabId: string | undefined): InstanceAiThreadTabsState {
-		const tabs = openTabs.value;
-		const active = tabs.find((tab) => tab.id === activeTabId);
+		const active = openTabs.value.find((tab) => tab.id === activeTabId);
+		// New artifacts join the tabs on their own, so the tabs can pass the limit here too.
+		const current = {
+			tabs: openTabs.value.map(toStoredTab),
+			closedTabs: currentLayout().closedTabs,
+		};
+		const fitted = fitWithinTabLimit(current, new Set(active ? [tabKey(active)] : []));
+		if (fitted !== current) layout.value = fitted;
 		const isPreviewOpen = previewOpen?.();
 		return {
-			tabs: tabs.map(toStoredTab),
-			closedTabs: currentLayout().closedTabs,
+			tabs: fitted.tabs,
+			closedTabs: fitted.closedTabs,
 			activeTab: active ? { type: active.type, id: active.id } : null,
 			...(isPreviewOpen !== undefined ? { previewOpen: isPreviewOpen } : {}),
 		};
@@ -169,8 +236,8 @@ export function useOpenArtifactTabs({
 	}
 
 	/**
-	 * Save the tabs after a short delay. Saving starts to store a layout for the
-	 * thread, so call it only for changes the user makes.
+	 * Save the tabs after a short delay. The save stores the active tab and the
+	 * preview state too, so call it only for changes the user makes.
 	 */
 	function saveTabs(activeTabId: string | undefined) {
 		if (!storage) return;
@@ -184,10 +251,25 @@ export function useOpenArtifactTabs({
 		}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
 	}
 
+	/**
+	 * Store the tabs of a thread that has no stored tabs yet. The server adds the
+	 * artifacts the agent changes next after them, also when no browser shows the
+	 * thread. Stores no active tab and no preview state, because the user did not
+	 * pick them.
+	 */
+	function storeDefaultTabs() {
+		if (!storage || !hasNoStoredTabs || layout.value || openTabs.value.length === 0) return;
+		const fitted = fitWithinTabLimit(currentLayout(), new Set());
+		layout.value = fitted;
+		// A failed save keeps the default tabs; the server or the next change stores them.
+		void storage.save({ ...fitted, activeTab: null }).catch(() => {});
+	}
+
 	async function loadTabs() {
 		if (!storage) return;
 		try {
 			const state = await storage.load();
+			hasNoStoredTabs = state === null;
 			// A change the user made while the request ran wins over the stored layout.
 			if (state && !layout.value) {
 				layout.value = { tabs: state.tabs, closedTabs: state.closedTabs };
@@ -216,6 +298,9 @@ export function useOpenArtifactTabs({
 		storedPreviewOpen,
 		closeTab,
 		reopenTab,
+		openTab,
+		moveTab,
 		saveTabs,
+		storeDefaultTabs,
 	};
 }

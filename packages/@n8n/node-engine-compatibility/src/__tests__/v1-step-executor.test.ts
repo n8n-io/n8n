@@ -1,4 +1,4 @@
-import type { StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	IConnections,
@@ -56,6 +56,22 @@ function outputsOf(result: StepExecutionResult): StepSlots {
 	if (result.wait) throw new Error('the step declared a wait, but the test expects outputs');
 	return result.outputs;
 }
+
+/** What the response channel returns once it has carried a response. */
+const sent = () => ({ ok: true as const, result: undefined });
+
+/** An emitter that builds each chunk, so a test can read what the node streamed. */
+const recordingEmitter = () => {
+	const chunks: JsonValue[] = [];
+	const respond = {
+		send: vi.fn(sent),
+		chunk: vi.fn((build: () => JsonValue) => {
+			chunks.push(build());
+			return sent();
+		}),
+	};
+	return { chunks, respond };
+};
 
 describe('V1StepExecutor', () => {
 	it('rejects legacy expression engine', async () => {
@@ -160,8 +176,63 @@ describe('V1StepExecutor', () => {
 
 	it('propagates node errors per the IStepExecutor failure contract', async () => {
 		const graph = graphWith('test.alwaysFails');
-		const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', []));
+		const request = stepRequest(graph, 'n', []);
+		request.context.responseExpectation = { kind: 'stream' };
+		const { chunks, respond } = recordingEmitter();
+		request.respond = respond;
+		const execution = testStepExecutor(graph).execute(request);
 		await expect(execution).rejects.toThrow('boom from node');
+		// Only a description goes to the caller. A plain error has none, so the
+		// caller gets a generic text instead of its message.
+		expect(chunks).toContainEqual({
+			type: 'error',
+			content: 'Node execution failed',
+			metadata: {
+				nodeId: 'n',
+				nodeName: 'Subject',
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: expect.any(Number),
+			},
+		});
+	});
+
+	it("streams the node error's description but not its message", async () => {
+		const graph = graphWith('test.failsWithDescription');
+		const request = stepRequest(graph, 'n', []);
+		request.context.responseExpectation = { kind: 'stream' };
+		const { chunks, respond } = recordingEmitter();
+		request.respond = respond;
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('key=secret');
+
+		expect(chunks).toEqual([
+			expect.objectContaining({ type: 'error', content: 'The service rejected the request' }),
+		]);
+		expect(JSON.stringify(chunks)).not.toContain('secret');
+	});
+
+	it('keeps the node error when its error chunk cannot be sent', async () => {
+		const graph = graphWith('test.alwaysFails');
+		const request = stepRequest(graph, 'n', []);
+		request.context.responseExpectation = { kind: 'stream' };
+		request.respond = {
+			send: vi.fn(sent),
+			chunk: vi.fn(() => ({ ok: false as const, error: new Error('Chunk failed') })),
+		};
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('boom from node');
+		expect(request.respond.chunk).toHaveBeenCalledOnce();
+	});
+
+	it('does not publish an error chunk for a non-streaming run', async () => {
+		const graph = graphWith('test.alwaysFails');
+		const request = stepRequest(graph, 'n', []);
+		request.respond = { send: vi.fn(sent), chunk: vi.fn(sent) };
+
+		await expect(testStepExecutor(graph).execute(request)).rejects.toThrow('boom from node');
+
+		expect(request.respond.chunk).not.toHaveBeenCalled();
 	});
 
 	it('invokes new-style Node subclasses with the context as argument', async () => {
@@ -180,11 +251,15 @@ describe('V1StepExecutor', () => {
 		);
 		(workflow.nodes[1] as { continueOnFail?: boolean }).continueOnFail = true;
 		const graph = converter.convert(workflow);
+		const request = stepRequest(graph, 'n', items({ keep: 'me' }));
+		request.context.responseExpectation = { kind: 'stream' };
+		const { chunks, respond } = recordingEmitter();
+		request.respond = respond;
 
-		const result = await testStepExecutor(graph).execute(
-			stepRequest(graph, 'n', items({ keep: 'me' })),
-		);
+		const result = await testStepExecutor(graph).execute(request);
 		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+		expect(chunks).toContainEqual(expect.objectContaining({ type: 'error' }));
+		expect(JSON.stringify(chunks)).not.toContain('boom from node');
 	});
 
 	it('propagates cleanup errors when the node succeeded', async () => {

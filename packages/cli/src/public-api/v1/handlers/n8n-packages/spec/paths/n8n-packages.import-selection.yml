@@ -19,15 +19,15 @@ post:
     matches that source project, which is created if it does not yet exist; there is no separate
     target-project field. `selectedWorkflowIds` are source ids within that project; ids that belong
     to another project are dropped. `deletedWorkflowIds` are destination ids in the same project; an
-    already-archived or absent id is a tolerated no-op, and a delete needs the `workflow:delete`
+    absent id is a tolerated no-op, and a delete needs the `workflow:delete`
     scope. A delete id must not match the destination id of a selected workflow, including
     when `workflowConflictPolicy=skip`. This overlap returns a 409 before any writes.
 
     The package must be a project package (a workflow package is rejected with a 400). The
-    cherry-pick conflict policies (folder, tag, project, and deletion mode) are fixed and are not
-    accepted here; only `workflowConflictPolicy` and `workflowIdPolicy` are configurable. Maximum
-    upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The caller is authorised
-    through the `workflow:import` scope.
+    cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted here;
+    only `workflowConflictPolicy`, `workflowIdPolicy`, and `overwriteDeletionPolicy` are
+    configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The
+    caller is authorised through the `workflow:import` scope.
   requestBody:
     required: true
     content:
@@ -58,8 +58,9 @@ post:
               type: string
               description: >
                 Optional JSON-encoded array of destination workflow ids to remove from the scoped
-                project, e.g. `["wf-3"]`. Removal happens even under the additive profile. An
-                already-archived or absent id is a no-op unless it is also a selected destination.
+                project, e.g. `["wf-3"]`. Removal happens even under the additive profile, and the
+                manner of removal follows `overwriteDeletionPolicy` (archive by default). An
+                absent id is a no-op unless it is also a selected destination.
                 Must not contain a selected workflow's destination id. Needs the `workflow:delete` scope.
             workflowConflictPolicy:
               type: string
@@ -84,6 +85,21 @@ post:
                 package's own workflow id on the target instance; `new` mints a fresh id and records
                 the package id as `sourceWorkflowId`. Workflows matched to an existing workflow keep
                 that workflow's current id, regardless of policy.
+            overwriteDeletionPolicy:
+              type: string
+              enum:
+                - archive
+                - hard-delete
+              default: archive
+              description: >
+                How the ids in `deletedWorkflowIds` are removed. `archive` (default) archives each
+                one, so it stays recoverable along with its execution history. `hard-delete`
+                archives it — the step that unpublishes it, which a delete will not do on its own —
+                and then deletes the workflow and its executions permanently. Each entry in
+                `removedWorkflows` reports what actually happened in its `deletion` field: a
+                `hard-delete` whose row cannot be dropped yet, because unpublishing defers trigger
+                teardown, is left `archived` rather than failing an import whose content is already
+                written.
   responses:
     '200':
       description: Import succeeded; the selected workflows were written to the target project.

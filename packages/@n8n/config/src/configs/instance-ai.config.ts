@@ -5,6 +5,10 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
+	/** Enable workflow suggestion runtime integrations at startup. */
+	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
+	workflowSuggestionsEnabled: boolean = false;
+
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
@@ -116,6 +120,15 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
+
+	/**
+	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
+	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
+	 * instance an eval pointed at a real workflow must leave its history alone. An eval
+	 * instance also skips PostHog, so feature flags resolve from their defaults plus env overrides.
+	 */
+	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
+	evalInstance: boolean = false;
 
 	/**
 	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.

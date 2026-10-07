@@ -1,5 +1,8 @@
 import {
 	AgentJsonConfigSchema,
+	getAgentModelProviderCredentialTypes,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	type AgentJsonConfig,
 	type InstanceAiEvalSeedAgent,
 	type InstanceAiEvalSeedDataTable,
 	type InstanceAiEvalSeedFolder,
@@ -16,6 +19,7 @@ import {
 } from '@n8n/db';
 import type { PolicedWorkflow, PolicyCleared } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	jsonParse,
@@ -282,6 +286,7 @@ export class EvalThreadRestoreService {
 		agents: InstanceAiEvalSeedAgent[],
 		projectId: string,
 		dataTableIdMap: Map<string, string> = new Map(),
+		allowedCredentialIds?: Set<string>,
 	): Promise<string[]> {
 		if (agents.length === 0) return [];
 		const agentsService = this.agentsService();
@@ -298,11 +303,16 @@ export class EvalThreadRestoreService {
 						`Seed agent ${agent.id} config became invalid after blanking its credentials`,
 					);
 				}
+				const schema = await this.bindModelCredentials(
+					config.data,
+					projectId,
+					allowedCredentialIds,
+				);
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
-				await agentsService.create(projectId, config.data.name, {
+				await agentsService.create(projectId, schema.name, {
 					id: agent.id,
-					schema: config.data,
+					schema,
 					...(agent.skills ? { skills: agent.skills } : {}),
 				});
 				created.push(agent.id);
@@ -312,6 +322,40 @@ export class EvalThreadRestoreService {
 			throw error;
 		}
 		return created;
+	}
+
+	/** Point each model at the thread project's one credential of its provider's
+	 *  type (among those the allowlist admits), as `resolveNodeCredentials` does
+	 *  for a node. Zero or several candidates keep the blank: the case declared no
+	 *  LLM credential, or any pick would be a guess. */
+	private async bindModelCredentials(
+		config: AgentJsonConfig,
+		projectId: string,
+		allowedCredentialIds?: Set<string>,
+	): Promise<AgentJsonConfig> {
+		const resolve = async (model: string) => {
+			const types = getAgentModelProviderCredentialTypes(getProviderPrefix(model));
+			if (types.length === 0) return undefined;
+			const candidates = (
+				await this.credentialsRepo.findByTypesInProject([...types], projectId)
+			).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
+			return candidates.length === 1 ? candidates[0].id : undefined;
+		};
+
+		const bound = { ...config };
+		const credential = config.model ? await resolve(config.model) : undefined;
+		if (credential) bound.credential = credential;
+		const byDifficulty = config.subAgents?.modelsByDifficulty;
+		if (byDifficulty) {
+			const rebound = { ...byDifficulty };
+			for (const level of SUB_AGENT_TASK_DIFFICULTIES) {
+				const entry = rebound[level];
+				const id = entry && (await resolve(entry.model));
+				if (entry && id) rebound[level] = { ...entry, credential: id };
+			}
+			bound.subAgents = { ...config.subAgents, modelsByDifficulty: rebound };
+		}
+		return bound;
 	}
 
 	/** Rewrite the seed's authored data-table ids to the ones the restore just
@@ -545,6 +589,7 @@ export class EvalThreadRestoreService {
 
 		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
 			if (stored) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const { name, nodes, connections, active, versionId, parentFolder } = entity;
 				await this.workflowRepo.updateContent(
 					workflow.id,

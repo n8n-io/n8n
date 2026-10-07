@@ -30,10 +30,9 @@ export class McpServerApiKeyService {
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
 		const manager = trx ?? this.apiKeyRepository.manager;
 
-		const apiKey = this.jwtService.sign({
+		const apiKey = this.jwtService.sign('mcpApiKey', {
 			sub: user.id,
 			iss: API_KEY_ISSUER,
-			aud: API_KEY_AUDIENCE,
 			jti: randomUUID(),
 		});
 

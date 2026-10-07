@@ -13,6 +13,7 @@ import {
 } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nSpinner from '@n8n/design-system/components/N8nSpinner/Spinner.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
@@ -54,6 +55,7 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	sideOffset: 4,
 	align: 'start',
 	clearable: false,
+	loading: false,
 	teleported: true,
 });
 
@@ -125,6 +127,10 @@ function onModelValueUpdate(value: ComboboxValue | ComboboxValue[] | undefined) 
 	if (props.multiple) {
 		clearSearchInput();
 	}
+}
+
+function onSearchTermUpdate(value: string) {
+	emit('update:searchTerm', value);
 }
 
 function setSelectedValue(value: ComboboxValue | ComboboxValue[] | undefined) {
@@ -235,8 +241,13 @@ const optionItems = computed(() => sections.value.flatMap((section) => section.i
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
 
+function focusOnInput() {
+	getInputElement()?.focus();
+}
+
 defineExpose({
 	anchorRef,
+	focusOnInput,
 });
 
 const sizes: Record<ComboboxSizes, string> = {
@@ -318,7 +329,7 @@ watch(
 );
 
 function showClearButton(value: ComboboxValue | ComboboxValue[] | undefined): boolean {
-	return props.clearable && !props.disabled && hasValue(value);
+	return props.clearable && !props.disabled && !props.loading && hasValue(value);
 }
 
 function onClear() {
@@ -361,6 +372,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 			:data-disabled="props.disabled || undefined"
 			:data-multiple="props.multiple || undefined"
 			:data-empty="hasValue(selectedValue) ? undefined : true"
+			:aria-busy="props.loading || undefined"
 		>
 			<template
 				v-for="selectedItem in [getSelectedItem(selectedValue)]"
@@ -394,6 +406,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						as-child
 						:display-value="getDisplayValue"
 						v-bind="inputAttrs"
+						@update:model-value="onSearchTermUpdate"
 					>
 						<TagsInputInput
 							:id="inputProps.id"
@@ -405,6 +418,15 @@ function onTagsUpdate(value: TagsInputValue[]) {
 							@keydown.enter.prevent
 						/>
 					</ComboboxInput>
+				</template>
+				<template v-if="props.loading" #trailing>
+					<span
+						:class="$style.tagsLoadingIndicator"
+						role="status"
+						:aria-label="t('combobox.loading')"
+					>
+						<N8nSpinner type="dots" size="medium" aria-hidden="true" />
+					</span>
 				</template>
 			</N8nTagsInput2>
 
@@ -418,29 +440,39 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
 				v-bind="inputAttrs"
+				@update:model-value="onSearchTermUpdate"
 			/>
 
-			<button
-				v-if="showClearButton(selectedValue)"
-				type="button"
-				:class="$style.clearButton"
-				:aria-label="t('combobox.clearSelection')"
-				@mousedown.prevent
-				@click.stop="onClear"
+			<span
+				v-if="props.loading && !props.multiple"
+				role="status"
+				:aria-label="t('combobox.loading')"
 			>
-				<Icon icon="x" size="small" />
-			</button>
-			<ComboboxTrigger as-child>
+				<N8nSpinner type="dots" size="medium" aria-hidden="true" />
+			</span>
+			<template v-else-if="!props.loading">
 				<button
+					v-if="showClearButton(selectedValue)"
 					type="button"
-					:class="$style.comboboxTrigger"
-					tabindex="-1"
-					:aria-label="t('combobox.showPopup')"
+					:class="$style.clearButton"
+					:aria-label="t('combobox.clearSelection')"
 					@mousedown.prevent
+					@click.stop="onClear"
 				>
-					<Icon icon="chevron-down" :class="$style.trailingIcon" />
+					<Icon icon="x" size="small" />
 				</button>
-			</ComboboxTrigger>
+				<ComboboxTrigger as-child>
+					<button
+						type="button"
+						:class="$style.comboboxTrigger"
+						tabindex="-1"
+						:aria-label="t('combobox.showPopup')"
+						@mousedown.prevent
+					>
+						<Icon icon="chevron-down" :class="$style.trailingIcon" />
+					</button>
+				</ComboboxTrigger>
+			</template>
 		</ComboboxAnchor>
 
 		<ComboboxPortal
@@ -557,8 +589,15 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 	&.multiple {
 		--tags-input--padding: var(--spacing--4xs);
+		--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
 		padding: var(--tags-input--padding);
 		padding-inline-end: var(--input--padding);
+
+		.clearButton,
+		.comboboxTrigger {
+			align-self: flex-end;
+			height: var(--tag--height);
+		}
 	}
 }
 
@@ -651,6 +690,13 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	&:disabled {
 		cursor: not-allowed;
 	}
+}
+
+.tagsLoadingIndicator {
+	display: inline-flex;
+	align-items: center;
+	align-self: flex-end;
+	height: var(--tag--height);
 }
 
 .clearButton {

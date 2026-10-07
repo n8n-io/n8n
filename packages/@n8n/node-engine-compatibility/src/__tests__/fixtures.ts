@@ -19,7 +19,7 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Node, NodeConnectionTypes } from 'n8n-workflow';
+import { Node, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import type { AdditionalDataContext } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
@@ -62,6 +62,28 @@ class AlwaysFails implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await Promise.reject(new Error('boom from node'));
+	}
+}
+
+class FailsWithDescription implements INodeType {
+	description = {
+		displayName: 'Fails With Description',
+		name: 'failsWithDescription',
+		group: ['transform'],
+		version: 1,
+		description: 'Throws a node error with a description',
+		defaults: { name: 'Fails With Description' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.reject(
+			new NodeOperationError(this.getNode(), 'request to https://api.test?key=secret failed', {
+				description: 'The service rejected the request',
+			}),
+		);
 	}
 }
 
@@ -256,6 +278,7 @@ const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
 	['test.alwaysFails', new AlwaysFails()],
+	['test.failsWithDescription', new FailsWithDescription()],
 	['test.noExecute', new NoExecute()],
 	['test.newStyleEcho', new NewStyleEcho() as unknown as INodeType],
 	['test.twoOutputs', new TwoOutputs()],
@@ -330,6 +353,7 @@ export const stepRequest = (
 		mode: 'manual',
 		iteration: 0,
 		callerContext: { hostMode: 'manual' },
+		responseExpectation: { kind: 'none' },
 	},
 	respond: noopResponseEmitter,
 });

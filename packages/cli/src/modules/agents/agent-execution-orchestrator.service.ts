@@ -3,6 +3,7 @@ import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
 	AgentChatMessagesResponse,
+	BudgetGuardrailConfig,
 } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -44,8 +45,10 @@ import {
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
+import { withBudgetGuardrail } from './budget-guardrail';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import {
@@ -62,7 +65,10 @@ import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
-import { BACKGROUND_APPROVAL_RUN_PREFIX } from './background/sub-agent-background-state';
+import {
+	BACKGROUND_APPROVAL_RUN_PREFIX,
+	BACKGROUND_PAUSE_USER_TURN_KEY,
+} from './background/sub-agent-background-state';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
@@ -116,6 +122,8 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -178,6 +186,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
@@ -205,6 +215,7 @@ export interface ExecuteForTaskNowConfig extends AgentExecutionInput {
 
 export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	backgroundJobSignal: AgentBackgroundJobSignal;
+	pauseReport?: boolean;
 	abortSignal: AbortSignal;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
@@ -222,6 +233,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	messageContext?: IntegrationMessageContext | null;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
+	/** Saved budget from the reconstructed runtime. Absent when the config has none. */
+	budget?: BudgetGuardrailConfig;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -237,14 +250,15 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	abortSignal?: AbortSignal;
-	/** Add full sanitized tool configuration to approval cards in preview chat. */
-	includeHitlToolDetails?: boolean;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Hide the internal wake instruction from the execution transcript. */
 	hideUserMessageFromTranscript?: boolean;
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
+	pauseReport?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 }
 
@@ -282,6 +296,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -651,6 +666,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					message,
 					modelMessage,
@@ -721,11 +737,13 @@ export class AgentExecutionOrchestratorService {
 						access: { accessScope: 'user', ownerId: user.id },
 						sessionMode,
 						abortSignal,
+						admittedExecution: config.admittedExecution,
 					},
 				),
 			async (runtime) => {
 				const messageContext = this.createN8nChatMessageContext(memory, user.id);
 				return this.streamChatResponse({
+					admittedExecution: config.admittedExecution,
 					access: { accessScope: 'user', ownerId: user.id },
 					messageContext,
 					onAdmitted: async () =>
@@ -737,6 +755,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					projectId,
 					message,
@@ -746,7 +765,6 @@ export class AgentExecutionOrchestratorService {
 					productionN8nChat: true,
 					source: N8N_CHAT_PRODUCTION_SOURCE,
 					telemetry: { runType: 'production', configuration: runtime.telemetryConfiguration },
-					includeHitlToolDetails: true,
 					sandboxPrincipalHash,
 					sessionMode,
 					abortSignal,
@@ -795,6 +813,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					message,
 					memory,
@@ -852,6 +871,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					userId: user.id,
 					message,
@@ -941,6 +961,8 @@ export class AgentExecutionOrchestratorService {
 			if (delivery) chunks.push(chunk);
 			if (chunk.type === 'error') runError = chunk.error;
 			if (chunk.type === 'finish' && chunk.finishReason === 'error') runError ??= chunk;
+			if (chunk.type === 'finish' && chunk.guardrail?.code === 'background-pause-report')
+				runError ??= chunk;
 			yield chunk;
 		}
 		// Leave failed job results pending so the caller can retry delivery.
@@ -987,6 +1009,10 @@ export class AgentExecutionOrchestratorService {
 	async *streamChatResponse(
 		config: StreamChatResponseConfig,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
+		// Admitted runs and background continuations can finish after Agents is disabled.
+		if (!config.admittedExecution && !config.isWakeRun) {
+			await this.settingsService.assertEnabled();
+		}
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -999,7 +1025,6 @@ export class AgentExecutionOrchestratorService {
 				threadId: config.memory.threadId,
 			},
 			backgroundJobSignal: config.backgroundJobSignal,
-			includeHitlToolDetails: config.includeHitlToolDetails,
 			onExecutionRecorded: config.onExecutionRecorded,
 			previewChat: config.previewChat,
 			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
@@ -1059,6 +1084,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
 			automaticContinuationRunId?: string;
+			isWakeRun?: boolean;
 		},
 	): Promise<AgentRuntime> {
 		const {
@@ -1066,13 +1092,16 @@ export class AgentExecutionOrchestratorService {
 			abortSignal,
 			automaticContinuationRunId,
 			admittedExecution,
+			isWakeRun,
 			...recording
 		} = session;
 		abortSignal?.throwIfAborted();
+		if (!admittedExecution && !recording.resumeRunId && !isWakeRun) {
+			await this.settingsService.assertEnabled();
+		}
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
 		} catch (error) {
-			if (admittedExecution) throw error;
 			abortSignal?.throwIfAborted();
 			const { agentId, projectId } = params;
 			let agent;
@@ -1087,22 +1116,25 @@ export class AgentExecutionOrchestratorService {
 					params.usePublishedVersion && agent.activeVersion?.schema
 						? getPublishedAgentSnapshot(agent)
 						: agent;
-				await this.turnExecutionService.recordFailedStart(
-					{
-						...recording,
-						agentId,
-						agentName: selected.schema?.name ?? agent.name,
-						projectId,
-						telemetry: {
-							userId: params.attributionUserId ?? params.user?.id,
-							runType: params.usePublishedVersion ? 'production' : 'test',
-							configuration: buildAgentConfigurationTelemetry(selected),
-						},
+				const failed = {
+					...recording,
+					agentId,
+					agentName: selected.schema?.name ?? agent.name,
+					projectId,
+					telemetry: {
+						userId: params.attributionUserId ?? params.user?.id,
+						runType: params.usePublishedVersion ? ('production' as const) : ('test' as const),
+						configuration: buildAgentConfigurationTelemetry(selected),
 					},
-					error,
-					onExecutionRecorded,
-					{ previewChat: params.previewChat, automaticContinuationRunId },
-				);
+				};
+				if (admittedExecution) {
+					await this.turnExecutionService.recordFailedAdmission(admittedExecution, failed, error);
+				} else {
+					await this.turnExecutionService.recordFailedStart(failed, error, onExecutionRecorded, {
+						previewChat: params.previewChat,
+						automaticContinuationRunId,
+					});
+				}
 			}
 			throw error;
 		}
@@ -1161,8 +1193,6 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
-			includeHitlToolDetails:
-				!config.usePublishedVersion || config.source === N8N_CHAT_PRODUCTION_SOURCE,
 			previewChat: config.previewChat,
 			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
@@ -1190,7 +1220,17 @@ export class AgentExecutionOrchestratorService {
 		return {
 			type: 'resume',
 			resumeData: config.resumeData,
-			options: this.createResumeOptions(config, memoryScope, messageContext, tracing),
+			options: withBudgetGuardrail(
+				this.createResumeOptions(config, memoryScope, messageContext, tracing),
+				{
+					budget: runtime.budget,
+					sessionId: memoryScope.threadId,
+					agentId: config.agentId,
+					...(config.previewChat && config.onBudgetNotice
+						? { onNotice: config.onBudgetNotice }
+						: {}),
+				},
+			),
 			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
 		};
 	}
@@ -1394,6 +1434,7 @@ export class AgentExecutionOrchestratorService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
+			budget: runtime.budget,
 			agentId,
 			userId: user.id,
 			message,
@@ -1404,8 +1445,8 @@ export class AgentExecutionOrchestratorService {
 			telemetry: { runType: 'test', configuration: runtime.telemetryConfiguration },
 			onExecutionRecorded,
 			abortSignal,
-			includeHitlToolDetails: true,
 			previewChat,
+			onBudgetNotice: config.onBudgetNotice,
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash,
 			sessionMode,
@@ -1462,22 +1503,50 @@ export class AgentExecutionOrchestratorService {
 				principalHash: sandboxPrincipalHash,
 			}),
 			...encodeIntegrationMessageContext(messageContext),
+			...(config.previewChat && !config.isWakeRun && !config.hideUserMessageFromTranscript
+				? { [BACKGROUND_PAUSE_USER_TURN_KEY]: true }
+				: {}),
 		};
 
 		return {
 			type: 'start',
 			input,
-			options: {
-				persistence: { threadId, resourceId, hostMetadata },
-				executionCounter: createAgentExecutionCounter(this.telemetry, {
+			options: withBudgetGuardrail(
+				{
+					persistence: { threadId, resourceId, hostMetadata },
+					...(config.pauseReport
+						? {
+								toolsEnabled: false,
+								guardrails: {
+									hooks: [
+										{
+											beforeTool: async () => ({
+												action: 'stop' as const,
+												code: 'background-pause-report',
+											}),
+										},
+									],
+								},
+							}
+						: {}),
+					executionCounter: createAgentExecutionCounter(this.telemetry, {
+						agentId,
+						userId,
+						runType: telemetry.runType,
+					}),
+					...modelStreamStallOptions(this.aiConfig),
+					...(tracing ? { telemetry: tracing } : {}),
+					...(abortSignal ? { abortSignal } : {}),
+				},
+				{
+					budget: config.budget,
+					sessionId: threadId,
 					agentId,
-					userId,
-					runType: telemetry.runType,
-				}),
-				...modelStreamStallOptions(this.aiConfig),
-				...(tracing ? { telemetry: tracing } : {}),
-				...(abortSignal ? { abortSignal } : {}),
-			},
+					...(config.previewChat && config.onBudgetNotice
+						? { onNotice: config.onBudgetNotice }
+						: {}),
+				},
+			),
 			recording: this.createChatRecording(config),
 		};
 	}
@@ -1550,6 +1619,7 @@ export class AgentExecutionOrchestratorService {
 				resourceId: memory.resourceId,
 				userMessage: config.message,
 				hideUserMessageFromTranscript: true,
+				isWakeRun: true,
 				source: productionUserId ? N8N_CHAT_PRODUCTION_SOURCE : integrationType,
 				abortSignal,
 				access,
@@ -1574,6 +1644,7 @@ export class AgentExecutionOrchestratorService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
+			budget: runtime.budget,
 			agentId,
 			...(isDraft
 				? { userId: identity.user.id }
@@ -1589,10 +1660,10 @@ export class AgentExecutionOrchestratorService {
 				configuration: runtime.telemetryConfiguration,
 			},
 			abortSignal,
-			includeHitlToolDetails: isDraft || Boolean(productionUserId),
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
 			isWakeRun: true,
+			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
 			backgroundJobSignal: config.backgroundJobSignal,
 		});

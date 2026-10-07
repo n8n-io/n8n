@@ -2,7 +2,6 @@
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
-import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nButton,
 	N8nCallout,
@@ -29,7 +28,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
-import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
+import { isOAuthCredentialConnected } from '@/features/credentials/composables/oauthCallback';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { groupCredentialSetupFields } from '@/features/credentials/credentialSetupFields';
@@ -186,25 +185,16 @@ watch(
 		onCleanup(() => {
 			stale = true;
 		});
-		const permissions = getResourcePermissions(storedCredential.value?.scopes).credential;
-		oauthConnection.value = storedCredential.value?.isResolvable
-			? storedCredential.value.connectedByMe
-			: permissions.read === true && !permissions.update;
+		oauthConnection.value = isOAuthCredentialConnected(storedCredential.value);
 		oauthMode.value = 'unknown';
 		loadingOAuth.value = Boolean(id);
 		if (!id) return;
 		try {
 			const credential = await credentialsStore.getCredentialData({ id });
 			if (stale) return;
+			oauthConnection.value = isOAuthCredentialConnected(storedCredential.value, credential);
 			const data = credential?.data;
-			if (credential?.isResolvable) oauthConnection.value = credential.connectedByMe;
 			if (data && typeof data === 'object') {
-				if (!credential?.isResolvable) {
-					oauthConnection.value =
-						Boolean(
-							data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType)),
-						) || hasOAuthTokenData(credential);
-				}
 				// Stored client fields identify a custom app even when managed OAuth is available.
 				const customClient = Boolean(
 					(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
@@ -785,7 +775,7 @@ onScopeDispose(() => {
 					:disabled="!helpDisabled"
 					:content="i18n.baseText('instanceAi.setupPanel.helpUnavailableWhileBuilding')"
 				>
-					<span :tabindex="helpDisabled ? 0 : undefined">
+					<span :class="$style.helpTrigger" :tabindex="helpDisabled ? 0 : undefined">
 						<N8nButton
 							variant="ghost"
 							size="small"
@@ -863,9 +853,17 @@ onScopeDispose(() => {
 	color: var(--text-color--subtle);
 }
 
+// The tooltip anchors to this wrapper. Inline-flex keeps it the size of the
+// button; a plain inline span around the button spans the full row.
+.helpTrigger {
+	display: inline-flex;
+	// Offset the button padding so the label aligns with the content above
+	margin-inline-start: calc(-1 * var(--spacing--2xs));
+}
+
 .help {
-	padding-inline: 0;
-	color: var(--text-color--subtle);
+	--button--color: var(--text-color--subtler);
+	padding-inline: var(--spacing--2xs);
 }
 
 .form .existing {

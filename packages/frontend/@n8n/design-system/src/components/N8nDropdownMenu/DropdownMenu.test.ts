@@ -936,11 +936,15 @@ describe('N8nDropdownMenu', () => {
 		it('should focus the real control inside a custom trigger wrapper', async () => {
 			const dropdownRef = ref<DropdownMenuExposed | null>(null);
 			const wrapper = render({
-				components: { DropdownMenu },
+				components: { DropdownMenu, Tooltip },
 				setup: () => ({ dropdownRef, items: createItems(1) }),
 				template: `
 					<DropdownMenu ref="dropdownRef" :items="items">
-						<template #trigger><button data-test-id="focus-target">Open</button></template>
+						<template #trigger>
+							<Tooltip as-child content="History">
+								<button data-test-id="focus-target">Open</button>
+							</Tooltip>
+						</template>
 					</DropdownMenu>
 				`,
 			});

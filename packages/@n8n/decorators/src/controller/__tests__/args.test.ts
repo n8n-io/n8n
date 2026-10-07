@@ -48,6 +48,56 @@ describe('Args Decorators', () => {
 		});
 	});
 
+	describe('@Body options', () => {
+		const resolve = (controllerClass: Controller) =>
+			controllerRegistryMetadata.getRouteMetadata(controllerClass, 'testMethod').args[0];
+
+		it('sets no `required` or `media` for the bare form', () => {
+			class TestController {
+				testMethod(@Body _body: unknown) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({ type: 'body' });
+		});
+
+		it('sets `required` without `media` for `@Body({ required: true })`', () => {
+			class TestController {
+				testMethod(@Body({ required: true }) _body: unknown) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({ type: 'body', required: true });
+		});
+
+		it('sets `media` for `@Body({ mediaType: "multipart/form-data", uploadLimits })`', () => {
+			const uploadLimits = () => ({ fileSize: 1024 });
+
+			class TestController {
+				testMethod(@Body({ mediaType: 'multipart/form-data', uploadLimits }) _body: unknown) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({
+				type: 'body',
+				media: { mediaType: 'multipart/form-data', uploadLimits },
+			});
+		});
+
+		it('combines `required` with a declared media type', () => {
+			const uploadLimits = () => ({});
+
+			class TestController {
+				testMethod(
+					@Body({ required: true, mediaType: 'multipart/form-data', uploadLimits }) _body: unknown,
+				) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({
+				type: 'body',
+				required: true,
+				media: { mediaType: 'multipart/form-data', uploadLimits },
+			});
+		});
+	});
+
 	describe('@Param decorator', () => {
 		it('should set param arg with key at correct parameter index', () => {
 			class TestController {

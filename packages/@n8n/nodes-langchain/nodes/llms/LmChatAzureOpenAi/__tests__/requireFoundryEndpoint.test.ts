@@ -19,6 +19,12 @@ describe('requireFoundryEndpoint', () => {
 		);
 	});
 
+	it('removes spaces and a trailing slash from the endpoint', () => {
+		expect(
+			requireFoundryEndpoint(mockNode, ' https://test.services.ai.azure.com/openai/v1/ '),
+		).toBe('https://test.services.ai.azure.com/openai/v1');
+	});
+
 	it('throws NodeOperationError when missing', () => {
 		expect(() => requireFoundryEndpoint(mockNode, undefined)).toThrow(NodeOperationError);
 	});
