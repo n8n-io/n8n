@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBar.vue
+  s_8e657ed96597bc::t_c7d308db3ed515 525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b9e1e063a9930b787f0e060dda0a8cc2cf0adb2",
+  "prompts": {},
+  "sessions": {
+    "s_8e657ed96597bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "beceef78-98c1-4119-bb42-ef1a026730e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
