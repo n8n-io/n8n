@@ -28,6 +28,7 @@ import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
@@ -40,6 +41,7 @@ import ImpactTag from './components/ImpactTag.vue';
 const i18n = useI18n();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const rbacStore = useRBACStore();
 const toast = useToast();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
@@ -92,6 +94,11 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			width: 240,
 		},
 		{
+			title: i18n.baseText('settings.migrationReport.detail.table.state'),
+			key: 'status',
+			width: 120,
+		},
+		{
 			title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
 			key: 'numberOfExecutions',
 			width: 160,
@@ -104,11 +111,6 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
 			key: 'lastUpdatedAt',
-			width: 120,
-		},
-		{
-			title: i18n.baseText('settings.migrationReport.detail.table.state'),
-			key: 'status',
 			width: 120,
 		},
 	];
@@ -156,6 +158,9 @@ const openCount = computed(
 			(workflow) => workflow.status === 'open' && !migratedWorkflowIds.value.has(workflow.id),
 		).length,
 );
+
+// The page needs only `breakingChanges:list`, but a state change needs `breakingChanges:migrate`.
+const canChangeState = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
 
 // Rows with a state change in flight. One change at a time keeps the revert correct.
 const savingWorkflowIds = ref<Set<string>>(new Set());
@@ -429,7 +434,9 @@ const sortedWorkflows = computed(() => {
 			<template #[`item.status`]="{ item }">
 				<FindingStateSelect
 					:model-value="item.status"
-					:disabled="savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)"
+					:disabled="
+						!canChangeState || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
+					"
 					@update:model-value="onFindingStatusChange(item, $event)"
 					@click.stop
 				/>

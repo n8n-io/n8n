@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
@@ -36,6 +37,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowWithIssue = {
@@ -126,6 +128,8 @@ describe('MigrationRuleDetail', () => {
 			pushRef: 'test-push-ref',
 		};
 		uiStore = mockedStore(useUIStore);
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -188,6 +192,15 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText(/Last executed/)).toBeInTheDocument();
 				expect(screen.getByText(/Last updated/)).toBeInTheDocument();
 				expect(screen.getByText('State', { selector: 'th' })).toBeInTheDocument();
+			});
+		});
+
+		it('should show the state right after the affected nodes', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				const titles = screen.getAllByRole('columnheader').map((th) => th.textContent?.trim());
+				expect(titles.indexOf('State')).toBe(titles.indexOf('Nodes affected') + 1);
 			});
 		});
 	});
@@ -303,6 +316,17 @@ describe('MigrationRuleDetail', () => {
 
 			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(false));
 			expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalledTimes(1);
+		});
+
+		it('should disable every state when the user cannot change states', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(rbacStore.hasScope).toHaveBeenCalledWith('breakingChanges:migrate');
+			expect(isStateDisabled('Test Workflow 1')).toBe(true);
+			expect(isStateDisabled('Test Workflow 2')).toBe(true);
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
 		});
 
 		it('should disable the state of a migrated row and leave it out of the badge', async () => {
