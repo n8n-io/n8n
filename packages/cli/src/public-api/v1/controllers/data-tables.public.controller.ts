@@ -46,21 +46,21 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@
 import type { DataTableRow, DataTableRowReturn, DataTableRowReturnWithState } from 'n8n-workflow';
 
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
+import { DataTableAccessService } from '@/modules/data-table/data-table-access.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
 import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/data-table-column-name-conflict.error';
 import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableProjectNotFoundError } from '@/modules/data-table/errors/data-table-project-not-found.error';
 import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
-import { ProjectNotFoundError } from '@/services/project.service.ee';
 
 const tags = ['DataTable'];
 
@@ -69,7 +69,7 @@ function handleError(error: unknown): never {
 	if (error instanceof DataTableValidationError) {
 		throw new BadRequestError(error.message);
 	}
-	if (error instanceof ProjectNotFoundError) {
+	if (error instanceof DataTableProjectNotFoundError) {
 		throw new BadRequestError(`Project with ID "${error.projectId}" not found`);
 	}
 	if (error instanceof DataTableNotFoundError) {
@@ -166,6 +166,7 @@ export class DataTablesPublicController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
+		private readonly dataTableAccessService: DataTableAccessService,
 	) {}
 
 	@Get('/')
@@ -222,7 +223,7 @@ export class DataTablesPublicController {
 		@Body body: CreateDataTablePublicDto,
 	): Promise<DataTablePublicDto> {
 		try {
-			const owningProjectId = await this.dataTableService.resolveOwningProjectId(
+			const owningProjectId = await this.dataTableAccessService.resolveOwningProjectId(
 				req.user,
 				body.projectId,
 			);
@@ -508,7 +509,10 @@ export class DataTablesPublicController {
 		const { filter, data, returnData, dryRun } = body;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableAccessService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.upsertRow(
@@ -542,7 +546,10 @@ export class DataTablesPublicController {
 		const { filter, data, returnData, dryRun } = body;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableAccessService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.updateRows(
@@ -604,7 +611,10 @@ export class DataTablesPublicController {
 		const { filter, returnData, dryRun } = query;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableAccessService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.deleteRows(
