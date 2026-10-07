@@ -1164,6 +1164,25 @@ describe('NodeCreator - utils', () => {
 	});
 
 	describe('searchNodes', () => {
+		it('keeps matching actions that share a node key', () => {
+			const sendMessage = mockActionCreateElement(undefined, {
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Send a message',
+				actionKey: 'sendMessage',
+			});
+			const updateMessage = mockActionCreateElement(undefined, {
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Update a message',
+				actionKey: 'updateMessage',
+			});
+			sendMessage.key = 'n8n-nodes-base.slack';
+			updateMessage.key = 'n8n-nodes-base.slack';
+
+			const results = searchNodes('message', [sendMessage, updateMessage]);
+			expect(results).toHaveLength(2);
+			expect(results).toEqual(expect.arrayContaining([sendMessage, updateMessage]));
+		});
+
 		it('searches command descriptions without searching node descriptions', () => {
 			const node = mockNodeCreateElement(
 				{ key: 'node' },

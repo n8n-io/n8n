@@ -260,7 +260,10 @@ export function searchNodes(
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
 	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
-	const searchResultsByKey = new Map<string, { score: number; item: INodeCreateElement }>();
+	const searchResultsByIdentity = new Map<
+		string | INodeCreateElement,
+		{ score: number; item: INodeCreateElement }
+	>();
 	const searchResults = [
 		...sublimeSearch<INodeCreateElement>(trimmedFilter, items),
 		...sublimeSearch<INodeCreateElement>(
@@ -271,9 +274,11 @@ export function searchNodes(
 	];
 
 	for (const result of searchResults) {
-		const existingResult = searchResultsByKey.get(result.item.key);
+		// Actions share the node key. Keep each action while merging repeated command matches.
+		const identity = result.item.type === 'action' ? result.item : result.item.key;
+		const existingResult = searchResultsByIdentity.get(identity);
 		if (!existingResult || result.score > existingResult.score) {
-			searchResultsByKey.set(result.item.key, result);
+			searchResultsByIdentity.set(identity, result);
 		}
 	}
 
@@ -281,10 +286,10 @@ export function searchNodes(
 	// (instead of all items) can never miss a boostable node.
 	const aiGatewayBoost = getAiGatewaySearchBoosts(
 		trimmedFilter,
-		[...searchResultsByKey.values()].map(({ item }) => item),
+		[...searchResultsByIdentity.values()].map(({ item }) => item),
 	);
 
-	const reRankedResults = reRankSearchResults([...searchResultsByKey.values()], {
+	const reRankedResults = reRankSearchResults([...searchResultsByIdentity.values()], {
 		...additionalFactors,
 		aiGatewayBoost,
 		messageAnAgentBoost: { [MESSAGE_AN_AGENT_NODE_TYPE]: MESSAGE_AN_AGENT_SEARCH_BOOST },
