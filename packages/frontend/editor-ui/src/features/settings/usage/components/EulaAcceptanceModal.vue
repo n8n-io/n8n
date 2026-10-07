@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { ElDialog } from 'element-plus';
-import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nText,
+} from '@n8n/design-system';
 import { i18n as locale } from '@n8n/i18n';
 
 interface Props {
@@ -28,67 +34,58 @@ const onAccept = () => {
 	emit('accept');
 };
 
-const onClose = () => {
+const onDialogOpenUpdate = (open: boolean) => {
+	if (open) return;
 	emit('update:modelValue', false);
 	onCancel();
 };
 </script>
 
 <template>
-	<ElDialog
-		:model-value="modelValue"
-		:title="locale.baseText('settings.usageAndPlan.dialog.eula.title')"
-		:before-close="onClose"
-		width="540px"
+	<N8nDialog
+		:open="modelValue"
+		size="large"
+		:header="locale.baseText('settings.usageAndPlan.dialog.eula.title')"
 		data-test-id="eula-acceptance-modal"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #default>
-			<div>
-				<N8nText color="text-base" size="medium">
-					{{ locale.baseText('settings.usageAndPlan.dialog.eula.description') }}
-				</N8nText>
+		<N8nDialogBody>
+			<N8nText color="text-base" size="medium">
+				{{ locale.baseText('settings.usageAndPlan.dialog.eula.description') }}
+			</N8nText>
 
-				<N8nText :class="$style.auditNotice" color="text-base" size="medium" tag="p">
-					<em>{{ locale.baseText('settings.usageAndPlan.dialog.eula.audit.notice') }}</em>
-				</N8nText>
+			<N8nText :class="$style.auditNotice" color="text-base" size="medium" tag="p">
+				<em>{{ locale.baseText('settings.usageAndPlan.dialog.eula.audit.notice') }}</em>
+			</N8nText>
 
-				<div :class="$style.checkboxWrapper">
-					<N8nCheckbox v-model="accepted" data-test-id="eula-checkbox">
-						<template #label>
-							<span>
-								{{ locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label') }}
-								{{ ' ' }}
-								<a
-									:href="eulaUrl"
-									target="_blank"
-									rel="noopener noreferrer"
-									data-test-id="eula-link"
-								>
-									{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }} </a
-								>.
-							</span>
-						</template>
-					</N8nCheckbox>
-				</div>
+			<div :class="$style.checkboxWrapper">
+				<N8nCheckbox v-model="accepted" data-test-id="eula-checkbox">
+					<template #label>
+						<span>
+							{{ locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label') }}
+							{{ ' ' }}
+							<a :href="eulaUrl" target="_blank" rel="noopener noreferrer" data-test-id="eula-link">
+								{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }} </a
+							>.
+						</span>
+					</template>
+				</N8nCheckbox>
 			</div>
-		</template>
-
-		<template #footer>
-			<div :class="$style.footerActions">
-				<N8nButton variant="subtle" data-test-id="eula-cancel-button" @click="onCancel">
-					{{ locale.baseText('settings.usageAndPlan.dialog.eula.button.cancel') }}
-				</N8nButton>
-				<N8nButton
-					variant="solid"
-					:disabled="isAcceptDisabled"
-					data-test-id="eula-accept-button"
-					@click="onAccept"
-				>
-					{{ locale.baseText('settings.usageAndPlan.dialog.eula.button.accept') }}
-				</N8nButton>
-			</div>
-		</template>
-	</ElDialog>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton variant="subtle" data-test-id="eula-cancel-button" @click="onCancel">
+				{{ locale.baseText('settings.usageAndPlan.dialog.eula.button.cancel') }}
+			</N8nButton>
+			<N8nButton
+				variant="solid"
+				:disabled="isAcceptDisabled"
+				data-test-id="eula-accept-button"
+				@click="onAccept"
+			>
+				{{ locale.baseText('settings.usageAndPlan.dialog.eula.button.accept') }}
+			</N8nButton>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -98,11 +95,5 @@ const onClose = () => {
 
 .checkboxWrapper {
 	margin-top: var(--spacing--md);
-}
-
-.footerActions {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>
