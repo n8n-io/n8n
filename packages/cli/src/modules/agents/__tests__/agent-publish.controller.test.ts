@@ -8,6 +8,7 @@ import type { AgentPublishService } from '../agent-publish.service';
 import { AgentPublishController } from '../agent-publish.controller';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
@@ -19,16 +20,20 @@ function makeController({
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 	collaborationService = mock<CollaborationService>(),
+	skillHub = mock<SkillHubService>(),
 }: {
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
 	collaborationService?: Mocked<CollaborationService>;
+	skillHub?: Mocked<SkillHubService>;
 } = {}) {
+	skillHub.resolveEditableSkills.mockResolvedValue({});
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
 		agentValidationService,
 		agentPublishService,
+		skillHub,
 	);
 
 	return {

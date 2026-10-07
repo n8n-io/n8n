@@ -11,6 +11,7 @@ import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsConfigController } from '../agents-config.controller';
 import type { AgentSpendLedger } from '../budget-guardrail';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -45,6 +46,7 @@ describe('AgentsConfigController getValidation', () => {
 			agentRepository,
 			mock<CollaborationService>(),
 			mock<AgentSpendLedger>(),
+			mock<SkillHubService>(),
 		);
 
 		await expect(
@@ -77,6 +79,7 @@ describe('AgentsConfigController getBudget', () => {
 			agentRepository,
 			mock<CollaborationService>(),
 			agentSpendLedger,
+			mock<SkillHubService>(),
 		);
 
 		await expect(

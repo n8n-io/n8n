@@ -6,13 +6,13 @@ import { mock } from 'vitest-mock-extended';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
-import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -63,7 +63,9 @@ function makeCredentialProvider(
 
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
-	const agentSkillsService = mock<AgentSkillsService>();
+	const skillHub = mock<SkillHubService>();
+	skillHub.resolveDraftSkills.mockResolvedValue({});
+	skillHub.resolvePinnedSkills.mockResolvedValue({});
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	const agentTaskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
@@ -84,9 +86,10 @@ function makeService() {
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
+			skillHub,
 		),
 		agentRepository,
-		agentSkillsService,
+		skillHub,
 		agentTaskRepository,
 		agentTaskSnapshotRepository,
 		nodeTypes,
@@ -1453,5 +1456,35 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 		);
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+	});
+
+	it('resolves skill references through the skills hub draft skills', async () => {
+		const { service, skillHub } = makeService();
+		const config: AgentJsonConfig = {
+			...runnableConfig,
+			skills: [
+				{ type: 'skill', id: 'hub_skill' },
+				{ type: 'skill', id: 'missing_skill' },
+			],
+		};
+		skillHub.resolveDraftSkills.mockResolvedValue({
+			hub_skill: { name: 'Hub skill', description: 'From the hub', instructions: 'Do it' },
+		});
+
+		const result = await service.validateAgentEntityConfiguration(
+			makeAgent(config),
+			projectId,
+			new Map(),
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(skillHub.resolveDraftSkills).toHaveBeenCalledWith(config);
+		expect(result.issues).toEqual([
+			{
+				code: 'missing_reference',
+				path: 'skill:missing_skill',
+				capability: { kind: 'skill', id: 'missing_skill' },
+			},
+		]);
 	});
 });

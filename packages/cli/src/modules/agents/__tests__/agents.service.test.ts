@@ -23,6 +23,7 @@ import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { SkillHubService } from '../skills-hub/skill-hub.service';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -61,6 +62,9 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const agentsSettingsService = mock<AgentsSettingsService>();
+	const skillHub = mock<SkillHubService>();
+	skillHub.resolveDraftSkills.mockResolvedValue({});
+	skillHub.prepareSkillRefsForCreate.mockResolvedValue({ createdSkillIds: [] });
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
 	agentTaskService.requestReconcile.mockResolvedValue();
@@ -73,6 +77,7 @@ function makeService() {
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
+	Container.set(SkillHubService, skillHub);
 
 	const service = new AgentsService(
 		mockLogger(),
@@ -92,6 +97,7 @@ function makeService() {
 	);
 
 	return {
+		skillHub,
 		service,
 		agentRepository,
 		projectRelationRepository,
@@ -233,8 +239,8 @@ describe('AgentsService', () => {
 		});
 	});
 
-	it('seeds skill bodies onto the entity alongside their schema refs', async () => {
-		const { service, agentRepository } = makeService();
+	it('hands copied skill bodies to the skills hub alongside their schema refs', async () => {
+		const { service, agentRepository, skillHub } = makeService();
 		const saved = makeAgent();
 		agentRepository.create.mockReturnValue(saved);
 		const skills = {
@@ -251,8 +257,13 @@ describe('AgentsService', () => {
 			skills,
 		});
 
-		const [entity] = agentRepository.create.mock.calls[0];
-		expect(entity.skills).toEqual(skills);
+		expect(skillHub.prepareSkillRefsForCreate).toHaveBeenCalledWith(
+			projectId,
+			expect.objectContaining({ skills: [{ type: 'skill', id: 'skill_abc' }] }),
+			skills,
+			null,
+		);
+		expect(skillHub.refreshDependencies).toHaveBeenCalledWith(saved);
 	});
 
 	describe('duplicate path (user-driven create-with-schema)', () => {
@@ -780,7 +791,10 @@ describe('AgentsService', () => {
 
 	describe('getCapabilitySummary', () => {
 		it('projects model, channels, tools, skills and tasks into per-item labels', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, skillHub } = makeService();
+			skillHub.resolveDraftSkills.mockResolvedValue({
+				s1: { name: 'Triage', description: '', instructions: '' },
+			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				makeAgent({
 					name: 'Support Agent',
@@ -813,7 +827,6 @@ describe('AgentsService', () => {
 						{ type: 'telegram', credentialId: 'cred-2' },
 					],
 					tools: { c1: { code: '', descriptor: { name: 'Refund tool' } } },
-					skills: { s1: { name: 'Triage', description: '', instructions: '' } },
 				} as unknown as Partial<Agent>),
 			);
 			agentTaskRepository.findByAgentId.mockResolvedValue([

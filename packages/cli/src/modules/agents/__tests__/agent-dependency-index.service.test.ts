@@ -4,15 +4,18 @@ import type { WorkflowsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentDependencyIndexService } from '../agent-dependency-index.service';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import type { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 
 function makeService(batchSize = 2) {
 	const dependencyRepository = mock<AgentCredentialDependencyRepository>();
 	const workflowDependencyRepository = mock<AgentWorkflowDependencyRepository>();
 	const agentRepository = mock<AgentRepository>();
+	const skillHub = mock<SkillHubService>();
 	const workflowsConfig = mock<WorkflowsConfig>({ indexingBatchSize: batchSize });
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
@@ -21,21 +24,47 @@ function makeService(batchSize = 2) {
 		workflowDependencyRepository,
 		agentRepository,
 		mock<AgentRuntimeCacheService>(),
+		skillHub,
 		logger,
 		workflowsConfig,
 	);
 
-	return { service, dependencyRepository, workflowDependencyRepository, agentRepository, logger };
+	return {
+		service,
+		dependencyRepository,
+		workflowDependencyRepository,
+		agentRepository,
+		skillHub,
+		logger,
+	};
 }
 
 describe('AgentDependencyIndexService', () => {
-	it('refreshes both sources from current persisted Agent state', async () => {
-		const { service, dependencyRepository, workflowDependencyRepository } = makeService();
+	it('refreshes every source from current persisted Agent state', async () => {
+		const {
+			service,
+			dependencyRepository,
+			workflowDependencyRepository,
+			agentRepository,
+			skillHub,
+		} = makeService();
+		const agent = { id: 'agent-1' } as Agent;
+		agentRepository.findByIdForDraftWrite.mockResolvedValue(agent);
 
 		await service.refresh('agent-1');
 
 		expect(dependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-1');
 		expect(workflowDependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-1');
+		expect(skillHub.refreshDependencies).toHaveBeenCalledWith(agent);
+	});
+
+	it('skips the skill dependency refresh when the agent no longer exists', async () => {
+		const { service, agentRepository, skillHub } = makeService();
+		agentRepository.findByIdForDraftWrite.mockResolvedValue(null);
+
+		await service.refresh('agent-1');
+
+		expect(skillHub.refreshDependencies).not.toHaveBeenCalled();
 	});
 
 	it('removes all rows as an idempotent fallback when an agent is deleted', async () => {

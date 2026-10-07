@@ -17,6 +17,7 @@ import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.servic
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
+import { publishedSnapshotVersionOf } from '../utils/agent-published-snapshot';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -589,8 +590,8 @@ describe('AgentRuntimeCacheService', () => {
 				tools: [],
 				skills: [],
 			},
+			versionId: 'published-version-1',
 			tools: { tool: { name: 'Tool' } },
-			skills: { skill: { name: 'Skill' } },
 			publishedById: 'publisher-1',
 		};
 		const runtime = makeRuntime();
@@ -611,7 +612,8 @@ describe('AgentRuntimeCacheService', () => {
 			expect.objectContaining({
 				schema: activeVersion.schema,
 				tools: activeVersion.tools,
-				skills: activeVersion.skills,
+				// Skill bodies come from the versions pinned to the published row.
+				skills: {},
 			}),
 			expect.anything(),
 			'production',
@@ -622,6 +624,8 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			{},
 		);
+		const [entity] = reconstructionService.reconstructFromAgentEntity.mock.calls[0];
+		expect(publishedSnapshotVersionOf(entity)).toBe('published-version-1');
 	});
 
 	it('keeps production n8n Chat on published instructions with project-scoped tools', async () => {

@@ -54,6 +54,7 @@ import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node
 import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
+import { SkillHubService } from '@/modules/agents/skills-hub/skill-hub.service';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
@@ -143,6 +144,8 @@ describe('McpAgentToolsService', () => {
 	const projectScopeService = mockInstance(ProjectScopeService);
 	const slackManagedSetup = mockInstance(SlackManagedSetupService);
 	const slackManualSetup = mockInstance(SlackManualSetupService);
+	// The service resolves the skills hub from the container.
+	const skillHubService = mockInstance(SkillHubService);
 	const slackManifest = {
 		settings: {
 			event_subscriptions: {
@@ -188,6 +191,7 @@ describe('McpAgentToolsService', () => {
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		slackManagedSetup.isAppConfiguredForAgent.mockResolvedValue(false);
 		slackManualSetup.getManifest.mockResolvedValue({ manifest: slackManifest } as never);
+		skillHubService.validationWarnings.mockResolvedValue([]);
 
 		tools = new Map();
 		registerResource = vi.fn();
@@ -218,8 +222,10 @@ describe('McpAgentToolsService', () => {
 		const localCredentialsService = mock<CredentialsService>();
 		const workflowRepository = mock<WorkflowRepository>();
 		const agentTaskRepository = mock<AgentTaskRepository>();
+		const localSkillHub = mock<SkillHubService>();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		localSkillHub.filterAndCheckRefs.mockImplementation(async (_entity, refs) => refs);
 		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		localCredentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		localCredentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
@@ -249,6 +255,7 @@ describe('McpAgentToolsService', () => {
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
 			agentUpdateBroadcaster,
+			localSkillHub,
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -1921,7 +1928,6 @@ describe('McpAgentToolsService', () => {
 						integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 					},
 					tools: { my_tool: { code: 'code', descriptor: { name: 'my_tool' } } },
-					skills: { 'skill-1': { name: 'Skill' } },
 				},
 				tasks: [
 					{
@@ -1934,9 +1940,15 @@ describe('McpAgentToolsService', () => {
 				],
 			} as never);
 
+			// Published skill bodies are the hub versions pinned to the agent version.
+			skillHubService.resolvePinnedSkills.mockResolvedValue({
+				'skill-1': { name: 'Skill', description: 'desc', instructions: 'Use it' },
+			});
+
 			const result = await callTool('get_agent', { agentId: 'agent-1', versionId: 'v0' });
 
 			expect(agentPublishService.getVersion).toHaveBeenCalledWith('agent-1', 'project-1', 'v0');
+			expect(skillHubService.resolvePinnedSkills).toHaveBeenCalledWith('v0');
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				agent: expect.objectContaining({ id: 'agent-1', published: true }),
@@ -1946,7 +1958,7 @@ describe('McpAgentToolsService', () => {
 					createdAt: '2026-01-01T00:00:00.000Z',
 					isActive: true,
 				},
-				skills: { 'skill-1': { name: 'Skill' } },
+				skills: { 'skill-1': { name: 'Skill', description: 'desc', instructions: 'Use it' } },
 				tasks: [expect.objectContaining({ id: 'task-1', enabled: true })],
 				customTools: [{ id: 'my_tool', descriptor: { name: 'my_tool' } }],
 			});

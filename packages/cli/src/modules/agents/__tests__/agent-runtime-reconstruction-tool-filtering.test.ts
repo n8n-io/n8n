@@ -28,6 +28,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
@@ -114,6 +115,13 @@ vi.mock('../json-config/from-json-config', async () => {
 	};
 });
 
+function makeSkillHub(): SkillHubService {
+	const skillHub = mock<SkillHubService>();
+	skillHub.resolveDraftSkills.mockResolvedValue({});
+	skillHub.resolvePinnedSkills.mockResolvedValue({});
+	return skillHub;
+}
+
 function makeAgentEntity(tools: AgentJsonToolConfig[]): Agent {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
@@ -166,6 +174,7 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
+		makeSkillHub(),
 	);
 
 	return {

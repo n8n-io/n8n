@@ -27,6 +27,7 @@ import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 
 vi.mock('../integrations/integrations-sync', () => ({ syncAgentIntegrations: vi.fn() }));
@@ -83,6 +84,7 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+	const skillHub = mock<SkillHubService>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -95,11 +97,11 @@ function makeService() {
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
-	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
-		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
-		agent.skills = Object.fromEntries(
-			Object.entries(agent.skills ?? {}).filter(([id]) => ids.has(id)),
-		);
+	// Mirrors the hub's keep rule for an empty hub: keep disabled refs and refs the
+	// agent already had, drop new refs to skills that do not exist.
+	skillHub.filterAndCheckRefs.mockImplementation(async (agent, refs) => {
+		const existingRefIds = new Set((agent.schema?.skills ?? []).map((ref) => ref.id));
+		return refs.filter((ref) => ref.enabled === false || existingRefIds.has(ref.id));
 	});
 
 	const service = new AgentConfigService(
@@ -115,6 +117,7 @@ function makeService() {
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
 		agentUpdateBroadcaster,
+		skillHub,
 	);
 
 	return {
@@ -130,6 +133,7 @@ function makeService() {
 		agentValidationService,
 		telemetry,
 		agentUpdateBroadcaster,
+		skillHub,
 	};
 }
 
@@ -603,7 +607,7 @@ describe('AgentConfigService', () => {
 		});
 
 		it('deletes the resources of omitted tools, skills, and tasks when clearOmittedOptionalFields is set', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, skillHub } = makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -612,7 +616,6 @@ describe('AgentConfigService', () => {
 					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 				} as unknown as AgentJsonConfig,
 				tools: storedCustomTool,
-				skills: { 'skill-1': { name: 'Skill' } } as unknown as Agent['skills'],
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentTaskRepository.findByAgentId.mockResolvedValue([{ id: 'task-1' }] as never);
@@ -624,12 +627,14 @@ describe('AgentConfigService', () => {
 
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual({});
-			expect(saved.skills).toEqual({});
+			// Skill bodies live in the hub; dropping the ref drops the agent's hub dependency.
+			expect(saved.schema?.skills).toBeUndefined();
+			expect(skillHub.refreshDependencies).toHaveBeenCalledWith(saved);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-1']);
 		});
 
 		it('keeps the resources of omitted tools, skills, and tasks by default', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, skillHub } = makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -637,7 +642,6 @@ describe('AgentConfigService', () => {
 					skills: [{ type: 'skill', id: 'skill-1' }],
 				} as unknown as AgentJsonConfig,
 				tools: storedCustomTool,
-				skills: { 'skill-1': { name: 'Skill' } } as unknown as Agent['skills'],
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
@@ -645,7 +649,8 @@ describe('AgentConfigService', () => {
 
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual(storedCustomTool);
-			expect(Object.keys(saved.skills ?? {})).toEqual(['skill-1']);
+			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
+			expect(skillHub.refreshDependencies).toHaveBeenCalledWith(saved);
 			expect(agentTaskRepository.delete).not.toHaveBeenCalled();
 		});
 
@@ -746,13 +751,8 @@ describe('AgentConfigService', () => {
 		});
 
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
-			const {
-				service,
-				agentRepository,
-				agentTaskRepository,
-				agentSkillsService,
-				runtimeCacheService,
-			} = makeService();
+			const { service, agentRepository, agentTaskRepository, skillHub, runtimeCacheService } =
+				makeService();
 			const agent = makeAgent({
 				tools: {
 					tool_1: {
@@ -764,9 +764,6 @@ describe('AgentConfigService', () => {
 						descriptor: { name: 'tool_2', description: 'b', inputSchema: {} },
 					},
 				} as unknown as Agent['tools'],
-				skills: {
-					'skill-1': { name: 'Skill', description: 'desc', instructions: 'Use it' },
-				},
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentTaskRepository.findByAgentId.mockResolvedValue([
@@ -810,7 +807,11 @@ describe('AgentConfigService', () => {
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
 			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
-			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
+			expect(skillHub.filterAndCheckRefs).toHaveBeenCalledWith(agent, [
+				{ type: 'skill', id: 'skill-1', enabled: false },
+				{ type: 'skill', id: 'missing-skill' },
+				{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
+			]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 

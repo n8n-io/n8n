@@ -8,6 +8,7 @@ import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
+import type { SkillHubService } from '../../skills-hub/skill-hub.service';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
 
 const projectId = 'project-1';
@@ -70,13 +71,17 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 describe('SubAgentSourceResolver', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let agentHistoryRepository: Mocked<AgentHistoryRepository>;
+	let skillHub: Mocked<SkillHubService>;
 	let resolver: SubAgentSourceResolver;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
-		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository);
+		skillHub = mock<SkillHubService>();
+		skillHub.resolveDraftSkills.mockResolvedValue({});
+		skillHub.resolvePinnedSkills.mockResolvedValue({});
+		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository, skillHub);
 	});
 
 	it('resolves the latest draft when no version is pinned', async () => {
@@ -119,15 +124,15 @@ describe('SubAgentSourceResolver', () => {
 				tools: {
 					lookup: { descriptor: customToolDescriptor, code: 'original tool body' },
 				},
-				skills: {
-					original_skill: {
-						name: 'Original skill',
-						description: 'Original description',
-						instructions: 'Original skill body',
-					},
-				},
 			}),
 		);
+		skillHub.resolveDraftSkills.mockResolvedValueOnce({
+			original_skill: {
+				name: 'Original skill',
+				description: 'Original description',
+				instructions: 'Original skill body',
+			},
+		});
 		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({ schema: { name: 'Incomplete draft', model: '', instructions: '' }, tools: {} }),
@@ -137,6 +142,14 @@ describe('SubAgentSourceResolver', () => {
 			{ projectId, runtimeSnapshot: JSON.stringify(original) },
 		);
 		expect(resumed).toEqual(original);
+		expect(resumed.skills).toEqual({
+			original_skill: {
+				name: 'Original skill',
+				description: 'Original description',
+				instructions: 'Original skill body',
+			},
+		});
+		expect(skillHub.resolveDraftSkills).toHaveBeenCalledTimes(1);
 		const mismatchedSnapshot = resolver.resolveForRuntime(
 			{ agentId },
 			{
@@ -217,6 +230,8 @@ describe('SubAgentSourceResolver', () => {
 			config: { ...runnableConfig, instructions: 'Use the published snapshot.' },
 		});
 		expect(result.toolCodeByName).toEqual({ published_tool: 'return "published";' });
+		expect(skillHub.resolvePinnedSkills).toHaveBeenCalledWith(versionId);
+		expect(skillHub.resolveDraftSkills).not.toHaveBeenCalled();
 	});
 
 	it('rejects a never-published sub-agent in production runs', async () => {
@@ -240,13 +255,6 @@ describe('SubAgentSourceResolver', () => {
 						descriptor: { ...customToolDescriptor, name: 'draft_only_tool' },
 					},
 				},
-				skills: {
-					draft_skill: {
-						name: 'Draft skill',
-						description: 'Draft description',
-						instructions: 'Draft body',
-					},
-				},
 				activeVersion: makeAgentHistory({
 					tools: {
 						published_tool: {
@@ -254,16 +262,23 @@ describe('SubAgentSourceResolver', () => {
 							descriptor: { ...customToolDescriptor, name: 'published_tool' },
 						},
 					},
-					skills: {
-						published_skill: {
-							name: 'Published skill',
-							description: 'Published description',
-							instructions: 'Published body',
-						},
-					},
 				}),
 			}),
 		);
+		skillHub.resolveDraftSkills.mockResolvedValue({
+			draft_skill: {
+				name: 'Draft skill',
+				description: 'Draft description',
+				instructions: 'Draft body',
+			},
+		});
+		skillHub.resolvePinnedSkills.mockResolvedValue({
+			published_skill: {
+				name: 'Published skill',
+				description: 'Published description',
+				instructions: 'Published body',
+			},
+		});
 
 		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).resolves.toMatchObject({
 			source: {
@@ -283,6 +298,8 @@ describe('SubAgentSourceResolver', () => {
 				},
 			},
 		});
+		expect(skillHub.resolveDraftSkills).toHaveBeenCalledWith(runnableConfig);
+		expect(skillHub.resolvePinnedSkills).not.toHaveBeenCalled();
 	});
 
 	it('rejects missing or inaccessible n8n agents', async () => {

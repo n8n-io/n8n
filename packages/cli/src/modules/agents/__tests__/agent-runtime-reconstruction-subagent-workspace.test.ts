@@ -14,6 +14,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type {
@@ -45,6 +46,13 @@ const config: AgentJsonConfig = {
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Help with delegated work.',
 };
+
+function makeSkillHub(): SkillHubService {
+	const skillHub = mock<SkillHubService>();
+	skillHub.resolveDraftSkills.mockResolvedValue({});
+	skillHub.resolvePinnedSkills.mockResolvedValue({});
+	return skillHub;
+}
 
 function makeService() {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -80,6 +88,7 @@ function makeService() {
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		makeSkillHub(),
 	);
 
 	return { service, workspaceService };

@@ -10,6 +10,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import type { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 
 describe('AgentDependencyIndexListener', () => {
 	const eventService = new EventService();
@@ -22,6 +23,7 @@ describe('AgentDependencyIndexListener', () => {
 		workflowDependencyRepository,
 		mock<AgentRepository>(),
 		runtimeCache,
+		mock<SkillHubService>(),
 		logger,
 		mock<WorkflowsConfig>({ indexingBatchSize: 2 }),
 	);

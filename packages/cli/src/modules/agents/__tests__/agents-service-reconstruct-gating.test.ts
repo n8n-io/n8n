@@ -29,6 +29,7 @@ import type { AiService } from '@/services/ai.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
@@ -80,6 +81,13 @@ vi.mock('../json-config/mcp-client-factory', () => ({
 beforeEach(() => {
 	Container.set(SubAgentRunner, mock<SubAgentRunner>());
 });
+
+function makeSkillHub(): SkillHubService {
+	const skillHub = mock<SkillHubService>();
+	skillHub.resolveDraftSkills.mockResolvedValue({});
+	skillHub.resolvePinnedSkills.mockResolvedValue({});
+	return skillHub;
+}
 
 function getInjectedToolNames(): string[] {
 	const names: string[] = [];
@@ -135,6 +143,7 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		makeSkillHub(),
 	);
 }
 

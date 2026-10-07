@@ -34,6 +34,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
+import type { SkillHubRepository } from '../repositories/skill-hub.repository';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -90,6 +92,13 @@ const testUser = { id: userId, firstName: 'Test', lastName: 'User' } as User;
 const testUserAuthor = `${testUser.firstName} ${testUser.lastName}`;
 let credentialsService: Mocked<CredentialsService>;
 
+function makeSkillHub(): SkillHubService {
+	const skillHub = mock<SkillHubService>();
+	skillHub.resolveDraftSkills.mockResolvedValue({});
+	skillHub.resolvePinnedSkills.mockResolvedValue({});
+	return skillHub;
+}
+
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: agentId,
@@ -145,6 +154,7 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		makeSkillHub(),
 	);
 }
 
@@ -261,6 +271,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRepository,
 			modificationTelemetry,
 			agentUpdateBroadcaster,
+			makeSkillHub(),
+			mock<SkillHubRepository>(),
 		);
 		agentConfigService = new AgentConfigService(
 			logger,
@@ -275,6 +287,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
 			agentUpdateBroadcaster,
+			makeSkillHub(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
@@ -325,6 +338,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
+			makeSkillHub(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -341,6 +355,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 			mock<AgentUpdateBroadcaster>(),
+			makeSkillHub(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

@@ -11,6 +11,7 @@ import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsController } from '../agents.controller';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
@@ -29,6 +30,7 @@ function makeController({
 	credentialsService = mock<CredentialsService>(),
 	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
 	collaborationService = mock<CollaborationService>(),
+	skillHub = mock<SkillHubService>(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -41,11 +43,16 @@ function makeController({
 	credentialsService?: Mocked<CredentialsService>;
 	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
 	collaborationService?: Mocked<CollaborationService>;
+	skillHub?: Mocked<SkillHubService>;
 } = {}) {
+	if (!skillHub.resolveEditableSkills.getMockImplementation()) {
+		skillHub.resolveEditableSkills.mockResolvedValue({});
+	}
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
 		agentValidationService,
 		agentPublishService,
+		skillHub,
 	);
 
 	return {
@@ -58,6 +65,7 @@ function makeController({
 		agentsService,
 		agentPublishService,
 		agentValidationService,
+		skillHub,
 	};
 }
 
@@ -259,17 +267,26 @@ describe('AgentsController agent resource', () => {
 			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
+		const skillHub = mock<SkillHubService>();
+		const schema = {
+			name: 'Support Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Help users',
+			skills: [{ type: 'skill', id: 'triage' }],
+		};
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
-			skills: {
-				triage: {
-					name: 'Triage',
-					description: 'Triage requests',
-					instructions: 'Route each request.',
-				},
-			},
+			schema,
 		} as never);
+		// Skill bodies live in the hub; the response carries the editor's draft rows.
+		skillHub.resolveEditableSkills.mockResolvedValue({
+			triage: {
+				name: 'Triage',
+				description: 'Triage requests',
+				instructions: 'Route each request.',
+			},
+		});
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
 			issues: [],
@@ -280,6 +297,7 @@ describe('AgentsController agent resource', () => {
 			agentsService: agentsService as never,
 			agentPublishService,
 			agentValidationService,
+			skillHub,
 		});
 
 		const result = await controller.get(
@@ -297,6 +315,7 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
+		expect(skillHub.resolveEditableSkills).toHaveBeenCalledWith(schema);
 		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'agent-1' }),

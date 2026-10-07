@@ -27,6 +27,7 @@ import type { AgentHistoryRepository } from '../repositories/agent-history.repos
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SkillHubService } from '../skills-hub/skill-hub.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -118,6 +119,7 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+	const skillHub = mock<SkillHubService>();
 	const { trx, taskRepo, transaction } = makeTransaction();
 
 	Object.defineProperty(agentRepository, 'manager', {
@@ -143,6 +145,11 @@ function makeService() {
 		status: 'valid',
 		issues: [],
 	});
+	skillHub.resolveDraftSkills.mockResolvedValue({});
+	skillHub.snapshotForPublish.mockResolvedValue({ skills: {}, versionByRef: new Map() });
+	skillHub.restoreFromVersion.mockImplementation(async (_history, restoredSchema) => ({
+		schema: restoredSchema,
+	}));
 	Container.set(ChatIntegrationService, chatIntegrationService);
 	Container.set(AgentTaskService, taskService);
 
@@ -161,11 +168,13 @@ function makeService() {
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
 		agentUpdateBroadcaster,
+		skillHub,
 	);
 
 	return {
 		service,
 		agentUpdateBroadcaster,
+		skillHub,
 		agentRepository,
 		agentHistoryRepository,
 		taskSnapshotRepository,
@@ -382,6 +391,7 @@ describe('AgentPublishService', () => {
 			telemetry,
 			eventService,
 			agentUpdateBroadcaster,
+			skillHub,
 			trx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
@@ -408,9 +418,12 @@ describe('AgentPublishService', () => {
 				],
 				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 			},
-			skills: configuredSkills,
 			integrations: [...integrations, { type: 'n8n_chat', credentialId: '' }],
 		});
+		const versionByRef = new Map([
+			['skill', 'skill-version-1'],
+			['disabled_skill', 'skill-version-2'],
+		]);
 		const draftValidation = { status: 'valid' as const, issues: [] };
 		const task = {
 			id: 'task-1',
@@ -423,6 +436,8 @@ describe('AgentPublishService', () => {
 		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue(draftValidation);
 		customToolsService.snapshotConfiguredTools.mockReturnValue(configuredTools as never);
 		agentTaskRepository.findByAgentId.mockResolvedValue([task] as never);
+		skillHub.resolveDraftSkills.mockResolvedValue(configuredSkills);
+		skillHub.snapshotForPublish.mockResolvedValue({ skills: configuredSkills, versionByRef });
 
 		const result = await service.publishAgent(agentId, projectId, user, byBuilder);
 
@@ -447,6 +462,8 @@ describe('AgentPublishService', () => {
 			},
 			trx,
 		);
+		expect(skillHub.snapshotForPublish).toHaveBeenCalledWith(agent.schema, trx);
+		expect(skillHub.pinForPublish).toHaveBeenCalledWith(versionId, versionByRef, trx);
 		expect(taskSnapshotRepository.saveForVersion).toHaveBeenCalledWith(
 			[expect.objectContaining({ versionId, taskId: 'task-1', objective: 'Summarize messages' })],
 			trx,
@@ -675,7 +692,8 @@ describe('AgentPublishService', () => {
 	});
 
 	it('reverts draft fields and task bodies from the active published snapshot', async () => {
-		const { service, agentRepository, taskSnapshotRepository, taskRepo } = makeService();
+		const { service, agentRepository, taskSnapshotRepository, taskRepo, skillHub, trx } =
+			makeService();
 		const activeVersion = makeHistory({
 			versionId: 'published-v1',
 			schema: {
@@ -695,7 +713,6 @@ describe('AgentPublishService', () => {
 			activeVersion,
 			schema: { ...schema, name: 'Draft Agent' },
 			tools: {},
-			skills: {},
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -710,7 +727,13 @@ describe('AgentPublishService', () => {
 		expect(agent.name).toBe(schema.name);
 		expect(agent.versionId).toBe('published-v1');
 		expect(agent.tools).toEqual(activeVersion.tools);
-		expect(agent.skills).toEqual(activeVersion.skills);
+		// Skill bodies live in the hub: the revert pins each ref to its published version.
+		expect(skillHub.restoreFromVersion).toHaveBeenCalledWith(
+			activeVersion,
+			activeVersion.schema,
+			trx,
+		);
+		expect(skillHub.refreshDependencies).toHaveBeenCalledWith(agent, trx);
 		expect(taskRepo.delete).toHaveBeenCalledWith(['draft-only']);
 		expect(taskRepo.update).toHaveBeenCalledWith(
 			'task-1',
@@ -785,7 +808,8 @@ describe('AgentPublishService', () => {
 	});
 
 	it('reports sidecar body-only reverts when schema references are unchanged', async () => {
-		const { service, agentRepository, taskSnapshotRepository, taskRepo, telemetry } = makeService();
+		const { service, agentRepository, taskSnapshotRepository, taskRepo, telemetry, skillHub } =
+			makeService();
 		const schemaWithRefs: AgentJsonConfig = {
 			...schema,
 			tools: [{ type: 'custom', id: 'tool-1' }],
@@ -809,10 +833,13 @@ describe('AgentPublishService', () => {
 			activeVersion,
 			schema: schemaWithRefs,
 			tools: { 'tool-1': { code: 'draft', descriptor: { name: 'tool-1' } } } as never,
-			skills: {
-				'skill-1': { name: 'Skill', description: 'draft', instructions: 'Use draft' },
-			},
 		});
+		// Before the revert the agent runs the draft skill version, after it the pinned one.
+		skillHub.resolveDraftSkills
+			.mockResolvedValueOnce({
+				'skill-1': { name: 'Skill', description: 'draft', instructions: 'Use draft' },
+			})
+			.mockResolvedValueOnce(publishedSkills);
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		taskSnapshotRepository.findByVersionId.mockResolvedValue([
