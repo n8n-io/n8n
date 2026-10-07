@@ -12,7 +12,7 @@ const OWNER_SOURCES = ['suggested', 'assigned'];
  * with its workflow. A deleted user leaves the row with no user, which reads
  * as unassigned.
  */
-export class CreateMigrationWorkflowOwnerTable1790966672000 implements ReversibleMigration {
+export class CreateMigrationWorkflowOwnerTable1791366497000 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(OWNER_TABLE)
 			.withColumns(
