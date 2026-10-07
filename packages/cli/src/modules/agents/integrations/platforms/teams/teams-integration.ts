@@ -32,11 +32,15 @@ const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
  * The model input carries no sign of whether the bot was addressed, so a
  * message read only through read-all looks like a direct question.
  */
+const ANSWER_AS_TEXT =
+	'To answer, write your answer as normal text. It is posted for you. Do not use the respond action for it.';
+
 const OPTIONAL_REPLY_NOTE = [
 	'<reply_guidance>',
 	'This message does not mention you. You read it because you can read every message in this conversation.',
-	'Reply only if the message is meant for you or you can add something useful within your role.',
-	'If not, call do_not_respond once. That ends your turn.',
+	'Answer only if the message is meant for you or you can add something useful within your role.',
+	ANSWER_AS_TEXT,
+	'Otherwise, call do_not_respond once. That ends your turn.',
 	'</reply_guidance>',
 ].join('\n');
 
@@ -44,7 +48,8 @@ const OPTIONAL_REPLY_NOTE = [
 const JOINED_THREAD_REPLY_NOTE = [
 	'<reply_guidance>',
 	'This message does not mention you, but it is in a conversation you joined earlier.',
-	'Reply if it continues your conversation or asks you something.',
+	'Answer if it continues your conversation or asks you something.',
+	ANSWER_AS_TEXT,
 	'If it is aimed at someone else, call do_not_respond once. That ends your turn.',
 	'</reply_guidance>',
 ].join('\n');

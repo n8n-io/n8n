@@ -735,6 +735,24 @@ describe('Microsoft Teams messages without a mention', () => {
 		}
 	});
 
+	it.each([
+		['a new post', [channelRootPost]],
+		['a follow-up in a joined thread', [channelMention, channelFollowUp]],
+	])('tells the model to answer %s as plain text, not through respond', async (_label, posts) => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			for (const post of posts) await ctx.sendWebhook(post);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					modelMessage: expect.stringContaining('Do not use the respond action for it.'),
+				}),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
 	it('tells the model that a message without a mention may go unanswered', async () => {
 		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
