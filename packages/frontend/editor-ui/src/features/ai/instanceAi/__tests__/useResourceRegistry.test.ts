@@ -741,6 +741,109 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.has('agent-1')).toBe(false);
 		});
 
+		test('registers an Agent at spawn while the builder is creating it', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder:agent-1',
+								activity: 'creating',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								isLoading: true,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+			});
+		});
+
+		test('registers an Agent at spawn while the builder is editing it', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder:agent-1',
+								activity: 'editing',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								isLoading: true,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+			});
+		});
+
+		test('keeps a spawn-registered Agent when the build settles with no change', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder:agent-1',
+								activity: 'creating',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								isLoading: true,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('agent-1')).toBe(true);
+
+			const buildAgentCall = messages.value[0].agentTree!.toolCalls[0];
+			buildAgentCall.isLoading = false;
+			buildAgentCall.result = { ok: true, agentId: 'agent-1', agentChange: 'none' };
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+			});
+		});
+
 		test('keeps a pending Agent unconfirmed until a build changes it', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 			const builder = makeAgentNode({
