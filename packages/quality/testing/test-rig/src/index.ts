@@ -52,3 +52,8 @@ export {
 	leadershipEvents,
 	parseLeadershipEvents,
 } from './multi-main';
+export { CHAOS_HOOKS, chaosRun, chaosSchedule, rigExecutor } from './chaos/run';
+export type { ChaosOptions, ChaosResult } from './chaos/run';
+export { generateSchedule, random } from './chaos/schedule';
+export type { Fault, FaultKind, ScheduledFault } from './chaos/schedule';
+export { shrink } from './chaos/shrink';
