@@ -49,6 +49,10 @@ rebuild it in reviewable pieces with the approach below.
 | Attachments | Store files in n8n binary data. Messages keep references only. Do not port the v1 base64-in-message model. |
 | Replay cursor | v2 does not need the v1 SSE replay cursor (`Last-Event-ID`). |
 | Unused code | Agents-side prerequisites may land before they have a caller. This is agreed with the Agents team. |
+| System agent model | Code-defined providers first. Move pieces into shared registries (privileged system tools, model policy) only when a second agent needs them. |
+| Agents admin setting | System agents bypass the Agents admin "enabled" setting. It controls custom project agents only. The Assistant keeps its own enable switch. |
+| Queue kind | System-agent turns use a new `system` queue kind, not `preview`. |
+| Access | Runtime floor plus provider checks (see A9). System agents get their own routes, without the `agent:execute` guard. |
 
 ## 3. Target architecture during the transition
 
@@ -313,14 +317,34 @@ execution-service tests), routing in `agent-message-queue.service.ts`,
 
 **Depends on:** A2, A4, A5, A6, A8.
 
-**Decisions to make first (with the Agents team):**
+**Decisions (made 2026-10-07):**
 
-- Do system agents bypass the Agents admin "enabled" setting? The PoC does,
-  so turning off custom agents does not turn off the Assistant.
-- Is `authorize(user, projectId)` the access contract? System agents run as
-  the requesting user. This needs IAM sign-off.
-- Keep reusing the `preview` queue kind, or add a `system` kind?
-- Code-defined providers (PoC) or declarative registries? See section 11.
+- **Provider model:** code-defined providers first, as in the PoC. Shared
+  registries come later, only when a second agent needs them.
+- **Agents admin setting:** system agents bypass it. Turning off custom
+  agents does not turn off the Assistant. The PoC already does this.
+- **Queue kind:** add a `system` kind. The PoC reused `preview`; change the
+  queue service, the consumer and `listPending` filters accordingly.
+- **Access: runtime floor plus provider.** At send, at queue pickup and at
+  resume, the runtime checks for every system agent:
+  1. the thread belongs to the agent, and the user owns it (`ownerId`,
+     `accessScope = 'user'`);
+  2. the user has `project:read` on the thread's working project.
+
+  The provider's `authorize(user, projectId)` then adds agent-specific
+  checks. For the Assistant: the `instanceAi:message` global scope.
+  The floor uses `project:read`, not `agent:execute`: `agent:execute` means
+  "may run this project's custom agents", the project chat-user role has it
+  without `project:read`, and custom roles can have `project:read` without
+  it. This is stricter than v1, which checks `project:read` only when the
+  thread is created. Data access is unchanged: every tool call still runs
+  with the user's own permissions. Needs IAM sign-off.
+- **Routes:** system agents get their own routes (for example
+  `/agents/system/:agentId/chat`, `/chat/resume`, queue, cancel, history),
+  guarded by the runtime floor. Project-agent routes and their
+  `@ProjectScope('agent:execute')` guards stay unchanged. The PoC reused the
+  project-agent routes, so it required `agent:execute` on the working project
+  by accident.
 
 **Acceptance:**
 
@@ -479,12 +503,12 @@ on its own.
 
 | Decision | Options | Notes |
 |---|---|---|
-| Provider model vs declarative agents | (a) Code-defined providers build the runtime (PoC). (b) Declarative agent config with a registry of privileged system tools and a model-lock policy. | (a) needs far less Agents work. (b) lets other agents reuse Assistant tools. They can combine: start with (a), move pieces to (b) when a second agent needs them. |
-| Agents admin setting | System agents bypass it, or respect it. | PoC bypasses. |
-| Queue kind | Reuse `preview`, or add `system`. | PoC reuses `preview`. |
 | Old threads | Migrate, or read-only and age out. | Decide before phase 5. |
 | Flag | PostHog experiment or env var; name. | |
 | v3 timing | Ship the switch with v3 or not. | |
+
+Decided (see section 2 and A9): provider model, Agents admin setting, queue
+kind, access model and routes.
 
 ## 12. Risks and lessons from the PoC
 
@@ -524,13 +548,13 @@ Practical notes:
 | Item from team review | Plan item |
 |---|---|
 | Code-defined, read-only, instance-scoped agents | A8, A9 |
-| Agents that run as the requesting user (IAM sign-off) | A9 decisions |
+| Agents that run as the requesting user (IAM sign-off) | A9 access decision (runtime floor) |
 | Extensible HITL confirmation types | A7 (editor), A9 `normalizeResumeData` (backend) |
-| Registry for n8n-managed system tools in privileged contexts | Section 11, provider model decision |
+| Registry for n8n-managed system tools in privileged contexts | Deferred: code providers first (section 2) |
 | Per-turn context hook (time, project, tabs, artifacts) | A4, A9 `chatTurnOptions` and `prepareTurn` |
 | Per-agent sandbox preconfiguration | A10 (provider-owned sandbox and setup); Phase 6 sandbox item |
 | Backend-started runs with durable suspend and resume | A5, A9 |
-| Policy hook to lock an agent's model | Section 11, provider model decision |
+| Policy hook to lock an agent's model | Deferred: code providers first (section 2) |
 
 ## 14. Progress
 
