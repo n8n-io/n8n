@@ -46,7 +46,7 @@ import {
 } from './agent-telemetry';
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
-import type { Agent } from './entities/agent.entity';
+import type { ProjectAgent } from './entities/agent.entity';
 import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
 import { encodeIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
@@ -234,7 +234,7 @@ export class AgentWorkflowExecutionService {
 	 * are not affected.
 	 */
 	async compileIsolated(
-		agentEntity: Agent,
+		agentEntity: ProjectAgent,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
@@ -728,7 +728,7 @@ export class AgentWorkflowExecutionService {
 			agentId,
 		);
 
-		let agentData: Agent = agentEntity;
+		let agentData: ProjectAgent = agentEntity;
 
 		if (!useDraftVersion) {
 			agentData = getPublishedAgentSnapshot(agentEntity);

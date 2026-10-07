@@ -54,7 +54,7 @@ import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { AgentSpendLedger } from '../budget-guardrail';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -821,7 +821,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				schema,
 				activeVersion: { schema },
 				integrations: [],
-			} as unknown as Agent);
+			} as unknown as ProjectAgent);
 			settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
 			const input = {
 				agentId,
@@ -2294,7 +2294,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				name: 'Support Agent',
 				schema,
 				integrations: [],
-			} as unknown as Agent);
+			} as unknown as ProjectAgent);
 			if (failure !== 'none') executionService[failure].mockRejectedValue(cause);
 			const onExecutionRecorded = vi.fn();
 			const result = collect(
@@ -2329,7 +2329,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	it('does not record a runtime failure when cancellation arrives during agent lookup', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
 		const controller = new AbortController();
-		const agent = createDeferredPromise<Agent | null>();
+		const agent = createDeferredPromise<ProjectAgent | null>();
 		runtimeCacheService.getRuntime.mockRejectedValue(new Error('runtime initialization failed'));
 		agentRepository.findByIdAndProjectId.mockReturnValue(agent.promise);
 
@@ -2441,7 +2441,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			const { service, runtimeCacheService, executionService, agentRepository } = makeService();
 			const buildError = new UserError('Credential "OpenAI" not found');
 			runtimeCacheService.getRuntime.mockRejectedValue(buildError);
-			// A plain object: `mock<Agent>()` proxies nested fields, which breaks the
+			// A plain object: `mock<ProjectAgent>()` proxies nested fields, which breaks the
 			// telemetry builder's array handling of `schema`.
 			agentRepository.findByIdAndProjectId.mockResolvedValue({
 				id: agentId,
@@ -2449,7 +2449,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				schema: { ...schema, name: 'Support Agent (draft)' },
 				activeVersion: { schema },
 				integrations: [],
-			} as unknown as Agent);
+			} as unknown as ProjectAgent);
 
 			await expect(
 				collect(
@@ -2501,7 +2501,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			schema,
 			activeVersion: { schema },
 			integrations: [],
-		} as unknown as Agent);
+		} as unknown as ProjectAgent);
 
 		await expect(
 			collect(

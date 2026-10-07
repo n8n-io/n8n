@@ -9,7 +9,7 @@ import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentWorkflowDependency } from '../entities/agent-workflow-dependency.entity';
-import { Agent } from '../entities/agent.entity';
+import { Agent, isProjectAgent } from '../entities/agent.entity';
 import { extractAgentWorkflowRefs } from '../utils/extract-agent-workflow-refs';
 
 export type AgentWorkflowDependencyReference = Pick<
@@ -43,7 +43,8 @@ export class AgentWorkflowDependencyRepository extends BaseRepository<AgentWorkf
 					})
 				: await manager.findOne(Agent, { where: { id: agentId } });
 
-			if (agent === null) {
+			// An instance agent has no project, so it has no project workflows to depend on.
+			if (agent === null || !isProjectAgent(agent)) {
 				if (isPostgres) await manager.delete(AgentWorkflowDependency, { agentId });
 				return;
 			}

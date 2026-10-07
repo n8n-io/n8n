@@ -3,14 +3,14 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentRuntimeCacheService } from '../../agent-runtime-cache.service';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentCleanupService } from '../sub-agent-cleanup.service';
 
 const projectId = 'project-1';
 const childAgentId = 'child-1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: 'parent-1',
 		projectId,
@@ -20,7 +20,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 			instructions: 'Delegate work',
 		} as AgentJsonConfig,
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService() {

@@ -5,17 +5,47 @@ import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeo
 
 import type { AgentHistory } from './agent-history.entity';
 
+export type AgentScope = 'project' | 'instance';
+
+/** An agent row (or a column subset of one) that belongs to a project. */
+export type ProjectScoped<T extends Pick<Agent, 'projectId'>> = T & { projectId: string };
+
+/** A project agent. Project-scoped repository queries return only these. */
+export type ProjectAgent = ProjectScoped<Agent>;
+
+/**
+ * Narrows an agent to a project agent. Project-scoped repository queries
+ * filter on `scope` in SQL too; this guard gives callers the non-null
+ * `projectId` without a cast. A column subset without `scope` counts as a
+ * project agent when it has a project.
+ */
+export function isProjectAgent<T extends Pick<Agent, 'projectId'>>(
+	agent: T,
+): agent is ProjectScoped<T> {
+	if ('scope' in agent && agent.scope === 'instance') return false;
+	return agent.projectId !== null;
+}
+
 @Entity({ name: 'agents' })
 export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
-	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
+	@ManyToOne(() => Project, { onDelete: 'CASCADE', nullable: true })
 	@JoinColumn({ name: 'projectId' })
-	project: Project;
+	project: Project | null;
 
-	@Column()
-	projectId: string;
+	/** Null only for an instance agent (`scope = 'instance'`). Its threads carry the working project. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	projectId: string | null;
+
+	/**
+	 * `project`: a user-defined agent in `projectId`. `instance`: a code-defined
+	 * agent that belongs to no project. Instance agents are read-only through
+	 * the project-agent APIs.
+	 */
+	@Column({ type: 'varchar', length: 16, default: 'project' })
+	scope: AgentScope;
 
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;

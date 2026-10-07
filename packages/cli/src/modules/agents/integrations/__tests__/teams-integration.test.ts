@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@n8n/errors';
 
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type {
 	AgentChatIntegrationContext,
@@ -198,7 +198,7 @@ describe('TeamsIntegration', () => {
 	describe('onBeforeConnect', () => {
 		it('rejects a credential another agent already connected', async () => {
 			agentRepository.findByIntegrationCredential.mockResolvedValue([
-				mock<Agent>({ name: 'Support bot' }),
+				mock<ProjectAgent>({ name: 'Support bot' }),
 			]);
 
 			await expect(integration.onBeforeConnect(connectionContext())).rejects.toThrow(ConflictError);

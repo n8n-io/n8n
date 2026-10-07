@@ -59,7 +59,7 @@ import {
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
-import { Agent } from './entities/agent.entity';
+import { type ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
@@ -290,7 +290,7 @@ export class AgentRuntimeReconstructionService {
 	) {}
 
 	async reconstructFromAgentEntity(
-		agentEntity: Agent,
+		agentEntity: ProjectAgent,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		integrationType?: string,

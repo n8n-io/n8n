@@ -32,7 +32,7 @@ import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.serv
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -114,7 +114,7 @@ vi.mock('../json-config/from-json-config', async () => {
 	};
 });
 
-function makeAgentEntity(tools: AgentJsonToolConfig[]): Agent {
+function makeAgentEntity(tools: AgentJsonToolConfig[]): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
 		model: 'anthropic/claude-sonnet-4-5',
@@ -126,7 +126,7 @@ function makeAgentEntity(tools: AgentJsonToolConfig[]): Agent {
 		projectId,
 		schema,
 		tools: { custom_tool: { descriptor: { name: 'custom_tool' }, code: '' } },
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService(overrides: {

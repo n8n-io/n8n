@@ -5,7 +5,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -20,7 +20,7 @@ const projectId = 'project-1';
 const telemetryContext = { user: { id: 'user-1' } as never, modifiedBy: 'user' as const };
 const versionId = 'v1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: agentId,
 		versionId,
@@ -31,7 +31,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		skills: {},
 		updatedAt: new Date(),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 describe('AgentSkillsService', () => {
@@ -142,7 +142,7 @@ describe('AgentSkillsService', () => {
 			instructions: 'Summarize next steps and send a draft.',
 		};
 
-		const configuredAgent = (overrides: Partial<Agent> = {}) =>
+		const configuredAgent = (overrides: Partial<ProjectAgent> = {}) =>
 			makeAgent({
 				schema: {
 					name: 'Test Agent',

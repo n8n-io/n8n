@@ -23,7 +23,7 @@ import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
-import type { Agent } from './entities/agent.entity';
+import type { ProjectAgent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -321,7 +321,7 @@ export class AgentRuntimeCacheService {
 			`Agent ${agentId} not found`,
 		);
 
-		const agentData: Agent = usePublishedVersion
+		const agentData: ProjectAgent = usePublishedVersion
 			? getPublishedAgentSnapshot(agentEntity)
 			: agentEntity;
 
