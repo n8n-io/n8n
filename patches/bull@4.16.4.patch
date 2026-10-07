@@ -1,3 +1,71 @@
+diff --git a/lib/commands/moveStalledJobsToWait-7.lua b/lib/commands/moveStalledJobsToWait-7.lua
+index 737795eb2e0b7af5968a0eb56d3677a683eed2fb..64fefd8689c91db2534735b695f37075874a6b49 100644
+--- a/lib/commands/moveStalledJobsToWait-7.lua
++++ b/lib/commands/moveStalledJobsToWait-7.lua
+@@ -76,6 +76,30 @@ if(#stalling > 0) then
+       local removed = rcall("LREM", KEYS[3], 1, jobId)
+ 
+       if(removed > 0) then
++        -- n8n patch: a job without processedOn reached active through BRPOPLPUSH,
++        -- but Bull never activated it for a worker. It never ran, so it is safe to
++        -- run later. Return it to the queue under a fresh id and drop the old one,
++        -- so the worker that still holds the old id finds nothing to run when it
++        -- wakes up. No stall is counted.
++        if(rcall("HEXISTS", jobKey, "processedOn") == 0) then
++          local newId = rcall("INCR", ARGV[2] .. "id")
++          local newKey = ARGV[2] .. newId
++          local fields = rcall("HGETALL", jobKey)
++          if #fields > 0 then
++            rcall("HMSET", newKey, unpack(fields))
++          end
++          rcall("DEL", jobKey, jobKey .. ":logs")
++          local priorityKey = ARGV[2] .. "priority"
++          local priority = rcall("ZSCORE", priorityKey, jobId)
++          rcall("ZREM", priorityKey, jobId)
++          if priority then
++            rcall("ZADD", priorityKey, priority, newId)
++          end
++          local target = getTargetQueueList(KEYS[6], KEYS[2], KEYS[7])
++          rcall("RPUSH", target, newId)
++          rcall('PUBLISH', KEYS[1] .. '@', newId)
++          table.insert(stalled, newId)
++        else
+         -- If this job has been stalled too many times, such as if it crashes the worker, then fail it.
+         local stalledCount = rcall("HINCRBY", jobKey, "stalledCounter", 1)
+         if(stalledCount > MAX_STALLED_JOB_COUNT) then
+@@ -120,6 +144,7 @@ if(#stalling > 0) then
+           rcall('PUBLISH', KEYS[1] .. '@', jobId)
+           table.insert(stalled, jobId)
+         end
++        end
+       end
+     end
+   end
+diff --git a/lib/commands/moveToActive-8.lua b/lib/commands/moveToActive-8.lua
+index 1b35186625853cb60529cb8878d26ea6f428c9bb..77e765b4cafddf6f6a399e7c31a93c89bb4174b0 100644
+--- a/lib/commands/moveToActive-8.lua
++++ b/lib/commands/moveToActive-8.lua
+@@ -115,6 +115,20 @@ end
+ local jobId = ARGV[5]
+ 
+ if jobId ~= '' then
++  -- n8n patch: the caller's BRPOPLPUSH completed some time ago, so the stall
++  -- sweep may have returned the job to the queue under a fresh id since. Activate
++  -- only a job that is still in active and that nobody locks right now.
++  local inActive = false
++  for _, activeId in ipairs(rcall("LRANGE", KEYS[2], 0, -1)) do
++    if activeId == jobId then
++      inActive = true
++      break
++    end
++  end
++  if not inActive
++    or not rcall("SET", ARGV[1] .. jobId .. ':lock', ARGV[2], "PX", ARGV[3], "NX") then
++    return
++  end
+   -- clean stalled key
+   rcall("SREM", KEYS[5], jobId)
+ else
 diff --git a/lib/job.js b/lib/job.js
 index 1642d3fb35cbd64b553291660fc63bae2e7f2ef5..3301e3fbc7296f545b65331dad1f12c820267e0d 100644
 --- a/lib/job.js
@@ -40,3 +108,71 @@ index 19eefc35d815e324e47c4fe4c152f39c7c547470..4f191ef9d9bbf401b846ec712e83e59d
            .then(processJobs, err => {
              if (!(this.closing && err.message === 'Connection is closed.')) {
                utils.emitSafe(this, 'error', err, 'Error processing job');
+diff --git a/lib/scripts/moveStalledJobsToWait-7.js b/lib/scripts/moveStalledJobsToWait-7.js
+index bf65187d81ba1860a51564edd3702bf2e16f89b1..281629ecb132d6b912ac292861e2ee182a4eb2bb 100644
+--- a/lib/scripts/moveStalledJobsToWait-7.js
++++ b/lib/scripts/moveStalledJobsToWait-7.js
+@@ -97,6 +97,30 @@ if(#stalling > 0) then
+       --  Remove from the active queue.
+       local removed = rcall("LREM", KEYS[3], 1, jobId)
+       if(removed > 0) then
++        -- n8n patch: a job without processedOn reached active through BRPOPLPUSH,
++        -- but Bull never activated it for a worker. It never ran, so it is safe to
++        -- run later. Return it to the queue under a fresh id and drop the old one,
++        -- so the worker that still holds the old id finds nothing to run when it
++        -- wakes up. No stall is counted.
++        if(rcall("HEXISTS", jobKey, "processedOn") == 0) then
++          local newId = rcall("INCR", ARGV[2] .. "id")
++          local newKey = ARGV[2] .. newId
++          local fields = rcall("HGETALL", jobKey)
++          if #fields > 0 then
++            rcall("HMSET", newKey, unpack(fields))
++          end
++          rcall("DEL", jobKey, jobKey .. ":logs")
++          local priorityKey = ARGV[2] .. "priority"
++          local priority = rcall("ZSCORE", priorityKey, jobId)
++          rcall("ZREM", priorityKey, jobId)
++          if priority then
++            rcall("ZADD", priorityKey, priority, newId)
++          end
++          local target = getTargetQueueList(KEYS[6], KEYS[2], KEYS[7])
++          rcall("RPUSH", target, newId)
++          rcall('PUBLISH', KEYS[1] .. '@', newId)
++          table.insert(stalled, newId)
++        else
+         -- If this job has been stalled too many times, such as if it crashes the worker, then fail it.
+         local stalledCount = rcall("HINCRBY", jobKey, "stalledCounter", 1)
+         if(stalledCount > MAX_STALLED_JOB_COUNT) then
+@@ -136,6 +160,7 @@ if(#stalling > 0) then
+           rcall('PUBLISH', KEYS[1] .. '@', jobId)
+           table.insert(stalled, jobId)
+         end
++        end
+       end
+     end
+   end
+diff --git a/lib/scripts/moveToActive-8.js b/lib/scripts/moveToActive-8.js
+index 048d6e88676e9f9e3003ce371d51d256170b339b..aff7a0c7d995e2bd116078472ed7cb91427e88d4 100644
+--- a/lib/scripts/moveToActive-8.js
++++ b/lib/scripts/moveToActive-8.js
+@@ -96,6 +96,20 @@ local rateLimit = function(jobId, maxJobs)
+ end
+ local jobId = ARGV[5]
+ if jobId ~= '' then
++  -- n8n patch: the caller's BRPOPLPUSH completed some time ago, so the stall
++  -- sweep may have returned the job to the queue under a fresh id since. Activate
++  -- only a job that is still in active and that nobody locks right now.
++  local inActive = false
++  for _, activeId in ipairs(rcall("LRANGE", KEYS[2], 0, -1)) do
++    if activeId == jobId then
++      inActive = true
++      break
++    end
++  end
++  if not inActive
++    or not rcall("SET", ARGV[1] .. jobId .. ':lock', ARGV[2], "PX", ARGV[3], "NX") then
++    return
++  end
+   -- clean stalled key
+   rcall("SREM", KEYS[5], jobId)
+ else
