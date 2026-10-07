@@ -354,6 +354,7 @@ export const workflowActiveDeprecationDocs = {
 export const workflowCreateReadOnlyFieldDocs = {
 	id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },
 	active: { type: 'boolean', readOnly: true, ...workflowActiveDeprecationDocs },
+	activeVersionId: alsoNullable({ type: 'string', readOnly: true }),
 	createdAt: { type: 'string', format: 'date-time', readOnly: true },
 	updatedAt: { type: 'string', format: 'date-time', readOnly: true },
 	isArchived: { type: 'boolean', readOnly: true },

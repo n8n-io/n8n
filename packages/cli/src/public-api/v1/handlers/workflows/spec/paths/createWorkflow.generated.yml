@@ -26,6 +26,10 @@ requestBody:
             description: Deprecated. Check whether `activeVersionId` is not null instead.
             readOnly: true
             deprecated: true
+          activeVersionId:
+            type: string
+            readOnly: true
+            nullable: true
           createdAt:
             type: string
             format: date-time
