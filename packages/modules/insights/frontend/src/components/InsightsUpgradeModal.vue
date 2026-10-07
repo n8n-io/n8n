@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useBasePageRedirectionHelper } from '@n8n/stores/composables/useBasePageRedirectionHelper';
-import { ElDialog } from 'element-plus';
 import { computed } from 'vue';
 const model = defineModel<boolean>();
 const i18n = useI18n();
@@ -21,12 +20,16 @@ const perks = computed(() =>
 </script>
 
 <template>
-	<ElDialog v-model="model" :title="i18n.baseText('insights.upgradeModal.title')" width="500">
-		<div>
-			<N8nText tag="p" class="mb-s">
+	<N8nDialog
+		v-model:open="model"
+		size="medium"
+		:header="i18n.baseText('insights.upgradeModal.title')"
+	>
+		<N8nDialogBody>
+			<N8nText tag="p">
 				{{ i18n.baseText('insights.upgradeModal.content') }}
 			</N8nText>
-			<ul class="perks-list">
+			<ul :class="$style.perks">
 				<N8nText v-for="perk in perks" :key="perk" color="text-dark" tag="li">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16px" height="16px">
 						<path
@@ -37,23 +40,21 @@ const perks = computed(() =>
 					{{ perk }}
 				</N8nText>
 			</ul>
-		</div>
-		<template #footer>
-			<div class="insight-modal-button-container">
-				<N8nButton variant="subtle" @click="model = false">
-					{{ i18n.baseText('insights.upgradeModal.button.dismiss') }}
-				</N8nButton>
-				<N8nButton variant="solid" @click="goToUpgrade">
-					{{ i18n.baseText('generic.upgrade') }}
-				</N8nButton>
-			</div>
-		</template>
-	</ElDialog>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton variant="subtle" @click="model = false">
+				{{ i18n.baseText('insights.upgradeModal.button.dismiss') }}
+			</N8nButton>
+			<N8nButton variant="solid" @click="goToUpgrade">
+				{{ i18n.baseText('generic.upgrade') }}
+			</N8nButton>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
-<style scoped>
-.perks-list {
-	margin: 0;
+<style module>
+.perks {
+	margin: var(--spacing--sm) 0 0;
 	padding: 0;
 	list-style: none;
 	display: flex;
@@ -65,10 +66,5 @@ const perks = computed(() =>
 		align-items: center;
 		gap: var(--spacing--2xs);
 	}
-}
-.insight-modal-button-container {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>
