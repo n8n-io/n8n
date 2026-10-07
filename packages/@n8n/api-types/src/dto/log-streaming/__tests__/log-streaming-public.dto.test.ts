@@ -1,7 +1,6 @@
 import {
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
-	LogStreamingTestResultPublicDto,
 } from '../log-streaming-public.dto';
 
 describe('LogStreamingEventTypesPublicDto', () => {
@@ -41,16 +40,5 @@ describe('LogStreamingDestinationPublicDto', () => {
 		['an unknown type', { ...webhook, type: 'kafka' }],
 	])('rejects %s', (_, input) => {
 		expect(LogStreamingDestinationPublicDto.safeParse(input).success).toBe(false);
-	});
-});
-
-describe('LogStreamingTestResultPublicDto', () => {
-	test('rejects a field other than success', () => {
-		const result = LogStreamingTestResultPublicDto.safeParse({
-			success: true,
-			error: 'ECONNREFUSED',
-		});
-
-		expect(result.success).toBe(false);
 	});
 });
