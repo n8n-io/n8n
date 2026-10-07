@@ -73,6 +73,8 @@ const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>([
 	// Staging hands focus to the Instance AI composer; a focus restore here would
 	// steal it straight back to the canvas.
 	'add_nodes_to_chat',
+	// The name dialog focuses its field. A restore would put focus back on the canvas.
+	'extract_sub_workflow',
 ]);
 
 export function isFocusHandoffAction(action: ContextMenuAction): boolean {
