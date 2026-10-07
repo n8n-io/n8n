@@ -203,8 +203,8 @@ const usedInProjects = computed(() => {
 
 const usedInAccessText = computed(() =>
 	isOwnedByViewer.value
-		? i18n.baseText('credentialEdit.credentialSharing.onlyYou')
-		: i18n.baseText('credentialEdit.credentialSharing.onlyOwner', {
+		? i18n.baseText('credentialEdit.credentialSharing.availableToYou')
+		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner', {
 				interpolate: { name: credentialOwnerFirstName.value },
 			}),
 );
@@ -222,6 +222,18 @@ function usedInShareLabel(project: Pick<ProjectSharingData, 'name'>) {
 				interpolate: { project: name },
 			})
 		: i18n.baseText('credentialEdit.credentialSharing.share');
+}
+
+function usedInAccessTooltip(project: Pick<ProjectSharingData, 'name'>) {
+	const projectName = project.name ?? '';
+
+	return isOwnedByViewer.value
+		? i18n.baseText('credentialEdit.credentialSharing.availableToYou.tooltip', {
+				interpolate: { project: projectName },
+			})
+		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner.tooltip', {
+				interpolate: { name: credentialOwnerFirstName.value, project: projectName },
+			});
 }
 
 const viewerHasInstanceWideUse = computed(
@@ -351,9 +363,11 @@ function goToUpgrade() {
 								{{ i18n.baseText('credentialEdit.credentialSharing.usedIn.personalSpace') }}
 							</N8nText>
 						</N8nTooltip>
-						<N8nText v-else :class="$style.accessText" color="text-light" :title="usedInAccessText">
-							{{ usedInAccessText }}
-						</N8nText>
+						<N8nTooltip v-else :content="usedInAccessTooltip(project)" placement="top">
+							<N8nText :class="$style.accessText" color="text-light">
+								{{ usedInAccessText }}
+							</N8nText>
+						</N8nTooltip>
 						<N8nTooltip :disabled="!hasInstanceWideUse(project)" placement="top">
 							<template #content>
 								{{

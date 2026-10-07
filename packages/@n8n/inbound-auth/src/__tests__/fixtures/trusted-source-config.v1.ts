@@ -9,6 +9,7 @@ export const trustedSourceConfigV1Fixture = {
 		keys: { kind: 'jwks-uri' },
 		verification: { mode: 'jwt' },
 		algorithms: ['RS256', 'ES256'],
+		allowedTokenTypes: ['at+jwt', 'application/at+jwt'],
 		maxTokenLifetimeSeconds: 3600,
 		clockSkewSeconds: 30,
 	},

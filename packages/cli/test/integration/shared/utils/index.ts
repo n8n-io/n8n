@@ -147,6 +147,11 @@ function buildDefaultNodes(): INodeTypeData {
 		'n8n-nodes-base.executeWorkflow': minimalNodeType('n8n-nodes-base.executeWorkflow', [
 			{ displayName: 'Workflow', name: 'workflowId', type: 'workflowSelector', default: '' },
 		]),
+		// Declares the inline agent parameters so the policy can read the tools they hold.
+		'n8n-nodes-base.messageAnAgent': minimalNodeType('n8n-nodes-base.messageAnAgent', [
+			{ displayName: 'Agent Source', name: 'agentSource', type: 'string', default: '' },
+			{ displayName: 'Inline Agent', name: 'inlineAgent', type: 'json', default: '' },
+		]),
 	};
 }
 

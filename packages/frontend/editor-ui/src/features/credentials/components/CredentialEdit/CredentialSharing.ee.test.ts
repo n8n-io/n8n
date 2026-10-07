@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import type { Scope } from '@n8n/permissions';
+import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CredentialSharing from './CredentialSharing.ee.vue';
@@ -10,7 +11,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { getDropdownItems } from '@/__tests__/utils';
+import { getDropdownItems, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { useI18n } from '@n8n/i18n';
 import type * as I18nModule from '@n8n/i18n';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -54,8 +55,12 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 			"Can use this credential. Can't edit it.",
 		'credentialEdit.credentialSharing.usedIn': 'Used in "{workflowName}"',
 		'credentialEdit.credentialSharing.usedIn.count': 'Used in {count} workflows',
-		'credentialEdit.credentialSharing.onlyYou': 'Only you',
-		'credentialEdit.credentialSharing.onlyOwner': 'Only {name}',
+		'credentialEdit.credentialSharing.availableToYou': 'Available to you',
+		'credentialEdit.credentialSharing.availableToYou.tooltip':
+			'Only you can use this credential in {project}.',
+		'credentialEdit.credentialSharing.availableToOwner': 'Available to {name}',
+		'credentialEdit.credentialSharing.availableToOwner.tooltip':
+			'Only {name} can use this credential in {project}.',
 		'credentialEdit.credentialSharing.share': 'Share',
 		'credentialEdit.credentialSharing.shareWith': 'Share with {project}',
 		'credentialEdit.credentialSharing.usedIn.personalSpace': 'Can use in personal space',
@@ -718,7 +723,9 @@ describe('CredentialSharing.ee', () => {
 
 			const access = getByTestId('credential-used-in-personal-space');
 			expect(access).toHaveTextContent('Can use in personal space');
-			expect(getByTestId('project-sharing-unshared-item')).not.toHaveTextContent('Only Yuliia');
+			expect(getByTestId('project-sharing-unshared-item')).not.toHaveTextContent(
+				'Available to Yuliia',
+			);
 
 			await userEvent.hover(access);
 			expect(
@@ -741,19 +748,19 @@ describe('CredentialSharing.ee', () => {
 			).not.toHaveLength(0);
 		});
 
-		it('keeps "Only {owner}" for a team project', () => {
+		it('keeps "Available to {owner}" for a team project', () => {
 			viewerWith(['credential:use', 'credential:share']);
 			const { getByTestId, queryByTestId } = renderUsedIn(marketing.id);
 
-			expect(getByTestId('project-sharing-unshared-item')).toHaveTextContent('Only Yuliia');
+			expect(getByTestId('project-sharing-unshared-item')).toHaveTextContent('Available to Yuliia');
 			expect(queryByTestId('credential-used-in-personal-space')).not.toBeInTheDocument();
 		});
 
-		it('keeps "Only {owner}" when the viewer\'s role does not let them use every credential', () => {
+		it('keeps "Available to {owner}" when the viewer\'s role does not let them use every credential', () => {
 			viewerWith(['credential:share']);
 			const { getByTestId, queryByTestId } = renderUsedIn(viewerPersonalProject.id);
 
-			expect(getByTestId('project-sharing-unshared-item')).toHaveTextContent('Only Yuliia');
+			expect(getByTestId('project-sharing-unshared-item')).toHaveTextContent('Available to Yuliia');
 			expect(queryByTestId('credential-used-in-personal-space')).not.toBeInTheDocument();
 		});
 	});
@@ -787,7 +794,7 @@ describe('CredentialSharing.ee', () => {
 			projectsStore.personalProject = ownerPersonalProject;
 		});
 
-		it('shows a project the credential is used in but not shared with, with "Only you" and a Share action', () => {
+		it('shows a project the credential is used in but not shared with, with "Available to you" and a Share action', () => {
 			getDependenciesMock.mockReturnValue({
 				dependencies: [
 					{
@@ -819,7 +826,7 @@ describe('CredentialSharing.ee', () => {
 			const row = getByTestId('project-sharing-unshared-item');
 			expect(row).toHaveTextContent('Marketing');
 			expect(row).toHaveTextContent('Used in "Email summary"');
-			expect(row).toHaveTextContent('Only you');
+			expect(row).toHaveTextContent('Available to you');
 			expect(getByTestId('credential-used-in-project-share')).toHaveTextContent(
 				'Share with Marketing',
 			);
@@ -895,6 +902,75 @@ describe('CredentialSharing.ee', () => {
 			});
 
 			expect(getByTestId('credential-used-in-project-share')).toHaveTextContent(/^\s*Share\s*$/);
+		});
+
+		it('explains in a tooltip that only the owner can use the credential in the project', async () => {
+			getDependenciesMock.mockReturnValue({
+				dependencies: [
+					{
+						id: 'wf-1',
+						name: 'Email summary',
+						type: 'workflowParent',
+						projectId: 'marketing-project',
+					},
+				],
+				inaccessibleCount: 0,
+			});
+
+			const credential = createCredential({
+				homeProject: ownerPersonalProject,
+				sharedWithProjects: [],
+			});
+			const { getByText } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			await hoverTooltipTrigger(getByText('Available to you'));
+
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent('Only you can use this credential in Marketing.'),
+			);
+		});
+
+		it('still explains the access in a tooltip when the project has no name', async () => {
+			projectsStore.myProjects = [{ ...marketingProject, name: null }];
+			getDependenciesMock.mockReturnValue({
+				dependencies: [
+					{
+						id: 'wf-1',
+						name: 'Email summary',
+						type: 'workflowParent',
+						projectId: 'marketing-project',
+					},
+				],
+				inaccessibleCount: 0,
+			});
+
+			const credential = createCredential({
+				homeProject: ownerPersonalProject,
+				sharedWithProjects: [],
+			});
+			const { getByText } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			await hoverTooltipTrigger(getByText('Available to you'));
+
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent('Only you can use this credential in'),
+			);
 		});
 
 		it('summarizes as "Used in N workflows" when the credential is used in more than one workflow in the same project', () => {
@@ -1066,7 +1142,7 @@ describe('CredentialSharing.ee', () => {
 			expect(queryByTestId('project-sharing-unshared-item')).not.toBeInTheDocument();
 		});
 
-		it('shows "Only {owner}" instead of "Only you" when the viewer has share permission but is not the credential\'s owner (e.g. an instance admin)', () => {
+		it('shows "Available to {owner}" instead of "Available to you" when the viewer has share permission but is not the credential\'s owner (e.g. an instance admin)', () => {
 			// Viewer's own personal project differs from the credential's home
 			// project, even though they can still share it (broad admin scope).
 			projectsStore.personalProject = {
@@ -1107,9 +1183,9 @@ describe('CredentialSharing.ee', () => {
 			});
 
 			const row = getByTestId('project-sharing-unshared-item');
-			expect(row).toHaveTextContent('Only Mona');
-			expect(row).not.toHaveTextContent('Only Mona Pfeffer');
-			expect(queryByText('Only you')).not.toBeInTheDocument();
+			expect(row).toHaveTextContent('Available to Mona');
+			expect(row).not.toHaveTextContent('Available to Mona Pfeffer');
+			expect(queryByText('Available to you')).not.toBeInTheDocument();
 			expect(getByTestId('credential-used-in-project-share')).toBeInTheDocument();
 		});
 	});
