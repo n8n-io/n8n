@@ -37,7 +37,7 @@ test.describe(
 		});
 
 		test.describe('Pin data operations', () => {
-			test('should be able to pin node output @engine:v2', async ({ n8n }) => {
+			test('should be able to pin node output', async ({ n8n }) => {
 				await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 
 				await n8n.ndv.execute();
@@ -55,7 +55,7 @@ test.describe(
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText(prevValue ?? '');
 			});
 
-			test('should be able to set custom pinned data @engine:v2', async ({ n8n }) => {
+			test('should be able to set custom pinned data', async ({ n8n }) => {
 				await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 
 				await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
@@ -75,13 +75,13 @@ test.describe(
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
 			});
 
-			test('should display pin data edit button for Webhook node @engine:v2', async ({ n8n }) => {
+			test('should display pin data edit button for Webhook node', async ({ n8n }) => {
 				await n8n.canvas.addNode(NODES.WEBHOOK);
 
 				await expect(n8n.ndv.getEditOutputButton()).toBeVisible();
 			});
 
-			test('should duplicate pinned data when duplicating node @engine:v2', async ({ n8n }) => {
+			test('should duplicate pinned data when duplicating node', async ({ n8n }) => {
 				await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 				await n8n.ndv.close();
 
@@ -104,9 +104,7 @@ test.describe(
 		});
 
 		test.describe('Error handling', () => {
-			test('should show error when maximum pin data size is exceeded @engine:v2', async ({
-				n8n,
-			}) => {
+			test('should show error when maximum pin data size is exceeded', async ({ n8n }) => {
 				await n8n.page.evaluate((maxSize) => {
 					(window as { maxPinnedDataSize?: number }).maxPinnedDataSize = maxSize;
 				}, maxPinnedDataSize);
@@ -135,7 +133,7 @@ test.describe(
 				).toBeVisible();
 			});
 
-			test('should show error when pin data JSON is invalid @engine:v2', async ({ n8n }) => {
+			test('should show error when pin data JSON is invalid', async ({ n8n }) => {
 				await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 				await n8n.ndv.close();
 
@@ -154,7 +152,7 @@ test.describe(
 		});
 
 		test.describe('Advanced pinning scenarios', () => {
-			test('should be able to reference paired items in node before pinned data @engine:v2', async ({
+			test('should be able to reference paired items in node before pinned data', async ({
 				n8n,
 			}) => {
 				await n8n.canvas.addNode(NODES.MANUAL_TRIGGER);
@@ -187,7 +185,7 @@ test.describe(
 				await expect(hint).toContainText('pairedItem');
 			});
 
-			test('should use pin data in manual webhook executions @engine:v2', async ({
+			test('should use pin data in manual webhook executions', async ({
 				n8n,
 				setupRequirements,
 			}) => {
@@ -223,7 +221,7 @@ test.describe(
 				},
 			);
 
-			test('should not show pinned data tooltip @engine:v2', async ({ n8n, setupRequirements }) => {
+			test('should not show pinned data tooltip', async ({ n8n, setupRequirements }) => {
 				await setupRequirements(pinnedWebhookRequirements);
 				await n8n.canvas.clickExecuteWorkflowButton();
 
