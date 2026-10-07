@@ -1,7 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService } from '@n8n/backend-services';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
@@ -14,7 +12,6 @@ import { JwtService } from '@/services/jwt.service';
 import {
 	OAUTH_SIGNING_ALGORITHM,
 	OAUTH_SIGNING_KEY_TYPE,
-	OAUTH_SIGNING_KEYS_CACHE_KEY,
 	RETIRED_SIGNING_KEY_GRACE_MS,
 } from '../oauth-signing-key.constants';
 import { OAuthSigningKeyService } from '../oauth-signing-key.service';
@@ -24,12 +21,11 @@ const AUDIENCE = `${ISSUER}/mcp-server/http`;
 
 let keyStore: Repository<DeploymentKey>;
 
-/** A process of its own: its own memory cache and its own in-memory private key. */
+/** A process of its own: its own in-memory public keys and private key. */
 const createProcess = () =>
 	new OAuthSigningKeyService(
 		Container.get(DeploymentKeyRepository),
 		Container.get(Cipher),
-		new CacheService(Container.get(GlobalConfig)),
 		Container.get(Logger),
 		Container.get(JwtService),
 	);
@@ -54,7 +50,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.resetDeploymentKeys();
-	await Container.get(CacheService).delete(OAUTH_SIGNING_KEYS_CACHE_KEY);
 });
 
 afterAll(async () => {
@@ -75,15 +70,20 @@ describe('OAuthSigningKeyService (integration)', () => {
 		expect(jwk).toMatchObject({ kid: rows[0].id, use: 'sig' });
 	});
 
-	it('keeps the key across a restart', async () => {
+	it('keeps the key across a restart, and the restarted process verifies older tokens', async () => {
 		const before = createProcess();
 		await before.initialize();
+		const token = before.signAccessToken(claims(), AUDIENCE);
 
 		const after = createProcess();
 		await after.initialize();
 
 		expect(await activeRows()).toHaveLength(1);
 		expect(await after.getPublicJwks()).toEqual(await before.getPublicJwks());
+		const [{ kid }] = await after.getPublicJwks();
+		await expect(
+			after.verifyAccessToken(token, { kid, audiences: [AUDIENCE], issuer: ISSUER }),
+		).resolves.toMatchObject({ sub: 'user-1' });
 	});
 
 	it('keeps one active key when two processes initialize at the same time', async () => {

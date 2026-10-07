@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, nextTick, reactive, ref } from 'vue';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
@@ -14,6 +16,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { consumePendingN8nChatMessage } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
@@ -33,6 +36,7 @@ const {
 	appSettingsStoreMock,
 	agentsN8nChatVariant,
 	replaceMock,
+	pushMock,
 	showErrorMock,
 	telemetryTrack,
 } = vi.hoisted(() => ({
@@ -101,6 +105,7 @@ const {
 	workflowPreviewSuggestionsComponent: { name: 'WorkflowPreviewSuggestionsStub' },
 	personalizedPromptSuggestionsComponent: { name: 'InstanceAiPersonalizedPromptSuggestionsStub' },
 	replaceMock: vi.fn(),
+	pushMock: vi.fn(),
 	showErrorMock: vi.fn(),
 	telemetryTrack: vi.fn(),
 }));
@@ -279,6 +284,46 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue', () =
 	},
 }));
 
+vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () => ({
+	default: {
+		name: 'N8nChatAgentPickerStub',
+		props: {
+			modelValue: { required: false, default: null },
+			projectId: { required: false },
+			disabled: { type: Boolean, required: false, default: false },
+		},
+		emits: ['update:modelValue'],
+		data: () => ({
+			agent: {
+				id: 'agent-1',
+				name: 'Support Agent',
+				project: { id: 'project-1', name: 'Project' },
+			},
+		}),
+		template: `
+			<div data-test-id="n8n-chat-agent-picker-stub" :data-disabled="String(disabled)">
+				<button
+					data-test-id="n8n-chat-agent-picker-stub-select-agent"
+					:disabled="disabled"
+					@click="$emit('update:modelValue', agent)"
+				>select agent</button>
+				<button
+					data-test-id="n8n-chat-agent-picker-stub-select-assistant"
+					:disabled="disabled"
+					@click="$emit('update:modelValue', null)"
+				>select assistant</button>
+			</div>
+		`,
+	},
+}));
+
+// Not otherwise exercised by this view's tests; defaults on so the mentions-gating
+// tests below can prove the agent-selection gate rather than a flag that's already off.
+const mentionsFlagEnabled = { value: true };
+vi.mock('@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled', () => ({
+	useIsAssistantAtMentionsEnabled: () => computed(() => mentionsFlagEnabled.value),
+}));
+
 vi.mock('uuid', () => ({
 	v4: () => 'thread-placeholder',
 }));
@@ -286,8 +331,13 @@ vi.mock('uuid', () => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => ({ query: routeQuery, params: {} }),
-	useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
+	useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
+
+// Shared across all stub submits (not just the agent hand-off tests below) so
+// the n8n Chat variant B test can assert it without widening the stub's emit
+// contract for every other caller.
+const acceptDraftMock = vi.fn();
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
@@ -302,6 +352,9 @@ const InstanceAiInputStub = defineComponent({
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		fixedRows: { type: Number, required: false },
+		contextualSuggestion: { type: String, required: false, default: null },
+		placeholder: { type: String, required: false },
+		mentionsEnabled: { type: Boolean, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
@@ -313,6 +366,12 @@ const InstanceAiInputStub = defineComponent({
 			prefillType: InstanceAiPrefillType;
 			prefillId?: string;
 		} | null>(null);
+		// Staged by the "attach" test button below; mirrors the real composer's
+		// encoded file attachments.
+		const stagedFileAttachments = ref<InstanceAiAttachment[]>([]);
+		// Toggled by a test button below; mirrors the real composer's own flag while
+		// it awaits file encoding before a submit.
+		const isPreparingSubmission = ref(false);
 		const submit = (message: string) => {
 			const prefill = activePrefill.value;
 			// Mirrors the real composer: the restore callback is always provided, and
@@ -326,7 +385,7 @@ const InstanceAiInputStub = defineComponent({
 			emit(
 				'submit',
 				message,
-				undefined,
+				stagedFileAttachments.value.length ? [...stagedFileAttachments.value] : undefined,
 				restoreDraft,
 				prefill
 					? {
@@ -336,9 +395,12 @@ const InstanceAiInputStub = defineComponent({
 							promptModified: message !== prefill.text.trim(),
 						}
 					: USER_TYPED_MESSAGE,
+				undefined,
+				acceptDraftMock,
 			);
 			currentText.value = '';
 			activePrefill.value = null;
+			stagedFileAttachments.value = [];
 		};
 		expose({
 			focus: vi.fn(),
@@ -352,6 +414,7 @@ const InstanceAiInputStub = defineComponent({
 				currentText.value = prefill.text;
 				activePrefill.value = { ...prefill };
 			},
+			isPreparingSubmission,
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
 			submitSuggestion: (payload: {
 				promptKey: BaseTextKey;
@@ -416,12 +479,46 @@ const InstanceAiInputStub = defineComponent({
 					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
 				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-placeholder' },
+					props.placeholder ?? 'unset',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-mentions-enabled' },
+					String(props.mentionsEnabled),
+				),
+				h(
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
 						onClick: () => submit(currentText.value || 'hello'),
 					},
 					'submit',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-attach-file',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'file',
+								data: btoa('file content'),
+								mimeType: 'text/plain',
+								fileName: 'context.txt',
+							}),
+					},
+					'attach',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-toggle-preparing',
+						onClick: () => {
+							isPreparingSubmission.value = !isPreparingSubmission.value;
+						},
+					},
+					'toggle preparing',
 				),
 				...(slots.footer?.() ?? []),
 			]);
@@ -503,6 +600,7 @@ describe('InstanceAiEmptyView', () => {
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
+		mentionsFlagEnabled.value = true;
 	});
 
 	afterEach(() => {
@@ -1372,5 +1470,175 @@ describe('InstanceAiEmptyView', () => {
 				expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
 			},
 		);
+	});
+
+	describe('n8n Chat variant B', () => {
+		beforeEach(() => {
+			agentsN8nChatVariant.value = 'variant-b';
+		});
+
+		it('renders the picker instead of the empty-state title', () => {
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('disables the picker while the input is preparing a submission, and re-enables it after', async () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'false');
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-toggle-preparing'));
+			await nextTick();
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'true');
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-toggle-preparing'));
+			await nextTick();
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'false');
+		});
+
+		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {
+			experimentMocks.proactiveAgentEnabled.value = true;
+			experimentMocks.splitBelowInputVariant.value = true;
+
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
+		});
+
+		it('shows the control suggestions with the Assistant label, and the Assistant placeholder, by default', () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+			expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+			expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+				'"label":"Try asking n8n Assistant"',
+			);
+			expect(getByTestId('instance-ai-input-placeholder')).toHaveTextContent('Ask n8n Assistant…');
+		});
+
+		it('hides suggestions and shows the agent name in the placeholder once an agent is selected', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+
+			expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
+			expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
+			expect(getByTestId('instance-ai-input-placeholder')).toHaveTextContent('Ask Support Agent…');
+		});
+
+		it('keeps the composer usable for a selected agent when the workflow builder is unavailable', async () => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': {
+					...defaultModuleSettings,
+					sandboxEnabled: false,
+					workflowBuilderAvailable: false,
+				},
+			};
+			const { getByTestId, queryByTestId } = renderView();
+			expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+
+			expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('available');
+			expect(queryByTestId('instance-ai-workflow-builder-unavailable')).not.toBeInTheDocument();
+		});
+
+		it('disables mentions once an agent is selected, and re-enables them back on the Assistant', async () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('true');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('false');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
+			await nextTick();
+			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('true');
+		});
+
+		it('navigates to the agent chat route on submit, without starting an Assistant thread', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: 'AgentN8nChatView',
+				params: { agentId: 'agent-1' },
+			});
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
+
+		it('stores the hand-off with the typed text and converted file attachments, calls acceptDraft, and does not start an Assistant thread', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: 'AgentN8nChatView',
+				params: { agentId: 'agent-1' },
+			});
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(acceptDraftMock).toHaveBeenCalledOnce();
+
+			const pendingMessage = consumePendingN8nChatMessage('agent-1');
+			expect(pendingMessage?.text).toBe('hello');
+			expect(pendingMessage?.files).toHaveLength(1);
+			expect(pendingMessage?.files[0].name).toBe('context.txt');
+			expect(pendingMessage?.files[0].type).toBe('text/plain');
+			expect(pendingMessage?.files[0].size).toBe('file content'.length);
+		});
+
+		it('drops the hand-off when the navigation to the agent fails', async () => {
+			pushMock.mockResolvedValueOnce(new Error('navigation aborted'));
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(consumePendingN8nChatMessage('agent-1')).toBeUndefined();
+		});
+
+		it('keeps a second hand-off when the first submission fails navigation after the second was stashed', async () => {
+			const firstPush = createDeferredPromise<unknown>();
+			pushMock.mockImplementationOnce(async () => await firstPush.promise);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			// First submission: push 1 stays pending, no files.
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+
+			// Second submission lands while push 1 is still pending — the composer
+			// stays live, so nothing blocks it. A file tells the two apart.
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			// Push 1 fails after the second stash is in place.
+			firstPush.resolve(new Error('navigation aborted'));
+			await flushPromises();
+
+			const pendingMessage = consumePendingN8nChatMessage('agent-1');
+			expect(pendingMessage?.files).toHaveLength(1);
+			expect(pendingMessage?.files[0]?.name).toBe('context.txt');
+		});
 	});
 });

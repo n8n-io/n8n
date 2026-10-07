@@ -1,4 +1,5 @@
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { posix } from 'path';
 import { z } from 'zod';
 
 import { Tool } from '../sdk/tool';
@@ -82,6 +83,7 @@ const skillLoadOutputSchema = z.object({
 	bytes: z.number().optional(),
 	sha256: z.string().optional(),
 	activation: z.string().optional(),
+	references: z.array(z.object({ skillId: z.string(), description: z.string() })).optional(),
 	linkedFiles: linkedFilesSchema.optional(),
 	error: z.string().optional(),
 	availableSkills: z.array(z.string()).optional(),
@@ -142,9 +144,16 @@ async function loadSkill(
 	},
 	activate?: RuntimeSkillLoader,
 ): Promise<SkillLoadOutput | SkillLoadContentOutput> {
-	const { skillId, name, filePath, loadFile } = input;
+	const { skillId, name, loadFile } = input;
 	await source.prepare?.();
-	const skillEntry = findSkillEntry(source.registry, { skillId, name });
+	const requestedEntry = findSkillEntry(source.registry, { skillId, name });
+	// A path to a reference file activates the reference instead of returning raw text.
+	const referenceEntry =
+		requestedEntry && input.filePath !== undefined
+			? findReferenceByPath(source.registry, requestedEntry.id, input.filePath)
+			: undefined;
+	const skillEntry = referenceEntry ?? requestedEntry;
+	const filePath = referenceEntry ? undefined : input.filePath;
 	if (!skillEntry) {
 		return {
 			ok: false,
@@ -224,31 +233,53 @@ async function loadSkill(
 	}
 
 	if (activate) {
+		const { references, linkedFiles } = skillReferences(skillEntry, source.registry);
 		return {
 			success: true,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
 			content: 'The skill instructions are active. Follow them for this task.',
-			linkedFiles: skillEntry.linkedFiles,
+			...(references.length > 0
+				? {
+						references: references.map((entry) => ({
+							skillId: entry.id,
+							description: entry.description,
+						})),
+					}
+				: {}),
+			linkedFiles,
 		};
 	}
 	return {
 		type: 'content',
-		value: [{ type: 'text', text: formatActiveSkill(skill, skillEntry) }],
+		value: [{ type: 'text', text: formatActiveSkill(skill, skillEntry, source.registry) }],
 	};
 }
 
 export function formatActiveSkill(
 	skill: RuntimeSkillContent,
 	skillEntry: RuntimeSkillRegistryEntry,
+	registry?: RuntimeSkillRegistry,
 ): string {
 	const content = cap(skill.instructions);
-	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => skillEntry.linkedFiles[group]).map(
+	const { references, linkedFiles } = skillReferences(skillEntry, registry);
+	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => linkedFiles[group]).map(
 		(file) => file.path,
 	);
 	const header = [
 		activationEnvelope(skillEntry),
+		...(references.length > 0
+			? [
+					[
+						'[References — load one via load_skill with { "skillId": "<id>" } only when its description matches the current step:',
+						...references.map(
+							(entry) => `- ${envelopeValue(entry.id)}: ${envelopeValue(entry.description)}`,
+						),
+						']',
+					].join('\n'),
+				]
+			: []),
 		...(linkedFilePaths.length > 0
 			? [
 					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
@@ -256,6 +287,43 @@ export function formatActiveSkill(
 			: []),
 	];
 	return `${header.join('\n')}\n\n${content}`;
+}
+
+/** A skill's references, and its linked files without the files those references come from. */
+function skillReferences(
+	skillEntry: RuntimeSkillRegistryEntry,
+	registry: RuntimeSkillRegistry | undefined,
+): { references: RuntimeSkillRegistryEntry[]; linkedFiles: RuntimeSkillLinkedFiles } {
+	const references = (registry?.skills ?? []).filter((entry) =>
+		entry.parents?.includes(skillEntry.id),
+	);
+	const referencePaths = new Set(
+		references.flatMap((entry) =>
+			entry.reference?.owner === skillEntry.id ? [entry.reference.path] : [],
+		),
+	);
+	if (referencePaths.size === 0) return { references, linkedFiles: skillEntry.linkedFiles };
+	return {
+		references,
+		linkedFiles: {
+			...skillEntry.linkedFiles,
+			references: skillEntry.linkedFiles.references.filter(
+				(file) => !referencePaths.has(file.path),
+			),
+		},
+	};
+}
+
+/** The reference skill that a parent's linked file path points to, if any. */
+export function findReferenceByPath(
+	registry: RuntimeSkillRegistry,
+	ownerId: string,
+	filePath: string,
+): RuntimeSkillRegistryEntry | undefined {
+	const normalized = posix.normalize(filePath.trim());
+	return registry.skills.find(
+		(entry) => entry.reference?.owner === ownerId && entry.reference.path === normalized,
+	);
 }
 
 function findSkillEntry(
@@ -277,6 +345,9 @@ function findSkillEntry(
 function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
 	return [
 		`[Skill: ${envelopeValue(skill.name)}]`,
+		...(skill.parents?.length
+			? [`[Reference of: ${skill.parents.map(envelopeValue).join(', ')}]`]
+			: []),
 		...(skill.category ? [`[Skill category: ${envelopeValue(skill.category)}]`] : []),
 		...(skill.directory ? [`[Skill directory: ${envelopeValue(skill.directory)}]`] : []),
 		...((skill.path ?? skill.sourcePath)

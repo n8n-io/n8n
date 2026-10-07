@@ -35,6 +35,7 @@ import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
@@ -64,6 +65,7 @@ export class EnterpriseWorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async shareWithProjects(
@@ -160,9 +162,13 @@ export class EnterpriseWorkflowService {
 		if (credentialIds.length === 0) return new Set();
 
 		if (isCredSharingEnabled()) {
-			const unusable = await this.credentialsFinderService.findUnusableCredentialsForUser(
-				user,
+			// The rule a run acting as this user follows, so the editor blocks exactly
+			// what the server refuses: what the project carries, plus the user's own
+			// access without an Owner's or Admin's instance-wide grant.
+			const unusable = await this.credentialsPermissionChecker.findUnusableInWorkflow(
+				workflowId,
 				credentialIds,
+				user.id,
 			);
 			const unusableIds = new Set(unusable.map((c) => c.id));
 			return new Set(credentialIds.filter((id) => !unusableIds.has(id)));
@@ -648,8 +654,15 @@ export class EnterpriseWorkflowService {
 
 		// 2. Get all workflows in the nested folders
 
+		const checksTransfer = this.policyEnforcementService.hasChecksFor('workflowTransfer');
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'activeVersionId', 'shared'],
+			select: [
+				'id',
+				'name',
+				'activeVersionId',
+				'shared',
+				...(checksTransfer ? ['nodes' as const] : []),
+			],
 			relations: ['shared', 'shared.project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
@@ -690,6 +703,15 @@ export class EnterpriseWorkflowService {
 			if (sourceProject.id === destinationProject.id) {
 				throw new TransferWorkflowError(
 					"You can't transfer a workflow into the project that's already owning it.",
+				);
+			}
+		}
+
+		if (checksTransfer) {
+			for (const workflow of workflows) {
+				await this.policyEnforcementService.enforceWorkflowTransfer(
+					{ workflow, targetProjectId: destinationProject.id },
+					{ kind: 'user', user },
 				);
 			}
 		}

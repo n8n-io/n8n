@@ -4,6 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { i18nInstance } from '@n8n/i18n';
 import type { AgentChatListItem } from '@n8n/api-types';
 
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../../../constants';
 import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import N8nChatAgentCard from '../N8nChatAgentCard.vue';
@@ -22,6 +23,7 @@ const router = createRouter({
 			name: AGENT_N8N_CHAT_VIEW,
 			component: stub,
 		},
+		{ path: '/assistant', name: INSTANCE_AI_VIEW, component: stub },
 	],
 });
 
@@ -30,7 +32,9 @@ const agents: AgentChatListItem[] = [
 	{ id: 'agent-2', name: 'Two', project: { id: 'p', name: 'P' } },
 ];
 
-function renderGrid(props: { agents?: AgentChatListItem[]; loading?: boolean } = {}) {
+function renderGrid(
+	props: { agents?: AgentChatListItem[]; loading?: boolean; includeAssistant?: boolean } = {},
+) {
 	return mount(N8nChatAgentGrid, {
 		props: { agents, source: 'library', ...props },
 		global: { plugins: [router, i18nInstance] },
@@ -38,6 +42,13 @@ function renderGrid(props: { agents?: AgentChatListItem[]; loading?: boolean } =
 }
 
 describe('N8nChatAgentGrid', () => {
+	it('puts an n8n Assistant card first with includeAssistant', () => {
+		const cards = renderGrid({ includeAssistant: true }).findAllComponents(N8nChatAgentCard);
+
+		expect(cards).toHaveLength(3);
+		expect(cards[0].props('agent')).toBeNull();
+	});
+
 	it('renders one card per agent', () => {
 		const wrapper = renderGrid();
 

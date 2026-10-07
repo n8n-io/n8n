@@ -704,9 +704,9 @@ export class CredentialsService {
 
 	/**
 	 * The ids, among `candidateCredentials`, that the user can use here only
-	 * via the personal route: owned by the user's own personal project, where
-	 * the user also belongs to the workflow's/project's project(s). See
-	 * {@link isCredSharingEnabled}.
+	 * via the personal route: granted to the user's own personal project (owned
+	 * by it, or shared with it directly), where the user also belongs to the
+	 * workflow's/project's project(s). See {@link isCredSharingEnabled}.
 	 */
 	private async findPersonalRouteCredentialIds(
 		user: User,
@@ -717,14 +717,12 @@ export class CredentialsService {
 		const personalProject = await this.projectService.getPersonalProject(user);
 		if (!personalProject) return new Set();
 
-		const ownedCredentialIds = new Set(
+		const personalGrantCredentialIds = new Set(
 			candidateCredentials
-				.filter((c) =>
-					c.shared.some((s) => s.role === 'credential:owner' && s.projectId === personalProject.id),
-				)
+				.filter((c) => c.shared.some((s) => s.projectId === personalProject.id))
 				.map((c) => c.id),
 		);
-		if (ownedCredentialIds.size === 0) return ownedCredentialIds;
+		if (personalGrantCredentialIds.size === 0) return personalGrantCredentialIds;
 
 		const targetProjectIds =
 			'workflowId' in options
@@ -735,7 +733,7 @@ export class CredentialsService {
 			targetProjectIds.includes(relation.projectId),
 		);
 
-		return userIsMemberOfTargetProject ? ownedCredentialIds : new Set();
+		return userIsMemberOfTargetProject ? personalGrantCredentialIds : new Set();
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
