@@ -3157,13 +3157,14 @@ export function versionedTypeOf(
 ): new () => VersionedNodeType {
 	versions.forEach(({ manifest }) => assertNodeContract(range, manifest));
 	const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
-	const latest = versions.reduce<FrozenVersion | undefined>(
-		(best, frozen) => (best && majorOf(best) > majorOf(frozen) ? best : frozen),
-		undefined,
+	// Oldest first: the last entry of a major wins, so the newest semver describes the major.
+	const ascending = [...versions].sort((a, b) =>
+		compareSemver(a.manifest.semver, b.manifest.semver),
 	);
+	const latest = ascending.at(-1);
 	if (!latest) throw new UnexpectedError('A versioned node type needs at least one version');
 	const nodeVersions = Object.fromEntries(
-		versions.map((frozen): [number, INodeType] => [majorOf(frozen), typeOf(frozen)]),
+		ascending.map((frozen): [number, INodeType] => [majorOf(frozen), typeOf(frozen)]),
 	);
 	const { displayName, name, group, description } = nodeVersions[majorOf(latest)].description;
 	const base = { displayName, name, group, description, defaultVersion: majorOf(latest) };

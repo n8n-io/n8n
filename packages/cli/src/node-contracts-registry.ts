@@ -31,6 +31,7 @@ import {
 import {
 	bundledCredentialsOf,
 	bundledIdsOf,
+	compareSemver,
 	deniedPermissionClassOf,
 	embeddedContractsOf,
 	embeddedStoreDirOf,
@@ -520,7 +521,10 @@ export class ContractNodeLoader implements NodeLoader {
 							!majors.has(majorOf(version)) &&
 							this.runtime.runsNodeContract(version.manifest.nodeContract),
 					),
-				].filter(this.permits);
+				]
+					.filter(this.permits)
+					// Newest first: contractNodeTypeOf describes the node from the first version.
+					.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 				if (versions.length === 0) return [];
 				const sourcePath = bundled.has(id)
 					? path.join(this.storeDir, storeIndexFileOf(id))

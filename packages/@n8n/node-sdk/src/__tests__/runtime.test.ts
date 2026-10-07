@@ -40,6 +40,7 @@ import {
 	runLookup,
 	toNodeType,
 	toVersionedNodeType,
+	versionedTypeOf,
 	type ExecutorHost,
 } from '../runtime';
 import { contractHash, NODE_CONTRACT_VERSION } from '../version';
@@ -1966,5 +1967,50 @@ describe('resource lookups', () => {
 		expect(await listChannels?.call(context as unknown as ILoadOptionsFunctions, 'op')).toEqual({
 			results: [{ name: '#ops', value: 'C9', url: 'https://directory.test/c/C9' }],
 		});
+	});
+});
+
+describe('versionedTypeOf', () => {
+	const contract = toContract(fetchAction({ method: 'GET', url: '/items' }));
+	const frozenOf = (semver: string) => ({
+		manifest: {
+			kind: 'action' as const,
+			id: contract.id,
+			semver,
+			nodeContract: NODE_CONTRACT_VERSION,
+			contractHash: contractHash(contract),
+			bundleHash: '0'.repeat(64),
+			contract: { ...contract, version: Number(semver.split('.')[0]) },
+		},
+		origin: 'community' as const,
+		readBundle: async () => await Promise.reject(new Error('the test read the bundle')),
+	});
+
+	it.each([
+		['oldest first', ['3.1.0', '3.2.0', '2.0.0']],
+		['newest first', ['3.2.0', '3.1.0', '2.0.0']],
+	])('projects the newest version of each major, %s', (_, semvers) => {
+		const NodeType = versionedTypeOf(
+			semvers.map(frozenOf),
+			({ manifest }) => ({
+				description: {
+					displayName: 'Echo',
+					name: 'echo',
+					group: ['transform'],
+					description: manifest.semver,
+					version: manifest.contract.version,
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [],
+				},
+			}),
+			hostRuntime().nodeContractRange,
+		);
+		const nodeType = new NodeType();
+		expect(Object.keys(nodeType.nodeVersions)).toEqual(['2', '3']);
+		expect(nodeType.getNodeType(3).description.description).toBe('3.2.0');
+		expect(nodeType.getNodeType(2).description.description).toBe('2.0.0');
+		expect(nodeType.description.defaultVersion).toBe(3);
 	});
 });
