@@ -1,7 +1,8 @@
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { MAX_TASK_TIMEOUT_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 import {
 	resolveSystemTaskRunOptions,
+	timeoutAfterLimit,
 	validateSystemTask,
 	type SystemTask,
 	type SystemTaskEffects,
@@ -44,6 +45,7 @@ it.each([
 	['misfirePolicy', { misfirePolicy: ScheduledJobMisfirePolicy.Skip }],
 	['misfireGraceSeconds', { misfireGraceSeconds: 5 }],
 	['concurrencyLimit', { concurrencyLimit: 4 }],
+	['timeoutSeconds', { timeoutSeconds: 600 }],
 ] as const)('should let a task override %s', (field, override) => {
 	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override }));
 
@@ -63,6 +65,10 @@ it.each([
 	{ concurrencyLimit: -1 },
 	{ concurrencyLimit: 1.5 },
 	{ concurrencyLimit: 2_147_483_648 },
+	{ timeoutSeconds: 0 },
+	{ timeoutSeconds: -1 },
+	{ timeoutSeconds: 1.5 },
+	{ timeoutSeconds: 2_147_484 },
 ])('should reject the nonsensical override %o', (override) => {
 	expect(() =>
 		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),
@@ -93,6 +99,20 @@ it('should refuse to retry non-idempotent work that asked for more attempts', ()
 	);
 
 	expect(options.maxAttempts).toBe(1);
+});
+
+it('should leave the timeout to the scheduler when a task does not override it', () => {
+	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent' }));
+
+	expect(options.timeoutSeconds).toBeUndefined();
+});
+
+it('should accept the longest timeout a timer honors', () => {
+	const options = resolveSystemTaskRunOptions(
+		taskWith({ effects: 'idempotent', timeoutSeconds: 2_147_483 }),
+	);
+
+	expect(options.timeoutSeconds).toBe(2_147_483);
 });
 
 it('should let a task permit overlap', () => {
@@ -149,4 +169,18 @@ it('should accept a cluster task interval of 0 seconds, which is rounded up', ()
 			taskWith({ effects: 'idempotent', schedule: { kind: 'interval', intervalSeconds: 0 } }),
 		),
 	).not.toThrow();
+});
+
+describe('timeoutAfterLimit', () => {
+	it.each([
+		{ limit: 300, margin: 300, expected: 600 },
+		{ limit: 1.2, margin: 0, expected: 2 },
+		{ limit: MAX_TASK_TIMEOUT_SECONDS, margin: 300, expected: MAX_TASK_TIMEOUT_SECONDS },
+	])('adds the margin to a limit of $limit', ({ limit, margin, expected }) => {
+		expect(timeoutAfterLimit(limit, margin)).toBe(expected);
+	});
+
+	it.each([0, -1, Number.NaN])('uses the longest timeout for no limit (%s)', (limit) => {
+		expect(timeoutAfterLimit(limit, 300)).toBe(MAX_TASK_TIMEOUT_SECONDS);
+	});
 });
