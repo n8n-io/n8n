@@ -230,6 +230,8 @@ sequenceDiagram
 - The verification of the token shows which execution or step the caller means. It does not show
   that a step still waits. Therefore the resolve path reads the step row in all cases. The token
   does not remove a database read. It decides if the request can continue.
+- Two resume requests for the same step can both run the webhook of the node. The compare-and-set
+  lets only the first one resume the step. The other one gets a conflict (409).
 - A rotation of the shared secret of the two planes does not affect outstanding resume URLs.
 - The token primitive must allow a token without an expiry. Therefore the lifetime is optional in
   the token spec.
