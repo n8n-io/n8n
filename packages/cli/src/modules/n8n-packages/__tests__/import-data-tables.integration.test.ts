@@ -1101,7 +1101,7 @@ describe('workflow package import — with data tables', () => {
 			});
 		}
 
-		it('adds a column, reorders columns, and renames the table, and keeps the existing rows', async () => {
+		it('adds a column, reorders columns, and renames the table with no data loss', async () => {
 			const table = await dataTableService.createDataTable(project.id, {
 				name: 'Clients',
 				columns: [
