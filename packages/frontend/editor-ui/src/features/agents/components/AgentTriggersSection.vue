@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import type {
-	AgentConfigValidationIssue,
-	AgentJsonConfig,
-	AgentJsonTaskConfig,
-} from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -40,7 +36,6 @@ const props = withDefaults(
 		/** No agent row exists yet — nothing can be connected to it. */
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
-		personalisation?: AgentJsonConfig['personalisation'] | null;
 		/** n8n Chat's saved description, forwarded to the channel modal. */
 		savedDescription?: string;
 		/** Persists n8n Chat's description, forwarded to the channel modal. */
@@ -55,7 +50,6 @@ const props = withDefaults(
 		simpleChannelSetup: false,
 		taskRefs: () => [],
 		ensureAgentPersisted: undefined,
-		personalisation: null,
 	},
 );
 
@@ -318,7 +312,6 @@ function handleChannelDisconnected(channelType: string) {
 			:disabled="props.disabled"
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
-			:personalisation="personalisation"
 			:saved-description="savedDescription"
 			:save-description="saveDescription"
 			@channel-connected="handleChannelConnected"

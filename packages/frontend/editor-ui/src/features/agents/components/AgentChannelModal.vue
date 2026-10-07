@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentApproval, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentApproval } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
@@ -37,7 +37,6 @@ interface Props {
 	isPublished?: boolean;
 	simpleSetup?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
-	personalisation?: AgentJsonConfig['personalisation'] | null;
 	/** n8n Chat's saved description, seeded into its view when opened. */
 	savedDescription?: string;
 	/** Persists n8n Chat's description. It skips the request when nothing changed. */
@@ -49,7 +48,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
-	personalisation: null,
 });
 
 const emit = defineEmits<{
@@ -660,7 +658,6 @@ watch(
 					:agent-name="agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
-					:personalisation="personalisation"
 					:ensure-agent-persisted="ensureAgentPersisted"
 					:force-new-credential="false"
 					:simple-setup="simpleSetup"

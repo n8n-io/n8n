@@ -2,10 +2,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
-import { defineComponent, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 
 import AgentChannelTeamsEditView from './AgentChannelTeamsEditView.vue';
 import { fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import { AGENT_PERSONALISATION_KEY } from '../types';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -126,5 +127,21 @@ describe('AgentChannelTeamsEditView', () => {
 				expect.objectContaining({ groupChats: true }),
 			),
 		);
+	});
+
+	it("shows the agent's own icon on the identity card", async () => {
+		const personalisation = computed(() => ({
+			icon: 'heart',
+			gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+		}));
+		const { container, getByTestId } = renderHost({
+			global: { provide: { [AGENT_PERSONALISATION_KEY]: personalisation } },
+		});
+
+		await waitFor(() => expect(getByTestId('teams-identity')).toBeInTheDocument());
+		const tile = container.querySelector<HTMLElement>(
+			'[data-test-id="agent-personalisation-icon-tile"]',
+		);
+		expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
 	});
 });
