@@ -96,14 +96,20 @@ export class StartExecutionService {
 }
 
 /**
- * A seeded step names a node the trigger reaches, outside any loop, other than
- * the trigger, once. The trigger carries its payload as `triggerOutputs`, and
- * the store drops a second row for one node, so the caller would not get what
- * it asked for. A node the trigger cannot reach is left out of the count of
- * steps the run owes, so its settled row would let the run finish with work
- * outstanding. A seeded row holds one pass, iteration 0, while a loop member
- * runs once per pass; the later passes would run the node the caller meant to
- * skip. TODO(CAT-4875): seed every iteration.
+ * Rejects seeded steps that the start handler could not record correctly.
+ *
+ * The start handler turns each seeded step into a completed step row for its
+ * node at iteration 0. That only works for a node that:
+ *
+ * - is not the trigger: its outputs arrive as `triggerOutputs`.
+ * - the trigger can reach: the completion check counts only reachable nodes,
+ *   so a completed row outside that set would let the run finish while other
+ *   steps are still outstanding.
+ * - is not in a loop: a loop member runs once per iteration, and a row for
+ *   iteration 0 does not stop the later iterations from running it.
+ *   TODO(CAT-4875): seed every iteration instead.
+ * - is seeded only once: the store keeps one row per node and iteration and
+ *   would silently drop the second.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): void {
 	// The graph was validated first, so the trigger exists.
