@@ -25,9 +25,12 @@ const GUARDED_DB_REEXPORTS = new Set([
 ]);
 
 const DEFAULT_ALLOWED_FILES = [
+	// CLI migration tooling owns the TypeORM migration executor.
 	'packages/cli/src/commands/db/revert.ts',
+	// These adapters use composition instead of a repository base class.
 	'packages/cli/src/modules/data-table/data-table-rows.repository.ts',
 	'packages/cli/src/modules/instance-ai/repositories/instance-ai-conversation-history.repository.ts',
+	// Engine v2 keeps its persistence infrastructure and composition root in one package.
 	'packages/@n8n/engine/src/database/create-stores.ts',
 	'packages/@n8n/engine/src/database/data-source.ts',
 	'packages/@n8n/engine/src/database/typeorm-execution-store.ts',
@@ -35,6 +38,7 @@ const DEFAULT_ALLOWED_FILES = [
 	'packages/@n8n/engine/src/database/typeorm-step-store.ts',
 	'packages/@n8n/engine/src/runtime/create-engine-runtime.ts',
 ];
+// This package exists only to build database-backed test fixtures.
 const DEFAULT_EXEMPT_PACKAGES = ['@n8n/backend-test-utils'];
 
 const SOURCE_GLOBS = [
