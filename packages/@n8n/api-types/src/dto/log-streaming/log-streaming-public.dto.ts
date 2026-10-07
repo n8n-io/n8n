@@ -196,7 +196,6 @@ export type UpdateLogStreamingDestinationPublic = z.infer<
 >;
 export type LogStreamingDestinationPublicType = LogStreamingDestinationPublic['type'];
 
-/** A discriminated union has no object shape, so these cannot extend `Z.class`. */
 export class LogStreamingDestinationPublicDto {
 	static schema = logStreamingDestinationPublicSchema;
 

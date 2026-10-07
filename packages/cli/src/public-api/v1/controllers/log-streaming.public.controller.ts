@@ -10,7 +10,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -118,7 +118,7 @@ export class LogStreamingPublicController {
 	): Promise<LogStreamingDestinationPublicDto> {
 		this.assertNotManagedByEnv();
 
-		return await this.saveDestination(req, toInternalDestinationOptions(body));
+		return await this.saveDestination(req.user, toInternalDestinationOptions(body));
 	}
 
 	@Put('/destinations/:id')
@@ -142,7 +142,7 @@ export class LogStreamingPublicController {
 		await this.findDestinationOrFail(id);
 
 		// `addDestination` replaces the stored destination that has this id.
-		return await this.saveDestination(req, { ...toInternalDestinationOptions(body), id });
+		return await this.saveDestination(req.user, { ...toInternalDestinationOptions(body), id });
 	}
 
 	private assertNotManagedByEnv() {
@@ -154,10 +154,10 @@ export class LogStreamingPublicController {
 	}
 
 	private async saveDestination(
-		req: AuthenticatedRequest,
+		user: User,
 		options: MessageEventBusDestinationOptions,
 	): Promise<LogStreamingDestinationPublicDto> {
-		await assertUserCanUseDestinationCredentials(this.credentialsFinderService, req.user, options);
+		await assertUserCanUseDestinationCredentials(this.credentialsFinderService, user, options);
 
 		const destination = createMessageEventBusDestination(this.eventBus, this.outboundHttp, options);
 		const result = await this.destinationService.addDestination(destination);
