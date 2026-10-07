@@ -107,6 +107,7 @@ const genericCommands: CommandBarItem[] = [
 const workflows = createRemoteSource('workflows');
 const credentials = createRemoteSource('credentials', 3);
 const nodeEntries = ref<CommandBarItem[]>(items('node', 25));
+const assistantCommands = ref<CommandBarItem[]>([]);
 const recentInitialize = vi.fn().mockResolvedValue(undefined);
 const workflowNavigationInitialize = vi.fn().mockResolvedValue(undefined);
 
@@ -167,7 +168,7 @@ vi.mock('./useChatHubCommands', () => ({
 	useChatHubCommands: () => group([]),
 }));
 vi.mock('./useInstanceAiCommands', () => ({
-	useInstanceAiCommands: () => group([]),
+	useInstanceAiCommands: () => ({ commands: computed(() => assistantCommands.value) }),
 }));
 
 describe('useCommandBar', () => {
@@ -203,6 +204,7 @@ describe('useCommandBar', () => {
 		workflows.search.mockReset();
 		currentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
 		nodeEntries.value = items('node', 25);
+		assistantCommands.value = [];
 		renderCommandBar();
 	});
 
@@ -395,6 +397,25 @@ describe('useCommandBar', () => {
 		await flushPromises();
 		expect(commandBar.breadcrumb.value).toBeUndefined();
 		expect(commandBar.query.value).toBe('sub');
+	});
+
+	it('shows children that load after the item was opened', async () => {
+		const openThread = (children: CommandBarItem[]): CommandBarItem => ({
+			id: 'open-thread',
+			title: 'Open thread',
+			section: 'Assistant',
+			children,
+		});
+		assistantCommands.value = [openThread([])];
+		await open();
+
+		commandBar.select(assistantCommands.value[0], { newTab: false });
+		await flushPromises();
+		expect(itemIds()).toEqual([]);
+
+		assistantCommands.value = [openThread([{ id: 'thread-1', title: 'First thread' }])];
+		await flushPromises();
+		expect(itemIds()).toEqual(['thread-1']);
 	});
 
 	it('runs the handler, closes and tracks the command', async () => {

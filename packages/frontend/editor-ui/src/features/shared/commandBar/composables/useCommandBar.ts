@@ -195,7 +195,15 @@ export function useCommandBar() {
 		{ id: ACTIONS_TAB, label: i18n.baseText('commandBar.tabs.actions') },
 	]);
 
-	const scope = computed(() => scopeStack.value.at(-1)?.item);
+	const scope = computed(() => {
+		let candidates = actions.value;
+		let current: CommandBarItem | undefined;
+		for (const { item } of scopeStack.value) {
+			current = candidates.find(({ id }) => id === item.id) ?? item;
+			candidates = current.children ?? [];
+		}
+		return current;
+	});
 	const activeSource = computed(() => sources.value.find(({ id }) => id === activeTab.value));
 
 	const localResults = computed(() => {
