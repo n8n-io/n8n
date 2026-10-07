@@ -32,16 +32,18 @@ const emit = defineEmits<{
 
 const menuItemTextViewport = ref<HTMLElement | null>(null);
 const menuItemText = ref<ComponentPublicInstance | null>(null);
-const labelOverflows = ref(false);
+const labelOverflowDistance = ref(0);
 
 // Observing the text too catches label changes, which do not resize the viewport.
 useResizeObserver([menuItemTextViewport, menuItemText], () => {
 	const viewport = menuItemTextViewport.value;
-	labelOverflows.value = viewport !== null && viewport.scrollWidth > viewport.clientWidth;
+	labelOverflowDistance.value = viewport
+		? Math.max(0, viewport.scrollWidth - viewport.clientWidth)
+		: 0;
 });
 
 const isLabelOverflowing = computed(
-	() => Boolean(props.scrollLabelOnOverflow) && labelOverflows.value,
+	() => Boolean(props.scrollLabelOnOverflow) && labelOverflowDistance.value > 0,
 );
 
 const to = computed(() => {
@@ -158,6 +160,11 @@ const tooltipPlacement = computed(() => {
 								[$style.labelOverflowing]: isLabelOverflowing,
 							},
 						]"
+						:style="
+							isLabelOverflowing
+								? { '--menu-item--label-overflow': labelOverflowDistance }
+								: undefined
+						"
 					>
 						<N8nText
 							ref="menuItemText"
@@ -264,6 +271,9 @@ const tooltipPlacement = computed(() => {
 }
 
 .scrollLabelOnOverflow {
+	// In px per second. The duration follows the overflow distance, so every label
+	// scrolls at the same pace whatever its length.
+	--menu-item--label-scroll-speed: 70;
 	container-type: inline-size;
 	margin-inline-end: calc(var(--spacing--4xs) * -1);
 
@@ -288,7 +298,9 @@ const tooltipPlacement = computed(() => {
 
 		.menuItemText {
 			transform: translateX(min(0px, calc(-100% + 100cqi)));
-			transition-duration: calc(var(--duration--slowest) + var(--duration--slowest));
+			transition-duration: calc(
+				var(--menu-item--label-overflow, 0) / var(--menu-item--label-scroll-speed) * 1s
+			);
 			transition-delay: var(--duration--base);
 			transition-timing-function: linear;
 		}
