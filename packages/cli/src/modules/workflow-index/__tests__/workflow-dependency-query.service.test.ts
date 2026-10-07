@@ -148,6 +148,46 @@ describe('WorkflowDependencyQueryService', () => {
 		});
 	});
 
+	describe('getResourceDependencies with a credential the user cannot see', () => {
+		beforeEach(() => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+			dependencyRepository.find.mockResolvedValue([
+				mock({ workflowId: 'wf-1', dependencyType: 'credentialId', dependencyKey: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Personal Cred' })]);
+		});
+
+		it('lists its name as unavailable when asked to', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1']).toEqual({
+				dependencies: [
+					{ id: 'cred-1', name: 'Personal Cred', type: 'credentialId', unavailable: true },
+				],
+				inaccessibleCount: 0,
+			});
+		});
+
+		it('counts it as hidden when not asked to list it', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user);
+
+			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
+		});
+
+		it('counts it as hidden when credential sharing is disabled', async () => {
+			isCredSharingEnabledMock.mockReturnValue(false);
+
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				listUnavailableCredentials: true,
+			});
+
+			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
+		});
+	});
+
 	describe('getFolderDependencies', () => {
 		// This block stubs `getResourceDependencies` on the shared service instance, so the spy has
 		// to be undone for the suite above, which exercises it for real.
