@@ -389,7 +389,7 @@ export class SkillHubRepository {
 	/**
 	 * Replaces the agent's dependency rows with the given refs (only skills that exist).
 	 * A ref with a `versionId` is recorded as pinned. When one skill appears in several
-	 * refs, a following ref wins: the draft then reads the live draft row.
+	 * refs, a following ref wins: the draft then runs the latest saved version.
 	 */
 	async replaceDependencies(
 		agentId: string,
@@ -418,9 +418,9 @@ export class SkillHubRepository {
 	}
 
 	/**
-	 * Agents whose draft follows the skill's live draft row, with their draft refs.
-	 * Pinned drafts are left out: they read a saved version, so a change to the draft
-	 * row (text or name) does not reach them.
+	 * Agents whose draft follows the skill, with their draft refs. Pinned drafts are
+	 * left out: they run a fixed saved version, so a Save (text or name) does not
+	 * reach them.
 	 */
 	async findDependentAgents(
 		skillId: string,
@@ -437,7 +437,7 @@ export class SkillHubRepository {
 		});
 	}
 
-	/** Ids of the agents whose draft follows any of these skills' draft rows. */
+	/** Ids of the agents whose draft follows any of these skills (not pinned). */
 	async findDependentAgentIds(skillIds: string[], trx?: EntityManager): Promise<string[]> {
 		if (skillIds.length === 0) return [];
 		const rows = await this.m(trx).find(AgentSkillDependency, {

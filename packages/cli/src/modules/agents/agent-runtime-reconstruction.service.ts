@@ -336,7 +336,7 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity);
-		// Drafts read the hub draft rows; published snapshots read their pinned versions.
+		// Drafts run saved skill versions, never the draft row; published snapshots run their pins.
 		const publishedVersionId = publishedSnapshotVersionOf(agentEntity);
 		const skills = publishedVersionId
 			? await this.skillHub.resolvePinnedSkills(publishedVersionId)
