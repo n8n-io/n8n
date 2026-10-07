@@ -94,7 +94,7 @@ Find the reference code with `git show <commit>` on the PoC branch.
 | System-agent routes, queue kind and access floor | `72a1e54777a`, `0ff0df89705` | `agents/system-agents/system-agent-chat.controller.ts`, `system-agent-access.ts`, `agents/agent-chat-relay.service.ts`, editor `features/agents/utils/agentChatPath.ts` |
 | Eval harness v2 mode and queued-turn status | `b19e53a4b64`, `dfc88bd7b39` | `@n8n/instance-ai/evaluations/harness/assistant-v2.ts`, `clients/n8n-client.ts`, `harness/chat-loop.ts`; `system-agent-execution.service.ts` (`getStatus`) |
 | Interaction extensions | `18da4fa2e8e` | `ai/shared/agentsChat/interactionRegistry.ts`, `messageMappers.ts`, `instanceAi/assistantConfirmation.ts` |
-| Fixes found in review | `abbb17d9d59`, `907953b7131`, `e27ea706d55` | See section 13 |
+| Fixes found in review | `abbb17d9d59`, `907953b7131`, `e27ea706d55` | See section 14 |
 | Removals (v1 deletion reference) | `a473877b05c`, `0e60c5106da`, `31c32401060`, `0589c56632f`, `e0a0379ced8` | Use only in the final phase |
 
 Do not copy PoC code that deletes or changes v1 behavior into early steps.
@@ -580,7 +580,7 @@ on its own.
 | C3 | Flag and per-thread routing | A flag (PostHog or env, name to decide) selects v2 for new threads. Store the runtime on the thread. Route the controller and the editor by the thread's runtime. |
 | C4 | v2 thread services | Thread info, list, history, rename, delete and tabs on the Agents tables. The thread list, search and delete must merge v1 and v2 threads. Use the "turn still running" check of the Agents delete. |
 | C5 | v2 editor view | `InstanceAiAgentsConversation` with `AgentChatPanel`, the Assistant interaction extension (A7), the "+" menu in `footer-start`, the side-panel adapter (`agentsChatThreadAdapter.ts`), approval titles and details (`approvalDetails.ts`). |
-| C6 | Cut features | Decide port or drop for each item in section 11. |
+| C6 | Feature parity | Port, replace or drop each row of section 12 (feature parity table). |
 
 ## 9. Phase 4: rollout and comparison
 
@@ -614,10 +614,68 @@ on its own.
 |---|---|
 | Sandbox | With A10, v2 keeps the Assistant sandbox and its lifecycle behind the workspace source hook. Optional later: move `InstanceAiSandboxService` onto `AgentSandboxRuntimeService` with one config source (`SandboxSettingsService`, `AgentsConfig`), a decision on sandbox identity (per thread, or per agent and user with thread folders), and Daytona snapshot images in `@n8n/agents/sandbox`. |
 | Side panels on Agents messages | Rewrite `useResourceRegistry.ts`, `canvasPreview.utils.ts`, `useSetupPanelState.ts`, `builderAgents.ts` and `planReview.utils.ts` to read Agents chat messages. Then delete `agentsChatThreadAdapter.ts` and the legacy message types. |
-| Cut features | Preference cards, debug panel and run debug, @-mentions in the thread composer, onboarding card, LangSmith thumbs feedback, response-latency and stall telemetry, user-facing error rewording. |
+| Feature parity | Port the rows of section 12 that were not ported in Phase 3 (C6), before Phase 5. |
 | Cleanup | Unused `instanceAi.*` i18n keys (about 212 in the PoC), dead exports. |
 
-## 12. Open decisions
+## 12. Feature parity
+
+The PoC dropped some v1 features. Under the strangler approach, v1 keeps all
+of them until Phase 5, so v1 users lose nothing. Two rules keep it that way:
+
+- **The B steps keep v1 complete.** Each Phase 2 PR keeps v1 behavior and its
+  tests. Do not copy the PoC deletions.
+- **Parity gates the switch.** Before v2 becomes the default (Phase 5), each
+  row below is ported, replaced, or dropped by a recorded product decision.
+  Rows 1, 2 and 4 must be ported before an external rollout (Phase 4):
+  users notice them.
+
+Features added to the Assistant after Phase 3 starts must work on both
+runtimes, or on v2 only behind the v2 flag. This keeps the list from growing.
+
+Gates are as of the PoC base commit (`0280644e775`). A gated feature only has
+to work on v2 for users in that gate, and v2 can port it when the gate rolls
+out further.
+
+| # | Feature | v1 behavior | Gate on `master` | v2 approach | Needs | Size |
+|---|---|---|---|---|---|---|
+| 1 | Preference cards | Saving a preference from chat shows a card with edit, undo and scope choice (`PreferenceCard`, `PreferenceEditModal`, preference-card endpoints) | PostHog `111_context_preferences` = `variant` (backend gate `aiPreferencesEnabled`) | Render the save-preference tool result as a host card. Restore the edit and undo endpoints on the Agents thread storage. | E1 | S–M |
+| 2 | "Preferences applied" step | Timeline step listing the preferences a turn used (`preferences-applied` event) | Same as row 1 | Persisted host event, rendered as a step | E3 | S |
+| 3 | Instance-context step | Timeline step showing the instance context injected into a turn (`instance-context` event, `InstanceContextStep`) | PostHog `114_instance_activity_context`, checked per instance (`getFeatureFlagForInstance`) | Persisted host event | E3 | S |
+| 4 | User-facing error wording | Quota errors, masked stream failures and "attachment removed" mapped to readable text (`getUserFacingErrorMessage`) | None | The provider rewrites the error before the runtime sends and stores it | E4 | S |
+| 5 | Status notices | For example "Couldn't reach MCP server X; continuing without its tools" (`status` event) | None (fires on an MCP connection failure) | Persisted host event | E3 | S |
+| 6 | @-mentions in the thread composer | Mention picker for workflows, credentials and artifacts (`AssistantAtMentionPicker` in `InstanceAiInput`) | PostHog `116_at_mentions_enabled` (editor experiment `AI_ASSISTANT_AT_MENTIONS_EXPERIMENT`) | Host mention picker in the composer; picked resources go into `hostContext` | E2 | S–M |
+| 7 | LangSmith thumbs feedback | Rate the latest settled answer; sent to the LangSmith trace (`useResponseFeedback`, feedback endpoint) | None in the editor. The backend sends feedback only when LangSmith tracing is configured. | Message action; map message → execution → trace id | E2, trace id on the execution | S–M |
+| 8 | Onboarding greeting and question card | `/assistant?source=onboarding` (the Cloud signup redirect) opens a thread with a seeded greeting and question card | No flag. Entered only through the Cloud signup redirect. | Seed the greeting into Agents memory. Offer the question as a host card that is answered by a normal message (no fake suspension). | Seeding through memory | S–M |
+| 9 | Rich tool results | Image, table, file, code and JSON renderers in the timeline (`ToolResult*`) | None | Upstream into the Agents chat (all agents benefit), or register host renderers | E1 | M |
+| 10 | Debug panel | LLM step inspector, cache-break analysis, workflow code snapshots, run debug (`InstanceAiDebug*`, `InstanceAiLlmSteps*`) | Editor: `localStorage['instanceAi.debugMode'] = 'true'`. Backend run debug: `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`. | Agents session timeline and LangSmith export (the export already reads the same localStorage key), plus per-step LLM records on executions behind a flag | E5 | M–L |
+| 11 | Latency and stall telemetry | Time to first token and stall events from SSE timing | None | From Agents stream timing in the editor, or from execution timestamps | E5 (partly) | S |
+| 12 | Run metrics | Active-runs gauge; swept, refused and durable-log metrics (`instance-ai-metrics.service.ts`, removed in PoC commit `0589c56632f`) | Prometheus metrics enabled (`N8N_METRICS=true`) | Equivalents from Agents executions; keep only what dashboards use | E5 | S |
+| 13 | Small UI details | Archived-artifact dimming; answered-questions summary (`AnsweredQuestions`); status bar with the active builder (`InstanceAiStatusBar`); inline artifact cards (`ArtifactCard`) | None | Compare each with what the Agents chat shows; port or drop | — | S each |
+| 14 | Discovery evals | In-process tool and skill selection evals (`evaluations/discovery`) | None (eval tooling) | Restore with a small stream runner | — | S |
+| 15 | Old thread history | v1 threads in the `instance_ai_*` tables | — | v1 shows them until the switch; then migrate them or make them read-only | Decision (section 13) | — |
+
+Gated features that are kept or ported already (no parity work), for
+reference: the setup panel (`118_instance_ai_setup_overhaul` = `variant`),
+config evals (`088_config_evaluations`), node usage
+(`109_instance_ai_node_usage`), canvas node context
+(`104_canvas_aia_node_context`). Their backend gates resolve in
+`InstanceAiAdapterService.resolveExperimentGates`, which v2 reuses.
+
+### Extension points that make late porting possible
+
+Without these, each late feature needs a new change negotiated in the Agents
+module. With them, each feature is an Assistant-only change that can land any
+time before the switch. Add them to Phase 1 next to the related items.
+
+| | Extension point | Unblocks rows | Fits with |
+|---|---|---|---|
+| E1 | Tool-result renderers: the host registers a renderer for a finished tool call (A7 covers suspended ones) | 1, 9, part of 13 | A7 |
+| E2 | Composer and message extensions: composer hooks (input element, text insertion, attachment chips) and per-message action slots | 6, 7 | A1 |
+| E3 | Host event channel: the provider emits typed custom events during a turn; the runtime stores them in history as custom message parts | 2, 3, 5, maybe 8 | A9 |
+| E4 | Error formatting hook: the provider maps an error to user-facing text before the runtime sends and stores it | 4 | A9 |
+| E5 | Execution records with token usage and, behind a flag, LLM steps | 10, 11, 12, and token data for the eval harness (C1) | A9 |
+
+## 13. Open decisions
 
 | Decision | Options | Notes |
 |---|---|---|
@@ -628,7 +686,7 @@ on its own.
 Decided (see section 2 and A9): provider model, Agents admin setting, queue
 kind, access model and routes.
 
-## 13. Risks and lessons from the PoC
+## 14. Risks and lessons from the PoC
 
 Risks:
 
@@ -661,7 +719,7 @@ Practical notes:
 - Unset `LANGSMITH_API_KEY` for local runs unless you also set the EU
   endpoint.
 
-## 14. Cross-check with the Agents feature list from team review
+## 15. Cross-check with the Agents feature list from team review
 
 | Item from team review | Plan item |
 |---|---|
@@ -674,7 +732,7 @@ Practical notes:
 | Backend-started runs with durable suspend and resume | A5, A9 |
 | Policy hook to lock an agent's model | Deferred: code providers first (section 2) |
 
-## 15. Progress
+## 16. Progress
 
 | Item | Status | PR |
 |---|---|---|
@@ -683,3 +741,5 @@ Practical notes:
 | C1–C6 | Not started | |
 | E1, E3–E5 | Not started | |
 | E2 | First signal done on the PoC (2 cases) | |
+| Extension points E1–E5 (section 12) | Not started | |
+| Feature parity rows 1–15 (section 12) | v1 keeps all; v2 not started | |
