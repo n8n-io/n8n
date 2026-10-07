@@ -1,0 +1,27 @@
+packages/@n8n/workflow-sdk/src/validation/required-subnode-connections.ts
+  s_ea09cd195a8bee::t_8bc1b405b316d8 170-171
+  s_ea09cd195a8bee::t_07f3784163282c 172
+packages/cli/src/tool-generation/hitl-tools.ts
+  s_ea09cd195a8bee::t_4d24796155e200 204-209
+packages/cli/src/tool-generation/__tests__/hitl-tools.test.ts
+  s_ea09cd195a8bee::t_6d19fe7b08b0ad 231,233
+  s_ea09cd195a8bee::t_8a7939544b1b79 223-230,232,234-235
+packages/@n8n/workflow-sdk/src/validation/required-subnode-connections.test.ts
+  s_ea09cd195a8bee::t_885b9dcce025b7 14-15,28-30,195-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "52dff18cc29504a162ae2ff5e837c60c7ed6b6d1",
+  "prompts": {},
+  "sessions": {
+    "s_ea09cd195a8bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78cdb528-ed8e-4b16-8b5f-0094fc069607",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
