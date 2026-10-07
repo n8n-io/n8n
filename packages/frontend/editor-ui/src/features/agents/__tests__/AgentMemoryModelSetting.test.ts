@@ -192,27 +192,52 @@ describe('AgentMemoryModelSetting', () => {
 		},
 	);
 
-	it('uses an explicitly selected credential for the next model update', async () => {
+	it('uses an explicitly selected credential and clears the saved Vertex project', async () => {
 		const wrapper = mountSetting();
+		const config = makeConfig();
+		await wrapper.setProps({
+			config: {
+				...config,
+				memory: {
+					...config.memory,
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						...config.memory?.episodicMemory,
+						enabled: true,
+						credential: 'embedding-credential',
+						reflectorModel: {
+							model: 'google-vertex/saved-memory-model',
+							credential: 'saved-memory-credential',
+							modelProjectId: 'saved-project',
+						},
+					},
+				},
+			},
+		});
 		const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
 
-		selector.vm.$emit('select-credential', 'anthropic', 'new-anthropic-credential');
-		selector.vm.$emit('change', { provider: 'anthropic', model: 'new-memory-model' });
+		selector.vm.$emit('select-credential', 'google-vertex', 'new-google-credential');
+		selector.vm.$emit('change', {
+			provider: 'google-vertex',
+			model: 'new-memory-model',
+			modelProjectId: '',
+		});
 		await wrapper.vm.$nextTick();
 
 		expect(credentialMocks.selectCredential).toHaveBeenCalledWith(
-			'anthropic',
-			'new-anthropic-credential',
+			'google-vertex',
+			'new-google-credential',
 		);
 		expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
 			memory: {
 				observationalMemory: {
-					observerModel: { credential: 'new-anthropic-credential' },
-					reflectorModel: { credential: 'new-anthropic-credential' },
+					observerModel: { credential: 'new-google-credential', modelProjectId: '' },
+					reflectorModel: { credential: 'new-google-credential', modelProjectId: '' },
 				},
 				episodicMemory: {
 					credential: 'embedding-credential',
-					reflectorModel: { credential: 'new-anthropic-credential' },
+					reflectorModel: { credential: 'new-google-credential', modelProjectId: '' },
 				},
 			},
 		});

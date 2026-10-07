@@ -11,12 +11,14 @@ import {
 	type PreviewRunResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { AgentEvalDatasetRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { ForbiddenError } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
@@ -96,6 +98,7 @@ export class AgentEvalCaseGenerationService {
 		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly agentTestRunService: AgentTestRunService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/**
@@ -358,6 +361,7 @@ export class AgentEvalCaseGenerationService {
 		const { Agent } = await import('@n8n/agents');
 		const agent: Agent = new Agent('agent-eval-case-generation')
 			.model(modelConfig)
+			.modelFetch(createAiProxyFetch(this.outboundHttp))
 			.instructions(CASE_GENERATION_SYSTEM_PROMPT)
 			.structuredOutput(generatedCasesSchema);
 
