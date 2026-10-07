@@ -1180,6 +1180,27 @@ describe('NodeCreator - utils', () => {
 
 			expect(searchNodes('container', [node, command]).map((item) => item.key)).toEqual(['group']);
 		});
+
+		it('returns all matching actions from the same node', () => {
+			const sendMessage = mockActionCreateElement(undefined, {
+				actionKey: 'sendMessage',
+				displayName: 'Send a message',
+			});
+			const updateMessage = mockActionCreateElement(undefined, {
+				actionKey: 'updateMessage',
+				displayName: 'Update a message',
+			});
+			sendMessage.key = 'n8n-nodes-base.slack';
+			updateMessage.key = 'n8n-nodes-base.slack';
+
+			const results = searchNodes('message', [sendMessage, updateMessage]);
+			const actionKeys = results.flatMap((item) =>
+				item.type === 'action' ? [item.properties.actionKey] : [],
+			);
+
+			expect(results).toHaveLength(2);
+			expect(actionKeys).toEqual(expect.arrayContaining(['sendMessage', 'updateMessage']));
+		});
 	});
 
 	describe('searchNodes - n8n Connect boost', () => {
