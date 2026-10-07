@@ -11,6 +11,9 @@ export const LATENCY_BUCKET_BOUNDS_MS = [0.1, 0.5, 1, 2, 5, 10, 25, 50, 100];
 
 export const MAX_MISMATCH_SHAPES = 20;
 
+// Bounds the memory that remembers which expressions a report already counted.
+const MAX_TRACKED_EXPRESSIONS = 5000;
+
 export type ShadowOutcome =
 	| 'same'
 	| 'different'
@@ -35,6 +38,7 @@ export interface MismatchShape {
 
 export type ShadowReport = Record<ShadowOutcome, number> & {
 	evaluations: number;
+	quickjs_timeouts: number;
 	legacy_latency_buckets: number[];
 	quickjs_latency_buckets: number[];
 	mismatches: MismatchShape[];
@@ -64,6 +68,7 @@ export function emptyReport(): ShadowReport {
 	return {
 		...emptyCounts(),
 		evaluations: 0,
+		quickjs_timeouts: 0,
 		legacy_latency_buckets: emptyBuckets(),
 		quickjs_latency_buckets: emptyBuckets(),
 		mismatches: [],
@@ -104,6 +109,12 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 
 	private counts = emptyCounts();
 
+	private timeouts = 0;
+
+	// The editor evaluates the same expression on every render and keystroke, so
+	// the outcome counts take each expression once per report.
+	private counted = new Set<string>();
+
 	private legacyLatency = emptyBuckets();
 
 	private quickjsLatency = emptyBuckets();
@@ -142,17 +153,20 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 
 	/** The counts since the last report, or `undefined` when nothing ran. Resets the counts. */
 	takeReport(): ShadowReport | undefined {
-		const evaluations = Object.values(this.counts).reduce((sum, count) => sum + count, 0);
-		if (evaluations === 0) return undefined;
+		const samples = this.legacyLatency.reduce((sum, count) => sum + count, 0);
+		if (samples === 0) return undefined;
 
 		const report: ShadowReport = {
 			...this.counts,
-			evaluations,
+			evaluations: Object.values(this.counts).reduce((sum, count) => sum + count, 0),
+			quickjs_timeouts: this.timeouts,
 			legacy_latency_buckets: this.legacyLatency,
 			quickjs_latency_buckets: this.quickjsLatency,
 			mismatches: [...this.mismatches.values()],
 		};
 		this.counts = emptyCounts();
+		this.timeouts = 0;
+		this.counted = new Set();
 		this.legacyLatency = emptyBuckets();
 		this.quickjsLatency = emptyBuckets();
 		this.mismatches = new Map();
@@ -161,15 +175,27 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 
 	private record(
 		source: string,
-		legacy: ExpressionEvaluationOutcome,
+		legacyResult: ExpressionEvaluationOutcome,
 		quickjs: ExpressionEvaluationOutcome,
 		legacyMs: number,
 		quickjsMs: number,
 	) {
-		const outcome = this.classify(source, legacy, quickjs);
-		this.counts[outcome] += 1;
 		this.legacyLatency[bucketIndex(legacyMs)] += 1;
 		this.quickjsLatency[bucketIndex(quickjsMs)] += 1;
+
+		if (this.counted.has(source)) return;
+		if (this.counted.size < MAX_TRACKED_EXPRESSIONS) this.counted.add(source);
+
+		// A function result reaches the user as an error ("please add ()"), and
+		// QuickJS cannot return a function, so it counts as an error on both sides.
+		const legacy: ExpressionEvaluationOutcome =
+			legacyResult.ok && typeof legacyResult.value === 'function'
+				? { ok: false, error: legacyResult.value, errorClass: 'function' }
+				: legacyResult;
+
+		const outcome = this.classify(source, legacy, quickjs);
+		this.counts[outcome] += 1;
+		if (!quickjs.ok && quickjs.errorClass === 'timeout') this.timeouts += 1;
 
 		if (!isMismatch(outcome)) return;
 

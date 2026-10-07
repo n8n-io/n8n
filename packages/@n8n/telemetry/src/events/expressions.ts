@@ -17,7 +17,11 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			init_duration_ms: z.number().describe('Time to load and start the QuickJS shadow engine'),
 			sample_rate: z.number().describe('One in this many legacy evaluations also runs in QuickJS'),
 			timeout_ms: z.number().describe('QuickJS timeout for one shadow evaluation'),
-			evaluations: z.number().describe('Expressions evaluated by both engines in this report'),
+			evaluations: z
+				.number()
+				.describe(
+					'Expressions compared in this report; repeated evaluations of one expression count once',
+				),
 			same: z.number(),
 			different: z.number(),
 			unchecked: z
@@ -28,6 +32,11 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			legacy_ok_quickjs_error: z.number(),
 			legacy_error_quickjs_ok: z.number(),
 			both_error: z.number(),
+			quickjs_timeouts: z
+				.number()
+				.describe(
+					'Compared expressions where QuickJS hit its timeout, also counted in their outcome',
+				),
 			latency_bucket_bounds_ms: z
 				.array(z.number())
 				.describe('Upper bounds of the latency buckets; the last bucket has no upper bound'),

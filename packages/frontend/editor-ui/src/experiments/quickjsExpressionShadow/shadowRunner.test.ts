@@ -64,6 +64,43 @@ describe('QuickJsExpressionShadow', () => {
 		expect(shadow.takeReport()).toMatchObject({ evaluations: 1, [outcome]: 1 });
 	});
 
+	// While the user types `$json.name.toUpperCase`, before the `()`.
+	it('counts a function result as an error, because the editor shows it as one', () => {
+		const { shadow } = createShadow(failed('TypeError'));
+
+		run(
+			shadow,
+			'{{ $json.name.toUpperCase }}',
+			ok(() => 'N8N'),
+		);
+
+		expect(shadow.takeReport()).toMatchObject({ both_error: 1, legacy_ok_quickjs_error: 0 });
+	});
+
+	it('counts the outcome of an expression once per report, and its latency every time', () => {
+		const { shadow } = createShadow(ok(1));
+
+		run(shadow, '{{ $json.a }}', ok(1));
+		run(shadow, '{{ $json.a }}', ok(1));
+
+		const report = shadow.takeReport();
+		expect(report).toMatchObject({ evaluations: 1, same: 1 });
+		expect(report?.legacy_latency_buckets.reduce((sum, count) => sum + count, 0)).toBe(2);
+	});
+
+	it('counts QuickJS timeouts on their own', () => {
+		const { shadow } = createShadow(failed('timeout'));
+
+		run(shadow, '{{ $json.a }}', ok(1));
+		run(shadow, '{{ $json.b }}', failed('TypeError'));
+
+		expect(shadow.takeReport()).toMatchObject({
+			quickjs_timeouts: 2,
+			legacy_ok_quickjs_error: 1,
+			both_error: 1,
+		});
+	});
+
 	it('reports the shape of a mismatch, never the expression or the values', () => {
 		const { shadow } = createShadow(failed('timeout'));
 
