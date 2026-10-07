@@ -5,6 +5,7 @@ import {
 	type ICredentialTypes,
 	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
+	type LiteralMcpRegistryConnection,
 	type McpGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
@@ -126,6 +127,41 @@ export function resolveMcpRegistryConnection(
 	}
 }
 
+/**
+ * Collapse the connections of several rows that share a node type into one, so
+ * the picker shows a single entry. Each binding keeps its own row's endpoint, so
+ * the runtime routes by the chosen credential. Pass the already-resolved
+ * connections. Returns null when a row is templated (no literal endpoint to pin)
+ * or fewer than two rows resolve.
+ */
+export function mergeMcpRegistryConnections(
+	connections: McpRegistryConnection[],
+): McpRegistryConnection | null {
+	const literal = connections.filter(
+		(connection): connection is LiteralMcpRegistryConnection => !connection.isTemplated,
+	);
+	if (literal.length < 2 || literal.length !== connections.length) return null;
+	// Headers and attribution are carried per binding, so drop the connection-level
+	// ones: a binding without its own must not inherit the first row's.
+	const merged = { ...literal[0] };
+	delete merged.headers;
+	delete merged.attribution;
+	return {
+		...merged,
+		credentialBindings: literal.flatMap(
+			({ credentialBindings, endpointUrl, endpointHostname, transport, headers, attribution }) =>
+				credentialBindings.map((binding) => ({
+					...binding,
+					endpointUrl,
+					endpointHostname,
+					transport,
+					...(headers ? { headers } : {}),
+					...(attribution ? { attribution } : {}),
+				})),
+		),
+	};
+}
+
 export function prepareMcpRegistryConnection({
 	connection,
 	credentialType,
@@ -156,8 +192,14 @@ export function prepareMcpRegistryConnection({
 	}
 
 	const { nodeTypeName, transport } = connection;
+	// A merged entry (official + Gateway credits twin) carries one endpoint per
+	// binding, so the endpoint follows the chosen credential. A one-remote entry
+	// leaves these unset and falls back to the connection's own endpoint below.
+	const selectedBinding = connection.credentialBindings.find(
+		(candidate) => candidate.credentialType === credentialType,
+	);
 	// Credential headers win over registry-configured ones on a name clash
-	const mergedHeaders = { ...connection.headers, ...headers };
+	const mergedHeaders = { ...(selectedBinding?.headers ?? connection.headers), ...headers };
 
 	if (connection.isTemplated) {
 		const serverUrl = credentialData.serverUrl;
@@ -194,10 +236,10 @@ export function prepareMcpRegistryConnection({
 		value: {
 			nodeTypeName,
 			credentialType,
-			transport,
-			endpointUrl: connection.endpointUrl,
+			transport: selectedBinding?.transport ?? transport,
+			endpointUrl: selectedBinding?.endpointUrl ?? connection.endpointUrl,
 			headers: mergedHeaders,
-			allowedDomains: connection.endpointHostname,
+			allowedDomains: selectedBinding?.endpointHostname ?? connection.endpointHostname,
 		},
 	};
 }

@@ -31,7 +31,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { isMcpGatewayAuthentication, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -688,8 +688,20 @@ export class AgentRuntimeReconstructionService {
 				proxyFetch: aiMcpFetch,
 				resolveRegistryConnection: async (nodeTypeName) => {
 					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
-					if (connection?.attribution) {
-						mcpServerAttributions.set(server.name, connection.attribution);
+					// A merged entry carries attribution per binding, so use the selected
+					// credential's attribution. Gateway credits serialize to
+					// `authentication: 'none'`, so match the gateway binding when no own
+					// credential does; fall back to the connection-wide value otherwise.
+					const binding =
+						connection?.credentialBindings.find(
+							(candidate) => candidate.credentialType === server.authentication,
+						) ??
+						connection?.credentialBindings.find((candidate) =>
+							isMcpGatewayAuthentication(candidate.credentialType),
+						);
+					const attribution = binding?.attribution ?? connection?.attribution;
+					if (attribution) {
+						mcpServerAttributions.set(server.name, attribution);
 					}
 					return connection;
 				},

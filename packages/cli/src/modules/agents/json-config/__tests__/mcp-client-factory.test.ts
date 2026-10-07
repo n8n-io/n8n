@@ -208,6 +208,52 @@ describe('buildMcpClientForServer — gateway-hosted registry server', () => {
 		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
 		expect(headersToCaseInsensitiveRecord(init.headers).Authorization).toBe('Bearer gw-jwt');
 	});
+
+	it('does not fall through to Gateway credits when an own credential is selected', async () => {
+		const credentialProvider = mock<CredentialProvider & AiGatewayMcpCredentialResolver>();
+		const oauthService = mock<OauthService>();
+
+		// Own credential selected on a merged entry, but none is attached, so it
+		// resolves to nothing. The gateway binding must not be minted in its place.
+		const server = makeServer({
+			name: 'firecrawl-mcp',
+			authentication: 'firecrawlMcpOAuth2Api',
+			url: 'https://mcp.firecrawl.dev/mcp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+		} as never);
+
+		await buildMcpClientForServer(server, {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+			resolveRegistryConnection: async () => ({
+				nodeTypeName: '@n8n/mcp-registry.firecrawl',
+				endpointUrl: 'https://mcp.firecrawl.dev/mcp',
+				endpointHostname: 'mcp.firecrawl.dev',
+				transport: 'httpStreamable',
+				isTemplated: false,
+				credentialBindings: [
+					{ credentialType: 'firecrawlMcpOAuth2Api', selector: 'oAuth2' },
+					{
+						credentialType: 'firecrawlMcpGatewayApi',
+						selector: 'gateway',
+						endpointUrl: 'http://localhost:3000/v1/gateway/mcp/firecrawl',
+						endpointHostname: 'localhost',
+						transport: 'httpStreamable',
+					},
+				],
+			}),
+		});
+
+		expect(credentialProvider.resolveAiGatewayMcpCredential).not.toHaveBeenCalled();
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+		expect(configs[0].url).toBe('https://credential-unresolved.invalid/');
+		await expect(configs[0].fetch('https://credential-unresolved.invalid/')).rejects.toThrow(
+			/Could not resolve the credential/,
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------

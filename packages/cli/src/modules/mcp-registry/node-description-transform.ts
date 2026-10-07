@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
 	getMcpRegistryGatewayCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
@@ -407,6 +408,58 @@ export function serverToNodeDescription(
 		...description.builderHint,
 		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,
 	};
+
+	return description;
+}
+
+/**
+ * Collapse several rows that share a node type (same slug) into one description
+ * whose single `authentication` selector lists each row's credential choice.
+ * Display fields come from the first row. Returns null when the rows yield fewer
+ * than two distinct choices, so there is nothing to pick between.
+ */
+export function serversToNodeDescription(
+	servers: McpRegistryServer[],
+	baseDescription: INodeTypeDescription,
+	isKnownCredentialType: IsKnownCredentialType,
+): INodeTypeDescription | null {
+	const options = servers.flatMap((server) => {
+		const credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
+		return getMcpRegistryCredentialOptions(server).filter((option) =>
+			credentials.some((credential) => credential.name === option.credentialType),
+		);
+	});
+	const selectors = new Set(options.map((option) => option.value));
+	if (options.length < 2 || selectors.size !== options.length) {
+		return null;
+	}
+
+	// Display fields (and the deprecated/hidden flag) come from an active row, so
+	// a deprecated variant sharing the slug does not hide the merged node.
+	const displayServer = servers.find((server) => server.status !== 'deprecated') ?? servers[0];
+	const description = serverToNodeDescription(
+		displayServer,
+		baseDescription,
+		isKnownCredentialType,
+	);
+	if (!description) return null;
+
+	description.credentials = options.map((option) => ({
+		name: option.credentialType,
+		required: true,
+		displayOptions: { show: { authentication: [option.value] } },
+	}));
+	description.properties = [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: options.map((option) => ({ name: option.name, value: option.value })),
+			default: options[0].value,
+		},
+		...description.properties.filter((property) => property.name !== 'authentication'),
+	];
 
 	return description;
 }

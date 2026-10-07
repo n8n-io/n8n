@@ -13,6 +13,7 @@ import {
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '../registry/mcp-registry.types';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
@@ -21,6 +22,45 @@ import {
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
+
+// An official (own OAuth2) row and a live Gateway credits row that share a slug.
+const firecrawlOfficialServer: McpRegistryServer = {
+	name: 'com.firecrawl/mcp',
+	slug: 'firecrawl',
+	title: 'Firecrawl',
+	description: 'Official Firecrawl MCP server, authorized with your own Firecrawl account',
+	tagline: 'Read the web with your own Firecrawl account',
+	version: '1.0.0',
+	updatedAt: '2026-10-06T10:00:00.000Z',
+	icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
+	websiteUrl: 'https://firecrawl.dev',
+	authType: 'oauth2',
+	remotes: [{ type: 'streamable-http', url: 'https://mcp.firecrawl.dev/mcp' }],
+	tools: [{ name: 'firecrawl_scrape', title: 'Scrape a URL', annotations: { readOnlyHint: true } }],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	tags: ['web-scraping', 'search'],
+};
+
+const firecrawlGatewayServer: McpRegistryServer = {
+	name: 'com.n8n/firecrawl-mcp',
+	slug: 'firecrawl',
+	title: 'Firecrawl',
+	description: 'Scrape, crawl, map and search the web, billed to Gateway credits',
+	tagline: 'Read the web with n8n credits',
+	version: '1.0.0',
+	updatedAt: '2026-09-17T10:00:00.000Z',
+	icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
+	websiteUrl: 'https://firecrawl.dev',
+	authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+	remotes: [{ type: 'streamable-http', url: 'https://gateway.n8n.io/v1/gateway/mcp/firecrawl' }],
+	tools: [{ name: 'firecrawl_scrape', title: 'Scrape a URL', annotations: { readOnlyHint: true } }],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	tags: ['web-scraping', 'search'],
+};
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
@@ -163,6 +203,93 @@ describe('McpRegistryNodeLoader', () => {
 				endpointHostname: 'mcp.notion.com',
 				transport: 'httpStreamable',
 			});
+		});
+
+		it('collapses rows sharing a slug into one node that routes each credential to its own endpoint', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			// getAll() order: stored (official) first, live Gateway credits overlay last.
+			loader.setServers([firecrawlOfficialServer, firecrawlGatewayServer]);
+
+			await loader.loadAll();
+
+			// One node, not two.
+			const firecrawlNodes = loader.types.nodes.filter(({ name }) => name === 'firecrawl');
+			expect(firecrawlNodes).toHaveLength(1);
+
+			// Both credential choices are declared behind an authentication selector.
+			expect(firecrawlNodes[0].credentials).toEqual([
+				{
+					name: 'firecrawlMcpOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+				{
+					name: 'firecrawlMcpGatewayApi',
+					required: true,
+					displayOptions: { show: { authentication: ['gateway'] } },
+				},
+			]);
+			expect(firecrawlNodes[0].properties[0]).toMatchObject({
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{ name: 'OAuth2', value: 'oAuth2' },
+					{ name: 'Gateway credits', value: 'gateway' },
+				],
+			});
+
+			// Both synthetic credential types are registered.
+			expect(loader.getCredential('firecrawlMcpOAuth2Api')).toBeDefined();
+			expect(loader.getCredential('firecrawlMcpGatewayApi')).toBeDefined();
+
+			// Each binding keeps its own row's endpoint.
+			expect(loader.getConnection('@n8n/mcp-registry.firecrawl')?.credentialBindings).toEqual([
+				{
+					credentialType: 'firecrawlMcpOAuth2Api',
+					selector: 'oAuth2',
+					endpointUrl: 'https://mcp.firecrawl.dev/mcp',
+					endpointHostname: 'mcp.firecrawl.dev',
+					transport: 'httpStreamable',
+				},
+				{
+					credentialType: 'firecrawlMcpGatewayApi',
+					selector: 'gateway',
+					endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/firecrawl',
+					endpointHostname: 'gateway.n8n.io',
+					transport: 'httpStreamable',
+				},
+			]);
+		});
+
+		it('resolves a merged connection by the node credential when no selector is set', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([firecrawlOfficialServer, firecrawlGatewayServer]);
+
+			await loader.loadAll();
+
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				resolveConnection: (
+					nodeTypeName: string,
+					selector?: string,
+					nodeCredentialTypes?: string[],
+				) => { binding: { credentialType: string } } | undefined;
+			};
+
+			// A node saved before the merge has no `authentication` selector.
+			const own = runtime.resolveConnection('@n8n/mcp-registry.firecrawl', '', [
+				'firecrawlMcpOAuth2Api',
+			]);
+			const gateway = runtime.resolveConnection('@n8n/mcp-registry.firecrawl', '', [
+				'firecrawlMcpGatewayApi',
+			]);
+
+			expect(own?.binding.credentialType).toBe('firecrawlMcpOAuth2Api');
+			expect(gateway?.binding.credentialType).toBe('firecrawlMcpGatewayApi');
 		});
 
 		it('inherits prototype methods from the base node class on synthetic nodes', async () => {

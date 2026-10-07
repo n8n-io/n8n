@@ -41,7 +41,11 @@ export class McpRegistryClientTool implements INodeType {
 		node: ReturnType<IExecuteFunctions['getNode']>,
 		selector?: string,
 	): ResolvedMcpRegistryConnection {
-		const resolved = this.registryRuntime?.resolveConnection(node.type, selector);
+		const resolved = this.registryRuntime?.resolveConnection(
+			node.type,
+			selector,
+			Object.keys(node.credentials ?? {}),
+		);
 		if (resolved) return resolved;
 		throw new NodeOperationError(node, 'MCP registry connection is not registered');
 	}

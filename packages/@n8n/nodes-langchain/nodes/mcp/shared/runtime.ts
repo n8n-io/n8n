@@ -157,7 +157,13 @@ export async function buildMcpToolkit(
 		);
 	}
 
-	const attribution = config.registryCredential?.connection.attribution;
+	// A merged entry carries attribution per binding, so use the selected
+	// credential's attribution before the connection-wide default.
+	const registryConnection = config.registryCredential?.connection;
+	const attribution =
+		registryConnection?.credentialBindings.find(
+			(binding) => binding.credentialType === config.registryCredential?.credentialType,
+		)?.attribution ?? registryConnection?.attribution;
 
 	try {
 		const tools = mcpTools.map((tool) => {

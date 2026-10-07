@@ -24,6 +24,18 @@ interface McpRegistryConnectionBase {
 export interface McpRegistryCredentialBinding {
 	credentialType: McpRegistryCredentialType;
 	selector: string;
+	/**
+	 * Per-binding overrides, set when one registry entry fronts more than one
+	 * remote (for example an official server and its Gateway credits twin). The
+	 * endpoint, transport, request headers, and attribution then all follow the
+	 * chosen credential. A normal one-remote entry leaves these unset, so the
+	 * consumer falls back to the connection's own values.
+	 */
+	endpointUrl?: string;
+	endpointHostname?: string;
+	transport?: 'httpStreamable' | 'sse';
+	headers?: Record<string, string>;
+	attribution?: string;
 }
 
 export interface ResolvedMcpRegistryConnection {
@@ -98,6 +110,12 @@ export interface McpRegistryRuntime {
 	resolveConnection(
 		nodeTypeName: string,
 		selector?: string,
+		/**
+		 * Credential types present on the node. Used as a fallback for a node saved
+		 * before its entry merged with a twin: it has no `authentication` selector
+		 * yet, so the binding is matched by the credential the node already carries.
+		 */
+		nodeCredentialTypes?: string[],
 	): ResolvedMcpRegistryConnection | undefined;
 	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
 }

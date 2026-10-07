@@ -57,9 +57,27 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 	};
 }
 
+/**
+ * A service offered both ways (own credential and Gateway credits) has two rows
+ * sharing a slug. Keep one so discovery shows it once, preferring the
+ * own-credential row to match the merged node's default; a lone row stands as is.
+ */
+function collapseBySlug(servers: McpRegistryServer[]): McpRegistryServer[] {
+	const bySlug = new Map<string, McpRegistryServer>();
+	for (const server of servers) {
+		const key = camelCase(server.slug);
+		const kept = bySlug.get(key);
+		const preferOwn =
+			kept?.authType === AI_GATEWAY_MANAGED_AUTH_TYPE &&
+			server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE;
+		if (!kept || preferOwn) bySlug.set(key, server);
+	}
+	return [...bySlug.values()];
+}
+
 /** Map registry servers to the config-ready shape, skipping entries without a usable remote. */
 export function listMcpRegistryServers(servers: McpRegistryServer[]): McpRegistrySearchResult[] {
-	return servers.flatMap((server) => {
+	return collapseBySlug(servers).flatMap((server) => {
 		const result = toSearchResult(server);
 		return result ? [result] : [];
 	});

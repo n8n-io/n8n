@@ -25,10 +25,12 @@ import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	serverToCredentialDescription,
 	serverToNodeDescription,
+	serversToNodeDescription,
 	type IsKnownCredentialType,
 } from './node-description-transform';
 import {
 	isSupportedMcpRegistryCredentialType,
+	mergeMcpRegistryConnections,
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
@@ -91,21 +93,56 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const isKnownCredentialType: IsKnownCredentialType = (name) =>
 			isSupportedMcpRegistryCredentialType(credentialTypes, name);
 
+		// Rows that share a node type (same slug) collapse into one entry: an
+		// official server and its Gateway credits twin become a single node whose
+		// credential picker routes each choice to its own endpoint.
+		const groups = new Map<string, McpRegistryServer[]>();
 		for (const server of this.servers) {
-			const nodeDescription = serverToNodeDescription(
-				server,
-				baseDescription,
-				isKnownCredentialType,
-			);
-			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
-			if (!nodeDescription) continue;
-			if (server.authType !== 'usesCredentials' && !credentialDescription) continue;
-
 			const bareName = camelCase(server.slug);
-			const connection = resolveMcpRegistryConnection(server);
-			if (!connection) continue;
+			groups.set(bareName, [...(groups.get(bareName) ?? []), server]);
+		}
+
+		for (const [bareName, group] of groups) {
+			const resolved = group.map((server) => ({
+				server,
+				connection: resolveMcpRegistryConnection(server),
+			}));
+
+			const mergedDescription =
+				group.length >= 2
+					? serversToNodeDescription(group, baseDescription, isKnownCredentialType)
+					: null;
+			const mergedConnection = mergedDescription
+				? mergeMcpRegistryConnections(
+						resolved
+							.map(({ connection }) => connection)
+							.filter((connection): connection is McpRegistryConnection => connection !== null),
+					)
+				: null;
+
+			let description: INodeTypeDescription | null;
+			let connection: McpRegistryConnection | null;
+			let credentials: Array<ICredentialType | null>;
+			if (mergedDescription && mergedConnection) {
+				description = mergedDescription;
+				connection = mergedConnection;
+				credentials = group.map((server) =>
+					serverToCredentialDescription(server, isKnownCredentialType),
+				);
+			} else {
+				// Last row wins, so a live overlay replaces a stored row of the same slug.
+				const last = [...resolved].reverse().find(({ connection }) => connection !== null);
+				const credential =
+					last && serverToCredentialDescription(last.server, isKnownCredentialType);
+				if (!last || (last.server.authType !== 'usesCredentials' && !credential)) continue;
+				description = serverToNodeDescription(last.server, baseDescription, isKnownCredentialType);
+				connection = last.connection;
+				credentials = [credential ?? null];
+			}
+			if (!description || !connection) continue;
+
 			const supportedCredentialTypes = new Set(
-				nodeDescription.credentials?.map(({ name }) => name) ?? [],
+				description.credentials?.map(({ name }) => name) ?? [],
 			);
 			this.connections.set(connection.nodeTypeName, {
 				...connection,
@@ -114,9 +151,9 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				),
 			});
 
-			this.types.nodes.push(nodeDescription);
+			this.types.nodes.push(description);
 			const syntheticNode = Object.create(baseNode, {
-				description: { value: nodeDescription, enumerable: true },
+				description: { value: description, enumerable: true },
 			}) as INodeType;
 			this.nodeTypes[bareName] = { type: syntheticNode, sourcePath };
 			this.known.nodes[bareName] = {
@@ -124,7 +161,8 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				sourcePath,
 			};
 
-			if (credentialDescription) {
+			for (const credentialDescription of credentials) {
+				if (!credentialDescription) continue;
 				this.types.credentials.push(credentialDescription);
 				this.credentialTypes[credentialDescription.name] = {
 					type: credentialDescription,
@@ -141,13 +179,19 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 		if (supportsRegistryRuntime(baseNode)) {
 			baseNode.setRegistryRuntime({
-				resolveConnection: (nodeTypeName, selector) => {
+				resolveConnection: (nodeTypeName, selector, nodeCredentialTypes) => {
 					const connection = this.connections.get(nodeTypeName);
 					if (!connection) return undefined;
+					const bindings = connection.credentialBindings;
 					const binding =
-						connection.credentialBindings.length === 1
-							? connection.credentialBindings[0]
-							: connection.credentialBindings.find((candidate) => candidate.selector === selector);
+						bindings.length === 1
+							? bindings[0]
+							: (bindings.find((candidate) => candidate.selector === selector) ??
+								// A node saved before the merge has no selector yet; fall back to
+								// the binding for the credential it already carries.
+								bindings.find((candidate) =>
+									nodeCredentialTypes?.includes(candidate.credentialType),
+								));
 					return binding ? { connection, binding } : undefined;
 				},
 				prepareConnection: prepareMcpRegistryConnection,

@@ -210,9 +210,17 @@ export async function buildMcpClientForServer(
 			const aiGatewayMcpBinding = connection.credentialBindings.find((binding) =>
 				isMcpGatewayAuthentication(binding.credentialType),
 			);
+			// Mint the gateway token only when the config selected no own credential
+			// (`authentication: 'none'`, the managed-credential shape). On a merged
+			// entry the connection also carries a gateway binding, so without this an
+			// own credential that resolves to nothing would silently fall through to
+			// Gateway credits instead of surfacing the resolution failure.
+			const ownCredentialSelected =
+				server.authentication !== 'none' && !isMcpGatewayAuthentication(server.authentication);
 			if (
 				aiGatewayMcpBinding &&
 				!credentialData &&
+				!ownCredentialSelected &&
 				credentialProvider.resolveAiGatewayMcpCredential
 			) {
 				credentialData = (await credentialProvider.resolveAiGatewayMcpCredential(

@@ -1,5 +1,6 @@
-import { searchMcpRegistryServers } from '../mcp-registry-search';
+import { listMcpRegistryServers, searchMcpRegistryServers } from '../mcp-registry-search';
 import type { McpRegistryServer } from '../mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '../mcp-registry.types';
 import { githubUsesCredentialsMockServer } from '../mock-servers';
 
 function server(overrides: Partial<McpRegistryServer> = {}): McpRegistryServer {
@@ -123,5 +124,39 @@ describe('searchMcpRegistryServers', () => {
 		const [result] = searchMcpRegistryServers([server({ slug: 'notion' })], ['notion']);
 
 		expect(result.isTemplated).toBe(false);
+	});
+});
+
+describe('collapsing rows that share a slug', () => {
+	const official = server({ slug: 'firecrawl', title: 'Firecrawl' });
+	const gateway = server({
+		slug: 'firecrawl',
+		title: 'Firecrawl',
+		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+		remotes: [{ type: 'streamable-http', url: 'https://gateway.n8n.io/v1/gateway/mcp/firecrawl' }],
+	});
+
+	it('returns one result for a service offered both ways, keeping the own-credential row', () => {
+		const results = listMcpRegistryServers([official, gateway]);
+
+		expect(results).toHaveLength(1);
+		expect(results[0]).toMatchObject({
+			slug: 'firecrawl',
+			authentication: 'firecrawlMcpOAuth2Api',
+		});
+	});
+
+	it('prefers the own-credential row regardless of order', () => {
+		const results = listMcpRegistryServers([gateway, official]);
+
+		expect(results).toHaveLength(1);
+		expect(results[0].authentication).toBe('firecrawlMcpOAuth2Api');
+	});
+
+	it('keeps a lone Gateway credits row', () => {
+		const results = listMcpRegistryServers([gateway]);
+
+		expect(results).toHaveLength(1);
+		expect(results[0]).toMatchObject({ slug: 'firecrawl', authentication: 'none' });
 	});
 });
