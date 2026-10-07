@@ -77,7 +77,7 @@ Reconsider this exception only if the package removal plan changes.
 
 ## Frontend package blockers
 
-Oxlint lints only the script block of a Vue SFC. The Vize CLI (`vize lint`) closes the template gap: it parses the whole SFC natively, so it reports exact template positions, lints an SFC without a `<script>` block, and reports template parse errors. Each Vue package runs `vize lint`, then `oxlint`, then (for now) `eslint`.
+Oxlint lints only the script block of a Vue SFC. The Vize CLI (`vize lint`) closes the template gap: it parses the whole SFC natively, so it reports exact template positions, lints an SFC without a `<script>` block, and reports template parse errors. Vue packages run `vize lint` and `oxlint`; packages that still need an ESLint compatibility pass run it afterward.
 
 - `@n8n/oxlint-config/vize` holds the 51 Vize rules (`vue/*` and `script/*`). `vue/block-order` becomes `vue/sfc-element-order`, and `vue/no-undef-components` becomes `vue/require-component-registration`. A package `vize.config.ts` imports it.
 - `@n8n/oxlint-config/vue` holds the 30 native Oxlint `vue/*` script rules, `n8n-local-rules/require-macro-variable-name` (a port of `vue/require-macro-variable-name`), and `@n8n/design-system/require-teleported-tooltip-in-dropdown` (which parses the template with `@vue/compiler-dom`).
