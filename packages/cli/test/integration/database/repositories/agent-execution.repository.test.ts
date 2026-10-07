@@ -237,7 +237,7 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			executionService,
 			checkpointStorage,
-			connection ? new AgentRepository(connection) : agentRepo,
+			connection ? new AgentRepository(connection, txRunner) : agentRepo,
 			attachmentService,
 			queueUpdates,
 			messageRepository,

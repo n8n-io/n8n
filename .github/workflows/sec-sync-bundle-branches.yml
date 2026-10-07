@@ -12,8 +12,8 @@
 # Every push is verified to carry exactly the tree a merge would produce. See
 # sync-bundle-branch.mjs.
 #
-# The public-to-private mirror dispatches this workflow after each run. The daily schedule is a
-# fallback, and merged fixes trigger it so the cut PR sees the latest bundle state immediately.
+# Runs nightly at 03:00 UTC. Maintainers can also dispatch it before a bundle cut or when a
+# bundle branch needs to be synced sooner.
 #
 # One job per bundle branch: a conflict on one FAILS THAT JOB and leaves its branch untouched,
 # while the other still syncs. Recovery is manual and deliberate — merge the public base locally,
@@ -25,11 +25,6 @@ name: 'Security: Sync Bundle Branches'
 on:
   schedule:
     - cron: '0 3 * * *'
-  pull_request: # a fix landing on a bundle branch is when freshness matters most
-    types: [closed]
-    branches:
-      - 'bundle/2.x'
-      - 'bundle/1.x'
   workflow_dispatch:
 
 # Least privilege by default; the sync job opts into exactly what it needs.
@@ -38,9 +33,7 @@ permissions: {}
 jobs:
   sync:
     name: Sync ${{ matrix.bundle }}
-    if: |
-      github.repository == 'n8n-io/n8n-private' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.merged == true)
+    if: github.repository == 'n8n-io/n8n-private'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -68,17 +61,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Always run the script from the default branch, never from a pull_request merge
-          # ref — the sync holds a contents:write token and fetches what it needs itself,
-          # so the checked-out branch is irrelevant beyond supplying trusted code.
+          # Always run the script from the default branch. The sync fetches both branches itself.
           ref: master
           fetch-depth: 0
           persist-credentials: false # we push with an explicit token URL instead
 
       - name: Merge the base into the bundle branch
-        # On a merged bundle PR, only the branch that received it needs syncing.
-        # (`matrix` is not available in a job-level `if`, so the filter lives here.)
-        if: github.event_name != 'pull_request' || github.event.pull_request.base.ref == matrix.bundle
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BUNDLE_BRANCH: ${{ matrix.bundle }}
