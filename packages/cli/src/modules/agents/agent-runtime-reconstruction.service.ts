@@ -1159,6 +1159,7 @@ export class AgentRuntimeReconstructionService {
 				mapping.model,
 				mapping.credential,
 				credentialProvider,
+				{ projectId: mapping.modelProjectId },
 			);
 		}
 

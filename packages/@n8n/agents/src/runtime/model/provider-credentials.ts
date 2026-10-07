@@ -36,6 +36,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 		headers: z.record(z.string(), z.string()).optional(),
 	}),
 	google: apiKeyCreds,
+	'google-vertex': z.object({
+		project: z.string().trim().min(1, 'Google Cloud project ID is required'),
+		location: z.string().trim().min(1, 'Google Cloud region is required'),
+		clientEmail: z.string().trim().min(1, 'Service account email is required'),
+		privateKey: z.string().trim().min(1, 'Service account private key is required'),
+	}),
 	xai: apiKeyCreds,
 	groq: apiKeyCreds,
 	deepseek: apiKeyCreds,

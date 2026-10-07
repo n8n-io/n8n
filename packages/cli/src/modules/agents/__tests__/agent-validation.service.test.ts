@@ -304,6 +304,91 @@ describe('AgentValidationService — structured issues', () => {
 		expect(bedrockResult).toEqual({ status: 'valid', issues: [] });
 	});
 
+	it.each(['runtime', 'publish'] as const)(
+		'validates each Vertex model slot before %s',
+		async (scope) => {
+			const { service, agentRepository } = makeService();
+			const model = {
+				model: 'google-vertex/gemini-3-flash-preview',
+				credential: 'vertex',
+				modelProjectId: '',
+			};
+			const config: AgentJsonConfig = {
+				...runnableConfig,
+				...model,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					observationalMemory: { observerModel: model, reflectorModel: model },
+					episodicMemory: {
+						enabled: true,
+						credential: 'embedding-credential',
+						reflectorModel: model,
+					},
+				},
+				subAgents: { modelsByDifficulty: { low: model, medium: model, high: model } },
+			};
+			const paths = [
+				'',
+				'memory.observationalMemory.observerModel.',
+				'memory.observationalMemory.reflectorModel.',
+				'memory.episodicMemory.reflectorModel.',
+				'subAgents.modelsByDifficulty.low.',
+				'subAgents.modelsByDifficulty.medium.',
+				'subAgents.modelsByDifficulty.high.',
+			];
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
+			const invalid = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'vertex', type: 'googlePalmApi' }]),
+				scope,
+			);
+			for (const path of paths) {
+				expect(invalid.issues).toContainEqual(
+					expect.objectContaining({ code: 'missing_required', path: `${path}modelProjectId` }),
+				);
+				expect(invalid.issues).toContainEqual(
+					expect.objectContaining({ code: 'incompatible_credential', path: `${path}credential` }),
+				);
+			}
+
+			model.modelProjectId = 'model-project';
+			config.modelProjectId = model.modelProjectId;
+			await expect(
+				service.validateAgentConfiguration(
+					agentId,
+					projectId,
+					makeCredentialProvider([{ id: 'vertex', type: 'googleApi' }]),
+					scope,
+				),
+			).resolves.toEqual({ status: 'valid', issues: [] });
+		},
+	);
+
+	it('does not require a Vertex project for disabled memory workers', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: false,
+					storage: 'n8n',
+					observationalMemory: {
+						observerModel: { model: 'google-vertex/gemini-3-flash-preview', credential: '' },
+					},
+				},
+			}),
+		);
+		await expect(
+			service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			),
+		).resolves.toEqual({ status: 'valid', issues: [] });
+	});
+
 	it('flags a classic Azure OpenAI credential without a deployment name', async () => {
 		const { service, agentRepository } = makeService();
 		const azureConfig: AgentJsonConfig = {

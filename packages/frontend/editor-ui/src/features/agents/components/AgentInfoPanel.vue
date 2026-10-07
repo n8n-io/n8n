@@ -291,6 +291,10 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 			...promptCachingChanges,
 			...reasoningChanges,
 			...deploymentNameChange,
+			modelProjectId:
+				selection.provider === 'google-vertex'
+					? (selection.modelProjectId ?? props.config?.modelProjectId)
+					: '',
 		},
 		// A pending agent must not be persisted just because a default model was
 		// auto-applied — let the host apply it to the draft without autosaving.
@@ -415,6 +419,7 @@ defineExpose({ focusInstructions, focusModel });
 						:models-by-provider="filteredAgents"
 						:is-loading="isLoading"
 						:project-id="projectId"
+						:model-project-id="props.config?.modelProjectId"
 						:warn-missing-credentials="true"
 						:bound-credential-id="props.config?.credential ?? null"
 						data-testid="agent-model-selector"

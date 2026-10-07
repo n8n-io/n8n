@@ -634,7 +634,7 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
-		config.modelDeploymentName,
+		{ deploymentName: config.modelDeploymentName, projectId: config.modelProjectId },
 	);
 }
 
@@ -650,5 +650,6 @@ async function resolveMemoryWorkerModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		{ projectId: config.modelProjectId },
 	);
 }

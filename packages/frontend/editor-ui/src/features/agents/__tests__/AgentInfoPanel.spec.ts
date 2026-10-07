@@ -163,7 +163,13 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	default: {
 		name: 'AgentModelSelector',
 		template: '<div data-testid="agent-model-selector" />',
-		props: ['selectedModel', 'credentials', 'warnMissingCredentials', 'modelsByProvider'],
+		props: [
+			'selectedModel',
+			'credentials',
+			'warnMissingCredentials',
+			'modelsByProvider',
+			'modelProjectId',
+		],
 		emits: ['change', 'select-credential', 'configure-credential'],
 	},
 }));
@@ -230,6 +236,32 @@ describe('AgentInfoPanel', () => {
 		expect(wrapper.get('h3').text()).toBe('agents.builder.agent.title');
 		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'));
 		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
+	});
+
+	it('saves the Vertex project and clears it when switching providers', async () => {
+		const wrapper = mountModelPanel({
+			name: 'Vertex Agent',
+			model: 'google-vertex/gemini-3-flash-preview',
+			credential: 'gcp',
+			instructions: 'Help.',
+			modelProjectId: 'saved-project',
+		});
+		const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
+		expect(selector.props('modelProjectId')).toBe('saved-project');
+		selector.vm.$emit('change', {
+			provider: 'google-vertex',
+			model: 'gemini-3-flash-preview',
+			modelProjectId: 'new-project',
+		});
+		await wrapper.vm.$nextTick();
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toMatchObject({
+			modelProjectId: 'new-project',
+		});
+		selector.vm.$emit('change', { provider: 'anthropic', model: 'claude-sonnet-4-5' });
+		await wrapper.vm.$nextTick();
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toMatchObject({
+			modelProjectId: '',
+		});
 	});
 
 	it('keeps the card heading accessible in embedded controls', function hidesEmbeddedHeader() {

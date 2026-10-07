@@ -608,6 +608,7 @@ function applyDifficultyModelOverride(
 		...config,
 		model: modelConfig.model,
 		credential: modelConfig.credential,
+		modelProjectId: modelConfig.modelProjectId,
 		providerTools,
 	};
 }

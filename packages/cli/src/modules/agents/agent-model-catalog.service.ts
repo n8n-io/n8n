@@ -16,6 +16,7 @@ import {
 } from './builder/builder-model-live-lookup.service';
 import type { ModelChoice } from './builder/model-lookup.types';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
+import { filterOfferedAgentModels } from './model-catalog';
 import { stripSnapshotSuffix } from './utils/model-snapshot-alias';
 import { normalizeProviderModelId } from './utils/provider-model-id';
 
@@ -206,7 +207,7 @@ export class AgentModelCatalogService {
 		try {
 			const { fetchProviderCatalog } = await import('@n8n/agents');
 			const catalog = await fetchProviderCatalog();
-			return catalog[provider]?.models ?? {};
+			return filterOfferedAgentModels(provider, catalog[provider]?.models ?? {});
 		} catch (error) {
 			this.logger.warn('Model catalog fetch failed', {
 				provider,

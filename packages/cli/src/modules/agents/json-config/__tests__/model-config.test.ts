@@ -8,6 +8,61 @@ import {
 } from '../model-config';
 
 describe('resolveCredentialAwareModelConfig', () => {
+	it('resolves a Vertex service account with the selected project and credential region', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.list.mockResolvedValue([{ id: 'gcp', name: 'GCP', type: 'googleApi' }]);
+		credentialProvider.resolve.mockResolvedValue({
+			email: 'agent@example.iam.gserviceaccount.com',
+			privateKey: 'private-key',
+			region: 'europe-west4',
+		});
+		await expect(
+			resolveCredentialAwareModelConfig(
+				'google-vertex/gemini-3-flash-preview',
+				'gcp',
+				credentialProvider,
+				{ projectId: ' project-one ' },
+			),
+		).resolves.toEqual({
+			id: 'google-vertex/gemini-3-flash-preview',
+			project: 'project-one',
+			location: 'europe-west4',
+			clientEmail: 'agent@example.iam.gserviceaccount.com',
+			privateKey: 'private-key',
+		});
+	});
+
+	it.each([
+		{
+			model: 'google-vertex/gemini-2.5-pro',
+			projectId: 'project-one',
+			type: 'googleApi',
+			error: 'Gemini 3',
+		},
+		{
+			model: 'google-vertex/gemini-3-flash-preview',
+			projectId: '',
+			type: 'googleApi',
+			error: 'project ID',
+		},
+		{
+			model: 'google-vertex/gemini-3-flash-preview',
+			projectId: 'project-one',
+			type: 'googlePalmApi',
+			error: 'Service Account credential',
+		},
+	])(
+		'rejects an incomplete or incompatible Vertex selection: $error',
+		async ({ model, projectId, type, error }) => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.list.mockResolvedValue([{ id: 'gcp', name: 'GCP', type }]);
+			await expect(
+				resolveCredentialAwareModelConfig(model, 'gcp', credentialProvider, { projectId }),
+			).rejects.toThrow(error);
+			expect(credentialProvider.resolve).not.toHaveBeenCalled();
+		},
+	);
+
 	it('resolves a real credential via the credential provider (unchanged path)', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockResolvedValue({

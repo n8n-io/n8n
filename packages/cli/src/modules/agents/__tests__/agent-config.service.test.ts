@@ -578,7 +578,8 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('description');
 		});
 
-		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {
+		const fields = ['modelDeploymentName', 'modelProjectId'] as const;
+		it.each(fields)('saves, retains, and clears %s', async (field) => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -586,34 +587,33 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
+				{ ...baseConfig, [field]: 'selected-value' },
 				user,
 				fencedOn(agent),
 			);
 			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
+			expect(composeJsonConfig(saved)?.[field]).toBe('selected-value');
 
 			// Omitting the field keeps the stored value (merge semantics).
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
+			expect(composeJsonConfig(saved)?.[field]).toBe('selected-value');
 
-			// An explicit empty value is a clear (the builder sends "" when the
-			// user blanks the deployment-name field).
+			// The builder sends an empty string when the user clears the field.
 			await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...baseConfig, modelDeploymentName: '' },
+				{ ...baseConfig, [field]: '' },
 				user,
 				fencedOn(agent),
 			);
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
+			expect(composeJsonConfig(saved)).not.toHaveProperty(field);
 
 			await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
+				{ ...baseConfig, [field]: 'selected-value' },
 				user,
 				fencedOn(agent),
 			);
@@ -624,7 +624,7 @@ describe('AgentConfigService', () => {
 				...fencedOn(agent),
 			});
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
+			expect(composeJsonConfig(saved)).not.toHaveProperty(field);
 		});
 
 		it('drops stored optional fields omitted from the payload when clearOmittedOptionalFields is set', async () => {
