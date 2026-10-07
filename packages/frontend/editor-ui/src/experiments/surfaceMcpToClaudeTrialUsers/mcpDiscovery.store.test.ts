@@ -122,10 +122,14 @@ describe('MCP discovery store', () => {
 
 	it('retries a failed plan request without using the Community license fallback', async () => {
 		mocks.cloud.getOwnerCurrentPlan.mockRejectedValueOnce(new Error('Unavailable'));
+		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		expect(store.state.status).toBe('unknown');
-		expect(mocks.request).not.toHaveBeenCalled();
+		expect(mocks.request).toHaveBeenCalledTimes(1);
+		expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBeUndefined();
+		expect(store.shouldShowEntryPoints).toBe(false);
+		expect(mocks.track).not.toHaveBeenCalled();
 
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
@@ -138,6 +142,31 @@ describe('MCP discovery store', () => {
 			expect.objectContaining({ data: { pickedClaude: true, isTrial: true } }),
 		);
 	});
+
+	it.each(['control', 'variant'] as const)(
+		'restores a saved %s assignment when the Cloud plan request fails',
+		async (variant) => {
+			mocks.cloud.getOwnerCurrentPlan.mockRejectedValue(new Error('Unavailable'));
+			const assignment = { variant, assignedAt: 123 };
+			mocks.request.mockResolvedValue({
+				status: 'assigned',
+				assignment,
+				coachmarkDismissed: true,
+				hasUsedClaudeMcp: false,
+			});
+			const store = useMcpDiscoveryStore();
+			await store.refresh();
+
+			expect(mocks.request).toHaveBeenCalledTimes(1);
+			expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBeUndefined();
+			expect(mocks.cloud.fetchUserCloudAccount).not.toHaveBeenCalled();
+			expect(store.state.assignment).toEqual(assignment);
+			expect(store.coachmarkDismissed).toBe(true);
+			expect(store.isEnabled).toBe(true);
+			expect(store.shouldShowEntryPoints).toBe(variant === 'variant');
+			expect(mocks.setAssignment).toHaveBeenCalledWith(variant);
+		},
+	);
 
 	it('does not infer false when Cloud omits trial status', async () => {
 		mocks.cloud.getOwnerCurrentPlan.mockResolvedValueOnce({});

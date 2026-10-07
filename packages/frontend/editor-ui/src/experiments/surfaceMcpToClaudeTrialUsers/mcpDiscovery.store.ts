@@ -62,9 +62,10 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 			// Refresh the Cloud plan until assignment. License certificates can omit the plan name.
 			let isTrial: boolean | undefined;
 			if (state.value.status !== 'assigned') {
-				const plan = await cloudPlan.getOwnerCurrentPlan();
+				// Let the server restore a saved assignment if the Cloud plan is unavailable.
+				const plan = await cloudPlan.getOwnerCurrentPlan().catch(() => undefined);
 				if (requestGeneration !== generation || users.currentUser?.id !== userId) return;
-				const group = plan.metadata?.group;
+				const group = plan?.metadata?.group;
 				isTrial = group ? group === 'trial' : undefined;
 			}
 			if (isTrial === true && pickedClaude === undefined) {

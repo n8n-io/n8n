@@ -132,10 +132,13 @@ describe('MCP discovery enrollment polling', () => {
 
 	it('retries the Cloud plan after a failure without a page reload', async () => {
 		mocks.cloud.getOwnerCurrentPlan.mockRejectedValueOnce(new Error('Unavailable'));
-		mocks.request.mockResolvedValue(assigned('control'));
+		mocks.request
+			.mockResolvedValueOnce({ status: 'unknown', coachmarkDismissed: false })
+			.mockResolvedValue(assigned('control'));
 		await start();
 		expect(useMcpDiscoveryStore().state.status).toBe('unknown');
-		expect(mocks.request).not.toHaveBeenCalled();
+		expect(mocks.request).toHaveBeenCalledTimes(1);
+		expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBeUndefined();
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(mocks.cloud.getOwnerCurrentPlan).toHaveBeenCalledTimes(2);
 		expect(useMcpDiscoveryStore().state.status).toBe('assigned');
