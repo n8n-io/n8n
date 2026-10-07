@@ -27,6 +27,7 @@ variable "DHI_REF" {
 
 variable "N8N_TAGS" { default = "" }
 variable "N8N_PC_TAGS" { default = "" }
+variable "N8N_DEBIAN_TAGS" { default = "" }
 variable "RUNNERS_TAGS" { default = "" }
 variable "RUNNERS_DISTROLESS_TAGS" { default = "" }
 variable "BASE_TAGS" { default = "" }
@@ -75,6 +76,15 @@ target "n8n-pc" {
   }
 }
 
+# The glibc n8n image. Users add vendor libraries that need glibc in a derived
+# image. It inherits _app, not n8n, so the Alpine BUILDER_IMAGE and
+# RUNTIME_IMAGE overrides do not apply. The pins are the Dockerfile defaults.
+target "n8n-debian" {
+  inherits   = ["_app"]
+  dockerfile = "docker/images/n8n/Dockerfile.debian"
+  tags       = tags(N8N_DEBIAN_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}-debian")
+}
+
 target "runners" {
   inherits   = ["_app"]
   dockerfile = "docker/images/runners/Dockerfile"
@@ -105,4 +115,4 @@ target "base-debian" {
 group "default" { targets = ["n8n", "runners"] }
 group "distroless" { targets = ["n8n", "runners", "runners-distroless"] }
 group "all" { targets = ["base", "n8n", "runners", "runners-distroless"] }
-group "release" { targets = ["n8n", "n8n-pc", "runners", "runners-distroless"] }
+group "release" { targets = ["n8n", "n8n-pc", "n8n-debian", "runners", "runners-distroless"] }

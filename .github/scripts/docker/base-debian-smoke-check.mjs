@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // Verifies the contract of the Debian base image (n8nio/base:<ver>-debian).
-// No n8n image builds on this base yet, so the Docker smoke test does not
-// cover it. Run it inside the image as root:
+// The Docker smoke test builds n8n-debian on the published base, so it does
+// not test a change to the base Dockerfile. Run it inside the image as root:
 //   docker run --rm --user root --entrypoint node -v "$PWD/<this file>:/check.mjs:ro" <image> /check.mjs
 
 import assert from 'node:assert/strict';

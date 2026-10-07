@@ -150,6 +150,26 @@ docker pull docker.n8n.io/n8nio/n8n:next
 
 Tags with a `-pc` suffix (for example `n8nio/n8n:2.36.0-pc`) are a pointer-compressed variant, internal to n8n Cloud. They carry no support or stability guarantees and can change or disappear without notice. Use the regular tags instead.
 
+### About `-debian` tags
+
+Tags with a `-debian` suffix (for example `n8nio/n8n:2.41.0-debian`) use Debian (glibc) instead of Alpine (musl). Use them only to add a vendor library that needs glibc, for example Oracle Instant Client for Thick mode. Use the regular tags otherwise.
+
+Like the regular image, this image has no package manager. Add the library in a derived image: download it in a build stage, then copy it in. This example adds Oracle Instant Client on arm64:
+
+```dockerfile
+FROM debian:trixie-slim AS oracle
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip libaio1t64 && \
+    curl -fsSL -o /tmp/ic.zip https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux-arm64.zip && \
+    unzip -q /tmp/ic.zip -d /opt/oracle && mv /opt/oracle/instantclient_* /opt/oracle/instantclient && \
+    cp -L /usr/lib/aarch64-linux-gnu/libaio.so.1t64 /opt/oracle/instantclient/libaio.so.1
+
+FROM n8nio/n8n:2.41.0-debian
+COPY --from=oracle /opt/oracle/instantclient /opt/oracle/instantclient
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
+```
+
+In queue mode, every n8n container that runs the node must use the derived image.
+
 Stop the container and start it again:
 
 1. Get the container ID:

@@ -29,6 +29,7 @@ export function parseTargets(env) {
 	return [
 		{ label: 'n8n', image: env.N8N_IMAGE, digest: env.N8N_DIGEST },
 		{ label: 'n8n-pc', image: env.N8N_PC_IMAGE, digest: env.N8N_PC_DIGEST },
+		{ label: 'n8n-debian', image: env.N8N_DEBIAN_IMAGE, digest: env.N8N_DEBIAN_DIGEST },
 		{ label: 'runners', image: env.RUNNERS_IMAGE, digest: env.RUNNERS_DIGEST },
 		{ label: 'runners-distroless', image: env.DISTROLESS_IMAGE, digest: env.DISTROLESS_DIGEST },
 	].filter((t) => t.image && t.digest);
