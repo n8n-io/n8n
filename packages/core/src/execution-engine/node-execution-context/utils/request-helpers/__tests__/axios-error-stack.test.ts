@@ -3,12 +3,13 @@ import axios from 'axios';
 import { createRequire } from 'node:module';
 
 // The `import` above loads axios's lib/ build; production code `require`s
-// dist/node/axios.cjs instead. Both are patched, so test both.
+// dist/node/axios.cjs instead. Test both.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- require() is untyped
 const axiosCjs: AxiosStatic = createRequire(__filename)('axios');
 
 /**
- * Guards `patches/axios.patch`. Without it, axios crashes on a non-string
+ * Guards the non-string `error.stack` handling that axios ships since 1.20.0
+ * (n8n patched it before). Without it, axios crashes on a non-string
  * `error.stack` (caused by an overridden `Error.prepareStackTrace`) and replaces
  * the real request error with its own TypeError.
  */
