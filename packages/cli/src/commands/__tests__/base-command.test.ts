@@ -119,8 +119,8 @@ describe('needsRegexEngine', () => {
 		loadNodesAndCredentials.init.mockResolvedValue(undefined);
 		dbConnection.init.mockResolvedValue(undefined);
 		dbConnection.migrate.mockResolvedValue(undefined);
-		deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-		deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+		deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+		deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 		posthogClient.init.mockResolvedValue();
 		telemetryEventRelay.init.mockResolvedValue();
 		regexEngineService.init.mockResolvedValue(undefined);
@@ -140,9 +140,8 @@ describe('needsRegexEngine', () => {
 
 	it('crashes the process when the engine cannot start', async () => {
 		const exitSpy = vi
-			// @ts-expect-error Protected method
 			.spyOn(BaseCommand.prototype, 'exitWithCrash')
-			.mockResolvedValue(undefined);
+			.mockResolvedValue(undefined as never);
 		regexEngineService.init.mockRejectedValue(new Error('module failed to load'));
 
 		await new RegexEngineCommand().init();
@@ -177,9 +176,8 @@ describe('needsRegexEngine', () => {
 			}),
 		);
 		const exitSpy = vi
-			// @ts-expect-error Protected method
 			.spyOn(BaseCommand.prototype, 'exitWithCrash')
-			.mockResolvedValue(undefined);
+			.mockResolvedValue(undefined as never);
 
 		await new PlainCommand().init();
 
@@ -199,9 +197,8 @@ describe('needsRegexEngine', () => {
 			}),
 		);
 		const exitSpy = vi
-			// @ts-expect-error Protected method
 			.spyOn(BaseCommand.prototype, 'exitWithCrash')
-			.mockResolvedValue(undefined);
+			.mockResolvedValue(undefined as never);
 
 		await new ExpressionOnlyCommand().init();
 
