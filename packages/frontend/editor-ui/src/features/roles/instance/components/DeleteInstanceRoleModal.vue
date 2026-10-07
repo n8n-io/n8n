@@ -1,10 +1,18 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
-import { ElDialog } from 'element-plus';
-import { N8nButton, N8nHeading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 
 const props = defineProps<{
 	/** The role being deleted. */
@@ -60,24 +68,18 @@ function onConfirm() {
 </script>
 
 <template>
-	<ElDialog
-		v-model="visible"
-		width="540"
-		:show-close="true"
-		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
-		data-test-id="delete-instance-role-modal"
-	>
-		<template #header>
-			<N8nHeading tag="h2" size="xlarge" :bold="true">
+	<N8nDialog v-model:open="visible" size="large" data-test-id="delete-instance-role-modal">
+		<N8nDialogHeader>
+			<N8nDialogTitle>
 				{{
 					i18n.baseText('roles.instance.action.delete.reassign.title', {
 						interpolate: { roleName: role?.displayName ?? '' },
 					})
 				}}
-			</N8nHeading>
-		</template>
+			</N8nDialogTitle>
+		</N8nDialogHeader>
 
-		<div :class="$style.content">
+		<N8nDialogBody :class="$style.content">
 			<N8nText tag="p" size="medium" color="text-base">
 				<strong>{{ userCountText }}</strong>
 				{{ i18n.baseText('roles.instance.action.delete.reassign.description') }}
@@ -101,42 +103,32 @@ function onConfirm() {
 					/>
 				</N8nSelect>
 			</div>
-		</div>
+		</N8nDialogBody>
 
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton variant="outline" data-test-id="cancel-delete-role" @click="onCancel">
-					{{ i18n.baseText('roles.action.cancel') }}
-				</N8nButton>
-				<N8nButton
-					variant="destructive"
-					:disabled="!selectedRoleSlug"
-					data-test-id="confirm-delete-reassign-role"
-					@click="onConfirm"
-				>
-					{{ confirmLabel }}
-				</N8nButton>
-			</div>
-		</template>
-	</ElDialog>
+		<N8nDialogFooter>
+			<N8nButton variant="outline" data-test-id="cancel-delete-role" @click="onCancel">
+				{{ i18n.baseText('roles.action.cancel') }}
+			</N8nButton>
+			<N8nButton
+				variant="destructive"
+				:disabled="!selectedRoleSlug"
+				data-test-id="confirm-delete-reassign-role"
+				@click="onConfirm"
+			>
+				{{ confirmLabel }}
+			</N8nButton>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
 .content {
-	display: flex;
-	flex-direction: column;
 	gap: var(--spacing--lg);
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 }
 </style>
