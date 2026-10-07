@@ -1069,7 +1069,7 @@ patchedDependencies:
   '@types/ws@8.18.1': 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
   assert@2.1.0: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
   axios: 149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49
-  bull@4.16.4: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
+  bull@4.16.4: d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0
   element-plus@2.4.3: 95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
   imapflow@1.7.1: 9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025
@@ -4939,7 +4939,7 @@ importers:
         version: 2.4.3
       bull:
         specifier: 4.16.4
-        version: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)(supports-color@8.1.1)
+        version: 4.16.4(patch_hash=d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0)(supports-color@8.1.1)
       change-case:
         specifier: 'catalog:'
         version: 5.4.4
@@ -35010,7 +35010,7 @@ snapshots:
 
   builtin-modules@5.0.0: {}
 
-  bull@4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)(supports-color@8.1.1):
+  bull@4.16.4(patch_hash=d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0)(supports-color@8.1.1):
     dependencies:
       cron-parser: 4.9.0
       get-port: 5.1.1

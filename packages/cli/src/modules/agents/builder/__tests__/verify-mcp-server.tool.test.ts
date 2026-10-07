@@ -311,8 +311,16 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(closeMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('auto-applies the credential when verification succeeds and the callback reports applied', async () => {
-		const applyCredentialToMcpServer = vi.fn().mockResolvedValue({ applied: true });
+	it('auto-applies the credential and returns the saved config and hash when the callback reports applied', async () => {
+		const savedConfig = {
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Help.',
+			mcpServers: [{ name: 'notion', url: 'https://example.test/mcp', credential: 'cred-42' }],
+		};
+		const applyCredentialToMcpServer = vi
+			.fn()
+			.mockResolvedValue({ applied: true, config: savedConfig, configHash: 'config-hash' });
 		const mcpClient = makeMcpClient({
 			listTools: vi.fn().mockResolvedValue([{ name: 'echo', description: 'Echo the input' }]),
 		});
@@ -340,6 +348,8 @@ describe('buildVerifyMcpServerTool', () => {
 			credentialApplied: true,
 			configMutated: true,
 			agentId: 'agent-1',
+			config: savedConfig,
+			configHash: 'config-hash',
 		});
 	});
 
