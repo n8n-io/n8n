@@ -121,12 +121,10 @@ export class MessageTracker {
 	}
 
 	answered(message: amqplib.Message) {
-		if (this.messages.length === 0) {
-			return;
+		const index = this.messages.indexOf(message.fields.deliveryTag);
+		if (index !== -1) {
+			this.messages.splice(index, 1);
 		}
-
-		const index = this.messages.findIndex((value) => value !== message.fields.deliveryTag);
-		this.messages.splice(index);
 	}
 
 	unansweredMessages() {

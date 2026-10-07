@@ -187,6 +187,27 @@ describe('RabbitMQ GenericFunctions', () => {
 			expect(messageTracker.messages).not.toContain(1);
 		});
 
+		it('should remove only the answered message when multiple are in flight (first)', () => {
+			messageTracker.received({ fields: { deliveryTag: 1 } } as ConsumeMessage);
+			messageTracker.received({ fields: { deliveryTag: 2 } } as ConsumeMessage);
+			messageTracker.answered({ fields: { deliveryTag: 1 } } as ConsumeMessage);
+			expect(messageTracker.messages).toEqual([2]);
+		});
+
+		it('should remove only the answered message when multiple are in flight (last)', () => {
+			messageTracker.received({ fields: { deliveryTag: 1 } } as ConsumeMessage);
+			messageTracker.received({ fields: { deliveryTag: 2 } } as ConsumeMessage);
+			messageTracker.answered({ fields: { deliveryTag: 2 } } as ConsumeMessage);
+			expect(messageTracker.messages).toEqual([1]);
+		});
+
+		it('should keep all messages when answering an unknown delivery tag', () => {
+			messageTracker.received({ fields: { deliveryTag: 1 } } as ConsumeMessage);
+			messageTracker.received({ fields: { deliveryTag: 2 } } as ConsumeMessage);
+			messageTracker.answered({ fields: { deliveryTag: 999 } } as ConsumeMessage);
+			expect(messageTracker.messages).toEqual([1, 2]);
+		});
+
 		it('should return the number of unanswered messages', () => {
 			const message = { fields: { deliveryTag: 1 } } as ConsumeMessage;
 			messageTracker.received(message);
