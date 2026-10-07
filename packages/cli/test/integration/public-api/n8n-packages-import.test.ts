@@ -38,7 +38,7 @@ import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
-// Must run before `setupTestServer`, which constructs the controller and captures the real singleton.
+// Must run before `setupTestServer`, which constructs the controller with this mock.
 const credentialTypesMock = mockInstance(CredentialTypes);
 credentialTypesMock.recognizes.mockReturnValue(true);
 

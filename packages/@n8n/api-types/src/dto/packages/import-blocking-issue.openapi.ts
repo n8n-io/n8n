@@ -60,7 +60,12 @@ export const workflowArchiveForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
 };
 
 export const credentialUnresolvedFieldDocs = {
-	targetId: { description: 'Target credential id for an explicit credential binding.' },
+	targetId: {
+		description:
+			'Target credential id: for `not_found`, the explicit binding that could not be ' +
+			'resolved; for `type_mismatch`, the credential id that was resolved — via an explicit ' +
+			'binding or automatic matching — but has the wrong type.',
+	},
 	expectedType: {
 		description: "For `type_mismatch`: the credential type the package's workflow node requires.",
 	},
@@ -180,8 +185,9 @@ export const dataTableSchemaOperationOpenApi: ZodOpenAPIMetadata = {
 export const dataTableUnresolvedIssueOpenApi: ZodOpenAPIMetadata = {
 	description:
 		"A data table referenced by the package's workflows that could not be resolved against " +
-		'the target project, under `dataTableMissingMode=must-preexist` or ' +
-		'`dataTableSchemaConflictPolicy`.',
+		'the target project — under `dataTableMissingMode=must-preexist` or ' +
+		'`dataTableSchemaConflictPolicy`, or because the data table module is disabled on this ' +
+		'instance, or the caller lacks the scope the resolution needs.',
 };
 
 export const tagUnresolvedFieldDocs = {
