@@ -1,8 +1,8 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import { fileURLToPath } from 'node:url';
 import {
 	UnexpectedError,
 	UserError,
@@ -45,21 +45,22 @@ import {
 import { parameterPathOf, toProperty } from './properties';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
 import { canonicalJson, shapeOf } from './schema';
-import type { CredentialManifest, NativeManifest } from './manifest';
+import { parseCredentialManifest, type CredentialManifest, type NativeManifest } from './manifest';
 import {
-	addStatusToStore,
-	addToStore,
-	isVersionManifest,
-	manifestTextOf,
-	signStoreManifest,
-	signStoreStatus,
-	storeFilesOfDir,
-	storeReader,
-	type SourcePackage,
-	type StoreManifest,
-	type StoreRecord,
-	type StoreStatusRecord,
-} from './store';
+	DEFAULT_NPM_SCOPE,
+	npmDeprecate,
+	npmDigestOf,
+	npmManifestTextOf,
+	npmNameOf,
+	npmPackageOf,
+	npmPublish,
+	npmRegistryOf,
+	npmSourceOf,
+	npmVersionsOf,
+	type NpmSource,
+	type NpmVersion,
+} from './npm';
+import type { SourcePackage, StoreManifest } from './store';
 import { evaluateAlone, mockHttp, sendRequest } from './testing';
 import { validate } from './validator';
 import {
@@ -68,8 +69,9 @@ import {
 	isFixtureBinary,
 	normativeSchema,
 	parseFixtures,
+	parseManifest,
+	parseNativeManifest,
 	parseSemver,
-	sha256,
 	type ChangeKind,
 	type ContractDiff,
 	type ContractFixtures,
@@ -77,9 +79,6 @@ import {
 	type FixtureBinary,
 	type VersionManifest,
 } from './version';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -519,10 +518,14 @@ export function checkCredentialPublish(
 
 /** Where publish adds a version, and the key that signs it. */
 export interface PublishTarget {
-	/** The store directory of the registry: the static files that the registry serves. */
-	readonly registryDir: string;
+	/** The npm registry, e.g. `http://localhost:4873/`. See `npmRegistryOf`. */
+	readonly registry: string;
 	/** PEM of the ed25519 publisher key. It lives outside the repo. */
 	readonly privateKey: string;
+	/** The npm scope of the packages. Default: `DEFAULT_NPM_SCOPE`. */
+	readonly scope?: string;
+	/** The license, repository and author of the source package. */
+	readonly source?: NpmSource;
 }
 
 /** What `publishAction` publishes, and where. */
@@ -535,33 +538,28 @@ export interface PublishOptions extends PublishTarget {
 	readonly fixtures?: ContractFixtures;
 }
 
-const digestOf = (text: string) => `sha256:${sha256(text)}`;
-
 /**
- * Gates, signs and adds one frozen version to the registry store. A version already published
- * with the same manifest bytes is a no-op. Other bytes for a published version are refused.
+ * Gates one frozen version and publishes it as an npm package. A version already published with
+ * the same manifest digest is a no-op. Other bytes for a published version are refused, and so is
+ * a package that holds another contract id.
  */
 async function publishVersion<M extends StoreManifest>(
-	{ registryDir, privateKey }: PublishTarget,
-	frozen: { readonly manifest: M; readonly bundle?: string; readonly fixtures?: ContractFixtures },
-	isKind: (manifest: StoreManifest) => manifest is M,
+	target: PublishTarget,
+	frozen: NpmVersion & { readonly manifest: M },
+	parse: (text: string) => M,
 	gate: (previous: M | undefined) => unknown,
 ): Promise<M> {
-	const registry = storeReader(storeFilesOfDir(registryDir));
-	const { manifest, bundle, fixtures } = frozen;
+	const { manifest } = frozen;
 	const { id, semver } = manifest;
-	const manifestText = manifestTextOf(manifest);
-	const published = await registry.records(id);
-	const manifestOf = async (record: StoreRecord) => {
-		const read = await registry.readManifest(record);
-		if (!read || !isKind(read.manifest)) {
-			throw new UserError(`The registry has no manifest of ${id}@${record.version}`);
-		}
-		return read.manifest;
-	};
+	const name = npmNameOf(id, target.scope);
+	const published = await npmVersionsOf(target.registry, name);
+	const other = published.find((entry) => entry.id !== id);
+	if (other) {
+		throw new UserError(`${name} holds ${other.id ?? 'another package'}, so it cannot hold ${id}`);
+	}
 	const existing = published.find(({ version }) => version === semver);
 	if (existing) {
-		if (existing.manifest === digestOf(manifestText)) return await manifestOf(existing);
+		if (existing.digest === npmDigestOf(manifest)) return manifest;
 		throw new UserError(
 			`${id}@${semver} is published with other bytes; bump the version in source`,
 		);
@@ -570,23 +568,15 @@ async function publishVersion<M extends StoreManifest>(
 		.filter(({ version }) => compareSemver(version, semver) < 0)
 		.sort((a, b) => compareSemver(a.version, b.version))
 		.at(-1);
-	await gate(previous ? await manifestOf(previous) : undefined);
-	await addToStore(registryDir, [
-		{
-			manifestText,
-			bundle,
-			...(fixtures ? { fixtures: `${JSON.stringify(fixtures, null, '\t')}\n` } : {}),
-			signatures: [signStoreManifest(manifestText, privateKey)],
-			published: new Date().toISOString(),
-		},
-	]);
+	await gate(previous ? parse(await npmManifestTextOf(previous, name)) : undefined);
+	await npmPublish(target.registry, npmPackageOf(frozen, target));
 	return manifest;
 }
 
 /**
- * Freezes HEAD, gates it against the newest published version below it, signs it, and adds it
- * to the registry store. A version already published with the same manifest bytes is a no-op;
- * with other bytes it is refused.
+ * Freezes HEAD, gates it against the newest published version below it, signs it, and publishes
+ * it. A version already published with the same manifest digest is a no-op; with other bytes it
+ * is refused.
  */
 export async function publishAction(options: PublishOptions): Promise<VersionManifest> {
 	const frozen = await freezeAction(options.entryFile, options.exportName);
@@ -594,7 +584,7 @@ export async function publishAction(options: PublishOptions): Promise<VersionMan
 	return await publishVersion(
 		options,
 		{ ...frozen, fixtures: options.fixtures },
-		isVersionManifest,
+		parseManifest,
 		async (previous) => await checkPublish(previous, frozen, fixtures),
 	);
 }
@@ -613,11 +603,8 @@ export async function publishCredential(
 ): Promise<CredentialManifest> {
 	const manifest = freezeCredential(options.type);
 	if (!manifest) throw new UserError(`${options.type.name} is a compat type and has no manifest`);
-	return await publishVersion(
-		options,
-		{ manifest },
-		(read): read is CredentialManifest => read.kind === 'credential',
-		(previous) => checkCredentialPublish(previous, manifest),
+	return await publishVersion(options, { manifest }, parseCredentialManifest, (previous) =>
+		checkCredentialPublish(previous, manifest),
 	);
 }
 
@@ -632,29 +619,9 @@ export async function publishNative(
 	},
 ): Promise<NativeManifest> {
 	const manifest = freezeNative(options.native);
-	return await publishVersion(
-		options,
-		{ manifest },
-		(read): read is NativeManifest => 'native' in read,
-		(previous) => checkNativePublish(previous, manifest),
+	return await publishVersion(options, { manifest }, parseNativeManifest, (previous) =>
+		checkNativePublish(previous, manifest),
 	);
-}
-
-/**
- * Signs a status line (a yank, a revoke or a deprecation) and appends it to the registry store.
- * The registry must have the version of a yank or revoke. The catalog then lists the newest
- * version that is not yanked or revoked.
- */
-export async function publishStatus(
-	{ registryDir, privateKey }: PublishTarget,
-	status: StoreStatusRecord,
-): Promise<StoreStatusRecord> {
-	const signed = {
-		...status,
-		signatures: [...(status.signatures ?? []), signStoreStatus(status, privateKey)],
-	};
-	const [added] = await addStatusToStore(registryDir, [signed]);
-	return added ?? signed;
 }
 
 /** The fixtures of a contract of a package. A trigger replays only migration pairs, so it may have no file. */
@@ -664,64 +631,59 @@ async function fixturesOf(pkg: Pick<SourcePackage, 'dir'>, action: Action | Trig
 	return parseFixtures(await readFile(file, 'utf8'));
 }
 
-/** The registry folder and the signing key, from the environment. */
-async function publishTargetOfEnv(): Promise<PublishTarget> {
-	const url = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
-	const keyFile = process.env.N8N_NODE_CONTRACTS_SIGNING_KEY_FILE;
-	if (!url?.startsWith('file:') || !keyFile) {
-		throw new UserError(
-			'Set N8N_NODE_CONTRACTS_REGISTRY_URL to a file:// folder and N8N_NODE_CONTRACTS_SIGNING_KEY_FILE',
-		);
-	}
-	return { registryDir: fileURLToPath(url), privateKey: await readFile(keyFile, 'utf8') };
-}
+const STATUS_USAGE = ['yank <id>@<version> <reason>', 'revoke <id>@<version> <reason>'].join('\n');
 
-const STATUS_USAGE = [
-	'yank <id>@<version> <reason>',
-	'revoke <id>@<version> <reason>',
-	'deprecate <id>@<major[.minor[.patch]]> <message> [<use>]',
-].join('\n');
-
-/** The status line of the arguments `<yank|revoke|deprecate> <id>@<version> <text> [<use>]`. */
-function statusOfArgs(args: readonly string[], at: string): StoreStatusRecord {
-	const [command, target = '', text, use] = args;
+/**
+ * The `npm deprecate` of the arguments `<yank|revoke> <id>@<version> <reason>`. A host reads every
+ * npm deprecation as a yank, so a revoke gets the message prefix `revoked:`.
+ */
+function deprecationOfArgs(args: readonly string[]) {
+	const [command = '', target = '', text] = args;
 	const separator = target.lastIndexOf('@');
 	const id = target.slice(0, separator);
 	const version = target.slice(separator + 1);
-	if (separator <= 0 || !version || !text) throw new UserError(`Usage:\n${STATUS_USAGE}`);
-	if (command === 'yank') return { id, yank: version, reason: text, at };
-	if (command === 'revoke') return { id, revoke: version, reason: text, at };
-	if (command === 'deprecate') {
-		return { id, deprecate: version, message: text, ...(use ? { use } : {}), at };
+	if (separator <= 0 || !version || !text || !['yank', 'revoke'].includes(command)) {
+		throw new UserError(`Usage:\n${STATUS_USAGE}`);
 	}
-	throw new UserError(`Usage:\n${STATUS_USAGE}`);
+	return { id, version, message: command === 'revoke' ? `revoked: ${text}` : text };
 }
 
 /**
  * Without `args`, publishes the HEAD of each action and trigger, each credential type that is
- * not a compat type, and each native contract of a package into the registry store, one at a
- * time, and gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a
- * version already published with the same manifest bytes is a no-op. With the arguments
- * `<yank|revoke|deprecate> <id>@<version> <text> [<use>]`, it signs and appends one status line.
- * The registry serves the store files as they are, so `N8N_NODE_CONTRACTS_REGISTRY_URL` is a
- * `file://` folder that a static upload copies. `N8N_NODE_CONTRACTS_SIGNING_KEY_FILE` holds the
- * signing key.
+ * not a compat type, and each native contract of a package as npm packages, one at a time, and
+ * gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a version
+ * already published with the same manifest digest is a no-op. With the arguments
+ * `<yank|revoke> <id>@<version> <reason>`, it runs `npm deprecate`.
+ * `N8N_NODE_CONTRACTS_NPM_REGISTRY` is the registry, `N8N_NODE_CONTRACTS_NPM_SCOPE` the scope
+ * (default `DEFAULT_NPM_SCOPE`), `NPM_TOKEN` the registry token, and
+ * `N8N_NODE_CONTRACTS_SIGNING_KEY_FILE` holds the signing key.
  */
 export async function publishPackage(
 	pkg: Pick<SourcePackage, 'name' | 'dir'>,
 	args: readonly string[] = [],
 	log: (line: string) => void = () => {},
 ): Promise<void> {
-	const target = await publishTargetOfEnv();
+	const registry = npmRegistryOf(process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY);
+	const scope = process.env.N8N_NODE_CONTRACTS_NPM_SCOPE ?? DEFAULT_NPM_SCOPE;
 	if (args.length > 0) {
-		const status = statusOfArgs(args, new Date().toISOString());
-		log(JSON.stringify(await publishStatus(target, status)));
+		const { id, version, message } = deprecationOfArgs(args);
+		const spec = `${npmNameOf(id, scope)}@${version}`;
+		await npmDeprecate(registry, spec, message);
+		log(`${spec}: ${message}`);
 		return;
 	}
+	const keyFile = process.env.N8N_NODE_CONTRACTS_SIGNING_KEY_FILE;
+	if (!keyFile) throw new UserError('Set N8N_NODE_CONTRACTS_SIGNING_KEY_FILE');
+	const target: PublishTarget = {
+		registry,
+		scope,
+		source: await npmSourceOf(pkg.dir),
+		privateKey: await readFile(keyFile, 'utf8'),
+	};
 	const logVersion = ({ id, semver }: { readonly id: string; readonly semver: string }) =>
 		log(`${id}@${semver}`);
 	const { entries, natives } = await contractsOfPackage(pkg);
-	// One at a time: each version appends to the registry index, and the log stays readable.
+	// One at a time, so the log stays readable.
 	for (const type of credentialTypesOf([...entries.map(({ action }) => action), ...natives]))
 		logVersion(await publishCredential({ ...target, type }));
 	for (const { entryFile, exportName, action } of entries) {

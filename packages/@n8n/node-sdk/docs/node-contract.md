@@ -102,15 +102,14 @@ The digest of a version is `sha256:` of its manifest bytes. The manifest holds `
 `contractHash`, so the digest covers the code and the contract. A credential manifest and a
 native manifest have no bundle. The line of a credential has its n8n type `name`, and the line
 of a native version has its legacy node type in `native`, so a reader finds them from the index. A reader checks each blob
-against its digest, and the fields of each index line against the manifest. Publish adds
-`fixtures`, `signatures` (ed25519 over the manifest bytes, `key` is `sha256:` of the public key)
-and `published`. Freeze adds none of them, so it writes the same bytes for the same source.
+against its digest, and the fields of each index line against the manifest. A line can also
+have `fixtures`, `signatures` (ed25519 over the manifest bytes, `key` is `sha256:` of the public
+key) and `published`. Freeze adds none of them, so it writes the same bytes for the same source.
 
 ### Status lines
 
 A publisher never changes a version line. To withdraw or deprecate a version, it appends a
-status line (`addStatusToStore`, or `pnpm publish:contracts yank|revoke|deprecate …` in a
-source package):
+status line (`addStatusToStore`):
 
 ```json
 {"id":"gmail.message.get","yank":"1.0.4","reason":"sends Bcc as Cc","at":"2026-10-02T12:00:00.000Z","signatures":[…]}
@@ -139,6 +138,40 @@ the leader main reads (a sync of the pinned ids, a download, a newer-patch check
 `contracts:export` writes only the yank and revoke lines of the versions that it writes. An
 embedded HEAD is not a stored version, so the export drops its lines. To move such a line to a
 host without a registry, import a copy of the registry folder.
+
+In an npm registry, `pnpm publish:contracts yank|revoke <id>@<version> <reason>` in a source
+package runs `npm deprecate <name>@<version> <message>`. A host reads every npm deprecation as a
+yank. The message of a yank is the reason, and the message of a revoke is `revoked: <reason>`.
+The POC has no deprecation that is not a yank.
+
+### npm packages
+
+`pnpm publish:contracts` publishes each version as one npm package with `npm publish`
+(`src/npm.ts`). The package name is the scope and the id in lower case, with a hyphen for each
+camelCase step: `httpRequest.get` gives `@n8n-nodes/http-request.get`. `@n8n-nodes` is a
+placeholder of the POC. Two ids can give one name, so publish refuses a package that holds
+another id.
+
+| File | Content |
+|---|---|
+| `package.json` | Generated: `name`, `version` (the manifest `semver`), `description` (the summary), `license`, `repository` and `author` of the source package, and `n8n: { id, kind, digest, manifest, bundle? }`. `digest` is `sha256:` of the manifest bytes |
+| `manifest.json` | The exact manifest bytes, so the digest is the store digest |
+| `bundle.cjs` | The bundle, when the version has one |
+| `fixtures.json` | The fixtures that publish replayed, when the version has them |
+| `signatures.json` | The ed25519 signatures of the manifest bytes, in the form of an index line |
+
+Publish adds only the versions that the registry does not have. It reads the packument. It
+skips a published version with the same `n8n.digest`, and refuses one with another digest
+("bump the version in source"). The gate of each kind compares the new version with the newest
+published version below it. Publish reads that manifest from its tarball, and checks it against
+its digest. During the POC the registry is a local Verdaccio: publish refuses `registry.npmjs.*`.
+
+| Variable | What |
+|---|---|
+| `N8N_NODE_CONTRACTS_NPM_REGISTRY` | The npm registry, e.g. `http://localhost:4873` |
+| `N8N_NODE_CONTRACTS_NPM_SCOPE` | The npm scope. Default: `@n8n-nodes` |
+| `NPM_TOKEN` | The registry token. Publish writes `${NPM_TOKEN}` into a temporary `.npmrc`, so the token is never on the command line |
+| `N8N_NODE_CONTRACTS_SIGNING_KEY_FILE` | The PEM file of the ed25519 publisher key. A yank, revoke or deprecation does not need it |
 
 ## Rules
 

@@ -124,10 +124,13 @@ ships this store, so its versions are first-party with no key check. Details:
 
 ### 3. Publish
 
-`pnpm publish:contracts` adds the HEAD of each action, trigger, credential and native contract
-to a registry folder, and signs each manifest. The publish gate refuses a version bump that is
-smaller than the contract change (`diffContracts`). A publisher never changes a published line.
-It appends a yank, revoke or deprecate line. Details:
+`pnpm publish:contracts` publishes the HEAD of each action, trigger, credential and native
+contract as one npm package for each version, with `npm publish`. Each package holds the signed
+manifest. Publish adds only the versions that the registry does not have. The publish gate refuses
+a version bump that is smaller than the contract change (`diffContracts`). A publisher never
+changes a published version. It runs `npm deprecate` to yank, revoke or deprecate it. During the
+POC the registry is a local Verdaccio, and publish refuses `registry.npmjs.*`. Details:
+[npm packages](node-contract.md#npm-packages),
 [Version of an action change](node-contract.md#version-of-an-action-change) and
 [Status lines](node-contract.md#status-lines).
 

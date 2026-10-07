@@ -1,5 +1,4 @@
-import { generateKeyPairSync } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
@@ -36,8 +35,8 @@ import {
 	type JsonSchema,
 	type Shape,
 } from '../index';
-import { checkPublish, publishAction, publishPackage, replayFixtures } from '../publish';
-import { isVersionManifest, parseStoreIndex, storeFilesOfDir, storeReader } from '../store';
+import { checkPublish, replayFixtures } from '../publish';
+import { storeFilesOfDir, storeReader } from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import type { MockRoute } from '../testing';
@@ -450,9 +449,6 @@ const fixturesOf = (output: string, extra: Partial<ContractFixtures> = {}): Cont
 	...extra,
 });
 
-const keys = generateKeyPairSync('ed25519');
-const privateKey = keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
-
 const contextOf = (metadata: ITaskMetadata[] = []) =>
 	({
 		getInputData: () => [{ json: {} }],
@@ -463,7 +459,7 @@ const contextOf = (metadata: ITaskMetadata[] = []) =>
 		helpers: { httpRequest: async () => '!' },
 	}) as unknown as IExecuteFunctions;
 
-const dirs = { root: '', registry: '', entry: '', shout: '' };
+const dirs = { root: '', entry: '', shout: '' };
 
 const freeze = async (options: EchoOptions = {}) => {
 	await writeFile(dirs.entry, echoSource(options));
@@ -475,7 +471,6 @@ const writeShout = async (body: string) =>
 
 beforeAll(async () => {
 	dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-publish-'));
-	dirs.registry = path.join(dirs.root, 'registry');
 	dirs.entry = path.join(dirs.root, 'echo.ts');
 	dirs.shout = path.join(dirs.root, 'shout.ts');
 });
@@ -860,67 +855,40 @@ describe('published versions', () => {
 	});
 
 	it('keep their behaviour when a shared helper changes', async () => {
-		const publish = async (fixtures: ContractFixtures) =>
-			await publishAction({
-				entryFile: dirs.entry,
-				exportName: 'echo',
-				fixtures,
-				registryDir: dirs.registry,
-				privateKey,
-			});
 		await writeShout('text.toUpperCase()');
 		await writeFile(dirs.entry, echoSource());
-		const v100 = await publish(fixturesOf('HELLO!'));
-		// The same bytes again: a no-op.
-		await expect(publish(fixturesOf('HELLO!'))).resolves.toEqual(v100);
+		const old = await freezeAction(dirs.entry, 'echo');
+		await checkPublish(undefined, old, fixturesOf('HELLO!'));
+		const v100 = old.manifest;
 
 		// The helper changes: other bytes need a new version in the source.
 		await writeShout("text + '?'");
-		await expect(publish(fixturesOf('hello!?'))).rejects.toThrow(
-			'demo.echo@1.0.0 is published with other bytes; bump the version in source',
-		);
 		await writeFile(dirs.entry, echoSource({ version: '1.0.1' }));
-		const v101 = await publish(fixturesOf('hello!?'));
-		expect(v101.semver).toBe('1.0.1');
+		const next = await freezeAction(dirs.entry, 'echo');
+		await checkPublish(v100, next, fixturesOf('hello!?'));
+		const v101 = next.manifest;
 		expect(v101.contractHash).toBe(v100.contractHash);
 		expect(v101.bundleHash).not.toBe(v100.bundleHash);
-		await expect(publish(fixturesOf('hello!?'))).resolves.toEqual(v101);
 
 		// A contract change needs a minor or a major in the source.
 		await writeFile(
 			dirs.entry,
 			echoSource({ version: '1.0.2', input: '{ text: str(), prefix: str().optional() }' }),
 		);
-		await expect(publish(fixturesOf('hello!?'))).rejects.toThrow(
-			'demo.echo@1.0.2 is a patch bump from 1.0.1, but the change is minor',
-		);
+		await expect(
+			checkPublish(v101, await freezeAction(dirs.entry, 'echo'), fixturesOf('hello!?')),
+		).rejects.toThrow('demo.echo@1.0.2 is a patch bump from 1.0.1, but the change is minor');
 		await writeFile(dirs.entry, echoSource({ version: '1.0.1' }));
 
-		const registry = storeReader(storeFilesOfDir(dirs.registry));
-		const opened = await Promise.all(
-			(await registry.records('demo.echo')).map(async (record) => {
-				const read = await registry.readManifest(record);
-				const [bundle, fixtures] = await Promise.all(
-					[record.bundle, record.fixtures].map(async (digest) =>
-						(await registry.blob(digest ?? ''))?.toString('utf8'),
-					),
-				);
-				if (!read || !isVersionManifest(read.manifest) || !bundle || !fixtures) {
-					throw new Error(`${record.version} is not complete`);
-				}
-				return { manifest: read.manifest, bundle, fixtures: parseFixtures(fixtures) };
-			}),
-		);
 		// Every published version replays its own fixtures through the current executor.
-		const issues = await Promise.all(
-			opened.map(async (version) => await replayFixtures(version, version.fixtures)),
-		);
+		const issues = await Promise.all([
+			replayFixtures(old, fixturesOf('HELLO!')),
+			replayFixtures(next, fixturesOf('hello!?')),
+		]);
 		expect(issues.flat()).toEqual([]);
 
-		const old = opened.find(({ manifest }) => manifest.semver === '1.0.0');
 		const head = await freezeAction(dirs.entry, 'echo');
 		expect(head.manifest).toEqual(v101);
-		if (!old) throw new Error('1.0.0 is not published');
 		const pinned = hostRuntime({ versionLoader: async () => frozenOf(old.manifest, old.bundle) });
 		const metadata: ITaskMetadata[] = [];
 		expect(await run(frozenOf(head.manifest, head.bundle), metadata, pinned)).toEqual(['HELLO!']);
@@ -1098,7 +1066,7 @@ describe('semverRange', () => {
 	});
 });
 
-describe('freezePackage and publishPackage', () => {
+describe('freezePackage', () => {
 	const pass = `
 import { defineNode, t } from '@n8n/node-sdk';
 
@@ -1113,47 +1081,22 @@ export const pass = demo.action('pass', {
 	run: ({ items }) => items.map((item) => ({ item })),
 });
 `;
-	const fixtures: ContractFixtures = {
-		executions: [{ name: 'pass', params: {}, items: [{ a: 1 }], output: [{ a: 1 }] }],
-	};
-
-	afterEach(() => vi.unstubAllEnvs());
-
-	it('freeze and publish each action of a package, and sign a status line', async () => {
+	it('freezes each action of a package', async () => {
 		// Inside this package, so the action file resolves @n8n/node-sdk.
 		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
 		try {
 			const entryFile = path.join(dir, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
-			const registryDir = path.join(dir, 'registry');
-			const keyFile = path.join(dir, 'key.pem');
 			await mkdir(path.dirname(entryFile), { recursive: true });
-			await mkdir(path.join(dir, 'fixtures'));
 			await writeFile(entryFile, pass);
-			await writeFile(path.join(dir, 'fixtures', 'demo.pass.json'), JSON.stringify(fixtures));
-			await writeFile(keyFile, privateKey);
-			// No list of contracts: freeze and publish find them in the action files.
+			// No list of contracts: freeze finds them in the action files.
 			const pkg = { name: '@acme/nodes', dir };
-			vi.stubEnv('N8N_NODE_CONTRACTS_REGISTRY_URL', `file://${registryDir}`);
-			vi.stubEnv('N8N_NODE_CONTRACTS_SIGNING_KEY_FILE', keyFile);
-			const log: string[] = [];
 
-			await publishPackage(pkg, [], (line) => log.push(line));
-			await publishPackage(pkg, [], (line) => log.push(line));
 			const { manifests } = await freezePackage(pkg);
-			await publishPackage(pkg, ['yank', 'demo.pass@1.0.0', 'broken'], (line) => log.push(line));
-
-			expect(log.slice(0, 2)).toEqual(['demo.pass@1.0.0', 'demo.pass@1.0.0']);
-			expect(JSON.parse(log[2] ?? '')).toMatchObject({ id: 'demo.pass', yank: '1.0.0' });
 			expect(manifests.map(({ id, semver }) => `${id}@${semver}`)).toEqual(['demo.pass@1.0.0']);
 			const embedded = storeReader(storeFilesOfDir(path.join(dir, 'dist', 'store')));
 			expect((await embedded.records('demo.pass')).map(({ version }) => version)).toEqual([
 				'1.0.0',
 			]);
-			const index = await readFile(path.join(registryDir, 'index', 'demo.pass.ndjson'), 'utf8');
-			expect(parseStoreIndex(index, 'demo.pass').map(({ version }) => version)).toEqual(['1.0.0']);
-			await expect(
-				publishPackage(pkg, ['yank', 'demo.pass'], (line) => log.push(line)),
-			).rejects.toThrow('Usage:');
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}

@@ -6,13 +6,7 @@ import path from 'node:path';
 import { freezeAction, freezeCredential, freezeNative, type FrozenAction } from '../freeze';
 import { credential, defineCredential, field } from '../entry/credentials';
 import { defineNode, t } from '../index';
-import {
-	credentialChangeOf,
-	publishAction,
-	publishCredential,
-	publishNative,
-	publishStatus,
-} from '../publish';
+import { credentialChangeOf } from '../publish';
 import {
 	addStatusToStore,
 	addToStore,
@@ -71,21 +65,6 @@ const tokenWith = (spec: {
 		auth: (a) => a.bearer('token'),
 		baseUrl: 'https://a.example.com',
 		hosts: spec.hosts,
-	});
-
-const hookWith = (
-	summary: string,
-	version = 2.2,
-	path = t.str().title('Path'),
-	semver: `${number}.${number}.${number}` = '1.0.0',
-) =>
-	defineNode({ id: 'demo', displayName: 'Demo' }).trigger('hook', {
-		version: semver,
-		trigger: 'On call',
-		summary,
-		input: { path },
-		output: t.obj({ body: t.str() }),
-		native: { type: 'n8n-nodes-base.webhook', version, on: 'webhook' },
 	});
 
 const keys = generateKeyPairSync('ed25519');
@@ -372,16 +351,6 @@ describe('store status lines', () => {
 		const changed = { ...signed, reason: 'other' };
 		expect(verifyStoreSignature(changed, storeStatusTextOf(changed), publicKey)).toBe(false);
 	});
-
-	it('publishes a signed status line', async () => {
-		const dir = await threeVersions();
-		await publishStatus({ registryDir: dir, privateKey }, revoke);
-		const [line] = (await storeReader(storeFilesOfDir(dir)).index('demo.echo')).statuses;
-		expect(line).toEqual({ ...revoke, signatures: [expect.any(Object)] });
-		expect(verifyStoreSignature(line ?? {}, storeStatusTextOf(line ?? revoke), publicKey)).toBe(
-			true,
-		);
-	});
 });
 
 describe('store signatures', () => {
@@ -393,101 +362,6 @@ describe('store signatures', () => {
 		expect(verifyStoreSignature({ signatures }, text, otherKey)).toBe(false);
 		expect(verifyStoreSignature({ signatures }, `${text} `, publicKey)).toBe(false);
 		expect(verifyStoreSignature({}, text, publicKey)).toBe(false);
-	});
-});
-
-describe('publishAction', () => {
-	it('appends one line for each version and keeps the old lines', async () => {
-		const registry = await newDir('registry');
-		const publish = async () =>
-			await publishAction({
-				entryFile: dirs.entry,
-				exportName: 'echo',
-				fixtures: {
-					executions: [{ name: 'echo', params: { text: 'hi' }, output: [{ text: 'hi' }] }],
-				},
-				registryDir: registry,
-				privateKey,
-			});
-		const index = path.join(registry, storeIndexFileOf('demo.echo'));
-		await writeFile(dirs.entry, echoSource('1.0.0', 'input.text'));
-		const v100 = await publish();
-		const first = await readFile(index, 'utf8');
-		await expect(publish()).resolves.toEqual(v100);
-		expect(await readFile(index, 'utf8')).toBe(first);
-
-		await writeFile(dirs.entry, echoSource('1.0.0', 'String(input.text)'));
-		await expect(publish()).rejects.toThrow(
-			'demo.echo@1.0.0 is published with other bytes; bump the version in source',
-		);
-		expect(await readFile(index, 'utf8')).toBe(first);
-
-		await writeFile(dirs.entry, echoSource('1.0.1', 'String(input.text)'));
-		const v101 = await publish();
-		expect(v101.semver).toBe('1.0.1');
-		const lines = (await readFile(index, 'utf8')).split('\n').filter(Boolean);
-		expect(lines).toHaveLength(2);
-		expect(`${lines[0]}\n`).toBe(first);
-
-		const reader = storeReader(storeFilesOfDir(registry));
-		const records = await reader.records('demo.echo');
-		expect(records.map(({ version }) => version)).toEqual(['1.0.0', '1.0.1']);
-		expect(records.every(({ published, fixtures }) => published && fixtures)).toBe(true);
-		const text = (await reader.readManifest(records[1] as StoreRecord))?.text ?? '';
-		expect(verifyStoreSignature(records[1] as StoreRecord, text, publicKey)).toBe(true);
-		expect((await reader.catalog()).map(({ version }) => version)).toEqual(['1.0.1']);
-		expect(records[1]?.bundle).toBe(`sha256:${v101.bundleHash}`);
-	});
-});
-
-describe('publishCredential', () => {
-	it('appends a signed line and a manifest blob for each version', async () => {
-		const registry = await newDir('credential-registry');
-		const publish = async (type = tokenWith({})) =>
-			await publishCredential({ type, registryDir: registry, privateKey });
-		const index = path.join(registry, storeIndexFileOf('demo.token'));
-
-		const v100 = await publish();
-		const first = await readFile(index, 'utf8');
-		await expect(publish()).resolves.toEqual(v100);
-		expect(await readFile(index, 'utf8')).toBe(first);
-
-		await expect(publish(tokenWith({ displayName: 'Demo' }))).rejects.toThrow(
-			'demo.token@1.0.0 is published with other bytes; bump the version in source',
-		);
-		const v101 = await publish(tokenWith({ displayName: 'Demo', version: '1.0.1' }));
-		expect([v100.semver, v101.semver]).toEqual(['1.0.0', '1.0.1']);
-		const lines = (await readFile(index, 'utf8')).split('\n').filter(Boolean);
-		expect(`${lines[0]}\n`).toBe(first);
-
-		const reader = storeReader(storeFilesOfDir(registry));
-		const records = await reader.records('demo.token');
-		expect(records).toEqual([
-			expect.objectContaining({ version: '1.0.0', kind: 'credential', name: 'demoApi' }),
-			expect.objectContaining({ version: '1.0.1', kind: 'credential', name: 'demoApi' }),
-		]);
-		expect(records.every(({ bundle, published }) => bundle === undefined && published)).toBe(true);
-		const read = await reader.readManifest(records[1] as StoreRecord);
-		expect(read?.manifest).toEqual(v101);
-		expect(verifyStoreSignature(records[1] as StoreRecord, read?.text ?? '', publicKey)).toBe(true);
-	});
-
-	it('refuses a new host without a new major', async () => {
-		const registry = await newDir('credential-hosts');
-		await publishCredential({ type: tokenWith({}), registryDir: registry, privateKey });
-		await expect(
-			publishCredential({
-				type: tokenWith({ hosts: ['b.example.com'], version: '1.0.1' }),
-				registryDir: registry,
-				privateKey,
-			}),
-		).rejects.toThrow('demo.token@1.0.1 is a patch bump from 1.0.0, but the change is major');
-		const v200 = await publishCredential({
-			type: tokenWith({ hosts: ['b.example.com'], version: '2.0.0' }),
-			registryDir: registry,
-			privateKey,
-		});
-		expect(v200).toMatchObject({ semver: '2.0.0', hosts: ['b.example.com'] });
 	});
 });
 
@@ -512,75 +386,5 @@ describe('credentialChangeOf', () => {
 		const [previous, next] = [manifestOf(before), manifestOf(after, doc)];
 		if (!previous || !next) throw new Error('no manifest');
 		expect(credentialChangeOf(previous, next)).toBe(change);
-	});
-});
-
-describe('publishNative', () => {
-	it('appends a line without a bundle and reads the manifest back', async () => {
-		const registry = await newDir('native-registry');
-		const publish = async (
-			summary = 'Starts on a call.',
-			semver: `${number}.${number}.${number}` = '1.0.0',
-		) =>
-			await publishNative({
-				native: hookWith(summary, 2.2, t.str().title('Path'), semver),
-				registryDir: registry,
-				privateKey,
-			});
-
-		const v100 = await publish();
-		expect(v100).toMatchObject({
-			kind: 'trigger',
-			id: 'demo.hook',
-			semver: '1.0.0',
-			native: { type: 'n8n-nodes-base.webhook', version: 2.2 },
-			contract: { trigger: 'webhook' },
-		});
-		expect(v100).not.toHaveProperty('bundleHash');
-		await expect(publish()).resolves.toEqual(v100);
-		await expect(publish('Starts when a caller calls.')).rejects.toThrow(
-			'demo.hook@1.0.0 is published with other bytes; bump the version in source',
-		);
-		const v101 = await publish('Starts when a caller calls.', '1.0.1');
-		expect(v101.semver).toBe('1.0.1');
-
-		const reader = storeReader(storeFilesOfDir(registry));
-		const records = await reader.records('demo.hook');
-		expect(records).toEqual([
-			expect.objectContaining({ version: '1.0.0', native: 'n8n-nodes-base.webhook' }),
-			expect.objectContaining({ version: '1.0.1', native: 'n8n-nodes-base.webhook' }),
-		]);
-		expect(records.every(({ bundle }) => bundle === undefined)).toBe(true);
-		expect((await reader.readManifest(records[0] as StoreRecord))?.manifest).toEqual(v100);
-		expect((await reader.catalog()).map(({ id, version }) => `${id}@${version}`)).toEqual([
-			'demo.hook@1.0.1',
-		]);
-	});
-
-	it('refuses a patch with another legacy node version', async () => {
-		const registry = await newDir('native-binding');
-		await publishNative({
-			native: hookWith('Starts on a call.'),
-			registryDir: registry,
-			privateKey,
-		});
-		await expect(
-			publishNative({
-				native: hookWith('Starts on a call.', 2.1, t.str().title('Path'), '1.0.1'),
-				registryDir: registry,
-				privateKey,
-			}),
-		).rejects.toThrow('demo.hook@1.0.1 is a patch, so it must keep the legacy node');
-	});
-
-	it('refuses an input field without a title', async () => {
-		const registry = await newDir('native-untitled');
-		await expect(
-			publishNative({
-				native: hookWith('Starts on a call.', 2.2, t.str()),
-				registryDir: registry,
-				privateKey,
-			}),
-		).rejects.toThrow('demo.hook@1.0.0 needs field titles: demo.hook: input.path has no title');
 	});
 });
