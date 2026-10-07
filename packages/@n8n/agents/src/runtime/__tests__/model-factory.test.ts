@@ -32,7 +32,7 @@ vi.mock('@ai-sdk/openai', () => {
 	// error (an `APICallError` carries `statusCode`) when the endpoint rejects it.
 	const buildModel =
 		(opts: ProviderOpts | undefined, api?: 'chat-completions') => (model: string) => {
-			const callEndpoint = async () => {
+			const callEndpoint = async (options?: { providerOptions?: unknown }) => {
 				const base = (opts?.baseURL ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
 				const url = `${base}${api === 'chat-completions' ? '/chat/completions' : '/responses'}`;
 				const response = await (opts?.fetch ?? globalThis.fetch)(url, { method: 'POST' });
@@ -42,7 +42,7 @@ vi.mock('@ai-sdk/openai', () => {
 						url,
 					});
 				}
-				return { api, url };
+				return { api, url, providerOptions: options?.providerOptions };
 			};
 			return {
 				provider: 'openai',
@@ -278,7 +278,9 @@ vi.mock('undici', () => ({
 
 /** What the mocked OpenAI stubs report back about the endpoint they reached. */
 type EndpointModel = {
-	doGenerate: (options: unknown) => Promise<{ api?: string; url: string }>;
+	doGenerate: (
+		options: unknown,
+	) => Promise<{ api?: string; url: string; providerOptions?: unknown }>;
 	doStream: (options: unknown) => Promise<{ api?: string; url: string }>;
 };
 
@@ -450,6 +452,26 @@ describe('createModel', () => {
 
 			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow('Endpoint returned 404');
 			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('sends Responses calls to a custom endpoint stateless', async () => {
+			// Reported failure: LiteLLM serves /responses without storing it, so the
+			// SDK's default `store: true` replayed history as unresolvable item_reference.
+			const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://litellm.example/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+				providerOptions: { openai: { store: false } },
+			});
+		});
+
+		it('keeps an explicit store option on a custom endpoint', async () => {
+			const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://proxy.example/v1' }, fetchFn);
+
+			await expect(
+				model.doGenerate({ prompt: [], providerOptions: { openai: { store: true } } }),
+			).resolves.toMatchObject({ providerOptions: { openai: { store: true } } });
 		});
 
 		it('keeps the official API on /responses without a probe', async () => {

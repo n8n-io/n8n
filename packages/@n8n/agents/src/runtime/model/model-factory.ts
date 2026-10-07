@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
+import type * as AiSdk from 'ai';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import { loadAi } from './lazy-ai';
 import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
@@ -143,6 +145,26 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
+/**
+ * Sends a custom endpoint's Responses calls with `store: false` unless the call
+ * sets `store` itself. The runtime replays the whole history on every turn, but
+ * with the SDK default (`store: true`) earlier output goes out as
+ * `item_reference` items, which only a server that persisted them can resolve.
+ * OpenAI-compatible proxies such as LiteLLM or vLLM serve /responses without
+ * that storage, so every turn after the first failed.
+ */
+function statelessResponses(
+	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	const { wrapLanguageModel, defaultSettingsMiddleware } = loadAi();
+	return wrapLanguageModel({
+		model,
+		middleware: defaultSettingsMiddleware({
+			settings: { providerOptions: { openai: { store: false } } },
+		}),
+	});
+}
+
 type OpenAiCompatibleProviderId = 'nvidia';
 
 export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
@@ -218,7 +240,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// transport and the first answer decides.
 			return withChatCompletionsFallback(
 				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
-				guarded(model),
+				statelessResponses(guarded(model)),
 				guarded.chat(model),
 			);
 		},
