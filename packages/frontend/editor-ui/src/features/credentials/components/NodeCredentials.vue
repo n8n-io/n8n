@@ -2069,8 +2069,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 /* A heading, not a choice. Disabled so it cannot be picked or arrowed onto,
    which otherwise reads as "not allowed" rather than "not a choice". */
 .credentialGroupHeader {
-	cursor: default;
 	padding-top: var(--spacing--2xs);
+}
+
+// Repeating the class outranks the library's two-class `not-allowed` rule for disabled items.
+.credentialGroupHeader.credentialGroupHeader.credentialGroupHeader {
+	cursor: default;
 }
 
 .checkIcon {

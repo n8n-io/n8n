@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddWorkflowSuggestionReviewState1791285202635 implements ReversibleMigration {
+export class AddWorkflowSuggestionReviewState1791374893870 implements ReversibleMigration {
 	async up({ schemaBuilder: s }: MigrationContext) {
 		await s.addColumns(
 			'workflow_suggestion',

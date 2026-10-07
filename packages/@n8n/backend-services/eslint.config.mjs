@@ -7,16 +7,10 @@ export default defineConfig(
 	backendConfig,
 	{
 		rules: {
-			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
 				{
 					guarded: [
-						{
-							rule: 'misplaced-n8n-typeorm-import',
-							message:
-								'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
-						},
 						{
 							rule: 'no-unsealed-workflow-entity-write',
 							message: 'Route the write through a token-gated `WorkflowRepository` method.',

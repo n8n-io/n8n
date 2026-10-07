@@ -519,6 +519,122 @@ describe('CredentialSharing.ee', () => {
 		});
 	});
 
+	describe('IAM-1499: order of the sharing list', () => {
+		const teamProject = (id: string, name: string) => ({
+			id,
+			name,
+			type: 'team' as const,
+			icon: null,
+			createdAt: '',
+			updatedAt: '',
+			role: 'project:editor' as const,
+		});
+		const marketing = teamProject('marketing-project', 'Marketing');
+		const operations = teamProject('operations-project', 'Operations');
+		const sales = teamProject('sales-project', 'Sales');
+		const ownerPersonalProject = {
+			id: 'owner-personal-project',
+			name: 'Mona Pfeffer <mona@example.com>',
+			type: 'personal' as const,
+			icon: null,
+			createdAt: '',
+			updatedAt: '',
+			relations: [],
+			scopes: [],
+			rolesManaged: false,
+		};
+		const usedIn = (projectId: string) => ({
+			id: `wf-${projectId}`,
+			name: 'Email summary',
+			type: 'workflowParent' as const,
+			projectId,
+		});
+
+		// People (personal projects) whose names sort after the team projects, so the
+		// order shows they come first by group, not by name.
+		const person = (id: string, name: string, email: string) => ({
+			id,
+			name: `${name} <${email}>`,
+			type: 'personal' as const,
+			icon: null,
+			createdAt: '',
+			updatedAt: '',
+		});
+		const zoe = person('zoe-personal', 'Zoe Adams', 'zoe@acme.io');
+		const yann = person('yann-personal', 'Yann Blum', 'yann@acme.io');
+
+		const labels = ['Yann Blum', 'Zoe Adams', 'Marketing', 'Operations', 'Sales'];
+		const names = (elements: HTMLElement[]) =>
+			elements.map((element) => labels.find((label) => element.textContent?.includes(label)));
+
+		beforeEach(() => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'true' };
+			projectsStore.myProjects = [marketing, operations, sales];
+			projectsStore.personalProject = ownerPersonalProject;
+		});
+
+		const renderSharedWith = (
+			sharedWithProjects: Array<ReturnType<typeof teamProject> | ReturnType<typeof person>>,
+		) => {
+			const credential = createCredential({
+				homeProject: ownerPersonalProject,
+				sharedWithProjects,
+			});
+			return renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+		};
+
+		// Shared and not-yet-shared rows, in the order the list shows them.
+		const rows = (getAllByTestId: (id: RegExp) => HTMLElement[]) =>
+			names(getAllByTestId(/^project-sharing-(list|unshared)-item$/));
+
+		it('lists people first, then projects, each by name', () => {
+			getDependenciesMock.mockReturnValue({ dependencies: [], inaccessibleCount: 0 });
+
+			const { getAllByTestId } = renderSharedWith([sales, zoe, operations, yann]);
+
+			expect(rows(getAllByTestId)).toEqual(['Yann Blum', 'Zoe Adams', 'Operations', 'Sales']);
+		});
+
+		it('lists projects the credential is only used in among the shared ones, by name', () => {
+			// Returned out of order on purpose.
+			getDependenciesMock.mockReturnValue({
+				dependencies: [usedIn('sales-project'), usedIn('marketing-project')],
+				inaccessibleCount: 0,
+			});
+
+			const { getAllByTestId } = renderSharedWith([operations, zoe]);
+
+			expect(rows(getAllByTestId)).toEqual(['Zoe Adams', 'Marketing', 'Operations', 'Sales']);
+		});
+
+		it('keeps a project in place when the owner shares the credential with it', async () => {
+			getDependenciesMock.mockReturnValue({
+				dependencies: [usedIn('marketing-project')],
+				inaccessibleCount: 0,
+			});
+
+			const { getAllByTestId, getByTestId } = renderSharedWith([sales, zoe]);
+			expect(rows(getAllByTestId)).toEqual(['Zoe Adams', 'Marketing', 'Sales']);
+
+			await userEvent.click(getByTestId('credential-used-in-project-share'));
+
+			expect(rows(getAllByTestId)).toEqual(['Zoe Adams', 'Marketing', 'Sales']);
+			expect(names(getAllByTestId('project-sharing-list-item'))).toEqual([
+				'Zoe Adams',
+				'Marketing',
+				'Sales',
+			]);
+		});
+	});
+
 	describe('IAM-1435: projects used in but not shared with', () => {
 		const marketingProject = {
 			id: 'marketing-project',
@@ -577,7 +693,7 @@ describe('CredentialSharing.ee', () => {
 
 			expect(fetchDependenciesMock).toHaveBeenCalledWith([credential.id], 'credential');
 
-			const row = getByTestId('credential-used-in-project');
+			const row = getByTestId('project-sharing-unshared-item');
 			expect(row).toHaveTextContent('Marketing');
 			expect(row).toHaveTextContent('Used in "Email summary"');
 			expect(row).toHaveTextContent('Only you');
@@ -697,7 +813,7 @@ describe('CredentialSharing.ee', () => {
 				},
 			});
 
-			const row = getByTestId('credential-used-in-project');
+			const row = getByTestId('project-sharing-unshared-item');
 			expect(row).toHaveTextContent('Used in 3 workflows');
 			expect(queryByText(/Used in "Email summary"/)).not.toBeInTheDocument();
 		});
@@ -761,7 +877,7 @@ describe('CredentialSharing.ee', () => {
 				},
 			});
 
-			expect(queryByTestId('credential-used-in-project')).not.toBeInTheDocument();
+			expect(queryByTestId('project-sharing-unshared-item')).not.toBeInTheDocument();
 		});
 
 		it('does not show used-in projects when the viewer cannot share', () => {
@@ -791,7 +907,7 @@ describe('CredentialSharing.ee', () => {
 				},
 			});
 
-			expect(queryByTestId('credential-used-in-project')).not.toBeInTheDocument();
+			expect(queryByTestId('project-sharing-unshared-item')).not.toBeInTheDocument();
 			expect(fetchDependenciesMock).not.toHaveBeenCalled();
 		});
 
@@ -824,7 +940,7 @@ describe('CredentialSharing.ee', () => {
 			});
 
 			expect(fetchDependenciesMock).not.toHaveBeenCalled();
-			expect(queryByTestId('credential-used-in-project')).not.toBeInTheDocument();
+			expect(queryByTestId('project-sharing-unshared-item')).not.toBeInTheDocument();
 		});
 
 		it('shows "Only {owner}" instead of "Only you" when the viewer has share permission but is not the credential\'s owner (e.g. an instance admin)', () => {
@@ -867,7 +983,7 @@ describe('CredentialSharing.ee', () => {
 				},
 			});
 
-			const row = getByTestId('credential-used-in-project');
+			const row = getByTestId('project-sharing-unshared-item');
 			expect(row).toHaveTextContent('Only Mona');
 			expect(row).not.toHaveTextContent('Only Mona Pfeffer');
 			expect(queryByText('Only you')).not.toBeInTheDocument();

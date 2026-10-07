@@ -146,6 +146,11 @@ describe('workflow package import — with data tables', () => {
 		project = await createTeamProject('Target Project', owner);
 	});
 
+	async function columnsOf(tableId: string, projectId = project.id) {
+		const columns = await dataTableService.getColumns(tableId, projectId);
+		return columns.map(({ name, type, index }) => ({ name, type, index }));
+	}
+
 	describe('creating missing tables', () => {
 		it('creates an absent table with the package (source) id, columns, and remappable reference', async () => {
 			const table = serializedDataTable();
@@ -751,11 +756,6 @@ describe('workflow package import — with data tables', () => {
 			});
 		}
 
-		async function columnsOf(tableId: string) {
-			const columns = await dataTableService.getColumns(tableId, project.id);
-			return columns.map(({ name, type, index }) => ({ name, type, index }));
-		}
-
 		async function exportedDataTableFile(workflowId: string) {
 			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflowId] });
 			const { entries } = await readExport(stream);
@@ -1087,6 +1087,198 @@ describe('workflow package import — with data tables', () => {
 				{ name: 'a', type: 'string', index: 1 },
 				{ name: 'b', type: 'string', index: 2 },
 			]);
+		});
+	});
+
+	describe('overwrite-non-destructive schema conflict policy', () => {
+		afterEach(() => licenseMocker.reset());
+
+		async function importNonDestructive(params: Omit<ImportParams, 'projectId'>) {
+			return await importPackage({
+				projectId: project.id,
+				dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+				...params,
+			});
+		}
+
+		it('adds a column, reorders columns, and renames the table with no data loss', async () => {
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Clients',
+				columns: [
+					{ name: 'signed_up_at', type: 'date' },
+					{ name: 'email', type: 'string' },
+				],
+			});
+			const signedUpAt = new Date('2024-01-02T03:04:05.000Z');
+			await dataTableService.insertRows(table.id, project.id, [
+				{ signed_up_at: signedUpAt, email: 'a@example.com' },
+			]);
+			const packageColumns: SerializedDataTable['columns'] = [
+				{ name: 'email', type: 'string', index: 0 },
+				{ name: 'signed_up_at', type: 'date', index: 1 },
+				{ name: 'added', type: 'boolean', index: 2 },
+			];
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: table.id, name: 'Customers', columns: packageColumns }),
+			]);
+
+			const result = await importNonDestructive({ user: owner, packageBuffer });
+
+			expect(result.dataTables).toEqual({ matched: 0, created: 0, updated: 1 });
+			expect(await workflowRepository.count()).toBe(1);
+			expect(await columnsOf(table.id)).toEqual(packageColumns);
+			expect((await dataTableService.getOne(table.id, project.id)).name).toBe('Customers');
+			const { data } = await dataTableService.getManyRowsAndCount(table.id, project.id, {});
+			expect(data).toHaveLength(1);
+			expect(data[0]).toMatchObject({ email: 'a@example.com', added: null });
+			expect(new Date(data[0].signed_up_at as string)).toEqual(signedUpAt);
+		});
+
+		it.each([
+			{
+				change: 'target-only column',
+				targetColumns: [
+					{ name: 'email', type: 'string' as const },
+					{ name: 'note', type: 'string' as const },
+				],
+				issue: {
+					missingColumns: ['signed_up_at'],
+					typeMismatches: [],
+					extraColumns: ['note'],
+					overwriteChanges: [
+						{ kind: 'remove-column', column: 'note', type: 'string', destructive: true },
+						{ kind: 'add-column', column: 'signed_up_at', type: 'date', destructive: false },
+					],
+				},
+			},
+			{
+				change: 'retyped column',
+				targetColumns: [
+					{ name: 'email', type: 'number' as const },
+					{ name: 'signed_up_at', type: 'date' as const },
+				],
+				issue: {
+					missingColumns: [],
+					typeMismatches: [{ column: 'email', expectedType: 'string', actualType: 'number' }],
+					overwriteChanges: [
+						{
+							kind: 'change-column-type',
+							column: 'email',
+							from: 'number',
+							to: 'string',
+							destructive: true,
+						},
+					],
+				},
+			},
+		])(
+			'blocks the import and changes nothing when a matched table has a $change',
+			async ({ targetColumns, issue }) => {
+				const table = await dataTableService.createDataTable(project.id, {
+					name: 'Customers',
+					columns: targetColumns,
+				});
+				const columnsBefore = await columnsOf(table.id);
+				const { packageBuffer } = await buildDataTablePackage([
+					serializedDataTable({ id: table.id }),
+				]);
+
+				await expectBlocked(importNonDestructive({ user: owner, packageBuffer }), {
+					type: 'data-table-unresolved',
+					kind: 'schema-incompatible',
+					sourceId: table.id,
+					...issue,
+				});
+
+				expect(await columnsOf(table.id)).toEqual(columnsBefore);
+				expect(await workflowRepository.count()).toBe(0);
+			},
+		);
+
+		it('writes nothing when only one of two matched tables has a change that deletes data', async () => {
+			const safe = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' }],
+			});
+			const destructive = await dataTableService.createDataTable(project.id, {
+				name: 'Orders',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'signed_up_at', type: 'date' },
+					{ name: 'note', type: 'string' },
+				],
+			});
+			const destructiveColumnsBefore = await columnsOf(destructive.id);
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: safe.id, name: 'Customers' }),
+				serializedDataTable({ id: destructive.id, name: 'Orders' }),
+			]);
+
+			await expectBlocked(importNonDestructive({ user: owner, packageBuffer }), {
+				kind: 'schema-incompatible',
+				sourceId: destructive.id,
+				extraColumns: ['note'],
+			});
+
+			expect(await columnsOf(safe.id)).toEqual([{ name: 'email', type: 'string', index: 0 }]);
+			expect(await columnsOf(destructive.id)).toEqual(destructiveColumnsBefore);
+			expect(await workflowRepository.count()).toBe(0);
+		});
+
+		it('applies a non-destructive change in a project selection import only when the caller sets the policy', async () => {
+			licenseMocker.enable('feat:projectRole:admin');
+			licenseMocker.setQuota('quota:maxTeamProjects', 100);
+			const tableId = 'selectiontable1';
+			const projectPackage = async (columns: SerializedDataTable['columns']) => {
+				const table = serializedDataTable({ id: tableId, columns });
+				return await buildEntityPackageBuffer({
+					projects: [
+						{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) },
+					],
+					workflows: [
+						{
+							target: 'projects/p1/workflows/wf-0',
+							workflow: serializedWorkflowWithDataTable({
+								id: 'wf-0',
+								name: 'Workflow 0',
+								dataTableId: table.id,
+							}),
+						},
+					],
+					dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
+					manifestExtras: {
+						requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] },
+					},
+				});
+			};
+			const importSelection = async (
+				packageBuffer: Buffer,
+				dataTableSchemaConflictPolicy?: 'overwrite-non-destructive',
+			) =>
+				await service.importPackageSelection(
+					{ user: owner, packageBuffer, dataTableSchemaConflictPolicy },
+					{ selectedProjectId: 'P1', selectedWorkflowIds: ['wf-0'] },
+				);
+			const email = { name: 'email', type: 'string', index: 0 } as const;
+			const note = { name: 'note', type: 'string', index: 1 } as const;
+
+			const created = await importSelection(await projectPackage([email, note]));
+			expect(created.dataTables).toMatchObject({ created: 1 });
+
+			await expectBlocked(importSelection(await projectPackage([email])), {
+				kind: 'schema-incompatible',
+				sourceId: tableId,
+				extraColumns: ['note'],
+			});
+			expect(await columnsOf(tableId, 'P1')).toEqual([email, note]);
+
+			const signedUpAt = { name: 'signed_up_at', type: 'date', index: 2 } as const;
+			const updated = await importSelection(
+				await projectPackage([email, note, signedUpAt]),
+				'overwrite-non-destructive',
+			);
+			expect(updated.dataTables).toMatchObject({ updated: 1 });
+			expect(await columnsOf(tableId, 'P1')).toEqual([email, note, signedUpAt]);
 		});
 	});
 

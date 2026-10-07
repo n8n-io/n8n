@@ -761,7 +761,7 @@ it('reverts and reapplies the review schema before suggestions are created', asy
 	const db = Container.get(DataSource);
 	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
 	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'AddWorkflowSuggestionReviewState1791285202635',
+		({ constructor }) => constructor.name === 'AddWorkflowSuggestionReviewState1791374893870',
 	);
 	if (!migration) throw new Error('The workflow suggestion review migration is not registered.');
 	const runner = db.createQueryRunner();

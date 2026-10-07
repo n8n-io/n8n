@@ -265,10 +265,17 @@ async function snapshotApplyState() {
 		Container.get(DataTableRepository).find({ order: { id: 'ASC' } }),
 		Container.get(DataTableColumnRepository).find({ order: { id: 'ASC' } }),
 		Container.get(ProjectRepository).find({ order: { id: 'ASC' } }),
-		Container.get(ProjectRelationRepository).find({
-			relations: { role: true },
-			order: { projectId: 'ASC', userId: 'ASC' },
-		}),
+		Container.get(ProjectRelationRepository)
+			.find({
+				relations: { role: true },
+				order: { projectId: 'ASC', userId: 'ASC' },
+			})
+			.then((relations) => {
+				for (const relation of relations) {
+					relation.role.scopes.sort((a, b) => a.slug.localeCompare(b.slug));
+				}
+				return relations;
+			}),
 		Container.get(WorkflowRepository).find({ order: { id: 'ASC' } }),
 		Container.get(SharedWorkflowRepository).find({
 			order: { workflowId: 'ASC', projectId: 'ASC' },
@@ -469,6 +476,28 @@ async function snapshotWorkingTree(dir: string): Promise<Map<string, string>> {
 }
 
 describe('Promote and Apply', () => {
+	it('ignores role scope order in database snapshots', async () => {
+		await createTeamProject('Orders', owner);
+		const before = await snapshotApplyState();
+		const repository = Container.get(ProjectRelationRepository);
+		const findRelations = repository.find.bind(repository);
+		const findSpy = vi.spyOn(repository, 'find').mockImplementationOnce(async (options) => {
+			const relations = await findRelations(options);
+			const relation = relations.find(({ role }) => role.scopes.length > 1);
+			assert(relation);
+			const originalSlugs = relation.role.scopes.map(({ slug }) => slug);
+			relation.role.scopes.reverse();
+			expect(relation.role.scopes.map(({ slug }) => slug)).not.toEqual(originalSlugs);
+			return relations;
+		});
+
+		try {
+			expect(await snapshotApplyState()).toEqual(before);
+		} finally {
+			findSpy.mockRestore();
+		}
+	});
+
 	it('rejects a missing branch when the remote contains only tags', async () => {
 		const remote = await createRemote();
 		await remote.git.raw(['push', 'origin', 'HEAD:refs/tags/v1']);
