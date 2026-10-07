@@ -17,30 +17,23 @@ export type LakebaseColumn = {
 /** PostgREST flags the primary key in the column description */
 const PRIMARY_KEY_MARKER = /<pk\/>/;
 
-/**
- * Reads a table's columns from the schema's OpenAPI document.
- *
- * Reports what the document says and applies no policy of its own. A caller that
- * needs to know whether to demand a value decides that for itself, because
- * `required` lists every NOT NULL column, including ones the database defaults.
- */
-export async function fetchLakebaseColumns(
+/** PostgREST exposes every function of the schema under this path prefix */
+const RPC_PATH = /^\/rpc\//;
+
+async function fetchOpenApiDocument(
 	context: DatabricksContext,
 	schemaUrl: string,
-	table: string,
-): Promise<LakebaseColumn[]> {
-	const document = await lakebaseApiRequest(context, {
+): Promise<unknown> {
+	return await lakebaseApiRequest(context, {
 		method: 'GET',
 		url: `${schemaUrl}/openapi.json`,
 		headers: { Accept: 'application/openapi+json, application/json' },
 		json: true,
 	});
+}
 
-	if (!isRecord(document)) return [];
-	const components = isRecord(document.components) ? document.components : undefined;
-	const schemas = components && isRecord(components.schemas) ? components.schemas : undefined;
-	const definition = schemas && isRecord(schemas[table]) ? schemas[table] : undefined;
-	if (!definition || !isRecord(definition.properties)) return [];
+function columnsOf(definition: Record<string, unknown>): LakebaseColumn[] {
+	if (!isRecord(definition.properties)) return [];
 
 	const required = Array.isArray(definition.required) ? definition.required.map(String) : [];
 
@@ -59,4 +52,56 @@ export async function fetchLakebaseColumns(
 			isPrimaryKey: PRIMARY_KEY_MARKER.test(description),
 		};
 	});
+}
+
+/**
+ * Reads a table's columns from the schema's OpenAPI document.
+ *
+ * Reports what the document says and applies no policy of its own. A caller that
+ * needs to know whether to demand a value decides that for itself, because
+ * `required` lists every NOT NULL column, including ones the database defaults.
+ */
+export async function fetchLakebaseColumns(
+	context: DatabricksContext,
+	schemaUrl: string,
+	table: string,
+): Promise<LakebaseColumn[]> {
+	const document = await fetchOpenApiDocument(context, schemaUrl);
+
+	if (!isRecord(document)) return [];
+	const components = isRecord(document.components) ? document.components : undefined;
+	const schemas = components && isRecord(components.schemas) ? components.schemas : undefined;
+	const definition = schemas && isRecord(schemas[table]) ? schemas[table] : undefined;
+	return definition ? columnsOf(definition) : [];
+}
+
+/** Every function the document lists, internal helpers included; the picker filters */
+export async function fetchLakebaseFunctions(
+	context: DatabricksContext,
+	schemaUrl: string,
+): Promise<string[]> {
+	const document = await fetchOpenApiDocument(context, schemaUrl);
+
+	if (!isRecord(document) || !isRecord(document.paths)) return [];
+	return Object.keys(document.paths)
+		.filter((path) => RPC_PATH.test(path))
+		.map((path) => path.replace(RPC_PATH, ''));
+}
+
+/** A function's named arguments, read from the POST request body schema */
+export async function fetchLakebaseFunctionArguments(
+	context: DatabricksContext,
+	schemaUrl: string,
+	fn: string,
+): Promise<LakebaseColumn[]> {
+	const document = await fetchOpenApiDocument(context, schemaUrl);
+
+	if (!isRecord(document) || !isRecord(document.paths)) return [];
+	const path = document.paths[`/rpc/${fn}`];
+	const post = isRecord(path) && isRecord(path.post) ? path.post : undefined;
+	const requestBody = post && isRecord(post.requestBody) ? post.requestBody : undefined;
+	const content = requestBody && isRecord(requestBody.content) ? requestBody.content : undefined;
+	// The media type key carries a charset, so take the first entry instead of matching it
+	const entry = content ? Object.values(content).find(isRecord) : undefined;
+	return entry && isRecord(entry.schema) ? columnsOf(entry.schema) : [];
 }
