@@ -215,7 +215,9 @@ export function trialPasses(routingCase: RoutingCase, resolution: RouteResolutio
 	// After an answer, only the route that the user's facts point to passes, or a further question that steers to it.
 	if (resolution.question) {
 		const { route, steer } = resolution;
-		return routingCase.after.some((after) => after === route || (route === 'clarify' && after === steer));
+		return routingCase.after.some(
+			(after) => after === route || (route === 'clarify' && after === steer),
+		);
 	}
 	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
 }

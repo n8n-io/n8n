@@ -67,7 +67,10 @@ const routingTagsSchema = z
 		return {
 			bucket,
 			accepts,
-			after: after.length > 0 ? after : accepts.filter((token) => token !== 'clarify' && !token.includes(':')),
+			after:
+				after.length > 0
+					? after
+					: accepts.filter((token) => token !== 'clarify' && !token.includes(':')),
 		};
 	})
 	.refine(({ accepts }) => accepts.length > 0, {
