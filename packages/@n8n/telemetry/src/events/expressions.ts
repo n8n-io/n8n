@@ -19,9 +19,7 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			timeout_ms: z.number().describe('QuickJS timeout for one shadow evaluation'),
 			evaluations: z
 				.number()
-				.describe(
-					'Expressions compared in this report; repeated evaluations of one expression count once',
-				),
+				.describe('Distinct expressions compared in this report, up to 5000; repeats count once'),
 			same: z.number(),
 			different: z.number(),
 			unchecked: z
@@ -35,7 +33,7 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			quickjs_timeouts: z
 				.number()
 				.describe(
-					'Compared expressions where QuickJS hit its timeout, also counted in their outcome',
+					'Sampled runs where QuickJS hit its timeout. Every run counts, not once per expression',
 				),
 			latency_bucket_bounds_ms: z
 				.array(z.number())

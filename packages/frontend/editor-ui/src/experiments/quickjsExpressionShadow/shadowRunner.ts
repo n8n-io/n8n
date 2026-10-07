@@ -12,6 +12,7 @@ export const LATENCY_BUCKET_BOUNDS_MS = [0.1, 0.5, 1, 2, 5, 10, 25, 50, 100];
 export const MAX_MISMATCH_SHAPES = 20;
 
 // Bounds the memory that remembers which expressions a report already counted.
+// Past it, new expressions are not counted, so each count stays at one per expression.
 const MAX_TRACKED_EXPRESSIONS = 5000;
 
 export type ShadowOutcome =
@@ -182,9 +183,11 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 	) {
 		this.legacyLatency[bucketIndex(legacyMs)] += 1;
 		this.quickjsLatency[bucketIndex(quickjsMs)] += 1;
+		// Like latency, a timeout depends on the run, so every run counts.
+		if (!quickjs.ok && quickjs.errorClass === 'timeout') this.timeouts += 1;
 
-		if (this.counted.has(source)) return;
-		if (this.counted.size < MAX_TRACKED_EXPRESSIONS) this.counted.add(source);
+		if (this.counted.has(source) || this.counted.size >= MAX_TRACKED_EXPRESSIONS) return;
+		this.counted.add(source);
 
 		// A function result reaches the user as an error ("please add ()"), and
 		// QuickJS cannot return a function, so it counts as an error on both sides.
@@ -195,7 +198,6 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 
 		const outcome = this.classify(source, legacy, quickjs);
 		this.counts[outcome] += 1;
-		if (!quickjs.ok && quickjs.errorClass === 'timeout') this.timeouts += 1;
 
 		if (!isMismatch(outcome)) return;
 

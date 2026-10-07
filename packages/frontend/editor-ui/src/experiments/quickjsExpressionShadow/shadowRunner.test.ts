@@ -88,17 +88,33 @@ describe('QuickJsExpressionShadow', () => {
 		expect(report?.legacy_latency_buckets.reduce((sum, count) => sum + count, 0)).toBe(2);
 	});
 
-	it('counts QuickJS timeouts on their own', () => {
-		const { shadow } = createShadow(failed('timeout'));
+	it('counts every QuickJS timeout, also for an expression it already counted', () => {
+		const evaluate = vi
+			.fn<() => ExpressionEvaluationOutcome>()
+			.mockReturnValueOnce(ok(1))
+			.mockReturnValue(failed('timeout'));
+		const shadow = new QuickJsExpressionShadow({
+			evaluator: { evaluate },
+			sampleRate: 1,
+			random: () => 0,
+			now: () => 0,
+		});
 
 		run(shadow, '{{ $json.a }}', ok(1));
-		run(shadow, '{{ $json.b }}', failed('TypeError'));
+		run(shadow, '{{ $json.a }}', ok(1));
+		run(shadow, '{{ $json.a }}', ok(1));
 
-		expect(shadow.takeReport()).toMatchObject({
-			quickjs_timeouts: 2,
-			legacy_ok_quickjs_error: 1,
-			both_error: 1,
-		});
+		expect(shadow.takeReport()).toMatchObject({ quickjs_timeouts: 2, same: 1, evaluations: 1 });
+	});
+
+	it('stops counting new expressions once it tracks the maximum, so repeats never count twice', () => {
+		const { shadow } = createShadow(ok(1));
+
+		for (let index = 0; index < 5000; index++) run(shadow, `{{ ${index} }}`, ok(1));
+		run(shadow, '{{ "untracked" }}', ok(1));
+		run(shadow, '{{ "untracked" }}', ok(1));
+
+		expect(shadow.takeReport()).toMatchObject({ evaluations: 5000 });
 	});
 
 	it('reports the shape of a mismatch, never the expression or the values', () => {
