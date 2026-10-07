@@ -1136,15 +1136,6 @@ export type RelayEventMap = {
 	};
 	// #endregion
 
-	// #region Data Tables
-
-	'data-table-deleted': {
-		dataTableId: string;
-		projectId: string;
-	};
-
-	// #endregion
-
 	// #region Folders
 
 	'folder-deleted': {

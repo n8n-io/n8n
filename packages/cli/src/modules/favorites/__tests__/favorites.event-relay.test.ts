@@ -2,6 +2,7 @@ import { EventService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import type { DataTableEventMap } from '@/modules/data-table/data-table-event-map';
 
 import { FavoritesEventRelay } from '../favorites.event-relay';
 import type { FavoritesService } from '../favorites.service';
@@ -33,7 +34,7 @@ describe('FavoritesEventRelay', () => {
 
 	describe('data-table-deleted', () => {
 		it('should delete favorites for the deleted data table', async () => {
-			const event: RelayEventMap['data-table-deleted'] = {
+			const event: DataTableEventMap['data-table-deleted'] = {
 				dataTableId: 'dt1',
 				projectId: 'proj1',
 			};
