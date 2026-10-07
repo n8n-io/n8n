@@ -5,8 +5,9 @@ export type SkillSource = 'ui' | 'upload' | 'agent';
 
 /**
  * A skill in the skills hub, identified by its id only. One target: `userId` ("Just
- * you"), `projectId` (a team project), or neither (the instance). The name and content
- * live in `SkillVersion` rows.
+ * you", used by the assistant only, never by agents), `projectId` (a team or personal
+ * project, used by its agents and its assistant sessions), or neither (the instance).
+ * The name and content live in `SkillVersion` rows.
  */
 @Entity({ name: 'skill' })
 export class Skill extends WithTimestamps {

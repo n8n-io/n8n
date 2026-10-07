@@ -4,17 +4,17 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| contentHash | varchar(64) |  | false |  |  | sha256 of name, description, instructions, frontmatter and files. Publish reuses a saved version with the same hash |
+| contentHash | varchar(64) |  | false |  |  | sha256 of name, description, instructions, frontmatter and files. Save creates no version when the draft matches the latest one |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | description | varchar(1024) |  | false |  |  |  |
 | frontmatter | json |  | true |  |  | SKILL.md frontmatter fields other than name and description, e.g. allowed-tools |
 | id | uuid |  | false | [public.agent_history_skill](public.agent_history_skill.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.skill_file](public.skill_file.md) |  |  |
 | instructions | text |  | false |  |  |  |
-| name | varchar(128) |  | false |  |  | Free-text skill name. The draft holds the current name, a saved version the published one |
+| name | varchar(128) |  | false |  |  | Free-text skill name. The draft holds the current name, a saved version the name it was saved with |
 | skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| version | integer |  | true |  |  | NULL for the live draft. Publish creates 1..n, which never change |
+| version | integer |  | true |  |  | NULL for the editable draft. Save creates 1..n, which never change |
 
 ## Constraints
 

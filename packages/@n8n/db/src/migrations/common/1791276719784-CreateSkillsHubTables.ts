@@ -8,10 +8,11 @@ const AGENT_HISTORY_SKILL_TABLE = 'agent_history_skill';
 
 /**
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
- * A skill belongs to one target: a user ("Just you"), a team project, or the instance
- * (neither set). Its name and content live in versions: the row with a NULL version is
- * the live draft; publish copies the draft into numbered, immutable versions and pins
- * them.
+ * A skill belongs to one target: a user ("Just you", for the assistant only), a project
+ * (team or personal, for its agents and its assistant sessions), or the instance (neither
+ * set). Its name and content live in versions: the row with a NULL version is the
+ * editable draft; Save copies it into numbered, immutable versions, which agents read
+ * and agent publishes pin.
  */
 export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -39,8 +40,12 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 		await createTable(SKILL_TABLE)
 			.withColumns(
 				column('id').varchar(36).primary.comment('skill_<nanoid>, the same format agents use'),
-				column('userId').uuid.comment('Set for a "Just you" skill. NULL otherwise'),
-				column('projectId').varchar(36).comment('Set for a team project skill. NULL otherwise'),
+				column('userId').uuid.comment(
+					'Set for a "Just you" skill, which agents never use. NULL otherwise',
+				),
+				column('projectId')
+					.varchar(36)
+					.comment('Set for a project skill, team or personal. NULL otherwise'),
 				column('source')
 					.varchar(16)
 					.notNull.withEnumCheck(['ui', 'upload', 'agent'])
@@ -79,12 +84,12 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 				column('id').uuid.primary,
 				column('skillId').varchar(36).notNull,
 				column('version').int.comment(
-					'NULL for the live draft. Publish creates 1..n, which never change',
+					'NULL for the editable draft. Save creates 1..n, which never change',
 				),
 				column('name')
 					.varchar(128)
 					.notNull.comment(
-						'Free-text skill name. The draft holds the current name, a saved version the published one',
+						'Free-text skill name. The draft holds the current name, a saved version the name it was saved with',
 					),
 				column('description').varchar(1024).notNull,
 				column('instructions').text.notNull,
@@ -94,7 +99,7 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 				column('contentHash')
 					.varchar(64)
 					.notNull.comment(
-						'sha256 of name, description, instructions, frontmatter and files. Publish reuses a saved version with the same hash',
+						'sha256 of name, description, instructions, frontmatter and files. Save creates no version when the draft matches the latest one',
 					),
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
@@ -144,10 +149,10 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 			.withColumns(
 				column('agentId').varchar(36).primary,
 				column('skillId').varchar(36).primary,
-				// A draft normally follows the skill's live draft row. An agent revert pins
-				// the draft to the saved version it had; the pin clears on the next edit.
+				// A draft normally follows the skill's latest saved version. An agent revert
+				// pins the version it had; the pin clears when the skill is saved again.
 				column('skillVersionId').uuid.comment(
-					'Set when the draft pins a saved version. NULL = follows the draft row',
+					'Set when the agent draft pins a saved version. NULL = follows the latest saved version',
 				),
 			)
 			.withCreatedAt.withIndexOn(['skillId'])

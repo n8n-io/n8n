@@ -7,7 +7,7 @@
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
-| skillVersionId | uuid |  | true |  | [public.skill_version](public.skill_version.md) | Set when the draft pins a saved version. NULL = follows the draft row |
+| skillVersionId | uuid |  | true |  | [public.skill_version](public.skill_version.md) | Set when the agent draft pins a saved version. NULL = follows the latest saved version |
 
 ## Constraints
 

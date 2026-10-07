@@ -5,8 +5,6 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
 
 type AgentRow = { id: string; projectId: string; schema: string | null; skills: string | null };
 type HistoryRow = { versionId: string; agentId: string; skills: string | null };
-type ProjectRow = { id: string; type: string };
-type OwnerRow = { projectId: string; userId: string };
 
 type SkillRef = { type: 'skill'; id: string; enabled?: boolean };
 type SkillReference = { path: string; content: string };
@@ -17,8 +15,6 @@ type SkillBody = {
 	allowedTools?: string[];
 	references?: SkillReference[];
 };
-
-type Target = { userId: string | null; projectId: string | null };
 
 type ParsedAgent = { schema: { skills?: unknown } | null; bodies: Record<string, unknown> };
 
@@ -45,15 +41,14 @@ const BATCH_SIZE = 100;
 
 /**
  * Moves the skill bodies stored on each agent row into the skills hub. Every agent gets
- * its own skills, also for identical copies. Names are copied exactly. Expand phase:
+ * its own skills, also for identical copies, in the agent's own project (team or
+ * personal): agents never use "Just you" skills. Names are copied exactly. Expand phase:
  * `agent_history` stays untouched and `agents.skills` keeps every body; only an agent
  * whose ref id changes has that body re-keyed, so it keeps reading its own copy until
  * agents switch to the hub. The oldest agent keeps a skill id; a later agent with the
  * same id gets a new one, and only that agent's ref changes.
  */
 export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigration {
-	private targetsByProject = new Map<string, Target>();
-
 	/** Agent id to project id, filled by the draft pass and read by the history pass. */
 	private agentProjects = new Map<string, string>();
 
@@ -71,7 +66,6 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 	async up(context: MigrationContext) {
 		// TypeORM keeps one instance per data source, so a run starts from empty state.
 		this.reset();
-		await this.loadTargets(context);
 		await this.migrateDraftRefs(context);
 		await this.migrateHistory(context);
 		await this.saveUnpublishedDrafts(context);
@@ -80,38 +74,12 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 	}
 
 	private reset() {
-		this.targetsByProject = new Map();
 		this.agentProjects = new Map();
 		this.skillsById = new Map();
 		this.usedIds = new Set();
 		this.refMapping = new Map();
 		this.dependencies = new Set();
 		this.counts = { skills: 0, renamedIds: 0, versions: 0, pins: 0, skippedRows: 0 };
-	}
-
-	private async loadTargets({ escape, runQuery }: MigrationContext) {
-		const projects = await runQuery<ProjectRow[]>(
-			`SELECT ${escape.columnName('id')}, ${escape.columnName('type')} FROM ${escape.tableName('project')}`,
-		);
-		// Joins the user table: a relation can outlive its user when foreign keys were not
-		// enforced, and a skill must not point at a user that does not exist.
-		const relation = escape.tableName('project_relation');
-		const user = escape.tableName('user');
-		const owners = await runQuery<OwnerRow[]>(
-			`SELECT r.${escape.columnName('projectId')} AS ${escape.columnName('projectId')}, r.${escape.columnName('userId')} AS ${escape.columnName('userId')} FROM ${relation} r JOIN ${user} u ON u.${escape.columnName('id')} = r.${escape.columnName('userId')} WHERE r.${escape.columnName('role')} = 'project:personalOwner'`,
-		);
-		const ownerByProject = new Map(owners.map((row) => [row.projectId, row.userId]));
-		for (const project of projects) {
-			const owner = ownerByProject.get(project.id);
-			// A personal project without an existing owner keeps its skills on the
-			// project, so its agents keep working. It is the only personal-project target.
-			this.targetsByProject.set(
-				project.id,
-				project.type === 'personal' && owner
-					? { userId: owner, projectId: null }
-					: { userId: null, projectId: project.id },
-			);
-		}
 	}
 
 	private async migrateDraftRefs(context: MigrationContext) {
@@ -153,7 +121,6 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 	) {
 		const { escape, runQuery } = context;
 		const refs = toSkillRefs(schema?.skills);
-		const target = this.targetFor(agent.projectId);
 		let rewritten = false;
 
 		for (const ref of refs) {
@@ -164,7 +131,7 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 			if (!body) continue;
 			let skillId = this.refMapping.get(key);
 			if (!skillId) {
-				skillId = await this.placeSkill(context, target, body, ref.id, false);
+				skillId = await this.placeSkill(context, agent.projectId, body, ref.id, false);
 				this.refMapping.set(key, skillId);
 			}
 			this.dependencies.add(`${agent.id}|${skillId}`);
@@ -223,7 +190,6 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		bodies: Record<string, unknown>,
 	) {
 		const { escape, runQuery } = context;
-		const target = this.targetFor(projectId);
 
 		for (const [refId, raw] of Object.entries(bodies)) {
 			const body = toSkillBody(raw);
@@ -232,7 +198,7 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 			let skillId = this.refMapping.get(key);
 			if (!skillId) {
 				// The skill left the draft after publish. It stays a normal live skill.
-				skillId = await this.placeSkill(context, target, body, refId, true);
+				skillId = await this.placeSkill(context, projectId, body, refId, true);
 				this.refMapping.set(key, skillId);
 			}
 			const versionId = await this.savedVersionFor(context, skillId, body);
@@ -278,7 +244,7 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 	/** Creates the skill for one ref of one agent, with a draft row that copies the body. */
 	private async placeSkill(
 		context: MigrationContext,
-		target: Target,
+		projectId: string,
 		body: SkillBody,
 		preferredId: string,
 		historyOnly: boolean,
@@ -291,8 +257,8 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		const { escape, runQuery } = context;
 		const columns = ['id', 'userId', 'projectId', 'source', 'createdById'];
 		await runQuery(
-			`INSERT INTO ${escape.tableName('skill')} (${columns.map((c) => escape.columnName(c)).join(', ')}) VALUES (:id, :userId, :projectId, 'agent', NULL)`,
-			{ id, userId: target.userId, projectId: target.projectId },
+			`INSERT INTO ${escape.tableName('skill')} (${columns.map((c) => escape.columnName(c)).join(', ')}) VALUES (:id, NULL, :projectId, 'agent', NULL)`,
+			{ id, projectId },
 		);
 		const draftVersionId = await this.insertVersion(context, id, null, body);
 		this.skillsById.set(id, {
@@ -420,10 +386,6 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		this.counts.skippedRows++;
 		const message = error instanceof Error ? error.message : String(error);
 		logger.warn(`[${migrationName}] Skipping ${what}: ${message}`);
-	}
-
-	private targetFor(projectId: string): Target {
-		return this.targetsByProject.get(projectId) ?? { userId: null, projectId };
 	}
 
 	private mintSkillId(): string {

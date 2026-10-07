@@ -5,8 +5,8 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 export type SkillFrontmatter = Record<string, string>;
 
 /**
- * Content of a skill. `version` NULL is the live draft (one per skill); publish
- * creates the numbered versions, which never change.
+ * Content of a skill. `version` NULL is the editable draft (one per skill); Save
+ * creates the numbered versions, which never change and which agents read.
  */
 @Entity({ name: 'skill_version' })
 @Index(['skillId', 'version'], { unique: true })
@@ -21,7 +21,7 @@ export class SkillVersion extends WithTimestamps {
 	@Column({ type: 'int', nullable: true })
 	version: number | null;
 
-	/** Free-text name. The draft holds the current name, a saved version the published one. */
+	/** Free-text name. The draft holds the current name, a saved version the name it was saved with. */
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
@@ -36,7 +36,7 @@ export class SkillVersion extends WithTimestamps {
 
 	/**
 	 * sha256 of name, description, instructions, frontmatter and files (see
-	 * `skillContentHash`). Publish reuses a saved version with the same hash.
+	 * `skillContentHash`). Save creates no version when the draft matches the latest one.
 	 */
 	@Column({ type: 'varchar', length: 64 })
 	contentHash: string;

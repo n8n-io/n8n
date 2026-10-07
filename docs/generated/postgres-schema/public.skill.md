@@ -7,10 +7,10 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | id | varchar(36) |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
-| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Set for a team project skill. NULL otherwise |
+| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Set for a project skill, team or personal. NULL otherwise |
 | source | varchar(16) |  | false |  |  | How the skill was created: "ui", "upload", or "agent" |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| userId | uuid |  | true |  | [public.user](public.user.md) | Set for a "Just you" skill. NULL otherwise |
+| userId | uuid |  | true |  | [public.user](public.user.md) | Set for a "Just you" skill, which agents never use. NULL otherwise |
 
 ## Constraints
 

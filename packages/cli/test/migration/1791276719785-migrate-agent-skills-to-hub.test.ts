@@ -265,7 +265,7 @@ describe('MigrateAgentSkillsToHub Migration', () => {
 		});
 	});
 
-	it('makes a personal agent\'s skill a "Just you" skill of the project owner', async () => {
+	it('keeps a personal agent\'s skill in the personal project, not as a "Just you" skill', async () => {
 		const ownerId = randomUUID();
 		await withContext(async (context) => {
 			await insertUser(context, ownerId);
@@ -281,28 +281,7 @@ describe('MigrateAgentSkillsToHub Migration', () => {
 		await runSingleMigration(MIGRATION_NAME);
 
 		await withContext(async (context) => {
-			const skills = await select<SkillRow>(context, 'skill', ['id']);
-			expect(skills).toEqual([
-				expect.objectContaining({ id: 'skill_a', userId: ownerId, projectId: null }),
-			]);
-		});
-	});
-
-	it('keeps a personal project without a live owner as the skill target', async () => {
-		await withContext(async (context) => {
-			// No project_relation row: the owner is gone.
-			await insertProject(context, 'personal-1', 'personal');
-			await insertAgent(context, {
-				id: 'agent-1',
-				projectId: 'personal-1',
-				refs: ['skill_a'],
-				skills: { skill_a: body('Notes', 'Keep notes.') },
-			});
-		});
-
-		await runSingleMigration(MIGRATION_NAME);
-
-		await withContext(async (context) => {
+			// Agents never use "Just you" skills, so the agent's own project is the target.
 			const skills = await select<SkillRow>(context, 'skill', ['id']);
 			expect(skills).toEqual([
 				expect.objectContaining({ id: 'skill_a', userId: null, projectId: 'personal-1' }),
