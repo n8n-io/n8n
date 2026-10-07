@@ -9,7 +9,7 @@
 
 import { z } from 'zod';
 
-import { SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
+import { createEvalAgent } from '../../src/utils/eval-agents';
 import type { DiscoveryStreamStatus } from '../discovery/types';
 
 // `reason` comes first, so the judge reasons before it picks the labels.
@@ -54,6 +54,8 @@ export interface JudgeInput {
 	endStatus?: DiscoveryStreamStatus;
 }
 
+// Labels steer more consistently than the shared eval model (Sonnet 4.6).
+const JUDGE_MODEL = 'anthropic/claude-sonnet-5-5';
 const MAX_ATTEMPTS = 2;
 const ATTEMPT_TIMEOUT_MS = 60_000;
 const MAX_STEP_CHARS = 3_000;
@@ -77,9 +79,9 @@ route:
 - none: None of the routes above.
 
 decision:
-- continue: The Assistant only explored. Exploration is loading skills or tools, searching docs, nodes, templates, or the web, and reading workflows, tables, credentials, or settings. Creating an empty table or adding columns is also exploration. Exploration never picks a route, even when the name of the skill, the tool, or the item names a route. Reading a workflow is not debug, unless the Assistant reads it to find why a run failed. Listing or reading credentials is not one-off.
+- continue: The Assistant only explored. Exploration is loading skills or tools, searching docs, nodes, templates, or the web, and reading workflows, tables, credentials, or settings. Creating an empty table or adding columns is also exploration. Exploration never picks a route, even when the name of the skill, the tool, or the item names a route, or when the Assistant says what it will build or do. Reading a workflow is not debug, unless the Assistant reads it to find why a run failed. Listing or reading credentials is not one-off.
 - continue: The latest call starts work that can still end as more than one route. For example, it writes workflow code, but no call shows yet if the workflow runs once or stays.
-- stop: The latest call picks a route. It starts a build, does a task with an effect, plans tasks, looks for why a run failed, or asks the user. Stop as soon as the route is clear. Do not wait for the work to finish. The route is also clear when the Assistant says what it will build or do (for example, "I'll build this as a workflow").
+- stop: The latest call picks a route. It starts a build, does a task with an effect, plans tasks, looks for why a run failed, or asks the user. Stop as soon as the route is clear. Do not wait for the work to finish.
 - continue: The latest call only asks the user to confirm a build that the Assistant already proposed (for example, "Should I build this now?" with yes and no options). The build that follows decides the route. When the turn ends on this confirmation, pick the route of the proposed build.
 - A user answer in the trace means that the user answered a question of the Assistant. Then pick the route only from what the Assistant does after the latest answer. The question before the answer does not decide the route.
 - When the turn has ended, stop and pick the route from all that the Assistant did and wrote. If the turn did not complete, its last text is not a reply to the user. Then pick the route from the calls and from what the Assistant said that it will build or do, or none.
@@ -121,7 +123,7 @@ export async function judgeRoute(input: JudgeInput): Promise<JudgeVerdict> {
 		const agent = createEvalAgent('eval-routing-judge', {
 			instructions: SYSTEM_PROMPT,
 			cache: true,
-			model: SONNET_MODEL,
+			model: JUDGE_MODEL,
 		}).structuredOutput(judgeVerdictSchema);
 		try {
 			const result = await agent.generate(renderJudgePrompt(input), {
