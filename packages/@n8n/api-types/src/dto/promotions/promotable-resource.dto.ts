@@ -84,3 +84,25 @@ export function parsePromotionsWorkflowsMovedCrossProjectMeta(
 	const parsed = promotionsWorkflowsMovedCrossProjectMetaSchema.safeParse(meta);
 	return parsed.success ? parsed.data : undefined;
 }
+
+/** Meta.code on 400 responses when another container occupies a renamed container's new path. */
+export const PROMOTIONS_CONTAINER_TARGET_IN_USE_CODE =
+	'promotions-container-target-in-use' as const;
+
+export const promotionsContainerTargetInUseMetaSchema = z.object({
+	code: z.literal(PROMOTIONS_CONTAINER_TARGET_IN_USE_CODE),
+	kind: z.enum(['projects', 'folders']),
+	/** The occupied branch path, `/`-joined. */
+	target: z.string().min(1),
+});
+
+export type PromotionsContainerTargetInUseMeta = z.infer<
+	typeof promotionsContainerTargetInUseMetaSchema
+>;
+
+export function parsePromotionsContainerTargetInUseMeta(
+	meta: unknown,
+): PromotionsContainerTargetInUseMeta | undefined {
+	const parsed = promotionsContainerTargetInUseMetaSchema.safeParse(meta);
+	return parsed.success ? parsed.data : undefined;
+}

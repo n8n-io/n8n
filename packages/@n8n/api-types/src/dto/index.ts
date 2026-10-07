@@ -631,8 +631,11 @@ export {
 export {
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
+	PROMOTIONS_CONTAINER_TARGET_IN_USE_CODE,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+	parsePromotionsContainerTargetInUseMeta,
 	parsePromotionsWorkflowsMovedCrossProjectMeta,
+	promotionsContainerTargetInUseMetaSchema,
 	promotionsWorkflowsMovedCrossProjectMetaSchema,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
@@ -645,6 +648,7 @@ export {
 	type PromotableResourceType,
 	type PromoteRequest,
 	type PromotionChanges,
+	type PromotionsContainerTargetInUseMeta,
 	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 

@@ -1881,7 +1881,7 @@ describe('Promote a project selection — branch effects', () => {
 		expect(onBranch).toHaveLength(2);
 	});
 
-	it('leaves a renamed folder alone, so unselected workflows keep their place', async () => {
+	it('moves a renamed folder, so unselected workflows ride along unchanged', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
@@ -1920,16 +1920,12 @@ describe('Promote a project selection — branch effects', () => {
 		const selectedEntry = workflows.find((w) => w.id === selected.id)!;
 		const unselectedEntry = workflows.find((w) => w.id === unselected.id)!;
 
-		expect(folderEntry).toMatchObject({ name: 'Sales', target: folderBefore.target });
-		expect(selectedEntry.target).toBe(`${folderEntry.target}/workflows/selected-${selected.id}`);
-		expect(unselectedEntry.target).toBe(
-			`${folderEntry.target}/workflows/unselected-${unselected.id}`,
-		);
-		await expect(
-			stat(path.join(dir, 'n8n-export', unselectedEntry.target, 'workflow.json')),
-		).resolves.toBeDefined();
-		const renamedTarget = folderEntry.target.replace(/[^/]+$/, `revenue-${folder.id}`);
-		await expect(stat(path.join(dir, 'n8n-export', renamedTarget))).rejects.toThrow();
+		const renamedTarget = folderBefore.target.replace(/[^/]+$/, `revenue-${folder.id}`);
+		expect(folderEntry).toMatchObject({ name: 'Revenue', target: renamedTarget });
+		expect(selectedEntry.target).toBe(`${renamedTarget}/workflows/selected-${selected.id}`);
+		expect(unselectedEntry.target).toBe(`${renamedTarget}/workflows/unselected-${unselected.id}`);
+		expect(unselectedEntry).toMatchObject({ name: 'Unselected' });
+		await expect(stat(path.join(dir, 'n8n-export', folderBefore.target))).rejects.toThrow();
 
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.delete(unselected.id);

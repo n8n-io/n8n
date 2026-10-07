@@ -248,9 +248,9 @@ export class PromotionsService {
 
 	/**
 	 * Selective promote against an already-resolved connection. Unselected workflows
-	 * stay as-is, and so do the projects and folders the branch already holds: a
-	 * selection creates a container, never renames one, so nothing moves that the
-	 * user did not select. A promotion branch is always new, so force never applies.
+	 * keep their content. A renamed project or folder moves its branch directory,
+	 * so the unselected workflows inside it move with it. A promotion branch is
+	 * always new, so force never applies.
 	 */
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,

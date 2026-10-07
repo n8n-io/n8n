@@ -1,6 +1,6 @@
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerPlacement, pinPath, staleWorkflowTargets } from '../branch-placement';
+import { containerMoves, staleWorkflowTargets } from '../branch-placement';
 
 const baseMetadata = {
 	packageFormatVersion: '1' as const,
@@ -20,8 +20,8 @@ function entry(id: string, name = `name-${id}`, target = `target/${id}`) {
 const P = 'projects/acme';
 const acme = entry('p1', 'Acme', P);
 
-describe('containerPlacement', () => {
-	it('pins a renamed project so the selection lands in the directory the branch holds', () => {
+describe('containerMoves', () => {
+	it('moves a renamed project to the path the export uses, so the branch content rides along', () => {
 		const existing = makeManifest({
 			projects: [acme],
 			folders: [entry('f1', 'Sales', `${P}/folders/sales`)],
@@ -31,13 +31,12 @@ describe('containerPlacement', () => {
 			workflows: [entry('w1', 'W1', 'projects/acme-corp/workflows/w1')],
 		});
 
-		const placement = containerPlacement(existing, staging);
+		const moves = containerMoves(existing, staging);
 
-		expect(pinPath('projects/acme-corp/workflows/w1', placement.pins)).toBe(`${P}/workflows/w1`);
-		expect(placement.keptFiles.has('projects/acme-corp/project.json')).toBe(true);
+		expect(moves).toEqual([{ kind: 'projects', from: P, to: 'projects/acme-corp' }]);
 	});
 
-	it('applies the deepest pin when a parent and a child were both renamed', () => {
+	it('orders the deepest container first when a parent and a child were both renamed', () => {
 		const existing = makeManifest({
 			folders: [entry('f1', 'A', `${P}/folders/a`), entry('f2', 'C', `${P}/folders/a/c`)],
 		});
@@ -46,14 +45,14 @@ describe('containerPlacement', () => {
 			workflows: [entry('w1', 'W1', `${P}/folders/b/d/workflows/w1`)],
 		});
 
-		const placement = containerPlacement(existing, staging);
-
-		expect(pinPath(`${P}/folders/b/d/workflows/w1`, placement.pins)).toBe(
-			`${P}/folders/a/c/workflows/w1`,
-		);
+		// The order is the parking order: the child must leave before the parent moves.
+		expect(containerMoves(existing, staging)).toEqual([
+			{ kind: 'folders', from: `${P}/folders/a/c`, to: `${P}/folders/b/d` },
+			{ kind: 'folders', from: `${P}/folders/a`, to: `${P}/folders/b` },
+		]);
 	});
 
-	it('creates no pin for a folder the branch lacks', () => {
+	it('creates no move for a container the branch lacks', () => {
 		const existing = makeManifest({
 			folders: [entry('f1', 'A', `${P}/folders/a`)],
 		});
@@ -61,11 +60,19 @@ describe('containerPlacement', () => {
 			folders: [entry('f1', 'B', `${P}/folders/b`), entry('f2', 'New', `${P}/folders/b/new`)],
 		});
 
-		const placement = containerPlacement(existing, staging);
+		const moves = containerMoves(existing, staging);
 
-		expect(pinPath(`${P}/folders/b/new/workflows/w1`, placement.pins)).toBe(
-			`${P}/folders/a/new/workflows/w1`,
-		);
+		expect(moves).toEqual([{ kind: 'folders', from: `${P}/folders/a`, to: `${P}/folders/b` }]);
+	});
+
+	it('creates no move for a container whose path is unchanged', () => {
+		const existing = makeManifest({ projects: [acme] });
+		const staging = makeManifest({
+			projects: [entry('p1', 'Acme', P)],
+			workflows: [entry('w1', 'W1', `${P}/workflows/w1`)],
+		});
+
+		expect(containerMoves(existing, staging)).toEqual([]);
 	});
 });
 
@@ -95,7 +102,7 @@ describe('staleWorkflowTargets', () => {
 		]);
 	});
 
-	it('leaves a renamed folder in place and only replaces the selected workflow', () => {
+	it('reports only the selected workflow old path when its folder was renamed', () => {
 		const before = makeManifest({
 			folders: [entry('f1', 'sales', 'projects/p/folders/sales')],
 			workflows: [
