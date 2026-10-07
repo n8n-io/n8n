@@ -119,11 +119,10 @@ status line (`addStatusToStore`):
 {"id":"gmail.message.get","deprecate":"1","message":"Use major 2","use":"gmail.message.get@2","at":"…","signatures":[…]}
 ```
 
-- **Yank**: the host runs the version as no newer patch, and a save pins no node to it. A node
-  that has a pin of it still runs it. For a major that only the store has, the node type lists
-  the newest version that is not withdrawn. The embedded HEAD stays the projected version of its
-  major: when a major has no other version, a save leaves the node without a pin, and the node
-  runs the yanked HEAD.
+- **Yank**: a save pins no node to the version. A node that has a pin of it still runs it. For a
+  major that only the store has, the node type lists the newest version that is not withdrawn.
+  The embedded HEAD stays the projected version of its major: when a major has no other version,
+  a save leaves the node without a pin, and the node runs the yanked HEAD.
 - **Revoke**: a yank, and the host also refuses to run the version. An admin can allow it with
   `N8N_NODE_CONTRACTS_REVOKED_ALLOW=<id>@<version>,…`.
 - **Deprecate**: `major`, `major.minor` or `major.minor.patch`. The reader gives the line

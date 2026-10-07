@@ -390,7 +390,6 @@ describe('GlobalConfig', () => {
 			promptVersion: '',
 			nodeUsageEnabled: false,
 			nodeContractsEnabled: true,
-			nodeContractsUpdatePolicy: 'tolerant',
 			nodeContractsNpmRegistry: '',
 			nodeContractsNpmScope: '@n8n-nodes',
 			nodeContractsNpmToken: '',

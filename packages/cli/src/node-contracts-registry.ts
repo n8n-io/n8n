@@ -5,7 +5,6 @@ import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config
 import {
 	NodeContractStatusRepository,
 	NodeContractVersionRepository,
-	WorkflowRepository,
 	type NodeContractManifestRow,
 } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
@@ -95,9 +94,6 @@ import {
 } from '@/node-contracts-catalog';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { convertNodeToAiTool } from '@/tool-generation';
-
-// Recent executions only; a contract node reads the meta of its own execution.
-const MAX_CACHED_EXECUTIONS = 100;
 
 // Each session key keeps this many guests started. A pool has no cap across keys yet.
 const POOL_SIZE = 1;
@@ -772,9 +768,7 @@ async function containerOciOf({
 /**
  * The host runtime of the node contracts: each contract node runs the version that its pin
  * (`INode.contract`) resolves to, in the runtime that `N8N_NODES_NEXT_RUNTIMES_*` allows for its
- * trust class. The workflow policy `meta.nodeContractsPolicy` comes from the current saved
- * workflow, also for a run of a history version. The host makes it once and gives it to every
- * contract loader.
+ * trust class. The host makes it once and gives it to every contract loader.
  */
 export async function nodeContractsRuntime(): Promise<HostRuntime> {
 	const globalConfig = Container.get(GlobalConfig);
@@ -790,16 +784,6 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 		import('@n8n/node-sdk/sandbox'),
 		import('@n8n/node-sdk/registry'),
 	]);
-	const metaByExecution = new Map<string, Promise<unknown>>();
-
-	const metaOf = async (workflowId: string | undefined) => {
-		if (!workflowId) return undefined;
-		const [workflow] = await Container.get(WorkflowRepository).findByIds([workflowId], {
-			fields: ['meta'],
-		});
-		return workflow?.meta;
-	};
-
 	const tracePayloads = instanceAi.nodeContractTracePayloads;
 	if (tracePayloads !== 'off') {
 		Container.get(Logger).warn(
@@ -854,27 +838,10 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 			...(node ? { nodeName: node.name, nodeType: node.type } : {}),
 		});
 	const versionLoader = contractVersionLoader({
-		policy: instanceAi.nodeContractsUpdatePolicy,
 		revokedAllowed: instanceAi.nodeContractsRevokedAllow,
 		permissionsDeny: nodes.permissionsDeny,
 		store,
 		onPermissionRefused,
-		metaOf: async (context) => {
-			const { id } = context.getWorkflow();
-			const key = `${context.getExecutionId()}/${id ?? ''}`;
-			const known = metaByExecution.get(key);
-			if (known) return await known;
-			const oldest = metaByExecution.keys().next();
-			if (metaByExecution.size >= MAX_CACHED_EXECUTIONS && !oldest.done) {
-				metaByExecution.delete(oldest.value);
-			}
-			const meta = metaOf(id);
-			metaByExecution.set(key, meta);
-			return await meta.catch((error: unknown) => {
-				metaByExecution.delete(key);
-				throw error;
-			});
-		},
 	});
 	const executorLoader = policyExecutorLoader(
 		{

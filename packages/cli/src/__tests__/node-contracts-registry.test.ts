@@ -18,7 +18,7 @@ import type { RuntimePolicy } from '@n8n/node-sdk/runtimes';
 import type { SandboxOptions } from '@n8n/node-sdk/sandbox';
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -110,7 +110,6 @@ const publisher = mockInstance(Publisher);
 describe('nodeContractsRuntime', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		instanceAi: {
-			nodeContractsUpdatePolicy: 'strict',
 			nodeContractsNpmRegistry: 'http://registry.test',
 			nodeContractsNpmScope: '@acme',
 			nodeContractsNpmToken: 'npm-token',
@@ -143,22 +142,12 @@ describe('nodeContractsRuntime', () => {
 	mockInstance(OutboundHttp).transport.mockReturnValue(
 		mock<ReturnType<OutboundHttp['transport']>>(),
 	);
-	const workflowRepository = mockInstance(WorkflowRepository);
-	const meta = { nodeContractsPolicy: 'strict' };
-	workflowRepository.findByIds.mockResolvedValue([{ id: 'wf', meta } as unknown as WorkflowEntity]);
 
-	const contextOf = (executionId: string) =>
-		mock<IExecuteFunctions>({
-			getExecutionId: () => executionId,
-			getWorkflow: () => ({ id: 'wf', active: false }),
-		});
-
-	it('passes the config and reads the workflow meta once per execution', async () => {
+	it('passes the config', async () => {
 		await nodeContractsRuntime();
 		const [options] = registered;
 
 		expect(options).toMatchObject({
-			policy: 'strict',
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			store: {
 				registryUrl: 'http://registry.test',
@@ -172,11 +161,6 @@ describe('nodeContractsRuntime', () => {
 		expect([...(options?.permissionsDeny ?? [])]).toEqual(['code']);
 		expect([...(options?.revokedAllowed ?? [])]).toEqual(['demo.echo@1.0.0']);
 		expect(options?.maxResponseBytes).toBe(2 * 1024 * 1024);
-		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
-		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
-		expect(await options?.metaOf(contextOf('2'))).toBe(meta);
-		expect(workflowRepository.findByIds).toHaveBeenCalledTimes(2);
-		expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf'], { fields: ['meta'] });
 		// N8N_PYTHON_ENABLED=false turns Python off for the Code contracts too.
 		expect(options?.codeLanguages).toEqual(['javascript']);
 		const extractor = options?.fileExtractor;

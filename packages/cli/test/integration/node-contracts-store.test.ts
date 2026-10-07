@@ -161,7 +161,6 @@ beforeAll(async () => {
 		nodeContractsEnabled: true,
 		nodeContractsNpmRegistry: registry.url,
 		nodeContractsVettingKeyFile: publicKeyFile,
-		nodeContractsUpdatePolicy: 'strict',
 		nodeContractRange: '>=2.0.0 <3.0.0',
 	});
 

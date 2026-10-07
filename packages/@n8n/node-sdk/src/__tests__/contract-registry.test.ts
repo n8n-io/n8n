@@ -10,7 +10,6 @@ import {
 	storeBlobFileOf,
 	storeFilesOfDir,
 	storeReader,
-	type NodeContractLock,
 	type StoreStatusRecord,
 } from '../entry/registry';
 import { defineNode, t } from '../index';
@@ -20,12 +19,11 @@ import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import {
-	LoggerProxy,
-	type IExecuteFunctions,
-	type INodeContractPin,
-	type INodeExecutionData,
-	type ITaskMetadata,
+import type {
+	IExecuteFunctions,
+	INodeContractPin,
+	INodeExecutionData,
+	ITaskMetadata,
 } from 'n8n-workflow';
 
 import {
@@ -250,11 +248,6 @@ const bundled = (version: string): PackedVersion => ({
 	readSdk: async () => packedOf(version).sdk ?? '',
 });
 
-const lockOf = (version: string): NodeContractLock => {
-	const { id, semver, bundleHash, contractHash } = packedOf(version).manifest;
-	return { action: id, version: semver, bundleHash, contractHash };
-};
-
 const pinOf = (version: string): INodeContractPin => {
 	const { manifest } = packedOf(version);
 	const digest = createHash('sha256').update(manifestTextOf(manifest)).digest('hex');
@@ -266,10 +259,9 @@ const rangedPinOf = (range: string, version: string): INodeContractPin => ({
 	...pinOf(version),
 });
 
-/** The pin on the node and the `meta` of its workflow. */
+/** The pin on the node. */
 interface Target {
 	readonly contract?: INodeContractPin;
-	readonly meta?: unknown;
 }
 
 const contextOf = (metadata: ITaskMetadata[] = [], contract?: INodeContractPin) =>
@@ -293,7 +285,7 @@ const storeOf = (options: Partial<ContractStoreOptions> = {}) =>
 	});
 
 const run = async (
-	{ contract, meta }: Target,
+	{ contract }: Target,
 	options: Partial<
 		Omit<ContractVersionLoaderOptions, 'store'> & Omit<ContractStoreOptions, 'store'>
 	> = {},
@@ -301,9 +293,7 @@ const run = async (
 	head = bundled('1.1.0'),
 ) => {
 	const versionLoader = contractVersionLoader({
-		policy: 'tolerant',
 		store: storeOf(options),
-		metaOf: async () => meta,
 		...options,
 	});
 	const NodeType = toVersionedNodeType([head], hostRuntime({ versionLoader }));
@@ -312,10 +302,7 @@ const run = async (
 	return items.map((item) => item.json.text);
 };
 
-const locked = (version: string, policy?: string): Target => ({
-	contract: pinOf(version),
-	meta: policy ? { nodeContractsPolicy: policy } : {},
-});
+const locked = (version: string): Target => ({ contract: pinOf(version) });
 
 describe('contractVersionLoader', () => {
 	it('runs the bundled HEAD for a node without a pin or with a pin of another major', async () => {
@@ -323,83 +310,57 @@ describe('contractVersionLoader', () => {
 		expect(await run({ contract: { ...pinOf('1.0.0'), version: '2.0.0' } })).toEqual(['hello#']);
 	});
 
-	it('runs the pin of the node and reads the workflow meta only for the policy', async () => {
-		const metaOf = vi.fn(async () => ({ nodeContractsPolicy: 'strict' }));
-		expect(await run({}, { metaOf })).toEqual(['hello#']);
-		expect(metaOf).not.toHaveBeenCalled();
-		expect(await run({ contract: pinOf('1.0.0') }, { metaOf })).toEqual(['HELLO']);
-		expect(await run({ contract: pinOf('1.0.1') }, { metaOf })).toEqual(['hello?']);
-	});
-
-	it('runs the locked bundle from the registry when strict', async () => {
-		expect(await run(locked('1.0.0'), { policy: 'strict' })).toEqual(['HELLO']);
-	});
-
-	it('runs the newest signed patch of the locked minor when tolerant', async () => {
-		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
-	});
-
-	it('takes the policy of the workflow over the instance policy', async () => {
-		expect(await run(locked('1.0.0', 'strict'))).toEqual(['HELLO']);
-		expect(await run(locked('1.0.0', 'tolerant'), { policy: 'strict' })).toEqual(['hello?']);
-	});
-
-	it('applies no newer patch without a trusted key or with a wrong signature', async () => {
-		expect(await run(locked('1.0.0'), { keys: noKeys })).toEqual(['HELLO']);
-		publish(packedOf('1.0.1'), strangerKey);
+	it('runs the pin of the node', async () => {
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
+		expect(await run(locked('1.0.1'))).toEqual(['hello?']);
 	});
 
-	it('applies no newer patch outside the Node Contract range of the host', async () => {
-		const { runsNodeContract } = hostRuntime({ nodeContractRange: '>=3.0.0 <4.0.0' });
-		expect(await run(locked('1.0.0'), { runsNodeContract })).toEqual(['HELLO']);
+	it('runs the locked version when a newer patch with the same contract hash is there', async () => {
+		expect(packedOf('1.0.1').manifest.contractHash).toBe(packedOf('1.0.0').manifest.contractHash);
+		await storeOf().locked('demo.echo', pinOf('1.0.1'));
+		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
+		expect(await run(locked('1.0.0'), {}, [], bundled('1.0.1'))).toEqual(['HELLO']);
 	});
 
 	it('refuses a bundle or a manifest that does not match its digest', async () => {
 		tamper('1.0.0');
-		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			`The blob sha256:${lockOf('1.0.0').bundleHash} does not match its digest`,
+		await expect(run(locked('1.0.0'))).rejects.toThrow(
+			`The blob sha256:${packedOf('1.0.0').manifest.bundleHash} does not match its digest`,
 		);
 		tamper('1.0.0', 'manifest.json');
-		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+		await expect(run(locked('1.0.0'))).rejects.toThrow(
 			`The blob ${pinOf('1.0.0').digest} does not match its digest`,
 		);
 	});
 
-	it('skips a tampered patch and runs the locked version', async () => {
-		tamper('1.0.1');
-		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
-	});
-
 	it('runs a cached version without a registry', async () => {
-		expect(await run(locked('1.0.0'), { policy: 'strict' })).toEqual(['HELLO']);
-		expect(await run(locked('1.0.0'), { policy: 'strict', registryUrl: '' })).toEqual(['HELLO']);
+		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
+		expect(await run(locked('1.0.0'), { registryUrl: '' })).toEqual(['HELLO']);
 	});
 
 	it('names the action, version and digest when the pinned version does not load', async () => {
 		const { digest } = pinOf('1.0.0');
-		await expect(run(locked('1.0.0'), { registryUrl: '', policy: 'strict' })).rejects.toThrow(
+		await expect(run(locked('1.0.0'), { registryUrl: '' })).rejects.toThrow(
+			`Cannot get demo.echo@1.0.0 (${digest}) from the registry (none set)`,
+		);
+		await expect(run(locked('1.0.0'), { registryUrl: '' }, [], bundled('1.0.1'))).rejects.toThrow(
 			`Cannot get demo.echo@1.0.0 (${digest}) from the registry (none set)`,
 		);
 		published.delete('1.0.0');
 		writeRegistry();
-		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+		await expect(run(locked('1.0.0'))).rejects.toThrow(
 			`Cannot get demo.echo@1.0.0 (${digest}) from the registry ${registry.url}: The registry does not have this version`,
 		);
 	});
 
-	it('refuses a locked version or its patch that a denied permission class has', async () => {
+	it('refuses a locked version that a denied permission class has', async () => {
 		publish(packedOf('1.2.0'));
-		publish(packedOf('1.2.1'));
 		const onPermissionRefused = vi.fn();
 		const deny = { permissionsDeny: ['code'], onPermissionRefused };
 
 		expect(await run({}, deny)).toEqual(['hello#']);
-		await expect(run(locked('1.2.0'), { ...deny, policy: 'strict' })).rejects.toThrow(
-			'demo.echo@1.2.0 does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"',
-		);
 		await expect(run(locked('1.2.0'), deny)).rejects.toThrow(
-			'demo.echo@1.2.1 does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"',
+			'demo.echo@1.2.0 does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"',
 		);
 		expect(onPermissionRefused).toHaveBeenCalledWith({
 			action: 'demo.echo',
@@ -409,20 +370,18 @@ describe('contractVersionLoader', () => {
 			message:
 				'demo.echo@1.2.0 does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"',
 		});
-		expect(await run(locked('1.2.0'), { policy: 'strict', permissionsDeny: ['files'] })).toEqual([
-			'hello',
-		]);
+		expect(await run(locked('1.2.0'), { permissionsDeny: ['files'] })).toEqual(['hello']);
 	});
 
 	it('records the version that ran in the execution metadata', async () => {
 		const metadata: ITaskMetadata[] = [];
 		await run(locked('1.0.0'), {}, metadata);
-		const { bundleHash } = packedOf('1.0.1').manifest;
+		const { bundleHash } = packedOf('1.0.0').manifest;
 		expect(metadata).toEqual([
 			{
 				nodeContract: {
 					action: 'demo.echo',
-					version: '1.0.1',
+					version: '1.0.0',
 					bundleHash,
 					nodeContract: '2.11.0',
 				},
@@ -434,13 +393,9 @@ describe('contractVersionLoader', () => {
 describe('contractStore', () => {
 	it('takes only bundles with the trusted signature when a key is set', async () => {
 		publish(packedOf('1.0.0'), strangerKey);
-		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			'demo.echo@1.0.0 (bundle',
-		);
-		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			'is not signed by a trusted key',
-		);
-		expect(await run(locked('1.0.0'), { policy: 'strict', keys: noKeys })).toEqual(['HELLO']);
+		await expect(run(locked('1.0.0'))).rejects.toThrow('demo.echo@1.0.0 (bundle');
+		await expect(run(locked('1.0.0'))).rejects.toThrow('is not signed by a trusted key');
+		expect(await run(locked('1.0.0'), { keys: noKeys })).toEqual(['HELLO']);
 	});
 
 	it('adds a version once and never replaces it', async () => {
@@ -553,9 +508,6 @@ describe('contractStore', () => {
 		expect(await (await worker.locked('demo.echo', pinOf('1.0.1'))).readBundle()).toBe(
 			packedOf('1.0.1').bundle,
 		);
-		expect(
-			(await worker.newerPatches(lockOf('1.0.0'))).map(({ manifest }) => manifest.semver),
-		).toEqual(['1.0.1']);
 		await expect(worker.locked('demo.echo', pinOf('1.0.0'))).rejects.toThrow(
 			'only the leader main fetches from the registry',
 		);
@@ -599,12 +551,6 @@ describe('contractStore', () => {
 			'is not signed by a trusted key',
 		);
 	});
-
-	it('runs a stored version as a newer patch only when its pin or signature allows it', async () => {
-		const store = storeOf();
-		const stored = await store.locked('demo.echo', pinOf('1.0.1'));
-		expect(await run(locked('1.0.0'), { keys: noKeys }, [], stored)).toEqual(['HELLO']);
-	});
 });
 
 describe('contractStore with an SDK runtime from the registry', () => {
@@ -620,12 +566,12 @@ describe('contractStore with an SDK runtime from the registry', () => {
 		const packed = await packAction(entry, 'echo', otherSdk);
 		const pin = { version: '1.0.3', digest: npmDigestOf(packed.manifest) };
 		publish(packed);
-		await expect(run({ contract: pin }, { policy: 'strict' })).rejects.toThrow(
+		await expect(run({ contract: pin })).rejects.toThrow(
 			`The registry has no SDK runtime sha256:${otherSdk.manifest.bundleHash}`,
 		);
 		fake().put(npmPackageOf(otherSdk, { privateKey }));
 
-		expect(await run({ contract: pin }, { policy: 'strict' })).toEqual(['HELLO']);
+		expect(await run({ contract: pin })).toEqual(['HELLO']);
 		expect(
 			[...instance.current.rows.values()].map(({ id, version, kind }) => [id, version, kind]),
 		).toEqual([
@@ -667,7 +613,7 @@ describe('contractStore with an SDK runtime from the registry', () => {
 });
 
 describe('contractStore with npm publish', () => {
-	it('gets a pinned version and its newer patch, and reads npm deprecate as a yank or a revoke', async () => {
+	it('gets pinned versions, and reads npm deprecate as a yank or a revoke', async () => {
 		vi.stubEnv('NPM_TOKEN', 'test-token');
 		const npm = await fakeNpmRegistry();
 		try {
@@ -681,10 +627,7 @@ describe('contractStore with npm publish', () => {
 			const pinned = await storeOfNpm().locked('demo.echo', pinOf('1.0.0'));
 			expect(pinned.origin).toBe('first-party');
 			expect(await pinned.readBundle()).toBe(packedOf('1.0.0').bundle);
-			const patches = await storeOfNpm().newerPatches(lockOf('1.0.0'));
-			expect(patches.map(({ manifest, origin }) => [manifest.semver, origin])).toEqual([
-				['1.0.1', 'first-party'],
-			]);
+			expect((await storeOfNpm().locked('demo.echo', pinOf('1.0.1'))).origin).toBe('first-party');
 			expect([...instance.current.rows.values()].map(({ version }) => version)).toEqual([
 				'1.0.0',
 				'1.0.1',
@@ -799,34 +742,6 @@ describe('origin', () => {
 			['1.0.1', 'community'],
 		]);
 	});
-
-	it('applies a newer patch only from the origin of the pinned version', async () => {
-		publish(packedOf('1.0.0'), firstParty.privateKey);
-		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['HELLO']);
-		instance.current = memoryStore();
-		publish(packedOf('1.0.1'), firstParty.privateKey);
-		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['hello?']);
-	});
-
-	it('runs a first-party HEAD that is not older than the pin only when tolerant and the pinned version does not load', async () => {
-		const warn = vi.spyOn(LoggerProxy, 'warn');
-		const options = { keys: bothKeys, registryUrl: '' };
-		expect(await run(locked('1.0.0'), options, [], bundled('1.0.1'))).toEqual(['hello?']);
-		expect(warn).toHaveBeenCalledWith(
-			expect.stringContaining('Node "Echo" runs demo.echo@1.0.1: Cannot get demo.echo@1.0.0'),
-		);
-		await expect(
-			run(locked('1.0.0'), { ...options, policy: 'strict' }, [], bundled('1.0.1')),
-		).rejects.toThrow('Cannot get demo.echo@1.0.0');
-		await expect(run(locked('1.1.0'), options, [], bundled('1.0.1'))).rejects.toThrow(
-			'Cannot get demo.echo@1.1.0',
-		);
-		const community = { ...bundled('1.0.1'), origin: 'community' as const };
-		await expect(run(locked('1.0.0'), options, [], community)).rejects.toThrow(
-			'Cannot get demo.echo@1.0.0',
-		);
-		warn.mockRestore();
-	});
 });
 
 describe('status lines', () => {
@@ -842,11 +757,9 @@ describe('status lines', () => {
 	/** Sets the `npm deprecate` message of a version of `demo.echo`. */
 	const inRegistry = (version: string, message: string) => fake().deprecate(ECHO, version, message);
 
-	it('runs a pinned yanked version and takes no yanked version as a newer patch', async () => {
+	it('runs a pinned yanked version', async () => {
 		inRegistry('1.0.1', 'wrong output');
-		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 		expect(await run(locked('1.0.1'))).toEqual(['hello?']);
-		expect(await run(locked('1.0.1'), { policy: 'strict' })).toEqual(['hello?']);
 	});
 
 	it('lists no yanked version as the newest of its major while another one is there', async () => {
@@ -874,19 +787,16 @@ describe('status lines', () => {
 
 	it('refuses a pinned revoked version unless the admin allows it', async () => {
 		inRegistry('1.0.0', 'revoked: leaks the token');
-		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+		await expect(run(locked('1.0.0'))).rejects.toThrow(
 			'demo.echo@1.0.0 is revoked: leaks the token. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW',
 		);
-		expect(
-			await run(locked('1.0.0'), { policy: 'strict', revokedAllowed: ['demo.echo@1.0.0'] }),
-		).toEqual(['HELLO']);
-		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
+		expect(await run(locked('1.0.0'), { revokedAllowed: ['demo.echo@1.0.0'] })).toEqual(['HELLO']);
 	});
 
 	it('applies a registry line to every origin, and an own line only to private versions', async () => {
 		publish(packedOf('1.0.0'), firstParty.privateKey);
 		inRegistry('1.0.0', 'revoked: leaks the token');
-		await expect(run(locked('1.0.0'), { policy: 'strict', keys: bothKeys })).rejects.toThrow(
+		await expect(run(locked('1.0.0'), { keys: bothKeys })).rejects.toThrow(
 			'demo.echo@1.0.0 is revoked: leaks the token',
 		);
 		expect([...instance.current.statuses.values()]).toEqual([
@@ -1012,7 +922,7 @@ describe('importContractStore and exportContractStore', () => {
 
 	it('adds nothing when a blob does not match its digest', async () => {
 		const dir = await sourceDir();
-		const file = path.join(dir, storeBlobFileOf(`sha256:${lockOf('1.0.1').bundleHash}`));
+		const file = path.join(dir, storeBlobFileOf(`sha256:${packedOf('1.0.1').manifest.bundleHash}`));
 		await writeFile(file, Buffer.concat([await readFile(file), Buffer.from([0])]));
 		await expect(importDir(dir)).rejects.toThrow('does not match its digest');
 		expect(instance.current.rows.size).toBe(0);

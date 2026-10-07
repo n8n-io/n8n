@@ -62,7 +62,6 @@ describe('node contracts in their runtimes', () => {
 			nodeContractsNpmRegistry: '',
 			nodeContractsFirstPartyKeyFile: '',
 			nodeContractsVettingKeyFile: '',
-			nodeContractsUpdatePolicy: 'strict',
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandboxSidecar: sidecar,
 			nodeContractSandboxGuests: guests,

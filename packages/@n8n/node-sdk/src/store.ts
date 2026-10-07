@@ -118,8 +118,8 @@ export interface StoreSignature {
 }
 
 /**
- * A status line of `index/<id>.ndjson` that yanks a version. A host pins no node to it and runs
- * it as no newer patch, but a node that has a pin of it still runs it.
+ * A status line of `index/<id>.ndjson` that yanks a version. A host pins no node to it, but a
+ * node that has a pin of it still runs it.
  */
 export interface StoreYank {
 	/** The contract or credential id. */

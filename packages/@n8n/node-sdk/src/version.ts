@@ -258,7 +258,7 @@ export const contractHash = (contract: ContractDocument) =>
 			// A host import is a permission, as a host is. A set.
 			...(contract.imports?.length ? { imports: [...contract.imports].sort() } : {}),
 			...(contract.inputs ? { inputs: contract.inputs } : {}),
-			// The image is what the code runs on, so a tolerant patch must not change it.
+			// The image is what the code runs on, so it is part of the contract.
 			...(contract.runtime ? { runtime: contract.runtime } : {}),
 		}),
 	);
@@ -951,58 +951,4 @@ export function parseFixtures(text: string): ContractFixtures {
 	const value: unknown = JSON.parse(text);
 	if (!isFixtures(value)) throw new UserError('The fixtures file is not valid');
 	return value;
-}
-
-/**
- * The identity of the version that a contract node pins, from the manifest of the pin on the
- * node (`INode.contract`). The update policy compares candidates with it.
- */
-export interface NodeContractLock {
-	/** The contract id, e.g. `notion.databasePage.getAll`. */
-	readonly action: string;
-	/** The resolved `major.minor.patch`. */
-	readonly version: string;
-	/** The bundle hash of the locked version. `strict` runs only these bytes. */
-	readonly bundleHash: string;
-	/** The contract hash of the locked version. `tolerant` takes a patch with the same hash. */
-	readonly contractHash: string;
-}
-
-/** `strict` runs the locked bundle; `tolerant` also takes a newer patch with the same contract. */
-export type NodeContractsPolicy = 'strict' | 'tolerant';
-
-/**
- * Picks the version a locked node runs. Pass only trusted manifests: the bundled HEAD, a
- * version whose bundle hash equals the lock, or a version whose signature verifies. Minors
- * and majors never apply.
- */
-export function resolveContractVersion(
-	lock: NodeContractLock,
-	policy: NodeContractsPolicy,
-	manifests: readonly VersionManifest[],
-): VersionManifest {
-	const locked = parseSemver(lock.version);
-	const candidates = manifests.filter((manifest) => {
-		if (manifest.id !== lock.action) return false;
-		if (manifest.bundleHash === lock.bundleHash) return true;
-		const { major, minor, patch } = parseSemver(manifest.semver);
-		return (
-			policy === 'tolerant' &&
-			major === locked.major &&
-			minor === locked.minor &&
-			patch > locked.patch &&
-			manifest.contractHash === lock.contractHash
-		);
-	});
-	const newest = candidates.reduce<VersionManifest | undefined>(
-		(best, manifest) =>
-			best && compareSemver(best.semver, manifest.semver) >= 0 ? best : manifest,
-		undefined,
-	);
-	if (!newest) {
-		throw new UserError(
-			`No trusted version of ${lock.action} matches ${lock.version} (bundle ${lock.bundleHash})`,
-		);
-	}
-	return newest;
 }

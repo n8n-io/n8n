@@ -150,7 +150,7 @@ four ways:
 | How | When | Code |
 |---|---|---|
 | Sync of pinned versions | At start and at leader takeover, on the leader main, in the background | `NodeContractsSync` |
-| Fetch when needed | A run needs a pinned version or a newer patch that the table does not have | `contractStore` (`locked`, `newerPatches`) |
+| Fetch when needed | A run needs a pinned version that the table does not have | `contractStore` (`locked`) |
 | `n8n contracts:sync` | On demand, from the configured npm registry or `--registry=<url>` | `commands/contracts/sync.ts` |
 | `n8n contracts:import --input=<dir>` | A host without network, after `contracts:export` on another host | `commands/contracts/import.ts` |
 
@@ -193,7 +193,7 @@ sequenceDiagram
   participant G as guest runtime
   E->>T: execute()
   T->>V: version for this node
-  V->>V: pin on the node, update policy,<br/>yank, revoke, deny list
+  V->>V: pin on the node,<br/>yank, revoke, deny list
   V-->>T: packed version + origin
   T->>P: executor of the version (cached by bundle hash)
   P->>P: origin → runtime list → first runtime that serves it
@@ -216,13 +216,10 @@ sequenceDiagram
     a bundled HEAD that a release replaced.
   - A node that the client sends without a pin keeps the pin of the stored node with its id.
   - A trigger has no pin: it runs the version that its node type projects.
-  A node without a pin of its major runs the HEAD of its major. With
-  `N8N_NODE_CONTRACTS_UPDATE_POLICY=tolerant` (default), a pinned node also takes a newer
-  signed patch of the same origin and contract. With `strict`, it runs the pinned version. The
-  pin travels with the node: a history version, a copy and an export keep their pins. When no
-  source has the pinned version, a `tolerant` node runs a first-party HEAD of its major that is
-  not older than the pin, and n8n logs a warning. Else the run fails and names the version.
-  `meta.nodeContractsPolicy` of the saved workflow overrides the policy.
+  A node without a pin of its major runs the HEAD of its major. A pinned node runs exactly the
+  pinned version. A newer version gets to a node only through a save. The pin travels with the
+  node: a history version, a copy and an export keep their pins. When no source has the pinned
+  version, the run fails and names the version.
 - **Where it runs.** The origin picks a runtime list (`N8N_NODES_NEXT_RUNTIMES_*`). The first
   runtime in the list that serves the version and is available runs it: `in-process`,
   `worker`, `wasm` or `container`. See
@@ -258,7 +255,6 @@ The runtime and key settings are in
 | `N8N_NODE_CONTRACTS_NPM_REGISTRY` | — | The npm registry. Empty: only bundled and stored versions run |
 | `N8N_NODE_CONTRACTS_NPM_SCOPE` | `@n8n-nodes` | The npm scope of contract packages |
 | `N8N_NODE_CONTRACTS_NPM_TOKEN` | — | The bearer token for the npm registry. n8n does not log it |
-| `N8N_NODE_CONTRACTS_UPDATE_POLICY` | `tolerant` | `tolerant` or `strict`, see Run. `meta.nodeContractsPolicy` of a workflow overrides it |
 | `N8N_NODE_CONTRACTS_REVOKED_ALLOW` | — | `<id>@<version>` list of revoked versions that may still run |
 | `N8N_NODE_CONTRACT_RANGE` | `>=2.0.0 <3.0.0` | The Node Contract versions that this n8n runs |
 | `N8N_NODE_PERMISSIONS_DENY` | — | Permission classes that no node may have, for example `egress-input` or `code` |

@@ -5,7 +5,6 @@ import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
 
-const nodeContractsUpdatePolicySchema = z.enum(['tolerant', 'strict']);
 const nodeContractTracePayloadsSchema = z.enum(['off', 'shape', 'redacted']);
 
 const NODES_NEXT_RUNTIMES = ['in-process', 'worker', 'wasm', 'container'] as const;
@@ -299,15 +298,6 @@ export class InstanceAiConfig {
 	nodeContractsEnabled: boolean = true;
 
 	/**
-	 * Which version a pinned contract node runs. `strict` runs the pinned version. `tolerant`
-	 * also runs a newer signed patch with the same contract, and runs a first-party HEAD of the
-	 * major that is not older than the pin when no source has the pinned version.
-	 * `meta.nodeContractsPolicy` of a workflow overrides it.
-	 */
-	@Env('N8N_NODE_CONTRACTS_UPDATE_POLICY', nodeContractsUpdatePolicySchema)
-	nodeContractsUpdatePolicy: z.infer<typeof nodeContractsUpdatePolicySchema> = 'tolerant';
-
-	/**
 	 * The npm registry of published contract versions, e.g. `http://localhost:4873`. During the
 	 * POC it must be a local registry. Empty: only bundled and stored versions run.
 	 */
@@ -326,7 +316,7 @@ export class InstanceAiConfig {
 	 * PEM file of the ed25519 first-party key of n8n. A version that it signs is first-party, so it
 	 * runs in a runtime of `N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY`. When one of the key
 	 * files is set, the store takes only versions that one of the keys signs. When both are empty,
-	 * the store takes unsigned versions as private, and no newer patch applies.
+	 * the store takes unsigned versions as private.
 	 */
 	@Env('N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE')
 	nodeContractsFirstPartyKeyFile: string = '';

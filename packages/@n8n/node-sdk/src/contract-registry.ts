@@ -7,14 +7,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { rcompare, satisfies, subset, validRange } from 'semver';
-import {
-	LoggerProxy,
-	UserError,
-	type IExecuteFunctions,
-	type INode,
-	type INodeContractPin,
-	type ISupplyDataFunctions,
-} from 'n8n-workflow';
+import { LoggerProxy, UserError, type INode, type INodeContractPin } from 'n8n-workflow';
 
 import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './catalog';
 import { permissionsOf, type ContractPermissions, type PermissionRefusalListener } from './egress';
@@ -53,9 +46,6 @@ import {
 	parseManifest,
 	parseNativeManifest,
 	parseSemver,
-	resolveContractVersion,
-	type NodeContractLock,
-	type NodeContractsPolicy,
 	type NodeContractVersion,
 	type VersionManifest,
 } from './version';
@@ -74,7 +64,7 @@ export interface ContractStoreOptions {
 	/**
 	 * The keys that prove the origin of a version. With one of them, the store takes and serves
 	 * only versions that a key of them signs. Without both, the store takes unsigned versions as
-	 * `private`, and no patch newer than the node pin applies.
+	 * `private`.
 	 */
 	readonly keys: ContractKeys;
 	/** The store of the instance. Each version that the registry gives goes into it. */
@@ -102,12 +92,8 @@ export interface ContractStoreOptions {
 
 /** The options of `contractVersionLoader`. */
 export interface ContractVersionLoaderOptions {
-	/** The instance policy. `meta.nodeContractsPolicy` of a workflow overrides it. */
-	readonly policy: NodeContractsPolicy;
 	/** The store that resolves each pin. */
 	readonly store: ContractStore;
-	/** The `meta` of the running workflow, from a root node or a sub-node. */
-	readonly metaOf: (context: IExecuteFunctions | ISupplyDataFunctions) => Promise<unknown>;
 	/** Gets each version that a permission refuses, e.g. for the audit log. */
 	readonly onPermissionRefused?: PermissionRefusalListener;
 	/**
@@ -263,8 +249,6 @@ export interface ContractStore {
 	): Promise<INodeContractPin | undefined>;
 	/** The newest stored version of each major, by action id. A bad version is skipped. */
 	versions(): Promise<ReadonlyMap<string, readonly PackedVersion[]>>;
-	/** Signed patches of the pinned major.minor with the pinned contract hash. */
-	newerPatches(lock: NodeContractLock): Promise<PackedVersion[]>;
 	/**
 	 * The newest stored credential manifest of each n8n type name. A version that the store takes
 	 * from the registry brings the credential manifests it pins when a key is set, unless n8n
@@ -557,9 +541,6 @@ const storedVersionOf = (
 	origin,
 });
 
-const isPolicy = (value: unknown): value is NodeContractsPolicy =>
-	value === 'strict' || value === 'tolerant';
-
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /**
@@ -574,13 +555,6 @@ export const isNodeContractPin = (value: unknown): value is INodeContractPin =>
 	typeof value.digest === 'string' &&
 	/^sha256:[a-f0-9]{64}$/.test(value.digest);
 
-const lockOf = ({ id, semver, bundleHash, contractHash }: VersionManifest): NodeContractLock => ({
-	action: id,
-	version: semver,
-	bundleHash,
-	contractHash,
-});
-
 // The digest covers the manifest bytes, and a store checks them, so only the id and version are left.
 const assertPinned = (manifest: VersionManifest, actionId: string, pin: INodeContractPin) => {
 	if (manifest.id !== actionId || manifest.semver !== pin.version) {
@@ -590,12 +564,9 @@ const assertPinned = (manifest: VersionManifest, actionId: string, pin: INodeCon
 	}
 };
 
-const isPatchOf = (manifest: VersionManifest, lock: NodeContractLock) =>
-	manifest.id === lock.action && manifest.contractHash === lock.contractHash;
-
 const bundleDigestOf = (bundleHash: string) => `sha256:${bundleHash}`;
 
-// A registry lookup for each run is too slow, and a new patch may wait this long.
+// A registry lookup for each run is too slow, and a new version may wait this long.
 const INDEX_TTL_MS = 60_000;
 
 // An execution waits for a missing bundle, so a dead registry must fail it soon.
@@ -626,7 +597,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			})
 		: undefined;
 	const indexes = new Map<string, { at: number; records: Promise<StoreIndex> }>();
-	/** Stored versions by id, so a tolerant run does not read the store each time. */
+	/** Stored versions by id, so a save does not read the store each time. */
 	const storedById = new Map<string, { at: number; records: Promise<PinnableVersion[]> }>();
 	/** Stored status lines by id, so a run does not read the store each time. */
 	const statusesById = new Map<
@@ -904,29 +875,6 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	const storedOf = async (actionId: string) =>
 		await cachedFor(storedById, actionId, async () => await storedManifests(actionId));
 
-	const isNewerPatch = (
-		lock: NodeContractLock,
-		candidate: Pick<StoreRecord, 'version' | 'nodeContract' | 'contractHash'>,
-	) => {
-		const locked = parseSemver(lock.version);
-		const { major, minor, patch } = parseSemver(candidate.version);
-		return (
-			major === locked.major &&
-			minor === locked.minor &&
-			patch > locked.patch &&
-			options.runsNodeContract(candidate.nodeContract) &&
-			candidate.contractHash === lock.contractHash
-		);
-	};
-
-	/** On a host that does not fetch: the signed patches in the store. */
-	const storedPatches = async (lock: NodeContractLock) => {
-		const stored = await storedOf(lock.action).catch(() => []);
-		return stored
-			.filter(({ manifest }) => isNewerPatch(lock, { ...manifest, version: manifest.semver }))
-			.map(storedVersion);
-	};
-
 	return {
 		registryUrl,
 		embedded: store.embedded,
@@ -1041,28 +989,6 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			);
 		},
 
-		async newerPatches(lock) {
-			if (!hasKey(keys)) return [];
-			if (!registryReader || !mayFetch()) return await storedPatches(lock);
-			const records = await registryRecordsOf(lock.action).catch(() => []);
-			const candidates = records.filter((record) => isNewerPatch(lock, record));
-			const patches = await Promise.all(
-				candidates.map(async (record) => {
-					if (!record.bundle) return [];
-					const isCandidate = ({ manifest }: CheckedVersion) =>
-						isPatchOf(manifest, lock) && manifest.semver === record.version;
-					const known = stored.get(record.manifest);
-					if (known && isCandidate(known)) return [storedVersion(known)];
-					// A tampered or unsigned patch never runs; the pinned version runs instead.
-					const version =
-						(await fromStore(lock.action, record.manifest).catch(() => undefined)) ??
-						(await download(record).catch(() => undefined));
-					return version && isCandidate(version) ? [storedVersion(version)] : [];
-				}),
-			);
-			return patches.flat();
-		},
-
 		async credentials() {
 			return (await storedCredentials()).reduce((byName, manifest) => {
 				const best = byName.get(manifest.name);
@@ -1095,12 +1021,11 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 }
 
 /**
- * Resolves the version a contract node runs from its pin (`INode.contract`). The pinned digest
- * is the trust anchor for the pinned version. The publisher signature is the trust anchor for a
- * newer patch. A node without a pin of its major runs `head`: the bundled HEAD, or the newest
- * stored version of an older major. When no source has the pinned version, a `tolerant` node
- * runs a first-party `head` that is not older than the pin, and n8n logs a warning; else the run
- * fails. A yanked version runs only as the pinned version or `head`.
+ * Resolves the version a contract node runs from its pin (`INode.contract`): exactly the pinned
+ * version. The pinned digest is the trust anchor. A node without a pin of its major runs `head`:
+ * the bundled HEAD, or the newest stored version of an older major. When no source has the pinned
+ * version, the run fails. A newer version reaches a node only through a save.
+ * A yanked version runs only as the pinned version or `head`.
  * A revoked version does not run unless `revokedAllowed` lists it.
  */
 export function contractVersionLoader(
@@ -1118,7 +1043,7 @@ export function contractVersionLoader(
 				`${at} is revoked: ${withdrawn.reason}. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW.`,
 			);
 		}
-		// The loader refuses the versions that it projects. A pin or a patch can resolve to another version.
+		// The loader refuses the versions that it projects. A pin can resolve to another version.
 		const denied = deniedPermissionClassOf(version, deny);
 		if (denied !== undefined) {
 			const message = `${at} does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "${denied}"`;
@@ -1133,12 +1058,6 @@ export function contractVersionLoader(
 		}
 		return version;
 	};
-	const notWithdrawn = async (versions: readonly PackedVersion[]) => {
-		const withdrawn = await Promise.all(
-			versions.map(async (version) => await store.withdrawal(version)),
-		);
-		return versions.filter((_, index) => withdrawn[index] === undefined);
-	};
 	return async (context, head) => {
 		const node = context.getNode();
 		const pin = isNodeContractPin(node.contract) ? node.contract : undefined;
@@ -1146,42 +1065,7 @@ export function contractVersionLoader(
 		if (!pin || parseSemver(pin.version).major !== head.manifest.contract.version) {
 			return await runnable(head, node);
 		}
-		const meta = await options.metaOf(context);
-		const override = isRecord(meta) ? meta.nodeContractsPolicy : undefined;
-		const policy = isPolicy(override) ? override : options.policy;
-		// A release replaces the bundled HEAD. Without the pinned manifest, the contract hash that a
-		// patch must keep is not known. Only a first-party HEAD that is not older than the pin may run.
-		const pinned = await store.locked(head.manifest.id, pin).catch((error: unknown) => {
-			const runsHead =
-				policy === 'tolerant' &&
-				head.origin === 'first-party' &&
-				compareSemver(head.manifest.semver, pin.version) >= 0;
-			if (!runsHead) throw error;
-			LoggerProxy.warn(
-				`Node "${node.name}" runs ${head.manifest.id}@${head.manifest.semver}: ${errorMessage(error)}`,
-			);
-			return undefined;
-		});
-		if (!pinned) return await runnable(head, node);
-		const locked = pinned.manifest.bundleHash === head.manifest.bundleHash ? head : pinned;
-		const lock = lockOf(locked.manifest);
-		const newer = policy === 'tolerant' ? await store.newerPatches(lock) : [];
-		// A first-party HEAD may be a newer patch of the pinned contract, as a release ships it.
-		// Another HEAD may not: only its pin makes it trusted. A signed patch must have the origin
-		// of the pinned version, so that a vetting key cannot patch a first-party version.
-		const trusted = [
-			locked,
-			...(await notWithdrawn([
-				...(head.origin === 'first-party' && head !== locked ? [head] : []),
-				...newer.filter((version) => version.origin === locked.origin),
-			])),
-		];
-		const manifest = resolveContractVersion(
-			lock,
-			policy,
-			trusted.map((version) => version.manifest),
-		);
-		return await runnable(trusted.find((version) => version.manifest === manifest) ?? locked, node);
+		return await runnable(await store.locked(head.manifest.id, pin), node);
 	};
 }
 

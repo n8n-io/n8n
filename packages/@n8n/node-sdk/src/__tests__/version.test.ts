@@ -18,7 +18,6 @@ import {
 	diffContracts,
 	parseFixtures,
 	parseManifest,
-	resolveContractVersion,
 	toContract,
 	type ContractDocument,
 	type ContractFixtures,
@@ -800,40 +799,6 @@ export const read = demo.action('read', {
 		await expect(checkPublish(prev, next, fixturesOf('HELLO!'))).resolves.toMatchObject({
 			kind: 'minor',
 		});
-	});
-});
-
-describe('resolveContractVersion', () => {
-	const manifest = (semver: string, contract = 'c1'): VersionManifest =>
-		({
-			id: 'demo.echo',
-			semver,
-			contractHash: contract,
-			bundleHash: `b${semver}`,
-		}) as VersionManifest;
-	const lock = { action: 'demo.echo', version: '1.2.0', bundleHash: 'b1.2.0', contractHash: 'c1' };
-	const manifests = [
-		manifest('1.2.0'),
-		manifest('1.2.1'),
-		manifest('1.2.2'),
-		manifest('1.2.3', 'c2'),
-		manifest('1.3.0'),
-		manifest('2.0.0'),
-	];
-
-	it('runs the locked bundle when strict', () => {
-		expect(resolveContractVersion(lock, 'strict', manifests).semver).toBe('1.2.0');
-	});
-
-	it('runs the newest patch with the locked contract hash when tolerant', () => {
-		expect(resolveContractVersion(lock, 'tolerant', manifests).semver).toBe('1.2.2');
-		expect(resolveContractVersion(lock, 'tolerant', [manifest('1.2.1')]).semver).toBe('1.2.1');
-	});
-
-	it('names the action, version, and hash when nothing matches', () => {
-		expect(() => resolveContractVersion(lock, 'strict', [manifest('1.2.1')])).toThrow(
-			'No trusted version of demo.echo matches 1.2.0 (bundle b1.2.0)',
-		);
 	});
 });
 

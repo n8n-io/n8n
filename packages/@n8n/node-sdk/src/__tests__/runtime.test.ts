@@ -1568,7 +1568,7 @@ describe('node errorOf', () => {
 
 	it('gives the in-band error to run() as a UserError it can catch', async () => {
 		const caught: unknown[] = [];
-		const tolerant = message.action('tolerant', {
+		const catching = message.action('catching', {
 			...spec,
 			async run({ http, input }) {
 				try {
@@ -1582,7 +1582,7 @@ describe('node errorOf', () => {
 		const { host } = hostOf([{ ok: false, error: 'not_in_channel' }], {
 			parameter: (name) => (name === 'text' ? 'hi' : undefined),
 		});
-		const outputs = await executorOf(tolerant)(host);
+		const outputs = await executorOf(catching)(host);
 		expect(outputs[0]?.map(({ json: value }) => value)).toEqual([{ ok: false }]);
 		expect(caught[0]).toBeInstanceOf(UserError);
 		expect(caught[0]).toMatchObject({ message: 'Slack: not_in_channel' });
