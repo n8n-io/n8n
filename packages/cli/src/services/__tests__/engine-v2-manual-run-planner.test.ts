@@ -62,13 +62,16 @@ function workflow(overrides: Partial<IWorkflowBase> = {}): IWorkflowBase {
 
 const item = (json: IDataObject): INodeExecutionData => ({ json });
 
-function taskData(items: INodeExecutionData[]): ITaskData {
+function taskData(
+	items: INodeExecutionData[],
+	slots?: { done: INodeExecutionData[]; loop: INodeExecutionData[] },
+): ITaskData {
 	return {
 		startTime: 0,
 		executionTime: 0,
 		executionIndex: 0,
 		source: [],
-		data: { main: [items] },
+		data: { main: slots ? [slots.done, slots.loop] : [items] },
 	};
 }
 
@@ -159,7 +162,9 @@ describe('EngineV2ManualRunPlanner', () => {
 			);
 
 			expect(plan.triggerOutputs).toEqual([[item({ from: TRIGGER.name })]]);
-			expect(plan.seeded).toEqual([{ nodeId: A.id, outputs: [[item({ from: A.name })]] }]);
+			expect(plan.seeded).toEqual([
+				{ nodeId: A.id, iteration: 0, outputs: [[item({ from: A.name })]] },
+			]);
 		});
 
 		it('seeds nothing after a dirty node', () => {
@@ -184,7 +189,11 @@ describe('EngineV2ManualRunPlanner', () => {
 			);
 
 			expect(plan.seeded).toEqual([
-				{ nodeId: A.id, outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]] },
+				{
+					nodeId: A.id,
+					iteration: 0,
+					outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]],
+				},
 			]);
 		});
 
@@ -198,7 +207,9 @@ describe('EngineV2ManualRunPlanner', () => {
 			);
 
 			expect(nodeNames(plan)).toEqual([TRIGGER.name, A.name, B.name]);
-			expect(plan.seeded).toEqual([{ nodeId: A.id, outputs: [[item({ from: A.name })]] }]);
+			expect(plan.seeded).toEqual([
+				{ nodeId: A.id, iteration: 0, outputs: [[item({ from: A.name })]] },
+			]);
 		});
 
 		it('roots the run at the nearest node with run data when the trigger is disabled', () => {
@@ -213,7 +224,9 @@ describe('EngineV2ManualRunPlanner', () => {
 			expect(plan.triggerName).toBe(A.name);
 			expect(plan.triggerOutputs).toEqual([[item({ from: A.name })]]);
 			expect(nodeNames(plan)).toEqual([A.name, B.name, C.name]);
-			expect(plan.seeded).toEqual([{ nodeId: B.id, outputs: [[item({ from: B.name })]] }]);
+			expect(plan.seeded).toEqual([
+				{ nodeId: B.id, iteration: 0, outputs: [[item({ from: B.name })]] },
+			]);
 		});
 
 		it('refuses a disabled destination', () => {
@@ -241,7 +254,11 @@ describe('EngineV2ManualRunPlanner', () => {
 			expect(nodeNames(plan)).toEqual([TRIGGER.name, A.name, B.name, C.name]);
 			expect(plan.triggerOutputs).toEqual([[{ json: {} }]]);
 			expect(plan.seeded).toEqual([
-				{ nodeId: B.id, outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]] },
+				{
+					nodeId: B.id,
+					iteration: 0,
+					outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]],
+				},
 			]);
 		});
 
@@ -290,10 +307,87 @@ describe('EngineV2ManualRunPlanner', () => {
 			},
 		});
 
+		/** Run data of a loop that ran `passes` passes over one item each, then fired its done slot. */
+		function loopRunData(passes: number): IRunData {
+			const batchRuns = Array.from({ length: passes }, (_, i) =>
+				taskData([item({ pass: i })], { done: [], loop: [item({ pass: i })] }),
+			);
+			const done = { done: Array.from({ length: passes }, (_, i) => item({ pass: i })), loop: [] };
+			return {
+				...fullRunData(TRIGGER),
+				[LOOP.name]: [...batchRuns, taskData([], done)],
+				[A.name]: Array.from({ length: passes }, (_, i) => taskData([item({ pass: i, a: true })])),
+			};
+		}
+
+		it('seeds every pass of a finished loop when the destination lies after it', () => {
+			const plan = planner.plan(
+				runData({
+					workflowData: loopWorkflow,
+					destinationNode: { nodeName: B.name, mode: 'inclusive' },
+					runData: loopRunData(2),
+				}),
+			);
+
+			expect(plan.seeded).toEqual([
+				{ nodeId: LOOP.id, iteration: 0, outputs: [[], [item({ pass: 0 })]] },
+				{ nodeId: LOOP.id, iteration: 1, outputs: [[], [item({ pass: 1 })]] },
+				{ nodeId: LOOP.id, iteration: 2, outputs: [[item({ pass: 0 }), item({ pass: 1 })], []] },
+				{ nodeId: A.id, iteration: 0, outputs: [[item({ pass: 0, a: true })]] },
+				{ nodeId: A.id, iteration: 1, outputs: [[item({ pass: 1, a: true })]] },
+			]);
+		});
+
+		it('seeds nothing of a loop that has not run', () => {
+			const plan = planner.plan(
+				runData({
+					workflowData: loopWorkflow,
+					destinationNode: { nodeName: B.name, mode: 'inclusive' },
+					runData: fullRunData(TRIGGER),
+				}),
+			);
+
+			expect(plan.seeded).toEqual([]);
+		});
+
+		it('reruns a loop that did not finish instead of seeding it', () => {
+			// v1 restarts an unfinished loop from its entry and drops its run data,
+			// so nothing in the loop is reused.
+			const unfinished = loopRunData(2);
+			unfinished[LOOP.name] = unfinished[LOOP.name].slice(0, 2);
+			unfinished[A.name] = unfinished[A.name].slice(0, 1);
+
+			const plan = planner.plan(
+				runData({
+					workflowData: loopWorkflow,
+					destinationNode: { nodeName: B.name, mode: 'inclusive' },
+					runData: unfinished,
+				}),
+			);
+
+			expect(plan.seeded).toEqual([]);
+			expect(nodeNames(plan)).toEqual([TRIGGER.name, LOOP.name, A.name, B.name]);
+		});
+
+		it('refuses a loop member that did not run on every pass', () => {
+			const skipped = loopRunData(2);
+			skipped[A.name] = skipped[A.name].slice(0, 1);
+
+			expect(() =>
+				planner.plan(
+					runData({
+						workflowData: loopWorkflow,
+						destinationNode: { nodeName: B.name, mode: 'inclusive' },
+						runData: skipped,
+					}),
+				),
+			).toThrow(/"A" ran 1 times in the loop at "Loop", which ran 2 passes/);
+		});
+
 		it.each([
 			{ name: 'a loop member', pinned: A },
 			{ name: 'the node that heads a loop', pinned: LOOP },
-		])('refuses to seed $name', ({ pinned }) => {
+		])('refuses pinned data on $name', ({ pinned }) => {
 			expect(() =>
 				planner.plan(
 					runData({
@@ -302,7 +396,7 @@ describe('EngineV2ManualRunPlanner', () => {
 						pinData: { [pinned.name]: [item({ pinned: true })] },
 					}),
 				),
-			).toThrow(`"${pinned.name}" is inside a loop`);
+			).toThrow(`"${pinned.name}" has pinned data inside a loop`);
 		});
 
 		it('seeds a pinned parent when the run to its child drops the cycle through that child', () => {

@@ -5229,6 +5229,7 @@ describe('POST /workflows/:workflowId/run', () => {
 					seededSteps: [
 						{
 							nodeId: setNode?.id,
+							iteration: 0,
 							outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]],
 						},
 					],

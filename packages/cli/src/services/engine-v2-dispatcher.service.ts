@@ -162,10 +162,13 @@ export class EngineV2Dispatcher {
 		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
 			allowNonTriggerRoot: plan !== undefined,
 		});
-		const seededSteps: SeededStep[] | undefined = plan?.seeded.map(({ nodeId, outputs }) => ({
-			nodeId,
-			outputs: toStepOutputs(outputs),
-		}));
+		const seededSteps: SeededStep[] | undefined = plan?.seeded.map(
+			({ nodeId, iteration, outputs }) => ({
+				nodeId,
+				iteration,
+				outputs: toStepOutputs(outputs),
+			}),
+		);
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.

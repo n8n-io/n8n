@@ -608,7 +608,9 @@ describe('EngineV2Dispatcher', () => {
 				workflow: workflow(),
 				triggerName: MANUAL_TRIGGER.name,
 				triggerOutputs: [[{ json: { from: 'runData' } }]],
-				seeded: [{ nodeId: SET_NODE.id, outputs: [[{ json: { reused: true } }], []] }],
+				seeded: [
+					{ nodeId: SET_NODE.id, iteration: 0, outputs: [[{ json: { reused: true } }], []] },
+				],
 			};
 
 			beforeEach(() => {
@@ -626,7 +628,7 @@ describe('EngineV2Dispatcher', () => {
 				expect(request.triggerOutputs).toEqual([[{ json: { from: 'runData' } }]]);
 				// An empty slot collapses to a dead edge, as for any other step.
 				expect(request.seededSteps).toEqual([
-					{ nodeId: SET_NODE.id, outputs: [[{ json: { reused: true } }], null] },
+					{ nodeId: SET_NODE.id, iteration: 0, outputs: [[{ json: { reused: true } }], null] },
 				]);
 			});
 
