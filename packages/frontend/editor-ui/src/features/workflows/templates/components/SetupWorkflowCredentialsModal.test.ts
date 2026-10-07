@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import SetupWorkflowCredentialsModal from './SetupWorkflowCredentialsModal.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -44,20 +45,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-// Mock the Modal component to always render its slots
-vi.mock('@/app/components/Modal.vue', () => ({
-	default: {
-		template: `
-			<div data-test-id="modal">
-				<slot name="header" />
-				<slot name="content" />
-				<slot name="footer" />
-			</div>
-		`,
-		props: ['name', 'width', 'maxHeight'],
-	},
-}));
-
 vi.mock('./AppsRequiringCredsNotice.vue', () => ({
 	default: {
 		template: '<div data-test-id="apps-requiring-creds-notice" />',
@@ -92,29 +79,30 @@ describe('SetupWorkflowCredentialsModal', () => {
 		createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		uiStore = mockedStore(useUIStore);
+		uiStore.modalStateById[MODAL_NAME] = { open: true };
 		workflowsStore.workflowId = 'test-workflow-id';
 	});
 
-	it('renders with default title for template source', () => {
-		const { getByText } = renderComponent({
+	it('renders with default title for template source', async () => {
+		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
 				data: { source: 'template' },
 			},
 		});
 
-		expect(getByText('setupCredentialsModal.title')).toBeInTheDocument();
+		expect(await screen.findByText('setupCredentialsModal.title')).toBeInTheDocument();
 	});
 
-	it('renders with builder title for builder source', () => {
-		const { getByText } = renderComponent({
+	it('renders with builder title for builder source', async () => {
+		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
 				data: { source: 'builder' },
 			},
 		});
 
-		expect(getByText('setupCredentialsModal.title.builder')).toBeInTheDocument();
+		expect(await screen.findByText('setupCredentialsModal.title.builder')).toBeInTheDocument();
 	});
 
 	it('calls setInitialCredentialSelection and tracks telemetry on mount', () => {
@@ -181,45 +169,45 @@ describe('SetupWorkflowCredentialsModal', () => {
 		});
 	});
 
-	it('disables continue button when no credentials are filled', () => {
+	it('disables continue button when no credentials are filled', async () => {
 		mockNumFilledCredentials.value = 0;
 
-		const { getByTestId } = renderComponent({
+		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
 				data: { source: 'template' },
 			},
 		});
 
-		const button = getByTestId('continue-button') as HTMLButtonElement;
-		expect(button.disabled).toBe(true);
+		const button = await screen.findByTestId('continue-button');
+		expect(button).toHaveProperty('disabled', true);
 	});
 
-	it('enables continue button when at least one credential is filled', () => {
+	it('enables continue button when at least one credential is filled', async () => {
 		mockNumFilledCredentials.value = 1;
 
-		const { getByTestId } = renderComponent({
+		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
 				data: { source: 'template' },
 			},
 		});
 
-		const button = getByTestId('continue-button') as HTMLButtonElement;
-		expect(button.disabled).toBe(false);
+		const button = await screen.findByTestId('continue-button');
+		expect(button).toHaveProperty('disabled', false);
 	});
 
-	it('closes modal when continue button is clicked', () => {
+	it('closes modal when continue button is clicked', async () => {
 		mockNumFilledCredentials.value = 1;
 
-		const { getByTestId } = renderComponent({
+		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
 				data: { source: 'template' },
 			},
 		});
 
-		const button = getByTestId('continue-button');
+		const button = await screen.findByTestId('continue-button');
 		button.click();
 
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
