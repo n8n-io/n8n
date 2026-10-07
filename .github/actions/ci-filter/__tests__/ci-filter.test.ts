@@ -58,6 +58,15 @@ describe('matchGlob', () => {
 		);
 	});
 
+	it('backend module pattern matches packaged module files', () => {
+		assert.ok(
+			matchGlob(
+				'packages/modules/insights/backend/src/insights.service.ts',
+				'packages/modules/*/backend/**',
+			),
+		);
+	});
+
 	it('* matches single-level only', () => {
 		assert.ok(matchGlob('README.md', '*.md'));
 		assert.ok(!matchGlob('docs/README.md', '*.md'));

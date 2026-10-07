@@ -127,7 +127,13 @@ export {
 	LdapConfigurationPublicDto,
 	UpdateLdapConfigurationPublicDto,
 } from './ldap/ldap-configuration-public.dto';
-export { LdapSyncDto } from './ldap/ldap-sync.dto';
+export {
+	LdapSyncDto,
+	LdapSyncHistoryListPublicDto,
+	LdapSyncHistoryPublicDto,
+	ListLdapSyncHistoryQueryDto,
+	RunLdapSyncPublicDto,
+} from './ldap/ldap-sync-public.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
@@ -330,11 +336,14 @@ export {
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 export {
+	LogStreamingDestinationListPublicDto,
+	LogStreamingDestinationPublicDto,
+	LogStreamingEventTypesPublicDto,
 	PublicCreateDestinationDto,
-	PublicDestinationResponseDto,
+	type LogStreamingDestinationPublic,
 	type PublicCreateDestination,
 	type PublicDestinationType,
-} from './log-streaming/public-destination.dto';
+} from './log-streaming/log-streaming-public.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
@@ -519,7 +528,9 @@ export {
 	workflowVersionListItemPublicSchema,
 } from './workflow-history/workflow-version-history-public.dto';
 export {
+	DeprecatedWorkflowVersionPublicDto,
 	WorkflowVersionPublicDto,
+	deprecatedWorkflowVersionPublicSchema,
 	workflowVersionPublicSchema,
 } from './workflow-history/workflow-version-public.dto';
 
@@ -618,6 +629,9 @@ export {
 export {
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
+	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+	parsePromotionsWorkflowsMovedCrossProjectMeta,
+	promotionsWorkflowsMovedCrossProjectMetaSchema,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
@@ -629,9 +643,13 @@ export {
 	type PromotableResourceType,
 	type PromoteRequest,
 	type PromotionChanges,
+	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 
-export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
+export {
+	PROMOTION_BRANCH_PREFIX,
+	promotionDisplayNameSchema,
+} from './promotions/promotion-common.dto';
 export {
 	CreatePromotionProviderDto,
 	ListPromotionProvidersQueryDto,
@@ -708,7 +726,9 @@ export {
 export {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,
@@ -717,3 +737,5 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+
+export { ScimConfigPatchDto } from './scim';

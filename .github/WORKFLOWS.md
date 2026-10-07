@@ -10,7 +10,6 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── CODEOWNERS                            # Temporary, side by side with OWNERS during the trial
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -421,6 +420,7 @@ Run-workflow dropdown, which only a user with write access can pick.
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
+| `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
 
 ---
 
@@ -850,9 +850,8 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ## OWNERS
 
-Team ownership lives in the top-level `OWNERS` file (this replaces the
-GitHub-native `CODEOWNERS` file; see the transition note below). The scripts
-that consume it live in `.github/scripts/owners/`. Line format:
+Team ownership lives in the top-level `OWNERS` file. The scripts that consume
+it live in `.github/scripts/owners/`. Line format:
 
 ```
 <pattern> <@org/team> [required]
@@ -922,8 +921,7 @@ Reviews** status succeed without required OWNERS team approvals. A team member
 must apply the `large-scale-change` label. The gate checks the actor from the
 label event and verifies their current team membership. The label alone is not
 sufficient. Label changes re-evaluate the status. Removing the label removes
-the exemption. During the CODEOWNERS trial, GitHub still enforces its separate
-code-owner review requirement.
+the exemption.
 
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive
@@ -936,16 +934,6 @@ and skips same-repo heads, which the direct event already covers. A first
 contribution whose runs still wait for approval gets no review-event
 re-evaluation until a maintainer approves the runs; `workflow_dispatch` with
 the PR number is the manual fallback.
-
-### Transition from CODEOWNERS
-
-During a trial period, `.github/CODEOWNERS` stays in place next to OWNERS:
-GitHub's native code-owner enforcement keeps gating merges while the
-"Required Reviews" status runs side by side. The two must agree — CODEOWNERS
-holds exactly the `required` entries of OWNERS (plus the OWNERS file itself)
-and must not gain new entries; new ownership goes into OWNERS. After the
-trial, delete `.github/CODEOWNERS`, remove "Require review from Code Owners"
-from the master ruleset, and delete this section (tracked in DEVP-887).
 
 ---
 
@@ -1163,9 +1151,9 @@ open the PR there. That PR **must stay a single-parent squash** — the publish 
 posts to `#alerts-build` when that gate fails on a PR opened *from* `bundle/2.x` or
 `bundle/1.x` (link only, no PR title, since the branch is embargoed).
 
-`sec-sync-bundle-branches.yml` keeps those branches current after every public-to-private sync,
-daily, whenever a PR is merged into one, and on `workflow_dispatch`. It **merges the public
-base into** the bundle branch via
+`sec-sync-bundle-branches.yml` keeps those branches current nightly at 03:00 UTC and on
+`workflow_dispatch`, including before a bundle cut. It **merges the public base into** the
+bundle branch via
 [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without forcing.
 Every push is verified to carry exactly the tree a merge of the two sides would produce (`git
 merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
@@ -1178,7 +1166,8 @@ private-only until publication. The mirror can replace that commit with the publ
 the bundle branch is deleted. The next bundle branch must not inherit the replaced commit.
 
 Deleting a bundle branch takes its open PRs with it: GitHub moves each one onto the deleted
-branch's own base, and re-creating the branch does not move them back. So the sync then calls
+branch's own base, and re-creating the branch does not move them back. The next nightly or manual
+sync re-creates the branch and then calls
 [`sec-sync-retarget-prs.yml`](workflows/sec-sync-retarget-prs.yml), which moves every open PR
 on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
 branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the

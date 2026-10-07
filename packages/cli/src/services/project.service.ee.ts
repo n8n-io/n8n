@@ -115,6 +115,12 @@ export class ProjectService {
 		);
 	}
 
+	private get ownershipTransferService() {
+		return import('@/services/ownership-transfer/ownership-transfer.service.js').then(
+			({ OwnershipTransferService }) => Container.get(OwnershipTransferService),
+		);
+	}
+
 	private get dataTableService() {
 		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
 			Container.get(DataTableService),
@@ -212,6 +218,14 @@ export class ProjectService {
 					`Can't migrate end-user credentials (${names}) to a personal project. Switch them back to fixed credentials, move them to another team project, or delete this project without migrating.`,
 				);
 			}
+		}
+
+		if (targetProject) {
+			const ownershipTransferService = await this.ownershipTransferService;
+			await ownershipTransferService.enforceTransferPolicy(project.id, targetProject.id, {
+				kind: 'user',
+				user,
+			});
 		}
 
 		// 1. delete or migrate workflows owned by this project

@@ -91,7 +91,7 @@ function childWorkflow(): Partial<IWorkflowBase> {
 	};
 }
 
-test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'AI' }] }, () => {
+test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Agent' }] }, () => {
 	test('fits long session titles within the sessions table', async ({ n8n, api }) => {
 		const project = await api.projects.getMyPersonalProject();
 		const agentId = `agent-${nanoid(8)}`;

@@ -7,8 +7,8 @@ import type { Tracing } from 'n8n-core';
 import { observeSystemTaskRun } from './system-task-run-observer';
 
 /**
- * Runs one durable occurrence of a system task, handing it `shutdownSignal` so
- * it can stop early when the instance shuts down.
+ * Runs one durable occurrence of a system task. The signal aborts on shutdown.
+ * Lease loss or expiry also aborts it unless the dispatch marker is stored.
  *
  * Errors propagate: the executor is what retries the occurrence or gives up on
  * it, following the attempt limit carried by the occurrence's job row.
@@ -23,7 +23,11 @@ export class SystemTaskHandler implements TaskHandler {
 		private readonly onRunError: (error: unknown) => void,
 	) {}
 
-	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
+	async execute(
+		task: ClaimedTask,
+		report: DispatchReporter,
+		leaseSignal: AbortSignal,
+	): Promise<DispatchDecision> {
 		const decision =
 			this.systemTask.effects === 'non-idempotent' ? report.dispatched() : report.notDispatched();
 
@@ -33,6 +37,7 @@ export class SystemTaskHandler implements TaskHandler {
 			this.systemTask,
 			'durable',
 			this.shutdownSignal,
+			leaseSignal,
 		);
 		if (outcome.rejected) {
 			// An aborted run is not reported, but its rejection still propagates so
@@ -42,6 +47,10 @@ export class SystemTaskHandler implements TaskHandler {
 			}
 			throw outcome.error;
 		}
+
+		// A clean stop after lease loss must reject so the executor counts the failed attempt.
+		// A clean stop on shutdown still completes.
+		leaseSignal.throwIfAborted();
 
 		this.logger.debug('Ran a system task occurrence', {
 			name: this.systemTask.name,

@@ -582,10 +582,19 @@ export class AgentChatBridge {
 	 */
 	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
 		const baseId = this.baseThreadId(thread);
-		const idleTimeoutMinutes =
+		// `null` is a documented, explicit opt-out distinct from `undefined`
+		// (unset) — only fall back to the integration's default when the setting
+		// was never configured at all, not when it was deliberately disabled.
+		// Some integration types (see `AgentIntegrationConfig`) carry no
+		// `settings` field at all, hence the `in` check before reading it.
+		const configuredIdleTimeoutMinutes =
 			'settings' in this.integration
-				? (this.integration.settings?.sessionIdleTimeoutMinutes ?? null)
-				: null;
+				? this.integration.settings?.sessionIdleTimeoutMinutes
+				: undefined;
+		const idleTimeoutMinutes =
+			configuredIdleTimeoutMinutes !== undefined
+				? configuredIdleTimeoutMinutes
+				: (this.integrationImpl?.defaultSessionIdleTimeoutMinutes ?? null);
 		const id = await this.withSessionLock(
 			baseId,
 			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
