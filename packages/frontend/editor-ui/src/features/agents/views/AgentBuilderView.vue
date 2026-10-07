@@ -328,9 +328,7 @@ function onAiThreadIdChange(threadId: string) {
 	void router.replace({ query: { ...route.query, [ASSISTANT_THREAD_PARAM]: threadId } });
 }
 /** True while the embedded assistant is actively mutating this agent. */
-/** Temporary stub to preview the assistant changing the agent. */
-const embeddedAiBuilding = ref(true);
-const embeddedAiProcessing = ref(false);
+const embeddedAiBuilding = ref(false);
 const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiPanelRef');
 // The standalone preview route doesn't render the AI dock (`showAiPanel`
 // requires the builder route), so a hand-off requested from there has nowhere
@@ -2968,7 +2966,7 @@ useKeybindings({
 						:before-send="flushAutosaveIgnoringResult"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
-						@update:processing="embeddedAiProcessing = $event"
+						@update:building="embeddedAiBuilding = $event"
 						@close="isAiPanelOpen = false"
 					>
 						<template v-if="showAgentIntro" #empty>
@@ -2978,7 +2976,7 @@ useKeybindings({
 				</N8nResizeWrapper>
 			</aside>
 			<div
-				v-if="embeddedAiProcessing || embeddedAiBuilding"
+				v-if="embeddedAiBuilding"
 				:class="$style.activityArea"
 				:style="{
 					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,

@@ -4,7 +4,7 @@ import N8nIcon from '../N8nIcon';
 
 const TYPE = ['dots', 'ring', 'grid'] as const;
 
-const gridPositions = ['0 0', '4 0', '8 0', '0 4', '4 4', '8 4', '0 8', '4 8', '8 8'];
+const gridPositions = ['0 0', '4 0', '0 4', '4 4'];
 
 /** Match N8nIcon sizes, including sizes without a design token. */
 const gridSizes: Record<IconSize, number> = {
@@ -44,7 +44,7 @@ withDefaults(defineProps<SpinnerProps>(), {
 			focusable="false"
 			fill="currentColor"
 			role="presentation"
-			viewBox="0 0 11 11"
+			viewBox="0 0 7.5 7.5"
 			:width="gridSizes[size]"
 			:height="gridSizes[size]"
 			:style="{ width: `${gridSizes[size]}px`, height: `${gridSizes[size]}px` }"
@@ -53,7 +53,7 @@ withDefaults(defineProps<SpinnerProps>(), {
 			<path
 				v-for="(position, index) in gridPositions"
 				:key="position"
-				d="M0 0h1v1H0zM2 0h1v1H2zM0 2h1v1H0zM2 2h1v1H2z"
+				d="M0 0h1.5v1.5H0zM2 0h1.5v1.5H2zM0 2h1.5v1.5H0zM2 2h1.5v1.5H2z"
 				:transform="`translate(${position})`"
 				:style="{ '--spinner-step': index }"
 			/>

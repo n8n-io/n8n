@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nText, N8nVisuallyHidden } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useIntervalFn } from '@vueuse/core';
 import { ref } from 'vue';
@@ -23,9 +23,9 @@ const waves = lobes.map((lobe, index) => ({
 	'--wave-position': `${lobe.x}% 100%`,
 	'--wave-width': `${lobe.width}%`,
 	'--wave-depth': `${lobe.height / 100}`,
-	'--wave-color': `var(--n8n-beam--color-${(index % 9) + 1})`,
-	'--wave-delay': `calc(var(--n8n-beam--duration) * ${-index / 7})`,
-	'--wave-duration': `calc(var(--n8n-beam--duration) * ${1 + (index % 3) * 0.17})`,
+	'--wave-color': `var(--n8n-wave--color-${(index % 9) + 1})`,
+	'--wave-delay': `calc(var(--n8n-wave--duration) * ${-index / 7})`,
+	'--wave-duration': `calc(var(--n8n-wave--duration) * ${1 + (index % 3) * 0.17})`,
 }));
 
 const whimsicalLabels: BaseTextKey[] = [
@@ -56,14 +56,18 @@ useIntervalFn(() => {
 </script>
 
 <template>
-	<div :class="$style.beam">
+	<div :class="$style.wave">
 		<div
 			:class="$style.buildingIndicator"
 			role="status"
+			aria-live="polite"
 			:aria-label="i18n.baseText('instanceAi.agentPreview.building')"
 			data-test-id="instance-ai-agent-building-indicator"
 		>
-			<N8nSpinner type="grid" size="large" />
+			<N8nSpinner type="grid" size="large" aria-hidden="true" />
+			<N8nVisuallyHidden>
+				{{ i18n.baseText('instanceAi.agentPreview.building') }}
+			</N8nVisuallyHidden>
 			<div :class="$style.buildingLabel" aria-hidden="true">
 				<Transition
 					:enter-active-class="$style.labelEnterActive"
@@ -80,10 +84,10 @@ useIntervalFn(() => {
 		<div
 			v-for="layer in ['inner', 'ring', 'bloom', 'highlight']"
 			:key="layer"
-			:class="[$style.beamLayer, $style[layer]]"
+			:class="[$style.waveLayer, $style[layer]]"
 			aria-hidden="true"
 		>
-			<div v-for="(wave, index) in waves" :key="index" :class="$style.beamLight" :style="wave" />
+			<div v-for="(wave, index) in waves" :key="index" :class="$style.waveLight" :style="wave" />
 		</div>
 	</div>
 </template>
@@ -91,20 +95,20 @@ useIntervalFn(() => {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 
-.beam {
-	--n8n-beam--duration: calc(var(--duration--slowest) * 2);
-	--n8n-beam--size: var(--spacing--xl);
-	--n8n-beam--border: var(--border-width, 1px);
-	--n8n-beam--glow: var(--spacing--xs);
-	--n8n-beam--color-1: var(--color--red-500);
-	--n8n-beam--color-2: var(--color--blue-400);
-	--n8n-beam--color-3: var(--color--green-500);
-	--n8n-beam--color-4: var(--color--purple-500);
-	--n8n-beam--color-5: var(--color--gold-400);
-	--n8n-beam--color-6: var(--color--purple-600);
-	--n8n-beam--color-7: var(--color--blue-500);
-	--n8n-beam--color-8: var(--color--pink-500);
-	--n8n-beam--color-9: var(--color--mint-500);
+.wave {
+	--n8n-wave--duration: calc(var(--duration--slowest) * 2);
+	--n8n-wave--size: var(--spacing--xl);
+	--n8n-wave--border: var(--border-width, 1px);
+	--n8n-wave--glow: var(--spacing--lg);
+	--n8n-wave--color-1: var(--color--red-500);
+	--n8n-wave--color-2: var(--color--blue-400);
+	--n8n-wave--color-3: var(--color--green-500);
+	--n8n-wave--color-4: var(--color--purple-500);
+	--n8n-wave--color-5: var(--color--gold-400);
+	--n8n-wave--color-6: var(--color--purple-600);
+	--n8n-wave--color-7: var(--color--blue-500);
+	--n8n-wave--color-8: var(--color--pink-500);
+	--n8n-wave--color-9: var(--color--mint-500);
 
 	display: grid;
 	place-items: center;
@@ -113,7 +117,7 @@ useIntervalFn(() => {
 	inset-inline: 0;
 	z-index: 10;
 	isolation: isolate;
-	border-bottom: 1px solid var(--n8n-beam--border);
+	border-bottom: 1px solid var(--n8n-wave--border);
 	pointer-events: none;
 	@include motion.fade-in-up;
 	animation-fill-mode: backwards;
@@ -121,7 +125,7 @@ useIntervalFn(() => {
 
 .buildingIndicator {
 	position: relative;
-	z-index: 2;
+	z-index: 5;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -131,7 +135,7 @@ useIntervalFn(() => {
 	background: var(--color--neutral-black);
 	color: var(--color--neutral-white);
 	box-shadow:
-		inset 0 0 0 1px var(--color--white-alpha-200),
+		inset 0 0 0 1px light-dark(var(--color--white-alpha-200), var(--color--white-alpha-100)),
 		0 0 0 1px var(--color--neutral-black),
 		var(--shadow--xl);
 	pointer-events: none;
@@ -151,7 +155,7 @@ useIntervalFn(() => {
 
 .buildingLabel {
 	display: grid;
-	padding-right: var(--spacing--3xs);
+	padding-right: var(--spacing--5xs);
 }
 
 .labelWord {
@@ -182,7 +186,7 @@ useIntervalFn(() => {
 	transform: translateY(calc(-1 * var(--spacing--2xs)));
 }
 
-.beamLayer {
+.waveLayer {
 	position: absolute;
 	inset: 0;
 	overflow: hidden;
@@ -192,7 +196,7 @@ useIntervalFn(() => {
 
 .ring {
 	z-index: 3;
-	padding: var(--n8n-beam--border);
+	padding: var(--n8n-wave--border);
 	mask:
 		linear-gradient(#fff 0 0) content-box,
 		linear-gradient(#fff 0 0);
@@ -204,17 +208,17 @@ useIntervalFn(() => {
 }
 
 .inner {
-	opacity: 0.55;
+	opacity: 0.5;
 	mix-blend-mode: multiply;
 
-	.beamLight {
+	.waveLight {
 		filter: blur(var(--spacing--5xs));
 	}
 }
 
 .bloom {
 	z-index: 1;
-	filter: blur(var(--n8n-beam--glow));
+	filter: blur(var(--n8n-wave--glow));
 	opacity: 0.5;
 	mix-blend-mode: multiply;
 }
@@ -225,12 +229,12 @@ useIntervalFn(() => {
 	opacity: 0.95;
 	mix-blend-mode: screen;
 
-	.beamLight {
+	.waveLight {
 		background: radial-gradient(
-			ellipse calc(var(--wave-width) * 0.4) calc(var(--n8n-beam--size) * var(--wave-depth) * 1.25)
+			ellipse calc(var(--wave-width) * 0.4) calc(var(--n8n-wave--size) * var(--wave-depth) * 1.25)
 				at var(--wave-position),
 			#fff 0%,
-			rgb(255 255 255 / 90%) 12%,
+			light-dark(rgb(255 255 255 / 90%), rgb(255 255 255 / 50%)) 12%,
 			rgb(255 255 255 / 35%) 42%,
 			transparent 100%
 		);
@@ -238,23 +242,23 @@ useIntervalFn(() => {
 	}
 }
 
-.beamLight {
+.waveLight {
 	position: absolute;
 	inset: 0;
 	background: radial-gradient(
-		ellipse var(--wave-width) calc(var(--n8n-beam--size) * var(--wave-depth)) at
+		ellipse var(--wave-width) calc(var(--n8n-wave--size) * var(--wave-depth)) at
 			var(--wave-position),
 		var(--wave-color) 0%,
 		color-mix(in srgb, var(--wave-color) 45%, transparent) 35%,
 		transparent 100%
 	);
 	transform-origin: var(--wave-position);
-	animation: beam-breathe var(--wave-duration) ease-in-out infinite;
+	animation: wave-breathe var(--wave-duration) ease-in-out infinite;
 	animation-delay: var(--wave-delay);
 	mix-blend-mode: multiply;
 }
 
-@keyframes beam-breathe {
+@keyframes wave-breathe {
 	0%,
 	100% {
 		transform: scaleY(0.25);
@@ -275,7 +279,7 @@ useIntervalFn(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.beamLight {
+	.waveLight {
 		animation: none;
 	}
 }
