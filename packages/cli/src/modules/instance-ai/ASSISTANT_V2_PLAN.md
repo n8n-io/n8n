@@ -59,7 +59,7 @@ rebuild it in reviewable pieces with the approach below.
 ```mermaid
 flowchart LR
   UI[Assistant UI] -- v1 thread --> V1[v1: /instance-ai/chat + SSE event log]
-  UI -- v2 thread --> AC[POST /projects/:p/agents/v2/n8n-assistant/chat]
+  UI -- v2 thread --> AC[POST /agents/system/n8n-assistant/chat]
   AC --> Q[Agents message queue]
   Q --> C[Queue consumer]
   C --> P[AssistantAgentProvider]
@@ -93,13 +93,67 @@ Find the reference code with `git show <commit>` on the PoC branch.
 | Editor on the Agents chat | `1e90e2e53b4`, `e8ba910a1bb`, `9502710cb10`, `3028069fffe`, `737414f3982` | `InstanceAiAgentsConversation.vue`, `components/agentsChat/InstanceAiConfirmationCard.vue`, `agentsChatThreadAdapter.ts`, `AgentChatPanel.vue` |
 | System-agent routes, queue kind and access floor | `72a1e54777a`, `0ff0df89705` | `agents/system-agents/system-agent-chat.controller.ts`, `system-agent-access.ts`, `agents/agent-chat-relay.service.ts`, editor `features/agents/utils/agentChatPath.ts` |
 | Interaction extensions | `18da4fa2e8e` | `ai/shared/agentsChat/interactionRegistry.ts`, `messageMappers.ts`, `instanceAi/assistantConfirmation.ts` |
-| Fixes found in review | `abbb17d9d59`, `907953b7131`, `e27ea706d55` | See section 12 |
+| Fixes found in review | `abbb17d9d59`, `907953b7131`, `e27ea706d55` | See section 13 |
 | Removals (v1 deletion reference) | `a473877b05c`, `0e60c5106da`, `31c32401060`, `0589c56632f`, `e0a0379ced8` | Use only in the final phase |
 
 Do not copy PoC code that deletes or changes v1 behavior into early steps.
 Section 7 lists the shared-code changes that must support both runtimes.
 
-## 5. Phase 1: Agents prerequisites
+## 5. Execution order
+
+Most Phase 1 items do not depend on each other. Land them as parallel PRs
+where possible, and as stacked PRs only where one needs another. The
+`n8n:gh-stack` skill manages stacks.
+
+```mermaid
+flowchart LR
+  subgraph P[Parallel PRs from master]
+    A1[A1 AgentChatPanel API]
+    A3[A3 type export]
+    A7[A7 interaction extensions]
+  end
+  subgraph S1[Stack 1: Agents backend foundation]
+    A2[A2 patchThread] --> A4[A4 hostContext] --> A5[A5 hidden turns and system kind] --> A6[A6 repository queries] --> A8[A8 instance-scope schema] --> A9[A9 system-agent layer] --> A10[A10 workspace hook]
+  end
+  subgraph S2[Stack 2: Assistant prep, no behavior change]
+    B1[B1 shared turn setup] --> B2[B2 persisted turn state] --> B3[B3 dual event publishing]
+    B4[B4 attachments in binary data]
+    B5[B5 ConfirmationData move]
+  end
+  S1 --> C[Phase 3: v2 behind a flag]
+  S2 --> C
+  P --> C
+```
+
+- Stack 1 is owned by the Agents team review. A9 needs A2, A4, A5, A6 and
+  A8. A10 extends A9. The `system` queue kind can land with A5.
+- Stack 2 needs no Agents review. It can start in parallel with Stack 1.
+- Phase 3 starts when Stack 1, Stack 2 and the editor items have landed.
+
+### Open explorations
+
+The PoC replaced v1. The strangler plan keeps v1 and v2 side by side. These
+assumptions were not tested on the PoC branch:
+
+| # | Exploration | Why | When |
+|---|---|---|---|
+| E1 | B1 spike on `master`: extract the shared turn setup from `InstanceAiService` with no behavior change | The plan assumes v1 and v2 can share one turn setup. If the extraction is tangled, Phase 2 grows. | Before Stack 2 |
+| E2 | Port the eval transport (C1) on the PoC branch and run a subset of the eval suite | All evals are broken on the PoC branch. This is the only quality signal before Phase 3. | Before committing to Phase 3 |
+| E3 | One live turn with LangSmith tracing on the v2 path (EU endpoint) | The code path is wired, but no trace was seen. | Any time; cheap |
+| E4 | One live computer-use and one browser-use turn | Not tested in the PoC. | Any time; cheap |
+| E5 | Live two-main test | Multi-main is correct by design only. | Before Phase 4 rollout |
+
+### Handover notes
+
+- Land this plan on `master` (a docs PR), or link it from the Linear ticket.
+  The work happens on `master`, not on the PoC branch.
+- Keep the PoC branch. This plan refers to its commits by hash.
+- Get IAM sign-off for the A9 access floor before Stack 1 reaches A9.
+- Treat the PoC as reference code. Each item lists what to fix when
+  extracting. Do not copy the PoC commits that delete v1 code into early
+  steps.
+
+## 6. Phase 1: Agents prerequisites
 
 All items in this phase are changes in the Agents module or the shared
 Agents chat code. None changes behavior for project agents. Items A1–A7 have
@@ -197,6 +251,11 @@ ignore it.
   `origin.hidden` support of background jobs.
 - `options`: opaque per-turn options for the consumer. Only system agents
   (A9) read them.
+
+Also add the `system` queue kind (decided for A9) here, with
+`isInteractiveChatKind` for steering, reordering and editing. PoC reference:
+`types/agent-queued-message.ts`, `agent-message-steering.service.ts`,
+`repositories/agent-message-queue.repository.ts` (commit `72a1e54777a`).
 
 **PoC reference:** `agent-message-queue.service.ts`,
 `types/agent-queued-message.ts` (commits `8a6209498fa`, `5acf5ba0e45`).
@@ -459,7 +518,7 @@ missing lease, a failed release and a busy thread; source tests for the
 lazy lease, retry after a failed acquisition, setup, release policy and
 destroy.
 
-## 6. Phase 2: Assistant refactors on master (no behavior change)
+## 7. Phase 2: Assistant refactors on master (no behavior change)
 
 These steps prepare v1 code for v2. Each one is a refactor of v1 that ships
 on its own.
@@ -472,7 +531,7 @@ on its own.
 | B4 | Attachments in binary data | Store attachments in n8n binary data with references in messages. | `dae18013de9` |
 | B5 | `ConfirmationData` out of the stream runtime | Move it to `runtime/confirmation-payload.ts` so v2 can use it without the v1 stream code. | PoC branch `@n8n/instance-ai/src/runtime/confirmation-payload.ts` |
 
-## 7. Phase 3: Assistant v2 behind a flag
+## 8. Phase 3: Assistant v2 behind a flag
 
 | # | Step | Detail |
 |---|---|---|
@@ -481,9 +540,9 @@ on its own.
 | C3 | Flag and per-thread routing | A flag (PostHog or env, name to decide) selects v2 for new threads. Store the runtime on the thread. Route the controller and the editor by the thread's runtime. |
 | C4 | v2 thread services | Thread info, list, history, rename, delete and tabs on the Agents tables. The thread list, search and delete must merge v1 and v2 threads. Use the "turn still running" check of the Agents delete. |
 | C5 | v2 editor view | `InstanceAiAgentsConversation` with `AgentChatPanel`, the Assistant interaction extension (A7), the "+" menu in `footer-start`, the side-panel adapter (`agentsChatThreadAdapter.ts`), approval titles and details (`approvalDetails.ts`). |
-| C6 | Cut features | Decide port or drop for each item in section 10. |
+| C6 | Cut features | Decide port or drop for each item in section 11. |
 
-## 8. Phase 4: rollout and comparison
+## 9. Phase 4: rollout and comparison
 
 - Internal users first, then a percentage on Cloud.
 - Run the eval suites against both runtimes (C1) and compare.
@@ -493,7 +552,7 @@ on its own.
   multi-main.
 - Rollback: turn off the flag. New threads use v1 again.
 
-## 9. Phase 5: switch over and remove v1
+## 10. Phase 5: switch over and remove v1
 
 1. Make v2 the default for new threads.
 2. Old threads: migrate them into the Agents tables, or make them read-only
@@ -509,7 +568,7 @@ on its own.
 5. Check if this needs to wait for v3 (breaking changes go to `3.x`, see
    `.github/DEVELOPING_V3.md`).
 
-## 10. Phase 6: follow-ups
+## 11. Phase 6: follow-ups
 
 | Item | Detail |
 |---|---|
@@ -518,7 +577,7 @@ on its own.
 | Cut features | Preference cards, debug panel and run debug, @-mentions in the thread composer, onboarding card, LangSmith thumbs feedback, response-latency and stall telemetry, user-facing error rewording. |
 | Cleanup | Unused `instanceAi.*` i18n keys (about 212 in the PoC), dead exports. |
 
-## 11. Open decisions
+## 12. Open decisions
 
 | Decision | Options | Notes |
 |---|---|---|
@@ -529,7 +588,7 @@ on its own.
 Decided (see section 2 and A9): provider model, Agents admin setting, queue
 kind, access model and routes.
 
-## 12. Risks and lessons from the PoC
+## 13. Risks and lessons from the PoC
 
 Risks:
 
@@ -562,7 +621,7 @@ Practical notes:
 - Unset `LANGSMITH_API_KEY` for local runs unless you also set the EU
   endpoint.
 
-## 13. Cross-check with the Agents feature list from team review
+## 14. Cross-check with the Agents feature list from team review
 
 | Item from team review | Plan item |
 |---|---|
@@ -575,10 +634,11 @@ Practical notes:
 | Backend-started runs with durable suspend and resume | A5, A9 |
 | Policy hook to lock an agent's model | Deferred: code providers first (section 2) |
 
-## 14. Progress
+## 15. Progress
 
 | Item | Status | PR |
 |---|---|---|
 | A1–A10 | Not started | |
 | B1–B5 | Not started | |
 | C1–C6 | Not started | |
+| E1–E5 | Not started | |
