@@ -135,6 +135,7 @@ export interface SandboxInfo {
 }
 
 export interface WorkspaceSandbox {
+	getPreviewUrl?(port: number): Promise<string>;
 	readonly id: string;
 	readonly name: string;
 	readonly provider: string;

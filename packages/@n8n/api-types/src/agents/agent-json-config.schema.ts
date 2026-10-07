@@ -1,6 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
+import { AgentCodingConfigSchema } from './agent-coding.schema';
 import { AgentApprovalSchema, AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
@@ -460,6 +461,7 @@ export const BudgetGuardrailConfigSchema = z
 export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
 
 export const AgentJsonConfigBaseSchema = z.object({
+	coding: AgentCodingConfigSchema.nullable().optional(),
 	name: z.string().min(1).max(128),
 	/** An empty string is a deliberate clear of a previously stored value. */
 	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),

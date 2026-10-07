@@ -961,6 +961,23 @@ async function sendMessageFromOutside(message: string, files?: File[]): Promise<
 	return result !== 'rejected';
 }
 
+async function sendReview(message: string): Promise<boolean> {
+	if (isSubmissionBlocked.value || isStreaming.value || hasOpenInteraction.value) return false;
+	const sessionId = props.continueSessionId;
+	isPreparingToSend.value = true;
+	try {
+		await props.beforeSend?.();
+		if (disposed || props.continueSessionId !== sessionId) return false;
+		let accepted = false;
+		await sendMessage(message, undefined, () => {
+			accepted = true;
+		});
+		return accepted;
+	} finally {
+		isPreparingToSend.value = false;
+	}
+}
+
 async function submitQueuedExternalMessage(): Promise<SubmitResult | undefined> {
 	const message = queuedExternalMessage;
 	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return undefined;
@@ -1015,6 +1032,7 @@ defineExpose({
 	messages: computed(() => messages.value),
 	isStreaming,
 	isLoadingHistory: computed(() => isLoadingHistory.value),
+	sendReview,
 });
 
 onMounted(() => {

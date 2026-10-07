@@ -4,6 +4,7 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import {
 	DataSource,
+	In,
 	IsNull,
 	LessThan,
 	Not,
@@ -55,6 +56,22 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			where: { id: threadId },
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+	}
+
+	async findCodingSessionThreads(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		ids: string[],
+	) {
+		if (ids.length === 0) return [];
+		return await this.findBy({
+			id: In(ids),
+			projectId,
+			agentId,
+			ownerId: userId,
+			accessScope: 'user',
 		});
 	}
 

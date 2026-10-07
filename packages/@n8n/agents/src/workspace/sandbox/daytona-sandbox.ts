@@ -247,6 +247,12 @@ export class DaytonaSandbox extends BaseSandbox {
 		return this.sandbox;
 	}
 
+	async getPreviewUrl(port: number): Promise<string> {
+		await this.ensureRunning();
+		await this.ensureAuthFresh();
+		return (await this.instance.getSignedPreviewUrl(port, 3600)).url;
+	}
+
 	override async start(): Promise<void> {
 		if (this.sandbox) return;
 

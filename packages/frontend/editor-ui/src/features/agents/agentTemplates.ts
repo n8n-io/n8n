@@ -1,4 +1,5 @@
 import type { BaseTextKey } from '@n8n/i18n';
+import { N8N_CODING_DEFAULTS, type AgentCodingConfig } from '@n8n/api-types';
 import type {
 	AgentIntegrationConfig,
 	AgentJsonConfig,
@@ -23,6 +24,7 @@ export interface AgentTemplate {
 	gradient: AgentTemplateGradient;
 	/** Written onto a blank agent. `model` is never set here. */
 	config: {
+		coding?: AgentCodingConfig;
 		name: string;
 		instructions: string;
 		tools?: AgentJsonToolConfig[];
@@ -49,6 +51,23 @@ export interface AgentTemplate {
 export const AGENT_TEMPLATE_SUGGESTIONS_VERSION = 'agent-templates-v1';
 
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
+	{
+		id: 'coding-assistant',
+		labelKey: 'agents.coding.template.label',
+		descriptionKey: 'agents.coding.template.description',
+		icon: 'code',
+		gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+		config: {
+			name: 'Coding assistant',
+			instructions:
+				'Help the user develop their repository. Read its instructions before you change code. Make the requested changes and explain how to test them. Keep unrelated changes intact.',
+			coding: {
+				repositoryUrl: 'https://github.com/n8n-io/n8n.git',
+				branch: 'master',
+				...N8N_CODING_DEFAULTS,
+			},
+		},
+	},
 	{
 		id: 'morning-news-brief',
 		labelKey: 'agents.builder.templates.morningNewsBrief.label',
@@ -199,6 +218,7 @@ export function applyAgentTemplate(
 		...config,
 		name: config.name === defaultName ? template.config.name : config.name,
 		instructions: template.config.instructions,
+		coding: template.config.coding ?? config.coding,
 		tools: template.config.tools ?? [],
 		integrations: template.config.integrations ?? [],
 		config: { ...config.config, ...template.config.config },

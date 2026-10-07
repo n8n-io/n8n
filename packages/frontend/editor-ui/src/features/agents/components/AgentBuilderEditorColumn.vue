@@ -30,6 +30,7 @@ import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
+import AgentCodingPanel from './AgentCodingPanel.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -53,6 +54,7 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	beforeCodingPrepare?: () => Promise<unknown>;
 	preventScroll?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
@@ -218,6 +220,17 @@ const i18n = useI18n();
 							@add-tool="emit('add-tool', $event)"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
+						/>
+						<AgentCodingPanel
+							v-if="knowledgeBaseEnabled"
+							:config="localConfig?.coding"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							:can-execute="canExecuteAgent"
+							:before-prepare="beforeCodingPrepare"
+							@update:config="emit('update:config', { coding: $event })"
+							@open="emit('open-preview')"
 						/>
 					</AgentPanel>
 

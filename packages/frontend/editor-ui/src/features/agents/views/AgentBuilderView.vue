@@ -63,6 +63,7 @@ import {
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
+import type { AgentCodingChat } from '@n8n/api-types';
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
@@ -121,6 +122,7 @@ import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import AgentCodingView from '../components/AgentCodingView.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -700,8 +702,13 @@ trackAcceptedFixHandoff = trackFixHandoff;
 const previewSessionsLoading = computed(
 	() => sessionsStore.loading || sessionsStore.previewLoading,
 );
+const codingSessionReadyId = ref<string>();
+const codingStreaming = ref(false);
 const previewSessionReady = computed(
-	() => currentSessionIsLocallyMinted.value || currentSession.value?.canContinueInPreview === true,
+	() =>
+		currentSessionIsLocallyMinted.value ||
+		currentSession.value?.canContinueInPreview === true ||
+		(Boolean(localConfig.value?.coding) && codingSessionReadyId.value === effectiveSessionId.value),
 );
 
 // Config
@@ -724,6 +731,15 @@ const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('ve
 const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
 const previewDock = useTemplateRef<InstanceType<typeof AgentPreviewDock>>('previewDock');
+function onCodingSessionSelect(chat: AgentCodingChat) {
+	codingStreaming.value = false;
+	codingSessionReadyId.value = chat.id;
+	onSessionPick(chat.id, !chat.hasConversation);
+}
+async function sendCodingReview(message: string) {
+	return (await previewChatPage.value?.sendReview(message)) ?? false;
+}
+
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -1016,7 +1032,7 @@ async function onOpenPreview(expectedTarget?: {
 	projectId: string;
 	agentId: string;
 }): Promise<boolean> {
-	if (!isBuilt.value) return false;
+	if (!isBuilt.value && !localConfig.value?.coding) return false;
 
 	try {
 		await flushAutosave();
@@ -1028,6 +1044,12 @@ async function onOpenPreview(expectedTarget?: {
 	}
 	if (isArtifactMode.value) {
 		openArtifactPreview();
+	} else if (localConfig.value?.coding) {
+		await router.push({
+			name: AGENT_PREVIEW_VIEW,
+			params: { projectId: projectId.value, agentId: agentId.value },
+			query: getBuilderQuery(),
+		});
 	} else {
 		await openPreview();
 	}
@@ -1065,6 +1087,11 @@ function closePreviewRoute() {
 
 function returnToBuilderFromPreview() {
 	void router.push(agentBuilderHref.value);
+}
+
+async function beforeCodingPrepare() {
+	await ensureAgentPersisted();
+	await flushAutosave();
 }
 
 function closePreviewDock() {
@@ -2692,6 +2719,7 @@ function isNotFoundError(error: unknown): boolean {
 
 const pendingPreviewValidations = new Set<string>();
 async function ensurePreviewSessionAvailable(sessionId: string) {
+	if (isStandalonePreview.value && localConfig.value?.coding) return;
 	if (previewSessionsLoading.value || currentSessionIsLocallyMinted.value) return;
 	if (currentSession.value) {
 		if (!currentSession.value.canContinueInPreview) acceptPreviewSession(currentSession.value);
@@ -2849,7 +2877,7 @@ useKeybindings({
 <template>
 	<div :class="$style.root">
 		<AgentPreviewHeader
-			v-if="isStandalonePreview"
+			v-if="isStandalonePreview && !localConfig?.coding"
 			:agent-name="agent?.name ?? agentName"
 			:agent-href="agentBuilderHref"
 			:session-title="currentSessionTitle"
@@ -2864,7 +2892,8 @@ useKeybindings({
 			@view-trace="viewPreviewTrace"
 		/>
 		<AgentBuilderHeader
-			v-else
+			v-else-if="!isStandalonePreview"
+			:coding="Boolean(localConfig?.coding)"
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -3000,28 +3029,51 @@ useKeybindings({
 				<N8nIcon icon="spinner" spin />
 			</div>
 			<template v-else>
-				<AgentPreviewChatPage
+				<component
+					:is="localConfig?.coding ? AgentCodingView : 'div'"
+					:key="`${projectId}:${agentId}`"
 					v-if="isStandalonePreview"
-					ref="previewChatPage"
-					layout="page"
-					:initialized="initialized && previewSessionReady"
-					:project-id="projectId"
-					:agent-id="agentId"
-					:agent="agent"
-					:local-config="localConfig"
-					:connected-triggers="connectedTriggers"
-					:effective-session-id="effectiveSessionId"
-					:new-session="currentSessionIsEphemeral"
-					:can-send-to-assistant="instanceAiAvailable"
-					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-					:before-send="beforePreviewSend"
-					budget-cards
-					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
-					@continue-loaded="onContinueLoaded"
-					@session-created="markSessionCreated"
-					@open-build="returnToBuilderFromPreview"
-					@send-to-assistant="onSendPreviewToAssistant"
-				/>
+					:class="$style.fullPreview"
+					v-bind="
+						localConfig?.coding
+							? {
+									projectId,
+									agentId,
+									config: localConfig.coding,
+									canExecute: canExecuteAgent,
+									sessionId: effectiveSessionId,
+									streaming: codingStreaming,
+									sendReview: sendCodingReview,
+								}
+							: {}
+					"
+					@add-to-chat="previewChatPage?.addContext($event)"
+					@session-select="onCodingSessionSelect"
+					@back="returnToBuilderFromPreview"
+				>
+					<AgentPreviewChatPage
+						ref="previewChatPage"
+						layout="page"
+						:initialized="initialized && previewSessionReady"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent="agent"
+						:local-config="localConfig"
+						:connected-triggers="connectedTriggers"
+						:effective-session-id="effectiveSessionId"
+						:new-session="currentSessionIsEphemeral"
+						:can-send-to-assistant="instanceAiAvailable"
+						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+						:before-send="beforePreviewSend"
+						budget-cards
+						:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+						@continue-loaded="onContinueLoaded"
+						@session-created="markSessionCreated"
+						@update:streaming="codingStreaming = $event"
+						@open-build="returnToBuilderFromPreview"
+						@send-to-assistant="onSendPreviewToAssistant"
+					/>
+				</component>
 
 				<AgentBuilderEditorColumn
 					v-else
@@ -3050,6 +3102,7 @@ useKeybindings({
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:before-coding-prepare="beforeCodingPrepare"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
@@ -3145,6 +3198,13 @@ useKeybindings({
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
+
+.fullPreview {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
 
 .root {
 	--n8n--agent-builder-header-height: var(--height--4xl);

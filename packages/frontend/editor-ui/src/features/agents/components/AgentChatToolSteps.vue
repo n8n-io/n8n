@@ -8,7 +8,7 @@ import {
 	N8nMarkdownEditor,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, toRef } from 'vue';
+import { computed, inject, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
@@ -29,6 +29,8 @@ import {
 	writeTodosSummaryLabel,
 } from '../utils/write-todos-tool';
 import { TOOL_CALL_STATE } from '../constants';
+import { CODING_OPEN_FILE } from '../utils/coding-review';
+import AgentCodingToolDetails from './AgentCodingToolDetails.vue';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
@@ -43,6 +45,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const openCodingFile = inject(CODING_OPEN_FILE, undefined);
+
+function isCodingTool(tc: ToolCall): boolean {
+	return (
+		Boolean(openCodingFile) &&
+		['workspace_read_file', 'workspace_write_file', 'workspace_execute_command'].includes(tc.tool)
+	);
+}
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
@@ -104,6 +114,11 @@ function getToolDisplayName(toolName: string, output?: unknown): string {
 }
 
 function toolStepLabel(tc: ToolCall, isCompact = false): string {
+	if (isCodingTool(tc)) {
+		if (tc.tool === 'workspace_read_file') return i18n.baseText('agents.chat.toolNames.readFile');
+		if (tc.tool === 'workspace_write_file') return i18n.baseText('agents.coding.tools.writeFile');
+		return i18n.baseText('agents.coding.tools.runCommand');
+	}
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
@@ -263,7 +278,8 @@ function hasActiveToolCall(): boolean {
 							max-height="240px"
 							:class="$style.answer"
 						/>
-						<div v-if="view.hasRawData" :class="$style.toolDataList">
+						<AgentCodingToolDetails v-if="isCodingTool(tc)" :tool-call="tc" />
+						<div v-else-if="view.hasRawData" :class="$style.toolDataList">
 							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
@@ -327,7 +343,8 @@ function hasActiveToolCall(): boolean {
 							max-height="240px"
 							:class="$style.answer"
 						/>
-						<div v-if="view.hasRawData" :class="$style.toolDataList">
+						<AgentCodingToolDetails v-if="isCodingTool(tc)" :tool-call="tc" />
+						<div v-else-if="view.hasRawData" :class="$style.toolDataList">
 							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}

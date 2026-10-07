@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useSessionStorage } from '@vueuse/core';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
@@ -47,9 +48,29 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'update:streaming': [value: boolean];
 }>();
 
-const inputDraft = ref('');
+const defaultDraft = ref('');
+const codingDrafts = useSessionStorage<Record<string, string>>(
+	`n8n-coding-drafts:${props.projectId}:${props.agentId}`,
+	{},
+);
+const inputDraft = computed({
+	get() {
+		if (props.localConfig?.coding && props.effectiveSessionId) {
+			return codingDrafts.value[props.effectiveSessionId] ?? '';
+		}
+		return defaultDraft.value;
+	},
+	set(value: string) {
+		if (props.localConfig?.coding && props.effectiveSessionId) {
+			codingDrafts.value[props.effectiveSessionId] = value;
+			return;
+		}
+		defaultDraft.value = value;
+	},
+});
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
 
 function focusInput(options?: FocusOptions) {
@@ -64,6 +85,11 @@ function clearBudgetStops(fields: BudgetAmountField[]) {
 	chatPanel.value?.clearBudgetStops(fields);
 }
 
+function addContext(context: string) {
+	inputDraft.value = [inputDraft.value, context].filter(Boolean).join('\n\n');
+	focusInput();
+}
+
 watch(
 	[() => props.initialPrompt, chatPanel],
 	([prompt, panel]) => {
@@ -73,7 +99,11 @@ watch(
 	{ immediate: true, flush: 'post' },
 );
 
-defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
+async function sendReview(message: string) {
+	return (await chatPanel.value?.sendReview(message)) ?? false;
+}
+
+defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops, addContext, sendReview });
 </script>
 
 <template>
@@ -106,6 +136,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
+				@update:streaming="emit('update:streaming', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>

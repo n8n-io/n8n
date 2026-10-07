@@ -31,6 +31,7 @@ import type { AgentResource } from '../types';
 
 const props = defineProps<{
 	agent: AgentResource | null;
+	coding?: boolean;
 	projectId: string;
 	agentId: string;
 	projectName: string | null;
@@ -225,6 +226,7 @@ function onMenuSelect(id: string) {
 				}}
 			</span>
 			<AgentPreviewButton
+				:coding="coding"
 				:is-runnable="props.agent?.isRunnable === true"
 				:is-preview-open="props.isPreviewOpen"
 				:validation-issues="props.configValidationIssues ?? []"

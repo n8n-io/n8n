@@ -353,12 +353,21 @@ export class AgentSandboxRuntimeService {
 		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
-		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const config =
 			provider === 'daytona'
 				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, lifecycle)
 				: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
+		if (
+			config.provider === 'daytona' &&
+			labels[LABEL_SANDBOX_KIND] === 'workspace' &&
+			agent.schema?.coding?.repositoryUrl.includes('n8n-io/n8n')
+		) {
+			config.resources = { cpu: 4, memory: 8, disk: 10 };
+			// Snapshot resources are fixed. Use the image when it is available.
+			if (config.image) config.snapshot = undefined;
+		}
 		return await this.startSandbox(config, projectId, agentId, cacheKey, startOptions);
 	}
 

@@ -30,6 +30,7 @@ import { createAgentCredentialProvider } from './utils/agent-credential-provider
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 
 export interface GetRuntimeParams {
+	codingSessionId?: string;
 	agentId: string;
 	projectId: string;
 	integrationType?: string;
@@ -131,6 +132,7 @@ export class AgentRuntimeCacheService {
 		// instruction paragraph. Move to a per-run instruction override if
 		// runtime count becomes a problem — `@n8n/agents` has no such option yet.
 		if (params.previewChat) parts.push('preview');
+		if (params.codingSessionId) parts.push(`coding:${params.codingSessionId}`);
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
@@ -346,7 +348,12 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks, attributionUserId },
+			{
+				previewChat,
+				allowBackgroundTasks,
+				attributionUserId,
+				codingSessionId: params.codingSessionId,
+			},
 		);
 		const {
 			agent: agentInstance,
