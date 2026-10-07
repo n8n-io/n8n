@@ -1,5 +1,6 @@
 import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
@@ -16,6 +17,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import * as permissions from '@/app/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
 
@@ -128,6 +130,7 @@ let uiStore: MockedStore<typeof useUIStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let rolesStore: MockedStore<typeof useRolesStore>;
 let ssoStore: MockedStore<typeof useSSOStore>;
+let provisioningStore: MockedStore<typeof useUserRoleProvisioningStore>;
 
 describe('SettingsUsersView', () => {
 	beforeEach(() => {
@@ -150,6 +153,7 @@ describe('SettingsUsersView', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		rolesStore = mockedStore(useRolesStore);
 		ssoStore = mockedStore(useSSOStore);
+		provisioningStore = mockedStore(useUserRoleProvisioningStore);
 
 		// Setup default store states
 		usersStore.usersLimitNotReached = true;
@@ -206,6 +210,26 @@ describe('SettingsUsersView', () => {
 		expect(screen.getByRole('heading', { name: /users/i })).toBeInTheDocument();
 		expect(screen.getByTestId('users-list-search')).toBeInTheDocument();
 		expect(screen.getByTestId('settings-users-invite-button')).toBeInTheDocument();
+	});
+
+	it('does not request provisioning config without an SSO license', async () => {
+		renderComponent();
+		await flushPromises();
+
+		expect(provisioningStore.getProvisioningConfig).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		EnterpriseEditionFeature.Saml,
+		EnterpriseEditionFeature.Oidc,
+		EnterpriseEditionFeature.Ldap,
+	])('requests provisioning config with a %s license', async (feature) => {
+		settingsStore.isEnterpriseFeatureEnabled[feature] = true;
+		renderComponent();
+
+		await waitFor(() => {
+			expect(provisioningStore.getProvisioningConfig).toHaveBeenCalledOnce();
+		});
 	});
 
 	it('should open invite modal when invite button is clicked', async () => {
