@@ -301,6 +301,23 @@ export class SkillHubRepository {
 		return max + 1;
 	}
 
+	/** Number and author of every saved version of these skills, without content. */
+	async findSavedVersionAuthors(
+		skillIds: string[],
+		trx?: EntityManager,
+	): Promise<Array<{ skillId: string; version: number; createdById: string | null }>> {
+		if (skillIds.length === 0) return [];
+		const versions = await this.m(trx).find(SkillVersion, {
+			select: ['skillId', 'version', 'createdById'],
+			where: { skillId: In([...new Set(skillIds)]), version: Not(IsNull()) },
+		});
+		return versions.flatMap((v) =>
+			v.version === null
+				? []
+				: [{ skillId: v.skillId, version: v.version, createdById: v.createdById }],
+		);
+	}
+
 	/** Every saved (numbered) version of a skill with its files, oldest first. */
 	async findSavedVersions(skillId: string, trx?: EntityManager): Promise<ResolvedSkillRow[]> {
 		const manager = this.m(trx);

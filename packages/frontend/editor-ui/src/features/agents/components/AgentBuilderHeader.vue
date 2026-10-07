@@ -45,6 +45,7 @@ const props = defineProps<{
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
+	openSkill?: (skillId: string) => void;
 }>();
 
 const emit = defineEmits<{
@@ -241,6 +242,7 @@ function onMenuSelect(id: string) {
 				:config-validation-status="configValidationStatus"
 				:config-validation-issues="props.configValidationIssues ?? []"
 				:before-publish="beforePublish"
+				:open-skill="openSkill"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"

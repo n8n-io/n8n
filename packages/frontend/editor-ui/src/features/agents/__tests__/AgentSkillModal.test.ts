@@ -27,6 +27,15 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 }));
 
+const { acquireSkillEditLock, releaseSkillEditLock } = vi.hoisted(() => ({
+	acquireSkillEditLock: vi.fn(),
+	releaseSkillEditLock: vi.fn(),
+}));
+vi.mock('@/features/settings/context/skills.api', () => ({
+	acquireSkillEditLock,
+	releaseSkillEditLock,
+}));
+
 const { showMessage, trackImportedSkill } = vi.hoisted(() => ({
 	showMessage: vi.fn(),
 	trackImportedSkill: vi.fn(),
@@ -99,6 +108,8 @@ describe('AgentSkillModal', () => {
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
+		acquireSkillEditLock.mockResolvedValue({ acquired: true });
+		releaseSkillEditLock.mockResolvedValue(undefined);
 	});
 
 	it('uses the wider fit-content Agent modal width', () => {
@@ -399,3 +410,58 @@ function makeReferences(count: number) {
 		content: 'Reference',
 	}));
 }
+
+describe('AgentSkillModal edit lock', () => {
+	const existingSkill: AgentSkill = {
+		name: 'Refund policy',
+		description: 'How refunds work',
+		instructions: 'Refunds are allowed within 30 days.',
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		createTestingPinia({ stubActions: false });
+		const uiStore = mockedStore(useUIStore);
+		uiStore.openModal(MODAL_NAME);
+		uiStore.closeModal = vi.fn();
+		releaseSkillEditLock.mockResolvedValue(undefined);
+	});
+
+	it('takes the lock and keeps the skill editable when nobody else edits it', async () => {
+		acquireSkillEditLock.mockResolvedValue({ acquired: true });
+		const { queryByTestId, getByTestId } = renderModal({
+			skill: existingSkill,
+			skillId: 'skill_a',
+		});
+
+		await waitFor(() =>
+			expect(acquireSkillEditLock).toHaveBeenCalledWith(expect.anything(), 'skill_a'),
+		);
+		expect(queryByTestId('agent-skill-locked-callout')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).not.toBeDisabled();
+	});
+
+	it('turns read-only and names the user who holds the lock', async () => {
+		acquireSkillEditLock.mockResolvedValue({
+			acquired: false,
+			holder: { id: 'user-2', firstName: 'Bob', lastName: 'Smith' },
+		});
+		const onConfirm = vi.fn();
+		const { findByTestId, getByTestId } = renderModal({
+			skill: existingSkill,
+			skillId: 'skill_a',
+			onConfirm,
+		});
+
+		expect(await findByTestId('agent-skill-locked-callout')).toHaveTextContent(
+			'agents.builder.skills.lockedBy',
+		);
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+	});
+
+	it('does not take a lock for a new skill', () => {
+		renderModal();
+
+		expect(acquireSkillEditLock).not.toHaveBeenCalled();
+	});
+});

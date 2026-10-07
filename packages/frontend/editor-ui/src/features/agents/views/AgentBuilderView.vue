@@ -2878,6 +2878,7 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
+			:open-skill="caps.onOpenSkillFromList"
 			:is-preview-open="isPreviewDockOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"

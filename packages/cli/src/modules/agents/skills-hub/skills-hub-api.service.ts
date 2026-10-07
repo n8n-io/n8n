@@ -196,6 +196,12 @@ export class SkillsHubApiService {
 	}
 
 	/** Deletes a skill nobody uses. A draft ref or a pin, current or older, blocks it (409). */
+	/** Throws unless the user may see and edit the skill. */
+	async assertCanEdit(user: User, skillId: string): Promise<void> {
+		const skill = await this.requireVisible(user, skillId);
+		await this.assertCanWrite(user, skill, 'update');
+	}
+
 	async delete(user: User, skillId: string): Promise<void> {
 		const skill = await this.requireVisible(user, skillId);
 		await this.assertCanWrite(user, skill, 'delete');

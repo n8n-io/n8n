@@ -461,4 +461,41 @@ export class CollaborationState {
 			return true;
 		});
 	}
+
+	// --- Skill edit lock ---------------------------------------------------
+
+	/**
+	 * Takes or renews the edit lock of a hub skill. A user may take it over from
+	 * their own other tab. Returns the lock that holds after the call.
+	 */
+	async acquireSkillWriteLock(
+		skillId: string,
+		clientId: string,
+		userId: User['id'],
+	): Promise<WriteLock> {
+		const cacheKey = this.formSkillWriteLockCacheKey(skillId);
+		return await this.serializeLockOp(cacheKey, async () => {
+			const current = await this.getSkillWriteLock(skillId);
+			if (current && current.userId !== userId) return current;
+			const lock = { clientId, userId };
+			await this.cache.set(cacheKey, JSON.stringify(lock), this.writeLockTtl);
+			return lock;
+		});
+	}
+
+	async getSkillWriteLock(skillId: string): Promise<WriteLock | null> {
+		return this.parseLock(await this.cache.get<string>(this.formSkillWriteLockCacheKey(skillId)));
+	}
+
+	async releaseSkillWriteLockIfHolder(skillId: string, clientId: string): Promise<void> {
+		const cacheKey = this.formSkillWriteLockCacheKey(skillId);
+		await this.serializeLockOp(cacheKey, async () => {
+			const current = await this.getSkillWriteLock(skillId);
+			if (current?.clientId === clientId) await this.cache.delete(cacheKey);
+		});
+	}
+
+	private formSkillWriteLockCacheKey(skillId: string) {
+		return `collaboration:write-lock:skill:${skillId}`;
+	}
 }

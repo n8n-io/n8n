@@ -4,6 +4,7 @@ import {
 	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
+	type AgentPublishSkillChangesResponse,
 	type AgentSkill,
 	type AgentVersionListItemDto,
 } from '@n8n/api-types';
@@ -121,6 +122,16 @@ export class AgentPublishService {
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 		private readonly skillHub: SkillHubService,
 	) {}
+
+	/** Shown before publish: the shared skills another user changed since the last publish. */
+	async skillChangesSinceLastPublish(
+		agentId: string,
+		projectId: string,
+		user: User,
+	): Promise<AgentPublishSkillChangesResponse> {
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		return { skills: await this.skillHub.changedByOthersSinceLastPublish(agent, user.id) };
+	}
 
 	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
 	async publishAgent(

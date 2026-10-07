@@ -93,6 +93,17 @@ export type HubSkillSaveResponse = {
 	created: boolean;
 };
 
+/** Result of taking a skill's edit lock. `holder` is set when another user has it. */
+export type HubSkillEditLockResponse = {
+	acquired: boolean;
+	holder?: { id: string; firstName: string; lastName: string };
+};
+
+/** Skills of an agent that another user saved since the agent was last published. */
+export type AgentPublishSkillChangesResponse = {
+	skills: Array<{ id: string; name: string }>;
+};
+
 /** The request side of {@link ListHubSkillsQueryDto}: every field optional, numbers as the client holds them. */
 export type HubSkillListQuery = {
 	skip?: number;

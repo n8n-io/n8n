@@ -1,4 +1,4 @@
-import type { PushPayload } from '@n8n/api-types';
+import type { HubSkillEditLockResponse, PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
@@ -693,5 +693,45 @@ export class CollaborationService {
 		}
 		// Different user
 		throw new LockedError(`Cannot ${action} agent - another user currently has write access`);
+	}
+
+	/**
+	 * Takes or renews the edit lock of a hub skill for this tab. When another user
+	 * holds it, returns that user so the editor can show who is editing. The
+	 * caller checks the user may edit the skill.
+	 */
+	async acquireSkillWriteLock(
+		userId: User['id'],
+		clientId: string,
+		skillId: string,
+	): Promise<HubSkillEditLockResponse> {
+		const lock = await this.state.acquireSkillWriteLock(skillId, clientId, userId);
+		if (lock.userId === userId) return { acquired: true };
+		const holder = await this.userRepository.findOneBy({ id: lock.userId });
+		return {
+			acquired: false,
+			holder: holder
+				? { id: holder.id, firstName: holder.firstName, lastName: holder.lastName }
+				: undefined,
+		};
+	}
+
+	async releaseSkillWriteLock(clientId: string, skillId: string): Promise<void> {
+		await this.state.releaseSkillWriteLockIfHolder(skillId, clientId);
+	}
+
+	/**
+	 * Rejects a skill write while another user holds the skill's edit lock. A write
+	 * without a tab is refused too, so it cannot change a skill under someone's editor.
+	 */
+	async validateSkillWriteLock(
+		userId: User['id'],
+		clientId: string | undefined,
+		skillId: string,
+	): Promise<void> {
+		const lock = await this.state.getSkillWriteLock(skillId);
+		if (!lock || lock.userId === userId) return;
+		if (clientId && lock.clientId === clientId) return;
+		throw new LockedError('Cannot change skill - another user is editing it');
 	}
 }

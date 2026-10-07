@@ -2,6 +2,7 @@ import type {
 	AgentSkill,
 	CreateHubSkillDto,
 	HubSkillDetail,
+	HubSkillEditLockResponse,
 	HubSkillListResponse,
 	HubSkillListQuery,
 	HubSkillSaveResponse,
@@ -49,4 +50,20 @@ export async function saveSkill(
 
 export async function deleteSkill(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
+}
+
+/** Takes or renews this tab's edit lock on the skill. */
+export async function acquireSkillEditLock(
+	context: IRestApiContext,
+	id: string,
+): Promise<HubSkillEditLockResponse> {
+	return await makeRestApiRequest<HubSkillEditLockResponse>(
+		context,
+		'POST',
+		`${ENDPOINT}/${id}/edit-lock`,
+	);
+}
+
+export async function releaseSkillEditLock(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}/edit-lock`);
 }

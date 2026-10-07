@@ -20,6 +20,20 @@ export class AgentPublishController {
 		private readonly collaborationService: CollaborationService,
 	) {}
 
+	@Get('/:agentId/publish/skill-changes')
+	@ProjectScope('agent:publish')
+	async skillChanges(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentPublishService.skillChangesSinceLastPublish(
+			agentId,
+			req.params.projectId,
+			req.user,
+		);
+	}
+
 	@Post('/:agentId/publish')
 	@ProjectScope('agent:publish')
 	async publish(

@@ -267,4 +267,42 @@ describe('CollaborationState', () => {
 			);
 		});
 	});
+
+	describe('skill write lock', () => {
+		const lockKey = 'collaboration:write-lock:skill:skill-1';
+
+		it('takes the lock when nobody holds it', async () => {
+			mockCacheService.get.mockResolvedValueOnce(undefined);
+
+			const lock = await collaborationState.acquireSkillWriteLock('skill-1', 'clientId', 'userId');
+
+			expect(lock).toEqual({ clientId: 'clientId', userId: 'userId' });
+			expect(mockCacheService.set).toHaveBeenCalledWith(
+				lockKey,
+				JSON.stringify({ clientId: 'clientId', userId: 'userId' }),
+				collaborationState.writeLockTtl,
+			);
+		});
+
+		it('returns the lock of another user without taking it', async () => {
+			mockCacheService.get.mockResolvedValueOnce(
+				JSON.stringify({ clientId: 'otherClient', userId: 'otherUser' }),
+			);
+
+			const lock = await collaborationState.acquireSkillWriteLock('skill-1', 'clientId', 'userId');
+
+			expect(lock).toEqual({ clientId: 'otherClient', userId: 'otherUser' });
+			expect(mockCacheService.set).not.toHaveBeenCalled();
+		});
+
+		it('releases the lock only for the tab that holds it', async () => {
+			mockCacheService.get.mockResolvedValueOnce(
+				JSON.stringify({ clientId: 'otherClient', userId: 'userId' }),
+			);
+
+			await collaborationState.releaseSkillWriteLockIfHolder('skill-1', 'clientId');
+
+			expect(mockCacheService.delete).not.toHaveBeenCalled();
+		});
+	});
 });

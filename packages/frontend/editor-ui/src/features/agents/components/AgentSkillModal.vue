@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -9,6 +9,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useSkillEditLock } from '../composables/useSkillEditLock';
 import type { AgentSkill } from '../types';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
@@ -84,6 +85,20 @@ const showScope = computed(() => !!props.data.scopeOptions?.length && !props.dat
 const isImporting = ref(false);
 
 const isEditing = computed(() => !!props.data.skillId);
+
+// Every edit surface opens an existing hub skill through this modal, so the lock lives here.
+const editLock = useSkillEditLock();
+onMounted(() => {
+	if (props.data.skillId) void editLock.start(props.data.skillId);
+});
+const isLocked = computed(() => editLock.lockedBy.value !== null);
+const lockedMessage = computed(() => {
+	const holder = editLock.lockedBy.value;
+	const name = [holder?.firstName, holder?.lastName].filter(Boolean).join(' ');
+	return name
+		? i18n.baseText('agents.builder.skills.lockedBy', { interpolate: { name } })
+		: i18n.baseText('agents.builder.skills.lockedByFallback');
+});
 const canAddReference = computed(
 	() => (skill.value.references ?? []).length < AGENT_SKILL_REFERENCE_MAX_COUNT,
 );
@@ -229,6 +244,7 @@ function closeModal() {
 }
 
 function onSave() {
+	if (isLocked.value) return;
 	submitted.value = true;
 	if (!canSave.value) return;
 
@@ -249,7 +265,7 @@ function onSave() {
 }
 
 function onRemove() {
-	if (!props.data.skillId) return;
+	if (!props.data.skillId || isLocked.value) return;
 	props.data.onRemove?.(props.data.skillId);
 	closeModal();
 }
@@ -262,7 +278,7 @@ function onRemove() {
 		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
 		:title-max-length="128"
 		:title-error="visibleNameError"
-		:editable-title="step !== 'upload'"
+		:editable-title="step !== 'upload' && !isLocked"
 		:show-back="step === 'manual'"
 		:show-footer="step !== 'upload'"
 		:busy="isImporting"
@@ -273,6 +289,14 @@ function onRemove() {
 		@update:title="onSkillUpdate({ name: $event })"
 		@back="onBack"
 	>
+		<N8nCallout
+			v-if="isLocked"
+			theme="warning"
+			:class="$style.missingContentCallout"
+			data-testid="agent-skill-locked-callout"
+		>
+			{{ lockedMessage }}
+		</N8nCallout>
 		<N8nCallout
 			v-if="openedWithMissingContent"
 			theme="warning"
@@ -293,13 +317,14 @@ function onRemove() {
 				<AgentSkillFileNav
 					:skill="skill"
 					:selected-path="selectedPath"
-					:add-reference-disabled="!canAddReference"
+					:add-reference-disabled="!canAddReference || isLocked"
 					@add-reference="onAddReference"
 					@remove-reference="onRemoveReference"
 					@select="selectedPath = $event"
 				/>
 				<AgentSkillViewer
 					:skill="skill"
+					:disabled="isLocked"
 					:available-tools="props.data.availableTools ?? []"
 					:show-allowed-tools="!!props.data.agentId"
 					:selected-path="selectedPath"
@@ -316,6 +341,7 @@ function onRemove() {
 			<N8nButton
 				v-if="isEditing && data.onRemove"
 				variant="ghost"
+				:disabled="isLocked"
 				data-testid="agent-skill-remove"
 				@click="onRemove"
 			>
@@ -337,7 +363,12 @@ function onRemove() {
 			</div>
 		</template>
 		<template #footerActions>
-			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
+			<N8nButton
+				variant="solid"
+				:disabled="isLocked"
+				data-testid="agent-skill-create-save"
+				@click="onSave"
+			>
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>

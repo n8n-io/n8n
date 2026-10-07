@@ -32,6 +32,8 @@ const props = withDefaults(
 		 * the backend re-validates independently regardless.
 		 */
 		beforePublish?: () => Promise<boolean>;
+		/** Opens a skill from the "skills changed" publish warning. Without it the names are plain text. */
+		openSkill?: (skillId: string) => void;
 	}>(),
 	{ configValidationStatus: 'valid', configValidationIssues: () => [] },
 );
@@ -137,7 +139,7 @@ const dropdownActions = computed(() => {
 async function onPublishClick() {
 	if (isPublishDisabled.value) return;
 	if (props.beforePublish && !(await props.beforePublish())) return;
-	const updated = await publish(props.projectId, props.agentId);
+	const updated = await publish(props.projectId, props.agentId, { onOpenSkill: props.openSkill });
 	if (updated) emit('published', updated);
 }
 

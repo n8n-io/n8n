@@ -84,6 +84,7 @@ export class AgentsSkillsController {
 			agentId,
 			'update skill for',
 		);
+		await this.collaborationService.validateSkillWriteLock(req.user.id, clientId, skillId);
 		return await this.agentSkillsService.updateSkill(
 			agentId,
 			projectId,
@@ -116,6 +117,7 @@ export class AgentsSkillsController {
 			agentId,
 			'save skill for',
 		);
+		await this.collaborationService.validateSkillWriteLock(req.user.id, clientId, skillId);
 		return await this.agentSkillsService.saveSkill(agentId, projectId, skillId, {
 			user: req.user,
 			modifiedBy: 'user',

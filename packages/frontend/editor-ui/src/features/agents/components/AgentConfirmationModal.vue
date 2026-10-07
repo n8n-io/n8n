@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import AgentModal from './modals/AgentModal.vue';
 
@@ -9,6 +9,9 @@ export type AgentConfirmationModalData = {
 	description: string;
 	confirmButtonText: string;
 	cancelButtonText: string;
+	/** Listed under the description. With `onItemClick`, each one is a link that closes the modal. */
+	items?: Array<{ id: string; label: string }>;
+	onItemClick?: (id: string) => void;
 	onConfirm?: () => unknown | Promise<unknown>;
 	onCancel?: () => unknown | Promise<unknown>;
 	onClose?: () => unknown | Promise<unknown>;
@@ -44,6 +47,12 @@ async function onConfirm() {
 	}
 }
 
+async function onItemClick(id: string) {
+	await props.data.onClose?.();
+	closeModal();
+	props.data.onItemClick?.(id);
+}
+
 async function onOpenChange(open: boolean) {
 	if (open) return;
 	const shouldClose = await props.data.onClose?.();
@@ -67,6 +76,18 @@ async function onOpenChange(open: boolean) {
 				{{ props.data.description }}
 			</N8nText>
 		</div>
+		<ul v-if="props.data.items?.length" :class="$style.items">
+			<li v-for="item in props.data.items" :key="item.id">
+				<N8nLink
+					v-if="props.data.onItemClick"
+					:data-testid="`agent-confirmation-modal-item-${item.id}`"
+					@click="onItemClick(item.id)"
+				>
+					{{ item.label }}
+				</N8nLink>
+				<N8nText v-else size="medium">{{ item.label }}</N8nText>
+			</li>
+		</ul>
 		<template #footerActions>
 			<N8nButton variant="subtle" size="medium" :disabled="submitting" @click="onCancel">
 				{{ props.data.cancelButtonText }}
@@ -88,5 +109,11 @@ async function onOpenChange(open: boolean) {
 
 .icon {
 	flex-shrink: 0;
+}
+
+.items {
+	margin: var(--spacing--xs) 0 0;
+	padding-left: var(--spacing--xl);
+	list-style: disc;
 }
 </style>

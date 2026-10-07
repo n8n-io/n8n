@@ -7,6 +7,7 @@ import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
 
 vi.mock('../composables/useAgentApi', () => ({
+	getAgentPublishSkillChanges: vi.fn(async () => ({ skills: [] })),
 	publishAgent: vi.fn(),
 	unpublishAgent: vi.fn(),
 	revertAgentToPublished: vi.fn(),
@@ -109,6 +110,7 @@ interface RenderProps {
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
+	openSkill?: (skillId: string) => void;
 }
 
 const blockingIssue: AgentConfigValidationIssue = {
@@ -377,6 +379,76 @@ describe('AgentPublishButton', () => {
 
 		expect(unpublishAgent).not.toHaveBeenCalled();
 		expect(wrapper.emitted('unpublished')).toBeUndefined();
+	});
+
+	describe('skill changes warning', () => {
+		const changedSkills = { skills: [{ id: 'skill_a', name: 'Refund policy' }] };
+
+		it('publishes without a modal when no skill changed', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			vi.mocked(publishAgent).mockResolvedValue(createAgent());
+
+			const wrapper = await renderComponent();
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(openModalWithDataMock).not.toHaveBeenCalled();
+			expect(publishAgent).toHaveBeenCalled();
+		});
+
+		it('lists the changed skills and publishes on confirm', async () => {
+			const { getAgentPublishSkillChanges, publishAgent } = await import(
+				'../composables/useAgentApi'
+			);
+			vi.mocked(getAgentPublishSkillChanges).mockResolvedValueOnce(changedSkills);
+			vi.mocked(publishAgent).mockResolvedValue(createAgent());
+			const openSkill = vi.fn();
+
+			const wrapper = await renderComponent({ openSkill });
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			const data = openModalWithDataMock.mock.lastCall?.[0]?.data;
+			expect(data.items).toEqual([{ id: 'skill_a', label: 'Refund policy' }]);
+			expect(data.onItemClick).toBe(openSkill);
+			expect(publishAgent).not.toHaveBeenCalled();
+
+			await getModalCallbacks().onConfirm();
+			await flushPromises();
+
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		});
+
+		it('does not publish when the modal is cancelled', async () => {
+			const { getAgentPublishSkillChanges, publishAgent } = await import(
+				'../composables/useAgentApi'
+			);
+			vi.mocked(getAgentPublishSkillChanges).mockResolvedValueOnce(changedSkills);
+
+			const wrapper = await renderComponent();
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+			await getModalCallbacks().onCancel();
+			await flushPromises();
+
+			expect(publishAgent).not.toHaveBeenCalled();
+			expect(wrapper.emitted('published')).toBeUndefined();
+		});
+
+		it('publishes when the skill changes check fails', async () => {
+			const { getAgentPublishSkillChanges, publishAgent } = await import(
+				'../composables/useAgentApi'
+			);
+			vi.mocked(getAgentPublishSkillChanges).mockRejectedValueOnce(new Error('offline'));
+			vi.mocked(publishAgent).mockResolvedValue(createAgent());
+
+			const wrapper = await renderComponent();
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(openModalWithDataMock).not.toHaveBeenCalled();
+			expect(publishAgent).toHaveBeenCalled();
+		});
 	});
 
 	// Indicator dot styling — guards against regressions like

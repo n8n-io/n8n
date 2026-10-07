@@ -199,6 +199,45 @@ export class SkillHubService {
 		return result;
 	}
 
+	/**
+	 * Skills where the next publish moves the agent to a newer saved version that
+	 * someone other than `userId` saved. A skill the published version did not have,
+	 * or a ref reverted to an older version, is not listed.
+	 */
+	async changedByOthersSinceLastPublish(
+		agent: Pick<Agent, 'schema' | 'activeVersionId'>,
+		userId: string,
+	): Promise<Array<{ id: string; name: string }>> {
+		if (!agent.activeVersionId) return [];
+		const [published, next] = await Promise.all([
+			this.skillHubRepository.findPinned(agent.activeVersionId),
+			this.resolveDraftRows(agent.schema),
+		]);
+		const ranges = new Map<string, { from: number; to: number; name: string }>();
+		for (const [refId, row] of next) {
+			const pinned = published.get(refId);
+			if (!pinned || pinned.skill.id !== row.skill.id) continue;
+			const from = pinned.version.version ?? 0;
+			const to = row.version.version ?? 0;
+			if (to > from) ranges.set(row.skill.id, { from, to, name: row.version.name });
+		}
+		if (ranges.size === 0) return [];
+		const authors = await this.skillHubRepository.findSavedVersionAuthors([...ranges.keys()]);
+		const changedByOthers = new Set(
+			authors
+				.filter((a) => {
+					const range = ranges.get(a.skillId);
+					return (
+						range && a.version > range.from && a.version <= range.to && a.createdById !== userId
+					);
+				})
+				.map((a) => a.skillId),
+		);
+		return [...ranges]
+			.filter(([id]) => changedByOthers.has(id))
+			.map(([id, { name }]) => ({ id, name }));
+	}
+
 	/** Pinned versions of one published agent version, keyed by the ref id in that snapshot. */
 	async resolvePinnedSkills(
 		agentVersionId: string,

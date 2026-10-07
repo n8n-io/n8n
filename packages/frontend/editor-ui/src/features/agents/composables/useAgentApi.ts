@@ -17,6 +17,7 @@ import type {
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
+	AgentPublishSkillChangesResponse,
 	AgentSkill,
 	AgentsSettingsDto,
 	AgentSkillMutationResponse,
@@ -407,6 +408,18 @@ export const publishAgent = async (
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
 		versionId ? { versionId } : undefined,
+	);
+};
+
+export const getAgentPublishSkillChanges = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentPublishSkillChangesResponse> => {
+	return await makeRestApiRequest<AgentPublishSkillChangesResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/publish/skill-changes`,
 	);
 };
 
