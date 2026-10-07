@@ -333,6 +333,14 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					runningSeconds,
 				});
 			},
+			onTaskTimeout: (task) => {
+				recordMetric(() => metrics.recordTaskTimeout(task.taskType));
+				emit('warn', 'Scheduler stopped a task run that reached its timeout', {
+					taskId: task.id,
+					taskType: task.taskType,
+					timeoutSeconds: task.timeoutSeconds,
+				});
+			},
 			onDispatch: (taskType, lagSeconds) => {
 				recordMetric(() => {
 					metrics.recordDispatch(taskType);
