@@ -21,7 +21,9 @@
   "dependencies": {
     "@n8n/utils": "workspace:*",
     "n8n-containers": "workspace:*",
-    "nanoid": "catalog:",
+    "nanoid": "catalog:"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -32,6 +34,7 @@
     "oxlint-tsgolint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }
