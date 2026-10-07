@@ -1,11 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import {
-	MAX_INTEGER_32BITS_SIGNED,
-	MAX_TASK_TIMEOUT_SECONDS,
-	type ScheduledJobMisfirePolicy,
-	Time,
-} from '@n8n/constants';
+import type { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type {
 	EntityManager,
 	NewScheduledJob,
@@ -14,19 +9,26 @@ import type {
 } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createJobProvisioner, withOwnerKeys } from '@n8n/scheduler';
+import {
+	createJobProvisioner,
+	findOutdatedJobs,
+	InvalidRunOptionError,
+	resolveRunOptions,
+	withOwnerKeys,
+} from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	DesiredJob,
 	ExistingJob,
 	JobProvisioner,
 	ProvisionSummary,
+	ResolvedRunOptions,
+	RunOptions,
 	RunInDeprovisionTransaction,
 	RunInProvisionTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
-import { isDeepStrictEqual } from 'node:util';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
@@ -34,19 +36,6 @@ import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry'
 import { createSchedulerTracer } from './scheduler-tracer';
 import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
-
-/**
- * Ceiling for a resolved misfire grace: the cap the config value carries, and well
- * inside the column's `int` range.
- */
-const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
-
-/**
- * Ceiling for a concurrency limit: what the column's `int` holds. Postgres rejects
- * anything above it outright, so it is checked here for both dialects to behave the
- * same.
- */
-const MAX_CONCURRENCY_LIMIT = MAX_INTEGER_32BITS_SIGNED;
 
 /** One provisioning call: whose jobs to reconcile, and what to stamp on new rows. */
 export interface ProvisionRequest {
@@ -259,21 +248,9 @@ export class DurableJobProvisioner {
 		owner,
 		taskType,
 		payload,
-		misfirePolicy,
-		misfireGraceSeconds: requestedMisfireGraceSeconds,
-		maxAttempts: requestedMaxAttempts,
-		timeoutSeconds: requestedTimeoutSeconds,
-		concurrencyLimit: requestedConcurrencyLimit,
+		...requested
 	}: ProvisionScope): RunInProvisionTransaction {
-		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
-			requestedMisfireGraceSeconds,
-			owner,
-		);
-		const maxAttempts = requestedMaxAttempts ?? this.globalConfig.scheduler.maxAttempts;
-		const timeoutSeconds = resolveTimeoutSeconds(
-			requestedTimeoutSeconds ?? this.globalConfig.scheduler.taskTimeoutSeconds,
-		);
-		const concurrencyLimit = resolveConcurrencyLimit(requestedConcurrencyLimit);
+		const runOptions = this.resolveRunOptions(requested, owner);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Provisioning is evidence the owner is back, so lift any quarantine now
@@ -287,56 +264,25 @@ export class DurableJobProvisioner {
 					});
 				}
 				const existingRows = await this.jobs.findManyByOwner(manager, owner);
-				const outdatedRunOptionJobIds: number[] = [];
-				const outdatedGraceJobIds: number[] = [];
-				const outdatedTimeoutJobIds: number[] = [];
-				const outdatedPayloadJobIds: number[] = [];
-				for (const row of existingRows) {
-					const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
-					if (graceChanged) {
-						outdatedGraceJobIds.push(row.id);
-					}
-					const timeoutChanged = row.timeoutSeconds !== timeoutSeconds;
-					if (timeoutChanged) {
-						outdatedTimeoutJobIds.push(row.id);
-					}
-					if (
-						graceChanged ||
-						timeoutChanged ||
-						row.misfirePolicy !== misfirePolicy ||
-						row.maxAttempts !== maxAttempts ||
-						row.concurrencyLimit !== concurrencyLimit
-					) {
-						outdatedRunOptionJobIds.push(row.id);
-					}
-					if (!isDeepStrictEqual(row.payload, payload)) {
-						outdatedPayloadJobIds.push(row.id);
-					}
-				}
+				const outdated = findOutdatedJobs(existingRows, runOptions, payload);
 				// Before the provision, whose seed reads these rows back and must see the
 				// current run options and payload.
 				// Only `redefine` touches a job's run options, so an unchanged schedule
 				// needs this to pick up a change to them on its own.
-				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
-					maxAttempts,
-					timeoutSeconds,
-					misfirePolicy,
-					misfireGraceSeconds,
-					concurrencyLimit,
-				});
+				await this.jobs.updateRunOptions(manager, outdated.runOptions, runOptions);
 				// Only `insert` writes the payload, so an existing row picks up a change to it here.
-				await this.jobs.updatePayload(manager, outdatedPayloadJobIds, payload);
+				await this.jobs.updatePayload(manager, outdated.payload, payload);
 				// Queued tasks were stamped with the previous grace; recompute their deadline.
 				await this.tasks.updateMissedAfterForJobs(
 					manager,
-					outdatedGraceJobIds,
-					misfireGraceSeconds,
+					outdated.misfireGrace,
+					runOptions.misfireGraceSeconds,
 				);
 				// A running occurrence keeps the timeout it was claimed with.
 				await this.tasks.updateTimeoutForPendingJobs(
 					manager,
-					outdatedTimeoutJobIds,
-					timeoutSeconds,
+					outdated.timeout,
+					runOptions.timeoutSeconds,
 				);
 				return await work({
 					findExisting: async () =>
@@ -357,11 +303,7 @@ export class DurableJobProvisioner {
 								payload,
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
-								maxAttempts,
-								timeoutSeconds,
-								misfirePolicy,
-								misfireGraceSeconds,
-								concurrencyLimit,
+								...runOptions,
 							}),
 						);
 						return await this.jobs.insertMany(manager, rows);
@@ -370,11 +312,7 @@ export class DurableJobProvisioner {
 						await this.jobs.updateDefinition(manager, jobId, {
 							...scheduleColumns(schedule),
 							nextRunAt,
-							maxAttempts,
-							timeoutSeconds,
-							misfirePolicy,
-							misfireGraceSeconds,
-							concurrencyLimit,
+							...runOptions,
 						});
 					},
 					withdrawPendingTasks: async (jobIds) =>
@@ -404,45 +342,53 @@ export class DurableJobProvisioner {
 			});
 	}
 
-	private resolveMisfireGraceSeconds(requested: unknown, owner: ScheduledJobOwner): number {
-		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
-			this.globalConfig.scheduler;
-
-		const numeric = Number(requested);
-		if (!Number.isFinite(numeric)) {
-			return misfireGraceSeconds;
-		}
-
-		const truncated = Math.trunc(numeric);
-		if (truncated < 1) {
-			return misfireGraceSeconds;
-		}
-
-		const floor = Math.min(
-			Math.max(executorIntervalSeconds + 1, materializationWindowSeconds),
-			MAX_MISFIRE_GRACE_SECONDS,
-		);
-
-		if (!Number.isFinite(floor)) {
-			return misfireGraceSeconds;
-		}
-
-		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
-
-		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
+	/**
+	 * Resolve a request against the instance settings, and warn when the requested
+	 * misfire grace was moved to a bound.
+	 *
+	 * @throws {UserError} when the timeout or the concurrency limit is out of range.
+	 */
+	private resolveRunOptions(
+		requested: Omit<ProvisionScope, 'owner' | 'taskType' | 'payload'>,
+		owner: ScheduledJobOwner,
+	): RunOptions {
+		const { runOptions, misfireGraceAdjustment } = this.resolveRunOptionsOrThrow(requested);
+		if (misfireGraceAdjustment) {
 			this.logger.warn(
-				effective > truncated
+				misfireGraceAdjustment.direction === 'raised'
 					? "Raised a node's misfire grace to the scheduler's minimum"
 					: "Lowered a node's misfire grace to the scheduler's maximum",
 				{
 					...owner,
-					requestedMisfireGraceSeconds: numeric,
-					misfireGraceSeconds: effective,
+					requestedMisfireGraceSeconds: misfireGraceAdjustment.requestedMisfireGraceSeconds,
+					misfireGraceSeconds: runOptions.misfireGraceSeconds,
 				},
 			);
 		}
+		return runOptions;
+	}
 
-		return effective;
+	private resolveRunOptionsOrThrow(
+		requested: Omit<ProvisionScope, 'owner' | 'taskType' | 'payload'>,
+	): ResolvedRunOptions {
+		const { scheduler } = this.globalConfig;
+		try {
+			return resolveRunOptions(requested, {
+				maxAttempts: scheduler.maxAttempts,
+				timeoutSeconds: scheduler.taskTimeoutSeconds,
+				misfireGraceSeconds: scheduler.misfireGraceSeconds,
+				executorIntervalSeconds: scheduler.executorIntervalSeconds,
+				materializationWindowSeconds: scheduler.materializationWindowSeconds,
+			});
+		} catch (error) {
+			if (error instanceof InvalidRunOptionError) {
+				throw new UserError(error.message, {
+					cause: error,
+					extra: { option: error.option, value: error.value, max: error.max },
+				});
+			}
+			throw error;
+		}
 	}
 
 	private deprovisionTransaction(scope: DeprovisionScope): RunInDeprovisionTransaction {
@@ -467,40 +413,4 @@ export class DurableJobProvisioner {
 				return await this.jobs.deleteIfPayloadUnchanged(manager, target.job.id, target.job.payload);
 		}
 	}
-}
-
-/**
- * Normalize a requested concurrency ceiling to what the column stores: a whole
- * number from 1 to {@link MAX_CONCURRENCY_LIMIT}, or `null` for no limit.
- *
- * @throws {UserError} when the limit is set but falls outside that range. A ceiling
- * below one would hold every occurrence back until its misfire deadline passed, so
- * the job would never run.
- */
-function resolveConcurrencyLimit(requested: number | null | undefined): number | null {
-	if (requested === undefined || requested === null) {
-		return null;
-	}
-	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_CONCURRENCY_LIMIT) {
-		throw new UserError('Scheduled job concurrency limit is outside the range the column holds', {
-			extra: { concurrencyLimit: requested, maxConcurrencyLimit: MAX_CONCURRENCY_LIMIT },
-		});
-	}
-	return requested;
-}
-
-/**
- * Check a timeout against what the executor can enforce: a whole number of seconds
- * from 1 to {@link MAX_TASK_TIMEOUT_SECONDS}.
- *
- * @throws {UserError} when the timeout falls outside that range. A timeout of 0
- * stops every run as soon as it starts.
- */
-function resolveTimeoutSeconds(requested: number): number {
-	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_TASK_TIMEOUT_SECONDS) {
-		throw new UserError('Scheduled job timeout is outside the range the scheduler enforces', {
-			extra: { timeoutSeconds: requested, maxTimeoutSeconds: MAX_TASK_TIMEOUT_SECONDS },
-		});
-	}
-	return requested;
 }
