@@ -113,6 +113,7 @@ describe('LogStreamingEventRelay', () => {
 					dataTables: {
 						matched: 0,
 						created: 1,
+						updated: 0,
 						requirements: 1,
 					},
 					variables: {
