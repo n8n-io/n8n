@@ -7144,6 +7144,7 @@
 	"commandBar.workflow.importFromFile": "Import workflow from file",
 	"commandBar.workflow.openCredential": "Open credential",
 	"commandBar.workflow.openSubworkflow": "Open sub-workflow",
+	"commandBar.workflow.openExecutions": "Open workflow executions",
 	"commandBar.workflow.archive": "Archive workflow",
 	"commandBar.workflow.unarchive": "Unarchive workflow",
 	"commandBar.workflow.delete": "Delete workflow",

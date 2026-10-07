@@ -13,6 +13,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { VIEWS } from '@/app/constants';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
@@ -31,6 +32,7 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus');
 vi.mock('@/app/event-bus');
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
+		push: routerPushMock,
 		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.workflowId}` })),
 	}),
 	useRoute: () => ({ params: {} }),
@@ -42,9 +44,10 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => key,
 	}),
 }));
-const { saveAsMock, mockTelemetryTrack } = vi.hoisted(() => ({
+const { saveAsMock, mockTelemetryTrack, routerPushMock } = vi.hoisted(() => ({
 	saveAsMock: vi.fn(),
 	mockTelemetryTrack: vi.fn(),
+	routerPushMock: vi.fn(),
 }));
 vi.mock('file-saver', () => ({
 	saveAs: saveAsMock,
@@ -358,6 +361,55 @@ describe('useWorkflowCommands', () => {
 			expect(subworkflowCommand).toBeDefined();
 			expect(subworkflowCommand?.children).toHaveLength(1);
 			expect(subworkflowCommand?.children?.[0].title).toBe('Subworkflow 1');
+		});
+	});
+
+	describe('navigation commands', () => {
+		it('should show executions and version history commands for a saved workflow', () => {
+			const { commands } = useWorkflowCommands();
+
+			expect(commands.value.find((cmd) => cmd.id === 'open-workflow-executions')).toMatchObject({
+				title: 'commandBar.workflow.openExecutions',
+				section: 'commandBar.sections.workflow',
+				keywords: ['generic.executions'],
+			});
+			expect(commands.value.find((cmd) => cmd.id === 'open-version-history')).toMatchObject({
+				title: 'menuActions.versionHistory',
+				section: 'commandBar.sections.workflow',
+			});
+		});
+
+		it('should not show navigation commands for an unsaved workflow', () => {
+			mockWorkflowsListStore.workflowsById = {};
+
+			const { commands } = useWorkflowCommands();
+
+			expect(commands.value.find((cmd) => cmd.id === 'open-workflow-executions')).toBeUndefined();
+			expect(commands.value.find((cmd) => cmd.id === 'open-version-history')).toBeUndefined();
+		});
+
+		it('should open the workflow executions', async () => {
+			const { commands } = useWorkflowCommands();
+			const executionsCommand = commands.value.find((cmd) => cmd.id === 'open-workflow-executions');
+
+			await executionsCommand?.handler?.();
+
+			expect(routerPushMock).toHaveBeenCalledWith({
+				name: VIEWS.EXECUTION_HOME,
+				params: { workflowId: 'workflow-123' },
+			});
+		});
+
+		it('should open the workflow version history', async () => {
+			const { commands } = useWorkflowCommands();
+			const historyCommand = commands.value.find((cmd) => cmd.id === 'open-version-history');
+
+			await historyCommand?.handler?.();
+
+			expect(routerPushMock).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: { workflowId: 'workflow-123' },
+			});
 		});
 	});
 

@@ -11,8 +11,13 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const ITEM_ID = {
+	OVERVIEW: 'overview',
+	SHARED_WITH_ME: 'shared-with-me',
 	CHAT_HUB: 'chat-hub',
 	WHATS_NEW: 'whats-new',
 	SETTINGS: 'settings',
@@ -35,9 +40,65 @@ export function useGenericCommands(): CommandGroup {
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
 	const templatesStore = useTemplatesStore();
+	const resourceCenterStore = useResourceCenterStore();
+	const usersStore = useUsersStore();
 	const { getReportingURL } = useBugReporting();
 
+	const canOpenTemplates = computed(
+		() => settingsStore.isTemplatesEnabled && !resourceCenterStore.isFeatureEnabled(),
+	);
+
+	const canOpenInsights = computed(
+		() =>
+			settingsStore.isModuleActive('insights') &&
+			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	);
+
+	const canOpenSharedWithMe = computed(
+		() =>
+			(projectsStore.isTeamProjectFeatureEnabled || settingsStore.isFoldersFeatureEnabled) &&
+			usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
+	);
+
 	const genericCommands = computed<CommandBarItem[]>(() => [
+		...(projectsStore.canViewProjects
+			? [
+					{
+						id: ITEM_ID.OVERVIEW,
+						title: i18n.baseText('projects.menu.overview'),
+						section: i18n.baseText('commandBar.sections.general'),
+						handler: () => {
+							void router.push({ name: VIEWS.HOMEPAGE });
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'house',
+							},
+						},
+						keywords: [i18n.baseText('projects.menu.overview').toLowerCase(), 'home'],
+					},
+				]
+			: []),
+		...(projectsStore.canViewProjects && canOpenSharedWithMe.value
+			? [
+					{
+						id: ITEM_ID.SHARED_WITH_ME,
+						title: i18n.baseText('projects.menu.shared'),
+						section: i18n.baseText('commandBar.sections.general'),
+						handler: () => {
+							void router.push({ name: VIEWS.SHARED_WITH_ME });
+						},
+						icon: {
+							component: N8nIcon,
+							props: {
+								icon: 'share',
+							},
+						},
+						keywords: [i18n.baseText('projects.menu.shared').toLowerCase()],
+					},
+				]
+			: []),
 		{
 			id: ITEM_ID.WHATS_NEW,
 			title: i18n.baseText('mainSidebar.whatsNew'),
@@ -75,7 +136,7 @@ export function useGenericCommands(): CommandGroup {
 					},
 				]
 			: []),
-		...(projectsStore.canViewProjects
+		...(projectsStore.canViewProjects && canOpenTemplates.value
 			? [
 					{
 						id: ITEM_ID.TEMPLATES,
@@ -117,7 +178,7 @@ export function useGenericCommands(): CommandGroup {
 					},
 				]
 			: []),
-		...(projectsStore.canViewProjects
+		...(projectsStore.canViewProjects && canOpenInsights.value
 			? [
 					{
 						id: ITEM_ID.INSIGHTS,
