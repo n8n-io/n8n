@@ -164,6 +164,15 @@ export class WaitTracker {
 			throw new UnexpectedError('Only saved workflows can be resumed.');
 		}
 
+		// Wait for the old segment to settle before replacement on the same main.
+		// JobOutcomeTracker keys separate completion reports across mains.
+		if (
+			fullExecutionData.data.waitReason === 'suspended' &&
+			this.activeExecutions.has(executionId)
+		) {
+			await this.activeExecutions.getPostExecutePromise(executionId);
+		}
+
 		const workflowId = fullExecutionData.workflowData.id;
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 

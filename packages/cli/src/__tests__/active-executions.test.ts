@@ -421,6 +421,18 @@ describe('ActiveExecutions', () => {
 	});
 
 	describe('finalizeExecution', () => {
+		test('old promise cleanup leaves a replacement entry intact', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			const oldEntry = activeExecutions.getExecutionOrFail(executionId);
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+			const resumedEntry = activeExecutions.getExecutionOrFail(executionId);
+
+			oldEntry.postExecutePromise.resolve(undefined);
+			await new Promise(setImmediate);
+
+			expect(activeExecutions.getExecutionOrFail(executionId)).toBe(resumedEntry);
+		});
+
 		test('Should not remove a waiting execution', async () => {
 			const executionId = await activeExecutions.add(executionData);
 			activeExecutions.setStatus(executionId, 'waiting');
