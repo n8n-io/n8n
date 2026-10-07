@@ -2061,7 +2061,7 @@ describe('CredentialsService', () => {
 	describe('testWithCredentials', () => {
 		it('refuses a stored credential of a blocked type before the tester runs', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
-				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi' }),
+				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi', isManaged: false }),
 			);
 			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
 
@@ -2077,8 +2077,9 @@ describe('CredentialsService', () => {
 		});
 
 		it('also judges the posted type when it differs from the stored one', async () => {
+			// A managed credential ignores the posted payload, so this needs an unmanaged one.
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
-				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi' }),
+				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi', isManaged: false }),
 			);
 			policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async (context) => {
 				if (context.credentialType === 'slackApi') throw credentialUseRefusal();
