@@ -8,6 +8,8 @@ import { N8nButton, N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import { getSkill } from '@/features/settings/context/skills.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useSkillEditLock } from '../composables/useSkillEditLock';
 import type { AgentSkill } from '../types';
@@ -87,9 +89,20 @@ const isImporting = ref(false);
 const isEditing = computed(() => !!props.data.skillId);
 
 // Every edit surface opens an existing hub skill through this modal, so the lock lives here.
+const rootStore = useRootStore();
 const editLock = useSkillEditLock();
+
+/** The other user may have saved while this editor was read-only, so load the latest draft. */
+async function reloadSkill() {
+	if (!props.data.skillId) return;
+	const detail = await getSkill(rootStore.restApiContext, props.data.skillId);
+	skill.value = normalizeSkill(detail.skill);
+	selectedPath.value = SKILL_FILE;
+}
 onMounted(() => {
-	if (props.data.skillId) void editLock.start(props.data.skillId);
+	if (props.data.skillId) {
+		void editLock.start(props.data.skillId, { onFreed: reloadSkill });
+	}
 });
 const isLocked = computed(() => isEditing.value && editLock.status.value !== 'held');
 const lockedMessage = computed(() => {

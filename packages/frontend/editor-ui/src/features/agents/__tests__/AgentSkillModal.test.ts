@@ -29,13 +29,15 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 }));
 
-const { acquireSkillEditLock, releaseSkillEditLock } = vi.hoisted(() => ({
+const { acquireSkillEditLock, releaseSkillEditLock, getSkill } = vi.hoisted(() => ({
 	acquireSkillEditLock: vi.fn(),
 	releaseSkillEditLock: vi.fn(),
+	getSkill: vi.fn(),
 }));
 vi.mock('@/features/settings/context/skills.api', () => ({
 	acquireSkillEditLock,
 	releaseSkillEditLock,
+	getSkill,
 }));
 
 const { showMessage, trackImportedSkill } = vi.hoisted(() => ({
@@ -482,14 +484,33 @@ describe('AgentSkillModal edit lock', () => {
 		);
 	});
 
-	it('stops asking for the lock once another user holds it', async () => {
-		vi.useFakeTimers();
+	it('reloads the skill and turns editable once the other user is done', async () => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
 		try {
-			acquireSkillEditLock.mockResolvedValue({ acquired: false });
-			renderModal({ skill: existingSkill, skillId: 'skill_a' });
-			await vi.advanceTimersByTimeAsync(120_000);
+			acquireSkillEditLock
+				.mockResolvedValueOnce({
+					acquired: false,
+					holder: { id: 'user-2', firstName: 'Bob', lastName: 'Smith' },
+				})
+				.mockResolvedValue({ acquired: true });
+			getSkill.mockResolvedValue({
+				skill: { ...existingSkill, instructions: 'Refunds are allowed within 14 days.' },
+			});
+			const { findByTestId, queryByTestId, getByTestId, container } = renderModal({
+				skill: existingSkill,
+				skillId: 'skill_a',
+			});
+			await findByTestId('agent-skill-locked-callout');
 
-			expect(acquireSkillEditLock).toHaveBeenCalledTimes(1);
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			await waitFor(() =>
+				expect(queryByTestId('agent-skill-locked-callout')).not.toBeInTheDocument(),
+			);
+			expect(getSkill).toHaveBeenCalledWith(expect.anything(), 'skill_a');
+			expect(getByTestId('agent-skill-create-save')).not.toBeDisabled();
+			const values = Array.from(container.querySelectorAll('textarea'), (el) => el.value);
+			expect(values).toContain('Refunds are allowed within 14 days.');
 		} finally {
 			vi.useRealTimers();
 		}
