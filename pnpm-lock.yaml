@@ -2880,6 +2880,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@typescript-eslint/typescript-estree':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)
@@ -4583,6 +4586,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.18
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
@@ -4596,6 +4602,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2

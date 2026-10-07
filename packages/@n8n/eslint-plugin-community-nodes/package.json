@@ -28,6 +28,7 @@
     "watch": "tsc --watch --project tsconfig.build.json"
   },
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "fastest-levenshtein": "catalog:"
