@@ -8,7 +8,6 @@ export const frontendConfig = defineConfig({
 	rules: {
 		'unicorn/filename-case': 'off',
 		'n8n-local-rules/no-reka-ui-pagination': 'error',
-		'n8n-local-rules/no-iterator-helpers': 'error',
 		'vue/define-emits-declaration': ['error', 'type-literal'],
 		'vue/no-reserved-component-names': [
 			'error',

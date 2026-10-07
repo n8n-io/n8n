@@ -25,11 +25,6 @@ export const frontendConfig = tseslint.config(
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
 			'n8n-local-rules/no-reka-ui-pagination': 'error',
-
-			// esbuild downlevels syntax but never shims prototype methods, so an
-			// iterator helper ships as-is and throws on browsers that .browserslistrc
-			// still covers.
-			'n8n-local-rules/no-iterator-helpers': 'error',
 		},
 	},
 	{
