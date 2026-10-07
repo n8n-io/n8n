@@ -1,6 +1,7 @@
 import {
 	DEFAULT_MISFIRE_GRACE_SECONDS,
 	MAX_INTEGER_32BITS_SIGNED,
+	MAX_TASK_TIMEOUT_SECONDS,
 	ScheduledJobMisfirePolicy,
 	Time,
 	type IntervalDefinition,
@@ -74,9 +75,16 @@ export interface SystemTask {
 	readonly concurrencyLimit?: number | null;
 
 	/**
-	 * Executes one occurrence of the task. A run may take as long as it needs.
+	 * Overrides how long, in seconds, one durable run may take before the
+	 * scheduler aborts its signal and gives the occurrence back. An integer from 1
+	 * to {@link MAX_TASK_TIMEOUT_SECONDS}. Defaults to the scheduler's task timeout.
+	 */
+	readonly timeoutSeconds?: number;
+
+	/**
+	 * Executes one occurrence of the task. A durable run may take up to its timeout.
 	 * `signal` aborts on shutdown, and on loss of leadership for an in-memory timer.
-	 * A durable run also aborts on lease loss or expiry.
+	 * A durable run also aborts on lease loss or expiry, and when it reaches its timeout.
 	 * Ignoring the signal delays shutdown and can let another run overlap.
 	 * A durable run that settles after a lease abort counts as a failed attempt
 	 * while its claim still matches, and retries only while attempts remain.
@@ -95,6 +103,8 @@ export interface SystemTaskRunOptions {
 	maxAttempts: number;
 	/** `null` means no limit. */
 	concurrencyLimit: number | null;
+	/** `undefined` means the scheduler's task timeout. */
+	timeoutSeconds: number | undefined;
 }
 
 /** One occurrence at a time, like the in-memory timer. */
@@ -107,7 +117,7 @@ export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
  */
 const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
 	SystemTaskEffects,
-	Omit<SystemTaskRunOptions, 'misfireGraceSeconds' | 'concurrencyLimit'>
+	Omit<SystemTaskRunOptions, 'misfireGraceSeconds' | 'concurrencyLimit' | 'timeoutSeconds'>
 > = {
 	idempotent: {
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
@@ -137,6 +147,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 			task.concurrencyLimit === undefined
 				? DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT
 				: task.concurrencyLimit,
+		timeoutSeconds: task.timeoutSeconds,
 	};
 
 	// These end up in `int` columns, where a fractional value is rounded and anything
@@ -151,6 +162,9 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	if (options.concurrencyLimit !== null) {
 		assertInRange(task.name, 'concurrencyLimit', options.concurrencyLimit, 1);
 	}
+	if (options.timeoutSeconds !== undefined) {
+		assertInRange(task.name, 'timeoutSeconds', options.timeoutSeconds, 1, MAX_TASK_TIMEOUT_SECONDS);
+	}
 
 	return options;
 }
@@ -161,7 +175,7 @@ const MAX_RETRY_DELAY_SECONDS = Math.floor(MAX_INTEGER_32BITS_SIGNED / Time.seco
 /**
  * Rejects a task that declares an option the schedulers cannot honor.
  *
- * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts` or `misfireGraceSeconds` is out of range
+ * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts`, `misfireGraceSeconds` or `timeoutSeconds` is out of range
  * @throws {UnexpectedError} when an instance task declares an interval that is not positive and finite
  */
 export function validateSystemTask(task: SystemTask): void {
@@ -210,6 +224,18 @@ export function intervalFromSeconds(seconds: number): IntervalDefinition {
 	return { kind: 'interval', intervalSeconds: Math.round(seconds) };
 }
 
+/**
+ * The timeout of a durable run that another limit already stops: that limit plus
+ * `marginSeconds`, rounded up to the whole second. A limit of 0 or less means the
+ * run has no limit, so the timeout is the longest the scheduler enforces.
+ */
+export function timeoutAfterLimit(limitSeconds: number, marginSeconds: number): number {
+	if (!(limitSeconds > 0)) {
+		return MAX_TASK_TIMEOUT_SECONDS;
+	}
+	return Math.min(Math.ceil(limitSeconds + marginSeconds), MAX_TASK_TIMEOUT_SECONDS);
+}
+
 /** An interval schedule firing every `milliseconds`, rounded to the whole millisecond. */
 export function intervalFromMilliseconds(milliseconds: number): IntervalDefinition {
 	return {
@@ -248,10 +274,16 @@ function wholeMilliseconds(seconds: number): number {
 	);
 }
 
-function assertInRange(taskName: string, field: string, value: number, min: number) {
-	if (!Number.isInteger(value) || value < min || value > MAX_INTEGER_32BITS_SIGNED) {
+function assertInRange(
+	taskName: string,
+	field: string,
+	value: number,
+	min: number,
+	max = MAX_INTEGER_32BITS_SIGNED,
+) {
+	if (!Number.isInteger(value) || value < min || value > max) {
 		throw new UnexpectedError('A system task declares an out-of-range option', {
-			extra: { name: taskName, field, value, min, max: MAX_INTEGER_32BITS_SIGNED },
+			extra: { name: taskName, field, value, min, max },
 		});
 	}
 }
