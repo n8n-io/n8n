@@ -8,7 +8,7 @@ import { execute } from '../../../v2/actions/file/update.operation';
 import {
 	MAX_SIMPLE_UPLOAD_BYTES,
 	SHAREPOINT_ILLEGAL_FILE_NAME_CHARS,
-} from '../../../v2/helpers/utils';
+} from '../../../helpers/utils';
 import * as transport from '../../../transport';
 import type * as _importType0 from '../../../transport';
 

@@ -1039,6 +1039,7 @@ describe('GET /workflows/:id/:versionId', () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.headers.deprecation).toBe('@1787702400');
 		// The deprecated path keeps one message for both cases. Callers may match on it.
 		expect(response.body.message).toBe('Version not found');
 	});
@@ -1075,6 +1076,9 @@ describe('GET /workflows/:id/:versionId', () => {
 		await createWorkflowHistoryItem(workflow.id, versionData);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBe('@1787702400');
 
 		const body = response.body as Partial<WorkflowHistory>;
 		expect(body).toEqual({

@@ -24,6 +24,7 @@ interface Props {
 	parameter: INodeProperties;
 	isReadOnly: boolean;
 	value: NodeParameterValueType;
+	inputMode?: 'ai' | 'fixed' | 'expression';
 	showOptions?: boolean;
 	showExpressionSelector?: boolean;
 	showFocusPanel?: boolean;
@@ -59,7 +60,10 @@ const ndvStore = injectNDVStoreIfProvided();
 
 const activeNode = computed(() => ndvStore.value?.activeNode ?? null);
 const isDefault = computed(() => props.parameter.default === props.value);
-const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
+const isValueAnExpression = computed(() => {
+	if (props.inputMode !== undefined) return props.inputMode === 'expression';
+	return isValueExpression(props.parameter, props.value);
+});
 const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
 const isChatHubToolContext = inject(ChatHubToolContextKey, false);
 

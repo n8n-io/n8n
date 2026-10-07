@@ -112,6 +112,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'scim',
 		]);
 	});
 
@@ -150,6 +151,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'scim',
 			'type-availability-policies',
 		]);
 	});

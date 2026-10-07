@@ -8,7 +8,7 @@ import { versionDescription } from '../../../v2/actions/versionDescription';
 import {
 	MAX_SIMPLE_UPLOAD_BYTES,
 	SHAREPOINT_ILLEGAL_FILE_NAME_CHARS,
-} from '../../../v2/helpers/utils';
+} from '../../../helpers/utils';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../../transport';
 import type * as _importType0 from '../../../transport';

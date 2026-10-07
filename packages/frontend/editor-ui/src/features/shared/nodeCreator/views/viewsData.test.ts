@@ -22,11 +22,12 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
+const isNodeTypeModuleDisabled = vi.fn();
 
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'AI Agent V2',
-	hidden: true,
+	displayName: 'Message an Agent',
+	codex: { subcategories: { AI: [AI_CATEGORY_AGENTS] } },
 });
 
 const otherNodes = (
@@ -60,7 +61,12 @@ const otherNodes = (
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+<<<<<<< HEAD
 		allLatestNodeTypes: otherNodes,
+=======
+		allLatestNodeTypes: [aiTransformNode, ...otherNodes, messageAnAgentNode],
+		isNodeTypeModuleDisabled,
+>>>>>>> 0e1c7549997f43053fda83534b597875b0310df6
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
 			init: async () => {},
@@ -89,6 +95,7 @@ describe('viewsData', () => {
 
 			return null;
 		});
+		isNodeTypeModuleDisabled.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -100,10 +107,20 @@ describe('viewsData', () => {
 			expect(AIView([])).toMatchSnapshot();
 		});
 
+<<<<<<< HEAD
 		test('should include Message an Agent node before the agent node when agents module is active', () => {
 			const settingsStore = useSettingsStore();
 			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockReturnValue(true);
 
+=======
+		test('should not include the deprecated AI Transform node', () => {
+			const result = AIView([]);
+
+			expect(result.items.some((item) => item.key === AI_TRANSFORM_NODE_TYPE)).toBe(false);
+		});
+
+		test('should list Message an Agent first among the agent nodes', () => {
+>>>>>>> 0e1c7549997f43053fda83534b597875b0310df6
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
 
@@ -115,9 +132,16 @@ describe('viewsData', () => {
 			expect(messageIdx).toBeLessThan(agentIdx);
 		});
 
+<<<<<<< HEAD
 		test('should not include Message an Agent node when agents module is inactive', () => {
 			const settingsStore = useSettingsStore();
 			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockReturnValue(false);
+=======
+		test('should not include Message an Agent node when its module is disabled', () => {
+			isNodeTypeModuleDisabled.mockImplementation(
+				(nodeType: string) => nodeType === MESSAGE_AN_AGENT_NODE_TYPE,
+			);
+>>>>>>> 0e1c7549997f43053fda83534b597875b0310df6
 
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);

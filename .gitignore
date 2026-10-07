@@ -1,4 +1,5 @@
 node_modules
+.build/
 .pnpm-store
 .DS_Store
 .tmp

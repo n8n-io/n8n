@@ -981,14 +981,6 @@
 				"hash": "26b2999a3856"
 			}
 		],
-		"packages/extensions/insights/oxlint.config.mts": [
-			{
-				"rule": "lint-config-layering",
-				"line": 9,
-				"message": "packages/extensions/insights turns 'typescript/no-deprecated' down to 'off' for the whole package.",
-				"hash": "f936bed8fa8d"
-			}
-		],
 		"packages/frontend/editor-ui/eslint.config.mjs": [
 			{
 				"rule": "lint-config-layering",

@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -42,6 +43,8 @@ import {
 import { ExternalHooks } from '@/external-hooks';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
+import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1231,6 +1234,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					name: 'Test Workflow',
 					active: true,
 					activeVersionId: 'version-456',
+					versionId: 'draft-version',
 					nodes: currentNodes,
 					connections: currentConnections,
 					activeVersion: mock({
@@ -1249,6 +1253,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(result.nodes).toEqual(activeVersionNodes);
 			expect(result.connections).toEqual(activeVersionConnections);
+			expect(result.versionId).toBe('version-456');
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
 				{ relations: ['activeVersion', 'tags'] },
@@ -1353,8 +1358,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 			];
 			const mappingConnections = { 'Mapping Node': {} };
 			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
-				workflow: mock<WorkflowEntity>({ id: 'workflow-123', name: 'Test Workflow' }),
+				workflow: mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					versionId: 'draft-version',
+				}),
 				publishedVersion: mock<WorkflowHistory>({
+					versionId: 'published-version',
 					nodes: mappingNodes,
 					connections: mappingConnections,
 				}),
@@ -1369,6 +1379,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(workflowRepository.get).not.toHaveBeenCalled();
 			expect(result.nodes).toEqual(mappingNodes);
 			expect(result.connections).toEqual(mappingConnections);
+			expect(result.versionId).toBe('published-version');
 		});
 
 		it('throws when there is no published version (flag on)', async () => {
@@ -1525,6 +1536,52 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(additionalData.userId).toBe(userId);
 		});
 
+		describe('listAgents', () => {
+			const agentsService = mockInstance(AgentsService);
+			const agentsSettingsService = mockInstance(AgentsSettingsService);
+
+			beforeEach(() => {
+				Container.set(AgentsService, agentsService);
+				Container.set(AgentsSettingsService, agentsSettingsService);
+				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+					(moduleName) => moduleName === 'agents',
+				);
+				agentsSettingsService.assertEnabled.mockResolvedValue(undefined);
+				agentsService.findByUser.mockResolvedValue([
+					mock<Awaited<ReturnType<AgentsService['findByUser']>>[number]>({
+						id: 'agent-1',
+						name: 'Weather Agent',
+					}),
+				]);
+			});
+
+			it('lists the agents of the user', async () => {
+				const additionalData = await getBase();
+
+				await expect(additionalData.listAgents?.('user-1')).resolves.toEqual([
+					{ id: 'agent-1', name: 'Weather Agent' },
+				]);
+			});
+
+			it('rejects while an admin has turned agents off in Settings > Agents', async () => {
+				agentsSettingsService.assertEnabled.mockRejectedValue(new Error('Agents are disabled.'));
+				const additionalData = await getBase();
+
+				await expect(additionalData.listAgents?.('user-1')).rejects.toThrow('Agents are disabled.');
+				expect(agentsService.findByUser).not.toHaveBeenCalled();
+			});
+
+			it('rejects while the agents module is inactive', async () => {
+				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+				const additionalData = await getBase();
+
+				await expect(additionalData.listAgents?.('user-1')).rejects.toThrow(
+					'Agents are disabled on this instance. Ask an instance admin to enable the agents module.',
+				);
+				expect(agentsService.findByUser).not.toHaveBeenCalled();
+			});
+		});
+
 		it('should include currentNodeParameters when provided', async () => {
 			const currentNodeParameters = { param1: 'value1' };
 			const additionalData = await getBase({ currentNodeParameters });
@@ -1637,6 +1694,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			// Both this and the getBase describe call mockInstance(OwnershipService),
 			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
 			Container.set(OwnershipService, ownershipService);
+			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+				(moduleName) => moduleName === 'agents',
+			);
 			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>(),
 			);
@@ -1999,6 +2059,22 @@ describe('WorkflowExecuteAdditionalData', () => {
 				undefined,
 				executionSandboxScope,
 			);
+		});
+
+		it('throws a clear error when the agents module is disabled', async () => {
+			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			await expect(
+				executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
+			).rejects.toThrow(
+				'Agents are disabled on this instance. Ask an instance admin to enable the agents module.',
+			);
+			expect(agentWorkflowExecutionService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('throws when projectId is missing and no workflowId is available to resolve it', async () => {
