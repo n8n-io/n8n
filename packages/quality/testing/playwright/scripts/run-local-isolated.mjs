@@ -36,30 +36,17 @@
  */
 
 import { spawn, spawnSync } from 'child_process';
-import { mkdtempSync, rmSync } from 'fs';
-import { createServer } from 'net';
+import { mkdtempSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+import { getFreePort, removeDir, signalProcessGroup, waitForN8n } from './local-n8n-process.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const playwrightDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(playwrightDir, '../../../..');
-
-/** Ask the OS for a free TCP port. Race-y by nature (the port can be claimed
- *  between close() and the consumer's bind), but acceptable for a dev script. */
-function getFreePort() {
-	return new Promise((resolve, reject) => {
-		const srv = createServer();
-		srv.unref();
-		srv.on('error', reject);
-		srv.listen(0, '127.0.0.1', () => {
-			const { port } = srv.address();
-			srv.close(() => resolve(port));
-		});
-	});
-}
 
 // Honour an explicit URL if pinned; otherwise grab two free ports — one for
 // n8n's HTTP server, one for the task-runner broker (default 5679).
@@ -117,22 +104,13 @@ const n8n = spawn('pnpm', ['start'], {
 
 let shuttingDown = false;
 function cleanupTempDir() {
-	try {
-		rmSync(userFolder, { recursive: true, force: true });
-	} catch {
-		// best-effort
-	}
+	removeDir(userFolder);
 }
 
 function shutdown(code) {
 	if (shuttingDown) return;
 	shuttingDown = true;
-	try {
-		// Negative pid → signal the whole process group.
-		process.kill(-n8n.pid, 'SIGTERM');
-	} catch {
-		// Group may already be gone.
-	}
+	signalProcessGroup(n8n, 'SIGTERM');
 	cleanupTempDir();
 	process.exit(code);
 }
@@ -141,11 +119,7 @@ process.on('SIGINT', () => shutdown(130));
 process.on('SIGTERM', () => shutdown(143));
 process.on('exit', () => {
 	if (!shuttingDown && n8n.pid) {
-		try {
-			process.kill(-n8n.pid, 'SIGTERM');
-		} catch {
-			// ignore
-		}
+		signalProcessGroup(n8n, 'SIGTERM');
 		cleanupTempDir();
 	}
 });
@@ -157,35 +131,8 @@ n8n.on('exit', (code, signal) => {
 	}
 });
 
-// Poll the actual REST route, not just a health endpoint, so we know controllers
-// are registered. We POST `/rest/e2e/reset` with no body — a registered route
-// returns 4xx/5xx, an unregistered one returns 404 with an HTML body.
-async function waitForN8n(timeoutMs = 120_000) {
-	const deadline = Date.now() + timeoutMs;
-	let lastStatus = 'connection refused';
-	while (Date.now() < deadline) {
-		try {
-			const res = await fetch(`${backendUrl}/rest/e2e/reset`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: '{}',
-			});
-			lastStatus = `HTTP ${res.status}`;
-			// 404 with HTML => routes not loaded yet. Anything 2xx/4xx/5xx with
-			// JSON body means E2EController is registered and listening.
-			if (res.status !== 404) return;
-			const text = await res.text();
-			if (!text.includes('Cannot POST')) return;
-		} catch (err) {
-			lastStatus = err.message ?? String(err);
-		}
-		await new Promise((r) => setTimeout(r, 500));
-	}
-	throw new Error(`n8n did not become ready within ${timeoutMs}ms (last: ${lastStatus})`);
-}
-
 try {
-	await waitForN8n();
+	await waitForN8n(backendUrl);
 	console.log('[run-local-isolated] n8n ready, launching playwright ...');
 } catch (err) {
 	console.error(`[run-local-isolated] ${err.message}`);

@@ -9,6 +9,7 @@
     "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=e2e",
     "test:local:isolated": "node scripts/run-local-isolated.mjs",
     "test:local:instance-ai": "node scripts/run-local-instance-ai.mjs",
+    "test:future-poc": "node scripts/run-local-linked.mjs",
     "test:e2e": "playwright test --project=*e2e*",
     "test:performance": "playwright test --project=performance",
     "bench:canvas": "playwright test --project=performance tests/performance/canvas",

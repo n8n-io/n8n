@@ -59,6 +59,7 @@ describe('startScriptedLlm', () => {
 	test('binds to 127.0.0.1 on a port that the OS picks', async () => {
 		const llm = await start();
 
+		expect(llm.host).toBe('127.0.0.1');
 		expect(llm.port).toBeGreaterThan(0);
 		expect(llm.url).toBe(`http://127.0.0.1:${llm.port}`);
 		expect(llm.modelUrl).toBe(`http://127.0.0.1:${llm.port}/v1`);
@@ -78,6 +79,20 @@ describe('startScriptedLlm', () => {
 			content: [{ type: 'text', text: 'Hi there.' }],
 			stop_reason: 'end_turn',
 		});
+	});
+
+	// The AI SDK does not add `/v1`, so a base URL without `/v1` posts to `/messages`.
+	test('answers at `url` + /messages, the path for a base URL without /v1', async () => {
+		const llm = await start();
+
+		const response = await fetch(`${llm.url}/messages`, {
+			method: 'POST',
+			body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'hello' }] }),
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({ content: [{ type: 'text', text: 'Hi there.' }] });
+		expect(llm.requests()).toEqual([expect.objectContaining({ ruleId: 'greet' })]);
 	});
 
 	test('streams the scripted tool call with the exact input', async () => {
@@ -230,8 +245,10 @@ describe('startScriptedLlm', () => {
 
 	const unknownRoutes = [
 		['GET', '/v1/messages'],
+		['GET', '/messages'],
 		['POST', '/v1/complete'],
-		['POST', '/messages'],
+		['POST', '/v1/messages/batches'],
+		['POST', '/v2/messages'],
 	] as const;
 	for (const [method, path] of unknownRoutes) {
 		test(`answers ${method} ${path} with a 404 error`, async () => {

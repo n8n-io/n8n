@@ -947,6 +947,14 @@ export class McpApiHelper {
 	}
 
 	/**
+	 * Sends `HEAD /mcp-server/http`, which MCP clients use to find the auth scheme.
+	 * The server answers 401 with a `WWW-Authenticate` header when MCP access is on.
+	 */
+	async internalMcpDiscoverAuth(): Promise<APIResponse> {
+		return await this.api.request.fetch('/mcp-server/http', { method: 'HEAD' });
+	}
+
+	/**
 	 * Lists all available tools from the internal MCP service.
 	 *
 	 * @param apiKey - The MCP API key for authentication

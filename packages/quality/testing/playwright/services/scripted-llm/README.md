@@ -1,7 +1,7 @@
 # Scripted LLM
 
 The scripted LLM is a small HTTP server for tests and local demos. It speaks the
-Anthropic Messages API (`POST /v1/messages`). It sends JSON replies and
+Anthropic Messages API (`POST /v1/messages` and `POST /messages`). It sends JSON replies and
 streamed (SSE) replies. It answers from a script, not from a model. Thus the
 n8n Assistant gives the same replies on each run. It needs no real API key and
 no network.
@@ -58,6 +58,27 @@ text. `requests()` lists the skipped tools in `skippedTools`.
 
 Rule ids must be unique. Do not use the id `fallback`.
 
+## Guard the rules for the Assistant
+
+The Assistant sends more than one kind of request to the model. The agent
+turn streams and offers tools. Other calls, such as the thread title and
+memory, use the same server. Thus a rule that matches only `userText` can also
+answer a title call. Use these conventions:
+
+- Guard a rule for the agent turn with `systemIncludes: 'n8n Instance Agent'`.
+  The system prompt of the agent starts with `You are the n8n Instance Agent`.
+- Guard a rule that calls a tool with `toolAvailable` too. Title and memory
+  calls offer no tools.
+- Keep a fallback text. The title and memory calls get the fallback.
+
+```json
+{
+  "id": "say-hello",
+  "when": { "systemIncludes": "n8n Instance Agent", "userText": "say hello" },
+  "reply": { "text": "Hello from the scripted model." }
+}
+```
+
 ## Use it in a test
 
 ```ts
@@ -70,9 +91,10 @@ expect(llm.requests().map((request) => request.ruleId)).toEqual(['call-search', 
 await llm.stop();
 ```
 
-The server binds to `127.0.0.1`. It uses a free port unless you set `port`.
-`llm.url` is the server origin. Use it as `baseURL` for the Anthropic SDK.
-`llm.modelUrl` is `llm.url` with `/v1` at the end. Use it for n8n.
+The server binds to `127.0.0.1` (`llm.host`). It uses a free port unless you
+set `port`. `llm.url` is the server origin. Use it as `baseURL` for the
+Anthropic SDK. `llm.modelUrl` is `llm.url` with `/v1` at the end. Always use
+`llm.modelUrl` for n8n (`N8N_INSTANCE_AI_MODEL_URL`).
 `requests()` returns one entry for each answered request: `ruleId`, `stream`,
 `model`, `lastUserText`, `lastToolResult` and `skippedTools`.
 
@@ -93,16 +115,16 @@ The server binds to `127.0.0.1`. It uses a free port unless you set `port`.
    N8N_INSTANCE_AI_MODEL_API_KEY=scripted
    ```
 
-The model URL must end with `/v1`. n8n has two code paths for Anthropic
+Always end the model URL with `/v1`. n8n has two code paths for Anthropic
 models:
 
 - When `HTTP_PROXY` or `HTTPS_PROXY` is set, n8n gives the URL to the AI SDK
   client as it is. The client adds only `/messages`.
 - In the other path, n8n adds `/v1` only when the URL does not end with `/v1`.
 
-Thus a URL that ends with `/v1` works in both paths. The server answers
-`POST /messages` with a 404 error, so a URL without `/v1` fails in the proxy
-path.
+Thus a URL that ends with `/v1` works in both paths. The server also answers
+`POST /messages`, so a URL without `/v1` works too. Use the URL with `/v1`
+all the same: it is the documented value and it does not depend on the path.
 
 When `HTTP_PROXY` or `HTTPS_PROXY` is set, make sure that `NO_PROXY` includes
 `127.0.0.1`. If it does not, n8n sends the model requests to the proxy.

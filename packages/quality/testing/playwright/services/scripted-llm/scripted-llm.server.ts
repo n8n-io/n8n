@@ -1,5 +1,6 @@
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 import { recordUse, selectReply } from './scripted-llm.matcher';
 import {
@@ -21,7 +22,9 @@ import {
 } from './scripted-llm.types';
 
 const HOST = '127.0.0.1';
-const MESSAGES_PATH = '/v1/messages';
+// The Anthropic SDK posts to `/v1/messages`. The AI SDK posts to `<baseURL>/messages` and does not
+// add `/v1`, so a base URL without `/v1` also works.
+const MESSAGES_PATHS = new Set(['/v1/messages', '/messages']);
 // The Assistant sends large system prompts and tool lists. This limit only stops runaway bodies.
 const MAX_BODY_BYTES = 20 * 1024 * 1024;
 
@@ -36,6 +39,8 @@ export type ScriptedLlmOptions = {
 export type ScriptedLlm = {
 	/** Server origin, for example `http://127.0.0.1:4010`. Use it as the Anthropic SDK `baseURL`. */
 	url: string;
+	/** The address that the server listens on, as `server.address()` gives it. Always `127.0.0.1`. */
+	host: string;
 	/**
 	 * `url` + `/v1`. Use it as `N8N_INSTANCE_AI_MODEL_URL`. n8n does not add `/v1` when
 	 * HTTP(S)_PROXY is set. The other n8n code path adds `/v1` only when it is missing.
@@ -162,7 +167,7 @@ function sendMessage(res: ServerResponse, message: ScriptedMessage, stream: bool
 
 function assertMessagesRoute(req: IncomingMessage): void {
 	const path = new URL(req.url ?? '/', `http://${HOST}`).pathname;
-	if (req.method !== 'POST' || path !== MESSAGES_PATH) {
+	if (req.method !== 'POST' || !MESSAGES_PATHS.has(path)) {
 		throw new HttpError(404, 'not_found_error', `No route for ${req.method ?? ''} ${path}`);
 	}
 }
@@ -196,7 +201,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, state: ServerSt
 	}
 }
 
-async function listen(server: Server, port: number): Promise<number> {
+async function listen(server: Server, port: number): Promise<AddressInfo> {
 	return await new Promise((resolve, reject) => {
 		server.once('error', reject);
 		server.listen(port, HOST, () => {
@@ -206,7 +211,7 @@ async function listen(server: Server, port: number): Promise<number> {
 				reject(new UnexpectedError('Scripted LLM server has no TCP address'));
 				return;
 			}
-			resolve(address.port);
+			resolve(address);
 		});
 	});
 }
@@ -242,11 +247,12 @@ export async function startScriptedLlm(options: ScriptedLlmOptions): Promise<Scr
 		// `handle` answers its own errors. This catch only covers a failed error reply.
 		handle(req, res, state).catch(() => res.destroy());
 	});
-	const port = await listen(server, options.port ?? 0);
+	const { address: host, port } = await listen(server, options.port ?? 0);
 	const url = `http://${HOST}:${port}`;
 
 	return {
 		url,
+		host,
 		modelUrl: `${url}/v1`,
 		port,
 		requests: () => structuredClone(state.records),

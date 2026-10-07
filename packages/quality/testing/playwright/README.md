@@ -190,6 +190,13 @@ The two underlying env-var levers — usable independently of the script:
 | `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Includes `@mode:*`, `@licensed`, and `@db:reset` tests in local runs. Service-backed tests still skip. |
 | `PLAYWRIGHT_SKIP_WEBSERVER=true` | Stops Playwright from launching its own n8n via the `webServer` config. Use when a wrapper script (like `scripts/run-local-isolated.mjs`) already manages n8n with custom env vars. |
 
+### `test:future-poc` — Assistant tests on two local instances
+
+`pnpm test:future-poc` starts two n8n processes from the local build ("This
+computer" on port 5678 and "Cloud" on port 5680) and runs
+`tests/e2e/future-poc/` against them with a scripted model. See
+[the guide](tests/e2e/future-poc/README.md).
+
 ## Test Tags
 ```typescript
 test('basic test', ...)                              // All modes, fully parallel
