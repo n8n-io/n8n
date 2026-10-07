@@ -93,6 +93,9 @@ onMounted(() => {
 });
 const isLocked = computed(() => isEditing.value && editLock.status.value !== 'held');
 const lockedMessage = computed(() => {
+	if (editLock.status.value === 'forbidden') {
+		return i18n.baseText('agents.builder.skills.lockForbidden');
+	}
 	if (editLock.status.value === 'failed') return i18n.baseText('agents.builder.skills.lockFailed');
 	if (editLock.status.value !== 'locked') return '';
 	const holder = editLock.lockedBy.value;

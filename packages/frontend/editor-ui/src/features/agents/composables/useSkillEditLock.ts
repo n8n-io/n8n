@@ -1,4 +1,5 @@
 import { onBeforeUnmount, ref } from 'vue';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { acquireSkillEditLock, releaseSkillEditLock } from '@/features/settings/context/skills.api';
@@ -8,9 +9,10 @@ const RENEW_INTERVAL_MS = 30_000;
 
 /**
  * `pending` until the first lock request answers, `held` while this tab may edit,
- * `locked` when another user holds the lock, `failed` when the first request failed.
+ * `locked` when another user holds the lock, `forbidden` when the user may not edit
+ * the skill, `failed` when the first request failed for another reason.
  */
-export type SkillEditLockStatus = 'idle' | 'pending' | 'held' | 'locked' | 'failed';
+export type SkillEditLockStatus = 'idle' | 'pending' | 'held' | 'locked' | 'forbidden' | 'failed';
 
 /**
  * Holds a skill's edit lock while the editor is open. Only `held` allows edits:
@@ -45,9 +47,11 @@ export function useSkillEditLock() {
 			lockedBy.value = result.holder ?? null;
 			status.value = 'locked';
 			stopRenewing();
-		} catch {
+		} catch (error) {
 			// A failed renewal keeps the lock until its TTL; only a failed first request blocks editing.
-			if (status.value === 'pending') status.value = 'failed';
+			if (status.value !== 'pending') return;
+			status.value =
+				error instanceof ResponseError && error.httpStatusCode === 403 ? 'forbidden' : 'failed';
 		}
 	}
 

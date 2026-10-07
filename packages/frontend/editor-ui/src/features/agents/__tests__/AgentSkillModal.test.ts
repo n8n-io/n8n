@@ -9,6 +9,8 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
 
+import { ResponseError } from '@n8n/rest-api-client';
+
 import AgentSkillModal from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
@@ -467,6 +469,17 @@ describe('AgentSkillModal edit lock', () => {
 			'agents.builder.skills.lockFailed',
 		);
 		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+	});
+
+	it('says the user cannot edit the skill when the lock request is forbidden', async () => {
+		acquireSkillEditLock.mockRejectedValue(
+			new ResponseError('You can use but not edit this skill', { httpStatusCode: 403 }),
+		);
+		const { findByTestId } = renderModal({ skill: existingSkill, skillId: 'skill_a' });
+
+		expect(await findByTestId('agent-skill-locked-callout')).toHaveTextContent(
+			'agents.builder.skills.lockForbidden',
+		);
 	});
 
 	it('stops asking for the lock once another user holds it', async () => {
