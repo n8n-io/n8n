@@ -296,7 +296,11 @@ function onDifficultySelectCredential(
 	// A model is already mapped for this provider → update its credential in place.
 	if (mapping?.model && mappingProvider === provider) {
 		clearPendingDifficultyCredential(difficulty, provider);
-		emitModelsByDifficulty(difficulty, { ...mapping, credential: credentialId });
+		const updatedMapping = { ...mapping, credential: credentialId };
+		if (provider === 'google-vertex' && mapping.credential !== credentialId) {
+			updatedMapping.modelProjectId = '';
+		}
+		emitModelsByDifficulty(difficulty, updatedMapping);
 		return;
 	}
 

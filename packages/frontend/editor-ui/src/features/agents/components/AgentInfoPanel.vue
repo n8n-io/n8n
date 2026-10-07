@@ -353,7 +353,11 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
 	if (parsed?.provider === provider && credentialId) {
-		emit('update:config', { credential: credentialId });
+		const changes: Partial<AgentJsonConfig> = { credential: credentialId };
+		if (provider === 'google-vertex' && credentialId !== props.config?.credential) {
+			changes.modelProjectId = '';
+		}
+		emit('update:config', changes);
 	}
 }
 

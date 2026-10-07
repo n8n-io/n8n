@@ -5,6 +5,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type * as permissions from '@n8n/permissions';
 import type { INodeListSearchResult } from 'n8n-workflow';
 
+import { useModelCatalog } from '../composables/useModelCatalog';
 import type {
 	AgentCredentialsByProvider,
 	AgentModelOption,
@@ -177,7 +178,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 vi.mock('../composables/useModelCatalog', () => ({
-	useModelCatalog: () => ({
+	useModelCatalog: vi.fn(() => ({
 		ensureLoaded: vi.fn(),
 		getDefaultModelForPicker: (
 			_credentials: Record<string, string | null> | null,
@@ -195,7 +196,7 @@ vi.mock('../composables/useModelCatalog', () => ({
 				: null,
 		getVerificationStatus: (_projectId: string, _provider: string, credentialId: string) =>
 			credentialId === 'free-openai-credential' ? 'resolved' : 'loading',
-	}),
+	})),
 }));
 
 const modelsByProvider: AgentModelsByProvider = {
@@ -788,9 +789,33 @@ describe('AgentModelSelector', () => {
 		getResourceLocatorResults
 			.mockReturnValueOnce(previous.promise)
 			.mockRejectedValueOnce(new Error('Unavailable'))
-			.mockResolvedValueOnce({ results: [{ name: 'Current project', value: 'current-project' }] });
-		const wrapper = await mountSelector({ 'google-vertex': 'old-gcp' });
-		await wrapper.setProps({ credentials: { 'google-vertex': 'new-gcp' } });
+			.mockResolvedValue({ results: [{ name: 'Current project', value: 'current-project' }] });
+		vi.mocked(useModelCatalog).mockReturnValueOnce({
+			...useModelCatalog(),
+			getDefaultModelForPicker: () => modelsByProvider['google-vertex']?.models[0] ?? null,
+			getVerificationStatus: () => 'resolved',
+		});
+		const wrapper = await mountSelector(null, {
+			selectedModel: modelsByProvider['google-vertex']?.models[0],
+			modelProjectId: 'old-project',
+		});
+		await wrapper.setProps({ credentials: { 'google-vertex': 'old-gcp' } });
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::select::old-gcp');
+		await flushPromises();
+		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([
+			{ modelProjectId: 'old-project' },
+			'auto',
+		]);
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::select::new-gcp');
+		await flushPromises();
+		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([{ modelProjectId: '' }, 'auto']);
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
+		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([{ modelProjectId: '' }]);
+
+		await wrapper.setProps({
+			credentials: { 'google-vertex': 'new-gcp' },
+			modelProjectId: 'current-project',
+		});
 		await flushPromises();
 		previous.resolve({ results: [{ name: 'Old project', value: 'old-project' }] });
 		await flushPromises();
@@ -808,8 +833,25 @@ describe('AgentModelSelector', () => {
 			getMenuItemByLabel(
 				getProviderItem(wrapper, 'google-vertex')?.children ?? [],
 				'Current project',
-			),
-		).toBeDefined();
+			)?.checked,
+		).toBe(true);
+
+		await wrapper.setProps({ projectId: 'project-2' });
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
+		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([
+			{ modelProjectId: 'current-project' },
+		]);
+		await wrapper.setProps({ credentials: { 'google-vertex': 'old-gcp' } });
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
+		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([{ modelProjectId: '' }]);
+		await wrapper.setProps({
+			credentials: { 'google-vertex': 'new-gcp' },
+			boundCredentialId: 'new-gcp',
+		});
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
+		expect(wrapper.emitted('change')?.at(-1)).toMatchObject([
+			{ modelProjectId: 'current-project' },
+		]);
 	});
 
 	it('checks the active credential row', async () => {

@@ -109,9 +109,13 @@ const vertexProjectsStatus = ref<'loading' | 'ready' | 'error'>('ready');
 const vertexProjectsRefresh = ref(0);
 
 watch(
-	() => modelProjectId,
-	(value) => {
-		selectedVertexProjectId.value = value;
+	[() => modelProjectId, () => credentials?.['google-vertex'], () => boundCredentialId],
+	([value, credentialId], [previousValue, previousCredentialId]) => {
+		if (value !== previousValue || (credentialId && credentialId === boundCredentialId)) {
+			selectedVertexProjectId.value = value;
+		} else if (previousCredentialId && credentialId !== previousCredentialId) {
+			selectedVertexProjectId.value = '';
+		}
 	},
 );
 
@@ -621,6 +625,9 @@ function selectCredentialAndResolveDefaultModel(
 	provider: AgentModelProvider,
 	credentialId: string,
 ) {
+	if (provider === 'google-vertex' && credentialId !== credentials?.[provider]) {
+		selectedVertexProjectId.value = '';
+	}
 	void ensureLoaded(projectId);
 	emit('selectCredential', provider, credentialId);
 	pendingDefaultCredential.value = { provider, credentialId };

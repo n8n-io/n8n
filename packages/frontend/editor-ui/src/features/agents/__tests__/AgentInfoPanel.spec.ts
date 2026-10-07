@@ -238,7 +238,7 @@ describe('AgentInfoPanel', () => {
 		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
 	});
 
-	it('saves the Vertex project and clears it when switching providers', async () => {
+	it('saves Vertex projects and clears them on credential or provider changes', async () => {
 		const wrapper = mountModelPanel({
 			name: 'Vertex Agent',
 			model: 'google-vertex/gemini-3-flash-preview',
@@ -256,6 +256,21 @@ describe('AgentInfoPanel', () => {
 		await wrapper.vm.$nextTick();
 		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toMatchObject({
 			modelProjectId: 'new-project',
+		});
+		selector.vm.$emit('select-credential', 'google-vertex', 'gcp');
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({ credential: 'gcp' });
+		selector.vm.$emit('select-credential', 'google-vertex', 'new-gcp');
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
+			credential: 'new-gcp',
+			modelProjectId: '',
+		});
+		selector.vm.$emit('change', {
+			provider: 'google-vertex',
+			model: 'gemini-3-flash-preview',
+			modelProjectId: '',
+		});
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toMatchObject({
+			modelProjectId: '',
 		});
 		selector.vm.$emit('change', { provider: 'anthropic', model: 'claude-sonnet-4-5' });
 		await wrapper.vm.$nextTick();

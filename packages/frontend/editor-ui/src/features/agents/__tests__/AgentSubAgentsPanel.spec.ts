@@ -598,37 +598,58 @@ describe('AgentSubAgentsPanel', () => {
 		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(false);
 	});
 
-	it('updates only the matching difficulty credential when a credential is selected', async () => {
-		const wrapper = await mountPanel({
-			...defaultConfig,
-			subAgents: {
-				modelsByDifficulty: {
-					low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
-				},
+	it.each([
+		{
+			provider: 'anthropic',
+			mapping: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+			expected: { model: 'anthropic/claude-sonnet-4-5', credential: 'new-credential' },
+		},
+		{
+			provider: 'google-vertex',
+			mapping: {
+				model: 'google-vertex/gemini-3-flash-preview',
+				credential: 'google-cred',
+				modelProjectId: 'cloud-project',
 			},
-		});
-		await flushPromises();
-
-		emitDifficultyCredentialChange(
-			'agent-sub-agents-difficulty-high-model',
-			'anthropic',
-			'anthropic-cred-2',
-		);
-		await flushPromises();
-
-		expect(selectCredentialMock).not.toHaveBeenCalled();
-		expect(wrapper.emitted('update:config')?.[0]).toEqual([
-			{
-				subAgents: {
-					modelsByDifficulty: {
-						low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred-2' },
-					},
-				},
+			expected: {
+				model: 'google-vertex/gemini-3-flash-preview',
+				credential: 'new-credential',
+				modelProjectId: '',
 			},
-		]);
-	});
+		},
+	])(
+		'updates only the matching $provider difficulty credential',
+		async ({ provider, mapping, expected }) => {
+			const modelsByDifficulty = {
+				low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
+				high: mapping,
+			};
+			const wrapper = await mountPanel({
+				...defaultConfig,
+				subAgents: { modelsByDifficulty },
+			});
+			await flushPromises();
+
+			emitDifficultyCredentialChange(
+				'agent-sub-agents-difficulty-high-model',
+				provider,
+				mapping.credential,
+			);
+			await flushPromises();
+			emitDifficultyCredentialChange(
+				'agent-sub-agents-difficulty-high-model',
+				provider,
+				'new-credential',
+			);
+			await flushPromises();
+
+			expect(selectCredentialMock).not.toHaveBeenCalled();
+			expect(wrapper.emitted('update:config')).toEqual([
+				[{ subAgents: { modelsByDifficulty } }],
+				[{ subAgents: { modelsByDifficulty: { ...modelsByDifficulty, high: expected } } }],
+			]);
+		},
+	);
 
 	it('clears a difficulty mapping and removes modelsByDifficulty when none remain', async () => {
 		const wrapper = await mountPanel({
