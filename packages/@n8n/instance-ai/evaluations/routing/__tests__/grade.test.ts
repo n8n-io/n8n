@@ -201,6 +201,9 @@ describe('trialPasses', () => {
 		[['clarify:agent'], clarify('none'), false],
 		[['clarify:open'], clarify('none'), true],
 		[['clarify:open'], clarify('workflow'), false],
+		[['answer:agent'], { route: 'answer', steer: 'both', evidence: 'end of turn' }, true],
+		[['answer:open'], { route: 'answer', steer: 'workflow', evidence: 'end of turn' }, false],
+		[['answer:open'], clarify('none'), false],
 	])('accepts %j with %j: %s', (accepts, resolution, expected) => {
 		expect(trialPasses(routingCase('clarify', accepts), resolution)).toBe(expected);
 	});

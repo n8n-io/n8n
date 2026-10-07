@@ -126,24 +126,20 @@ export function createRouteWatcher(
 	};
 }
 
-/** Short label for output: the route, with the steer for `clarify`. */
+/** Short label for output: the route, with the steer for `clarify` and `answer`. */
 export function routeLabel(resolution: RouteResolution): string {
-	return resolution.route === 'clarify'
-		? `clarify:${resolution.steer ?? 'none'}`
+	return resolution.route === 'clarify' || resolution.route === 'answer'
+		? `${resolution.route}:${resolution.steer ?? 'none'}`
 		: resolution.route;
 }
 
+// `<route>:agent` passes a steer toward an Agent; `<route>:open` passes any steer except workflow only.
 function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolution): boolean {
-	switch (token) {
-		case 'clarify':
-			return route === 'clarify';
-		case 'clarify:agent':
-			return route === 'clarify' && (steer === 'agent' || steer === 'both');
-		case 'clarify:open':
-			return route === 'clarify' && steer !== undefined && steer !== 'workflow';
-		default:
-			return route === token;
-	}
+	const [tokenRoute, tokenSteer] = token.split(':');
+	if (route !== tokenRoute) return false;
+	if (tokenSteer === 'agent') return steer === 'agent' || steer === 'both';
+	if (tokenSteer === 'open') return steer !== undefined && steer !== 'workflow';
+	return true;
 }
 
 export function trialPasses(routingCase: RoutingCase, resolution: RouteResolution): boolean {

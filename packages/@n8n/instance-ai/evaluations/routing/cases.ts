@@ -27,7 +27,13 @@ export const ROUTING_BUCKETS = [
 ] as const;
 export type RoutingBucket = (typeof ROUTING_BUCKETS)[number];
 
-export const ROUTING_ACCEPT_TOKENS = [...ROUTING_BUCKETS, 'clarify:agent', 'clarify:open'] as const;
+export const ROUTING_ACCEPT_TOKENS = [
+	...ROUTING_BUCKETS,
+	'clarify:agent',
+	'clarify:open',
+	'answer:agent',
+	'answer:open',
+] as const;
 export type AcceptToken = (typeof ROUTING_ACCEPT_TOKENS)[number];
 
 const routingTagsSchema = z
