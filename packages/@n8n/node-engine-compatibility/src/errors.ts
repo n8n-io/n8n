@@ -88,13 +88,16 @@ export class EngineRequestNotSupportedError extends UserError {
 }
 
 /**
- * A wait that only a child execution can end. Engine v2 has no sub-workflow
- * steps yet, so the step fails instead of completing as if the wait had ended.
+ * A wait that engine v2 cannot end yet, so the step fails instead of waiting
+ * forever. Engine v2 has no sub-workflow steps and no step-bound resume
+ * requests yet.
  */
 export class UnsupportedWaitError extends UserError {
-	constructor(nodeName: string) {
+	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
 		super(
-			`Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`,
+			waitsFor === 'a sub-execution'
+				? `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`
+				: `Node "${nodeName}" sends a message and waits for a response, and engine v2 cannot end that wait yet.`,
 		);
 	}
 }
