@@ -1,26 +1,33 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { CHANGE_PASSWORD_MODAL_KEY } from '../auth.constants';
-import Modal from '@/app/components/Modal.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { createFormEventBus } from '@n8n/design-system';
-import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nFormInputs, createPasswordRules } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nFormInputs,
+	createFormEventBus,
+	createPasswordRules,
+} from '@n8n/design-system';
 
 // DynamicModalLoader's modal-state props must not reach the dialog root.
 defineOptions({ inheritAttrs: false });
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
-const modalBus = createEventBus();
 const password = ref('');
 const loading = ref(false);
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[CHANGE_PASSWORD_MODAL_KEY]?.open === true);
 const { showMessage, showError } = useToast();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -62,7 +69,7 @@ const onSubmit = async (data: FormValues) => {
 			message: i18n.baseText('auth.changePassword.passwordUpdatedMessage'),
 		});
 
-		modalBus.emit('close');
+		void closeDialog();
 	} catch (error) {
 		showError(error, i18n.baseText('auth.changePassword.error'));
 	} finally {
@@ -73,6 +80,14 @@ const onSubmit = async (data: FormValues) => {
 const onSubmitClick = () => {
 	formBus.emit('submit');
 };
+
+function closeDialog() {
+	uiStore.closeModal(CHANGE_PASSWORD_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 onMounted(() => {
 	const inputs: Record<string, IFormInput> = {
@@ -139,15 +154,13 @@ onMounted(() => {
 </script>
 
 <template>
-	<Modal
-		:name="CHANGE_PASSWORD_MODAL_KEY"
-		:title="i18n.baseText('auth.changePassword')"
-		:center="true"
-		width="460px"
-		:event-bus="modalBus"
-		@enter="onSubmitClick"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="i18n.baseText('auth.changePassword')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<N8nFormInputs
 				v-if="config"
 				:inputs="config"
@@ -156,8 +169,8 @@ onMounted(() => {
 				@update="onInput"
 				@submit="onSubmit"
 			/>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
 				:loading="loading"
 				:label="i18n.baseText('auth.changePassword')"
@@ -165,6 +178,6 @@ onMounted(() => {
 				data-test-id="change-password-button"
 				@click="onSubmitClick"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
