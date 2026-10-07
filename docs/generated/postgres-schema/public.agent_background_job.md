@@ -7,6 +7,7 @@
 | childExecutionId | varchar(36) |  | true |  |  | Workflow jobs only |
 | childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| detached | boolean | true | false |  |  | Deliver results through background wake messages |
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
@@ -18,6 +19,7 @@
 | pauseRequestId | uuid |  | true |  |  | Groups jobs stopped by one user request |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
+| sourceExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution that dispatched this job |
 | status | varchar(16) |  | false |  |  | running: child works; suspended: child awaits approval; paused: user stopped the child; completed, failed, cancelled: terminal |
 | subAgentId | varchar(36) |  | true |  |  | Sub-agent jobs only |
 | timeoutAt | timestamp(3) with time zone |  | true |  |  | When reconciliation fails the job as timed out; NULL means no timeout |
@@ -31,9 +33,11 @@
 | ---- | ---- | ---------- |
 | CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying])::text[]))) |
 | CHK_agent_background_job_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'suspended'::character varying, 'paused'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))) |
+| FK_4db3b7ebea4ed4f69649982018c | FOREIGN KEY | FOREIGN KEY ("sourceExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
 | FK_d46c6f00730c2ef8bcb6ee24b67 | FOREIGN KEY | FOREIGN KEY ("parentAgentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_6e0db58281aa2b4c956dc0d58e9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_background_job_createdAt_not_null | n | NOT NULL "createdAt" |
+| agent_background_job_detached_not_null | n | NOT NULL detached |
 | agent_background_job_id_not_null | n | NOT NULL id |
 | agent_background_job_kind_not_null | n | NOT NULL kind |
 | agent_background_job_parentAgentId_not_null | n | NOT NULL "parentAgentId" |
@@ -62,11 +66,13 @@
 erDiagram
 
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 
 "public.agent_background_job" {
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
+  boolean detached
   text error
   varchar_36_ id
   varchar_16_ kind
@@ -78,6 +84,7 @@ erDiagram
   uuid pauseRequestId
   text result
   timestamp_3__with_time_zone settledAt
+  varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   timestamp_3__with_time_zone timeoutAt
@@ -100,6 +107,31 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.agent_execution" {
+  boolean acceptsSteering
+  json attachments
+  json author
+  integer completionTokens
+  double_precision cost
+  timestamp_3__with_time_zone createdAt
+  integer duration
+  text error
+  json failureSummary
+  varchar_16_ hitlStatus
+  varchar_36_ id
+  varchar_255_ model
+  integer promptTokens
+  varchar_32_ source
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
+  varchar_128_ threadId FK
+  json timeline
+  integer totalTokens
+  timestamp_3__with_time_zone updatedAt
+  text userMessage
 }
 ```
 

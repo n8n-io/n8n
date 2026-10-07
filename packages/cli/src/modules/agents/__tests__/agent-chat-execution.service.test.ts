@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -7,6 +6,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@n8n/errors';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -329,4 +329,49 @@ it('rejects preview and foreign executions on the production cancel route', asyn
 	await expect(
 		service.requestCancel({ ...production, userId: 'other-user' }),
 	).rejects.toBeInstanceOf(NotFoundError);
+});
+
+it('foreground Stop leaves detached jobs running locally and on other mains', async () => {
+	const { service, backgroundJobs, publisher } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	await service.requestCancel({ ...context, scope: 'foreground' });
+	expect(controller.signal.aborted).toBe(true);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+	await service.handleCancel({ ...context, scope: 'foreground' });
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+	expect(publisher.publishCommand).not.toHaveBeenCalled();
+});
+
+it('relays foreground scope before a remote execution registers', async () => {
+	const { service, publisher, backgroundJobs } = makeService();
+	await service.requestCancel({ ...context, scope: 'foreground' });
+	expect(publisher.publishCommand).toHaveBeenCalledWith({
+		command: 'cancel-agent-chat-execution',
+		payload: { ...context, scope: 'foreground' },
+	});
+	const controller = new AbortController();
+	service.register(context, controller);
+	expect(controller.signal.aborted).toBe(true);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
+
+it('foreground Stop removes a suspended checkpoint without canceling detached jobs', async () => {
+	const { service, repository, checkpointStorage, backgroundJobs } = makeService();
+	const suspended = { ...running, status: 'success' as const, hitlStatus: 'suspended' as const };
+	repository.findOneBy.mockResolvedValue(suspended);
+	repository.findLatestByThreadId.mockResolvedValue(suspended);
+	await service.requestCancel({ ...context, scope: 'foreground' });
+	expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
+
+it('task cancellation closes admission without detaching an active tool handler', async () => {
+	const { service, steering, backgroundJobs } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	await service.cancelTasksInRuntime(context);
+	expect(steering.close).toHaveBeenCalledWith(context.threadId, context.executionId);
+	expect(controller.signal.aborted).toBe(false);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
 });

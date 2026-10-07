@@ -5,6 +5,7 @@ import type { Mock } from 'vitest';
 import { WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -78,6 +79,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const updateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
+		planToolsEnabled: false,
 		checkpointTtlSeconds: 96 * 3600,
 	});
 	(logger.scoped as Mock).mockReturnValue(logger);
@@ -98,6 +100,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
 	const service = new AgentBackgroundJobService(
+		mock<AgentTaskCancellationRepository>(),
 		jobRepository,
 		executionRepository,
 		executionPersistence,

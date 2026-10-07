@@ -14,7 +14,7 @@
 | error | text |  | true |  |  |  |
 | failureSummary | json |  | true |  |  | Execution failure projection as {count, latest} for session list queries |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
@@ -59,6 +59,7 @@
 ```mermaid
 erDiagram
 
+"public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 "public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
@@ -89,6 +90,30 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   text userMessage
 }
+"public.agent_background_job" {
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  timestamp_3__with_time_zone createdAt
+  boolean detached
+  text error
+  varchar_36_ id
+  varchar_16_ kind
+  timestamp_3__with_time_zone notifiedAt
+  varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
+  varchar_128_ parentThreadId
+  uuid pauseRequestId
+  text result
+  timestamp_3__with_time_zone settledAt
+  varchar_36_ sourceExecutionId FK
+  varchar_16_ status
+  varchar_36_ subAgentId
+  timestamp_3__with_time_zone timeoutAt
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId
+}
 "public.agent_execution_message_links" {
   timestamp_3__with_time_zone createdAt
   varchar_6_ direction
@@ -99,6 +124,7 @@ erDiagram
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
+  boolean held
   bigint id
   varchar_36_ messageId FK
   json payload

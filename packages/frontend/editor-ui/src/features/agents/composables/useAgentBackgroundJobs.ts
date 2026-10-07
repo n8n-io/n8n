@@ -22,6 +22,7 @@ interface BackgroundJobsTarget {
 	agentId: MaybeRefOrGetter<string>;
 	threadId: MaybeRefOrGetter<string | undefined>;
 	active: MaybeRefOrGetter<boolean>;
+	retainSettled?: MaybeRefOrGetter<boolean>;
 	receivedJobs?: MaybeRefOrGetter<AgentBackgroundJobSignal['tasks']>;
 }
 
@@ -40,7 +41,12 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 			...job,
 			status: received.get(job.id)?.status ?? job.status,
 		}));
-		if (current.some((job) => job.status === 'running' || job.status === 'suspended'))
+		if (
+			toValue(target.retainSettled) ||
+			current.some(
+				(job) => job.status === 'running' || job.status === 'suspended' || job.status === 'paused',
+			)
+		)
 			return current;
 		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
 	});

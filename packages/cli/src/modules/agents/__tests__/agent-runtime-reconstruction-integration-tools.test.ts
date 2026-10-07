@@ -3,6 +3,7 @@ import {
 	type EventService,
 	type ProjectScopeService,
 } from '@n8n/backend-services';
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
@@ -295,6 +296,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			n8nCheckpointStorage,
 			agentExecutionService,
 			new AgentTurnExecutionService(
+				mock<AgentTaskCancellationRepository>(),
 				logger,
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),

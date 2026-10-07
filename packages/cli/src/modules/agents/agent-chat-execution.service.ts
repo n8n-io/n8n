@@ -113,6 +113,22 @@ export class AgentChatExecutionService {
 		}
 	}
 
+	/** The durable task fence stops the running loop at its next tool or model boundary. */
+	async cancelTasksInRuntime(context: ExecutionContext): Promise<void> {
+		await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			`agent-preview-turn:${context.threadId}`,
+			async () => {
+				const execution = await this.getOwnedExecution(context);
+				if (!execution) throw new NotFoundError('Execution not found');
+				await this.steering.close(context.threadId, context.executionId);
+				// Keep active tool handlers attached until their results are saved.
+				if (execution.status !== 'running')
+					await this.cancelRecordedSuspension({ ...context, scope: 'foreground' });
+			},
+		);
+	}
+
 	async requestCancel(context: ExecutionContext): Promise<boolean> {
 		return await this.lockService.withLease(
 			LockNamespace.KNOWN_LOCKS,
@@ -136,13 +152,14 @@ export class AgentChatExecutionService {
 					});
 					return true;
 				} finally {
-					await this.backgroundJobService.cancelForParent(
-						context.agentId,
-						context.threadId,
-						context.productionN8nChat
-							? productionChatMemoryResourceId(context.userId)
-							: draftChatMemoryResourceId(context.userId),
-					);
+					if (context.scope !== 'foreground')
+						await this.backgroundJobService.cancelForParent(
+							context.agentId,
+							context.threadId,
+							context.productionN8nChat
+								? productionChatMemoryResourceId(context.userId)
+								: draftChatMemoryResourceId(context.userId),
+						);
 				}
 			},
 		);
@@ -166,6 +183,7 @@ export class AgentChatExecutionService {
 
 	private async cancelLocalWithChildren(context: ExecutionContext): Promise<boolean> {
 		if (!this.cancelLocal(context)) return false;
+		if (context.scope === 'foreground') return true;
 		await this.backgroundJobService.cancelForParent(
 			context.agentId,
 			context.threadId,
@@ -197,7 +215,11 @@ export class AgentChatExecutionService {
 			execution.context.userId !== context.userId
 		)
 			return false;
-		execution.controller.abort(PARENT_TASK_CANCELLED_REASON);
+		execution.controller.abort(
+			context.scope === 'foreground'
+				? new DOMException('Response stopped', 'AbortError')
+				: PARENT_TASK_CANCELLED_REASON,
+		);
 		return true;
 	}
 
@@ -234,6 +256,7 @@ export class AgentChatExecutionService {
 		return await this.cancelSuspended({
 			agentId: context.agentId,
 			runId: pending.runId,
+			cancelBackgroundJobs: context.scope !== 'foreground',
 			resourceId: context.productionN8nChat
 				? productionChatMemoryResourceId(context.userId)
 				: draftChatMemoryResourceId(context.userId),

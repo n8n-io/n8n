@@ -8,6 +8,8 @@ import type { InstanceSettings } from 'n8n-core';
 import { v4 as uuid, v7 as uuidv7 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
@@ -77,7 +79,7 @@ describe('AgentBackgroundJobRepository', () => {
 	async function insertJob(
 		overrides: Partial<AgentBackgroundJob> & { id: string; parentThreadId: string },
 	) {
-		await repository.insert({
+		await repository.save({
 			kind: 'subagent',
 			status: 'completed',
 			parentAgentId: agentId,
@@ -258,6 +260,7 @@ describe('AgentBackgroundJobRepository', () => {
 		logger.scoped.mockReturnValue(logger);
 		const checkpointTtlSeconds = Container.get(AgentsConfig).checkpointTtlSeconds;
 		const service = new AgentBackgroundJobService(
+			mock<AgentTaskCancellationRepository>(),
 			repository,
 			mock<AgentExecutionRepository>(),
 			mock<ExecutionPersistence>(),
@@ -807,6 +810,7 @@ describe('AgentBackgroundJobRepository', () => {
 				return affected;
 			});
 			const jobService = new AgentBackgroundJobService(
+				mock<AgentTaskCancellationRepository>(),
 				repository,
 				executionRepository,
 				mock<ExecutionPersistence>(),
@@ -818,6 +822,12 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentMessageRepository>(),
 			);
 			const wakeService = new AgentWakeService(
+				mock<AgentTaskCancellationRepository>({
+					pendingThreads: async () => [],
+				}),
+				mock<AgentTaskCancellationService>(),
+				mock<AgentExecutionThreadRepository>(),
+				mock<AgentExecutionUpdateBroadcaster>(),
 				repository,
 				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,

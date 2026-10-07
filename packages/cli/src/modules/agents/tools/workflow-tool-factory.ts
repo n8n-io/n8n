@@ -10,7 +10,7 @@ import {
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -38,6 +38,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -47,7 +48,10 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
-import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
+import {
+	isTaskRunMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+} from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
 import type {
 	WorkflowToolWorkflowLoader,
@@ -182,6 +186,7 @@ export interface WorkflowToolContext {
 
 /** {@link WorkflowToolContext} plus fields that only exist once a run does. */
 export interface WorkflowToolRunContext extends WorkflowToolContext {
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	/** Stamped onto sub-executions so a Wait node finishing can wake this run. */
 	agentRun?: RelatedAgentRun;
 }
@@ -524,6 +529,15 @@ export async function executeWorkflow(
 		responsePromise,
 	);
 
+	try {
+		await context.onExecutionStarted?.(executionId);
+	} catch (error) {
+		// Do not leave a workflow running if its cancellation record could not be saved.
+		const { ExecutionService } = await import('@/executions/execution.service.js');
+		await Container.get(ExecutionService).stop(executionId, [workflow.id]);
+		throw error;
+	}
+
 	// Wait for completion with timeout protection
 	const timeoutMs = DEFAULT_TIMEOUT_MS;
 
@@ -753,6 +767,10 @@ async function backgroundWaitingExecution(
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
+			sourceExecutionId:
+				typeof ctx.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY] === 'string'
+					? ctx.persistence.hostMetadata[EXECUTION_METADATA_KEY]
+					: undefined,
 			parentResourceId,
 			parentPrincipalHash: sandboxScope.principalHash,
 			title: reference.workflowName,
@@ -1094,6 +1112,19 @@ function assembleWorkflowTool(
 			const pending = WAIT_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 			let current: Awaited<ReturnType<typeof loadCurrentWorkflow>> | undefined;
 			let result: WorkflowToolExecutionResult;
+			let trackedJobId: string | undefined;
+			const parentThreadId = ctx.persistence?.threadId;
+			const parentResourceId = ctx.persistence?.resourceId;
+			const sandbox = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
+			const trackCancellation = !!(
+				parentThreadId &&
+				parentResourceId &&
+				sandbox &&
+				context.agentId &&
+				userIdFromDraftChatMemoryResourceId(parentResourceId) &&
+				(Container.get(AgentsConfig).backgroundTasksEnabled ||
+					Container.get(AgentsConfig).planToolsEnabled)
+			);
 
 			if (pending.success) {
 				result = await extractResult(pending.data.executionId, allOutputs);
@@ -1111,7 +1142,38 @@ function assembleWorkflowTool(
 					current.workflow,
 					current.triggerNode,
 					parsedInput,
-					{ ...context, agentRun: agentRunOf(context, ctx) },
+					{
+						...context,
+						agentRun: agentRunOf(context, ctx),
+						...(trackCancellation &&
+						parentThreadId &&
+						parentResourceId &&
+						sandbox &&
+						context.agentId
+							? {
+									onExecutionStarted: async (executionId: string) => {
+										const receipt = await Container.get(
+											AgentBackgroundJobService,
+										).registerWorkflowJob({
+											id: uuid(),
+											parentAgentId: context.agentId!,
+											parentThreadId,
+											parentResourceId,
+											parentPrincipalHash: sandbox.principalHash,
+											title: reference.workflowName,
+											workflowId: current!.workflow.id,
+											executionId,
+											detached: false,
+											sourceExecutionId:
+												typeof ctx.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY] === 'string'
+													? ctx.persistence.hostMetadata[EXECUTION_METADATA_KEY]
+													: undefined,
+										});
+										if (receipt.status === 'started') trackedJobId = receipt.jobId;
+									},
+								}
+							: {}),
+					},
 					allOutputs,
 					toolName,
 				);
@@ -1144,6 +1206,12 @@ function assembleWorkflowTool(
 				if (backgrounded) return backgrounded;
 			}
 
+			if (trackedJobId && parentThreadId && result.status !== 'waiting') {
+				await Container.get(AgentBackgroundJobService).finishInlineWorkflowJob(
+					parentThreadId,
+					trackedJobId,
+				);
+			}
 			if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
 
 			current ??= await loadCurrentWorkflow(context, reference);

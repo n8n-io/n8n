@@ -157,6 +157,10 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 					...(isSelfDelegation && input.difficulty !== undefined
 						? { difficulty: input.difficulty }
 						: {}),
+					sourceExecutionId:
+						typeof ctx.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY] === 'string'
+							? ctx.persistence.hostMetadata[EXECUTION_METADATA_KEY]
+							: undefined,
 					parentThreadId,
 					parentResourceId,
 					parentSandboxPrincipalHash: sandboxScope.principalHash,

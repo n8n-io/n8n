@@ -168,6 +168,7 @@ describe('useAgentApi', () => {
 			restApiContext,
 			'DELETE',
 			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/executions/execution%2F1',
+			{ scope: 'foreground' },
 		);
 	});
 

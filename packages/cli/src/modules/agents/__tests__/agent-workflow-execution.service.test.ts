@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -9,6 +8,8 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -153,6 +154,7 @@ function makeService() {
 		mockLogger(),
 		agentRepository,
 		new AgentTurnExecutionService(
+			mock<AgentTaskCancellationRepository>(),
 			mockLogger(),
 			executionService,
 			mock<AgentChatExecutionService>(),

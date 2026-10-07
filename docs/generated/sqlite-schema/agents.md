@@ -106,6 +106,7 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
+  boolean detached
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind
@@ -117,6 +118,7 @@ erDiagram
   varchar pauseRequestId
   TEXT result
   datetime_3_ settledAt
+  varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   datetime_3_ timeoutAt

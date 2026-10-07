@@ -6,6 +6,12 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentTaskCancellation } from '../../entities/agent-task-cancellation.entity';
+import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -80,7 +86,10 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const lockService = mock<LockService>();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ isWorker: options.worker ?? false });
-	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: options.enabled ?? true });
+	const agentsConfig = mock<AgentsConfig>({
+		backgroundTasksEnabled: options.enabled ?? true,
+		planToolsEnabled: false,
+	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -95,7 +104,16 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		return await callback(new AbortController().signal);
 	});
 
+	const cancellations = mock<AgentTaskCancellationRepository>({
+		pendingThreads: async () => [],
+	});
+	const cancellationService = mock<AgentTaskCancellationService>();
+	const threads = mock<AgentExecutionThreadRepository>();
 	const service = new AgentWakeService(
+		cancellations,
+		cancellationService,
+		threads,
+		mock<AgentExecutionUpdateBroadcaster>(),
 		jobRepository,
 		new AgentConversationStateService(executionRepository, checkpointStorage),
 		agentRepository,
@@ -111,6 +129,9 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	);
 
 	return {
+		cancellations,
+		cancellationService,
+		threads,
 		service,
 		backgroundJobService,
 		jobRepository,
@@ -127,6 +148,41 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
+	it('claims one cancellation report with tools disabled and retains fallback facts on failure', async () => {
+		const { service, cancellations, threads, orchestrator } = setup();
+		const request = mock<AgentTaskCancellation>({
+			id: 'cancel',
+			threadId: 'thread-1',
+			status: 'stopped',
+			reportStatus: 'pending',
+			report: '1 task completed. 2 tasks canceled.',
+		});
+		cancellations.latest.mockResolvedValue(request);
+		cancellations.targetedJobs.mockResolvedValue([]);
+		cancellations.claimReport.mockResolvedValueOnce(true).mockResolvedValue(false);
+		threads.findOneBy.mockResolvedValue(
+			mock<AgentExecutionThread>({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				ownerId: user.id,
+			}),
+		);
+		orchestrator.executeForWake.mockRejectedValue(new Error('Provider unavailable'));
+		await service.attemptWake('thread-1');
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
+			expect.objectContaining({
+				pauseReport: true,
+				cancellationId: 'cancel',
+				message: expect.stringContaining(request.report),
+			}),
+		);
+		expect(cancellations.finishReport).toHaveBeenCalledWith('cancel', false);
+		expect(request.report).toBe('1 task completed. 2 tasks canceled.');
+	});
+
 	it('delivers a stopped group once and marks it only after the report finishes', async () => {
 		const { service, backgroundJobService, jobRepository, orchestrator } = setup();
 		const report = createDeferredPromise();

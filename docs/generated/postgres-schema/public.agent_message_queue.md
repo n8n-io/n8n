@@ -6,6 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | executionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Current execution; NULL means pending |
+| held | boolean | false | false |  |  | Requires an explicit Send after task cancellation |
 | id | bigint |  | false |  |  | Acceptance order; IDs are not reused |
 | messageId | varchar(36) |  | false |  | [public.agents_messages](public.agents_messages.md) | Canonical input created when the queue accepts it |
 | payload | json |  | false |  |  | Dispatch, authorization, and reply context. Input is stored on the message |
@@ -26,6 +27,7 @@
 | FK_eff54787927c2968dc24495c911 | FOREIGN KEY | FOREIGN KEY ("steeringExecutionId") REFERENCES agent_execution(id) |
 | PK_733d8c959a6057f04f4da5ab721 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_message_queue_createdAt_not_null | n | NOT NULL "createdAt" |
+| agent_message_queue_held_not_null | n | NOT NULL held |
 | agent_message_queue_id_not_null | n | NOT NULL id |
 | agent_message_queue_messageId_not_null | n | NOT NULL "messageId" |
 | agent_message_queue_payload_not_null | n | NOT NULL payload |
@@ -57,6 +59,7 @@ erDiagram
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
+  boolean held
   bigint id
   varchar_36_ messageId FK
   json payload

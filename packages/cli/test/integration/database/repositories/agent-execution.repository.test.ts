@@ -26,6 +26,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
@@ -194,6 +195,7 @@ describe('AgentExecutionRepository', () => {
 		const attachmentService = mock<AgentChatAttachmentService>();
 		const executionLogStore = mock<AgentExecutionLogStore>();
 		const executionService = new AgentExecutionService(
+			mock<AgentTaskCancellationRepository>(),
 			mockLogger(),
 			executions,
 			threads,
@@ -231,6 +233,7 @@ describe('AgentExecutionRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 		);
 		const queue = new AgentMessageQueueService(
+			mock<AgentTaskCancellationRepository>(),
 			txRunner,
 			queueRepository,
 			threads,
@@ -262,6 +265,7 @@ describe('AgentExecutionRepository', () => {
 			attachmentService,
 			executionLogStore,
 			turns: new AgentTurnExecutionService(
+				mock<AgentTaskCancellationRepository>(),
 				mockLogger(),
 				executionService,
 				chatExecutionService,
@@ -480,6 +484,7 @@ describe('AgentExecutionRepository', () => {
 			};
 			const createMain = () => {
 				const service = new AgentBackgroundJobService(
+					mock<AgentTaskCancellationRepository>(),
 					jobs,
 					repository,
 					mock<ExecutionPersistence>(),
@@ -495,6 +500,7 @@ describe('AgentExecutionRepository', () => {
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
+						mock<AgentTaskCancellationRepository>(),
 						sourceResolver,
 						turns,
 						storage,

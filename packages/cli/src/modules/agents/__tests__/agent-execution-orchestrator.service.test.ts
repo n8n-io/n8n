@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -26,6 +25,8 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
@@ -271,6 +272,7 @@ function makeService(sandboxEnabled = false) {
 		checkpointStorage,
 		executionService,
 		new AgentTurnExecutionService(
+			mock<AgentTaskCancellationRepository>(),
 			mockLogger(),
 			executionService,
 			chatExecutionService,

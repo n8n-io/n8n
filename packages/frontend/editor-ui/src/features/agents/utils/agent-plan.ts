@@ -21,7 +21,7 @@ const groupSchema = z.object({
 	kind: z.literal('group'),
 	tasks: z.array(taskSchema),
 });
-const planSchema = z.object({
+export const planSchema = z.object({
 	planId: z.string().uuid(),
 	revision: z.number().int().positive(),
 	closed: z.boolean(),

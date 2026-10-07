@@ -1,5 +1,6 @@
 import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
+import { sendHeldAgentMessage } from './useAgentApi';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { TIME } from '@/app/constants/durations';
 import { useI18n } from '@n8n/i18n';
@@ -441,6 +442,31 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (!disposed && target === targetKey()) {
 				await refreshQueue();
 				if (!disposed && target === targetKey()) isReorderingQueue.value = false;
+			}
+		}
+	}
+
+	async function sendHeldMessage(queueId: string): Promise<void> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (!threadId || steeringQueueIds.value.has(queueId)) return;
+		const target = targetKey();
+		steeringQueueIds.value.add(queueId);
+		try {
+			await sendHeldAgentMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				queueId,
+			);
+		} catch (error) {
+			if (!disposed && target === targetKey())
+				showError(error, locale.baseText('agents.chat.queue.sendError'));
+		} finally {
+			if (!disposed && target === targetKey()) {
+				queueVersion++;
+				await refreshQueue();
+				steeringQueueIds.value.delete(queueId);
 			}
 		}
 	}
@@ -1829,6 +1855,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		canSteer,
 		steeringQueueIds,
 		steerQueuedMessage,
+		sendHeldMessage,
 		removingQueueIds,
 		removeQueuedMessage,
 		updateQueuedMessage,

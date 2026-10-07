@@ -361,3 +361,82 @@ describe('AgentChatPlan', () => {
 		wrapper.unmount();
 	});
 });
+
+describe('Task cancellation', () => {
+	it('keeps the expanded card and completed results while cancellation settles', async () => {
+		const plan = planView({
+			document: {
+				title: 'Research leads',
+				items: [planTask(1, 'done'), planTask(2, 'in_progress')],
+			},
+		});
+		const wrapper = mount(AgentChatPlan, { props: { plan, canStop: true } });
+		await wrapper.get('button').trigger('click');
+		await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+		expect(wrapper.emitted('stop')).toHaveLength(1);
+		await wrapper.setProps({ stopping: true });
+		expect(
+			wrapper.get('[data-testid="agent-chat-plan-stop"]').attributes('disabled'),
+		).toBeDefined();
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('1 of 2 tasks done');
+		await wrapper.setProps({
+			stopping: false,
+			canStop: false,
+			plan: {
+				...plan,
+				revision: plan.revision + 1,
+				closed: true,
+				closedAt: '2026-10-01T10:01:00.000Z',
+				document: { ...plan.document, items: [planTask(1, 'done'), planTask(2, 'cancelled')] },
+			},
+			cancellation: {
+				id: 'cancel',
+				planId: plan.planId,
+				status: 'stopped',
+				requestedAt: '',
+				settledAt: '',
+				failures: [],
+				reportStatus: 'reported',
+				report: '',
+				plan: null,
+				heldQueueIds: [],
+			},
+		});
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(wrapper.text()).toContain('agents.chat.tasks.stopped');
+		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('1 of 2 tasks done');
+		expect(wrapper.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('identifies failed stops and offers a retry without showing Stopped', async () => {
+		const plan = planView();
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				plan,
+				cancellation: {
+					id: 'cancel',
+					planId: plan.planId,
+					status: 'failed',
+					requestedAt: '',
+					settledAt: null,
+					failures: [{ jobId: 'job', title: 'Waiting workflow' }],
+					reportStatus: 'pending',
+					report: '',
+					plan: null,
+					heldQueueIds: [],
+				},
+			},
+		});
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.text()).toContain('Waiting workflow');
+		expect(wrapper.get('[data-testid="agent-chat-plan-stop"]').text()).toBe(
+			'agents.chat.tasks.retry',
+		);
+		expect(wrapper.text()).not.toContain('agents.chat.tasks.stopped');
+		await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+		expect(wrapper.emitted('stop')).toHaveLength(1);
+		wrapper.unmount();
+	});
+});

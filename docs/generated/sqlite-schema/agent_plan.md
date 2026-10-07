@@ -19,7 +19,7 @@ CREATE TABLE "agent_plan" ("id" varchar PRIMARY KEY NOT NULL, "threadId" varchar
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
 | formatVersion | INTEGER |  | false |  |  |  |
-| id | varchar |  | false | [agent_plan_history](agent_plan_history.md) |  |  |
+| id | varchar |  | false | [agent_plan_history](agent_plan_history.md) [agent_task_cancellation](agent_task_cancellation.md) |  |  |
 | revision | INTEGER | 1 | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -48,6 +48,7 @@ CREATE TABLE "agent_plan" ("id" varchar PRIMARY KEY NOT NULL, "threadId" varchar
 erDiagram
 
 "agent_plan_history" |o--|| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_task_cancellation" }o--o| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_plan" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_plan" {
@@ -67,6 +68,20 @@ erDiagram
   INTEGER formatVersion
   varchar planId PK
   INTEGER revision PK
+}
+"agent_task_cancellation" {
+  datetime_3_ createdAt
+  datetime_3_ cutoffAt
+  TEXT failures
+  TEXT generation
+  varchar id PK
+  varchar planId FK
+  TEXT report
+  varchar_16_ reportStatus
+  datetime_3_ settledAt
+  varchar_16_ status
+  varchar_128_ threadId FK
+  datetime_3_ updatedAt
 }
 "agent_execution_threads" {
   varchar_16_ accessScope

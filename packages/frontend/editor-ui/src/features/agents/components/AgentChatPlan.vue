@@ -1,14 +1,29 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import type { AgentTaskCancellationState } from '@n8n/api-types';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import type { RouteLocationRaw } from 'vue-router';
-import { N8nAiActivityStepGroup, N8nIcon, N8nLink } from '@n8n/design-system';
+import { N8nAiActivityStepGroup, N8nIcon, N8nLink, N8nButton } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { AgentPlanItemStatus, AgentPlanView } from '../utils/agent-plan';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import { TIME } from '@/app/constants/durations';
 
-const props = defineProps<{ plan: AgentPlanView; traceRoute?: RouteLocationRaw }>();
+const props = defineProps<{
+	plan: AgentPlanView;
+	traceRoute?: RouteLocationRaw;
+	canStop?: boolean;
+	stopping?: boolean;
+	cancellation?: AgentTaskCancellationState | null;
+}>();
+const expanded = defineModel<boolean>('expanded', { default: false });
+watch(
+	() => props.plan.planId,
+	() => {
+		expanded.value = false;
+	},
+);
+const emit = defineEmits<{ stop: [event: MouseEvent] }>();
 const i18n = useI18n();
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
@@ -39,12 +54,16 @@ const elapsed = computed(() => {
 	return formatAgentElapsedTime(endTime - startTime.value);
 });
 const label = computed(() =>
-	props.plan.closed
-		? (props.plan.document.presentation?.detail ?? props.plan.document.title)
-		: (props.plan.document.presentation?.label ??
-			i18n.baseText('agents.chat.plan.title', {
-				interpolate: { title: props.plan.document.title },
-			})),
+	props.cancellation?.status === 'stopped'
+		? i18n.baseText('agents.chat.tasks.stopped')
+		: props.stopping
+			? i18n.baseText('agents.chat.tasks.stopping')
+			: props.plan.closed
+				? (props.plan.document.presentation?.detail ?? props.plan.document.title)
+				: (props.plan.document.presentation?.label ??
+					i18n.baseText('agents.chat.plan.title', {
+						interpolate: { title: props.plan.document.title },
+					})),
 );
 const isRunning = computed(
 	() =>
@@ -86,6 +105,7 @@ const summary = computed(() => {
 <template>
 	<div :class="$style.plan" data-testid="agent-chat-plan">
 		<N8nAiActivityStepGroup
+			v-model:open="expanded"
 			:key="plan.planId"
 			:label="label"
 			:title="plan.closed || plan.document.presentation ? label : plan.document.title"
@@ -180,8 +200,37 @@ const summary = computed(() => {
 						{{ i18n.baseText('agents.chat.plan.viewTrace') }}
 					</span>
 				</N8nLink>
+				<N8nButton
+					v-if="canStop || cancellation?.status === 'failed' || stopping"
+					variant="ghost"
+					size="small"
+					:disabled="stopping"
+					data-testid="agent-chat-plan-stop"
+					@click="emit('stop', $event)"
+				>
+					{{
+						i18n.baseText(
+							stopping
+								? 'agents.chat.tasks.stopping'
+								: cancellation?.status === 'failed'
+									? 'agents.chat.tasks.retry'
+									: 'agents.chat.tasks.stopAll',
+						)
+					}}
+				</N8nButton>
 				<span :class="$style.summary" data-testid="agent-chat-plan-summary">{{ summary }}</span>
 			</div>
+			<p v-if="cancellation?.status === 'failed'" :class="$style.detail" role="status">
+				{{ i18n.baseText('agents.chat.tasks.stopFailed') }}
+				{{ cancellation.failures.map((failure) => failure.title).join(', ') }}
+			</p>
+			<p
+				v-if="cancellation?.status === 'stopped' && cancellation.reportStatus !== 'reported'"
+				:class="$style.detail"
+				role="status"
+			>
+				{{ i18n.baseText('agents.chat.tasks.fallback') }}
+			</p>
 		</N8nAiActivityStepGroup>
 	</div>
 </template>
@@ -253,6 +302,7 @@ const summary = computed(() => {
 }
 
 .footer {
+	flex-wrap: wrap;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);

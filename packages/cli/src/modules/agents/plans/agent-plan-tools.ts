@@ -1,6 +1,7 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import type { OperationContext } from '@n8n/db';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import type { AgentPlanOperationContext } from '../repositories/agent-plan.repository';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -97,7 +98,7 @@ function prepareDocument(
 	};
 }
 
-function presentPlan(plan: AgentPlanSnapshot | null) {
+export function presentPlan(plan: AgentPlanSnapshot | null) {
 	if (!plan) return null;
 
 	const startedAt =
@@ -137,7 +138,7 @@ function scopedTool<Schema extends z.ZodType>(
 	handler: (
 		input: z.output<Schema>,
 		threadId: string,
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
 	) => Promise<AgentPlanSnapshot | null>,
 ) {
 	return new Tool(name)
@@ -153,7 +154,14 @@ function scopedTool<Schema extends z.ZodType>(
 			}
 
 			try {
-				return presentPlan(await handler(schema.parse(input), threadId, {}));
+				return presentPlan(
+					await handler(schema.parse(input), threadId, {
+						sourceExecutionId:
+							typeof context.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY] === 'string'
+								? context.persistence.hostMetadata[EXECUTION_METADATA_KEY]
+								: undefined,
+					}),
+				);
 			} catch (error) {
 				if (error instanceof AgentPlanWriteConflictError) {
 					return {

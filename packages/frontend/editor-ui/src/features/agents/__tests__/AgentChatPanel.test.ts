@@ -5,7 +5,11 @@ import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import type { AgentChatQueueItem, AgentBackgroundJobDto } from '@n8n/api-types';
+import type {
+	AgentChatQueueItem,
+	AgentBackgroundJobDto,
+	AgentTaskCancellationState,
+} from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -62,6 +66,16 @@ const respondToApprovalMock = vi.fn();
 const stopAllMock = vi.fn();
 const isStoppingMock = ref(false);
 const showErrorMock = vi.fn();
+const cancellationMock = ref<AgentTaskCancellationState | null>(null);
+const sendHeldMessageMock = vi.fn();
+const updateQueuedMessageMock = vi.fn().mockResolvedValue('updated');
+vi.mock('../composables/useAgentTaskCancellation', () => ({
+	useAgentTaskCancellation: () => ({
+		state: cancellationMock,
+		stopAll: stopAllMock,
+		isStopping: isStoppingMock,
+	}),
+}));
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
 	useAgentBackgroundJobs: () => ({
 		jobs: backgroundJobsMock,
@@ -93,6 +107,11 @@ vi.mock('@n8n/i18n', () => {
 		options?: { interpolate?: Record<string, string | number>; adjustToNumber?: number },
 	) => {
 		const translations: Record<string, string> = {
+			'agents.chat.tasks.stopAll': 'Stop all tasks',
+			'agents.chat.tasks.stopping': 'Stopping tasks…',
+			'agents.chat.tasks.stopped': 'Stopped',
+			'agents.chat.tasks.retry': 'Retry stopping',
+			'agents.chat.queue.send': 'Send',
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
 			'chat.messageQueue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
@@ -264,6 +283,8 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			steeringQueueIds: steeringQueueIdsMock,
 			canSteer: canSteerMock,
 			steerQueuedMessage: steerQueuedMessageMock,
+			sendHeldMessage: sendHeldMessageMock,
+			updateQueuedMessage: updateQueuedMessageMock,
 			removeQueuedMessage: removeQueuedMessageMock,
 			reorderQueuedMessage: reorderQueuedMessageMock,
 			isReorderingQueue: isReorderingQueueMock,
@@ -305,6 +326,7 @@ vi.mock('../composables/agentTelemetry.utils', () => ({
 
 describe('AgentChatPanel', () => {
 	beforeEach(() => {
+		cancellationMock.value = null;
 		vi.clearAllMocks();
 		isMacOsMock.value = false;
 		removeQueuedMessageMock.mockReset().mockResolvedValue('removed');
@@ -664,6 +686,70 @@ describe('AgentChatPanel', () => {
 
 		expect(sendMessageMock).toHaveBeenCalledWith('new message', [userFile], expect.any(Function));
 		wrapper.unmount();
+	});
+
+	it('sends only the selected held message and keeps the other rows editable', async () => {
+		queuedMessagesMock.value = [
+			{ id: 'held-1', message: 'First', held: true, steeringExecutionId: null, createdAt: '' },
+			{ id: 'held-2', message: 'Second', held: true, steeringExecutionId: null, createdAt: '' },
+		];
+		const wrapper = mountPanel();
+		const rows = wrapper.findAll('[data-testid="chat-queued-message"]');
+		const send = rows[0].findAll('button').find((button) => button.text() === 'Send');
+		expect(send).toBeDefined();
+		await send!.trigger('click');
+		expect(sendHeldMessageMock).toHaveBeenCalledExactlyOnceWith('held-1');
+		expect(steerQueuedMessageMock).not.toHaveBeenCalled();
+		expect(rows[1].find('[aria-label="generic.edit"]').exists()).toBe(true);
+		expect(rows[1].find('[aria-label="generic.delete"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('saves edits to a held message without removing or sending it', async () => {
+		queuedMessagesMock.value = [
+			{ id: 'held-1', message: 'Original', held: true, steeringExecutionId: null, createdAt: '' },
+		];
+		const wrapper = mountPanel();
+		await wrapper
+			.get('[data-testid="chat-queued-message"] [aria-label="generic.edit"]')
+			.trigger('click');
+		const editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+		await editor.setValue('Changed');
+		await editor.trigger('keydown', { key: 'Enter' });
+		await flushPromises();
+		expect(updateQueuedMessageMock).toHaveBeenCalledWith('held-1', 'Changed');
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		expect(sendHeldMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('restores composer focus when a plan stop finishes after the request returns', async () => {
+		const plan = planView();
+		messagesMock.value = [planMessage(plan)];
+		const wrapper = mountPanel(
+			{ backgroundJobsActive: true, continueSessionId: 't1' },
+			document.body,
+		);
+		try {
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			const button = wrapper.get<HTMLButtonElement>('[data-testid="agent-chat-plan-stop"]');
+			button.element.focus();
+			stopAllMock.mockImplementationOnce(async () => {
+				isStoppingMock.value = true;
+				button.element.blur();
+			});
+			await button.trigger('click');
+			await flushPromises();
+			expect(document.activeElement).toBe(document.body);
+			messagesMock.value = [
+				planMessage({ ...plan, closed: true, document: { ...plan.document, items: [] } }),
+			];
+			isStoppingMock.value = false;
+			await flushPromises();
+			expect(document.activeElement).toBe(wrapper.get('textarea').element);
+		} finally {
+			wrapper.unmount();
+		}
 	});
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
@@ -1027,6 +1113,34 @@ describe('AgentChatPanel', () => {
 	});
 
 	describe('plan card', () => {
+		it('keeps the expanded plan and Stop available while approval replaces the composer', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			messagesMock.value.push({
+				...openInteractiveMessage(),
+				interactive: {
+					toolName: APPROVAL_TOOL_NAME,
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					input: { type: 'approval', toolName: 'send_message', args: {} },
+				},
+			});
+			await nextTick();
+			expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(true);
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('true');
+			await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+			expect(stopAllMock).toHaveBeenCalledOnce();
+			messagesMock.value.pop();
+			await nextTick();
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('true');
+			wrapper.unmount();
+		});
+
 		it('renders live plan results above the input without changing submission', async () => {
 			const wrapper = mountPanel();
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
@@ -1160,7 +1274,31 @@ describe('AgentChatPanel', () => {
 			}
 		});
 
-		it('restores composer focus when workflows stop and a completed task remains', async () => {
+		it('shows new running jobs after an earlier cancellation', () => {
+			cancellationMock.value = {
+				id: 'cancel',
+				planId: null,
+				status: 'stopped',
+				requestedAt: new Date().toISOString(),
+				settledAt: new Date().toISOString(),
+				failures: [],
+				reportStatus: 'reported',
+				report: '',
+				plan: null,
+				heldQueueIds: [],
+			};
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).not.toContain(
+				'Stopped',
+			);
+			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).toContain(
+				'Running',
+			);
+			wrapper.unmount();
+		});
+
+		it('keeps Stop available and focused while a workflow remains', async () => {
 			const workflow: AgentBackgroundJobDto = { ...job, id: 'workflow', kind: 'workflow' };
 			const completed: AgentBackgroundJobDto = { ...job, status: 'completed' };
 			backgroundJobsMock.value = [completed, workflow];
@@ -1186,32 +1324,32 @@ describe('AgentChatPanel', () => {
 			}
 		});
 
-		it.each(['subagent', 'workflow'] as const)(
-			'stops a %s group and keeps failures retryable',
-			async (kind) => {
-				backgroundJobsMock.value = [{ ...job, kind }];
-				const wrapper = mountPanel({ backgroundJobsActive: true }, document.body);
-				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
-				const stop = wrapper.get('button[data-testid="agent-background-jobs-stop"]');
-				expect(stop.text()).toBe('Stop all tasks');
-				isStoppingMock.value = true;
-				await nextTick();
-				expect(stop.attributes('disabled')).toBeDefined();
-				expect(wrapper.text()).toContain('Stopping 1 background task…');
-				expect(wrapper.get('[aria-label="Stopping…"]').isVisible()).toBe(true);
-				isStoppingMock.value = false;
-				const error = new Error('Request failed');
-				stopAllMock.mockRejectedValueOnce(error);
-				await nextTick();
-				await stop.trigger('click');
-				await flushPromises();
-				expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.chat.backgroundTasks.stopError');
-				expect(stop.attributes('disabled')).toBeUndefined();
-				expect(wrapper.text()).toContain(job.title);
-				expect(wrapper.text()).not.toContain('Stopping');
-				wrapper.unmount();
-			},
-		);
+		it('stops sub-agents from an accessible button and keeps failures retryable', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({ backgroundJobsActive: true }, document.body);
+			await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+			const stop = wrapper.get('button[data-testid="agent-background-jobs-stop"]');
+			expect(stop.text()).toBe('Stop all tasks');
+			isStoppingMock.value = true;
+			await nextTick();
+			expect(stop.attributes('disabled')).toBeDefined();
+			expect(wrapper.text()).toContain('Stopping 1 background task…');
+			expect(wrapper.get('[aria-label="Stopping…"]').isVisible()).toBe(true);
+			isStoppingMock.value = false;
+			const error = new Error('Request failed');
+			stopAllMock.mockRejectedValueOnce(error);
+			await nextTick();
+			await stop.trigger('click');
+			await flushPromises();
+			expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.chat.backgroundTasks.stopError');
+			expect(stop.attributes('disabled')).toBeUndefined();
+			expect(wrapper.text()).toContain(job.title);
+			expect(wrapper.text()).not.toContain('Stopping');
+			backgroundJobsMock.value = [{ ...job, kind: 'workflow' }];
+			await nextTick();
+			expect(wrapper.find('[data-testid="agent-background-jobs-stop"]').exists()).toBe(true);
+			wrapper.unmount();
+		});
 
 		it.each(['running', 'suspended'] as const)(
 			'keeps stopped rows visible while a %s sub-agent is still stopping',

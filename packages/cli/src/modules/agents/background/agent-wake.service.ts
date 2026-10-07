@@ -6,6 +6,10 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
+import { AgentTaskCancellationService } from '../agent-task-cancellation.service';
+import { AgentTaskCancellationRepository } from '../repositories/agent-task-cancellation.repository';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -27,6 +31,7 @@ import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration'
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import {
+	draftChatMemoryResourceId,
 	integrationTypeFromMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from '../utils/agent-memory-scope';
@@ -50,6 +55,10 @@ export class AgentWakeService {
 	private readonly activeWakes = new Set<string>();
 
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
+		private readonly cancellationService: AgentTaskCancellationService,
+		private readonly threads: AgentExecutionThreadRepository,
+		private readonly updates: AgentExecutionUpdateBroadcaster,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly conversationState: AgentConversationStateService,
 		private readonly agentRepository: AgentRepository,
@@ -67,7 +76,7 @@ export class AgentWakeService {
 	}
 
 	async requestWake(threadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({
 				command: 'wake-agent-background-job',
@@ -80,13 +89,16 @@ export class AgentWakeService {
 
 	@OnPubSubEvent('wake-agent-background-job', { instanceType: 'main' })
 	handleWakeRelay({ threadId }: { threadId: string }): void {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 		this.scheduleLocal(threadId);
 	}
 
 	async drainUnconsumed(): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
-		const threadIds = await this.jobRepository.findThreadsWithUnconsumedMail();
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+		const threadIds = [
+			...(await this.jobRepository.findThreadsWithUnconsumedMail()),
+			...(await this.cancellations.pendingThreads()),
+		];
 		for (const threadId of threadIds) this.scheduleLocal(threadId);
 	}
 
@@ -149,7 +161,7 @@ export class AgentWakeService {
 	}
 
 	async attemptWake(threadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 
 		try {
 			await this.lockService.withLease(
@@ -164,6 +176,9 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
+		if (await this.deliverCancellation(threadId, signal)) return;
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (await this.cancellations.isCancelled(threadId)) return;
 		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
 		const stopped = pending.filter((job) => job.pauseRequestId);
 		if (stopped.length > 0) {
@@ -222,6 +237,64 @@ export class AgentWakeService {
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation);
 		}
+	}
+
+	private async deliverCancellation(threadId: string, signal: AbortSignal): Promise<boolean> {
+		let request = await this.cancellations.latest(threadId);
+		if (!request) return false;
+		if (request.status === 'stopping') {
+			await this.cancellationService.reconcile(threadId);
+			request = await this.cancellations.latest(threadId);
+			if (!request) return false;
+		}
+		if (request.status === 'stopping') {
+			this.scheduleLocal(threadId);
+			return true;
+		}
+		if (request.status === 'failed') return true;
+		const jobs = await this.cancellations.targetedJobs(request);
+		await this.cancellations.consumeTargetedMail(
+			jobs.map((job) => job.id),
+			{},
+		);
+		if (request.reportStatus !== 'pending') return false;
+		const thread = await this.threads.findOneBy({ id: threadId });
+		if (!thread?.ownerId) return true;
+		const { running, suspendedCheckpoint } = await this.conversationState.inspect(
+			thread.agentId,
+			threadId,
+		);
+		if (running || suspendedCheckpoint !== null || signal.aborted) return true;
+		if (!(await this.cancellations.claimReport(request.id))) return true;
+		this.activeWakes.add(threadId);
+		try {
+			const resourceId = draftChatMemoryResourceId(thread.ownerId);
+			const identity = await this.resolveIdentity(
+				resourceId,
+				hashAgentSandboxPrincipal({ type: 'n8n-user', userId: thread.ownerId }),
+				thread.projectId,
+			);
+			await this.orchestrator.executeForWake({
+				agentId: thread.agentId,
+				projectId: thread.projectId,
+				identity,
+				memory: { threadId, resourceId },
+				abortSignal: signal,
+				pauseReport: true,
+				cancellationId: request.id,
+				backgroundJobSignal: { tasks: [] },
+				message: `The user permanently canceled the tasks. Give one brief acknowledgement using only these saved facts: ${request.report} Do not use tools, offer to resume, or claim that external actions were undone. Then wait.`,
+			});
+			await this.cancellations.finishReport(request.id, true);
+		} catch {
+			// The saved report is the fallback. Never retry an acknowledgement that may have streamed.
+			await this.cancellations.finishReport(request.id, false);
+		} finally {
+			this.activeWakes.delete(threadId);
+			this.updates.notifyBackgroundJobsUpdated(thread.agentId, threadId);
+			this.updates.notifyQueueUpdated(threadId);
+		}
+		return true;
 	}
 
 	private async deliverApproval(job: AgentBackgroundJob, signal: AbortSignal): Promise<void> {
@@ -331,6 +404,7 @@ export class AgentWakeService {
 				agentId: agent.id,
 				projectId: agent.projectId,
 				message: formatWakeMessage(jobs),
+				wakeJobIds: jobs.map((job) => job.id),
 				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
 					tasks: jobs.flatMap(({ id, title, kind, status }) =>

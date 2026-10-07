@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
@@ -21,6 +20,8 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -150,8 +151,10 @@ describe('SubAgentRunner', () => {
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
+			mock<AgentTaskCancellationRepository>(),
 			sourceResolver,
 			new AgentTurnExecutionService(
+				mock<AgentTaskCancellationRepository>(),
 				logger,
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),

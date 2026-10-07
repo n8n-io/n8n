@@ -6,6 +6,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
 
+import { AgentTaskCancellationRepository } from './repositories/agent-task-cancellation.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import { AgentsSettingsService } from './agents-settings.service';
@@ -63,6 +64,7 @@ export class AgentMessageQueueService {
 	onAvailable?: (threadId: string) => void;
 
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly repository: AgentMessageQueueRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
@@ -201,6 +203,7 @@ export class AgentMessageQueueService {
 				)
 				.map((item) => ({
 					id: item.id,
+					held: item.held,
 					...readInboundUserMessage(item.message.content),
 					steeringExecutionId: item.steeringExecutionId,
 					createdAt: item.createdAt.toISOString(),
@@ -283,6 +286,24 @@ export class AgentMessageQueueService {
 		this.updates.notifyQueueUpdated(input.threadId);
 	}
 
+	async sendHeld(input: PendingMessageScope & { queueId: string }): Promise<void> {
+		await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertUserChatAccess(thread, input, ctx);
+			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
+			if (
+				!item ||
+				item.payload.kind !== 'preview' ||
+				!(await this.repository.releaseHeld(thread.id, item.id, ctx))
+			) {
+				throw new ConflictError('This message is no longer held');
+			}
+		});
+		this.updates.notifyQueueUpdated(input.threadId);
+		this.onAvailable?.(input.threadId);
+	}
+
 	async steer(input: {
 		projectId: string;
 		agentId: string;
@@ -350,6 +371,7 @@ export class AgentMessageQueueService {
 			if (!thread) return null;
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;
+			if (await this.cancellations.blocksQueue(threadId, ctx)) return null;
 			const active = await this.repository.findActive(threadId, ctx);
 			if (active?.executionId)
 				await this.repository.removeActive(threadId, active.executionId, ctx);

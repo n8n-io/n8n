@@ -16,6 +16,7 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { ConflictError } from '@n8n/errors';
+import { AgentTaskCancellationRepository } from './repositories/agent-task-cancellation.repository';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
@@ -100,6 +101,7 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	wake?: { jobIds: string[]; cancellationId?: string };
 	resourceId: string;
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
 	hideUserMessageFromTranscript?: boolean;
@@ -180,6 +182,7 @@ export class AgentExecutionService {
 	private readonly sideCallUsageInFlightByExecution = new Map<string, Set<Promise<void>>>();
 
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
@@ -222,6 +225,8 @@ export class AgentExecutionService {
 		const prepared = lockedQueueThread
 			? { thread: lockedQueueThread, created: false }
 			: await this.prepareThread(params, ctx);
+		if (params.wake)
+			await this.cancellations.assertWakeAdmission(params.threadId, params.wake, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,

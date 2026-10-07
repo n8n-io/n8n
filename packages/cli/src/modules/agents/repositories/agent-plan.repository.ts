@@ -12,6 +12,7 @@ import { validate as isUuid } from 'uuid';
 
 import { AgentPlanHistory } from '../entities/agent-plan-history.entity';
 import { AgentPlan } from '../entities/agent-plan.entity';
+import { AgentTaskCancellationRepository } from './agent-task-cancellation.repository';
 
 export type AgentPlanRecord = Pick<
 	AgentPlan,
@@ -25,6 +26,8 @@ export type AgentPlanRevision = Pick<
 
 export type AgentPlanRevisionMetadata = Omit<AgentPlanRevision, 'planId' | 'data'>;
 
+export type AgentPlanOperationContext = OperationContext & { sourceExecutionId?: string };
+
 type PlanWrite = { threadId: string; planId: string; expectedRevision: number };
 type PlanDocument = { formatVersion: number; data: JsonObject };
 
@@ -36,19 +39,25 @@ export class AgentPlanWriteConflictError extends UserError {
 
 @Service()
 export class AgentPlanRepository extends BaseRepository<AgentPlan> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly cancellations: AgentTaskCancellationRepository,
+	) {
 		super(AgentPlan, dataSource.manager, transactionRunner);
 	}
 
 	async createActivePlan(
 		input: PlanDocument & { id: string; threadId: string },
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
 	): Promise<AgentPlanRecord> {
 		if (!isUuid(input.id)) throw new UserError('The plan ID must be a UUID');
 		this.validateVersion(input.formatVersion);
 		const data = this.serializeData(input.data);
 
-		return await this.runInTransaction(ctx, async (manager) => {
+		return await this.runInTransaction(ctx, async (manager, tx) => {
+			await this.cancellations.lockScope(input.threadId, tx);
+			await this.cancellations.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
 			const now = new Date();
 			try {
 				await manager
@@ -82,14 +91,24 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		});
 	}
 
-	async findActivePlan(threadId: string, ctx: OperationContext): Promise<AgentPlanRecord | null> {
+	async findLatestPlan(threadId: string, ctx: AgentPlanOperationContext) {
+		return await this.managerFor(ctx).findOne(AgentPlan, {
+			where: { threadId },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
+	async findActivePlan(
+		threadId: string,
+		ctx: AgentPlanOperationContext,
+	): Promise<AgentPlanRecord | null> {
 		return await this.managerFor(ctx).findOneBy(AgentPlan, { threadId, closedAt: IsNull() });
 	}
 
 	async findPlan(
 		threadId: string,
 		planId: string,
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
 	): Promise<AgentPlanRecord | null> {
 		return await this.managerFor(ctx).findOneBy(AgentPlan, { id: planId, threadId });
 	}
@@ -98,7 +117,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		threadId: string,
 		planId: string,
 		revision: number,
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
 	): Promise<AgentPlanRevision | null> {
 		return await this.managerFor(ctx).findOne(AgentPlanHistory, {
 			where: { planId, revision, plan: { threadId } },
@@ -109,7 +128,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		threadId: string,
 		planId: string,
 		options: { afterRevision?: number; limit?: number },
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
 	): Promise<{ items: AgentPlanRevisionMetadata[]; nextCursor: number | null }> {
 		const limit = options.limit ?? 50;
 		const afterRevision = options.afterRevision ?? 0;
@@ -149,24 +168,40 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 
 	async replacePlan(
 		input: PlanWrite & PlanDocument,
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
 	): Promise<AgentPlanRecord> {
 		this.validateVersion(input.formatVersion);
 		return await this.writeRevision(input, { ...input, data: this.serializeData(input.data) }, ctx);
 	}
 
-	async closePlan(input: PlanWrite, ctx: OperationContext): Promise<AgentPlanRecord> {
+	async closePlan(input: PlanWrite, ctx: AgentPlanOperationContext): Promise<AgentPlanRecord> {
 		return await this.writeRevision(input, null, ctx);
+	}
+
+	async cancelPlan(
+		input: PlanWrite & PlanDocument,
+		ctx: AgentPlanOperationContext,
+	): Promise<AgentPlanRecord> {
+		return await this.writeRevision(
+			input,
+			{ ...input, data: this.serializeData(input.data) },
+			ctx,
+			true,
+		);
 	}
 
 	private async writeRevision(
 		input: PlanWrite,
 		document: { formatVersion: number; data: string } | null,
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
+		cancelled = false,
 	): Promise<AgentPlanRecord> {
 		this.validateVersion(input.expectedRevision);
 
-		return await this.runInTransaction(ctx, async (manager) => {
+		return await this.runInTransaction(ctx, async (manager, tx) => {
+			await this.cancellations.lockScope(input.threadId, tx);
+			if (!cancelled)
+				await this.cancellations.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
 			const now = new Date();
 			const query = manager
 				.createQueryBuilder()
@@ -174,6 +209,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 				.set({
 					revision: () => 'revision + 1',
 					updatedAt: now,
+					...(cancelled ? { closedAt: now } : {}),
 					...(document
 						? { formatVersion: document.formatVersion, data: () => ':planData' }
 						: { closedAt: now }),

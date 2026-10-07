@@ -9,6 +9,7 @@ import { v7 as uuidv7 } from 'uuid';
 import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
+import { AgentTaskCancellationRepository } from '../repositories/agent-task-cancellation.repository';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -148,6 +149,7 @@ export class AgentBackgroundJobService {
 	private readonly abortControllers = new Map<string, AbortController>();
 
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
@@ -196,14 +198,23 @@ export class AgentBackgroundJobService {
 			kind: 'workflow',
 			childExecutionId: executionId,
 		});
-		if (outcome.inserted) {
+		if (outcome.inserted && params.detached !== false) {
 			this.updateBroadcaster.notifyBackgroundJobsUpdated(
 				params.parentAgentId,
 				params.parentThreadId,
 			);
 		}
 
+		if (await this.cancellations.isCancelled(params.parentThreadId, params.sourceExecutionId)) {
+			await this.requestWakeSafely(params.parentThreadId);
+		}
 		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
+	}
+
+	async finishInlineWorkflowJob(parentThreadId: string, jobId: string): Promise<void> {
+		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
+		if (job) await this.settleFinishedWorkflowJobs([job]);
+		await this.consumeMail(parentThreadId, [jobId]);
 	}
 
 	/** Settle the workflow job tracking the given execution; no-op without a running row. */
@@ -237,7 +248,13 @@ export class AgentBackgroundJobService {
 			const job = await this.findJob(jobId);
 			if (job && job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 				await this.clearChildCheckpoint(job);
-			if (!settled || !job) return settled;
+			if (!settled || !job) {
+				if (job?.status === 'cancelled' && settlement.status === 'completed' && settlement.result) {
+					await this.jobRepository.preserveLateCompletedResult(jobId, settlement.result);
+					this.notifyJobUpdate(job);
+				}
+				return settled;
+			}
 			if (job.pauseRequestId) await this.retainLatestStopGroup(job);
 			this.notifyJobUpdate(job);
 			await this.requestWakeSafely(job.parentThreadId);
@@ -563,13 +580,17 @@ export class AgentBackgroundJobService {
 		return resumed;
 	}
 
-	private async clearChildCheckpoint(job: AgentBackgroundJob): Promise<void> {
+	private async clearChildCheckpoint(
+		job: AgentBackgroundJob,
+		requireConfirmation = false,
+	): Promise<void> {
 		if (job.kind !== 'subagent' || !job.subAgentId || !job.childThreadId) return;
 		try {
 			await this.checkpointStorage.deleteDelegatedForThread(job.subAgentId, job.childThreadId);
 		} catch (error) {
 			// Reconciliation retries while the terminal job retains a checkpoint.
 			this.logger.warn('Failed to clear background child checkpoints', { jobId: job.id, error });
+			if (requireConfirmation) throw error;
 		}
 	}
 
@@ -650,6 +671,7 @@ export class AgentBackgroundJobService {
 	async listCurrentGroupForThread(
 		parentAgentId: string,
 		parentThreadId: string,
+		options: { includePaused?: boolean; includeSettled?: boolean } = {},
 	): Promise<Array<BackgroundJobGroupItem & Pick<AgentBackgroundJobDto, 'approval'>>> {
 		const candidates = await this.jobRepository.findGroupCandidates(parentAgentId, parentThreadId);
 		const stoppingRequests = new Set(
@@ -663,8 +685,10 @@ export class AgentBackgroundJobService {
 				.map((job) => job.pauseRequestId),
 		);
 		const jobs = candidates
-			.filter((job) =>
-				job.pauseRequestId ? stoppingRequests.has(job.pauseRequestId) : job.status !== 'paused',
+			.filter(
+				(job) =>
+					options.includePaused ||
+					(job.pauseRequestId ? stoppingRequests.has(job.pauseRequestId) : job.status !== 'paused'),
 			)
 			.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
 		let group: BackgroundJobGroupItem[] = [];
@@ -677,7 +701,9 @@ export class AgentBackgroundJobService {
 			group.push(job);
 			groupEndsAt = Math.max(
 				groupEndsAt,
-				job.status === 'running' || job.status === 'suspended'
+				job.status === 'running' ||
+					job.status === 'suspended' ||
+					(options.includePaused && job.status === 'paused')
 					? Number.POSITIVE_INFINITY
 					: (job.settledAt?.getTime() ?? startedAt),
 			);
@@ -685,8 +711,13 @@ export class AgentBackgroundJobService {
 
 		// Keep finished jobs visible until the parent consumes their results.
 		if (
+			!options.includeSettled &&
 			!group.some(
-				(job) => job.status === 'running' || job.status === 'suspended' || !job.notifiedAt,
+				(job) =>
+					job.status === 'running' ||
+					job.status === 'suspended' ||
+					(options.includePaused && job.status === 'paused') ||
+					!job.notifiedAt,
 			)
 		)
 			return [];
@@ -756,6 +787,22 @@ export class AgentBackgroundJobService {
 		return 'cancelled';
 	}
 
+	async cancelPermanently(parentThreadId: string, jobId: string): Promise<void> {
+		await this.cancel(parentThreadId, jobId);
+		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
+		if (job?.kind === 'workflow') {
+			await this.settleFinishedWorkflowJobs([job]);
+			return;
+		}
+		if (job?.kind !== 'subagent' || job.status !== 'cancelled') return;
+		// Retry coordination and checkpoint cleanup even if the terminal row was saved first.
+		await this.publisher.publishCommand({
+			command: 'cancel-agent-background-job',
+			payload: { jobId },
+		});
+		await this.clearChildCheckpoint(job, true);
+	}
+
 	async cancelForParent(
 		parentAgentId: string,
 		parentThreadId: string,
@@ -797,7 +844,7 @@ export class AgentBackgroundJobService {
 	}
 
 	private async requestWakeSafely(parentThreadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 
 		try {
 			const { AgentWakeService } = await import('./agent-wake.service.js');

@@ -1,6 +1,7 @@
+import type { AgentExecution } from './agent-execution.entity';
 import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index } from '@n8n/typeorm';
+import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
 export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
 export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
@@ -20,6 +21,25 @@ export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 @Index(['timeoutAt'], { where: "\"status\" IN ('running', 'suspended')" })
 @Index(['parentThreadId'], { where: '"status" <> \'running\' AND "notifiedAt" IS NULL' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Execution that dispatched this job',
+	})
+	sourceExecutionId: string | null;
+
+	@ManyToOne('AgentExecution', { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'sourceExecutionId' })
+	sourceExecution: Relation<AgentExecution> | null;
+
+	@Column({
+		type: 'boolean',
+		default: true,
+		comment: 'Deliver results through background wake messages',
+	})
+	detached: boolean;
+
 	@Column({ type: 'varchar', length: 16 })
 	kind: AgentBackgroundJobKind;
 

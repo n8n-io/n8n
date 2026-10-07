@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import { AgentPlanService } from '@/modules/agents/agent-plan.service';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { Agent } from '@/modules/agents/entities/agent.entity';
@@ -114,7 +115,13 @@ describe('AgentPlanService', () => {
 			},
 			{},
 		);
-		const fresh = new AgentPlanService(new AgentPlanRepository(dataSource, transactionRunner));
+		const fresh = new AgentPlanService(
+			new AgentPlanRepository(
+				dataSource,
+				transactionRunner,
+				Container.get(AgentTaskCancellationRepository),
+			),
+		);
 		expect(await fresh.findActivePlan(threadId, {})).toEqual(updated);
 		expect(updated.readiness.ready).toEqual([second.id]);
 		expect(updated.data.items[0].startedAt).toEqual(updated.data.items[0].endedAt);

@@ -34,6 +34,13 @@ export class AgentMessageQueue extends WithTimestamps {
 	@Column({ type: 'int', default: 0, comment: 'Pending turn order within the session' })
 	position: number;
 
+	@Column({
+		type: 'boolean',
+		default: false,
+		comment: 'Requires an explicit Send after task cancellation',
+	})
+	held: boolean;
+
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
 	thread: Relation<AgentExecutionThread>;
