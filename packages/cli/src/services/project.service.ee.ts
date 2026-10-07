@@ -3,17 +3,18 @@ import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	type User,
+	type OperationContext,
 	FolderRepository,
 	Project,
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
-	RoleRepository,
 	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	type ProjectListOptions,
+	TransactionRunner,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -27,11 +28,8 @@ import {
 	GLOBAL_ADMIN_ROLE_SLUG,
 	GLOBAL_OWNER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
-	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
-import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -100,7 +98,7 @@ export class ProjectService {
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
-		private readonly roleRepository: RoleRepository,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	private get workflowService() {
@@ -324,8 +322,7 @@ export class ProjectService {
 
 		// Capture member user IDs before the project (and its relations) are removed,
 		// so we can clean up orphaned per-user credential entries afterward.
-		const projectMembers = await this.projectRelationRepository.findBy({ projectId: project.id });
-		const memberUserIds = projectMembers.map((pr) => pr.userId);
+		const memberUserIds = await this.projectRelationRepository.findUserIdsByProjectId(project.id);
 
 		// 9. delete project
 		await this.projectRepository.remove(project);
@@ -371,13 +368,10 @@ export class ProjectService {
 	): Promise<Array<Project & { role: string; scopes: Scope[] }>> {
 		if (projects.length === 0) return [];
 
-		const relations = await this.projectRelationRepository.find({
-			where: {
-				userId: user.id,
-				projectId: In(projects.map((p) => p.id)),
-			},
-			relations: ['role'],
-		});
+		const relations = await this.projectRelationRepository.findForUserInProjects(
+			user.id,
+			projects.map((p) => p.id),
+		);
 		const relationsByProject = new Map(relations.map((r) => [r.projectId, r]));
 		const globalScopes = getAuthPrincipalScopes(user);
 
@@ -437,11 +431,7 @@ export class ProjectService {
 		offset: number;
 		limit: number;
 	}): Promise<{ projects: Project[]; count: number }> {
-		const [projects, count] = await this.projectRepository.findAndCount({
-			skip: offset,
-			take: limit,
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
+		const [projects, count] = await this.projectRepository.findPage({ offset, limit });
 		return { projects, count };
 	}
 
@@ -552,11 +542,13 @@ export class ProjectService {
 					?.map(({ key, value }) => ({ key: key.trim(), value }))
 					.filter(({ key }) => key !== '');
 
-		const result = await this.projectRepository.update(
-			{ id: projectId, type: 'team' },
-			{ name, icon, description, customTelemetryTags: tags },
-		);
-		if (!result.affected) {
+		const updated = await this.projectRepository.updateTeamProject(projectId, {
+			name,
+			icon,
+			description,
+			customTelemetryTags: tags,
+		});
+		if (!updated) {
 			throw new ProjectNotFoundError(projectId);
 		}
 
@@ -621,12 +613,11 @@ export class ProjectService {
 
 		const proxy = await this.connectionStatusProxy;
 
-		await this.projectRelationRepository.manager.transaction(async (em) => {
-			await this.pruneRelations(em, project);
-			await this.addManyRelations(em, project, relations);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await this.projectRelationRepository.replaceProjectMembers(project.id, relations, ctx);
 
 			if (affectedUserIds.length > 0) {
-				await proxy.cleanupOrphanedEntriesForUsers(affectedUserIds, em);
+				await proxy.cleanupOrphanedEntriesForUsers(affectedUserIds, ctx);
 			}
 		});
 
@@ -693,13 +684,7 @@ export class ProjectService {
 		const existingUserIds = new Set(project.projectRelations.map((pr) => pr.userId));
 		const newSharees = memberRelations.filter((relation) => !existingUserIds.has(relation.userId));
 
-		await this.projectRelationRepository.save(
-			memberRelations.map((relation) => ({
-				projectId,
-				userId: relation.userId,
-				role: { slug: relation.role },
-			})),
-		);
+		await this.projectRelationRepository.saveProjectMembers(projectId, memberRelations);
 
 		await this.notifyNewSharees(user, project, newSharees);
 		await this.emitProjectMembersUpdated(user, projectId);
@@ -756,13 +741,7 @@ export class ProjectService {
 		const toInsert = memberRelations.filter((rel) => !existingByUserId.has(rel.userId));
 		if (toInsert.length > 0) {
 			// Use insert to avoid accidental upsert of different role
-			await this.projectRelationRepository.insert(
-				toInsert.map((v) => ({
-					projectId: project.id,
-					userId: v.userId,
-					role: { slug: v.role },
-				})),
-			);
+			await this.projectRelationRepository.insertProjectMembers(project.id, toInsert);
 			added.push(...toInsert);
 		}
 
@@ -773,10 +752,7 @@ export class ProjectService {
 	}
 
 	private async getTeamProjectWithRelations(projectId: string) {
-		const project = await this.projectRepository.findOne({
-			where: { id: projectId, type: 'team' },
-			relations: { projectRelations: { role: true } },
-		});
+		const project = await this.projectRepository.findTeamWithRelations(projectId);
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
 		return project;
 	}
@@ -846,9 +822,9 @@ export class ProjectService {
 
 		const proxy = await this.connectionStatusProxy;
 
-		await this.projectRelationRepository.manager.transaction(async (em) => {
-			await em.delete(ProjectRelation, { projectId: project.id, userId });
-			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await this.projectRelationRepository.deleteProjectMember(project.id, userId, ctx);
+			await proxy.cleanupOrphanedEntriesForUsers([userId], ctx);
 		});
 
 		await this.emitProjectMembersUpdated(user, projectId);
@@ -889,99 +865,54 @@ export class ProjectService {
 
 		const proxy = await this.connectionStatusProxy;
 
-		await this.projectRelationRepository.manager.transaction(async (em) => {
-			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
-			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await this.projectRelationRepository.updateProjectMemberRole(projectId, userId, role, ctx);
+			await proxy.cleanupOrphanedEntriesForUsers([userId], ctx);
 		});
 
 		await this.emitProjectMembersUpdated(user, projectId);
-	}
-
-	async pruneRelations(em: EntityManager, project: Project) {
-		await em.delete(ProjectRelation, { projectId: project.id });
-	}
-
-	async addManyRelations(
-		em: EntityManager,
-		project: Project,
-		relations: Array<{ userId: string; role: AssignableProjectRole }>,
-	) {
-		await em.insert(
-			ProjectRelation,
-			relations.map((v) =>
-				this.projectRelationRepository.create({
-					projectId: project.id,
-					userId: v.userId,
-					role: { slug: v.role },
-				}),
-			),
-		);
 	}
 
 	async getProjectWithScope(
 		user: User,
 		projectId: string,
 		scopes: Scope[],
-		entityManager?: EntityManager,
+		ctx: OperationContext = {},
 	) {
-		const em = entityManager ?? this.projectRepository.manager;
-		let where: FindOptionsWhere<Project> = {
-			id: projectId,
-		};
-
+		let projectRoles: string[] | undefined;
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope(
+			projectRoles = await this.roleService.rolesWithScope(
 				'project',
 				scopes,
-				async () => await this.roleRepository.findAll(em),
+				async () => await this.projectRepository.loadRolesForProjectScopeCheck(ctx),
 			);
-
-			where = {
-				...where,
-				projectRelations: {
-					role: In(projectRoles),
-					userId: user.id,
-				},
-			};
 		}
 
-		return await em.findOne(Project, {
-			where,
-		});
+		return await this.projectRepository.findByIdForUserWithRoles(
+			projectId,
+			projectRoles ? user.id : undefined,
+			projectRoles,
+			ctx,
+		);
 	}
 
 	async getProjectIdsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {
-		const where: FindOptionsWhere<Project> = {};
-		if (projectIds) {
-			where.id = In(projectIds);
-		}
-
+		let projectRoles: string[] | undefined;
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			// if we're not checking specific projects, restrict to team projects
-			if (!projectIds) {
-				where.type = 'team';
-			}
-			where.projectRelations = {
-				role: In(projectRoles),
-				userId: user.id,
-			};
+			projectRoles = await this.roleService.rolesWithScope('project', scopes);
 		}
 
-		const projects = await this.projectRepository.find({
-			where,
-			select: ['id'],
+		return await this.projectRepository.findIdsForUserWithRoles({
+			projectIds,
+			userId: projectRoles ? user.id : undefined,
+			projectRoles,
+			restrictToTeamProjects: Boolean(projectRoles && !projectIds),
 		});
-		return projects.map((p) => p.id);
 	}
 
 	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
 		if (projectIds.length === 0) return new Set();
-		const projects = await this.projectRepository.find({
-			select: ['id'],
-			where: { id: In(projectIds) },
-		});
-		return new Set(projects.map(({ id }) => id));
+		return new Set(await this.projectRepository.findExistingIds(projectIds));
 	}
 
 	async findProjectsByIdsForUser(
@@ -993,22 +924,16 @@ export class ProjectService {
 			return [];
 		}
 
-		const where: FindOptionsWhere<Project> = {
-			id: In(projectIds),
-		};
-
+		let projectRoles: string[] | undefined;
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			where.projectRelations = {
-				role: In(projectRoles),
-				userId: user.id,
-			};
+			projectRoles = await this.roleService.rolesWithScope('project', scopes);
 		}
 
-		return await this.projectRepository.find({
-			where,
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
+		return await this.projectRepository.findByIdsForUserWithRoles(
+			projectIds,
+			projectRoles ? user.id : undefined,
+			projectRoles,
+		);
 	}
 
 	/**
@@ -1020,34 +945,22 @@ export class ProjectService {
 	async addUser(
 		projectId: string,
 		{ userId, role }: { userId: string; role: AssignableProjectRole },
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 	) {
-		trx = trx ?? this.projectRelationRepository.manager;
-		return await trx.save(ProjectRelation, {
-			projectId,
-			userId,
-			role: { slug: role },
-		});
+		return await this.projectRelationRepository.addProjectMember(projectId, userId, role, ctx);
 	}
 
 	async getProject(projectId: string): Promise<Project> {
-		return await this.projectRepository.findOneOrFail({
-			where: {
-				id: projectId,
-			},
-		});
+		return await this.projectRepository.findByIdOrFail(projectId);
 	}
 
 	/** Finds a project by id, or `null` when it does not exist. */
 	async findProject(projectId: string): Promise<Project | null> {
-		return await this.projectRepository.findOne({ where: { id: projectId } });
+		return await this.projectRepository.findById(projectId);
 	}
 
 	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {
-		return await this.projectRelationRepository.find({
-			where: { projectId },
-			relations: { user: true, role: true },
-		});
+		return await this.projectRelationRepository.findWithUserAndRole(projectId);
 	}
 
 	/**
@@ -1073,22 +986,16 @@ export class ProjectService {
 		userId: string,
 		projectId: string,
 	): Promise<ProjectRelation | null> {
-		return await this.projectRelationRepository.findOne({
-			where: { projectId, userId },
-			relations: { user: true, role: true },
-		});
+		return await this.projectRelationRepository.findOneWithUserAndRole(projectId, userId);
 	}
 
 	async getProjectMembersAndCount(
 		projectId: string,
 		{ offset, limit }: { offset: number; limit: number },
 	): Promise<{ members: ProjectRelation[]; count: number }> {
-		const [members, count] = await this.projectRelationRepository.findAndCount({
-			where: { projectId },
-			relations: { user: true, role: true },
-			order: { createdAt: 'ASC', userId: 'ASC' },
-			skip: offset,
-			take: limit,
+		const [members, count] = await this.projectRelationRepository.findMembersAndCount(projectId, {
+			offset,
+			limit,
 		});
 		return { members, count };
 	}
@@ -1104,14 +1011,7 @@ export class ProjectService {
 	}
 
 	async getUserOwnedOrAdminProjects(userId: string): Promise<Project[]> {
-		return await this.projectRepository.find({
-			where: {
-				projectRelations: {
-					userId,
-					role: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]),
-				},
-			},
-		});
+		return await this.projectRepository.findOwnedOrAdminByUser(userId);
 	}
 
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {

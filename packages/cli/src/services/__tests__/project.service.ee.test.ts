@@ -5,7 +5,7 @@ import {
 	type FolderRepository,
 	type Project,
 	type ProjectRepository,
-	type RoleRepository,
+	type Role,
 	type SharedCredentialsRepository,
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
@@ -15,9 +15,10 @@ import {
 	ProjectRelation as ProjectRelationEntity,
 	PROJECT_ADMIN_ROLE,
 	PROJECT_VIEWER_ROLE,
+	type OperationContext,
+	type TransactionRunner,
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import type { EntityManager } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -34,10 +35,9 @@ import type { OwnershipTransferService } from '@/services/ownership-transfer/own
 import type { UserManagementMailer } from '@/user-management/email';
 
 describe('ProjectService', () => {
-	const manager = mock<EntityManager>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const projectRepository = mock<ProjectRepository>({ manager });
-	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
+	const projectRepository = mock<ProjectRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const folderRepository = mock<FolderRepository>();
@@ -51,7 +51,8 @@ describe('ProjectService', () => {
 	const eventService = mock<EventService>();
 	const userManagementMailer = mock<UserManagementMailer>();
 	const userRepository = mock<UserRepository>();
-	const roleRepository = mock<RoleRepository>();
+	const transactionRunner = mock<TransactionRunner>();
+	const transactionContext: OperationContext = {};
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
@@ -67,13 +68,15 @@ describe('ProjectService', () => {
 		eventService,
 		userManagementMailer,
 		userRepository,
-		roleRepository,
+		transactionRunner,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		projectRelationRepository.find.mockResolvedValue([]);
+		projectRelationRepository.findWithUserAndRole.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
+		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(transactionContext));
 	});
 
 	const instanceUser = (id: string, slug: string, disabled = false) =>
@@ -117,15 +120,14 @@ describe('ProjectService', () => {
 	});
 
 	describe('getProjectsAndCount', () => {
-		it('orders the page by creation time, then id, so cursor pages are stable', async () => {
-			projectRepository.findAndCount.mockResolvedValueOnce([[], 0]);
+		it('delegates the requested page bounds to the repository', async () => {
+			projectRepository.findPage.mockResolvedValueOnce([[], 0]);
 
 			await projectService.getProjectsAndCount({ offset: 20, limit: 10 });
 
-			expect(projectRepository.findAndCount).toHaveBeenCalledWith({
-				skip: 20,
-				take: 10,
-				order: { createdAt: 'ASC', id: 'ASC' },
+			expect(projectRepository.findPage).toHaveBeenCalledWith({
+				offset: 20,
+				limit: 10,
 			});
 		});
 	});
@@ -134,7 +136,7 @@ describe('ProjectService', () => {
 		it('throws if called with a personal project', async () => {
 			// ARRANGE
 			const projectId = '12345';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({ type: 'personal', projectRelations: [] }),
 			);
 			roleService.isRoleLicensed.mockReturnValueOnce(true);
@@ -150,7 +152,7 @@ describe('ProjectService', () => {
 		it('throws if trying to add a personalOwner to a team project', async () => {
 			// ARRANGE
 			const projectId = '12345';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({ type: 'team', projectRelations: [] }),
 			);
 			roleService.isRoleLicensed.mockReturnValueOnce(true);
@@ -166,7 +168,7 @@ describe('ProjectService', () => {
 		it('notifies only the newly added users, not existing members', async () => {
 			// ARRANGE
 			const projectId = '12345';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					name: 'Team Project',
@@ -194,7 +196,7 @@ describe('ProjectService', () => {
 
 		it('skips instance owners and admins and saves the rest', async () => {
 			const projectId = '12345';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({ id: projectId, name: 'Team Project', type: 'team', projectRelations: [] }),
 			);
 			roleService.isRoleLicensed.mockReturnValue(true);
@@ -208,8 +210,8 @@ describe('ProjectService', () => {
 				{ userId: 'member', role: 'project:viewer' },
 			]);
 
-			expect(projectRelationRepository.save).toHaveBeenCalledWith([
-				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
+			expect(projectRelationRepository.saveProjectMembers).toHaveBeenCalledWith(projectId, [
+				{ userId: 'member', role: 'project:viewer' },
 			]);
 			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledTimes(1);
 			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith({
@@ -222,7 +224,7 @@ describe('ProjectService', () => {
 		it('does not notify when no users are new', async () => {
 			// ARRANGE
 			const projectId = '12345';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					name: 'Team Project',
@@ -249,17 +251,8 @@ describe('ProjectService', () => {
 			{ userId: 'user2', role: 'project:viewer' },
 		];
 
-		beforeEach(() => {
-			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
-				const runInTransaction = (arg2 ?? arg1) as (
-					entityManager: EntityManager,
-				) => Promise<unknown>;
-				return await runInTransaction(manager);
-			});
-		});
-
 		it('should successfully sync project relations', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					type: 'team',
@@ -275,17 +268,17 @@ describe('ProjectService', () => {
 
 			await projectService.syncProjectRelations(projectId, mockRelations);
 
-			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: { role: true } },
-			});
+			expect(projectRepository.findTeamWithRelations).toHaveBeenCalledWith(projectId);
 
-			expect(manager.delete).toHaveBeenCalled();
-			expect(manager.insert).toHaveBeenCalled();
+			expect(projectRelationRepository.replaceProjectMembers).toHaveBeenCalledWith(
+				projectId,
+				mockRelations,
+				transactionContext,
+			);
 		});
 
 		it('should throw error if project not found', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(null);
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(null);
 
 			await expect(projectService.syncProjectRelations(projectId, mockRelations)).rejects.toThrow(
 				`Could not find project with ID: ${projectId}`,
@@ -293,7 +286,7 @@ describe('ProjectService', () => {
 		});
 
 		it('should throw error if unlicensed role is used', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					type: 'team',
@@ -308,7 +301,7 @@ describe('ProjectService', () => {
 		});
 
 		it('should not throw error for existing role even if unlicensed', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					type: 'team',
@@ -339,7 +332,7 @@ describe('ProjectService', () => {
 
 			it('calls cleanupOrphanedEntriesForUsers with the IDs of removed members', async () => {
 				// ARRANGE — project has two members; incoming relations keep only user1
-				projectRepository.findOne.mockResolvedValueOnce(
+				projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 					mock<Project>({
 						id: projectId,
 						type: 'team',
@@ -357,12 +350,15 @@ describe('ProjectService', () => {
 				]);
 
 				// ASSERT — user2 was removed → cleanup must run for user2
-				expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(['user2'], manager);
+				expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(
+					['user2'],
+					transactionContext,
+				);
 			});
 
 			it('calls cleanupOrphanedEntriesForUsers with union of removed and role-changed IDs', async () => {
 				// ARRANGE — user2 removed, user3 role changed
-				projectRepository.findOne.mockResolvedValueOnce(
+				projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 					mock<Project>({
 						id: projectId,
 						type: 'team',
@@ -384,18 +380,15 @@ describe('ProjectService', () => {
 				// ASSERT — both user2 (removed) and user3 (role changed) are in the set
 				expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(
 					expect.arrayContaining(['user2', 'user3']),
-					manager,
+					transactionContext,
 				);
-				const [affectedIds] = mockProxy.cleanupOrphanedEntriesForUsers.mock.calls[0] as [
-					string[],
-					EntityManager,
-				];
+				const [affectedIds] = mockProxy.cleanupOrphanedEntriesForUsers.mock.calls[0];
 				expect(affectedIds).toHaveLength(2);
 			});
 
 			it('does not call cleanupOrphanedEntriesForUsers when no members are affected', async () => {
 				// ARRANGE — incoming relations are identical to current ones
-				projectRepository.findOne.mockResolvedValueOnce(
+				projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 					mock<Project>({
 						id: projectId,
 						type: 'team',
@@ -422,7 +415,7 @@ describe('ProjectService', () => {
 	describe('addUsersWithConflictSemantics', () => {
 		it('treats an instance owner as already having access and adds the rest', async () => {
 			const projectId = '12345';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({ id: projectId, name: 'Team Project', type: 'team', projectRelations: [] }),
 			);
 			roleService.isRoleLicensed.mockReturnValue(true);
@@ -435,13 +428,13 @@ describe('ProjectService', () => {
 
 			expect(result.added).toEqual([{ userId: 'member', role: 'project:viewer' }]);
 			expect(result.conflicts).toEqual([]);
-			expect(projectRelationRepository.insert).toHaveBeenCalledWith([
-				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
+			expect(projectRelationRepository.insertProjectMembers).toHaveBeenCalledWith(projectId, [
+				{ userId: 'member', role: 'project:viewer' },
 			]);
 		});
 
 		it('does not report a conflict for an instance admin who holds another role', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: '12345',
 					type: 'team',
@@ -456,12 +449,12 @@ describe('ProjectService', () => {
 			]);
 
 			expect(result).toMatchObject({ added: [], conflicts: [] });
-			expect(projectRelationRepository.insert).not.toHaveBeenCalled();
+			expect(projectRelationRepository.insertProjectMembers).not.toHaveBeenCalled();
 		});
 
 		it('adds a disabled instance admin like any other user', async () => {
 			const projectId = '12345';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({ id: projectId, name: 'Team Project', type: 'team', projectRelations: [] }),
 			);
 			roleService.isRoleLicensed.mockReturnValue(true);
@@ -474,8 +467,8 @@ describe('ProjectService', () => {
 			]);
 
 			expect(result.added).toEqual([{ userId: 'disabled-admin', role: 'project:editor' }]);
-			expect(projectRelationRepository.insert).toHaveBeenCalledWith([
-				{ projectId, userId: 'disabled-admin', role: { slug: 'project:editor' } },
+			expect(projectRelationRepository.insertProjectMembers).toHaveBeenCalledWith(projectId, [
+				{ userId: 'disabled-admin', role: 'project:editor' },
 			]);
 		});
 	});
@@ -489,19 +482,13 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => mockProxy,
 			});
-			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
-				const runInTransaction = (arg2 ?? arg1) as (
-					entityManager: EntityManager,
-				) => Promise<unknown>;
-				return await runInTransaction(manager);
-			});
 		});
 
 		it('calls cleanupOrphanedEntriesForUsers with the removed userId', async () => {
 			// ARRANGE
 			const projectId = 'proj-1';
 			const userId = 'user-to-remove';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					type: 'team',
@@ -516,14 +503,17 @@ describe('ProjectService', () => {
 			await projectService.deleteUserFromProject(user, projectId, userId);
 
 			// ASSERT — member removed → cleanup must run inside the same transaction
-			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith([userId], manager);
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(
+				[userId],
+				transactionContext,
+			);
 		});
 
 		it('throws when trying to remove the project owner', async () => {
 			// ARRANGE
 			const projectId = 'proj-1';
 			const ownerId = 'owner-user';
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					type: 'team',
@@ -541,7 +531,7 @@ describe('ProjectService', () => {
 		});
 
 		it('throws when trying to remove an instance admin', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: 'proj-1',
 					type: 'team',
@@ -553,7 +543,7 @@ describe('ProjectService', () => {
 			await expect(projectService.deleteUserFromProject(user, 'proj-1', 'admin')).rejects.toThrow(
 				"This user has access through their instance role and can't be removed from the project.",
 			);
-			expect(manager.delete).not.toHaveBeenCalled();
+			expect(projectRelationRepository.deleteProjectMember).not.toHaveBeenCalled();
 		});
 	});
 
@@ -564,7 +554,7 @@ describe('ProjectService', () => {
 		});
 
 		it('should trim whitespace from tag keys on save', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(true);
 
 			await projectService.updateProject(user, 'proj-1', {
 				name: 'My Project',
@@ -574,8 +564,8 @@ describe('ProjectService', () => {
 				],
 			});
 
-			expect(projectRepository.update).toHaveBeenCalledWith(
-				{ id: 'proj-1', type: 'team' },
+			expect(projectRepository.updateTeamProject).toHaveBeenCalledWith(
+				'proj-1',
 				expect.objectContaining({
 					customTelemetryTags: [
 						{ key: 'env', value: 'production' },
@@ -586,7 +576,7 @@ describe('ProjectService', () => {
 		});
 
 		it('should filter out tags with empty keys after trimming', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(true);
 
 			await projectService.updateProject(user, 'proj-1', {
 				name: 'My Project',
@@ -596,8 +586,8 @@ describe('ProjectService', () => {
 				],
 			});
 
-			expect(projectRepository.update).toHaveBeenCalledWith(
-				{ id: 'proj-1', type: 'team' },
+			expect(projectRepository.updateTeamProject).toHaveBeenCalledWith(
+				'proj-1',
 				expect.objectContaining({
 					customTelemetryTags: [{ key: 'region', value: 'us-east' }],
 				}),
@@ -605,18 +595,18 @@ describe('ProjectService', () => {
 		});
 
 		it('should save undefined customTelemetryTags when not provided', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(true);
 
 			await projectService.updateProject(user, 'proj-1', { name: 'My Project' });
 
-			expect(projectRepository.update).toHaveBeenCalledWith(
-				{ id: 'proj-1', type: 'team' },
+			expect(projectRepository.updateTeamProject).toHaveBeenCalledWith(
+				'proj-1',
 				expect.objectContaining({ customTelemetryTags: undefined }),
 			);
 		});
 
 		it('should invalidate workflow project cache after a successful update', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(true);
 
 			await projectService.updateProject(user, 'proj-1', { name: 'Updated' });
 
@@ -626,7 +616,7 @@ describe('ProjectService', () => {
 		});
 
 		it('should throw NotFoundError when project is not found', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 0 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(false);
 
 			await expect(
 				projectService.updateProject(user, 'missing-proj', { name: 'Ghost' }),
@@ -634,7 +624,7 @@ describe('ProjectService', () => {
 		});
 
 		it('emits team-project-updated with the otel tag count when tags are provided', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(true);
 
 			await projectService.updateProject(user, 'proj-1', {
 				name: 'My Project',
@@ -653,7 +643,7 @@ describe('ProjectService', () => {
 		});
 
 		it('emits team-project-updated without the otel tag count when tags are omitted', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(true);
 
 			await projectService.updateProject(user, 'proj-1', { name: 'My Project' });
 
@@ -665,7 +655,7 @@ describe('ProjectService', () => {
 		});
 
 		it('does not emit when the project is not found', async () => {
-			projectRepository.update.mockResolvedValueOnce({ affected: 0 } as never);
+			projectRepository.updateTeamProject.mockResolvedValueOnce(false);
 
 			await expect(
 				projectService.updateProject(user, 'missing-proj', { name: 'Ghost' }),
@@ -690,16 +680,10 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => mockProxy,
 			});
-			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
-				const runInTransaction = (arg2 ?? arg1) as (
-					entityManager: EntityManager,
-				) => Promise<unknown>;
-				return await runInTransaction(manager);
-			});
 		});
 
 		it('throws when trying to change the role of an instance admin', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({ id: projectId, type: 'team', projectRelations: mockRelations }),
 			);
 			roleService.isRoleLicensed.mockReturnValue(true);
@@ -708,11 +692,11 @@ describe('ProjectService', () => {
 			await expect(
 				projectService.changeUserRoleInProject(user, projectId, 'user1', 'project:viewer'),
 			).rejects.toThrow(ForbiddenError);
-			expect(manager.update).not.toHaveBeenCalled();
+			expect(projectRelationRepository.updateProjectMemberRole).not.toHaveBeenCalled();
 		});
 
 		it('throws a forbidden error for an instance admin with no relation to the project', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({ id: projectId, type: 'team', projectRelations: mockRelations }),
 			);
 			roleService.isRoleLicensed.mockReturnValue(true);
@@ -721,11 +705,11 @@ describe('ProjectService', () => {
 			await expect(
 				projectService.changeUserRoleInProject(user, projectId, 'admin', 'project:viewer'),
 			).rejects.toThrow(ForbiddenError);
-			expect(manager.update).not.toHaveBeenCalled();
+			expect(projectRelationRepository.updateProjectMemberRole).not.toHaveBeenCalled();
 		});
 
 		it('should successfully change the user role in the project', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					type: 'team',
@@ -733,21 +717,22 @@ describe('ProjectService', () => {
 				}),
 			);
 			roleService.isRoleLicensed.mockReturnValue(true);
-			projectRelationRepository.find.mockResolvedValue(mockRelations as never);
+			projectRelationRepository.findWithUserAndRole.mockResolvedValue(mockRelations as never);
 
 			await projectService.changeUserRoleInProject(user, projectId, 'user2', 'project:admin');
 
-			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: { role: true } },
-			});
+			expect(projectRepository.findTeamWithRelations).toHaveBeenCalledWith(projectId);
 
-			expect(manager.update).toHaveBeenCalledWith(
-				ProjectRelationEntity,
-				{ projectId, userId: 'user2' },
-				{ role: { slug: 'project:admin' } },
+			expect(projectRelationRepository.updateProjectMemberRole).toHaveBeenCalledWith(
+				projectId,
+				'user2',
+				'project:admin',
+				transactionContext,
 			);
-			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(['user2'], manager);
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(
+				['user2'],
+				transactionContext,
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
 				userId: 'actor-user',
@@ -761,7 +746,7 @@ describe('ProjectService', () => {
 		});
 
 		it('should throw if the user is not part of the project', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(
 				mock<Project>({
 					id: projectId,
 					type: 'team',
@@ -774,10 +759,7 @@ describe('ProjectService', () => {
 				projectService.changeUserRoleInProject(user, projectId, 'user3', 'project:admin'),
 			).rejects.toThrow(`Could not find project with ID: ${projectId}`);
 
-			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: { role: true } },
-			});
+			expect(projectRepository.findTeamWithRelations).toHaveBeenCalledWith(projectId);
 		});
 
 		it('should throw if the role to be set is `project:personalOwner`', async () => {
@@ -787,17 +769,14 @@ describe('ProjectService', () => {
 		});
 
 		it('should throw if the project is not a team project', async () => {
-			projectRepository.findOne.mockResolvedValueOnce(null);
+			projectRepository.findTeamWithRelations.mockResolvedValueOnce(null);
 			roleService.isRoleLicensed.mockReturnValue(true);
 
 			await expect(
 				projectService.changeUserRoleInProject(user, projectId, 'user2', 'project:admin'),
 			).rejects.toThrow(`Could not find project with ID: ${projectId}`);
 
-			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: { role: true } },
-			});
+			expect(projectRepository.findTeamWithRelations).toHaveBeenCalledWith(projectId);
 		});
 	});
 
@@ -826,16 +805,16 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => mockProxy,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findByIdForUserWithRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
 			moduleRegistry.isActive.mockReturnValue(false);
 			// Two members in the project
-			projectRelationRepository.findBy.mockResolvedValueOnce([
-				{ userId: 'member-1' },
-				{ userId: 'member-2' },
-			] as never);
+			projectRelationRepository.findUserIdsByProjectId.mockResolvedValueOnce([
+				'member-1',
+				'member-2',
+			]);
 
 			// ACT
 			await projectService.deleteProject(user, project.id);
@@ -867,12 +846,12 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => mockProxy,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findByIdForUserWithRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
 			moduleRegistry.isActive.mockReturnValue(false);
-			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+			projectRelationRepository.findUserIdsByProjectId.mockResolvedValueOnce([]);
 
 			// ACT
 			await projectService.deleteProject(user, project.id);
@@ -900,12 +879,12 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentChatAttachmentService,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findByIdForUserWithRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
 			moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'agents');
-			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+			projectRelationRepository.findUserIdsByProjectId.mockResolvedValueOnce([]);
 			agentRepository.findByProjectId.mockResolvedValueOnce([
 				{ id: 'agent-1' },
 				{ id: 'agent-2' },
@@ -979,20 +958,20 @@ describe('ProjectService', () => {
 				});
 				ownershipTransferService.enforceTransferPolicy.mockResolvedValue(undefined);
 				// reset first: `vi.clearAllMocks()` leaves any unconsumed `...Once` queues behind
-				manager.findOne.mockReset();
+				projectRepository.findByIdForUserWithRoles.mockReset();
 				sharedWorkflowRepository.find.mockReset();
 				sharedCredentialsRepository.find.mockReset();
-				projectRelationRepository.findBy.mockReset();
+				projectRelationRepository.findUserIdsByProjectId.mockReset();
 				projectRepository.remove.mockResolvedValue(project);
 				sharedWorkflowRepository.find.mockResolvedValue([]);
 				sharedCredentialsRepository.find.mockResolvedValue([endUserCredential]);
 				moduleRegistry.isActive.mockReturnValue(false);
-				projectRelationRepository.findBy.mockResolvedValue([]);
+				projectRelationRepository.findUserIdsByProjectId.mockResolvedValue([]);
 			});
 
 			it('rejects a migration into a personal project before anything is migrated', async () => {
 				// ARRANGE — source team project, target personal project
-				manager.findOne
+				projectRepository.findByIdForUserWithRoles
 					.mockResolvedValueOnce(project)
 					.mockResolvedValueOnce(mock<Project>({ id: 'personal-1', type: 'personal' }));
 
@@ -1013,7 +992,7 @@ describe('ProjectService', () => {
 
 			it('migrates end-user credentials into a team project', async () => {
 				// ARRANGE — source and target are both team projects
-				manager.findOne
+				projectRepository.findByIdForUserWithRoles
 					.mockResolvedValueOnce(project)
 					.mockResolvedValueOnce(mock<Project>({ id: 'team-2', type: 'team' }));
 
@@ -1102,12 +1081,12 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentChatAttachmentService,
 			});
-			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.findByIdForUserWithRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
 			moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'agents');
-			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+			projectRelationRepository.findUserIdsByProjectId.mockResolvedValueOnce([]);
 			agentRepository.findByProjectId.mockResolvedValueOnce([{ id: 'agent-1' }] as never);
 			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
 			agentChatAttachmentService.deleteByAgent.mockRejectedValueOnce(new Error('storage down'));
@@ -1132,11 +1111,42 @@ describe('ProjectService', () => {
 		});
 
 		it('returns the ids that exist in the database, unscoped by access', async () => {
-			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'proj-1' })]);
+			projectRepository.findExistingIds.mockResolvedValueOnce(['proj-1']);
 
 			const result = await projectService.findExistingProjectIds(['proj-1', 'proj-missing']);
 
 			expect(result).toEqual(new Set(['proj-1']));
+		});
+	});
+
+	describe('getProjectWithScope', () => {
+		it('threads the operation context through role and project lookups', async () => {
+			const ctx: OperationContext = {};
+			const member = mock<User>({ id: 'member-1', role: mock({ scopes: [] }) });
+			const roles = [mock<Role>({ slug: 'project:viewer' })];
+			const project = mock<Project>({ id: 'project-1' });
+			projectRepository.loadRolesForProjectScopeCheck.mockResolvedValueOnce(roles);
+			roleService.rolesWithScope.mockImplementationOnce(async (_namespace, _scopes, loadRoles) => {
+				await loadRoles?.();
+				return ['project:viewer'];
+			});
+			projectRepository.findByIdForUserWithRoles.mockResolvedValueOnce(project);
+
+			const result = await projectService.getProjectWithScope(
+				member,
+				project.id,
+				['project:read'],
+				ctx,
+			);
+
+			expect(projectRepository.loadRolesForProjectScopeCheck).toHaveBeenCalledWith(ctx);
+			expect(projectRepository.findByIdForUserWithRoles).toHaveBeenCalledWith(
+				project.id,
+				member.id,
+				['project:viewer'],
+				ctx,
+			);
+			expect(result).toBe(project);
 		});
 	});
 
