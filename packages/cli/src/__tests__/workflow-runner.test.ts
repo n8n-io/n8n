@@ -889,13 +889,9 @@ describe('run', () => {
 				mock<IWorkflowExecuteAdditionalData>(),
 			);
 
-			let workflowExecute: WorkflowExecute | undefined;
-			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(
-				function (this: WorkflowExecute) {
-					workflowExecute = this;
-					return new PCancelable(() => mock<IRun>());
-				},
-			);
+			const processRunExecutionData = vi
+				.spyOn(WorkflowExecute.prototype, 'processRunExecutionData')
+				.mockReturnValueOnce(new PCancelable(() => mock<IRun>()));
 
 			const data = mock<IWorkflowExecutionDataProcess>({
 				executionMode: 'webhook',
@@ -906,7 +902,13 @@ describe('run', () => {
 				destinationNode: undefined,
 			});
 
-			return { data, getStoredAt: () => workflowExecute?.getFullRunData(new Date()).storedAt };
+			return {
+				data,
+				getStoredAt: () => {
+					const [workflowExecute] = processRunExecutionData.mock.contexts as WorkflowExecute[];
+					return workflowExecute.getFullRunData(new Date()).storedAt;
+				},
+			};
 		}
 
 		it('passes the storedAt of a resumed execution into WorkflowExecute', async () => {
