@@ -179,13 +179,13 @@ describe('hasManagedOAuthApp', () => {
 		properties: [],
 	};
 
-	it.each([
-		['no overwritten properties', undefined, undefined, false],
-		['only the client ID overwritten', ['clientId'], undefined, false],
-		['only the client secret overwritten', ['clientSecret'], undefined, false],
-		['both client fields overwritten', ['clientId', 'clientSecret'], undefined, true],
-		['managed creation skipped', ['clientId', 'clientSecret'], true, false],
-	])('returns %s', (_case, overwrittenProperties, skipManagedCreation, expected) => {
+	it.each<[boolean, string, string[] | undefined, boolean | undefined]>([
+		[false, 'no property is overwritten', undefined, undefined],
+		[false, 'only the client ID is overwritten', ['clientId'], undefined],
+		[false, 'only the client secret is overwritten', ['clientSecret'], undefined],
+		[true, 'both client fields are overwritten', ['clientId', 'clientSecret'], undefined],
+		[false, 'managed creation is skipped', ['clientId', 'clientSecret'], true],
+	])('is %s when %s', (expected, _case, overwrittenProperties, skipManagedCreation) => {
 		expect(
 			hasManagedOAuthApp({
 				...slackOAuth2Api,

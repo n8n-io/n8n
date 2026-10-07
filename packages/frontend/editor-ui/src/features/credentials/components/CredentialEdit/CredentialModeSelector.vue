@@ -118,9 +118,8 @@ const manualOptions = computed<Option[]>(() => {
 		const credential = activeNodeType.value
 			? getNodeCredentialForSelectedAuthType(activeNodeType.value, option.value)
 			: null;
-		// The pair is offered whenever the instance supplies the OAuth app. A type
-		// that also needs a field the overwrites do not cover, such as Jira's Site
-		// URL, still gets the choice; the user fills that field in either mode.
+		// Not `canOAuthCredentialQuickConnect`: the managed app can exist while a
+		// required field, such as Jira's Site URL, stays the user's to fill.
 		const splitsIntoManagedPair = !!(
 			credential &&
 			props.showManagedOauthOptions &&

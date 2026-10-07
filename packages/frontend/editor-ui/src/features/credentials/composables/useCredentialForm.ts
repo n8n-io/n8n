@@ -700,7 +700,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		getParentTypes,
 		getCredentialProperties,
 		displayCredentialParameter,
-		hasManagedOAuthCredentials,
 		usesExternalSecrets,
 		setCredentialPropertyDefaults,
 		resetCredentialData,

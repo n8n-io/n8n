@@ -4,7 +4,6 @@ import { setActivePinia } from 'pinia';
 import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useCredentialOAuth } from '../useCredentialOAuth';
-import { hasManagedOAuthApp } from '../../credentials.utils';
 import { OAUTH_FLOW_TIMEOUT } from '../oauthCallback';
 import { useCredentialsStore } from '../../credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -279,6 +278,29 @@ describe('useCredentialOAuth', () => {
 			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
 		});
 
+		// Jira's shape: the instance supplies the OAuth app, but the Site URL stays
+		// the user's to fill, so only the one-click path is lost.
+		it('should return false when a required property beyond the client pair is not overwritten', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				properties: [
+					...slackOAuth2Api.properties,
+					{
+						displayName: 'Site URL',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
 		it('should return true when all required properties are overwritten', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes.slackOAuth2Api = {
@@ -382,36 +404,6 @@ describe('useCredentialOAuth', () => {
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 			expect(() => canOAuthCredentialQuickConnect('cyclicA')).not.toThrow();
-		});
-	});
-
-	describe('hasManagedOAuthApp vs canOAuthCredentialQuickConnect', () => {
-		// Jira: the instance supplies the OAuth app, but the Site URL stays the
-		// user's to fill. The managed choice depends on the first answer, and the
-		// one-click path on the second, so the two must not agree here.
-		it('is true while quick connect stays false when a required field is not overwritten', () => {
-			const credentialsStore = mockedStore(useCredentialsStore);
-			const jiraOAuth2Api: ICredentialType = {
-				name: 'jiraSoftwareCloudOAuth2Api',
-				extends: ['oAuth2Api'],
-				displayName: 'Jira SW Cloud OAuth2 API',
-				properties: [
-					{
-						displayName: 'Site URL',
-						name: 'domain',
-						type: 'string',
-						default: '',
-						required: true,
-					},
-				],
-				__overwrittenProperties: ['clientId', 'clientSecret'],
-			};
-			credentialsStore.state.credentialTypes.jiraSoftwareCloudOAuth2Api = jiraOAuth2Api;
-
-			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
-
-			expect(hasManagedOAuthApp(jiraOAuth2Api)).toBe(true);
-			expect(canOAuthCredentialQuickConnect('jiraSoftwareCloudOAuth2Api')).toBe(false);
 		});
 	});
 

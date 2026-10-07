@@ -53,10 +53,10 @@ export function getAutoSelectedCredential(
  * credential type. Required fields the overwrites do not cover stay the user's
  * to fill, so this is a weaker condition than `canOAuthCredentialQuickConnect`.
  *
- * Kept here, clear of `useCredentialOAuth`, because several suites mock that
- * composable as a whole and a production import of it would resolve to nothing.
+ * It takes the type, not a name, so it needs no store and lives here rather
+ * than in `useCredentialOAuth`.
  */
-export function hasManagedOAuthApp(credentialType: ICredentialType | null | undefined): boolean {
+export function hasManagedOAuthApp(credentialType: ICredentialType | undefined): boolean {
 	if (!credentialType || credentialType.__skipManagedCreation) return false;
 
 	const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
