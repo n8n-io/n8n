@@ -4253,7 +4253,6 @@ export class InstanceAiAdapterService {
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
 				assertNotReadOnly('executions');
-				// Deleting is its own permission (matches the executions controller)
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'execution:delete',
 				]);
