@@ -76,7 +76,9 @@ test.describe(
 			await expect(n8n.canvas.getNodePinnedStatusIndicator(FAILING_WORKFLOW_TRIGGER)).toBeVisible();
 		});
 
-		test('should exit debug mode after successful execution', async ({ n8n }) => {
+		test('should exit debug mode after successful execution @engine:v2-pending', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow(FAILING_WORKFLOW);
 			await n8n.canvas.toggleNodeEnabled('Error');
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(0);
@@ -97,7 +99,9 @@ test.describe(
 			await expect(n8n.page).not.toHaveURL(/\/debug/);
 		});
 
-		test('should handle pinned data conflicts during execution import', async ({ n8n }) => {
+		test('should handle pinned data conflicts during execution import @engine:v2', async ({
+			n8n,
+		}) => {
 			await createBasicWorkflow(n8n, URLS.SUCCESS);
 			// Generous timeouts: these runs wait on a real request to an external host
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL, {
