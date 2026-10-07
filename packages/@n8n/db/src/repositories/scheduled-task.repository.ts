@@ -277,12 +277,13 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		jobIds: number[],
 		timeoutSeconds: number,
 	): Promise<void> {
-		if (jobIds.length === 0) return;
-		await manager.update(
-			ScheduledTask,
-			{ jobId: In(jobIds), status: ScheduledTaskStatus.Pending },
-			{ timeoutSeconds },
-		);
+		if (jobIds.length > 0) {
+			await manager.update(
+				ScheduledTask,
+				{ jobId: In(jobIds), status: ScheduledTaskStatus.Pending },
+				{ timeoutSeconds },
+			);
+		}
 	}
 
 	/**

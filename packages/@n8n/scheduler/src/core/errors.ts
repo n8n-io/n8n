@@ -70,6 +70,19 @@ export class LeaseLostError extends Error {
 	}
 }
 
+/** Raised when a job is provisioned with a run option outside the range the scheduler enforces. */
+export class InvalidRunOptionError extends Error {
+	constructor(
+		message: string,
+		readonly option: 'timeoutSeconds' | 'concurrencyLimit',
+		readonly value: number,
+		readonly max: number,
+	) {
+		super(message);
+		this.name = 'InvalidRunOptionError';
+	}
+}
+
 /** Raised when a lease heartbeat is given a lease duration that is not a positive integer. */
 export class InvalidLeaseDurationError extends Error {
 	constructor(readonly leaseDurationMs: number) {

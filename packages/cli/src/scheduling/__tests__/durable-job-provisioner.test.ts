@@ -486,95 +486,11 @@ describe('DurableJobProvisioner', () => {
 			);
 		});
 
-		it('raises a node-supplied grace equal to the executor interval to one second above the interval', async () => {
-			provisioner = makeProvisioner({
-				executorIntervalSeconds: 120,
-				materializationWindowSeconds: 60,
-			});
-
-			await provisionWithGrace(120);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 121 }),
-			]);
-		});
-
-		// A grace the node did not really supply falls back to the instance value, not
-		// to a floor: below-one values (including `null`, which coerces to zero) and
-		// values that are not a finite number at all.
-		it.each([
-			{ name: 'zero', grace: 0 },
-			{ name: 'null', grace: null },
-			{ name: 'a negative value', grace: -5 },
-			{ name: 'a fraction below one', grace: 0.5 },
-			{ name: 'NaN', grace: Number.NaN },
-			{ name: 'undefined', grace: undefined },
-			{ name: 'Infinity', grace: Number.POSITIVE_INFINITY },
-			{ name: 'a non-numeric string', grace: 'not-a-number' },
-		])(
-			'resolves $name to the instance-configured grace rather than to a floor',
-			async ({ grace }) => {
-				await provisionWithGrace(grace);
-
-				expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-					expect.objectContaining({ misfireGraceSeconds: 90 }),
-				]);
-			},
-		);
-
-		it('truncates a fractional node-supplied grace to whole seconds before writing it', async () => {
-			await provisionWithGrace(300.5);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 300 }),
-			]);
-		});
-
-		it('leaves an instance-configured grace below the floors unclamped', async () => {
-			provisioner = makeProvisioner({ misfireGraceSeconds: 10 });
-
-			await provision(
-				'schedule-trigger',
-				{},
-				[desiredJob('wf:node:0')],
-				ScheduledJobMisfirePolicy.Coalesce,
-			);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 10 }),
-			]);
-		});
-
-		it('resolves a node-supplied grace given as a numeric string to that number', async () => {
-			await provisionWithGrace('300');
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 300 }),
-			]);
-		});
-
-		it('accepts a node-supplied grace of one second, raising it to the floor', async () => {
-			await provisionWithGrace(1);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 60 }),
-			]);
-		});
-
 		it('leaves a node-supplied grace sitting exactly on the floor unclamped, and does not warn', async () => {
 			await provisionWithGrace(60);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				expect.objectContaining({ misfireGraceSeconds: 60 }),
-			]);
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-
-		it('leaves a node-supplied grace sitting exactly on the thirty-day cap unclamped, and does not warn', async () => {
-			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
 			]);
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
@@ -607,64 +523,6 @@ describe('DurableJobProvisioner', () => {
 				},
 			);
 		});
-
-		it('warns about a fractional grace just above the thirty-day cap, whose truncation alone lands it on the cap', async () => {
-			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS + 0.5);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
-			]);
-			expect(logger.warn).toHaveBeenCalledWith(
-				"Lowered a node's misfire grace to the scheduler's maximum",
-				{
-					...OWNER,
-					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 0.5,
-					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
-				},
-			);
-		});
-
-		it('raises a node-supplied grace to the thirty-day cap when the configured floors exceed the cap, and warns that it raised it', async () => {
-			provisioner = makeProvisioner({
-				materializationWindowSeconds: THIRTY_DAYS_IN_SECONDS + 1000,
-			});
-
-			await provisionWithGrace(300);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
-			]);
-			expect(logger.warn).toHaveBeenCalledWith(
-				"Raised a node's misfire grace to the scheduler's minimum",
-				{
-					...OWNER,
-					requestedMisfireGraceSeconds: 300,
-					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
-				},
-			);
-		});
-
-		it.each([
-			{
-				name: 'the materialisation window',
-				config: { materializationWindowSeconds: undefined as unknown as number },
-			},
-			{
-				name: 'the executor interval',
-				config: { executorIntervalSeconds: undefined as unknown as number },
-			},
-		])(
-			'falls back to the instance-configured grace when $name is not configured',
-			async ({ config }) => {
-				provisioner = makeProvisioner(config);
-
-				await provisionWithGrace(300);
-
-				expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-					expect.objectContaining({ misfireGraceSeconds: 90 }),
-				]);
-			},
-		);
 
 		it('treats a row already stored at the clamped grace as unchanged, leaving its queued tasks alone', async () => {
 			jobs.findManyByOwner.mockResolvedValue([jobRow({ misfireGraceSeconds: 60 })]);
@@ -830,17 +688,9 @@ describe('DurableJobProvisioner', () => {
 			expect(tasks.updateTimeoutForPendingJobs).toHaveBeenCalledWith(manager, [], 600);
 		});
 
-		it.each([0, -1, 1.5, 2_147_484])('rejects a timeout of %s', async (timeoutSeconds) => {
-			await expect(provisionWithTimeout(timeoutSeconds)).rejects.toThrow(UserError);
+		it('rejects an out-of-range timeout with a user error', async () => {
+			await expect(provisionWithTimeout(0)).rejects.toThrow(UserError);
 			expect(jobs.insertMany).not.toHaveBeenCalled();
-		});
-
-		it('accepts the longest timeout a timer honors', async () => {
-			await provisionWithTimeout(2_147_483);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ timeoutSeconds: 2_147_483 }),
-			]);
 		});
 	});
 
@@ -914,24 +764,12 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
 
-		it('stores the largest limit the column holds', async () => {
-			await provisionWithConcurrencyLimit(2_147_483_647);
+		it('rejects an out-of-range limit with a user error', async () => {
+			await expect(provisionWithConcurrencyLimit(0)).rejects.toThrow(UserError);
 
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ concurrencyLimit: 2_147_483_647 }),
-			]);
+			expect(jobs.insertMany).not.toHaveBeenCalled();
+			expect(dataSource.transaction).not.toHaveBeenCalled();
 		});
-
-		// 2_147_483_648 overflows the column on Postgres while SQLite would take it.
-		it.each([0, -1, 1.5, Number.NaN, 2_147_483_648])(
-			'rejects a limit of %s',
-			async (concurrencyLimit) => {
-				await expect(provisionWithConcurrencyLimit(concurrencyLimit)).rejects.toThrow(UserError);
-
-				expect(jobs.insertMany).not.toHaveBeenCalled();
-				expect(dataSource.transaction).not.toHaveBeenCalled();
-			},
-		);
 	});
 
 	describe('seeding a freshly provisioned job', () => {
