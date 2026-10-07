@@ -476,7 +476,7 @@ export const useGlobalEntityCreation = () => {
 		const parentName =
 			project.type === 'personal'
 				? i18n.baseText('projects.menu.personal')
-				: (project.name ?? i18n.baseText('projects.menu.personal'));
+				: (project.name ?? i18n.baseText('commandBar.projects.unnamed'));
 		const promptResponse = await message.prompt(
 			i18n.baseText('folders.add.to.parent.message', {
 				interpolate: { parent: parentName },
