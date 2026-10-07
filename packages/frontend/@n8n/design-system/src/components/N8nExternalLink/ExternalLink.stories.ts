@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
+import N8nText from '../N8nText';
 import N8nExternalLink from './ExternalLink.vue';
 
 export default {
@@ -13,12 +14,16 @@ export default {
 		newWindow: {
 			control: 'boolean',
 		},
+		inline: {
+			control: 'boolean',
+		},
 	},
 
 	parameters: {
 		docs: {
 			description: {
-				component: 'A link component for external destinations with external-link affordances.',
+				component:
+					'A link component for external destinations with external-link affordances. By default it is a standalone, padded control; set `inline` to render it as part of running text (same font and line height as the surrounding copy, underlined label, hover pill that does not shift the text). Pair `inline` with `size="small"` for body-sized text.',
 			},
 		},
 	},
@@ -55,6 +60,20 @@ export const Sizes: StoryFn = () => ({
 			<N8nExternalLink href="https://n8n.io" size="small">Small</N8nExternalLink>
 			<N8nExternalLink href="https://n8n.io" size="medium">Medium</N8nExternalLink>
 			<N8nExternalLink href="https://n8n.io" size="large">Large</N8nExternalLink>
+		</div>
+	`,
+});
+
+export const Inline: StoryFn = () => ({
+	components: { N8nExternalLink, N8nText },
+	template: `
+		<div style="max-width: 32rem;">
+			<N8nText tag="p" size="medium" color="text-base">
+				Use your API key to control n8n programmatically. Try it in the
+				<N8nExternalLink inline size="small" href="https://docs.n8n.io/api/">API playground</N8nExternalLink>,
+				or use the <N8nExternalLink inline size="small" href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/">Webhook node</N8nExternalLink>
+				if you only need to trigger workflows.
+			</N8nText>
 		</div>
 	`,
 });

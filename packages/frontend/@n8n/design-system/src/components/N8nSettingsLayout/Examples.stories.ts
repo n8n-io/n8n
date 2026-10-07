@@ -23,6 +23,7 @@ import {
 	N8nDialogTitle,
 } from '../N8nDialog';
 import { N8nDropdownMenu } from '../N8nDropdownMenu';
+import N8nExternalLink from '../N8nExternalLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nInput from '../N8nInput';
@@ -652,6 +653,7 @@ const components = {
 	N8nDialog,
 	N8nDialogClose,
 	N8nDialogFooter,
+	N8nExternalLink,
 	N8nInput,
 	N8nSelect,
 	N8nOption,
@@ -847,12 +849,9 @@ export const ThisInstance: Story = {
 						<N8nSettingsRow title="Updates" description="2.10.2 available · 3 versions behind">
 							<template #action>
 								<div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: var(--spacing--sm);">
-									<a
-										href="https://docs.n8n.io/release-notes"
-										target="_blank"
-										rel="noopener noreferrer"
-										style="color: var(--text-color--subtle); font-size: var(--font-size--sm); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
-									><span style="text-decoration: underline;">Release notes</span><span aria-hidden="true">↗</span></a>
+									<N8nText size="medium" color="text-base"
+										><N8nExternalLink inline size="small" href="https://docs.n8n.io/release-notes">Release notes</N8nExternalLink></N8nText
+									>
 									<N8nButton variant="outline" size="medium" label="Update" />
 								</div>
 							</template>
