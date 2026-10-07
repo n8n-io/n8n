@@ -109,7 +109,7 @@ export class ImportPackageRequestDto extends Z.class({
 	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
 	dataTableSchemaConflictPolicy: optionalEnum(
-		['keep-existing', 'fail', 'overwrite'],
+		['keep-existing', 'fail', 'overwrite', 'overwrite-non-destructive'],
 		'keep-existing',
 	),
 	variableMissingMode: optionalEnum(

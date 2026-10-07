@@ -1,6 +1,11 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import * as core from 'n8n-core';
-import { DirectedGraph, recreateNodeExecutionStack, WorkflowExecute } from 'n8n-core';
+import {
+	DirectedGraph,
+	recreateNodeExecutionStack,
+	type StorageConfig,
+	WorkflowExecute,
+} from 'n8n-core';
 import { NodeHelpers, UserError } from 'n8n-workflow';
 import type {
 	Workflow,
@@ -26,7 +31,10 @@ import { ManualExecutionService } from '@/manual-execution.service';
 vi.mock('n8n-core');
 
 describe('ManualExecutionService', () => {
-	const manualExecutionService = new ManualExecutionService(mock());
+	const manualExecutionService = new ManualExecutionService(
+		mock(),
+		mock<StorageConfig>({ modeTag: 'fs' }),
+	);
 
 	describe('getExecutionStartNode', () => {
 		it('Should return undefined', () => {
@@ -189,6 +197,7 @@ describe('ManualExecutionService', () => {
 						waitingExecutionSource,
 					},
 				}),
+				'fs',
 			);
 		});
 
@@ -240,6 +249,7 @@ describe('ManualExecutionService', () => {
 					resultData: expect.any(Object),
 					executionData: expect.any(Object),
 				}),
+				'fs',
 			);
 		});
 
@@ -534,6 +544,7 @@ describe('ManualExecutionService', () => {
 						pinData: mockPinData,
 					}),
 				}),
+				'fs',
 			);
 		});
 		it('should call runPartialWorkflow2 with runData and empty startNodes', async () => {

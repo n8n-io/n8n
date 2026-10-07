@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	isAbortError,
 	type BuiltTool,
@@ -88,17 +89,36 @@ import {
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
-import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { getAgentConfigHash } from '../utils/agent-config-hash';
+import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
 	message:
-		'Agent config changed. Call agent-context with type "config", then retry with its config and configHash.',
+		'Agent config changed elsewhere. This result carries the current config and configHash: ' +
+		're-apply your change to that config and retry once with that configHash.',
 };
+
+const BASE_CONFIG_HASH_RULE =
+	'Requires baseConfigHash: the configHash from the latest agent-context with type "config" result, ' +
+	'or from the latest builder result that returned one (write_config, patch_config, create_skills, ' +
+	'create_tasks, finish_setup, configure_channel, verify_mcp_server with credentialApplied: true, ' +
+	'or a stale failure), whichever came last. ';
+
+const BASE_CONFIG_HASH_FIELD_DESCRIPTION =
+	'Latest configHash from agent-context with type "config" or from the latest builder result that ' +
+	'returned one; null only if no config exists';
+
+const CONFIG_WRITE_RESULT_RULE =
+	'Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries ' +
+	'`config` when the saved config differs from what you sent (for example applied defaults or kept ' +
+	'omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, ' +
+	'errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with ' +
+	'the same baseConfigHash. On stage: "stale", the result carries the current config and configHash: ' +
+	're-apply your change to it and retry once. ';
 
 const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -142,7 +162,30 @@ const updateSkillFieldsSchema = z
 	.object({
 		name: agentSkillSchema.shape.name.optional(),
 		description: agentSkillSchema.shape.description.optional(),
-		instructions: agentSkillSchema.shape.instructions.optional(),
+		instructions: agentSkillSchema.shape.instructions
+			.optional()
+			.describe('Complete replacement body. Use only for a rewrite of most of the body.'),
+		instructionEdits: z
+			.array(
+				z
+					.object({
+						oldText: z
+							.string()
+							.min(1)
+							.describe(
+								'Exact text from the current instructions. It must match exactly one place.',
+							),
+						newText: z.string().describe('Replacement text. Use an empty string to delete.'),
+					})
+					.strict(),
+			)
+			.min(1)
+			.max(20)
+			.optional()
+			.describe(
+				'Targeted replacements in the current instructions, applied in order. Prefer this to ' +
+					'`instructions` for a partial change. Do not pass both.',
+			),
 		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
 		references: agentSkillSchema.shape.references
 			.unwrap()
@@ -153,6 +196,9 @@ const updateSkillFieldsSchema = z
 	.strict()
 	.refine((updates) => Object.keys(updates).length > 0, {
 		message: 'At least one skill field must be supplied.',
+	})
+	.refine((updates) => !(updates.instructions && updates.instructionEdits), {
+		message: 'Pass either instructions or instructionEdits, not both.',
 	});
 
 const updateSkillInputSchema = z
@@ -195,10 +241,22 @@ const updateTaskInputSchema = z
 
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 
+/** A call_agent continuation that carries a sessionNote across an approval. */
+const notedContinuationSchema = z.object({ run: z.unknown(), sessionNote: z.string() }).strict();
+
 type BuilderConfigFailure = {
 	ok: false;
 	stage?: 'parse' | 'stale' | 'patch' | 'schema';
 	errors: ConfigValidationError[];
+	config?: AgentJsonConfig | null;
+	configHash?: string | null;
+};
+
+/** `config` is set only when the saved config differs from what the model sent. */
+type BuilderConfigSuccess = {
+	ok: true;
+	configHash: string;
+	config?: AgentJsonConfig;
 };
 
 interface AgentConfigSnapshot {
@@ -338,6 +396,32 @@ export class AgentsBuilderToolsService {
 	}
 
 	/**
+	 * The user can change the config while an interactive tool waits, so a
+	 * resumed final result carries a fresh snapshot. `isFinal` must reject
+	 * suspend results.
+	 */
+	private withConfigSnapshotOnResume(
+		tool: BuiltTool,
+		agentId: string,
+		projectId: string,
+		isFinal: (result: Record<string, unknown>) => boolean,
+	): BuiltTool {
+		const handler = tool.handler;
+		if (!handler) return tool;
+		return {
+			...tool,
+			handler: async (input, ctx) => {
+				const result = await handler(input, ctx);
+				const resumed =
+					'resumeData' in ctx && ctx.resumeData !== undefined && ctx.resumeData !== null;
+				if (!resumed || !isRecord(result) || !isFinal(result)) return result;
+				const snapshot = await this.getConfigSnapshot(agentId, projectId).catch(() => null);
+				return snapshot ? { ...result, ...snapshot } : result;
+			},
+		};
+	}
+
+	/**
 	 * Returns a `{ ok: false, errors }` tool result while a user holds the
 	 * agent's builder write lock, or null when the agent can be modified.
 	 * Every mutating tool returns this shape on failure, so the model gets one
@@ -409,11 +493,21 @@ export class AgentsBuilderToolsService {
 			this.createEmbeddingCredentialTool(credentialService, projectId, track),
 			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
-				this.createConfigureChannelTool(agentId, projectId, track),
+				this.withConfigSnapshotOnResume(
+					this.createConfigureChannelTool(agentId, projectId, track),
+					agentId,
+					projectId,
+					(result) => typeof result.configured === 'boolean',
+				),
 				agentId,
 			),
 			this.withConfigMutationMarker(
-				this.createFinishSetupTool(credentialService, agentId, projectId, track),
+				this.withConfigSnapshotOnResume(
+					this.createFinishSetupTool(credentialService, agentId, projectId, track),
+					agentId,
+					projectId,
+					(result) => result.completed === true,
+				),
 				agentId,
 			),
 			this.createVerifyMcpServerTool(agentId, credentialProvider, projectId, user),
@@ -565,7 +659,8 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.description(
 				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
-					'Pass the returned sessionId on later calls to continue the same conversation; omit it to start a new one. ' +
+					'Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier call_agent result; never make one up. ' +
+					'If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. ' +
 					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
 					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
 					'Unsupported interactive requests return approval_required with a Preview path.',
@@ -576,9 +671,10 @@ export class AgentsBuilderToolsService {
 					sessionId: z
 						.string()
 						.trim()
-						.min(1)
 						.optional()
-						.describe('Session ID from a previous call_agent result'),
+						.describe(
+							'Exact sessionId from an earlier call_agent result. Omit it to start a new conversation.',
+						),
 				}),
 			)
 			.suspend(APPROVAL_SUSPEND_SCHEMA)
@@ -598,17 +694,24 @@ export class AgentsBuilderToolsService {
 
 					const previewPath = buildAgentPreviewPath(projectId, agentId);
 					try {
-						const result = await this.runDraftTest(
+						const { result, sessionNote } = await this.runDraftTest(
 							ctx,
 							agentId,
 							projectId,
 							message,
-							sessionId,
+							sessionId || undefined,
 							credentialProvider,
 							user,
 						);
 
-						return await this.formatDraftTestResult(result, ctx, agentId, user, previewPath);
+						return await this.formatDraftTestResult(
+							result,
+							ctx,
+							agentId,
+							user,
+							previewPath,
+							sessionNote,
+						);
 					} catch (error) {
 						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
 						if (error instanceof InvalidAgentTestRunCheckpointError) {
@@ -636,31 +739,43 @@ export class AgentsBuilderToolsService {
 		sessionId: string | undefined,
 		credentialProvider: CredentialProvider,
 		user: User,
-	): Promise<AgentTestRunResult> {
-		let result: AgentTestRunResult;
+	): Promise<{ result: AgentTestRunResult; sessionNote?: string }> {
 		if (ctx.resumeData === undefined) {
-			result = await this.agentTestRunService.executeDraftRun({
+			const execute = async (id: string | undefined) =>
+				await this.agentTestRunService.executeDraftRun({
+					agentId,
+					projectId,
+					message,
+					sessionId: id,
+					credentialProvider,
+					user,
+					source: 'instance-ai',
+					...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+				});
+			const result = await execute(sessionId);
+			// The session check runs before the agent, so a retry has no side effects.
+			if (result.status !== 'session_not_found' || sessionId === undefined) return { result };
+			return {
+				result: await execute(undefined),
+				sessionNote:
+					'The sessionId you passed was not found, so this test started a new conversation. ' +
+					'To continue this conversation, pass the sessionId from this result.',
+			};
+		}
+		// A continuation without a note is the raw test-run continuation.
+		const noted = notedContinuationSchema.safeParse(ctx.continuation);
+		return {
+			result: await this.agentTestRunService.resumeDraftApproval({
 				agentId,
 				projectId,
-				message,
-				sessionId,
-				credentialProvider,
-				user,
-				source: 'instance-ai',
-				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-			});
-		} else {
-			result = await this.agentTestRunService.resumeDraftApproval({
-				agentId,
-				projectId,
-				continuation: ctx.continuation,
+				continuation: noted.success ? noted.data.run : ctx.continuation,
 				approved: ctx.resumeData.approved,
 				user,
 				source: 'instance-ai',
 				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-			});
-		}
-		return result;
+			}),
+			...(noted.success ? { sessionNote: noted.data.sessionNote } : {}),
+		};
 	}
 
 	private buildUnpublishAgentTool(user: User, projectId: string, agentId: string) {
@@ -760,25 +875,16 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
 					'Pass an array of patch operations as a JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding agent-context with type "config" result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
+					BASE_CONFIG_HASH_RULE +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
-					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'agent-context with type "config" again before any later inspection or mutation — or ' +
-					'{ ok: false, stage, errors } on failure. ' +
-					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "stale", call agent-context with type "config" and retry ' +
-					'once using its fresh config and configHash. On stage: "locked", stop and tell the user to close ' +
+					CONFIG_WRITE_RESULT_RULE +
+					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "locked", stop and tell the user to close ' +
 					'their editing session in the n8n builder.',
 			)
 			.input(
 				z.object({
 					operations: z.string().describe('RFC 6902 JSON Patch operations array as a JSON string'),
-					baseConfigHash: z
-						.string()
-						.nullable()
-						.describe(
-							'configHash from the immediately preceding agent-context with type "config" result; null only if no config exists',
-						),
+					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
 				}),
 			)
 			.handler(
@@ -795,22 +901,15 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.description(
 				'Create or replace the agent configuration by writing a complete JSON string. ' +
-					'Requires baseConfigHash from the immediately preceding agent-context with type "config" result — never from a prior ' +
-					'write_config/patch_config success or from a stale response. ' +
-					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
-					'agent-context with type "config" again before any later inspection or mutation — or ' +
-					'{ ok: false, stage, errors } with path, message, expected, received fields on failure. ' +
-					'On stage: "stale", call agent-context with type "config" and retry once using its fresh config and configHash.',
+					'Optional fields you omit keep their stored value. ' +
+					BASE_CONFIG_HASH_RULE +
+					CONFIG_WRITE_RESULT_RULE +
+					'Failure errors carry path, message, expected, and received fields.',
 			)
 			.input(
 				z.object({
 					json: z.string().describe('Complete agent configuration as a JSON string'),
-					baseConfigHash: z
-						.string()
-						.nullable()
-						.describe(
-							'configHash from the immediately preceding agent-context with type "config" result; null only if no config exists',
-						),
+					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
 				}),
 			)
 			.handler(
@@ -867,8 +966,10 @@ export class AgentsBuilderToolsService {
 					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
 					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
 					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, tasks: [{ id, name, enabled }, ...] } (same ' +
-					'order as input, objectives and crons are not echoed back) or { ok: false, errors }.',
+					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, ' +
+					'configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons are ' +
+					'not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your ' +
+					'next config write.',
 			)
 			.systemInstruction(
 				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
@@ -939,7 +1040,8 @@ export class AgentsBuilderToolsService {
 
 					return {
 						ok: true,
-						tasks: created.map(({ id, name }) => ({ id, name, enabled: true as const })),
+						configHash: created.configHash,
+						tasks: created.tasks.map(({ id, name }) => ({ id, name, enabled: true as const })),
 					};
 				},
 			)
@@ -984,16 +1086,19 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
 					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
-					'result. Pass null for allowedTools to remove the tool restriction, or null ' +
-					'for references to remove all references; empty arrays are invalid. Returns ' +
-					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. On a stale ' +
-					'skill error, call agent-context with type "skill" and retry once with its fresh skillHash.',
+					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
+					'instead of rewriting instructions. Pass null for allowedTools to remove the tool restriction, ' +
+					'or null for references to remove all references; empty arrays are invalid. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
+					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
+					'baseSkillHash. On a stale skill error, ' +
+					'call agent-context with type "skill" and retry once with its fresh skillHash.',
 			)
 			.input(updateSkillInputSchema)
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
-				const { allowedTools, references, ...requiredUpdates } = updates;
+				const { allowedTools, references, instructionEdits, ...requiredUpdates } = updates;
 				const normalizedUpdates = {
 					...requiredUpdates,
 					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
@@ -1008,6 +1113,7 @@ export class AgentsBuilderToolsService {
 						normalizedUpdates,
 						{ user, modifiedBy: 'builder' },
 						baseSkillHash,
+						instructionEdits,
 					);
 					return {
 						ok: true,
@@ -1033,10 +1139,11 @@ export class AgentsBuilderToolsService {
 					'single call. Pass every skill you currently know how to write in one `skills` array — do ' +
 					"not spread multiple fully-specified skills across separate calls; each skill's instructions " +
 					'field carries its own structured template. The whole batch is all-or-nothing: an invalid or ' +
-					'duplicate-named skill rejects every skill in the call. This does NOT attach the skills to the ' +
-					'agent config; follow up with agent-context with type "config" and patch_config (or write_config) to add a ' +
-					'`{ type: "skill", id }` entry per skill to `skills`. Returns { ok: true, skills: [{ id, name }, ' +
-					'...] } (same order as input, bodies are not echoed back) or { ok: false, errors }.',
+					'duplicate-named skill rejects every skill in the call. It also attaches a `{ type: "skill", id }` ' +
+					'ref per skill to the agent config (config.skills), so do not patch them in yourself; the agent ' +
+					'config must already exist. Returns { ok: true, configMutated: true, agentId, configHash, skills: ' +
+					'[{ id, name }, ...] } (same order as input, bodies are not echoed back) or { ok: false, errors }. ' +
+					'Use the returned configHash as baseConfigHash for your next config write.',
 			)
 			.systemInstruction(
 				'Never create a vague or placeholder skill. The description field is the routing contract the ' +
@@ -1066,13 +1173,16 @@ export class AgentsBuilderToolsService {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
 				try {
-					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills, {
-						user,
-						modifiedBy: 'builder',
-					});
+					const created = await this.agentSkillsService.createAndAttachSkills(
+						agentId,
+						projectId,
+						skills,
+						{ user, modifiedBy: 'builder' },
+					);
 					return {
 						ok: true,
-						skills: created.map(({ id, skill }) => ({ id, name: skill.name })),
+						configHash: created.configHash,
+						skills: created.skills.map(({ id, skill }) => ({ id, name: skill.name })),
 					};
 				} catch (e) {
 					return {
@@ -1149,7 +1259,7 @@ export class AgentsBuilderToolsService {
 		serverName: string,
 		credentialId: string,
 		user: User,
-	): Promise<{ applied: boolean }> {
+	): Promise<McpCredentialApplyResult> {
 		// verify_mcp_server still reports a successful verification; the
 		// credential just is not written while a user is editing the agent.
 		if (await this.getEditorLockFailure(agentId)) {
@@ -1188,11 +1298,15 @@ export class AgentsBuilderToolsService {
 			applyNativeWebSearchDefaultOn(zodResult.data),
 		);
 
-		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults, user, {
-			baseConfigHash: snapshot.configHash,
-			modifiedBy: 'builder',
-		});
-		return { applied: true };
+		const saved = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			configWithDefaults,
+			user,
+			{ baseConfigHash: snapshot.configHash, modifiedBy: 'builder' },
+		);
+		// Based on a fresh read, so the saved config can hold edits the model has not seen.
+		return { applied: true, config: saved.config, configHash: saved.configHash };
 	}
 
 	private async getFreshConfigSnapshot(
@@ -1203,7 +1317,7 @@ export class AgentsBuilderToolsService {
 		try {
 			const snapshot = await this.getConfigSnapshot(agentId, projectId);
 			if (baseConfigHash !== snapshot.configHash) {
-				return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR] };
+				return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 			}
 			return { ok: true, snapshot };
 		} catch (e) {
@@ -1243,20 +1357,29 @@ export class AgentsBuilderToolsService {
 		user: User,
 		config: AgentJsonConfig,
 		baseConfigHash: string | null,
+		submitted: unknown,
 		clearOmittedOptionalFields = false,
-	): Promise<{ ok: true } | BuilderConfigFailure> {
+	): Promise<BuilderConfigSuccess | BuilderConfigFailure> {
 		try {
-			await this.agentConfigService.updateConfig(agentId, projectId, config, user, {
+			const saved = await this.agentConfigService.updateConfig(agentId, projectId, config, user, {
 				baseConfigHash,
 				clearOmittedOptionalFields,
 				modifiedBy: 'builder',
 			});
-			return { ok: true };
+			return {
+				ok: true,
+				configHash: saved.configHash,
+				...(isSameAgentConfig(saved.config, submitted) ? {} : { config: saved.config }),
+			};
 		} catch (e) {
+			const errors = [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }];
+			if (!(e instanceof ConflictError)) return { ok: false, stage: 'schema', errors };
+			const current = await this.getConfigSnapshot(agentId, projectId).catch(() => null);
 			return {
 				ok: false,
-				stage: e instanceof ConflictError ? 'stale' : 'schema',
-				errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+				stage: 'stale',
+				errors: current ? [STALE_CONFIG_ERROR] : errors,
+				...(current ?? {}),
 			};
 		}
 	}
@@ -1282,6 +1405,7 @@ export class AgentsBuilderToolsService {
 			user,
 			validated.config,
 			fresh.snapshot.configHash,
+			parsed.data,
 		);
 	}
 
@@ -1316,6 +1440,7 @@ export class AgentsBuilderToolsService {
 			user,
 			validated.config,
 			fresh.snapshot.configHash,
+			patched.config,
 			true,
 		);
 	}
@@ -1344,14 +1469,17 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		user: User,
 		previewPath: string,
+		sessionNote?: string,
 	) {
 		if (result.status === 'session_not_found') {
 			return {
 				status: 'error',
 				code: 'session_not_found',
-				message: 'Session not found.',
+				message:
+					'This test session is no longer available. Call call_agent again without sessionId to start a new test.',
 			};
 		}
+		const note = sessionNote ? { sessionNote } : {};
 		if (result.status === 'agent_misconfigured') {
 			return {
 				status: 'error',
@@ -1374,18 +1502,25 @@ export class AgentsBuilderToolsService {
 				sessionId: result.sessionId,
 				response: result.response,
 				...(result.executionId ? { executionId: result.executionId } : {}),
+				...note,
 			};
 		}
-		if (result.status === 'completed') return result;
+		if (result.status === 'completed') return { ...result, ...note };
 
 		const approvals = collectStandardApprovals(result);
 		const firstApproval = approvals?.[0];
 		if (firstApproval) {
 			const { continuation, ...approval } = firstApproval;
-			return await ctx.suspend(approval, { continuation });
+			// Keep the note across the approval, so the resumed result still has it.
+			return await ctx.suspend(approval, {
+				continuation: sessionNote ? { run: continuation, sessionNote } : continuation,
+			});
 		}
 
-		return await this.cancelUnsupportedDraftTest(result, agentId, user, previewPath);
+		return {
+			...(await this.cancelUnsupportedDraftTest(result, agentId, user, previewPath)),
+			...note,
+		};
 	}
 
 	private async cancelUnsupportedDraftTest(

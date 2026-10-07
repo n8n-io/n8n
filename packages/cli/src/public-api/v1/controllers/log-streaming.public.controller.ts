@@ -1,11 +1,16 @@
 import {
+	CreateLogStreamingDestinationPublicDto,
+	UpdateLogStreamingDestinationPublicDto,
 	LogStreamingDestinationListPublicDto,
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
 	logStreamingDestinationIdParamSchema,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -13,25 +18,40 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Get,
 	Licensed,
 	Param,
+	Post,
 	PublicApiController,
+	Put,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
+import { assertUserCanUseDestinationCredentials } from '@/modules/log-streaming.ee/destinations/destination-credentials-access';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
-import { toLogStreamingDestinationPublic } from './log-streaming.mapper';
+import {
+	toInternalDestinationOptions,
+	toLogStreamingDestinationPublic,
+} from './log-streaming.mapper';
 
 const tags = ['LogStreaming'];
 
 @PublicApiController('/settings/log-streaming')
 export class LogStreamingPublicController {
-	constructor(private readonly destinationService: LogStreamingDestinationService) {}
+	constructor(
+		private readonly destinationService: LogStreamingDestinationService,
+		private readonly eventBus: MessageEventBus,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly credentialsFinderService: CredentialsFinderService,
+	) {}
 
 	@Get('/event-types')
 	@ApiKeyScope('eventBusDestination:list')
@@ -79,6 +99,70 @@ export class LogStreamingPublicController {
 		const destination = await this.findDestinationOrFail(id);
 
 		return toLogStreamingDestinationPublic(destination);
+	}
+
+	@Post('/destinations')
+	@ApiKeyScope('eventBusDestination:create')
+	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
+	@ApiSummary('Create a log streaming destination')
+	@ApiDescription(
+		'Create a log streaming destination. The destination takes effect exactly as it would from the UI, using the same validation. Requires the `eventBusDestination:create` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is created; reads still return the current values.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, LogStreamingDestinationPublicDto)
+	@ApiErrorResponse(409)
+	async createLogStreamingDestination(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateLogStreamingDestinationPublicDto,
+	): Promise<LogStreamingDestinationPublicDto> {
+		this.assertNotManagedByEnv();
+
+		return await this.saveDestination(req.user, toInternalDestinationOptions(body));
+	}
+
+	@Put('/destinations/:id')
+	@ApiKeyScope('eventBusDestination:update')
+	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
+	@ApiSummary('Update a log streaming destination')
+	@ApiDescription(
+		'Replace an existing log streaming destination. The update takes effect exactly as it would from the UI, using the same validation. Requires the `eventBusDestination:update` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is changed; reads still return the current values.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, LogStreamingDestinationPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async updateLogStreamingDestination(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id', logStreamingDestinationIdParamSchema) id: string,
+		@Body body: UpdateLogStreamingDestinationPublicDto,
+	): Promise<LogStreamingDestinationPublicDto> {
+		this.assertNotManagedByEnv();
+		await this.findDestinationOrFail(id);
+
+		// `addDestination` replaces the stored destination that has this id.
+		return await this.saveDestination(req.user, { ...toInternalDestinationOptions(body), id });
+	}
+
+	private assertNotManagedByEnv() {
+		if (this.instanceSettingsLoaderConfig.logStreamingManagedByEnv) {
+			throw new ConflictError(
+				'Log streaming destinations are managed via environment variables and cannot be modified through the API',
+			);
+		}
+	}
+
+	private async saveDestination(
+		user: User,
+		options: MessageEventBusDestinationOptions,
+	): Promise<LogStreamingDestinationPublicDto> {
+		await assertUserCanUseDestinationCredentials(this.credentialsFinderService, user, options);
+
+		const destination = createMessageEventBusDestination(this.eventBus, this.outboundHttp, options);
+		const result = await this.destinationService.addDestination(destination);
+
+		return toLogStreamingDestinationPublic(result.serialize());
 	}
 
 	private async findDestinationOrFail(id: string): Promise<MessageEventBusDestinationOptions> {

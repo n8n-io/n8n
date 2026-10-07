@@ -332,16 +332,20 @@ export type {
 	BreakingChangeWorkflowIssue,
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeWorkflowRuleResult,
+	BreakingChangeRuleDetailWorkflow,
+	BreakingChangeRuleDetailResult,
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 	MigrationFindingStatus,
+	MigrationFindingTriageStatus,
 	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
 	migrationFindingStatusSchema,
+	migrationFindingTriageStatusSchema,
 } from './schemas/breaking-changes.schema';
 
 export type {
