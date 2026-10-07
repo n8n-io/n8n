@@ -98,8 +98,6 @@ const expirationDate = ref(
 	calculateExpirationDate(expirationDaysFromNow.value).toFormat(API_KEY_DATE_FORMAT),
 );
 
-const inputRef = ref<HTMLTextAreaElement | null>(null);
-
 const props = withDefaults(
 	defineProps<{
 		mode?: 'new' | 'edit';
@@ -184,10 +182,6 @@ onMounted(() => {
 		rawApiKey.value = props.rotatedApiKey.rawApiKey;
 		return;
 	}
-
-	setTimeout(() => {
-		inputRef.value?.focus();
-	});
 
 	if (props.mode === 'edit') {
 		const apiKey = apiKeysById[props.activeId];
@@ -387,7 +381,6 @@ async function handleEnterKey(event: KeyboardEvent) {
 							color="text-dark"
 						>
 							<N8nInput
-								ref="inputRef"
 								required
 								:model-value="label"
 								size="large"
