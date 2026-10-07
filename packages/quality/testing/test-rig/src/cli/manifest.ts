@@ -17,8 +17,11 @@ const image = z
 
 export const scenarioSchema = z
 	.object({
-		/** Linear issue the scenario reproduces. */
-		issue: z.string().regex(/^[A-Z]+-\d+$/),
+		/** Linear issue the scenario reproduces; none for a resilience check. */
+		issue: z
+			.string()
+			.regex(/^[A-Z]+-\d+$/)
+			.optional(),
 		spec: z.string().regex(/\.spec\.ts$/),
 		/** Image that shows the bug; null for a check with no before. */
 		before: image.nullable(),

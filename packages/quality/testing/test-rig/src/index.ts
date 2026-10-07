@@ -7,7 +7,16 @@ export type { StackOptions } from './stack';
 export { N8nClient } from './n8n-client';
 export { PostgresProbe, RedisProbe, FINAL_STATUSES } from './probes';
 export type { BullState, ExecutionState } from './probes';
-export { freeze, logs, signal, startAgain, until, waitForExit, waitForLog } from './process';
+export {
+	freeze,
+	logs,
+	msUntilLog,
+	signal,
+	startAgain,
+	until,
+	waitForExit,
+	waitForLog,
+} from './process';
 export type { Container, ExitResult, LogMatch, Signal } from './process';
 export { licenceEnv, scaledTimeouts } from './timeouts';
 export {
@@ -36,3 +45,10 @@ export {
 	WORKLOAD_INVARIANTS,
 } from './invariants';
 export type { LeadershipEvent, Overlap, RunRecord, Violation } from './invariants';
+export {
+	currentLeader,
+	fastLeaderElection,
+	LEADER_HOOKS,
+	leadershipEvents,
+	parseLeadershipEvents,
+} from './multi-main';

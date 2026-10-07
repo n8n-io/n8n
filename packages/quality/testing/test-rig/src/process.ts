@@ -135,3 +135,17 @@ export async function waitForLog(
 		for (const stream of streams) stream.destroy?.();
 	}
 }
+
+/** Milliseconds from `from` until a line with the snippet appears, or undefined at the timeout. */
+export async function msUntilLog(
+	containers: Container[],
+	snippet: string,
+	timeoutMs: number,
+	from: () => number,
+): Promise<number | undefined> {
+	const match = waitForLog(containers, snippet, timeoutMs);
+	return await match.then(
+		({ at }) => at - from(),
+		() => undefined,
+	);
+}

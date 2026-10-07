@@ -15,6 +15,8 @@ export function preloadNodeOptions(): string {
 }
 
 export interface HookLogLine {
+	/** Time the preload logged the line, in ms since the epoch. */
+	at: number;
 	event: string;
 	point: string;
 	detail: Record<string, unknown>;
@@ -24,11 +26,11 @@ export interface HookLogLine {
 export function parseHookLine(line: string): HookLogLine | undefined {
 	const start = line.indexOf(`${LOG_TAG} `);
 	if (start === -1) return undefined;
-	const match = /^\S+ pid=\d+ (\S+) (\S+)(?: (.*))?$/.exec(
+	const match = /^(\S+) pid=\d+ (\S+) (\S+)(?: (.*))?$/.exec(
 		line.slice(start + LOG_TAG.length + 1).trim(),
 	);
 	if (!match) return undefined;
-	const [, event, point, json] = match;
+	const [, iso, event, point, json] = match;
 	let detail: Record<string, unknown> = {};
 	if (json) {
 		try {
@@ -37,7 +39,7 @@ export function parseHookLine(line: string): HookLogLine | undefined {
 			detail = {};
 		}
 	}
-	return { event, point, detail };
+	return { at: Date.parse(iso), event, point, detail };
 }
 
 export interface HookHit {

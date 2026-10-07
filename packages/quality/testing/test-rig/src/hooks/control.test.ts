@@ -4,13 +4,19 @@ describe('parseHookLine', () => {
 	it('parses an event with detail', () => {
 		expect(
 			parseHookLine('[test-rig] 2026-10-07T10:00:00.000Z pid=7 hit job-fetched {"jobId":"3"}'),
-		).toEqual({ event: 'hit', point: 'job-fetched', detail: { jobId: '3' } });
+		).toEqual({
+			at: Date.parse('2026-10-07T10:00:00.000Z'),
+			event: 'hit',
+			point: 'job-fetched',
+			detail: { jobId: '3' },
+		});
 	});
 
 	it('parses an event without detail behind a log prefix', () => {
 		expect(
 			parseHookLine('worker-1 | [test-rig] 2026-10-07T10:00:00.000Z pid=7 release gate'),
 		).toEqual({
+			at: Date.parse('2026-10-07T10:00:00.000Z'),
 			event: 'release',
 			point: 'gate',
 			detail: {},
