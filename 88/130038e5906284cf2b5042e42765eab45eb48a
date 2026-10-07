@@ -1,0 +1,15 @@
+packages/modules/insights/backend/src/insights-pruning.task.ts
+  ai_agent 1,3,28-35,38
+packages/modules/insights/backend/src/__tests__/insights-compaction.task.test.ts
+  ai_agent 1,23-38
+packages/modules/insights/backend/src/__tests__/insights-pruning.task.test.ts
+  ai_agent 1-2,13-17,34-36,41-55
+packages/modules/insights/backend/src/insights-compaction.task.ts
+  ai_agent 2,24-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88130038e5906284cf2b5042e42765eab45eb48a",
+  "prompts": {}
+}
