@@ -130,8 +130,8 @@ flowchart LR
   A8. A10 extends A9. The `system` queue kind can land with A5.
 - Stack 2 needs no Agents review. It can start in parallel with Stack 1.
 - Phase 3 starts when Stack 1, Stack 2 and the editor items have landed.
-- Extension points E1–E5 (section 12) join these: E1 and E2 as parallel editor
-  PRs, E3, E4 and E5 in Stack 1 after A9. They can also land later, but
+- Extension points X1–X5 (section 12) join these: X1 and X2 as parallel editor
+  PRs, X3, X4 and X5 in Stack 1 after A9. They can also land later, but
   before the parity rows that need them.
 
 ### Open explorations
@@ -641,18 +641,18 @@ out further.
 
 | # | Feature | v1 behavior | Gate on `master` | v2 approach | Needs | Size |
 |---|---|---|---|---|---|---|
-| 1 | Preference cards | Saving a preference from chat shows a card with edit, undo and scope choice (`PreferenceCard`, `PreferenceEditModal`, preference-card endpoints) | PostHog `111_context_preferences` = `variant` (backend gate `aiPreferencesEnabled`) | Render the save-preference tool result as a host card. Restore the edit and undo endpoints on the Agents thread storage. | E1 | S–M |
-| 2 | "Preferences applied" step | Timeline step listing the preferences a turn used (`preferences-applied` event) | Same as row 1 | Persisted host event, rendered as a step | E3 | S |
-| 3 | Instance-context step | Timeline step showing the instance context injected into a turn (`instance-context` event, `InstanceContextStep`) | PostHog `114_instance_activity_context`, checked per instance (`getFeatureFlagForInstance`) | Persisted host event | E3 | S |
-| 4 | User-facing error wording | Quota errors, masked stream failures and "attachment removed" mapped to readable text (`getUserFacingErrorMessage`) | None | The provider rewrites the error before the runtime sends and stores it | E4 | S |
-| 5 | Status notices | For example "Couldn't reach MCP server X; continuing without its tools" (`status` event) | None (fires on an MCP connection failure) | Persisted host event | E3 | S |
-| 6 | @-mentions in the thread composer | Mention picker for workflows, credentials and artifacts (`AssistantAtMentionPicker` in `InstanceAiInput`) | PostHog `116_at_mentions_enabled` (editor experiment `AI_ASSISTANT_AT_MENTIONS_EXPERIMENT`) | Host mention picker in the composer; picked resources go into `hostContext` | E2 | S–M |
-| 7 | LangSmith thumbs feedback | Rate the latest settled answer; sent to the LangSmith trace (`useResponseFeedback`, feedback endpoint) | None in the editor. The backend sends feedback only when LangSmith tracing is configured. | Message action; map message → execution → trace id | E2, trace id on the execution | S–M |
+| 1 | Preference cards | Saving a preference from chat shows a card with edit, undo and scope choice (`PreferenceCard`, `PreferenceEditModal`, preference-card endpoints) | PostHog `111_context_preferences` = `variant` (backend gate `aiPreferencesEnabled`) | Render the save-preference tool result as a host card. Restore the edit and undo endpoints on the Agents thread storage. | X1 | S–M |
+| 2 | "Preferences applied" step | Timeline step listing the preferences a turn used (`preferences-applied` event) | Same as row 1 | Persisted host event, rendered as a step | X3 | S |
+| 3 | Instance-context step | Timeline step showing the instance context injected into a turn (`instance-context` event, `InstanceContextStep`) | PostHog `114_instance_activity_context`, checked per instance (`getFeatureFlagForInstance`) | Persisted host event | X3 | S |
+| 4 | User-facing error wording | Quota errors, masked stream failures and "attachment removed" mapped to readable text (`getUserFacingErrorMessage`) | None | The provider rewrites the error before the runtime sends and stores it | X4 | S |
+| 5 | Status notices | For example "Couldn't reach MCP server X; continuing without its tools" (`status` event) | None (fires on an MCP connection failure) | Persisted host event | X3 | S |
+| 6 | @-mentions in the thread composer | Mention picker for workflows, credentials and artifacts (`AssistantAtMentionPicker` in `InstanceAiInput`) | PostHog `116_at_mentions_enabled` (editor experiment `AI_ASSISTANT_AT_MENTIONS_EXPERIMENT`) | Host mention picker in the composer; picked resources go into `hostContext` | X2 | S–M |
+| 7 | LangSmith thumbs feedback | Rate the latest settled answer; sent to the LangSmith trace (`useResponseFeedback`, feedback endpoint) | None in the editor. The backend sends feedback only when LangSmith tracing is configured. | Message action; map message → execution → trace id | X2, trace id on the execution | S–M |
 | 8 | Onboarding greeting and question card | `/assistant?source=onboarding` (the Cloud signup redirect) opens a thread with a seeded greeting and question card | No flag. Entered only through the Cloud signup redirect. | Seed the greeting into Agents memory. Offer the question as a host card that is answered by a normal message (no fake suspension). | Seeding through memory | S–M |
-| 9 | Rich tool results | Image, table, file, code and JSON renderers in the timeline (`ToolResult*`) | None | Upstream into the Agents chat (all agents benefit), or register host renderers | E1 | M |
-| 10 | Debug panel | LLM step inspector, cache-break analysis, workflow code snapshots, run debug (`InstanceAiDebug*`, `InstanceAiLlmSteps*`) | Editor: `localStorage['instanceAi.debugMode'] = 'true'`. Backend run debug: `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`. | Agents session timeline and LangSmith export (the export already reads the same localStorage key), plus per-step LLM records on executions behind a flag | E5 | M–L |
-| 11 | Latency and stall telemetry | Time to first token and stall events from SSE timing | None | From Agents stream timing in the editor, or from execution timestamps | E5 (partly) | S |
-| 12 | Run metrics | Active-runs gauge; swept, refused and durable-log metrics (`instance-ai-metrics.service.ts`, removed in PoC commit `0589c56632f`) | Prometheus metrics enabled (`N8N_METRICS=true`) | Equivalents from Agents executions; keep only what dashboards use | E5 | S |
+| 9 | Rich tool results | Image, table, file, code and JSON renderers in the timeline (`ToolResult*`) | None | Upstream into the Agents chat (all agents benefit), or register host renderers | X1 | M |
+| 10 | Debug panel | LLM step inspector, cache-break analysis, workflow code snapshots, run debug (`InstanceAiDebug*`, `InstanceAiLlmSteps*`) | Editor: `localStorage['instanceAi.debugMode'] = 'true'`. Backend run debug: `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`. | Agents session timeline and LangSmith export (the export already reads the same localStorage key), plus per-step LLM records on executions behind a flag | X5 | M–L |
+| 11 | Latency and stall telemetry | Time to first token and stall events from SSE timing | None | From Agents stream timing in the editor, or from execution timestamps | X5 (partly) | S |
+| 12 | Run metrics | Active-runs gauge; swept, refused and durable-log metrics (`instance-ai-metrics.service.ts`, removed in PoC commit `0589c56632f`) | Prometheus metrics enabled (`N8N_METRICS=true`) | Equivalents from Agents executions; keep only what dashboards use | X5 | S |
 | 13 | Small UI details | Archived-artifact dimming; answered-questions summary (`AnsweredQuestions`); status bar with the active builder (`InstanceAiStatusBar`); inline artifact cards (`ArtifactCard`) | None | Compare each with what the Agents chat shows; port or drop | — | S each |
 | 14 | Discovery evals | In-process tool and skill selection evals (`evaluations/discovery`) | None (eval tooling) | Restore with a small stream runner | — | S |
 | 15 | Old thread history | v1 threads in the `instance_ai_*` tables | — | v1 shows them until the switch; then migrate them or make them read-only | Decision (section 13) | — |
@@ -673,16 +673,16 @@ stacks in section 5 next to the related items.
 
 | | Extension point | Unblocks rows | Fits with | Size |
 |---|---|---|---|---|
-| E1 | Tool-result renderers | 1, 9, part of 13 | A7 | S |
-| E2 | Composer and message extensions | 6, 7 | A1 | S–M |
-| E3 | Host event channel | 2, 3, 5, maybe 8 | A9 | M |
-| E4 | Error formatting hook | 4 | A9 | S |
-| E5 | Execution usage and step records | 10, 11, 12, eval token data (C1) | A9 | S–M (steps: M–L, optional) |
+| X1 | Tool-result renderers | 1, 9, part of 13 | A7 | S |
+| X2 | Composer and message extensions | 6, 7 | A1 | S–M |
+| X3 | Host event channel | 2, 3, 5, maybe 8 | A9 | M |
+| X4 | Error formatting hook | 4 | A9 | S |
+| X5 | Execution usage and step records | 10, 11, 12, eval token data (C1) | A9 | S–M (steps: M–L, optional) |
 
-#### E1. Tool-result renderers (editor)
+#### X1. Tool-result renderers (editor)
 
 **What:** a host registers a renderer for a finished tool call. A7 covers
-suspended tool calls (cards); E1 covers the result of a completed call.
+suspended tool calls (cards); X1 covers the result of a completed call.
 Extend the A7 extension list: an extension can declare
 `matchToolResult(toolCall)` and a `resultComponent`. `AgentChatMessageList`
 renders the host component instead of the default tool display when it
@@ -695,7 +695,7 @@ into the Agents chat so every agent gets them.
 **Acceptance:** without extensions the chat renders tool calls as today;
 tests for match, render and fallback.
 
-#### E2. Composer and message extensions (editor)
+#### X2. Composer and message extensions (editor)
 
 **What:** two additions to the A1 host API of `AgentChatPanel`:
 
@@ -712,7 +712,7 @@ provider already reads them). Thumbs feedback (row 7) mounts in
 **Acceptance:** slots render nothing by default; tests for text insertion
 and the hostContext patch reaching the next send.
 
-#### E3. Host event channel (backend, API types, editor)
+#### X3. Host event channel (backend, API types, editor)
 
 **What:** a provider emits typed custom events during a turn, and the runtime
 stores them with the turn so history shows them after a reload.
@@ -725,7 +725,7 @@ stores them with the turn so history shows them after a reload.
 - History maps the timeline event to a message content part
   `{ type: 'host-event', name, payload }`.
 - The editor renders it through an extension keyed by `name` (same registry
-  as A7/E1).
+  as A7/X1).
 
 **Use:** "preferences applied" (row 2), the instance-context step (row 3),
 status notices such as an unreachable MCP server (row 5), possibly the
@@ -734,7 +734,7 @@ onboarding card (row 8).
 **Acceptance:** an emitted event appears live and after a history reload;
 unknown event names are ignored by the editor.
 
-#### E4. Error formatting hook (backend)
+#### X4. Error formatting hook (backend)
 
 **What:** `SystemAgentTurnHandle.formatError?(error): string | undefined`.
 The runtime calls it before it sends the `error` event and before it stores
@@ -748,7 +748,7 @@ place to go.
 **Acceptance:** with no hook the raw error is shown as today; tests for live
 and stored text.
 
-#### E5. Execution usage and step records (backend)
+#### X5. Execution usage and step records (backend)
 
 Most of this exists. `agent_execution` already stores one row per turn with
 `model`, `promptTokens`, `completionTokens`, `totalTokens`, `cost`,
@@ -849,5 +849,5 @@ Practical notes:
 | C1–C6 | Not started | |
 | E1, E3–E5 | Not started | |
 | E2 | First signal done on the PoC (2 cases) | |
-| Extension points E1–E5 (section 12) | Not started | |
+| Extension points X1–X5 (section 12) | Not started | |
 | Feature parity rows 1–15 (section 12) | v1 keeps all; v2 not started | |
