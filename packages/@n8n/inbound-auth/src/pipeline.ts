@@ -1,4 +1,4 @@
-import type { ProtectedResourceRef } from '@n8n/permissions';
+import type { ProtectedResourceRef, ResourceGrant } from '@n8n/permissions';
 
 import type { TrustedSource } from './trusted-source';
 import type { SurfaceId } from './trusted-source-config';
@@ -9,6 +9,8 @@ export type Inbound = {
 	resource: ProtectedResourceRef;
 	/** A trigger's selected source narrows the set of sources accepted on the surface. */
 	acceptedSourceIds?: string[];
+	/** What the resource hands out to a caller. Absent when the resource issues no grant. */
+	grant?: ResourceGrant;
 	request: {
 		method: string;
 		url: string;
@@ -47,10 +49,23 @@ export type RejectReason =
 	| 'audience-mismatch'
 	| 'not-an-access-token'
 	| 'unknown-subject'
+	| 'user-disabled'
 	| 'binding-inactive'
 	| 'link-refused'
 	| 'provision-refused'
 	| 'no-role';
+
+/** The caller as the trusted source describes it, before n8n looks for a matching user. */
+export type ExternalIdentity = {
+	subject: string;
+	email?: string;
+	emailVerified?: boolean;
+	displayName?: string;
+	clientId?: string;
+	scopes: string[];
+	assurance?: { acr?: string; amr?: string[]; authTime?: Date };
+	raw: Readonly<Record<string, unknown>>;
+};
 
 export type Reject = { ok: false; reason: RejectReason; detail?: string };
 export type Ok<T> = { ok: true; value: T };
