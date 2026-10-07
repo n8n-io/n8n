@@ -3,6 +3,23 @@ import type { ResolvedCredential } from '@n8n/agents';
 type CredMapper = (raw: ResolvedCredential) => Record<string, unknown>;
 
 /**
+ * The optional custom header on a credential (`header`, `headerName`,
+ * `headerValue`), applied with the same rule as the credential types'
+ * `authenticate` and `getCustomCredentialHeader` in `@n8n/n8n-nodes-langchain`.
+ */
+function customCredentialHeaders(c: ResolvedCredential): Record<string, string> | undefined {
+	if (
+		c.header === true &&
+		typeof c.headerName === 'string' &&
+		c.headerName &&
+		typeof c.headerValue === 'string'
+	) {
+		return { [c.headerName]: c.headerValue };
+	}
+	return undefined;
+}
+
+/**
  * Maps a raw n8n credential record onto the shape expected by the AI SDK
  * for the given provider prefix (e.g. 'aws-bedrock', 'azure-openai').
  *
@@ -14,10 +31,10 @@ type CredMapper = (raw: ResolvedCredential) => Record<string, unknown>;
  * and optionally `baseURL`, which are already present in most credential types.
  */
 const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
-	// OpenAiApi.credentials.ts        → apiKey, url (base URL)
-	openai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
-	// AnthropicApi.credentials.ts     → apiKey, url (base URL)
-	anthropic: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// OpenAiApi.credentials.ts        → apiKey, url (base URL), header/headerName/headerValue
+	openai: (c) => ({ apiKey: c.apiKey, baseURL: c.url, headers: customCredentialHeaders(c) }),
+	// AnthropicApi.credentials.ts     → apiKey, url (base URL), header/headerName/headerValue
+	anthropic: (c) => ({ apiKey: c.apiKey, baseURL: c.url, headers: customCredentialHeaders(c) }),
 	// GooglePalmApi.credentials.ts    → apiKey, host (base URL)
 	google: (c) => ({ apiKey: c.apiKey, baseURL: c.host }),
 	// XAiApi.credentials.ts           → apiKey, url (hidden, base URL)
