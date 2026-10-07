@@ -100,7 +100,11 @@
 		for (const [index, hook] of (Array.isArray(parsed) ? parsed : [parsed]).entries()) {
 			const reason = invalid(hook) ?? (seen.has(hook.point) ? 'point: duplicate' : undefined);
 			if (reason) {
-				log('invalid', typeof hook?.point === 'string' ? hook.point : `#${index}`, { reason });
+				log(
+					'invalid',
+					typeof hook?.point === 'string' && /^[\w-]+$/.test(hook.point) ? hook.point : `#${index}`,
+					{ reason },
+				);
 				continue;
 			}
 			seen.add(hook.point);
