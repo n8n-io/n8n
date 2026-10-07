@@ -29,7 +29,6 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
-import { ASSISTANT_CONFIRMATION_TOOL_NAME } from '@/features/ai/shared/agentsChat/assistantConfirmation';
 import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -41,6 +40,10 @@ import {
 	type ThreadChatMessage,
 } from '../instanceAi.threadRuntime';
 import { ASSISTANT_AGENT_ID } from '../agentsChatMode';
+import {
+	assistantConfirmationExtension,
+	getAssistantConfirmationInput,
+} from '../assistantConfirmation';
 import { agentsChatToThreadMessages } from '../agentsChatThreadAdapter';
 import {
 	clearPendingAgentAttachment,
@@ -126,10 +129,11 @@ function isMissingThreadError(error: unknown): boolean {
 	);
 }
 
+const interactionExtensions = [assistantConfirmationExtension];
+
 /** A plan review is answered from the composer: typed text requests changes. */
 function composerResumeData(payload: InteractivePayload, text: string): unknown {
-	if (payload.toolName !== ASSISTANT_CONFIRMATION_TOOL_NAME) return undefined;
-	if (payload.input.inputType !== 'plan-review') return undefined;
+	if (getAssistantConfirmationInput(payload)?.inputType !== 'plan-review') return undefined;
 	return { kind: 'approval', approved: false, userInput: text };
 }
 
@@ -613,6 +617,7 @@ onBeforeUnmount(() => {
 			:before-send="props.beforeSend"
 			attachment-accept=""
 			:show-attach-button="false"
+			:interaction-extensions="interactionExtensions"
 			:placeholder="composerPlaceholder"
 			mode="inline"
 			@message-accepted="onMessageAccepted"

@@ -7,19 +7,16 @@ import {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import {
-	ASSISTANT_CONFIRMATION_TOOL_NAME,
-	parseAssistantConfirmationInput,
-} from './assistantConfirmation';
-import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
 	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
+import { CHAT_MESSAGE_STATUS, INTERACTION_EXTENSION_TOOL_NAME, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
+import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
@@ -161,9 +158,14 @@ function isDeclinedToolOutput(value: unknown): boolean {
  *   awaiting-user prompt. Used when a refresh during a suspension restored the
  *   suspended assistant turn from the open checkpoint.
  *
+ * Host extensions are tried after the generic approval card.
+ *
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
-export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
+export function rebuildInteractiveFromHistory(
+	tc: ToolCall,
+	extensions: readonly AgentsChatInteractionExtension[] = [],
+): InteractivePayload | undefined {
 	const approvalInput = parseApprovalInput(tc.suspendPayload) ?? parseApprovalInput(tc.input);
 	if (approvalInput) {
 		const resolved = tc.output !== undefined;
@@ -181,23 +183,17 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 		};
 	}
 
-	// An n8n Assistant confirmation: many Assistant tools suspend with the same
-	// confirmation payload, so the payload shape is the discriminator.
-	const parsedAssistantInput = parseAssistantConfirmationInput(tc.suspendPayload);
-	if (parsedAssistantInput) {
-		// The suspend payload often omits the tool, which "Always allow" keys on.
-		const assistantInput = {
-			...parsedAssistantInput,
-			toolName: parsedAssistantInput.toolName ?? tc.tool,
-			args: parsedAssistantInput.args ?? (isRecord(tc.input) ? tc.input : {}),
-		};
+	for (const extension of extensions) {
+		const input = extension.parse(tc);
+		if (input === undefined) continue;
 		const resolved = tc.output !== undefined;
 		return {
 			toolCallId: tc.toolCallId,
 			...(resolved && { resolvedAt: 1 }),
 			...(tc.canceled === true && { cancelled: true }),
-			toolName: ASSISTANT_CONFIRMATION_TOOL_NAME,
-			input: assistantInput,
+			toolName: INTERACTION_EXTENSION_TOOL_NAME,
+			extensionKey: extension.key,
+			input,
 			...(resolved && tc.canceled !== true && { resolvedValue: tc.output }),
 		};
 	}
@@ -243,7 +239,10 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
  * `InteractivePayload` so the UI re-renders the card in either its open
  * (awaiting user) or resolved (disabled) state.
  */
-export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
+export function convertDbMessages(
+	dbMessages: AgentPersistedMessageDto[],
+	extensions: readonly AgentsChatInteractionExtension[] = [],
+): ChatMessage[] {
 	const result: ChatMessage[] = [];
 
 	for (const msg of dbMessages) {
@@ -323,7 +322,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				};
 				toolCalls.push(toolCall);
 
-				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (!rebuilt) continue;
 				if (rebuilt.resolvedAt === undefined && !failed && msg.executionStatus !== 'running') {
 					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
@@ -389,6 +388,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 export function applyOpenSuspensions(
 	chat: ChatMessage[],
 	suspensions: AgentBuilderOpenSuspension[],
+	extensions: readonly AgentsChatInteractionExtension[] = [],
 ): ChatMessage[] {
 	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s]));
 	for (const msg of chat) {
@@ -409,7 +409,7 @@ export function applyOpenSuspensions(
 				if (suspension.suspendPayload !== undefined) {
 					toolCall.suspendPayload = suspension.suspendPayload;
 				}
-				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (rebuilt) {
 					rebuilt.runId = suspension.runId;
 					upsertMessageInteractive(msg, rebuilt);

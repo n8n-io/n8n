@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	computed,
+	provide,
 	ref,
 	shallowRef,
 	toRef,
@@ -38,6 +39,10 @@ import {
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatInteractionExtension,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
@@ -114,6 +119,11 @@ const props = withDefaults(
 		 * from its own `footer-start` menu turns it off and calls `openFilePicker`.
 		 */
 		showAttachButton?: boolean;
+		/**
+		 * Card types of the host agent (for example the n8n Assistant
+		 * confirmations). Only this chat maps and renders them.
+		 */
+		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	}>(),
 	{
 		visible: true,
@@ -132,6 +142,7 @@ const props = withDefaults(
 		attachmentAccept: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
+		interactionExtensions: () => [],
 	},
 );
 
@@ -206,7 +217,13 @@ const {
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 	budgetCards: props.budgetCards,
+	interactionExtensions: props.interactionExtensions,
 });
+
+provide(
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	computed(() => props.interactionExtensions),
+);
 
 const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
 

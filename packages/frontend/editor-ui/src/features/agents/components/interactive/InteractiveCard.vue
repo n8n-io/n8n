@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from 'vue';
+import { computed, inject } from 'vue';
 import { N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import type { AgentsChatInteractionRenderer } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatInteractionRenderer,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
-import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
-import { ASSISTANT_CONFIRMATION_TOOL_NAME } from '@/features/ai/shared/agentsChat/assistantConfirmation';
+import type {
+	AgentsChatInteraction,
+	InteractivePayload,
+} from '@/features/ai/shared/agentsChat/types';
 import N8nChatActionCard from './N8nChatActionCard.vue';
-
-// Only the n8n Assistant session renders these, so load them on demand.
-const InstanceAiConfirmationCard = defineAsyncComponent(
-	async () =>
-		await import('@/features/ai/instanceAi/components/agentsChat/InstanceAiConfirmationCard.vue'),
-);
 
 /**
  * Single dispatch point for inline cards. `chat_action` and `wait`
@@ -35,7 +35,7 @@ const emit = defineEmits<{
  */
 const disabled = computed(() => !!props.payload.resolvedAt || !props.payload.runId);
 
-const interactiveRenderers = [
+const builtInRenderers = [
 	{
 		key: 'chat_action',
 		component: N8nChatActionCard,
@@ -62,16 +62,23 @@ const interactiveRenderers = [
 			};
 		},
 	},
-	{
-		key: 'assistant_confirmation',
-		component: InstanceAiConfirmationCard,
-		matches: (payload) => payload.toolName === ASSISTANT_CONFIRMATION_TOOL_NAME,
-		getProps: (payload) => {
-			if (payload.toolName !== ASSISTANT_CONFIRMATION_TOOL_NAME) return {};
-			return { input: payload.input };
-		},
-	},
 ] satisfies AgentsChatInteractionRenderer[];
+
+const extensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+
+/** The chat's host extensions render their own cards, keyed by `extensionKey`. */
+const interactiveRenderers = computed<AgentsChatInteractionRenderer[]>(() => [
+	...builtInRenderers,
+	...(extensions?.value ?? []).map((extension) => ({
+		key: extension.key,
+		component: extension.component,
+		matches: (payload: AgentsChatInteraction) =>
+			payload.toolName === INTERACTION_EXTENSION_TOOL_NAME &&
+			payload.extensionKey === extension.key,
+		getProps: (payload: AgentsChatInteraction) =>
+			extension.getProps?.(payload.input) ?? { input: payload.input },
+	})),
+]);
 
 function onSubmit(resumeData: unknown) {
 	emit('submit', resumeData);

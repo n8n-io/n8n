@@ -41,6 +41,7 @@ import {
 	setMessageInteractives,
 	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
@@ -74,6 +75,8 @@ export interface UseAgentChatStreamParams {
 	onSessionCreated?: (sessionId: string) => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
+	/** Card types of the host agent, mapped from its suspended tool calls. */
+	interactionExtensions?: readonly AgentsChatInteractionExtension[];
 }
 
 type ResumePayload =
@@ -104,6 +107,7 @@ function warningKey(warning: AgentChatWarning): string {
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
+	const extensions = params.interactionExtensions ?? [];
 	const locale = useI18n();
 	const { showError } = useToast();
 
@@ -242,7 +246,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
 				messages.value = restoreBudgetNotices(
-					applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions),
+					applyOpenSuspensions(
+						convertDbMessages(dbMessages, extensions),
+						openSuspensions,
+						extensions,
+					),
 				);
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
@@ -894,7 +902,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			settleOpenReasoning(session);
 			if (session.current) markMessageSuccessIfSettled(session.current);
 			session.current = undefined;
-			messages.value.push(...convertDbMessages([event.message]));
+			messages.value.push(...convertDbMessages([event.message], extensions));
 		}
 	}
 
@@ -1097,7 +1105,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
-					const updated = rebuildInteractiveFromHistory(found.tc);
+					const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 					if (updated && currentInteractive?.resolvedAt === undefined) {
 						upsertMessageInteractive(found.msg, updated);
 					}
@@ -1136,10 +1144,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
-				const interactive = rebuildInteractiveFromHistory({
-					...tc,
-					output: undefined,
-				});
+				const interactive = rebuildInteractiveFromHistory(
+					{
+						...tc,
+						output: undefined,
+					},
+					extensions,
+				);
 				if (interactive) {
 					interactive.runId = payload.runId;
 					upsertMessageInteractive(msg, interactive);
@@ -1537,7 +1548,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					payload.resumeData,
 					found.tc.input,
 				);
-				const updated = rebuildInteractiveFromHistory(found.tc);
+				const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 				if (updated?.toolName === APPROVAL_TOOL_NAME) {
 					const approved = getApprovalDecision(payload.resumeData);
 					if (approved !== undefined) updated.resolvedValue = { approved };

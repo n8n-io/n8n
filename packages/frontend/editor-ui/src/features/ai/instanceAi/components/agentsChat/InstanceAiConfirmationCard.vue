@@ -19,7 +19,7 @@ import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { buildAlwaysAllowKey } from '../../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../../approvalDetails';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import type { AssistantConfirmationInput } from '@/features/ai/shared/agentsChat/assistantConfirmation';
+import type { AssistantConfirmationInput } from '../../assistantConfirmation';
 import InstanceAiQuestions, { type QuestionAnswer } from '../InstanceAiQuestions.vue';
 import PlanReviewPanel from '../PlanReviewPanel.vue';
 import DomainAccessApproval from '../DomainAccessApproval.vue';

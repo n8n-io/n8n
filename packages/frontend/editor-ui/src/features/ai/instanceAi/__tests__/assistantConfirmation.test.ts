@@ -1,11 +1,18 @@
 import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 
+import { rebuildInteractiveFromHistory } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
-	ASSISTANT_CONFIRMATION_TOOL_NAME,
+	INTERACTION_EXTENSION_TOOL_NAME,
+	TOOL_CALL_STATE,
+} from '@/features/ai/shared/agentsChat/constants';
+import {
+	ASSISTANT_CONFIRMATION_KEY,
+	assistantConfirmationExtension,
+	getAssistantConfirmationInput,
 	parseAssistantConfirmationInput,
 } from '../assistantConfirmation';
-import { rebuildInteractiveFromHistory } from '../messageMappers';
-import { TOOL_CALL_STATE } from '../constants';
+
+const extensions = [assistantConfirmationExtension];
 
 const questionsPayload = {
 	requestId: 'req-1',
@@ -56,44 +63,85 @@ describe('parseAssistantConfirmationInput', () => {
 	});
 });
 
-describe('rebuildInteractiveFromHistory — Assistant confirmations', () => {
+describe('assistantConfirmationExtension', () => {
 	it('builds an open card from the suspend payload', () => {
-		const interactive = rebuildInteractiveFromHistory({
-			tool: 'ask-user',
-			toolCallId: 'tc-1',
-			state: TOOL_CALL_STATE.SUSPENDED,
-			suspendPayload: questionsPayload,
-		});
+		const interactive = rebuildInteractiveFromHistory(
+			{
+				tool: 'ask-user',
+				toolCallId: 'tc-1',
+				state: TOOL_CALL_STATE.SUSPENDED,
+				suspendPayload: questionsPayload,
+			},
+			extensions,
+		);
 
 		expect(interactive).toMatchObject({
-			toolName: ASSISTANT_CONFIRMATION_TOOL_NAME,
+			toolName: INTERACTION_EXTENSION_TOOL_NAME,
+			extensionKey: ASSISTANT_CONFIRMATION_KEY,
 			toolCallId: 'tc-1',
 			input: { requestId: 'req-1', inputType: 'questions' },
 		});
 		expect(interactive?.resolvedAt).toBeUndefined();
+		expect(interactive && getAssistantConfirmationInput(interactive)?.inputType).toBe('questions');
 	});
 
 	it('marks the card resolved with the resume body as value', () => {
 		const output = { kind: 'approval', approved: true };
-		const interactive = rebuildInteractiveFromHistory({
-			tool: 'ask-user',
-			toolCallId: 'tc-1',
-			state: TOOL_CALL_STATE.DONE,
-			suspendPayload: questionsPayload,
-			output,
-		});
+		const interactive = rebuildInteractiveFromHistory(
+			{
+				tool: 'ask-user',
+				toolCallId: 'tc-1',
+				state: TOOL_CALL_STATE.DONE,
+				suspendPayload: questionsPayload,
+				output,
+			},
+			extensions,
+		);
 
 		expect(interactive).toMatchObject({ resolvedAt: 1, resolvedValue: output });
 	});
 
 	it('still prefers the generic approval card for approval payloads', () => {
-		const interactive = rebuildInteractiveFromHistory({
-			tool: 'some_tool',
-			toolCallId: 'tc-2',
-			state: TOOL_CALL_STATE.SUSPENDED,
-			suspendPayload: { type: 'approval', toolName: 'some_tool', args: {} },
-		});
+		const interactive = rebuildInteractiveFromHistory(
+			{
+				tool: 'some_tool',
+				toolCallId: 'tc-2',
+				state: TOOL_CALL_STATE.SUSPENDED,
+				suspendPayload: { type: 'approval', toolName: 'some_tool', args: {} },
+			},
+			extensions,
+		);
 
 		expect(interactive?.toolName).toBe(APPROVAL_TOOL_NAME);
+	});
+
+	it('adds the tool name and arguments from the tool call', () => {
+		const { toolName: _tool, args: _args, ...payloadWithoutTool } = questionsPayload;
+		const interactive = rebuildInteractiveFromHistory(
+			{
+				tool: 'workflows',
+				toolCallId: 'tc-3',
+				state: TOOL_CALL_STATE.SUSPENDED,
+				input: { action: 'run', workflowId: 'wf-1' },
+				suspendPayload: payloadWithoutTool,
+			},
+			extensions,
+		);
+
+		expect(interactive?.input).toMatchObject({
+			toolName: 'workflows',
+			args: { action: 'run', workflowId: 'wf-1' },
+		});
+	});
+
+	it('is not mapped by a chat without the extension', () => {
+		const interactive = rebuildInteractiveFromHistory({
+			tool: 'ask-user',
+			toolCallId: 'tc-1',
+			state: TOOL_CALL_STATE.SUSPENDED,
+			suspendPayload: questionsPayload,
+		});
+
+		expect(interactive).toBeUndefined();
 	});
 });
