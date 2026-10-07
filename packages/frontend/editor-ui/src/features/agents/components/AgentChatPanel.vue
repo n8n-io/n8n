@@ -720,7 +720,7 @@ const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
-	() => backgroundJobsActive.value && backgroundJobs.value.length > 0,
+	() => !currentPlan.value && backgroundJobsActive.value && backgroundJobs.value.length > 0,
 );
 
 function focusInput(options?: FocusOptions) {

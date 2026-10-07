@@ -1186,8 +1186,8 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it('keeps background jobs visible and independent of the plan', async () => {
-			messagesMock.value = [planMessage(planView({ closed: true }))];
+		it('shows the background card only when no plan exists', async () => {
+			messagesMock.value = [planMessage(planView())];
 			backgroundJobsMock.value = [
 				{
 					id: 'job-1',
@@ -1199,17 +1199,19 @@ describe('AgentChatPanel', () => {
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			const card = wrapper.getComponent(AgentChatPlan);
-			const job = wrapper.get('[data-testid="agent-background-jobs"]');
-			expect(
-				card.element.compareDocumentPosition(job.element) & Node.DOCUMENT_POSITION_PRECEDING,
-			).toBeTruthy();
-			await job.get('button').trigger('click');
-			expect(card.get('button').attributes('aria-expanded')).toBe('false');
-			expect(job.text()).toContain('Separate work');
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			await card.get('button').trigger('click');
+			expect(card.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(true);
+			messagesMock.value.push(planMessage(planView({ closed: true }), { tool: 'update_plan' }));
+			await nextTick();
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
 			messagesMock.value.push(planMessage(null, { tool: 'read_plan' }));
 			await nextTick();
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
-			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+			const job = wrapper.get('[data-testid="agent-background-jobs"]');
+			await job.get('button').trigger('click');
+			expect(job.text()).toContain('Separate work');
+			expect(job.find('[data-testid="agent-background-jobs-stop"]').exists()).toBe(true);
 			wrapper.unmount();
 		});
 
