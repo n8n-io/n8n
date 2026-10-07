@@ -86,7 +86,10 @@ export const workflowPublicSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	description: z.string().nullable(),
-	active: z.boolean(),
+	active: z.boolean().openapi({
+		deprecated: true,
+		description: 'Deprecated. Check whether `activeVersionId` is not null instead.',
+	}),
 	activeVersionId: z.string().nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
