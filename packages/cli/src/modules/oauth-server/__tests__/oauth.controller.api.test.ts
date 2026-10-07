@@ -943,6 +943,10 @@ describe('IP rate limit configuration', () => {
 		['POST', '/mcp-oauth/token'],
 		['POST', '/mcp-oauth/revoke'],
 		['POST', '/mcp-oauth/register'],
+		['GET', '/oauth/authorize'],
+		['POST', '/oauth/token'],
+		['POST', '/oauth/revoke'],
+		['POST', '/oauth/register'],
 	])('uses only the configured IP limit for %s %s (CONTEXT-231)', async (method, path) => {
 		const response =
 			method === 'GET'

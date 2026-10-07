@@ -79,12 +79,20 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
+// Disable SDK limits because the controller applies the configured IP limits.
 const registerRouter = clientRegistrationHandler({
 	clientsStore: oauthServerService.clientsStore,
+	rateLimit: false,
 }) as Router;
-const authorizeRouter = authorizationHandler({ provider: oauthServerService }) as Router;
-const tokenRouter = tokenHandler({ provider: oauthServerService }) as Router;
-const revokeRouter = revocationHandler({ provider: oauthServerService }) as Router;
+const authorizeRouter = authorizationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
+const tokenRouter = tokenHandler({ provider: oauthServerService, rateLimit: false }) as Router;
+const revokeRouter = revocationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
 
 const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterMetadata[] => [
 	{
