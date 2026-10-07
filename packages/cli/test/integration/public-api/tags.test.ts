@@ -161,6 +161,7 @@ describe('DELETE /tags/:id', () => {
 		const response = await authOwnerAgent.delete('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
 	});
 
 	test('owner should delete the tag', async () => {
@@ -171,12 +172,12 @@ describe('DELETE /tags/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, createdAt, updatedAt } = response.body;
-
-		expect(id).toEqual(tag.id);
-		expect(name).toEqual(tag.name);
-		expect(createdAt).toEqual(tag.createdAt.toISOString());
-		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
+		expect(response.body).toStrictEqual({
+			id: tag.id,
+			name: tag.name,
+			createdAt: tag.createdAt.toISOString(),
+			updatedAt: tag.updatedAt.toISOString(),
+		});
 
 		// make sure the tag actually deleted from the db
 		const deletedTag = await Container.get(TagRepository).findOneBy({
@@ -202,6 +203,23 @@ describe('DELETE /tags/:id', () => {
 		const notDeletedTag = await Container.get(TagRepository).findOneBy({
 			id: tag.id,
 		});
+
+		expect(notDeletedTag).not.toBeNull();
+	});
+
+	test('should fail due to missing "tag:delete" scope', async () => {
+		const tag = await createTag({});
+
+		const memberWithoutScope = await createMemberWithApiKey({ scopes: ['tag:list'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutScope);
+
+		const response = await agent.delete(`/tags/${tag.id}`);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe('Forbidden');
+
+		// make sure the tag was not deleted from the db
+		const notDeletedTag = await Container.get(TagRepository).findOneBy({ id: tag.id });
 
 		expect(notDeletedTag).not.toBeNull();
 	});
@@ -326,6 +344,29 @@ describe('PUT /tags/:id', () => {
 		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("request/body must have required property 'name'");
+	});
+
+	test('should fail due to unknown property in body', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent
+			.put(`/tags/${tag.id}`)
+			.send({ name: 'New name', unknown: 'value' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('unknown');
+	});
+
+	test('should fail due to read-only property in body', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent
+			.put(`/tags/${tag.id}`)
+			.send({ id: tag.id, name: 'New name' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('request/body/id is read-only');
 	});
 
 	test('should update tag', async () => {
@@ -340,6 +381,8 @@ describe('PUT /tags/:id', () => {
 		const { id, name, updatedAt } = response.body;
 
 		expect(response.statusCode).toBe(200);
+		// The response carries the fields the write touched, and nothing else
+		expect(Object.keys(response.body).sort()).toEqual(['id', 'name', 'updatedAt']);
 
 		expect(id).toBe(tag.id);
 		expect(name).toBe(payload.name);
@@ -392,5 +435,32 @@ describe('PUT /tags/:id', () => {
 		expect(otherTagFromDb?.name).toEqual(otherTag.name);
 		expect(otherTagFromDb?.createdAt.toISOString()).toEqual(otherTag.createdAt.toISOString());
 		expect(otherTagFromDb?.updatedAt.toISOString()).toEqual(otherTag.updatedAt.toISOString());
+	});
+
+	test('should fail due to missing "tag:update" scope', async () => {
+		const tag = await createTag({});
+
+		const memberWithoutScope = await createMemberWithApiKey({ scopes: ['tag:list'] });
+
+		const response = await testServer
+			.publicApiAgentFor(memberWithoutScope)
+			.put(`/tags/${tag.id}`)
+			.send({ name: 'New name' });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe('Forbidden');
+	});
+
+	test('should update a tag to its current name', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent.put(`/tags/${tag.id}`).send({ name: tag.name });
+
+		// A no-op update touches no columns, so the row carries neither timestamp. The legacy handler
+		// answered 200 with just id and name here; match it rather than throwing on the absent date.
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body).sort()).toEqual(['id', 'name']);
+		expect(response.body.id).toBe(tag.id);
+		expect(response.body.name).toBe(tag.name);
 	});
 });

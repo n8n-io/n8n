@@ -41,12 +41,14 @@ const props = withDefaults(
 		selected?: boolean;
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
+		executionPermissions?: PermissionsRecord['execution'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
 	}>(),
 	{
 		selected: false,
 		workflowName: '',
+		executionPermissions: () => ({}),
 	},
 );
 
@@ -332,7 +334,7 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-delete-dropdown-item"
 							:class="$style.deleteAction"
 							command="delete"
-							:disabled="!workflowPermissions.update"
+							:disabled="!executionPermissions.delete"
 						>
 							{{ locale.baseText('generic.delete') }}
 						</ElDropdownItem>

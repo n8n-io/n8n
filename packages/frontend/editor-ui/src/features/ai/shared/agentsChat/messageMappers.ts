@@ -129,31 +129,18 @@ export function isApprovalSuspendInput(value: unknown): boolean {
 	return parseApprovalInput(value) !== undefined;
 }
 
-function parseApprovalInput(value: unknown): ApprovalInput | undefined {
+export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	if (!isRecord(value)) return undefined;
 	if (value.type !== 'approval') return undefined;
 	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
 	return {
 		type: 'approval',
 		toolName: value.toolName,
+		...(value.supportsSessionApproval === true && { supportsSessionApproval: true }),
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
-		...(value.details !== undefined && { details: value.details }),
 	};
-}
-
-function preserveApprovalDetails(next: unknown, previous: unknown): unknown {
-	const nextApproval = parseApprovalInput(next);
-	const previousApproval = parseApprovalInput(previous);
-	if (
-		!nextApproval ||
-		nextApproval.details !== undefined ||
-		previousApproval?.details === undefined
-	) {
-		return next;
-	}
-	return { ...nextApproval, details: previousApproval.details };
 }
 
 function isDeclinedToolOutput(value: unknown): boolean {
@@ -248,8 +235,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
-		let status: ChatMessage['status'] =
-			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
+		let status: ChatMessage['status'];
+		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
+		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
+		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
@@ -286,7 +275,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
-				} else if (msg.executionStatus === 'error') {
+				} else if (failed) {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
 				} else {
@@ -311,7 +300,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall);
 				if (!rebuilt) continue;
-				if (rebuilt.resolvedAt === undefined && msg.executionStatus !== 'error') {
+				if (rebuilt.resolvedAt === undefined && !failed && msg.executionStatus !== 'running') {
 					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
@@ -319,6 +308,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				renderParts.push({ type: 'interactive', toolCallId: rebuilt.toolCallId });
 			}
 		}
+
+		// A malformed wire timestamp must not reach the transcript as NaN: it would
+		// silence every later timestamp divider in the chat.
+		const createdAt = msg.createdAt ? Date.parse(msg.createdAt) : NaN;
 
 		const chatMessage: ChatMessage = {
 			id: msg.id ?? crypto.randomUUID(),
@@ -335,6 +328,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(role === 'assistant' && msg.backgroundTaskSignal
 				? { backgroundJobSignal: msg.backgroundTaskSignal }
 				: {}),
+			...(Number.isFinite(createdAt) && { createdAt }),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);
@@ -388,10 +382,7 @@ export function applyOpenSuspensions(
 				toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 				toolCall.runId = suspension.runId;
 				if (suspension.suspendPayload !== undefined) {
-					toolCall.suspendPayload = preserveApprovalDetails(
-						suspension.suspendPayload,
-						toolCall.suspendPayload,
-					);
+					toolCall.suspendPayload = suspension.suspendPayload;
 				}
 				const rebuilt = rebuildInteractiveFromHistory(toolCall);
 				if (rebuilt) {
@@ -401,7 +392,7 @@ export function applyOpenSuspensions(
 				hasOpenToolCall = true;
 			} else if (msg.status === CHAT_MESSAGE_STATUS.ERROR) {
 				toolCall.state = TOOL_CALL_STATE.ERROR;
-			} else {
+			} else if (msg.status !== CHAT_MESSAGE_STATUS.STREAMING) {
 				toolCall.state = TOOL_CALL_STATE.CANCELLED;
 				toolCall.canceled = true;
 			}

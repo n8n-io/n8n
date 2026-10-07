@@ -264,6 +264,7 @@ describe('PACKAGE_JSON', () => {
 
 		expect(packageJson.dependencies['@n8n/workflow-sdk']).toBeDefined();
 		expect(packageJson.dependencies.tsx).toBeDefined();
+		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 
 	it('should omit the registry SDK dependency when workspace SDK linking is enabled', async () => {
@@ -271,6 +272,7 @@ describe('PACKAGE_JSON', () => {
 
 		expect(packageJson.dependencies).not.toHaveProperty('@n8n/workflow-sdk');
 		expect(packageJson.dependencies.tsx).toBeDefined();
+		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 });
 /** npm install commands issued, ignoring how cwd/options were passed. */
@@ -308,6 +310,11 @@ describe('setupSandboxWorkspace', () => {
 		>(async () => await Promise.resolve());
 
 		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
+		expect(writeFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/workflow-diagnostics.mts',
+			expect.any(String),
+			{ recursive: true },
+		);
 
 		const markerCallIndex = writeFile.mock.calls.findIndex(
 			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
@@ -391,6 +398,7 @@ describe('setupSandboxWorkspace', () => {
 		expect(initialized).toBe(false);
 		expect(installCommandsFrom(runInSandbox)).toEqual([]);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
+		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
 	});
 

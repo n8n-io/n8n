@@ -10,6 +10,7 @@ import get from 'lodash/get';
 import { CredentialTestContext, ErrorReporter, ExecuteContext, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
+	ICredentialsHelper,
 	ICredentialTestFunction,
 	ICredentialTestRequestData,
 	INode,
@@ -49,8 +50,6 @@ export type CredentialAuthProbeOutcome = 'accepted' | 'rejected' | 'unverified';
 export type CredentialAuthProbeResult = INodeCredentialTestResult & {
 	outcome: CredentialAuthProbeOutcome;
 };
-
-const { nodesData: mockNodesData, nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 @Service()
 export class CredentialsTester {
@@ -448,7 +447,11 @@ export class CredentialsTester {
 			},
 		};
 
-		mockNodesData[nodeTypeCopy.description.name] = {
+		// One registry per test run. Request tests run concurrently and most of
+		// them register under the same `noOp` name, so a shared registry let one
+		// run overwrite another's node type and remove it before that run read it.
+		const { nodesData, nodeTypes } = createMockNodeTypes();
+		nodesData[nodeTypeCopy.description.name] = {
 			sourcePath: '',
 			type: nodeTypeCopy,
 		};
@@ -457,7 +460,7 @@ export class CredentialsTester {
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: false,
-			nodeTypes: mockNodeTypes,
+			nodeTypes,
 		});
 
 		const mode = 'internal';
@@ -472,6 +475,39 @@ export class CredentialsTester {
 			userId,
 			projectId: credentialsDecrypted.homeProject?.id,
 			currentNodeParameters: node.parameters,
+		});
+		// OAuth1/OAuth2 helpers re-read the stored credential by id via credentialsHelper.getDecrypted.
+		// Serve the posted data instead; every other method runs on the real singleton, including the
+		// token write-back (it must keep persisting rotated refresh tokens).
+		// Raw reads come only from the OAuth2 refresh race check, which must see the stored token so
+		// a refresh already done by another process is reused rather than repeated.
+		const storedCredentialsHelper = additionalData.credentialsHelper;
+		const getDecrypted: ICredentialsHelper['getDecrypted'] = async (
+			data,
+			nodeCredentials,
+			type,
+			mode,
+			executeData,
+			raw,
+			...rest
+		) =>
+			raw
+				? await storedCredentialsHelper.getDecrypted(
+						data,
+						nodeCredentials,
+						type,
+						mode,
+						executeData,
+						raw,
+						...rest,
+					)
+				: (credentialsDecrypted.data ?? {});
+		additionalData.credentialsHelper = new Proxy(storedCredentialsHelper, {
+			get(target, prop) {
+				if (prop === 'getDecrypted') return getDecrypted;
+				const value = Reflect.get(target, prop);
+				return typeof value === 'function' ? value.bind(target) : value;
+			},
 		});
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
@@ -542,7 +578,6 @@ export class CredentialsTester {
 			};
 		} finally {
 			await workflow.expression.releaseIsolate();
-			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 
 		if (

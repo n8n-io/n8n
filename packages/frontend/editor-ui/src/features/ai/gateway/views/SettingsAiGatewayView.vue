@@ -8,7 +8,7 @@ import {
 	N8nLoading,
 	N8nText,
 	N8nTooltip,
-	N8nActionPill,
+	N8nBadge,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
@@ -170,12 +170,14 @@ onMounted(async () => {
 			<div :class="$style.headings">
 				<div :class="$style.headingRow">
 					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nConnect.title') }}</N8nHeading>
-					<N8nActionPill
+					<N8nBadge
 						v-if="walletBadgeText"
-						size="medium"
-						:text="walletBadgeText"
+						size="xsmall"
+						variant="success"
 						data-test-id="ai-gateway-header-credits-badge"
-					/>
+					>
+						{{ walletBadgeText }}
+					</N8nBadge>
 				</div>
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('settings.n8nConnect.description') }}

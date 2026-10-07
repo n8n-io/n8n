@@ -43,7 +43,8 @@ frontend, and extensible node-based workflow engine.
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 - **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
   PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
-  parsing, …), you MUST check the shared packages for an existing
+  parsing, AI client HTTP transport and response-size limiting, …), you MUST
+  check the shared packages for an existing
   implementation and use it: `@n8n/utils` (generic helpers, redaction),
   `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
   (workflow graph and traversal). A new shared helper usually belongs in one of
@@ -63,6 +64,11 @@ are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
 [plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
+
+For full-repo lint and typecheck, use `pnpm agent:lint` and
+`pnpm agent:typecheck`. They save full logs and return compact results.
+For focused tests, use `pnpm agent:test` or `pnpm agent:playwright`.
+Run each command with `--help` for its package, script, and file options.
 
 ### Fresh checkout / agent setup
 
@@ -101,18 +107,6 @@ by default) for a fast recovery: it cleans build outputs and force-rebuilds
 use `pnpm reset --full`, which also wipes untracked files and reinstalls
 dependencies.
 
-### Testing
-- `pnpm test` - Run all tests
-- `pnpm test:affected` - Runs tests based on what has changed since the last
-  commit
-
-Running a particular test file requires going to the directory of that test
-and running: `pnpm test <test-file>`.
-
-When changing directories, use `pushd` to navigate into the directory and
-`popd` to return to the previous directory. When in doubt, use `pwd` to check
-your current directory.
-
 ### Seeding a local instance
 
 An empty instance is a bad place to test anything that reads a user's work.
@@ -132,22 +126,6 @@ unauthenticated and serves the whole table: keep it on loopback.
 
 See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
 profiles, tokens, determinism, and the other commands.
-
-### Code Quality
-- `pnpm lint` - Lint code
-- `pnpm typecheck` - Run type checks
-- `pnpm knip` - Report declared dependencies that no file in the package uses.
-  CI runs it on every PR as the "Unused Dependencies" check. To resolve a
-  finding, remove the dependency from the manifest. If the dependency is used
-  in a way knip cannot see, add an `ignoreDependencies` entry for the package
-  in `knip.ts` with a one-line reason
-
-Always run lint and typecheck before committing code to ensure quality.
-Execute these commands from within the specific package directory you're
-working on (e.g., `cd packages/cli && pnpm lint`). Run the full repository
-check only when preparing the final PR. When your changes affect type
-definitions, interfaces in `@n8n/api-types`, or cross-package dependencies,
-build the system before running lint and typecheck.
 
 ## Architecture Overview
 
@@ -173,7 +151,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Vitest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (UI, API, infrastructure, lifecycle, performance, and E2E orchestration)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -237,12 +215,16 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 
 ### Persistence layer & the TypeORM boundary
 
-TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
-package or a backend module's own `database/` folder (entity/repository files).
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer**. The shared
+`@n8n/db` package and backend persistence adapters can import it. A module can
+colocate or group its entities and repositories according to its domain.
 Business logic — services, controllers, handlers, commands, factories — must not
-import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
-`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
-a new import (or an inline `eslint-disable` of the rule) fails CI.
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). The
+`typeorm-persistence-boundary` Code Health rule recognizes entity and repository
+declarations. It scans backend packages that depend on `@n8n/db` or
+`@n8n/typeorm`. Tests, migrations, and explicit helper-only adapters are
+exceptions. Existing business-logic imports stay in the shrink-only Code Health
+baseline. A new business-logic import fails CI.
 
 - **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
   `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
@@ -304,12 +286,11 @@ which output format. Enforced in CI by the rules in
 `backendConfig`, and so of `nodesConfig`; every package that runs on Node
 extends one of those layers):
 
-- The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
-- The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
-  `packages/core/src/encryption/` and database migrations.
+- `Cipher` does not expose the legacy or explicit-key methods.
+- The raw AES classes stay inside `packages/core/src/encryption/`.
 - **Deployment keys are never deleted** — data encrypted with a key becomes
-  unreadable without it. Deactivate keys instead; the repository's delete
-  surface throws at runtime and the lint rule rejects call sites.
+  unreadable without it. Deactivate keys instead; the repository does not expose
+  deletion and database triggers reject direct deletion.
 - Inline disables that name these rules, and bare line-form disables, are
   themselves lint errors. The code-health rule `encryption-boundary` (CI
   "Static Analysis") is the enforcement layer: it checks that every package
@@ -327,33 +308,35 @@ extends one of those layers):
 - **data-testid must be a single value** (no spaces or multiple values)
 - Always use the `design-system` skill in reviews
 
-### Testing Guidelines
-- **Always work from within the package directory** when running tests
-- **Mock all external dependencies** in unit tests
-- **Prefer reusing hoisted shared `mock<T>(...)` fixtures** when a typed mock is immutable and used across tests. This rule exists to avoid massive test slowdowns from repeatedly creating nested proxy mocks while preserving the type contract. Avoid replacing these with `as unknown as T` helpers for entities like `User`.
-- **Confirm test cases with user** before writing unit tests
-- **Typecheck is critical before committing** - always run `pnpm typecheck`
-- **When modifying pinia stores**, check for unused computed properties
-- **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
+### Verify changes
 
-What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Vitest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
-- We use `nock` for server mocking
-- For frontend we use `vitest`
-- For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
-  See `packages/testing/playwright/README.md` for details.
-- **To iterate on a feature without docker rebuilds**, boot service containers
-  and run the dev servers locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
-  then `pnpm dev:be` (backend on 5678). For frontend hot reload, also run
-  `pnpm dev:fe:editor` (8080). The root `pnpm dev` does not exist: it prints a
-  notice and exits with code 0, thus `pnpm dev && …` looks successful but no
-  server runs. See
-  [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
-- **In a codespace agent session**, use `pnpm dev:up`. It installs the missing
-  dependencies, starts the backend, waits for health, shares the port with the
-  org, and prints the URL. See
-  [.devcontainer/codespaces/README.md](.devcontainer/codespaces/README.md).
-- **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
+- Run focused tests from the owning package: `pnpm test <test-file>`.
+- Run that package's `pnpm lint` and `pnpm typecheck` before committing code.
+  Build first when shared types or cross-package dependencies change.
+- Use Vitest for unit tests. Use
+  [Playwright](packages/quality/testing/playwright/AGENTS.md) when a test needs its
+  browser, fixtures, or managed containers.
+- For Vitest packages with `@n8n/di` decorators, use
+  `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`.
+- Check import and mock side effects before running tests. Keep tests out of
+  user-owned directories. Set `N8N_USER_FOLDER` to a test-owned directory before
+  importing n8n settings. Clean up only paths that the test created.
+- CI runs [`@n8n/code-health`](packages/quality/policy/code-health/README.md) static
+  analysis on PRs. It checks monorepo rules, including dependency hygiene and
+  encryption-boundary coverage.
+
+### Local development
+
+| Goal | Command |
+|------|---------|
+| Run product E2E against a local instance | `pnpm --filter=n8n-playwright test:local` |
+| Run backend with PostgreSQL, Redis, email, and proxy services | `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`, then `pnpm dev:be` |
+| Add editor hot reload | `pnpm dev:fe:editor` |
+| Start a Codespace backend and share its port | `pnpm dev:up` |
+
+The root `pnpm dev` command does not start a server. See the
+[Playwright guide](packages/quality/testing/playwright/README.md) and the
+[Codespaces guide](.devcontainer/codespaces/README.md) for details.
 
 ### Common Development Tasks
 
@@ -366,7 +349,6 @@ When implementing features:
    frontend feature module, obey
    `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
-6. Run `pnpm typecheck` to verify types
 
 ## Design Principles
 

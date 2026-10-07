@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentModelCatalogService } from '../agent-model-catalog.service';

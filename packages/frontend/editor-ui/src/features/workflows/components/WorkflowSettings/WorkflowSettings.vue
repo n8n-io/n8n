@@ -11,7 +11,9 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
@@ -22,7 +24,6 @@ import {
 	N8nInputNumber,
 	N8nLink,
 	N8nIconButton,
-	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -56,7 +57,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMcp } from '@n8n/frontend-module-mcp';
 import RedactionMembersModal from '@/features/workflows/components/WorkflowSettings/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -94,6 +95,7 @@ const canUpdateCredentialResolver = hasPermission(['rbac'], {
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
@@ -229,17 +231,6 @@ const workflowId = computed(() => workflowDocumentStore.value.workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
-);
-
-/**
- * Whether the policy was `any` when the dialog opened. An instance that lost the Sharing
- * feature (downgrade, lapsed license) can still carry the deprecated value, so the field
- * has to stay reachable for them to leave it. Latched on open rather than read live, so
- * the field does not disappear mid-edit once another policy is picked.
- */
-const openedWithDeprecatedCallerPolicy = ref(false);
-const isCallerPolicyVisible = computed(
-	() => isSharingEnabled.value || openedWithDeprecatedCallerPolicy.value,
 );
 const workflowOwnerName = computed(() => {
 	const fallback = i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromSameProject');
@@ -925,11 +916,9 @@ onMounted(async () => {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
-	if (settingsStore.isExecuteWorkflowNodeExcluded) {
+	if (nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)) {
 		workflowSettingsData.callerPolicy = 'none';
 	}
-	// After the exclusion override, so a policy forced to `none` never counts as deprecated.
-	openedWithDeprecatedCallerPolicy.value = workflowSettingsData.callerPolicy === 'any';
 	if (workflowSettingsData.executionTimeout === undefined) {
 		workflowSettingsData.executionTimeout = rootStore.executionTimeout;
 	}
@@ -1158,8 +1147,8 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<div v-if="isCallerPolicyVisible" data-test-id="workflow-caller-policy">
-					<ElRow>
+				<template v-if="isSharingEnabled">
+					<ElRow data-test-id="workflow-caller-policy">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
@@ -1176,7 +1165,7 @@ onBeforeUnmount(() => {
 								:disabled="
 									readOnlyEnv ||
 									!workflowPermissions.update ||
-									settingsStore.isExecuteWorkflowNodeExcluded
+									nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)
 								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
@@ -1193,18 +1182,12 @@ onBeforeUnmount(() => {
 							</N8nSelect>
 						</ElCol>
 					</ElRow>
-					<ElRow v-if="workflowSettings.callerPolicy === 'any'">
-						<ElCol :span="24">
-							<N8nNotice
-								theme="warning"
-								:content="i18n.baseText('workflowSettings.callerPolicy.any.deprecationNotice')"
-								data-test-id="workflow-caller-policy-any-deprecation"
-							/>
-						</ElCol>
-					</ElRow>
 					<ElRow v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<ElCol :span="10" :class="$style['setting-name']">
-							{{ i18n.baseText('workflowSettings.callerIds') }}
+							<span :class="$style['caller-ids-connector']" aria-hidden="true">└─</span>
+							<span :class="$style['caller-ids-label']">{{
+								i18n.baseText('workflowSettings.callerIds')
+							}}</span>
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
@@ -1212,7 +1195,7 @@ onBeforeUnmount(() => {
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
-						<ElCol :span="14">
+						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nInput
 								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -1223,7 +1206,7 @@ onBeforeUnmount(() => {
 							/>
 						</ElCol>
 					</ElRow>
-				</div>
+				</template>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timezone') }}
@@ -1605,7 +1588,7 @@ onBeforeUnmount(() => {
 					v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
-					<ElRow>
+					<ElRow :class="$style['timeout-row']">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.timeoutAfter') }}
 							<N8nTooltip placement="top">
@@ -1831,6 +1814,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+	container-type: inline-size;
 
 	:global(.el-row) {
 		display: flex;
@@ -1848,6 +1832,8 @@ onBeforeUnmount(() => {
 }
 
 .setting-name {
+	min-width: 0;
+
 	&,
 	& label {
 		display: flex;
@@ -1872,6 +1858,15 @@ onBeforeUnmount(() => {
 	opacity: 0.5;
 }
 
+.caller-ids-connector {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
+.caller-ids-label {
+	min-width: 0;
+}
+
 .permission-notice-link {
 	color: var(--color-foreground-xlight);
 	text-decoration: underline;
@@ -1884,6 +1879,41 @@ onBeforeUnmount(() => {
 
 .timeout-input {
 	margin-left: var(--spacing--3xs);
+}
+
+@container (max-width: #{$breakpoint-2xs}) {
+	.workflow-settings {
+		> :global(.el-row),
+		> div > :global(.el-row) {
+			flex-wrap: wrap;
+			align-items: flex-start;
+			row-gap: var(--spacing--3xs);
+
+			> :global(.el-col) {
+				flex: 0 0 100%;
+				max-width: 100%;
+				margin-left: 0;
+			}
+		}
+
+		.timeout-row {
+			column-gap: var(--spacing--3xs);
+
+			> :global(.el-col):not(.setting-name) {
+				flex: 1 1 var(--spacing--4xl);
+				min-width: var(--spacing--4xl);
+				max-width: 100%;
+			}
+		}
+
+		.dynamic-credentials-hint > :global(.el-col:first-child) {
+			display: none;
+		}
+	}
+
+	.timeout-input {
+		margin-left: 0;
+	}
 }
 
 .time-saved {

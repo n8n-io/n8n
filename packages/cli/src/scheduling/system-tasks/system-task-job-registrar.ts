@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ScheduledJob } from '@n8n/db';
 import { ScheduledJobRepository } from '@n8n/db';
@@ -10,6 +11,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { ProvisionRequest } from '../durable-job-provisioner';
+import { emitSystemTaskMetric } from './emit-system-task-metric';
 import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { systemTaskType } from './system-task-type';
 import { versionStamp } from './system-task-version-stamp';
@@ -21,6 +23,7 @@ export type StaleSystemTaskJob = Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'
  * The one durable job a system task owns, ready to provision. The schedule is
  * stored as declared, so `defaultTimezone` seeds the first run only: baking it
  * into the row would redefine every task whenever the instance timezone changes.
+ * An interval task seeds at `now`; a cron task seeds at its next fire.
  */
 export function systemTaskProvisionRequest(
 	task: SystemTask,
@@ -29,9 +32,13 @@ export function systemTaskProvisionRequest(
 	now: Date,
 ): ProvisionRequest {
 	const schedule = resolveSystemTaskSchedule(task);
-	const firstRunAt = computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
+	const firstRunAt =
+		schedule.kind === 'interval'
+			? now
+			: computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
 	const name = systemTaskType(task.name);
-	const { misfirePolicy, misfireGraceSeconds, maxAttempts } = resolveSystemTaskRunOptions(task);
+	const { misfirePolicy, misfireGraceSeconds, maxAttempts, concurrencyLimit } =
+		resolveSystemTaskRunOptions(task);
 
 	return {
 		owner: systemTaskOwner.owner(task.name),
@@ -41,6 +48,7 @@ export function systemTaskProvisionRequest(
 		misfirePolicy,
 		misfireGraceSeconds,
 		maxAttempts,
+		concurrencyLimit,
 	};
 }
 
@@ -59,6 +67,7 @@ export class SystemTaskJobRegistrar {
 		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('system-tasks');
 	}
@@ -87,6 +96,10 @@ export class SystemTaskJobRegistrar {
 				task.name,
 				error,
 			);
+			emitSystemTaskMetric(this.eventService, 'system-task-scheduling-failed', {
+				name: task.name,
+				mode: 'durable',
+			});
 		}
 	}
 
@@ -136,6 +149,9 @@ export class SystemTaskJobRegistrar {
 			this.logger.warn('Could not check for the durable job of a system task, so it runs', {
 				name: taskName,
 				error,
+			});
+			emitSystemTaskMetric(this.eventService, 'system-task-provision-check-failed', {
+				name: taskName,
 			});
 			return false;
 		}

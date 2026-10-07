@@ -8,6 +8,8 @@ import type {
 } from '@n8n/api-types';
 import { z } from 'zod';
 
+import type { PackageFile } from './base-branch-files';
+
 export type PromotionGitApplySettings = z.infer<typeof promotionGitApplySettingsSchema>;
 export type PromotionGitPromoteSettings = z.infer<typeof promotionGitPromoteSettingsSchema>;
 
@@ -61,6 +63,17 @@ export type PromotionOperationInput = Readonly<{
 	encryptedAuth: string;
 	target: PromotionConnectionTarget;
 	config: ResolvedPromotionConfig;
+}>;
+
+/**
+ * The package one branch holds for one project, read at a single commit. The
+ * files come from the listing, and `readFile` reads one of them by its
+ * repository path, so the listing and the contents never describe two commits.
+ */
+export type BranchPackage = Readonly<{
+	commitSha: string | null;
+	files: PackageFile[];
+	readFiles: (paths: readonly string[]) => Promise<Map<string, string>>;
 }>;
 
 /**

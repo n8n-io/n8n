@@ -7,9 +7,8 @@
  * the shared layer's blocks mixed in, and the question here is always "what does
  * THIS package decide", which is a property of the file.
  *
- * ponytail: a block assembled at runtime (spread of a computed array, a rule id
- * held in a variable) is invisible. `verify.mjs` cross-checks the totals against
- * `--print-config`, which would catch a package hiding decisions that way.
+ * A block assembled at runtime (spread of a computed array, a rule id held in a
+ * variable) is invisible. Use resolved config snapshots when exact parity matters.
  */
 import { readFileSync } from 'node:fs';
 

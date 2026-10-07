@@ -4,6 +4,7 @@ import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { clearPendingActivationModal } from '@/app/composables/workflowPublicationConfirmation';
 import type { PushHandlerOptions } from './types';
 
 export async function workflowDeactivated(
@@ -14,6 +15,10 @@ export async function workflowDeactivated(
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	const uiStore = useUIStore();
+
+	// The workflow got unpublished while a publish confirmation was pending:
+	// the success modal no longer applies.
+	clearPendingActivationModal(data.workflowId);
 
 	if (workflowDocumentStore.workflowId === data.workflowId) {
 		// The workflow is no longer published; clear any lingering publication

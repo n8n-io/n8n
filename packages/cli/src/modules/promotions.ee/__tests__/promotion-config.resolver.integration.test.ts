@@ -9,7 +9,7 @@ import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { createOwner } from '@test-integration/db/users';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';

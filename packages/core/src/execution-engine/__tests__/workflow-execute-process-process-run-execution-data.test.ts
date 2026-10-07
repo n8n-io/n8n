@@ -23,6 +23,7 @@ vi.mock('node:fs', async (importActual) => ({
 	...(await importActual()),
 	existsSync: vi.fn().mockReturnValue(false),
 	renameSync: vi.fn(),
+	writeFileSync: vi.fn(),
 }));
 
 import { DirectedGraph } from '../partial-execution-utils';

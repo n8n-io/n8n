@@ -34,6 +34,12 @@ vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissionsMock,
 }));
 
+const requestWriteAccessMock = vi.fn();
+
+vi.mock('../stores/agentCollaboration.store', () => ({
+	useAgentCollaborationStore: () => ({ requestWriteAccess: requestWriteAccessMock }),
+}));
+
 const unpublishMock = vi.fn().mockResolvedValue({ id: 'agent-1', name: 'My Agent' });
 
 vi.mock('../composables/useAgentPublish', () => ({
@@ -193,6 +199,20 @@ describe('AgentVersionHistoryPanel — published-row actions', () => {
 			'v-active',
 		);
 		expect(wrapper.emitted('reverted')?.[0]).toEqual([updated]);
+	});
+
+	it('requests the collaboration write lock before a mutating row action', async () => {
+		const wrapper = mountPanel({ hasUnpublishedChanges: true });
+		await flushPromises();
+
+		const list = wrapper.findComponent({ name: 'AgentVersionList' });
+		list.vm.$emit('action', { action: 'revert', versionId: 'v-active' });
+		await flushPromises();
+
+		expect(requestWriteAccessMock).toHaveBeenCalledTimes(1);
+		expect(requestWriteAccessMock.mock.invocationCallOrder[0]).toBeLessThan(
+			versionHistoryMock.revertToVersion.mock.invocationCallOrder[0],
+		);
 	});
 });
 

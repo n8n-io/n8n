@@ -1,11 +1,14 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
+import { encodeIntegrationMessageContext } from '../integration-message-context';
 import { IntegrationMessageContextService } from '../integration-message-context.service';
 import type { IntegrationMessageContext } from '../integration-tools';
 
-describe('IntegrationMessageContextService — session binding', () => {
+describe('IntegrationMessageContextService', () => {
 	const context: IntegrationMessageContext = {
 		integrationConnectionId: 'slack:cred-a',
 		platform: 'slack',
@@ -23,7 +26,6 @@ describe('IntegrationMessageContextService — session binding', () => {
 		}
 		const threadRepository = mock<AgentThreadRepository>();
 		const resourceRepository = mock<AgentResourceRepository>();
-		resourceRepository.existsBy.mockResolvedValue(true);
 		threadRepository.findOneBy.mockImplementation(async ({ id }: { id: string }) =>
 			threads.has(id) ? (threads.get(id) as never) : (null as never),
 		);
@@ -34,9 +36,60 @@ describe('IntegrationMessageContextService — session binding', () => {
 				return undefined as never;
 			},
 		);
-		const service = new IntegrationMessageContextService(threadRepository, resourceRepository);
+		const service = new IntegrationMessageContextService(
+			threadRepository,
+			resourceRepository,
+			mockLogger(),
+		);
 		return { service, threadRepository, threads };
 	}
+
+	it.each([
+		['older checkpoint', {}, true],
+		['empty snapshot', { n8nIntegrationMessageContext: null }, false],
+		['malformed snapshot', { n8nIntegrationMessageContext: { platform: 'slack' } }, false],
+	] as const)(
+		'restores context for an %s without replacing explicit snapshots',
+		async (_name, hostMetadata, legacy) => {
+			const { service } = setup({ thread: { currentMessageContext: context } });
+			const snapshot = await service.getForResume({
+				threadId: 'thread',
+				resourceId: 'user',
+				hostMetadata,
+			});
+			expect(snapshot).toEqual(legacy ? context : null);
+		},
+	);
+
+	it('restores the serialized turn snapshot when the thread has a later context', async () => {
+		const persistence = {
+			threadId: 'thread',
+			resourceId: 'user',
+			hostMetadata: encodeIntegrationMessageContext(context),
+		};
+		const serialized = JSON.stringify(persistence);
+		const { service } = setup({
+			thread: { currentMessageContext: { ...context, messageId: 'later' } },
+		});
+		expect(await service.getForResume(jsonParse<typeof persistence>(serialized))).toEqual(context);
+	});
+
+	it('updates execution metadata when the platform metadata write fails', async () => {
+		const { service, threadRepository } = setup({
+			task: { continueAs: { threadId: 'origin', resourceId: 'owner' } },
+		});
+		threadRepository.save.mockRejectedValueOnce(new Error('database unavailable'));
+		await service.installIncoming(
+			context,
+			{ threadId: 'task', resourceId: 'task:task-1' },
+			{ threadId: 'platform', resourceId: 'actor' },
+		);
+		expect(await service.getLatest('task')).toEqual(context);
+		expect(await service.resolveSession('task')).toEqual({
+			threadId: 'origin',
+			resourceId: 'owner',
+		});
+	});
 
 	it('binds a derived thread to an origin and resolves it back', async () => {
 		const { service } = setup({
@@ -78,6 +131,47 @@ describe('IntegrationMessageContextService — session binding', () => {
 		const { service } = setup({ 'agent-1:slack:D123:1001': {} });
 		const origin = await service.resolveSession('agent-1:slack:D123:1001');
 		expect(origin).toBeNull();
+	});
+
+	it('reads allow-listed Telegram message metadata', async () => {
+		const telegramContext: IntegrationMessageContext = {
+			integrationConnectionId: 'telegram:cred-a',
+			platform: 'telegram',
+			target: { type: 'thread', threadId: 'telegram:123' },
+			platformMessage: {
+				type: 'telegram',
+				chat_id: '123',
+				message_id: '42',
+				attachments: [{ type: 'image', file_id: 'photo-large' }],
+			},
+			updatedAt: '2026-09-17T10:00:00.000Z',
+		};
+		const { service } = setup({
+			'agent-1:telegram:123': { currentMessageContext: telegramContext },
+		});
+
+		await expect(service.getLatest('agent-1:telegram:123')).resolves.toEqual(telegramContext);
+	});
+
+	it('rejects malformed Telegram message metadata', async () => {
+		const { service } = setup({
+			'agent-1:telegram:123': {
+				currentMessageContext: {
+					integrationConnectionId: 'telegram:cred-a',
+					platform: 'telegram',
+					target: { type: 'thread', threadId: 'telegram:123' },
+					platformMessage: {
+						type: 'telegram',
+						chat_id: '123',
+						message_id: '42',
+						attachments: [{ type: 'image', file_id: null }],
+					},
+					updatedAt: '2026-09-17T10:00:00.000Z',
+				},
+			},
+		});
+
+		await expect(service.getLatest('agent-1:telegram:123')).resolves.toBeNull();
 	});
 
 	it('unbindSession removes the continueAs key but keeps other metadata', async () => {

@@ -1,15 +1,28 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type {
+	AgentConfigValidationIssue,
+	AgentJsonConfig,
+	AgentJsonTaskConfig,
+} from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { agentsEventBus } from '../agents.eventBus';
+import {
+	agentChannelPlatforms,
+	createAgentChannelRuntime,
+	getAgentChannelPlatform,
+} from '../channels/registry';
+import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
+import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
 
 const props = withDefaults(
@@ -19,6 +32,7 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isPublished?: boolean;
+		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
@@ -26,15 +40,22 @@ const props = withDefaults(
 		/** No agent row exists yet — nothing can be connected to it. */
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
+		personalisation?: AgentJsonConfig['personalisation'] | null;
+		/** n8n Chat's saved description, forwarded to the channel modal. */
+		savedDescription?: string;
+		/** Persists n8n Chat's description, forwarded to the channel modal. */
+		saveDescription?: (description: string) => Promise<void>;
 	}>(),
 	{
 		connectedTriggers: () => [],
 		disabled: false,
 		isPublished: false,
+		isRunnable: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
 		taskRefs: () => [],
 		ensureAgentPersisted: undefined,
+		personalisation: null,
 	},
 );
 
@@ -43,14 +64,61 @@ const emit = defineEmits<{
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'preview-task': [instructions: string];
 	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
-const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } =
-	useAgentIntegrationStatus(props.projectId, props.agentId);
+const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
+const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+
+const runtimeContext = {
+	projectId: computed(() => props.projectId),
+	agentId: computed(() => props.agentId),
+	credentialModalOpen: ref(false),
+	fetchStatus,
+	isConnected: integrationStatus.isConnected,
+	isConfigured: integrationStatus.isConfigured,
+};
+const runtimes = Object.fromEntries(
+	Object.values(agentChannelPlatforms).map((platform) => [
+		platform.type,
+		createAgentChannelRuntime(platform, {
+			...runtimeContext,
+			selectedCredentialId: computed(() => connectedCredentials.value[platform.type] ?? ''),
+		}),
+	]),
+);
+const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unknown'), {
+	...runtimeContext,
+	selectedCredentialId: ref(''),
+});
+const {
+	pendingDisconnect,
+	disconnectConfirmationComponent,
+	removing: removingChannel,
+	requestDisconnect,
+	confirmDisconnect,
+} = useAgentChannelRemoval({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	isPublished: () => props.isPublished,
+	disabled: () => props.disabled,
+	status: integrationStatus,
+	runtimeFor: async (channelType) => {
+		const runtime = runtimes[channelType] ?? fallbackRuntime;
+		await runtime.load();
+		return runtime;
+	},
+	onRemoved: (channelType) => {
+		if (!integrationStatus.isConfigured(channelType)) handleChannelDisconnected(channelType);
+		emit('agent-changed');
+	},
+});
+const { isEnabled: isN8nChatEnabled, withN8nChat } = useN8nChatChannel();
+const channelList = computed(() => withN8nChat(catalog.value ?? []));
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
@@ -94,23 +162,25 @@ function channelRuntimeErrorMessage(channel: string): string {
 }
 
 const channelRows = computed(() =>
-	props.connectedTriggers.map((channel) => {
-		const integration = catalog.value?.find(({ type }) => type === channel);
-		const credentialId = connectedCredentials.value[channel];
-		// A channel that is configured correctly but failed to start is just as
-		// broken from here as a misconfigured one, so it uses the same affordance.
-		const invalidReasons = [
-			...(channelIssueMessages.value.get(channel) ?? []),
-			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
-		];
-		return {
-			type: channel,
-			label: integration?.label ?? channel,
-			icon: channelIcon(integration?.icon),
-			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
-			invalidReasons,
-		};
-	}),
+	props.connectedTriggers
+		.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE || isN8nChatEnabled.value)
+		.map((channel) => {
+			const integration = channelList.value.find(({ type }) => type === channel);
+			const credentialId = connectedCredentials.value[channel];
+			// A channel that is configured correctly but failed to start is just as
+			// broken from here as a misconfigured one, so it uses the same affordance.
+			const invalidReasons = [
+				...(channelIssueMessages.value.get(channel) ?? []),
+				...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+			];
+			return {
+				type: channel,
+				label: integration?.label ?? channel,
+				icon: channelIcon(integration?.icon),
+				credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
+				invalidReasons,
+			};
+		}),
 );
 
 async function loadChannelDetails() {
@@ -119,11 +189,10 @@ async function loadChannelDetails() {
 	// exists. The catalog and credential list below are project-scoped and still
 	// load, so the channel picker works on an unsaved agent.
 	if (!props.agentUnsaved) {
-		await fetchStatus(integrations.map(({ type }) => type));
+		await fetchStatus(withN8nChat(integrations).map(({ type }) => type));
 	}
 
 	try {
-		credentialsStore.setCredentials([]);
 		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
 		});
@@ -171,7 +240,7 @@ function openChannelModal() {
 }
 
 function openChannelEdit(channelType: string) {
-	const hasEditableChannelView = catalog.value?.some(({ type }) => type === channelType) ?? false;
+	const hasEditableChannelView = channelList.value.some(({ type }) => type === channelType);
 	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
 	channelModalOpen.value = true;
 }
@@ -182,6 +251,8 @@ function handleChannelConnected(channelType: string) {
 	emit('trigger-added', { triggerType: channelType, triggers: channels });
 	void loadChannelDetails();
 }
+
+defineExpose({ openChannelModal });
 
 function handleChannelDisconnected(channelType: string) {
 	emit(
@@ -204,18 +275,23 @@ function handleChannelDisconnected(channelType: string) {
 			:disabled="props.disabled"
 			@add="openChannelModal"
 		>
-			<AgentChipButton
+			<AgentItemContextMenu
 				v-for="channel in channelRows"
 				:key="channel.type"
-				:icon="channel.icon"
-				:invalid="channel.invalidReasons.length > 0"
-				:invalid-reasons="channel.invalidReasons"
-				:disabled="props.disabled"
-				:class="$style.channelChip"
-				@click="openChannelEdit(channel.type)"
+				:disabled="props.disabled || removingChannel"
+				@remove="requestDisconnect(channel.type, connectedCredentials[channel.type] ?? '')"
 			>
-				{{ channel.label }}
-			</AgentChipButton>
+				<AgentChipButton
+					:icon="channel.icon"
+					:invalid="channel.invalidReasons.length > 0"
+					:invalid-reasons="channel.invalidReasons"
+					:disabled="props.disabled || removingChannel"
+					:class="$style.channelChip"
+					@click="openChannelEdit(channel.type)"
+				>
+					{{ channel.label }}
+				</AgentChipButton>
+			</AgentItemContextMenu>
 		</AgentChipRow>
 
 		<AgentSchedulesRow
@@ -224,12 +300,14 @@ function handleChannelDisconnected(channelType: string) {
 			:project-id="props.projectId"
 			:agent-id="props.agentId"
 			:is-published="props.isPublished"
+			:is-runnable="props.isRunnable"
 			:reload-key="props.reloadKey"
 			:agent-unsaved="props.agentUnsaved"
 			:ensure-agent-persisted="props.ensureAgentPersisted"
 			:validation-issues="props.validationIssues"
 			@toggle-task="emit('toggle-task', $event)"
 			@tasks-changed="emit('tasks-changed')"
+			@preview-task="emit('preview-task', $event)"
 		/>
 
 		<AgentChannelModal
@@ -239,11 +317,24 @@ function handleChannelDisconnected(channelType: string) {
 			:agent-id="agentId"
 			:project-id="projectId"
 			:is-published="isPublished"
+			:disabled="props.disabled"
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
+			:personalisation="personalisation"
+			:saved-description="savedDescription"
+			:save-description="saveDescription"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"
+		/>
+
+		<component
+			:is="disconnectConfirmationComponent"
+			v-if="pendingDisconnect && disconnectConfirmationComponent"
+			:open="true"
+			:loading="removingChannel"
+			@cancel="pendingDisconnect = null"
+			@confirm="confirmDisconnect"
 		/>
 	</div>
 </template>

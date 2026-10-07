@@ -1427,7 +1427,7 @@ const mcpWorkflowProjectCount = 4;
 // ---------------------------------------------------------------------------
 const mcpServerUrl = 'https://acme.app.n8n.cloud/mcp/9f3a2b';
 const mcpAuthToken = 'n8n_mcp_••••••••••••3f9a';
-const mcpDocsUrl = 'https://docs.n8n.io/manage-cloud/mcp-access/';
+const mcpDocsUrl = 'https://docs.n8n.io/connect/connect-to-n8n-mcp-server';
 
 // Config snippets, computed once from the server URL. Most clients take the common `mcpServers`
 // JSON shape; Codex reads TOML, VS Code uses its `servers` map, Gemini an `httpUrl`, Windsurf a
@@ -1600,13 +1600,13 @@ export const ModelContextProtocol: Story = {
 				confirmSaved('MCP access enabled');
 				showExposeAllDialog.value = true;
 			};
-			// "Expose all workflows" from the follow-up dialog. In the app/prototype this flips every
+			// "Enable MCP access" from the follow-up dialog. In the app/prototype this flips every
 			// workflow's exposure (and the auto-expose-new flag) in the shared store so the Workflows
 			// available page reflects it; here the main page and that page are separate story instances,
 			// so this just closes + confirms to keep the UX demonstrable.
 			const onExposeAll = () => {
 				showExposeAllDialog.value = false;
-				confirmSaved('All workflows exposed to MCP');
+				confirmSaved('MCP access enabled for workflows');
 			};
 			const onConfirmDisable = () => {
 				enabled.value = false;
@@ -1818,7 +1818,7 @@ export const ModelContextProtocol: Story = {
 					<N8nSettingsPageHeader
 						title="Instance level MCP"
 						description="Let AI assistants and IDEs connect to this instance over the Model Context Protocol (MCP), then control which tools and workflows they can use."
-						docs-url="https://docs.n8n.io/manage-cloud/mcp-access/"
+						docs-url="${mcpDocsUrl}"
 					/>
 
 					<!-- Only shown when MCP is ENABLED. While disabled the whole top section (status row +
@@ -1978,14 +1978,14 @@ export const ModelContextProtocol: Story = {
 				<N8nDialog
 					v-model:open="showExposeAllDialog"
 					size="small"
-					header="Expose all workflows to MCP?"
-					description="This lets connected clients reach every workflow on this instance right away. You can hide any workflow or revoke access at any time."
+					header="Enable MCP access for all workflows?"
+					description="This lets connected clients reach every workflow on this instance right away. You can disable MCP access for individual workflows at any time."
 				>
 					<N8nDialogFooter>
 						<N8nDialogClose as-child>
 							<N8nButton variant="outline" label="Not now" />
 						</N8nDialogClose>
-						<N8nButton variant="solid" label="Expose all workflows" @click="onExposeAll" />
+						<N8nButton variant="solid" label="Enable MCP access" @click="onExposeAll" />
 					</N8nDialogFooter>
 				</N8nDialog>
 

@@ -5,7 +5,7 @@ import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permiss
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
 import { NodeMailer } from '@/user-management/email/node-mailer';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';

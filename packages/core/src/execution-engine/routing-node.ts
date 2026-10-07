@@ -39,7 +39,6 @@ import type {
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
 } from 'n8n-workflow';
-import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
@@ -186,30 +185,36 @@ export class RoutingNode {
 				}
 
 				if (proxy) {
-					const proxyParsed = url.parse(proxy);
-					const proxyProperties = ['host', 'port'];
+					const proxyParsed = URL.parse(proxy);
+					if (!proxyParsed) {
+						throw new NodeOperationError(node, 'The proxy is not valid', { runIndex, itemIndex });
+					}
 
-					for (const property of proxyProperties) {
-						if (
-							!(property in proxyParsed) ||
-							proxyParsed[property as keyof typeof proxyParsed] === null
-						) {
-							throw new NodeOperationError(node, 'The proxy is not valid', {
-								runIndex,
-								itemIndex,
-								description: `The proxy URL does not contain a valid value for "${property}"`,
-							});
-						}
+					const proxyPort = getExplicitPort(proxy);
+					if (!proxyParsed.hostname) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "host"',
+						});
+					}
+					if (proxyPort === null) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "port"',
+						});
 					}
 
 					itemContext[itemIndex].requestData.options.proxy = {
-						host: proxyParsed.hostname as string,
-						port: parseInt(proxyParsed.port!),
+						host: proxyParsed.hostname,
+						port: proxyPort,
 						protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
 					};
 
-					if (proxyParsed.auth) {
-						const [username, password] = proxyParsed.auth.split(':');
+					const auth = getAuth(proxyParsed);
+					if (auth) {
+						const [username, password] = auth.split(':');
 						itemContext[itemIndex].requestData.options.proxy!.auth = {
 							username,
 							password,
@@ -886,6 +891,7 @@ export class RoutingNode {
 				runIndex,
 				'',
 				{ ...parameterKeys, $value: value },
+				true,
 			);
 
 			this.mergeOptions(scratch, tempOptions);
@@ -902,6 +908,7 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+		baseUrlOnly = false,
 	): DeclarativeRestApiSettings.ResultOptions | undefined {
 		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
@@ -942,11 +949,13 @@ export class RoutingNode {
 				) as string;
 			}
 
-			if (nodeProperties.routing.operations) {
+			if (!baseUrlOnly && nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
+					if (baseUrlOnly && key !== 'baseURL') continue;
+
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
@@ -964,7 +973,7 @@ export class RoutingNode {
 				}
 			}
 
-			if (nodeProperties.routing.send) {
+			if (!baseUrlOnly && nodeProperties.routing.send) {
 				let propertyName = nodeProperties.routing.send.property;
 				if (propertyName !== undefined) {
 					// If the propertyName is an expression resolve it
@@ -1034,7 +1043,7 @@ export class RoutingNode {
 					returnData.preSend.push(...nodeProperties.routing.send.preSend);
 				}
 			}
-			if (nodeProperties.routing.output) {
+			if (!baseUrlOnly && nodeProperties.routing.output) {
 				if (nodeProperties.routing.output.maxResults !== undefined) {
 					let maxResultsValue = nodeProperties.routing.output.maxResults;
 					if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
@@ -1118,6 +1127,7 @@ export class RoutingNode {
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
 					{ ...additionalKeys, $value: optionValue, $version: node.typeVersion },
+					baseUrlOnly,
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -1142,6 +1152,7 @@ export class RoutingNode {
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
 						{ ...additionalKeys, $version: node.typeVersion },
+						baseUrlOnly,
 					);
 
 					this.mergeOptions(returnData, tempOptions);
@@ -1190,6 +1201,7 @@ export class RoutingNode {
 								$index: i,
 								$parent: value[i],
 							},
+							baseUrlOnly,
 						);
 
 						this.mergeOptions(returnData, tempOptions);
@@ -1247,4 +1259,26 @@ export class RoutingNode {
 
 		return { credentials, credentialDescription };
 	}
+}
+
+function getAuth(url: URL) {
+	if (!url.username && !url.password) {
+		return null;
+	}
+
+	const user = decodeURIComponent(url.username);
+	return url.password ? `${user}:${decodeURIComponent(url.password)}` : user;
+}
+
+function getExplicitPort(value: string): number | null {
+	const authorityStart = value.indexOf('//');
+	if (authorityStart < 0) return null;
+
+	const authority = value.slice(authorityStart + 2).split(/[/?#]/, 1)[0];
+	const hostAndPort = authority.slice(authority.lastIndexOf('@') + 1);
+	const match = /:(\d+)$/.exec(hostAndPort);
+	if (!match) return null;
+
+	const port = Number(match[1]);
+	return Number.isInteger(port) && port <= 65_535 ? port : null;
 }

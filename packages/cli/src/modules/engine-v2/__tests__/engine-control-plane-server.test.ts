@@ -86,7 +86,7 @@ describe('EngineControlPlaneServer', () => {
 		// @ts-expect-error reaching for the server's own error handler
 		server.server.emit('error', error);
 
-		expect(serverLogger.error).toHaveBeenCalledWith('Engine 2.0 control plane server error', {
+		expect(serverLogger.error).toHaveBeenCalledWith('Engine v2 control plane server error', {
 			error,
 		});
 	});

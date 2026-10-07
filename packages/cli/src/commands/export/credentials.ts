@@ -8,6 +8,7 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import z from 'zod';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { ICredentialsDecryptedDb } from '@/interfaces';
 
 import { BaseCommand } from '../base-command';
@@ -121,6 +122,8 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			where: this.getWhereFilter(flags),
 			relations: ['shared.project'],
 		});
+
+		await Container.get(CredentialDescriptionsService).stripIfDisabled(credentials);
 
 		if (flags.decrypted) {
 			for (let i = 0; i < credentials.length; i++) {

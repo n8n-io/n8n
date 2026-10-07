@@ -13,6 +13,7 @@ import type { Telemetry } from '@/telemetry';
 import { MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { trackAndRethrowToolError } from '../tool-error.utils';
 
 const LIST_SENTINEL = 'list';
 
@@ -49,7 +50,7 @@ const outputSchema = {
 		.describe('All available techniques, returned when "list" was requested.'),
 } satisfies z.ZodRawShape;
 
-function buildListResponse(canvasGroupsEnabled: boolean) {
+function buildListResponse() {
 	const availableTechniques = Object.entries(TechniqueDescription).map(([key, description]) => ({
 		technique: key,
 		description,
@@ -66,9 +67,8 @@ function buildListResponse(canvasGroupsEnabled: boolean) {
 			(t) =>
 				`- ${t.technique}${t.hasDocumentation ? '' : ' (no detailed documentation yet)'} — ${t.description}`,
 		),
-		// Grouping guidance is flag-gated and appended last, so flag-off output is
-		// unchanged.
-		...(canvasGroupsEnabled ? ['', GROUPING_GUIDANCE] : []),
+		'',
+		GROUPING_GUIDANCE,
 	].join('\n');
 
 	return {
@@ -110,7 +110,6 @@ function buildTechniqueResponse(technique: WorkflowTechniqueType) {
 export const createGetWorkflowBestPracticesTool = (
 	user: User,
 	telemetry: Telemetry,
-	{ canvasGroupsEnabled }: { canvasGroupsEnabled: boolean },
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName,
 	config: {
@@ -135,9 +134,7 @@ export const createGetWorkflowBestPracticesTool = (
 
 		try {
 			const response =
-				technique === LIST_SENTINEL
-					? buildListResponse(canvasGroupsEnabled)
-					: buildTechniqueResponse(technique);
+				technique === LIST_SENTINEL ? buildListResponse() : buildTechniqueResponse(technique);
 
 			telemetryPayload.results = {
 				success: true,
@@ -153,12 +150,7 @@ export const createGetWorkflowBestPracticesTool = (
 				structuredContent: response.structured,
 			};
 		} catch (error) {
-			telemetryPayload.results = {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+			trackAndRethrowToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

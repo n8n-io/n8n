@@ -1,8 +1,17 @@
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
-import type { AgentIntegrationSettings } from './agent-integration.schema';
+import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
+import type { AgentPersonalisation } from './agent-personalisation';
 import type { AgentBackgroundJobSignal } from './background-job';
+
+export type AgentActor = 'user' | 'builder' | 'mcp';
+
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+
+export interface AgentSessionPreviewAccess {
+	canContinueInPreview: boolean;
+}
 
 export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
 
@@ -116,6 +125,14 @@ export interface ChatIntegrationDescriptor {
 	capabilities?: string[];
 	useIntegrationWhen?: string[];
 	useNodeToolWhen?: string[];
+	/** Actions a user can hold for approval, in the order they should be listed. */
+	approvableActions?: ChatIntegrationApprovableAction[];
+}
+
+export interface ChatIntegrationApprovableAction {
+	name: string;
+	/** Pre-selected when a user turns approval on for this channel. */
+	sensitive: boolean;
 }
 
 /**
@@ -133,6 +150,8 @@ export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;
 	settings?: AgentIntegrationSettings;
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
 	/** Authoritative per-channel state; prefer this over the response rollup. */
 	status: AgentChannelRuntimeStatus;
 	/** Present only when `status` is `error`. */
@@ -146,6 +165,7 @@ export interface AgentIntegrationStatusResponse {
 	 */
 	status: 'configured' | 'connected' | 'disconnected' | 'partial' | 'error';
 	integrations: AgentIntegrationStatusEntry[];
+	n8nChat: { draftEnabled: boolean; publishedEnabled: boolean };
 }
 
 export interface AgentDisconnectIntegrationResponse {
@@ -170,6 +190,15 @@ export interface AgentIntegrationDisconnectWarning {
  */
 export interface AgentIntegrationConnectResponse {
 	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
+}
+
+/**
+ * WhatsApp needs the user to paste this token by hand into the Meta app's
+ * webhook config, unlike other platforms' secrets — so it's exposed here for
+ * the setup screen to display next to the webhook URL.
+ */
+export interface AgentWhatsAppVerifyTokenResponse {
+	verifyToken: string;
 }
 
 export interface AgentSkillReference {
@@ -345,12 +374,14 @@ export interface AgentPersistedMessageDto {
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	executionStatus?: AgentExecutionStatus;
 	/**
 	 * The recorded run error for a turn that ended in `error` or `interrupted`,
 	 * so history renders the same error bubble the live stream showed.
 	 */
 	executionError?: string;
+	/** ISO timestamp of when this turn was recorded. Absent on older history. */
+	createdAt?: string;
 }
 
 export interface AgentBuilderOpenSuspension {
@@ -360,10 +391,71 @@ export interface AgentBuilderOpenSuspension {
 	suspendPayload?: unknown;
 }
 
+export interface AgentChatQueueItem {
+	id: string;
+	steeringExecutionId: string | null;
+	message: string;
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	createdAt: string;
+}
+
+export interface AgentChatQueueResponse {
+	items: AgentChatQueueItem[];
+	steerableExecutionId: string | null;
+}
+
 /** Chat history envelope returned by the agent chat messages endpoints. */
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+	/**
+	 * Running preview turn, including a turn with no recorded output yet.
+	 * `null` means that the server found no running execution.
+	 * An omitted value means that the endpoint does not report execution state.
+	 */
+	activeExecutionId?: string | null;
+}
+
+/**
+ * One agent as the n8n chat page lists it.
+ *
+ * Deliberately narrow. Its audience holds `agent:execute` alone — a
+ * `project:chatUser` can start a production chat but has no `agent:read` — so
+ * the published instructions, tools and skills must not travel with the list.
+ * The page needs a label, an avatar, the owning project, and a user-facing
+ * blurb (`description`) to help a chat user pick an agent — nothing else.
+ */
+export interface AgentChatListItem {
+	id: string;
+	name: string;
+	/** Icon and gradient from the published config; unset when the agent has none. */
+	personalisation?: AgentPersonalisation;
+	/** User-facing blurb from the published config; unset when the agent has none. */
+	description?: string;
+	project: { id: string; name: string };
+}
+
+export interface AgentChatListResponse {
+	count: number;
+	data: AgentChatListItem[];
+}
+
+/** One of the user's own n8n Chat threads. `agent` is as narrow as {@link AgentChatListItem}. */
+export interface AgentN8nChatThreadSummary {
+	id: string;
+	title: string | null;
+	updatedAt: string;
+	agent: {
+		id: string;
+		name: string;
+		personalisation?: AgentPersonalisation;
+		projectId: string;
+	};
+}
+
+export interface AgentN8nChatThreadsResponse {
+	data: AgentN8nChatThreadSummary[];
+	nextCursor: string | null;
 }
 
 export interface AgentSessionLangSmithExportResponse {
@@ -371,10 +463,19 @@ export interface AgentSessionLangSmithExportResponse {
 }
 
 /**
- * Internal integration type for the in-app chat channel. Injected per-run for
- * `/chat` executions — never persisted in an agent's `integrations` array.
+ * Integration type for n8n Chat. Preview injects its tools per run. A configured
+ * channel entry enables production chat after publish.
+ *
+ * Publish is what moves the channel live, so the published snapshot is the
+ * source of truth for availability: `AgentRepository.isN8nChatPublished` reads
+ * it for one agent, `applyFilters` for the `availableInChat` list filter.
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
+/**
+ * Multivariate PostHog flag for the agents' n8n Chat surfaces. Every variant
+ * except `control` turns them on.
+ */
+export const AGENTS_N8N_CHAT_FLAG = '125_agents_n8n_chat';
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;

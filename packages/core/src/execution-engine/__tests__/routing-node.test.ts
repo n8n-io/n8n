@@ -846,7 +846,7 @@ describe('RoutingNode', () => {
 				// Prototype untouched; the value lands as an own property on the request body.
 				expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
 				expect(Object.prototype.toString.call([])).toBe('[object Array]');
-				expect((result?.options.body as { toString?: { call?: unknown } }).toString?.call).toBe(
+				expect((result!.options.body as { toString?: { call?: unknown } }).toString?.call).toBe(
 					'x',
 				);
 			});
@@ -872,7 +872,8 @@ describe('RoutingNode', () => {
 					parameters: INodeParameters;
 				};
 			};
-			output: INodeExecutionData[][] | undefined;
+			output?: INodeExecutionData[][];
+			error?: string;
 		}> = [
 			{
 				description: 'single parameter, only send defined, fixed value, using requestDefaults',
@@ -1290,6 +1291,43 @@ describe('RoutingNode', () => {
 						},
 					],
 				],
+			},
+			{
+				description: 'preserves an explicit default proxy port',
+				input: {
+					node: {
+						parameters: {
+							requestOptions: { proxy: 'http://127.0.0.1:80' },
+						},
+					},
+					nodeType: { properties: [] },
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									body: {},
+									headers: {},
+									proxy: { host: '127.0.0.1', port: 80, protocol: 'http' },
+									qs: {},
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'rejects a malformed proxy URL',
+				input: {
+					node: { parameters: { requestOptions: { proxy: 'http://[invalid' } } },
+					nodeType: { properties: [] },
+				},
+				error: 'The proxy is not valid',
 			},
 			{
 				description: 'multiple parameters, complex example with everything',
@@ -2368,6 +2406,11 @@ describe('RoutingNode', () => {
 					? new RoutingNode(executeFunctions, nodeType, mockCredentials)
 					: new RoutingNode(executeFunctions, nodeType);
 
+				if (testData.error) {
+					await expect(routingNode.runNode()).rejects.toThrow(testData.error);
+					return;
+				}
+
 				const result = await routingNode.runNode();
 
 				if (testData.input.specialTestOptions?.sleepCalls) {
@@ -2749,6 +2792,8 @@ describe('RoutingNode', () => {
 			const routingNode = new RoutingNode(executeFunctions, nodeType, mockCredentials);
 			return await routingNode.runNode();
 		};
+		const getRequestOptions = (result: Awaited<ReturnType<typeof runWithCredential>>) =>
+			(result![0]![0]!.json as { requestOptions: IHttpRequestOptions }).requestOptions;
 
 		test("propagates credential allowedDomains when mode is 'domains'", async () => {
 			const result = await runWithCredential({
@@ -2757,8 +2802,7 @@ describe('RoutingNode', () => {
 				allowedDomains: 'api.example.com',
 			});
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBe('api.example.com');
 		});
 
@@ -2768,8 +2812,7 @@ describe('RoutingNode', () => {
 				allowedHttpRequestDomains: 'all',
 			});
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
@@ -2780,8 +2823,7 @@ describe('RoutingNode', () => {
 				allowedDomains: 'other.example.com',
 			});
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
 		});
 
@@ -2799,8 +2841,7 @@ describe('RoutingNode', () => {
 				{ baseURL, routedUrl: 'https://user-chosen.example.net/path' },
 			);
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBe('other.example.com');
 		});
 
@@ -2810,8 +2851,7 @@ describe('RoutingNode', () => {
 				allowedHttpRequestDomains: 'none',
 			});
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
@@ -2822,8 +2862,7 @@ describe('RoutingNode', () => {
 				allowedDomains: '   ',
 			});
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBe('api.example.com');
 		});
 
@@ -2833,17 +2872,29 @@ describe('RoutingNode', () => {
 				allowedHttpRequestDomains: 'domains',
 			});
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBe('api.example.com');
 		});
 
 		test('does not set allowedDomains when restriction field is absent', async () => {
 			const result = await runWithCredential({ apiKey: 'testApiKey' });
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
+			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		test('prepares a dynamic path segment when the base URL is static', async () => {
+			// Regression test for NODE-6014.
+			const result = await runWithCredential(
+				{ apiKey: 'testApiKey' },
+				{
+					routedUrl: '=/tests/{{toPathSegment($parameter["endpoint"])}}',
+					nodeParameters: { endpoint: 'project-123' },
+				},
+			);
+
+			const requestOptions = getRequestOptions(result);
+			expect(requestOptions.url).toBe('/tests/project-123');
 		});
 
 		describe('when requestDefaults.baseURL reads an optional override parameter', () => {
@@ -2865,8 +2916,7 @@ describe('RoutingNode', () => {
 					},
 				);
 
-				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-					.requestOptions;
+				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBe('api.example.com');
 			});
 
@@ -2888,8 +2938,7 @@ describe('RoutingNode', () => {
 					{ baseURL: parameterizedBaseUrl, nodeParameters: {} },
 				);
 
-				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-					.requestOptions;
+				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBeUndefined();
 			});
 
@@ -2903,8 +2952,7 @@ describe('RoutingNode', () => {
 					{ baseURL: parameterizedBaseUrl, nodeParameters: {} },
 				);
 
-				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-					.requestOptions;
+				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
 			});
 		});
@@ -2924,8 +2972,7 @@ describe('RoutingNode', () => {
 					{ propertyBaseURL: 'https://upload.example.com' },
 				);
 
-				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-					.requestOptions;
+				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBe('upload.example.com, api.example.com');
 			});
 
@@ -2935,8 +2982,7 @@ describe('RoutingNode', () => {
 					{ propertyBaseURL: 'https://upload.example.com' },
 				);
 
-				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-					.requestOptions;
+				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBeUndefined();
 			});
 		});
@@ -2960,8 +3006,7 @@ describe('RoutingNode', () => {
 					},
 				);
 
-				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-					.requestOptions;
+				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBe('api.example.com');
 			});
 
@@ -2983,8 +3028,7 @@ describe('RoutingNode', () => {
 					{ propertyBaseURL: parameterizedPropertyBaseUrl, nodeParameters: {} },
 				);
 
-				const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-					.requestOptions;
+				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBeUndefined();
 			});
 		});

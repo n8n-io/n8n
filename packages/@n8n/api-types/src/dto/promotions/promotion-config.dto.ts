@@ -78,6 +78,19 @@ export class UpsertPromotionPromoteConfigDto extends Z.class(
 	{ strict: true },
 ) {}
 
+/**
+ * The local checkout state of one direction on the instance that answered. A
+ * package operation needs a checkout that was cloned from the current remote and
+ * branch, so both flags report on this replica only. Other replicas may differ.
+ */
+export const promotionConfigCheckoutSchema = z.object({
+	/** A local checkout exists for this direction on this instance. */
+	hasCheckout: z.boolean(),
+	/** The checkout was cloned from the current remote and branch, so it is not stale. */
+	matchesConfig: z.boolean(),
+});
+export type PromotionConfigCheckout = z.infer<typeof promotionConfigCheckoutSchema>;
+
 const configPublicFields = {
 	/**
 	 * Also names the local checkout directory. Stable while the config exists, and
@@ -87,6 +100,7 @@ const configPublicFields = {
 	name: z.string(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
+	checkout: promotionConfigCheckoutSchema,
 };
 
 /*
@@ -122,4 +136,21 @@ export const promotionConnectionConfigsPublicSchema = z.object({
 });
 export type PromotionConnectionConfigsPublic = z.infer<
 	typeof promotionConnectionConfigsPublicSchema
+>;
+
+/** List responses contain stored config fields only. */
+export const promotionApplyConfigSummarySchema = promotionApplyConfigPublicSchema.omit({
+	checkout: true,
+});
+
+export const promotionPromoteConfigSummarySchema = promotionPromoteConfigPublicSchema.omit({
+	checkout: true,
+});
+
+export const promotionConnectionConfigsSummarySchema = z.object({
+	apply: promotionApplyConfigSummarySchema.optional(),
+	promote: promotionPromoteConfigSummarySchema.optional(),
+});
+export type PromotionConnectionConfigsSummary = z.infer<
+	typeof promotionConnectionConfigsSummarySchema
 >;

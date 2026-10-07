@@ -1,15 +1,22 @@
 import { ref, computed } from 'vue';
-import type { PromotableResource } from '@n8n/api-types';
+import type {
+	PromotableResource,
+	PromotePackageResultDto,
+	PromotionDirection,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getPromotableChanges } from '../promotions.api';
+import { getPromotableChanges, promoteProjectSelection } from '../promotions.api';
 
-export function usePromotionChanges(projectId: string) {
+export function usePromotionChanges(projectId: string, direction: PromotionDirection = 'promote') {
 	const rootStore = useRootStore();
 
 	const changes = ref<PromotableResource[]>([]);
+	const commitSha = ref<string | null>(null);
 	const isLoading = ref(false);
+	const isSubmitting = ref(false);
 	const error = ref<Error | null>(null);
 	const searchQuery = ref('');
+	const lastRefreshedAt = ref<string | null>(null);
 
 	const selectedIds = ref<Set<string>>(new Set());
 
@@ -40,12 +47,15 @@ export function usePromotionChanges(projectId: string) {
 	}
 
 	async function fetchChanges() {
-		if (isLoading.value) return;
+		if (isLoading.value || isSubmitting.value) return;
 		isLoading.value = true;
 		error.value = null;
 		try {
-			changes.value = await getPromotableChanges(rootStore.restApiContext, projectId);
+			const result = await getPromotableChanges(rootStore.restApiContext, projectId, direction);
+			changes.value = result.changes;
+			commitSha.value = result.commitSha;
 			reconcileSelection();
+			lastRefreshedAt.value = new Date().toISOString();
 		} catch (e) {
 			error.value = e instanceof Error ? e : new Error(String(e));
 		} finally {
@@ -54,6 +64,7 @@ export function usePromotionChanges(projectId: string) {
 	}
 
 	function toggleSelected(id: string) {
+		if (isSubmitting.value) return;
 		const next = new Set(selectedIds.value);
 		if (next.has(id)) {
 			next.delete(id);
@@ -65,6 +76,7 @@ export function usePromotionChanges(projectId: string) {
 
 	// Add or remove only the currently visible rows; hidden selections are untouched.
 	function toggleSelectAll() {
+		if (isSubmitting.value) return;
 		const next = new Set(selectedIds.value);
 		if (allSelected.value) {
 			for (const c of filteredChanges.value) next.delete(c.id);
@@ -74,17 +86,34 @@ export function usePromotionChanges(projectId: string) {
 		selectedIds.value = next;
 	}
 
+	async function submitSelection(): Promise<PromotePackageResultDto | null> {
+		if (selectedCount.value === 0 || isSubmitting.value) return null;
+
+		isSubmitting.value = true;
+		try {
+			return await promoteProjectSelection(rootStore.publicApiContext, projectId, {
+				workflowIds: [...selectedIds.value],
+			});
+		} finally {
+			isSubmitting.value = false;
+		}
+	}
+
 	return {
 		changes,
+		commitSha,
 		filteredChanges,
 		isLoading,
+		isSubmitting,
 		error,
 		searchQuery,
+		lastRefreshedAt,
 		selectedIds,
 		selectedCount,
 		allSelected,
 		someSelected,
 		fetchChanges,
+		submitSelection,
 		toggleSelected,
 		toggleSelectAll,
 	};

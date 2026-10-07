@@ -78,7 +78,7 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		await this.closeCurrentConnection({ preserveServerSession: true });
 		const store = await this.getSettingsStore();
 		const defaults = store.getDefaults(config);
-		const session = new GatewaySession(defaults, store);
+		const session = new GatewaySession(defaults, store, new URL(normalizedUrl).origin);
 		const client = new GatewayClient({
 			url: normalizedUrl,
 			apiKey,

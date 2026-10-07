@@ -3,7 +3,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { MemorySaver } from '@langchain/langgraph';
 import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -52,6 +52,7 @@ import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
 import type { PlanInterruptValue, PlanOutput } from '@/types/planning';
 import type { StreamOutput } from '@/types/streaming';
+import type { SimpleWorkflow } from '@/types/workflow';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {
 	WorkflowBuilderAgent,
@@ -119,6 +120,74 @@ describe('WorkflowBuilderAgent', () => {
 		};
 
 		agent = new WorkflowBuilderAgent(config);
+	});
+
+	describe('workflow entry point', () => {
+		// getDefaultWorkflowJSON is the only producer of the workflowJSON the graph is started
+		// with, so it is the choke point where a stored workflow is made safe to key by node
+		// name. Exercised directly: the call sites below it sit behind the LangGraph stream.
+		function getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
+			return (
+				agent as unknown as {
+					getDefaultWorkflowJSON: (p: ChatPayload) => SimpleWorkflow;
+				}
+			).getDefaultWorkflowJSON(payload);
+		}
+
+		function payloadWith(currentWorkflow: unknown): ChatPayload {
+			return {
+				id: '1',
+				message: 'hi',
+				workflowContext: { currentWorkflow: currentWorkflow as IWorkflowBase },
+			};
+		}
+
+		it('should pass an ordinary workflow through unchanged', () => {
+			const currentWorkflow = {
+				name: 'w',
+				nodes: [{ id: '1', name: 'Manual' }],
+				connections: { Manual: { main: [[{ node: 'Sink', type: 'main', index: 0 }]] } },
+			};
+
+			const result = getDefaultWorkflowJSON(payloadWith(currentWorkflow));
+
+			expect(result).toBe(currentWorkflow);
+		});
+
+		it('should return an empty workflow when no workflow is supplied', () => {
+			expect(getDefaultWorkflowJSON({ id: '1', message: 'hi' })).toEqual({
+				nodes: [],
+				connections: {},
+				name: '',
+			});
+		});
+
+		it('should drop a node whose name cannot be an object key before the graph starts', () => {
+			const result = getDefaultWorkflowJSON(
+				payloadWith({
+					name: 'w',
+					nodes: [
+						{ id: '1', name: '__proto__' },
+						{ id: '2', name: 'Keep' },
+					],
+					connections: {},
+				}),
+			);
+
+			expect(result.nodes.map((n) => n.name)).toEqual(['Keep']);
+		});
+
+		it('should drop a connection field that cannot be an object key before the graph starts', () => {
+			const result = getDefaultWorkflowJSON(
+				payloadWith(
+					JSON.parse(
+						'{"name":"w","nodes":[],"connections":{"A":{"main":[[{"node":["__proto__"],"type":"main","index":0}]]}}}',
+					),
+				),
+			);
+
+			expect(result.connections.A?.main?.[0]).toEqual([]);
+		});
 	});
 
 	describe('chat method', () => {

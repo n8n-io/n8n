@@ -60,6 +60,7 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
+	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
@@ -67,14 +68,17 @@ import {
 	ABOUT_MODAL_KEY,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	isNodeCreatorOpenFromConnection,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import {
 	jsonParse,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
+	getEmptyGroupAnchor,
 	isTriggerNode,
 	NodeHelpers,
 	NodeConnectionTypes,
@@ -90,21 +94,24 @@ import type {
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { historyBus } from '@/app/models/history';
+import { AddNodeGroupCommand, historyBus } from '@/app/models/history';
+import { useHistoryStore } from '@/app/stores/history.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useCanvasNodeGroupTelemetry } from '@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
@@ -142,9 +149,16 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
-import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nCanvasThinkingPill,
+	N8nCanvasCollaborationPill,
+	N8nLogo,
+} from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/executions.utils';
 
 defineOptions({
@@ -188,6 +202,7 @@ const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const historyStore = useHistoryStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionState = computed(() =>
@@ -195,12 +210,16 @@ const workflowExecutionState = computed(() =>
 );
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
+const settingsStore = useSettingsStore();
 const nodeCreatorStore = useNodeCreatorStore();
+// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+const groupTelemetry = useCanvasNodeGroupTelemetry();
 const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 
@@ -217,9 +236,10 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
+const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 // Initialize activity detection for collaboration
-useActivityDetection();
+useActivityDetection(collaborationStore);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -296,6 +316,7 @@ const hideCanvasControls = computed(() => {
 const stripedCanvasBackground = computed(() => route.query.canvasBackground !== 'dots');
 
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+const isCanvasOnlyLogoVisible = computed(() => settingsStore.isCanvasOnly && !isDemoRoute.value);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
@@ -480,12 +501,6 @@ const allTriggerNodesDisabled = computed(() => {
 const selectableTriggerNodes = computed(() =>
 	triggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
 );
-const isRunButtonSplit = computed(() => {
-	return (
-		selectableTriggerNodes.value.length > 1 &&
-		workflowExecutionState.value.selectedTriggerNodeName !== undefined
-	);
-});
 
 function onTidyUp(
 	event: CanvasLayoutEvent,
@@ -523,8 +538,8 @@ function onDeleteNode(id: string) {
 	}
 }
 
-function onDeleteNodes(ids: string[]) {
-	deleteNodes(ids);
+function onDeleteNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
+	deleteNodes(ids, { deleteWholeGroupIds });
 }
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
@@ -680,11 +695,11 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	await mcpJsonNudgeTrigger.gate('paste', paste);
 }
 
-async function onCutNodes(ids: string[]) {
+async function onCutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
 	if (isCanvasReadOnly.value) {
 		await copyNodes(ids);
 	} else {
-		await cutNodes(ids);
+		await cutNodes(ids, deleteWholeGroupIds);
 	}
 }
 
@@ -984,9 +999,27 @@ function removeImportEventBindings() {
  * Node creator
  */
 const nodeCreatorReplaceTargetId = ref<string | undefined>(undefined);
+const isAddingEmptyGroup = ref(false);
 
 function onNodeCreatorClose() {
 	nodeCreatorReplaceTargetId.value = undefined;
+}
+
+function getOutputPlusEmptyGroupAnchorId(): string | undefined {
+	const isExplicitOutputAdd =
+		nodeCreatorStore.isCreateNodeActive &&
+		isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource);
+	if (!isExplicitOutputAdd || !uiStore.lastInteractedWithNodeId) return undefined;
+
+	const { type, mode } = parseCanvasConnectionHandleString(uiStore.lastInteractedWithNodeHandle);
+	if (type !== NodeConnectionTypes.Main || mode !== CanvasConnectionMode.Output) return undefined;
+
+	const sourceNodeId = uiStore.lastInteractedWithNodeId;
+	const group = workflowDocumentStore.value.getGroupForNode(sourceNodeId);
+	if (!group) return undefined;
+
+	const anchor = getEmptyGroupAnchor(group, workflowDocumentStore.value.allNodes);
+	return anchor?.id === sourceNodeId ? anchor.id : undefined;
 }
 
 async function onAddNodesAndConnections(
@@ -997,8 +1030,9 @@ async function onAddNodesAndConnections(
 	if (!checkIfEditingIsAllowed()) {
 		return;
 	}
+	const replaceNodeId = nodeCreatorReplaceTargetId.value ?? getOutputPlusEmptyGroupAnchorId();
 
-	if (nodeCreatorReplaceTargetId.value !== undefined) {
+	if (replaceNodeId !== undefined) {
 		uiStore.resetLastInteractedWith();
 
 		nodes = nodes.map((x) => ({
@@ -1012,12 +1046,81 @@ async function onAddNodesAndConnections(
 		position,
 		viewport: viewportBoundaries.value,
 		telemetry: true,
-		replaceNodeId: nodeCreatorReplaceTargetId.value,
+		replaceNodeId,
 	});
 
 	if (addedNodes.length > 0) {
 		const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
 		selectNodes([lastAddedNodeId]);
+	}
+}
+
+async function onAddEmptyGroup(connectToLastInteractedNode = false) {
+	if (!emptyCanvasGroupsEnabled.value || !checkIfEditingIsAllowed() || isAddingEmptyGroup.value)
+		return;
+	isAddingEmptyGroup.value = true;
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	const nodeCreatorOpenSource = nodeCreatorStore.openSource;
+	// Seed generic placement at the viewport center while retaining collision handling for later groups.
+	if (
+		workflowDocumentStore.value.allNodes.length === 0 &&
+		viewportDimensions.value.width > 0 &&
+		viewportDimensions.value.height > 0
+	) {
+		const { xMin, xMax, yMin, yMax } = viewportBoundaries.value;
+		lastClickPosition.value = [
+			(xMin + xMax - DEFAULT_NODE_SIZE[0]) / 2,
+			(yMin + yMax - DEFAULT_NODE_SIZE[1]) / 2,
+		];
+	}
+
+	const ownsUndoBulk = historyStore.currentBulkAction === null;
+	if (ownsUndoBulk) historyStore.startRecordingUndo();
+
+	try {
+		const selectedGroup = canvasStore.selectedGroupId
+			? workflowDocumentStore.value.getGroupById(canvasStore.selectedGroupId)
+			: undefined;
+		const selectedEmptyGroupAnchor = selectedGroup
+			? getEmptyGroupAnchor(selectedGroup, workflowDocumentStore.value.allNodes)
+			: undefined;
+
+		// A selected empty group uses its hidden anchor as the normal add-node connection source.
+		if (!connectToLastInteractedNode && selectedEmptyGroupAnchor) {
+			uiStore.resetLastInteractedWith();
+			uiStore.lastInteractedWithNodeId = selectedEmptyGroupAnchor.id;
+		}
+		const shouldConnect = connectToLastInteractedNode || selectedEmptyGroupAnchor !== undefined;
+
+		const { addedNodes } = await addNodesAndConnections(
+			[
+				{
+					type: NO_OP_NODE_TYPE,
+					name: 'No Operation, do nothing',
+					parameters: { emptyGroupAnchor: true },
+					placeholder: true,
+					isAutoAdd: !shouldConnect,
+					openDetail: false,
+				},
+			],
+			[],
+			{ viewport: viewportBoundaries.value, trackBulk: false },
+		);
+		const anchor = addedNodes[0];
+		if (!anchor) return;
+
+		const name = workflowDocumentStore.value.getNextDefaultName(
+			i18n.baseText('canvas.nodeGroup.defaultTitle'),
+		);
+		const group = workflowDocumentStore.value.createGroup([anchor.id], name);
+		historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		groupTelemetry.trackGrouped(group, 'node-creator', nodeCreatorOpenSource);
+		groupTelemetry.trackInitialEmptyGroupConnection(group);
+		selectNodes([anchor.id]);
+	} finally {
+		if (ownsUndoBulk) historyStore.stopRecordingUndo();
+		isAddingEmptyGroup.value = false;
 	}
 }
 
@@ -1171,7 +1274,27 @@ const isExecutionWaitingForWebhook = computed(
 	() => workflowExecutionState.value.executionWaitingForWebhook,
 );
 
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+	() => workflowDocumentStore.value.allNodes,
+);
+
+function onRunWorkflowShortcut() {
+	if (unusableCredentialReason.value) {
+		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
+		return;
+	}
+
+	void runEntireWorkflow('main');
+}
+
 const isExecutionDisabled = computed(() => {
+	// A run is checked against the person it acts as, so a credential this user
+	// cannot use stops the workflow.
+	if (unusableCredentialReason.value) {
+		return true;
+	}
+
 	if (
 		containsChatTriggerNodes.value &&
 		isOnlyChatTriggerNodeActive.value &&
@@ -1769,6 +1892,23 @@ watch([() => route.name, () => route.params.workflowId], () => {
 	initializeRoute();
 });
 
+const workflowProjectId = computed(
+	() =>
+		workflowDocumentStore?.value?.homeProject?.id ??
+		projectsStore.currentProject?.id ??
+		projectsStore.personalProject?.id,
+);
+
+watch(
+	workflowProjectId,
+	(projectId) => {
+		if (!projectId) return;
+
+		void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
 watch(
 	() => {
 		return (
@@ -2080,7 +2220,7 @@ onBeforeUnmount(() => {
 			@copy:nodes="onCopyNodes"
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
-			@run:workflow="runEntireWorkflow('main')"
+			@run:workflow="onRunWorkflowShortcut"
 			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
@@ -2091,60 +2231,75 @@ onBeforeUnmount(() => {
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="onToggleChat"
 		>
-			<Suspense v-if="!isCanvasReadOnly">
-				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
-			</Suspense>
+			<div :class="$style.canvasTopLeftContainer">
+				<div :class="$style.canvasTopLeft">
+					<N8nLogo
+						v-if="isCanvasOnlyLogoVisible"
+						size="small"
+						:collapsed="false"
+						:class="$style.canvasOnlyLogo"
+						aria-hidden="true"
+					/>
+					<Suspense v-if="!isCanvasReadOnly">
+						<LazySetupWorkflowCredentialsButton
+							:collapsible="isCanvasOnlyLogoVisible"
+							:class="$style.setupCredentialsButton"
+						/>
+					</Suspense>
+				</div>
+			</div>
 			<EvaluationsCanvasInfoCard
 				v-if="!isCanvasReadOnly"
 				:class="$style.evaluationsCanvasInfoCardWrapper"
 			/>
-			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
-				<CanvasRunWorkflowButton
-					v-if="isRunWorkflowButtonVisible"
-					:waiting-for-webhook="isExecutionWaitingForWebhook"
-					:disabled="isExecutionDisabled"
-					:executing="isWorkflowRunning"
-					:trigger-nodes="triggerNodes"
-					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
-					:type="runWorkflowButtonType"
-					@mouseenter="onRunWorkflowButtonMouseEnter"
-					@mouseleave="onRunWorkflowButtonMouseLeave"
-					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
-				/>
-				<template v-if="containsChatTriggerNodes">
-					<CanvasChatButton
-						v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
-						variant="subtle"
-						:label="i18n.baseText('chat.hide')"
-						:class="$style.chatButton"
-						@click="onToggleChat"
+			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtonsContainer">
+				<div :class="$style.executionButtons">
+					<CanvasRunWorkflowButton
+						v-if="isRunWorkflowButtonVisible"
+						:disabled-reason="unusableCredentialReason"
+						:waiting-for-webhook="isExecutionWaitingForWebhook"
+						:disabled="isExecutionDisabled"
+						:executing="isWorkflowRunning"
+						:trigger-nodes="triggerNodes"
+						:get-node-type="nodeTypesStore.getNodeType"
+						:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
+						:type="runWorkflowButtonType"
+						@mouseenter="onRunWorkflowButtonMouseEnter"
+						@mouseleave="onRunWorkflowButtonMouseLeave"
+						@execute="runEntireWorkflow('main')"
+						@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
 					/>
-					<KeyboardShortcutTooltip
-						v-else
-						:label="i18n.baseText('chat.open')"
-						:shortcut="{ keys: ['c'] }"
-					>
+					<template v-if="containsChatTriggerNodes">
 						<CanvasChatButton
-							:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
-							:label="i18n.baseText('chat.open')"
+							v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
+							variant="subtle"
+							:label="i18n.baseText('chat.hide')"
 							:class="$style.chatButton"
-							@click="onOpenChat"
+							@click="onToggleChat"
 						/>
-					</KeyboardShortcutTooltip>
-				</template>
-				<CanvasStopCurrentExecutionButton
-					v-if="isStopExecutionButtonVisible"
-					:stopping="isStoppingExecution"
-					:size="isRunButtonSplit ? 'xlarge' : 'large'"
-					@click="onStopExecution"
-				/>
-				<CanvasStopWaitingForWebhookButton
-					v-if="isStopWaitingForWebhookButtonVisible"
-					:size="isRunButtonSplit ? 'xlarge' : 'large'"
-					@click="onStopWaitingForWebhook"
-				/>
+						<KeyboardShortcutTooltip
+							v-else
+							:label="i18n.baseText('chat.open')"
+							:shortcut="{ keys: ['c'] }"
+						>
+							<CanvasChatButton
+								:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
+								:label="i18n.baseText('chat.open')"
+								:class="$style.chatButton"
+								@click="onOpenChat"
+							/>
+						</KeyboardShortcutTooltip>
+					</template>
+					<CanvasStopCurrentExecutionButton
+						v-if="isStopExecutionButtonVisible"
+						:stopping="isStoppingExecution"
+						@click="onStopExecution"
+					/>
+					<CanvasStopWaitingForWebhookButton
+						v-if="isStopWaitingForWebhookButtonVisible"
+						@click="onStopWaitingForWebhook"
+					/>
+				</div>
 			</div>
 
 			<N8nCallout
@@ -2180,6 +2335,7 @@ onBeforeUnmount(() => {
 					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
+					@add-empty-group="onAddEmptyGroup"
 					@close="onNodeCreatorClose"
 				/>
 			</Suspense>
@@ -2191,6 +2347,7 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
+					@replace-node="onClickReplaceNode"
 				/>
 			</Suspense>
 		</WorkflowCanvas>
@@ -2213,8 +2370,16 @@ onBeforeUnmount(() => {
 	width: 100%;
 }
 
+.executionButtonsContainer {
+	position: absolute;
+	inset: 0;
+	container-type: inline-size;
+	pointer-events: none;
+}
+
 .executionButtons {
 	position: absolute;
+	pointer-events: auto;
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -2230,15 +2395,39 @@ onBeforeUnmount(() => {
 		transform: none;
 	}
 
+	@container (max-width: #{var.$sm - 1}) {
+		left: auto;
+		right: var(--spacing--sm);
+		transform: none;
+	}
+
 	.chatButton {
 		align-self: stretch;
 	}
 }
 
-.setupCredentialsButtonWrapper {
+.canvasTopLeftContainer {
+	position: absolute;
+	inset: 0;
+	container: canvas / inline-size;
+	pointer-events: none;
+}
+
+.canvasTopLeft {
 	position: absolute;
 	left: var(--spacing--sm);
 	top: var(--spacing--sm);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.canvasOnlyLogo {
+	height: var(--height--xl);
+}
+
+.setupCredentialsButton {
+	pointer-events: auto;
 }
 
 .evaluationsCanvasInfoCardWrapper {

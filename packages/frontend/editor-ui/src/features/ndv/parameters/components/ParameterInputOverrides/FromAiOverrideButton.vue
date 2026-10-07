@@ -1,15 +1,15 @@
 <script setup lang="ts">
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import AiStarsIcon from '@/app/components/AiStarsIcon.vue';
 
-import { N8nTooltip } from '@n8n/design-system';
 const i18n = useI18n();
 
 withDefaults(
 	defineProps<{
 		position?: 'inline' | 'standalone';
+		size?: 'small' | 'medium';
 	}>(),
-	{ position: 'inline' },
+	{ position: 'inline', size: 'medium' },
 );
 
 const emit = defineEmits<{
@@ -23,13 +23,16 @@ const emit = defineEmits<{
 			<div>{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}</div>
 		</template>
 
-		<div
-			:class="[$style.overrideButton, $style[position]]"
+		<N8nIconButton
+			icon="sparkles"
+			variant="ghost"
+			:size="size"
+			icon-size="small"
+			:class="[$style.overrideButton, $style[position], $style[size]]"
+			:aria-label="i18n.baseText('parameterOverride.applyOverrideButtonTooltip')"
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
-		>
-			<AiStarsIcon size="large" />
-		</div>
+		/>
 	</N8nTooltip>
 </template>
 
@@ -38,8 +41,8 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 30px;
-	width: 30px;
+	height: var(--from-ai-button-size);
+	width: var(--from-ai-button-size);
 	background-color: var(--color--foreground);
 	color: var(--color--foreground--shade-2);
 	cursor: pointer;
@@ -53,6 +56,14 @@ const emit = defineEmits<{
 			color: var(--color--neutral-250);
 		}
 	}
+}
+
+.small {
+	--from-ai-button-size: var(--height--sm);
+}
+
+.medium {
+	--from-ai-button-size: var(--height--md);
 }
 
 .inline {

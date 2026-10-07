@@ -247,6 +247,21 @@ export async function createStubServices(
 				finishedAt: new Date().toISOString(),
 			};
 		},
+		// Same synthetic answer as `run`: the eval has no execution backend, and a
+		// hard "not available" here would derail a thread that reasonably reaches
+		// for a step run.
+		async runStep(workflowId, nodeName) {
+			return {
+				executionId: 'eval-exec-' + nanoid(),
+				status: 'success' as const,
+				nodeName,
+				inputMode: 'chain' as const,
+				mockedNodeNames: [],
+				data: { __eval_synthetic_step__: [{ workflowId, nodeName }] },
+				startedAt: new Date().toISOString(),
+				finishedAt: new Date().toISOString(),
+			};
+		},
 		async getStatus() {
 			return stubExecutionResult('stub: execution disabled in eval');
 		},

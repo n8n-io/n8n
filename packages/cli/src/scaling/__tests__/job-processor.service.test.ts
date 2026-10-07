@@ -1,5 +1,6 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
@@ -9,7 +10,7 @@ import type {
 	BinaryDataService,
 	InstanceSettings,
 } from 'n8n-core';
-import { ExternalSecretsProxy, StructuredToolkit } from 'n8n-core';
+import { ENCODED_BUFFER_KEY, ExternalSecretsProxy, StructuredToolkit } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
@@ -38,7 +39,6 @@ import { z } from 'zod';
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
@@ -52,7 +52,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
-import { ENCODED_BUFFER_KEY, WebhookResponseRelay } from '../webhook-response-relay';
+import { WebhookResponseRelay } from '../webhook-response-relay';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {

@@ -28,20 +28,34 @@ export async function handleMissingSimulationPlan(args: {
 	workflowTaskService: WorkflowTaskService;
 	workflowId: string;
 }): Promise<VerifyBuiltWorkflowOutput> {
-	const { input, context, workflowTaskService, workflowId } = args;
 	const guidance =
 		'Verification was not run because the build outcome has no simulation plan. ' +
 		'Rebuild or resubmit the workflow so destructive nodes can be classified before verification.';
+	return await handleBlockedVerification({ ...args, reason: 'missing_simulation_plan', guidance });
+}
+
+export async function handleBlockedVerification(args: {
+	input: ResolvedVerifyInput;
+	context: OrchestrationContext;
+	workflowTaskService: WorkflowTaskService;
+	workflowId: string;
+	reason: string;
+	guidance: string;
+	nodesNotReached?: string[];
+}): Promise<VerifyBuiltWorkflowOutput> {
+	const { input, context, workflowTaskService, workflowId, reason, guidance, nodesNotReached } =
+		args;
 	const remediation = createRemediation({
 		category: 'blocked',
 		shouldEdit: false,
-		reason: 'missing_simulation_plan',
+		reason,
 		guidance,
 	});
-	context.logger.warn(
-		'verify-built-workflow: build outcome has no simulation plan — refusing to run without simulation safeguards',
-		{ workItemId: input.workItemId, workflowId },
-	);
+	context.logger.warn('verify-built-workflow: preflight blocked verification', {
+		workItemId: input.workItemId,
+		workflowId,
+		reason,
+	});
 	try {
 		await workflowTaskService.updateBuildOutcome(input.workItemId, {
 			remediation,
@@ -49,8 +63,8 @@ export async function handleMissingSimulationPlan(args: {
 				attempted: true,
 				success: false,
 				status: 'unknown',
-				failureSignature: 'missing_simulation_plan',
-				evidence: { errorMessage: guidance },
+				failureSignature: reason,
+				evidence: { errorMessage: guidance, nodesNotReached },
 				verifiedAt: new Date().toISOString(),
 			},
 		});
@@ -63,7 +77,7 @@ export async function handleMissingSimulationPlan(args: {
 			runId: context.runId,
 			workflowId,
 			verdict: 'failed_terminal',
-			failureSignature: 'missing_simulation_plan',
+			failureSignature: reason,
 			diagnosis: guidance,
 			remediation,
 			summary: guidance,
@@ -80,6 +94,10 @@ export async function handleMissingSimulationPlan(args: {
 		resolvedWorkItemId: input.workItemId,
 		status: 'unknown',
 		error: guidance,
+		nodesNotReached,
+		coverageNote: nodesNotReached?.length
+			? 'Verification did not run. All listed nodes remain unverified.'
+			: undefined,
 		remediation,
 		guidance,
 	};

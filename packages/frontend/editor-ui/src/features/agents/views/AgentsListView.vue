@@ -24,10 +24,9 @@ import {
 import { upsertProjectAgentsListCache } from '../composables/useProjectAgentsList';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useCreateAgent } from '../composables/useCreateAgent';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import AgentCard from '../components/AgentCard.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
@@ -54,6 +53,7 @@ const projectPages = useProjectPages();
 const uiStore = useUIStore();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 const { callDebounced } = useDebounce();
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
@@ -231,10 +231,8 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 }
 
 function onCreateAgentClick() {
-	const agentId = generateNanoId();
-	agentTelemetry.trackClickedNewAgent('button', agentId);
 	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id ?? '';
-	void router.push(instanceAiCreateAgentRoute(targetProjectId, agentId));
+	createAgent('button', targetProjectId);
 }
 
 onMounted(async () => {

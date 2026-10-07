@@ -19,12 +19,19 @@ export class TagListPublicDto extends Z.class({
 	nextCursor: z.string().nullable(),
 }) {}
 
-export class CreateTagPublicDto extends Z.class(
-	{
-		id: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.id),
-		name: z.string().openapi(tagFieldDocs.name),
-		createdAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.createdAt),
-		updatedAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.updatedAt),
-	},
-	{ strict: true },
-) {}
+const tagWritePublicShape = {
+	id: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.id),
+	name: z.string().openapi(tagFieldDocs.name),
+	createdAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.createdAt),
+	updatedAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.updatedAt),
+};
+
+export class CreateTagPublicDto extends Z.class(tagWritePublicShape, { strict: true }) {}
+
+export class UpdateTagPublicDto extends Z.class(tagWritePublicShape, { strict: true }) {}
+
+export class UpdatedTagPublicDto extends Z.class({
+	...tagPublicSchema.shape,
+	createdAt: tagPublicSchema.shape.createdAt.optional(),
+	updatedAt: tagPublicSchema.shape.updatedAt.optional(),
+}) {}

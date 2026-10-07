@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
@@ -8,9 +8,10 @@ import type {
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
 		initialized: boolean;
@@ -20,18 +21,32 @@ withDefaults(
 		localConfig: AgentJsonConfig | null;
 		connectedTriggers: string[];
 		effectiveSessionId?: string;
+		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
+		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
-	{ visible: true, layout: 'dock' },
+	{
+		visible: true,
+		newSession: false,
+		layout: 'dock',
+		dismissedFixToolCallIds: () => [],
+		budgetCards: false,
+		increaseBudget: undefined,
+	},
 );
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const inputDraft = ref('');
@@ -45,7 +60,20 @@ function getConversationMarkdown(): string {
 	return chatPanel.value?.getConversationMarkdown() ?? '';
 }
 
-defineExpose({ focusInput, getConversationMarkdown });
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	chatPanel.value?.clearBudgetStops(fields);
+}
+
+watch(
+	[() => props.initialPrompt, chatPanel],
+	([prompt, panel]) => {
+		if (!prompt || !panel) return;
+		panel.sendMessageFromOutside(prompt);
+	},
+	{ immediate: true, flush: 'post' },
+);
+
+defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 </script>
 
 <template>
@@ -66,12 +94,18 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:background-jobs-active="visible"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
+				:new-session="newSession"
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
 				:can-send-to-assistant="canSendToAssistant"
+				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 				:before-send="beforeSend"
+				:budget-cards="budgetCards"
+				:increase-budget="increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@session-created="emit('session-created', $event)"
+				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>

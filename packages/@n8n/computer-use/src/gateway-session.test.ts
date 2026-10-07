@@ -14,17 +14,25 @@ function makeStore(
 		allow: Record<string, string[]>;
 		deny: Record<string, string[]>;
 	}> = {},
-): Mocked<Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>> {
+): Mocked<
+	Pick<
+		SettingsStore,
+		'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'claimUnscopedRules' | 'flush'
+	>
+> {
 	return {
-		getResourcePermissions: vi.fn((toolGroup: ToolGroup) => ({
+		getResourcePermissions: vi.fn((_origin: string, toolGroup: ToolGroup) => ({
 			allow: overrides.allow?.[toolGroup] ?? [],
 			deny: overrides.deny?.[toolGroup] ?? [],
 		})),
 		alwaysAllow: vi.fn(),
 		alwaysDeny: vi.fn(),
+		claimUnscopedRules: vi.fn(),
 		flush: vi.fn().mockResolvedValue(undefined),
 	};
 }
+
+const ORIGIN = 'https://a.app.n8n.cloud';
 
 const FULL_ALLOW_PERMISSIONS = buildDefaultPermissions({
 	filesystemRead: 'allow',
@@ -78,6 +86,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/home/user' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.dir).toBe('/home/user');
 			expect(session.getAllPermissions()).toEqual(FULL_ALLOW_PERMISSIONS);
@@ -89,6 +98,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: defaults, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			defaults.shell = 'deny';
 			expect(session.getAllPermissions().shell).toBe('allow');
@@ -101,6 +111,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			session.setPermissions({ ...FULL_ALLOW_PERMISSIONS, shell: 'deny' });
 			expect(session.getAllPermissions().shell).toBe('deny');
@@ -111,6 +122,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/old' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			session.setDir('/new');
 			expect(session.dir).toBe('/new');
@@ -127,6 +139,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ASK_PERMISSIONS, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.getGroupMode('filesystemRead')).toBe('ask');
 			expect(session.getGroupMode('shell')).toBe('ask');
@@ -143,6 +156,7 @@ describe('GatewaySession', () => {
 					dir: '/',
 				},
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.getGroupMode('filesystemWrite')).toBe('deny');
 		});
@@ -155,6 +169,7 @@ describe('GatewaySession', () => {
 					dir: '/',
 				},
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.getGroupMode('filesystemWrite')).toBe('allow');
 		});
@@ -170,6 +185,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.check('shell', 'rm -rf /')).toBe('deny');
 		});
@@ -182,6 +198,7 @@ describe('GatewaySession', () => {
 					dir: '/',
 				},
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.check('browser', 'example.com')).toBe('allow');
 		});
@@ -194,6 +211,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.check('shell', 'npm')).toBe('deny');
 		});
@@ -203,6 +221,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			session.allowForSession('shell', 'npm');
 			expect(session.check('shell', 'npm')).toBe('allow');
@@ -213,6 +232,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			expect(session.check('shell', 'npm')).toBe('ask');
 		});
@@ -223,6 +243,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('browser', 'credentials', 'credential-write')).toBe('ask');
 				// The group mode still covers ordinary domains.
@@ -234,6 +255,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('browser', 'credentials', 'host')).toBe('allow');
 			});
@@ -243,6 +265,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('browser', 'credentials')).toBe('allow');
 			});
@@ -252,6 +275,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				session.allowForSession('browser', 'credentials');
 				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
@@ -262,6 +286,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
 			});
@@ -271,6 +296,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('browser', 'credentials', 'credential-write')).toBe('deny');
 			});
@@ -285,6 +311,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('filesystemWrite', settingsFile)).toBe('deny');
 			});
@@ -294,6 +321,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('filesystemWrite', settingsDir)).toBe('deny');
 			});
@@ -303,6 +331,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('filesystemRead', settingsFile)).toBe('deny');
 			});
@@ -312,6 +341,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('filesystemWrite', settingsFile)).toBe('deny');
 			});
@@ -321,6 +351,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('filesystemWrite', '/tmp/unrelated.json')).toBe('allow');
 			});
@@ -330,6 +361,7 @@ describe('GatewaySession', () => {
 				const session = new GatewaySession(
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
+					ORIGIN,
 				);
 				expect(session.check('shell', settingsFile)).toBe('allow');
 			});
@@ -346,6 +378,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			session.allowForSession('shell', 'npm');
 			expect(session.check('shell', 'npm')).toBe('allow');
@@ -358,6 +391,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: buildDefaultPermissions({ shell: 'ask', browser: 'ask' }), dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			session.allowForSession('shell', 'npm');
 			expect(session.check('browser', 'npm')).toBe('ask');
@@ -374,9 +408,10 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			session.alwaysAllow('shell', 'npm');
-			expect(store.alwaysAllow).toHaveBeenCalledWith('shell', 'npm');
+			expect(store.alwaysAllow).toHaveBeenCalledWith(ORIGIN, 'shell', 'npm');
 		});
 
 		it('delegates alwaysDeny to the settings store', () => {
@@ -384,9 +419,21 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			session.alwaysDeny('shell', 'rm -rf /');
-			expect(store.alwaysDeny).toHaveBeenCalledWith('shell', 'rm -rf /');
+			expect(store.alwaysDeny).toHaveBeenCalledWith(ORIGIN, 'shell', 'rm -rf /');
+		});
+
+		it('delegates claimUnscopedRules to the settings store with its origin', () => {
+			const store = makeStore();
+			const session = new GatewaySession(
+				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+				store as unknown as SettingsStore,
+				ORIGIN,
+			);
+			session.claimUnscopedRules();
+			expect(store.claimUnscopedRules).toHaveBeenCalledWith(ORIGIN);
 		});
 
 		it('delegates flush to the settings store', async () => {
@@ -394,6 +441,7 @@ describe('GatewaySession', () => {
 			const session = new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 				store as unknown as SettingsStore,
+				ORIGIN,
 			);
 			await session.flush();
 			expect(store.flush).toHaveBeenCalled();
@@ -409,6 +457,7 @@ describe('GatewaySession', () => {
 			return new GatewaySession(
 				{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 				makeStore() as unknown as SettingsStore,
+				ORIGIN,
 			);
 		}
 

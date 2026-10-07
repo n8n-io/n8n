@@ -15,12 +15,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, test } from 'node:test';
 
-import {
-	downloadReleaseAsset,
-	installAgentHarness,
-	sha256File,
-	validateLock,
-} from './agent-harness.mjs';
+import { downloadReleaseAsset, installAgentHarness, validateLock } from './agent-harness.mjs';
 
 const temporaryDirectories = [];
 
@@ -46,14 +41,13 @@ function makeAsset(root, version = '1.2.3') {
 	return asset;
 }
 
-function writeLock(root, asset, overrides = {}) {
+function writeLock(root, overrides = {}) {
 	const version = '1.2.3';
 	const lock = {
 		repository: 'n8n-io/cat-bot',
 		releaseTag: `harness-v${version}`,
 		version,
 		assetName: `n8n-opencode-harness-${version}.tgz`,
-		sha256: sha256File(asset),
 		...overrides,
 	};
 	const lockPath = join(root, 'agent-harness.lock.json');
@@ -78,7 +72,6 @@ test('validates the pinned release values', () => {
 		releaseTag: 'harness-v1.2.3',
 		version: '1.2.3',
 		assetName: 'n8n-opencode-harness-1.2.3.tgz',
-		sha256: 'a'.repeat(64),
 	};
 	assert.equal(validateLock(lock), lock);
 	for (const invalid of [
@@ -86,18 +79,17 @@ test('validates the pinned release values', () => {
 		{ releaseTag: 'latest' },
 		{ version: '../outside' },
 		{ assetName: 'other.tgz' },
-		{ sha256: 'invalid' },
 	]) {
 		assert.throws(() => validateLock({ ...lock, ...invalid }), /lock is invalid/);
 	}
 });
 
-test('installs the verified release and activates its plugin', () => {
+test('installs the pinned release and activates its plugin', () => {
 	const root = fixtureDirectory();
 	const asset = makeAsset(root);
 	const result = installAgentHarness({
 		...installerPaths(root),
-		lockPath: writeLock(root, asset),
+		lockPath: writeLock(root),
 		download: copyAsset(asset),
 	});
 
@@ -115,7 +107,7 @@ test('reuses an installed release without downloading it again', () => {
 	const asset = makeAsset(root);
 	const options = {
 		...installerPaths(root),
-		lockPath: writeLock(root, asset),
+		lockPath: writeLock(root),
 		download: copyAsset(asset),
 	};
 	installAgentHarness(options);
@@ -127,7 +119,7 @@ test('reuses an installed release without downloading it again', () => {
 	assert.equal(result.cacheHit, true);
 });
 
-test('keeps the active plugin when verification fails', () => {
+test('keeps the active plugin when installation fails', () => {
 	const root = fixtureDirectory();
 	const asset = makeAsset(root);
 	const paths = installerPaths(root);
@@ -140,10 +132,13 @@ test('keeps the active plugin when verification fails', () => {
 		() =>
 			installAgentHarness({
 				...paths,
-				lockPath: writeLock(root, asset, { sha256: '0'.repeat(64) }),
+				lockPath: writeLock(root),
 				download: copyAsset(asset),
+				extract: () => {
+					throw new Error('extraction failed');
+				},
 			}),
-		/checksum mismatch/,
+		/extraction failed/,
 	);
 	assert.equal(readlinkSync(paths.pluginLink), previous);
 });
@@ -159,7 +154,7 @@ test('does not overwrite a user plugin file', () => {
 		() =>
 			installAgentHarness({
 				...paths,
-				lockPath: writeLock(root, asset),
+				lockPath: writeLock(root),
 				download: copyAsset(asset),
 			}),
 		/non-symlink path/,

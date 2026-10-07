@@ -1,8 +1,6 @@
+import type { ObservationLogMarker, ObservationLogStatus } from '@n8n/agents';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
-
-export type ObservationMarker = 'critical' | 'important' | 'info' | 'completion';
-export type ObservationStatus = 'active' | 'superseded' | 'dropped';
 
 @Entity({ name: 'agents_observations' })
 @Index(['agentId', 'observationScopeId', 'status', 'createdAt', 'id'])
@@ -18,7 +16,7 @@ export class AgentObservationEntity extends WithTimestampsAndStringId {
 	observationScopeId: string;
 
 	@Column({ type: 'varchar', length: 16 })
-	marker: ObservationMarker;
+	marker: ObservationLogMarker;
 
 	@Column({ type: 'text' })
 	text: string;
@@ -30,7 +28,7 @@ export class AgentObservationEntity extends WithTimestampsAndStringId {
 	tokenCount: number;
 
 	@Column({ type: 'varchar', length: 16 })
-	status: ObservationStatus;
+	status: ObservationLogStatus;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	supersededBy: string | null;

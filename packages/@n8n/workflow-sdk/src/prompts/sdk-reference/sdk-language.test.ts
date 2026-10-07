@@ -1,11 +1,6 @@
 import { GROUP_DESCRIPTION_MAX_LENGTH, NODE_GROUPING_RULES } from 'n8n-workflow';
 
-import {
-	GROUPING_GUIDANCE,
-	NODE_GROUPS_REFERENCE,
-	SDK_LANGUAGE_REFERENCE,
-	buildSdkLanguageReference,
-} from './sdk-language';
+import { GROUPING_GUIDANCE, NODE_GROUPS_REFERENCE, SDK_LANGUAGE_REFERENCE } from './sdk-language';
 import {
 	SDK_METHODS,
 	FORBIDDEN_NODE_TYPES,
@@ -104,23 +99,6 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 		expect(SDK_LANGUAGE_REFERENCE).toContain(
 			'n8n expressions (`{{ ... }}`) run full JavaScript at runtime',
 		);
-	});
-});
-
-describe('buildSdkLanguageReference', () => {
-	it('includes the groups docs by default', () => {
-		expect(buildSdkLanguageReference()).toBe(buildSdkLanguageReference({ includeGroups: true }));
-		expect(buildSdkLanguageReference()).toContain(NODE_GROUPS_REFERENCE);
-	});
-
-	it('omits only the groups docs when includeGroups is false', () => {
-		const withoutGroups = buildSdkLanguageReference({ includeGroups: false });
-
-		expect(withoutGroups).not.toContain('## Node groups');
-		// The rest of the reference is intact.
-		expect(withoutGroups).toContain('restricted subset of TypeScript');
-		expect(withoutGroups).toContain('## Forbidden constructs');
-		expect(withoutGroups).toContain('## Where to put runtime logic');
 	});
 });
 

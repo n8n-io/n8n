@@ -176,6 +176,7 @@ describe('unsupportedMcpBuildSetupFields', () => {
 					workflows: [],
 					dataTables: [],
 					agents: [],
+					folders: [],
 					projects: [],
 				},
 			},

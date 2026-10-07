@@ -1,8 +1,19 @@
 import { defineStore } from 'pinia';
-import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
+import {
+	ref,
+	computed,
+	effectScope,
+	inject,
+	provide,
+	shallowReactive,
+	type EffectScope,
+	type InjectionKey,
+} from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { i18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	UNLIMITED_CREDITS,
 	type InstanceAiThreadHistoryResponse,
@@ -27,7 +38,11 @@ import {
 	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
-import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import {
+	createThreadRuntime,
+	type OnboardingExitOutcome,
+	type ThreadRuntime,
+} from './instanceAi.threadRuntime';
 import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
@@ -66,6 +81,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
+	// Detached scopes owning each runtime's watchers. The runtime must outlive the
+	// component that created it: a Suspense duplicate of the thread view can create
+	// it in setup and be discarded, and a component scope would take the watchers
+	// (e.g. the resource registry) down with it.
+	const runtimeScopes = new Map<string, EffectScope>();
 	const runtimeHooks = {
 		onTitleUpdated: (threadId, title) => {
 			for (const thread of localThreadEntries(threadId)) thread.title = title;
@@ -75,14 +95,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			void loadThreads();
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
+		onOnboardingLeft: leaveOnboarding,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
 		const existingRuntime = runtimes.get(threadId);
 		if (existingRuntime) return existingRuntime;
 
-		const runtime = createThreadRuntime(threadId, runtimeHooks, projectId);
+		const scope = effectScope(true);
+		const runtime = scope.run(() => createThreadRuntime(threadId, runtimeHooks, projectId));
+		if (!runtime) throw new Error('Failed to create thread runtime');
 		runtimes.set(threadId, runtime);
+		runtimeScopes.set(threadId, scope);
 		return runtime;
 	}
 
@@ -95,6 +119,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		if (!runtime) return;
 
 		runtime.dispose();
+		runtimeScopes.get(threadId)?.stop();
+		runtimeScopes.delete(threadId);
 		runtimes.delete(threadId);
 	}
 
@@ -370,9 +396,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		threadId: string,
 		metadata: Record<string, unknown>,
 	): Promise<void> {
-		// Optimistic update
-		const thread = threads.value.find((t) => t.id === threadId);
-		if (thread) {
+		// Optimistic update, on every local copy
+		for (const thread of localThreadEntries(threadId)) {
 			thread.metadata = { ...thread.metadata, ...metadata };
 		}
 
@@ -411,6 +436,38 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const clearCanvasSelectionRequest = ref(0);
 	function requestClearCanvasSelection(): void {
 		clearCanvasSelectionRequest.value++;
+	}
+
+	// ponytail: the exits of this session, so a thread-list refresh that races the metadata write
+	// (`onRunFinish` reloads the list on the same event as the `run_failed` exit) cannot hide the
+	// chrome again.
+	const leftOnboardingThreadIds = new Set<string>();
+	/** An onboarding thread hides the host chrome (chat header, sidebar, artifacts) until the user leaves it. */
+	function isOnboardingChromeHidden(threadId: string): boolean {
+		return (
+			!leftOnboardingThreadIds.has(threadId) &&
+			localThreadEntries(threadId).some(
+				(t) => t.metadata?.source === 'onboarding' && !t.metadata.onboardingLeft,
+			)
+		);
+	}
+	/** The exit lives in thread metadata, so a reload keeps it. Idempotent. */
+	function leaveOnboarding(
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+	): void {
+		if (!isOnboardingChromeHidden(threadId)) return;
+		leftOnboardingThreadIds.add(threadId);
+		updateThreadMetadata(threadId, { onboardingLeft: true }).catch((error: unknown) => {
+			toast.showError(error, i18n.baseText('generic.error'));
+		});
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: threadId,
+			instance_id: rootStore.instanceId,
+			outcome,
+			leave_reason: leaveReason ?? null,
+		});
 	}
 
 	return {
@@ -454,6 +511,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		composerFocusRequest,
 		requestComposerFocus,
 		clearCanvasSelectionRequest,
+		isOnboardingChromeHidden,
+		leaveOnboarding,
 		requestClearCanvasSelection,
 	};
 });

@@ -50,6 +50,24 @@ check_not() {
 
 env_value() { sed -n "s/^$2=//p" "$1/.env"; }
 
+# The sandbox service pin the script writes to .env and expects in compose.yml.
+SANDBOX_PIN="$(sed -n 's/^SANDBOX_VERSION="\(.*\)"$/\1/p' "$SCRIPT")"
+
+# Recreates what stack definition v1 wrote: fixed sandbox image tags and an
+# http runner URL. Installs made from it need the --upgrade migration.
+# shellcheck disable=SC2016  # matches the literal ${N8N_SANDBOX_VERSION}
+legacy_compose() { # legacy_compose <compose-file>  (stdout)
+	sed -e 's|n8n-sandbox-service-api:\${N8N_SANDBOX_VERSION}|n8n-sandbox-service-api:1.2.0|' \
+		-e 's|n8n-sandbox-service-runner-dind:\${N8N_SANDBOX_VERSION}|n8n-sandbox-service-runner-dind:1.2.0|' \
+		-e 's|n8n-sandbox-service-sandbox:\${N8N_SANDBOX_VERSION}|n8n-sandbox-service-sandbox:latest|' \
+		-e 's|SANDBOX_RUNNER_HTTP_BASE_URL: https://|SANDBOX_RUNNER_HTTP_BASE_URL: http://|' \
+		-e 's|^# compose-version: .*|# compose-version: 1|' "$1"
+}
+# A v1 install also has no N8N_SANDBOX_VERSION line in .env.
+strip_sandbox_pin() { # strip_sandbox_pin <install-dir>
+	grep -v '^N8N_SANDBOX_VERSION=' "$1/.env" >"$1/.env.v1" && mv "$1/.env.v1" "$1/.env"
+}
+
 teardown() {
 	[ -f "$1/compose.yml" ] && docker compose -f "$1/compose.yml" down -v --remove-orphans >/dev/null 2>&1
 	return 0
@@ -82,6 +100,16 @@ case "$(env_value "$WORK/a" N8N_VERSION)" in
 [0-9]*.[0-9]*) pass "default install resolves a sane n8n version" ;;
 *) fail "default install resolves a sane n8n version" ;;
 esac
+
+# sandbox images follow one pin in .env; compose.yml carries no tags of its own
+[ -n "$SANDBOX_PIN" ] && [ "$(env_value "$WORK/a" N8N_SANDBOX_VERSION)" = "$SANDBOX_PIN" ] &&
+	pass "install pins N8N_SANDBOX_VERSION to the script's pin" || fail "install pins N8N_SANDBOX_VERSION to the script's pin"
+check_not "compose.yml hard-codes no sandbox image tag" grep -E 'n8n-sandbox-service-[a-z-]+:[0-9a-z]' "$WORK/a/compose.yml"
+resolved="$(docker compose -f "$WORK/a/compose.yml" config 2>/dev/null)"
+for img in api runner-dind sandbox; do
+	echo "$resolved" | grep -q "n8n-sandbox-service-${img}:${SANDBOX_PIN}\$" &&
+		pass "compose resolves the ${img} image to the sandbox pin" || fail "compose resolves the ${img} image to the sandbox pin"
+done
 
 api_key="$(env_value "$WORK/a" SANDBOX_API_KEYS)"
 runner_key="$(env_value "$WORK/a" SANDBOX_RUNNER_API_KEYS)"
@@ -144,6 +172,46 @@ stage_out="$(env N8N_DIR="$WORK/stage" sh "$SCRIPT" --upgrade --version 2.32.0 -
 	fail "--upgrade --no-start updates the pin"
 echo "$stage_out" | grep -q "Not restarting" && pass "--upgrade --no-start skips the restart" ||
 	fail "--upgrade --no-start skips the restart"
+
+# --upgrade migrates a v1 install: the pin moves into .env, compose.yml loses
+# its hard-coded tags and otherwise stays as it was.
+legacy_compose "$COMPOSE_SRC" >"$WORK/legacy-compose.yml"
+env N8N_DIR="$WORK/legacy" N8N_COMPOSE_URL="$WORK/legacy-compose.yml" sh "$SCRIPT" --version 2.31.4 --no-start >/dev/null 2>&1
+strip_sandbox_pin "$WORK/legacy"
+check "v1 install fixture has hard-coded sandbox tags" grep -q 'n8n-sandbox-service-api:1.2.0' "$WORK/legacy/compose.yml"
+legacy_out="$(env N8N_DIR="$WORK/legacy" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start 2>&1)" &&
+	pass "--upgrade --no-start on a v1 install succeeds" || fail "--upgrade --no-start on a v1 install succeeds"
+echo "$legacy_out" | grep -q 'sandbox service images pinned to fixed tags' &&
+	pass "--upgrade tells the user the fixed sandbox tags were replaced" ||
+	fail "--upgrade tells the user the fixed sandbox tags were replaced"
+echo "$legacy_out" | grep -q 'runner URL now uses https' &&
+	pass "--upgrade tells the user the runner URL changed" || fail "--upgrade tells the user the runner URL changed"
+[ "$(env_value "$WORK/legacy" N8N_SANDBOX_VERSION)" = "$SANDBOX_PIN" ] &&
+	pass "--upgrade adds N8N_SANDBOX_VERSION to a v1 .env" || fail "--upgrade adds N8N_SANDBOX_VERSION to a v1 .env"
+check_not "--upgrade removes hard-coded sandbox tags" grep -E 'n8n-sandbox-service-[a-z-]+:[0-9a-z]' "$WORK/legacy/compose.yml"
+grep -q 'SANDBOX_RUNNER_HTTP_BASE_URL: https://sandbox-runner-1:8080' "$WORK/legacy/compose.yml" &&
+	pass "--upgrade switches the runner URL to https" || fail "--upgrade switches the runner URL to https"
+grep -v '^#' "$WORK/legacy/compose.yml" >"$WORK/migrated.stripped"
+grep -v '^#' "$COMPOSE_SRC" >"$WORK/current.stripped"
+cmp -s "$WORK/migrated.stripped" "$WORK/current.stripped" &&
+	pass "migrated v1 compose.yml matches the current stack definition" ||
+	fail "migrated v1 compose.yml matches the current stack definition"
+check "migrated compose.yml validates" docker compose -f "$WORK/legacy/compose.yml" config -q
+cp "$WORK/legacy/compose.yml" "$WORK/legacy-compose-migrated"
+second_out="$(env N8N_DIR="$WORK/legacy" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start 2>&1)" &&
+	pass "second --upgrade succeeds" || fail "second --upgrade succeeds"
+cmp -s "$WORK/legacy-compose-migrated" "$WORK/legacy/compose.yml" &&
+	pass "second --upgrade leaves a migrated compose.yml untouched" || fail "second --upgrade leaves a migrated compose.yml untouched"
+echo "$second_out" | grep -q 'Updated compose.yml' && fail "second --upgrade prints no compose.yml notice" ||
+	pass "second --upgrade prints no compose.yml notice"
+
+# images the user pointed elsewhere are not the script's to move
+# shellcheck disable=SC2016
+sed 's|ghcr.io/n8n-io/n8n-sandbox-service-api:${N8N_SANDBOX_VERSION}|docker.io/n8nio/n8n-sandbox-service-api:1.3.0|' \
+	"$COMPOSE_SRC" >"$WORK/custom-compose.yml"
+env N8N_DIR="$WORK/custom" N8N_COMPOSE_URL="$WORK/custom-compose.yml" sh "$SCRIPT" --version 2.31.4 --no-start >/dev/null 2>&1
+check "--upgrade with user-chosen images succeeds" env N8N_DIR="$WORK/custom" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start
+check "--upgrade leaves user-chosen sandbox images alone" grep -q 'docker.io/n8nio/n8n-sandbox-service-api:1.3.0' "$WORK/custom/compose.yml"
 
 # refuses non-empty foreign directory
 mkdir -p "$WORK/dirty" && touch "$WORK/dirty/keep"
@@ -236,8 +304,10 @@ if [ "$E2E" -eq 1 ]; then
 	E2E_DIR="$WORK/e2e"
 	trap 'teardown "$E2E_DIR"; rm -rf "$WORK"' EXIT INT TERM
 
-	# install the previous release so --upgrade below is a real version change
-	if env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --version 2.31.4; then
+	# install the previous release from stack definition v1, so --upgrade below
+	# is a real n8n version change and a real sandbox migration (1.2.0 + http)
+	legacy_compose "$COMPOSE_SRC" >"$WORK/e2e-legacy-compose.yml"
+	if env N8N_DIR="$E2E_DIR" N8N_COMPOSE_URL="$WORK/e2e-legacy-compose.yml" sh "$SCRIPT" --version 2.31.4; then
 		pass "fresh install boots and reaches /healthz"
 	else
 		fail "fresh install boots and reaches /healthz"
@@ -245,6 +315,7 @@ if [ "$E2E" -eq 1 ]; then
 		docker compose -f "$E2E_DIR/compose.yml" logs --tail 30 || true
 	fi
 
+	strip_sandbox_pin "$E2E_DIR"
 	ps_out="$(docker compose -f "$E2E_DIR/compose.yml" ps -a --format '{{.Service}} {{.State}} {{.ExitCode}}')"
 	echo "$ps_out" | grep -q '^sandbox-certs exited 0' && pass "sandbox-certs completed" || fail "sandbox-certs completed"
 	echo "$ps_out" | grep -q '^sandbox-api running' && pass "sandbox-api running" || fail "sandbox-api running"
@@ -264,23 +335,33 @@ if [ "$E2E" -eq 1 ]; then
 
 	check_not "fresh install fails while port is taken" env N8N_DIR="$WORK/conflict" sh "$SCRIPT"
 
-	# upgrade: only the N8N_VERSION line may change, and the new image must run.
+	# upgrade: only the version lines may change, and the new images must run.
 	# Pin the target explicitly so the assertion is deterministic (a bare
 	# --upgrade resolves the latest stable release at run time).
 	target="$(sed -n 's/^FALLBACK_N8N_VERSION="\(.*\)"$/\1/p' "$SCRIPT")"
 	cp "$E2E_DIR/.env" "$WORK/env-before"
 	check "--upgrade succeeds" env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --upgrade --version "$target"
 	diff "$WORK/env-before" "$E2E_DIR/.env" >"$WORK/env.diff" 2>&1 || true
-	if [ "$(grep -c '^[<>]' "$WORK/env.diff")" = "2" ] &&
+	if [ "$(grep -c '^[<>]' "$WORK/env.diff")" = "3" ] &&
 		grep -q '^< N8N_VERSION=2.31.4$' "$WORK/env.diff" &&
-		grep -q "^> N8N_VERSION=${target}\$" "$WORK/env.diff"; then
-		pass "--upgrade changes only N8N_VERSION"
+		grep -q "^> N8N_VERSION=${target}\$" "$WORK/env.diff" &&
+		grep -q "^> N8N_SANDBOX_VERSION=${SANDBOX_PIN}\$" "$WORK/env.diff"; then
+		pass "--upgrade changes only the version lines in .env"
 	else
-		fail "--upgrade changes only N8N_VERSION"
+		fail "--upgrade changes only the version lines in .env"
 		cat "$WORK/env.diff" >&2
 	fi
 	docker compose -f "$E2E_DIR/compose.yml" ps n8n --format '{{.Image}}' | grep -q ":${target}\$" &&
 		pass "n8n container runs upgraded image" || fail "n8n container runs upgraded image"
+	for svc in sandbox-api sandbox-runner-1; do
+		docker compose -f "$E2E_DIR/compose.yml" ps "$svc" --format '{{.Image}}' | grep -q ":${SANDBOX_PIN}\$" &&
+			pass "${svc} runs the pinned sandbox image after upgrade" || fail "${svc} runs the pinned sandbox image after upgrade"
+	done
+	docker compose -f "$E2E_DIR/compose.yml" logs sandbox-runner-1 2>/dev/null |
+		grep -q 'registration stream established' &&
+		pass "runner re-registered after upgrade" || fail "runner re-registered after upgrade"
+	check "n8n reaches sandbox-api after upgrade" \
+		docker compose -f "$E2E_DIR/compose.yml" exec -T n8n wget -qO- http://sandbox-api:8080/healthz
 else
 	trap 'rm -rf "$WORK"' EXIT INT TERM
 	echo "(e2e skipped — pass --e2e to boot the full stack)"

@@ -7,6 +7,7 @@ import ProjectIcon from './ProjectIcon.vue';
 import { N8nAvatar } from '@n8n/design-system';
 type Props = {
 	project: ProjectListItem | ProjectSharingData;
+	subtitle?: string;
 };
 
 const props = defineProps<Props>();
@@ -38,7 +39,7 @@ const projectIcon = computed(() => {
 				<p v-if="processedName.firstName || processedName.lastName">
 					{{ processedName.firstName }} {{ processedName.lastName }}
 				</p>
-				<small>{{ processedName.email }}</small>
+				<small>{{ props.subtitle ?? processedName.email }}</small>
 			</div>
 		</div>
 		<slot></slot>

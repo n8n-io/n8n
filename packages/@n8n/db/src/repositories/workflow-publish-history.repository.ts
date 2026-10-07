@@ -28,15 +28,14 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		});
 	}
 
-	async getPublishedVersions(
-		workflowId: string,
-	): Promise<Array<Pick<WorkflowPublishHistory, 'versionId'>>> {
-		return await this.manager
-			.createQueryBuilder(WorkflowPublishHistory, 'wph')
-			.select('wph.versionId')
-			.distinct(true)
-			.where('wph.workflowId = :workflowId', { workflowId })
-			.getMany();
+	/**
+	 * Returns the events of one version, oldest first. Use this method, not a
+	 * join on the `workflowPublishHistory` relation. A join repeats the nodes
+	 * JSON of the version for each event, and a version can have many events.
+	 */
+	async findByVersion(workflowId: string, versionId: string, trx?: EntityManager) {
+		const repository = trx ? trx.getRepository(WorkflowPublishHistory) : this;
+		return await repository.find({ where: { workflowId, versionId }, order: { id: 'ASC' } });
 	}
 
 	async findActivatedByUserId(workflowId: string): Promise<string | undefined> {
@@ -46,5 +45,38 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			order: { createdAt: 'DESC' },
 		});
 		return record?.userId ?? undefined;
+	}
+
+	/**
+	 * Who published the workflow's currently active version, so a triggered run
+	 * can be attributed to them.
+	 *
+	 * Prefers the activation of `versionId`: republishing an older version means
+	 * the most recent activation is not necessarily the live one. Only when that
+	 * version has no activation at all does it fall back to the latest activation
+	 * of any version, which covers a version whose history row was pruned.
+	 *
+	 * Returns `undefined` when the publisher was deleted (the FK nulls the
+	 * column) or the workflow never recorded an activation.
+	 */
+	async findPublisherUserId(
+		workflowId: string,
+		versionId?: string | null,
+	): Promise<string | undefined> {
+		if (versionId) {
+			const forVersion = await this.findOne({
+				// `id` keeps the row distinguishable from no row at all: selecting only
+				// a null column makes TypeORM hydrate the result as `null`.
+				select: ['id', 'userId'],
+				where: { workflowId, versionId, event: 'activated' },
+				order: { createdAt: 'DESC' },
+			});
+			// An activation row answers the question on its own. A null column means
+			// the publisher was deleted, which is "nobody" — not "ask someone else",
+			// which would attribute the run to whoever published a different version.
+			if (forVersion) return forVersion.userId ?? undefined;
+		}
+
+		return await this.findActivatedByUserId(workflowId);
 	}
 }

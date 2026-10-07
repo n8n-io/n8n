@@ -22,6 +22,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		annotationTag: {},
 		user: {},
 		credential: {},
+		credentialTypePolicy: {},
 		variable: {},
 		projectVariable: {},
 		sourceControl: {},
@@ -63,6 +64,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		securitySettings: {},
 		roleMappingRule: {},
 		otel: {},
+		scim: {},
 	});
 
 	function addGlobalRole(role: Role) {

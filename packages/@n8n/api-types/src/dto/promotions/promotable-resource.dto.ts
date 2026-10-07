@@ -37,9 +37,50 @@ export const promotableResourceSchema = z.object({
 
 export type PromotableResource = z.infer<typeof promotableResourceSchema>;
 
+export const promotionChangesSchema = z.object({
+	commitSha: z.string().nullable(),
+	changes: promotableResourceSchema.array(),
+});
+
+export type PromotionChanges = z.infer<typeof promotionChangesSchema>;
+
+export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {}
+
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),
-	createBranch: z.boolean(),
+	// Optional here, unlike the required message on the full-instance promote.
+	commitMessage: z
+		.string()
+		.trim()
+		.min(1)
+		.max(1000)
+		.describe('Message for the promotion commit. A default is used when omitted.')
+		.optional(),
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;
+
+/** Request body for the project-scoped selective promote endpoint. */
+export class PromoteSelectionRequestDto extends Z.class(promoteRequestSchema.shape, {
+	strict: true,
+}) {}
+
+/** Meta.code on 400 responses when selective push includes cross-project moved workflows. */
+export const PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE =
+	'promotions-workflows-moved-cross-project' as const;
+
+export const promotionsWorkflowsMovedCrossProjectMetaSchema = z.object({
+	code: z.literal(PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE),
+	workflowIds: z.array(n8nIdSchema).min(1),
+});
+
+export type PromotionsWorkflowsMovedCrossProjectMeta = z.infer<
+	typeof promotionsWorkflowsMovedCrossProjectMetaSchema
+>;
+
+export function parsePromotionsWorkflowsMovedCrossProjectMeta(
+	meta: unknown,
+): PromotionsWorkflowsMovedCrossProjectMeta | undefined {
+	const parsed = promotionsWorkflowsMovedCrossProjectMetaSchema.safeParse(meta);
+	return parsed.success ? parsed.data : undefined;
+}

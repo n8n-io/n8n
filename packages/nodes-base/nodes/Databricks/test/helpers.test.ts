@@ -5,13 +5,18 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INode,
+	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { databricksApiRequest, readIdParameter } from '../actions/helpers';
-import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
+import {
+	databricksApiRequest,
+	fetchDatabricksPage,
+	getActiveCredentialType,
+	readIdParameter,
+} from '../actions/helpers';
 
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
@@ -86,8 +91,6 @@ describe('databricksApiRequest', () => {
 	});
 
 	it('should forward the credential type and bind the call to the passed context', async () => {
-		// `fetchResourcesInSchema` in methods/listSearch.ts passes a context object
-		// rather than `this`, so the receiver must come from the argument.
 		const loadOptionsContext = mock<ILoadOptionsFunctions>({
 			getNode: () => mock<INode>({ typeVersion: 1 }),
 			helpers: { httpRequestWithAuthentication },
@@ -101,27 +104,23 @@ describe('databricksApiRequest', () => {
 		expect(httpRequestWithAuthentication.mock.calls[0][0]).toBe('databricksOAuth2Api');
 		expect(httpRequestWithAuthentication.mock.instances[0]).toBe(loadOptionsContext);
 	});
+});
 
-	it('should track the integration version rather than the node typeVersion', async () => {
-		// A node instance pinned to an older typeVersion must still report the version
-		// of the integration that is actually running.
-		const staleContext = mock<IExecuteFunctions>({
-			getNode: () => mock<INode>({ typeVersion: 0.1 }),
-			helpers: { httpRequestWithAuthentication },
-		});
+describe('getActiveCredentialType', () => {
+	it('should read the authentication parameter of the given item on an execute context', () => {
+		const context = mock<IExecuteFunctions>({ getInputData: vi.fn() });
+		context.getNodeParameter.mockReturnValue('oAuth2');
 
-		await databricksApiRequest(staleContext, 'databricksApi', {
-			method: 'GET',
-			url: 'https://example.databricks.com/api/2.1/unity-catalog/catalogs',
-		});
-
-		expect(capturedOptions().headers).toEqual({
-			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
-		});
+		expect(getActiveCredentialType(context, 2)).toBe('databricksOAuth2Api');
+		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 2, 'accessToken');
 	});
 
-	it('should send the unversioned partner User-Agent', () => {
-		expect(DATABRICKS_PARTNER_USER_AGENT).toBe('n8n_DatabricksNode');
+	it('should read the authentication parameter without an item index on a polling context', () => {
+		const context = mock<IPollFunctions>();
+		context.getNodeParameter.mockReturnValue('accessToken');
+
+		expect(getActiveCredentialType(context)).toBe('databricksApi');
+		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 'accessToken');
 	});
 });
 
@@ -260,6 +259,46 @@ describe('databricksApiRequest rate limiting', () => {
 		).resolves.toEqual({ jobs: [] });
 
 		expect(sleep).toHaveBeenCalledWith(1000, undefined);
+	});
+});
+
+describe('fetchDatabricksPage', () => {
+	let httpRequestWithAuthentication: Mock;
+	let context: IExecuteFunctions;
+
+	beforeEach(() => {
+		httpRequestWithAuthentication = vi.fn().mockResolvedValue({ jobs: [] });
+		context = mock<IExecuteFunctions>({
+			getNode: () => mock<INode>({ typeVersion: 1 }),
+			helpers: { httpRequestWithAuthentication },
+		});
+	});
+
+	it.each([
+		['the first page', undefined, {}],
+		['a later page', 'page-2', { page_token: 'page-2' }],
+	])('should GET %s as JSON with the query and page token', async (_label, pageToken, tokenQs) => {
+		const qs = { job_id: 42, include_trigger_state: true };
+
+		await expect(
+			fetchDatabricksPage(
+				context,
+				'databricksOAuth2Api',
+				'https://example.databricks.com',
+				'/api/2.2/jobs/get',
+				qs,
+				pageToken,
+			),
+		).resolves.toEqual({ jobs: [] });
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith('databricksOAuth2Api', {
+			method: 'GET',
+			url: 'https://example.databricks.com/api/2.2/jobs/get',
+			qs: { job_id: 42, include_trigger_state: true, ...tokenQs },
+			headers: { Accept: 'application/json', 'User-Agent': 'n8n_DatabricksNode' },
+			json: true,
+		});
+		expect(qs).toEqual({ job_id: 42, include_trigger_state: true });
 	});
 });
 

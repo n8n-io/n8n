@@ -34,9 +34,9 @@ export function usePromotionConnectionSave() {
 
 		switch (write.kind) {
 			case 'connection': {
-				const updated = await updatePromotionConnection(context, connectionId, write.payload);
-				// Keep config results from earlier writes.
-				return { ...updated, configs: connection.configs };
+				// The response re-reads every config, so its checkout state reflects the
+				// new target. Reusing the local configs would keep a stale checkout.
+				return await updatePromotionConnection(context, connectionId, write.payload);
 			}
 			case 'config': {
 				const config =

@@ -38,6 +38,12 @@ describe('SettingsContextView', () => {
 		expect(showErrorMock).toHaveBeenCalled();
 	});
 
+	it('shows a Preview label next to the page title', () => {
+		const { getByText } = renderView();
+
+		expect(getByText('Preview')).toBeInTheDocument();
+	});
+
 	it('lists Preferences, Skills and Sources', () => {
 		const { getByTestId } = renderView();
 

@@ -23,6 +23,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		user: null,
 		projectId: null,
 		project: null,
+		source: 'ui',
 		scopes: WRITABLE,
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',
@@ -109,6 +110,20 @@ describe('PreferencesTable', () => {
 		expect(badges[0]).toHaveTextContent('Jane Doe · All projects');
 		expect(badges[1]).toHaveTextContent('John Roe · Personal project');
 		expect(badges[2]).toHaveTextContent('Just you · Personal project');
+	});
+
+	// Undo rests on the person recognising what a connected tool wrote on their behalf.
+	it('names the surface that wrote each row', () => {
+		const { getAllByTestId } = render([
+			preference({ id: 'a', source: 'ui' }),
+			preference({ id: 'b', source: 'aia' }),
+			preference({ id: 'c', source: 'mcp' }),
+		]);
+
+		const sources = getAllByTestId('preference-source');
+		expect(sources[0]).toHaveTextContent('Settings');
+		expect(sources[1]).toHaveTextContent('n8n assistant');
+		expect(sources[2]).toHaveTextContent('Connected AI tool');
 	});
 
 	it('enables both actions when the row carries write scopes', () => {

@@ -16,6 +16,7 @@ describe('permissions', () => {
 			community: {},
 			communityPackage: {},
 			credential: {},
+			credentialTypePolicy: {},
 			externalSecretsProvider: {},
 			externalSecret: {},
 			eventBusDestination: {},
@@ -56,6 +57,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -113,6 +115,7 @@ describe('permissions', () => {
 				share: true,
 				update: true,
 			},
+			credentialTypePolicy: {},
 			eventBusDestination: {
 				list: true,
 				test: true,
@@ -189,6 +192,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

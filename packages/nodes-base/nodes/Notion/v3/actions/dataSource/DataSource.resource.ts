@@ -72,7 +72,13 @@ export const description: INodeProperties[] = [
 		description: 'Text to search databases/data sources for',
 	},
 	...returnAllOrLimit('dataSource', 'search'),
-	simplify('dataSource', ['get', 'search']),
+	{
+		...simplify('dataSource', ['get', 'search']),
+		builderHint: {
+			propertyHint:
+				'When true, each data source returns only id, name, and url. Set false to retain native fields such as properties, which describes the data source schema. To read page values, use Database Page operations. Match verification output fixtures to the selected output mode.',
+		},
+	},
 	searchOptions('dataSource', 'search'),
 ];
 

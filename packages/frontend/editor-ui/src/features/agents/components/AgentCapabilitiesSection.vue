@@ -5,28 +5,40 @@ import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
-import { N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nDropdownMenu,
+	N8nDropdownMenuItem,
+	N8nIcon,
+	N8nTag,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, onMounted, watch } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useCreateAgent } from '../composables/useCreateAgent';
+import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { isWarningIssue } from '../utils/validationIssues';
-import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import type {
 	ToolMenuItem,
 	ToolOpenTarget,
 	ToolPickerMode,
 	ToolRow,
+	GroupedToolRow,
 	SingleToolRow,
 } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
+import AgentSkillsSection from './AgentSkillsSection.vue';
+import AgentWebSearchSection from './AgentWebSearchSection.vue';
 
 export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
 type CapabilityRow = Exclude<AgentCapabilitySection, 'tasks'> | 'workflows';
@@ -36,7 +48,8 @@ const props = withDefaults(
 		config: AgentJsonConfig | null;
 		tools: AgentJsonToolRef[];
 		customTools?: Record<string, CustomToolEntry>;
-		skills: Array<{ id: string; skill: AgentSkill }>;
+		skills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
+		supportsActivation?: boolean;
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
@@ -54,6 +67,7 @@ const props = withDefaults(
 	}>(),
 	{
 		disabled: false,
+		supportsActivation: false,
 		taskRefs: () => [],
 
 		validationIssues: () => [],
@@ -74,6 +88,7 @@ const emit = defineEmits<{
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'toggle-skill': [payload: { id: string; enabled: boolean }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'update:config': [updates: Partial<AgentJsonConfig>];
@@ -83,8 +98,11 @@ const i18n = useI18n();
 const toast = useToast();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const { createAgent } = useCreateAgent();
+const openToolGroup = ref<number | null>(null);
 
 const projectIdRef = computed(() => props.projectId);
+const { canCreate: canCreateAgent } = useAgentPermissions(projectIdRef);
 const {
 	list: projectAgents,
 	ensureLoaded: ensureProjectAgentsLoaded,
@@ -98,20 +116,20 @@ const selectedSubAgentIds = computed(() =>
 );
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
-	(projectAgents.value ?? []).filter(
-		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
-	),
+	(projectAgents.value ?? []).filter((agent) => agent.id !== props.agentId),
 );
 const selectedSubAgents = computed(() =>
-	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
+	selectedSubAgentRefs.value.map(({ agentId, useWhen, enabled }) => {
 		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
-		const validationReasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		const validationReasons =
+			enabled === false ? [] : (subAgentIssueMessages.value.get(agentId) ?? []);
 		const reasons =
-			validationReasons.length > 0 || agent || projectAgents.value === null
+			validationReasons.length > 0 || agent || projectAgents.value === null || enabled === false
 				? validationReasons
 				: [i18n.baseText('agents.builder.validation.issue.subAgent.missingReference')];
 		return {
 			id: agentId,
+			enabled: enabled !== false,
 			name: agent?.name ?? i18n.baseText('agents.builder.subAgents.unavailable'),
 			useWhen: useWhen ?? '',
 			invalid: reasons.length > 0,
@@ -119,93 +137,7 @@ const selectedSubAgents = computed(() =>
 		};
 	}),
 );
-// `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
-// @n8n/i18n's built type declarations — matches the same workaround already
-// used for `agents.builder.preview.disabledTooltip` in AgentBuilderHeader.vue.
-const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
-
-/** Kind-specific overrides, keyed `<kind>.<code>` or `tool.<toolType>.<code>`. */
-const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
-	'subAgent.missing_reference':
-		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
-	'subAgent.incompatible_reference':
-		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
-	'skill.missing_reference':
-		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
-	'tool.workflow.missing_reference':
-		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
-	'tool.workflow.incompatible_reference':
-		'agents.builder.validation.issue.tool.workflow.incompatibleReference' as BaseTextKey,
-	'tool.custom.missing_reference':
-		'agents.builder.validation.issue.tool.custom.missingReference' as BaseTextKey,
-	'tool.node.missing_reference':
-		'agents.builder.validation.issue.tool.node.missingReference' as BaseTextKey,
-	'mcpServer.incompatible_credential':
-		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
-};
-
-/**
- * Reason-specific overrides for `incompatible_reference` issues that carry a
- * `reason` discriminator (currently workflow tools). Keyed by the `reason`
- * string emitted by the backend. Takes precedence over the kind/code key so
- * the message names the actual problem (e.g. "contains a Wait node") instead
- * of the generic "can't be used as an agent tool".
- */
-const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
-	incompatible_nodes:
-		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
-	no_supported_trigger:
-		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
-	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
-};
-
-function issueMessage(issue: AgentConfigValidationIssue): string {
-	const { kind, toolType, id } = issue.capability;
-	const key =
-		(issue.reason ? REASON_SPECIFIC_KEYS[issue.reason] : undefined) ??
-		(kind === 'tool' && toolType
-			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
-			: undefined) ??
-		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
-		GENERIC_ISSUE_KEYS[issue.code];
-	return i18n.baseText(key, {
-		interpolate: { id: id ?? '', trigger: workflowToolTriggerLabel() },
-	});
-}
-
-function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
-	return [...new Set(issues.map(issueMessage))];
-}
-
-function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
-	return props.validationIssues.filter((issue) => issue.capability.kind === kind);
-}
-
-/** Group a capability kind's issues into per-key message lists, keyed by `keyOf`. */
-function groupIssueMessages<TKey>(
-	kind: AgentConfigValidationIssue['capability']['kind'],
-	keyOf: (issue: AgentConfigValidationIssue) => TKey | undefined,
-	include: (issue: AgentConfigValidationIssue) => boolean = () => true,
-): Map<TKey, string[]> {
-	const byKey = new Map<TKey, AgentConfigValidationIssue[]>();
-	for (const issue of issuesFor(kind)) {
-		if (!include(issue)) continue;
-		const key = keyOf(issue);
-		if (key === undefined) continue;
-		const existing = byKey.get(key);
-		if (existing) existing.push(issue);
-		else byKey.set(key, [issue]);
-	}
-	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
-}
+const { groupIssueMessages } = useAgentCapabilityIssueMessages(() => props.validationIssues);
 
 // Warnings (an unpublished workflow) render orange and leave the preview usable;
 // everything else is a red error.
@@ -221,9 +153,6 @@ const toolWarningMessages = computed(() =>
 );
 const mcpServerIssueMessages = computed(() =>
 	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
-);
-const skillIssueMessages = computed(() =>
-	groupIssueMessages('skill', (issue) => issue.capability.id),
 );
 const subAgentIssueMessages = computed(() =>
 	groupIssueMessages('subAgent', (issue) => issue.capability.id),
@@ -348,6 +277,7 @@ function toolTypeLabel(entry: CapabilityToolEntry, nodeType = toolNodeType(entry
 
 function toolEntryReasons(entry: CapabilityToolEntry): string[] {
 	if (entry.kind === 'mcpServer') return mcpServerIssueMessages.value.get(entry.server.name) ?? [];
+	if (entry.tool.enabled === false) return [];
 	return toolIssueMessages.value.get(entry.index) ?? [];
 }
 
@@ -357,9 +287,12 @@ function buildCapabilityToolRows(entries: CapabilityToolEntry[]): ToolRow[] {
 			const nodeType = toolNodeType(entry);
 			const reasons = toolEntryReasons(entry);
 			const warningReasons =
-				entry.kind === 'tool' ? (toolWarningMessages.value.get(entry.index) ?? []) : [];
+				entry.kind === 'tool' && entry.tool.enabled !== false
+					? (toolWarningMessages.value.get(entry.index) ?? [])
+					: [];
 			return {
 				index: entry.index,
+				enabled: entry.kind === 'mcpServer' || entry.tool.enabled !== false,
 				label: toolLabel(entry),
 				typeLabel: toolTypeLabel(entry, nodeType),
 				nodeType,
@@ -442,6 +375,8 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 		id: toTargetKey(item.openTarget),
 		label: item.label,
 		data: {
+			index: item.index,
+			enabled: item.enabled,
 			nodeType: item.nodeType,
 			openTarget: item.openTarget,
 			invalid: item.invalid,
@@ -451,9 +386,44 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 }
 
 function onToolMenuSelect(key: string) {
+	openToolGroup.value = null;
+	if (props.disabled) return;
 	const target = fromTargetKey(key);
 	if (!target) return;
 	emit('open-tool', target);
+}
+
+function removeTool(index: number) {
+	if (props.disabled) return;
+	openToolGroup.value = null;
+	emit('remove-tool', index);
+}
+
+function toggleTool(index: number, enabled: boolean) {
+	if (props.disabled || !props.supportsActivation || !props.tools[index]) return;
+	openToolGroup.value = null;
+	emit('update:config', {
+		tools: props.tools.map((ref, i) => (i === index ? { ...ref, enabled } : ref)),
+	});
+}
+
+function toggleSubAgent(agentId: string, enabled: boolean) {
+	if (props.disabled || !props.supportsActivation) return;
+	emitSubAgentRefs(
+		selectedSubAgentRefs.value.map((ref) => (ref.agentId === agentId ? { ...ref, enabled } : ref)),
+	);
+}
+
+function removeToolGroup(group: GroupedToolRow) {
+	if (props.disabled) return;
+	openToolGroup.value = null;
+	const indices = new Set(group.tools.map(({ index }) => index));
+	emit('update:config', { tools: props.tools.filter((_, index) => !indices.has(index)) });
+}
+
+function removeSubAgent(agentId: string) {
+	if (props.disabled) return;
+	emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
 }
 
 function emitSubAgentRefs(agents: typeof selectedSubAgentRefs.value) {
@@ -466,9 +436,11 @@ function emitSubAgentRefs(agents: typeof selectedSubAgentRefs.value) {
 }
 
 function toSubAgentRef(agentId: string, useWhen?: string) {
+	const current = selectedSubAgentRefs.value.find((ref) => ref.agentId === agentId);
 	return {
 		agentId,
 		...(useWhen ? { useWhen } : {}),
+		...(current?.enabled !== undefined ? { enabled: current.enabled } : {}),
 	};
 }
 
@@ -483,15 +455,32 @@ async function openSubAgentsModal() {
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
-			agents: availableSubAgents.value.map(({ id, name }) => ({
-				id,
-				name,
-			})),
+			agents: availableSubAgents.value.map(({ id, name }) => {
+				const selectedRef = selectedSubAgentRefs.value.find((ref) => ref.agentId === id);
+				return {
+					id,
+					name,
+					added: Boolean(selectedRef),
+					useWhen: selectedRef?.useWhen,
+					invalidReasons: subAgentIssueMessages.value.get(id) ?? [],
+					agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(id)}`,
+				};
+			}),
+			onCreateAgent: canCreateAgent.value
+				? () => createAgent('button', props.projectId)
+				: undefined,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
-				if (selectedSubAgentIdSet.value.has(agentId)) return;
+				const nextRef = toSubAgentRef(agentId, useWhen);
+				if (selectedSubAgentIdSet.value.has(agentId)) {
+					emitSubAgentRefs(
+						selectedSubAgentRefs.value.map((ref) => (ref.agentId === agentId ? nextRef : ref)),
+					);
+					return;
+				}
 
-				emitSubAgentRefs([...selectedSubAgentRefs.value, toSubAgentRef(agentId, useWhen)]);
+				emitSubAgentRefs([...selectedSubAgentRefs.value, nextRef]);
 			},
+			onRemove: removeSubAgent,
 		},
 	});
 }
@@ -519,9 +508,7 @@ function openExistingSubAgentModal(subAgent: {
 					),
 				);
 			},
-			onRemove: (agentId: string) => {
-				emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
-			},
+			onRemove: removeSubAgent,
 		},
 	});
 }
@@ -543,88 +530,129 @@ function openExistingSubAgentModal(subAgent: {
 					<div v-for="tool in toolRows" :key="`tool-${tool.index}`" :class="$style.chipGroup">
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
+							:model-value="openToolGroup === tool.index"
 							:items="toolMenuItems(tool)"
 							:disabled="props.disabled"
 							placement="bottom-start"
 							data-testid="agent-capabilities-tool-group"
-							@select="onToolMenuSelect"
+							@update:model-value="openToolGroup = $event ? tool.index : null"
 						>
 							<template #trigger>
-								<AgentChipButton
-									:invalid="tool.invalid"
-									:invalid-reasons="tool.invalidReasons"
-									:warning="tool.warning"
-									:warning-reasons="tool.warningReasons"
+								<AgentItemContextMenu :disabled="props.disabled" @remove="removeToolGroup(tool)">
+									<AgentChipButton
+										:invalid="tool.invalid"
+										:deactivated="!tool.enabled"
+										:invalid-reasons="tool.invalidReasons"
+										:warning="tool.warning"
+										:warning-reasons="tool.warningReasons"
+										:disabled="props.disabled"
+										:class="$style.capabilityChip"
+										data-testid="agent-capabilities-tool-row"
+									>
+										<template #icon>
+											<NodeIcon :node-type="tool.nodeType" :size="16" />
+										</template>
+										<span :class="$style.groupChipLabel">
+											{{ tool.label }}
+											<N8nIcon icon="chevron-down" :size="12" color="text-light" />
+										</span>
+									</AgentChipButton>
+								</AgentItemContextMenu>
+							</template>
+							<template #item="{ item }">
+								<AgentItemContextMenu
+									v-if="item.data"
 									:disabled="props.disabled"
-									:class="$style.capabilityChip"
-									data-testid="agent-capabilities-tool-row"
+									:enabled="props.supportsActivation ? item.data.enabled : undefined"
+									@update:enabled="toggleTool(item.data.index, $event)"
+									@remove="removeTool(item.data.index)"
 								>
-									<template #icon>
-										<NodeIcon :node-type="tool.nodeType" :size="16" />
-									</template>
-									<span :class="$style.groupChipLabel">
-										{{ tool.label }}
-										<N8nIcon icon="chevron-down" :size="12" color="text-light" />
-									</span>
-								</AgentChipButton>
-							</template>
-							<template #item-leading="{ item, ui }">
-								<NodeIcon
-									v-if="item.data?.nodeType"
-									:node-type="item.data.nodeType"
-									:size="16"
-									:class="ui.class"
-								/>
-							</template>
-							<template #item-trailing="{ item }">
-								<N8nTooltip
-									v-if="item.data?.invalid"
-									:disabled="(item.data.invalidReasons ?? []).length === 0"
-									placement="top"
-								>
-									<N8nIcon
-										icon="triangle-alert"
-										:size="14"
-										data-testid="agent-capabilities-tool-menu-invalid-icon"
-									/>
-									<template #content>
-										<div v-for="reason in item.data.invalidReasons" :key="reason">
-											{{ reason }}
-										</div>
-									</template>
-								</N8nTooltip>
+									<div>
+										<N8nDropdownMenuItem
+											v-bind="item"
+											:class="{ [$style.deactivatedTool]: !item.data.enabled }"
+											@select="onToolMenuSelect"
+										>
+											<template #item-leading="{ ui }">
+												<NodeIcon
+													v-if="item.data?.nodeType"
+													:node-type="item.data.nodeType"
+													:size="16"
+													:class="ui.class"
+												/>
+											</template>
+											<template #item-trailing>
+												<N8nTag
+													v-if="!item.data.enabled"
+													:text="i18n.baseText('agents.builder.capabilities.deactivated')"
+													:clickable="false"
+												/>
+												<N8nTooltip
+													v-else-if="item.data?.invalid"
+													:disabled="(item.data.invalidReasons ?? []).length === 0"
+													placement="top"
+												>
+													<N8nIcon
+														icon="triangle-alert"
+														:size="14"
+														data-testid="agent-capabilities-tool-menu-invalid-icon"
+													/>
+													<template #content>
+														<div v-for="reason in item.data.invalidReasons" :key="reason">
+															{{ reason }}
+														</div>
+													</template>
+												</N8nTooltip>
+											</template>
+										</N8nDropdownMenuItem>
+									</div>
+								</AgentItemContextMenu>
 							</template>
 						</N8nDropdownMenu>
-						<AgentChipButton
-							v-else-if="tool.nodeType"
-							:invalid="tool.invalid"
-							:invalid-reasons="tool.invalidReasons"
-							:warning="tool.warning"
-							:warning-reasons="tool.warningReasons"
-							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-tool-row"
-							@click="emit('open-tool', tool.tool.openTarget)"
-						>
-							<template #icon>
-								<NodeIcon :node-type="tool.nodeType" :size="16" />
-							</template>
-							{{ tool.label }}
-						</AgentChipButton>
-						<AgentChipButton
+						<AgentItemContextMenu
 							v-else
-							:icon="tool.fallbackIcon"
-							:invalid="tool.invalid"
-							:invalid-reasons="tool.invalidReasons"
-							:warning="tool.warning"
-							:warning-reasons="tool.warningReasons"
 							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-tool-row"
-							@click="emit('open-tool', tool.tool.openTarget)"
+							:enabled="
+								props.supportsActivation && tool.tool.openTarget.kind === 'tool'
+									? tool.enabled
+									: undefined
+							"
+							@update:enabled="toggleTool(tool.index, $event)"
+							@remove="removeTool(tool.index)"
 						>
-							{{ tool.label }}
-						</AgentChipButton>
+							<AgentChipButton
+								v-if="tool.nodeType"
+								:deactivated="!tool.enabled"
+								:invalid="tool.invalid"
+								:invalid-reasons="tool.invalidReasons"
+								:warning="tool.warning"
+								:warning-reasons="tool.warningReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-tool-row"
+								@click="emit('open-tool', tool.tool.openTarget)"
+							>
+								<template #icon>
+									<NodeIcon :node-type="tool.nodeType" :size="16" />
+								</template>
+								{{ tool.label }}
+							</AgentChipButton>
+							<AgentChipButton
+								v-else
+								:icon="tool.fallbackIcon"
+								:deactivated="!tool.enabled"
+								:invalid="tool.invalid"
+								:invalid-reasons="tool.invalidReasons"
+								:warning="tool.warning"
+								:warning-reasons="tool.warningReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-tool-row"
+								@click="emit('open-tool', tool.tool.openTarget)"
+							>
+								{{ tool.label }}
+							</AgentChipButton>
+						</AgentItemContextMenu>
 					</div>
 				</AgentChipRow>
 
@@ -642,45 +670,41 @@ function openExistingSubAgentModal(subAgent: {
 						:key="`workflow-${workflow.index}`"
 						:class="$style.chipGroup"
 					>
-						<AgentChipButton
-							:icon="workflow.fallbackIcon"
-							:invalid="workflow.invalid"
-							:invalid-reasons="workflow.invalidReasons"
-							:warning="workflow.warning"
-							:warning-reasons="workflow.warningReasons"
+						<AgentItemContextMenu
 							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-workflow-row"
-							@click="emit('open-tool', workflow.tool.openTarget)"
+							:enabled="props.supportsActivation ? workflow.enabled : undefined"
+							@update:enabled="toggleTool(workflow.index, $event)"
+							@remove="removeTool(workflow.index)"
 						>
-							{{ workflow.label }}
-						</AgentChipButton>
+							<AgentChipButton
+								:icon="workflow.fallbackIcon"
+								:deactivated="!workflow.enabled"
+								:invalid="workflow.invalid"
+								:invalid-reasons="workflow.invalidReasons"
+								:warning="workflow.warning"
+								:warning-reasons="workflow.warningReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-workflow-row"
+								@click="emit('open-tool', workflow.tool.openTarget)"
+							>
+								{{ workflow.label }}
+							</AgentChipButton>
+						</AgentItemContextMenu>
 					</div>
 				</AgentChipRow>
 
-				<AgentChipRow
+				<AgentSkillsSection
 					v-else-if="section === 'skills'"
-					:label="i18n.baseText('agents.builder.skills.title')"
-					:item-count="skills.length"
-					:add-label="i18n.baseText('agents.builder.skills.add')"
-					add-button-test-id="agent-capabilities-add-skill"
+					:skills="skills"
+					:supports-activation="props.supportsActivation"
 					:disabled="props.disabled"
-					@add="emit('add-skill')"
-				>
-					<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
-						<AgentChipButton
-							icon="sparkles"
-							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-							:invalid-reasons="skillIssueMessages.get(id) ?? []"
-							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-skill-row"
-							@click="emit('open-skill', id)"
-						>
-							{{ skill.name || id }}
-						</AgentChipButton>
-					</div>
-				</AgentChipRow>
+					:validation-issues="props.validationIssues"
+					@open-skill="emit('open-skill', $event)"
+					@add-skill="emit('add-skill')"
+					@remove-skill="emit('remove-skill', $event)"
+					@toggle-skill="emit('toggle-skill', $event)"
+				/>
 
 				<AgentChipRow
 					v-else
@@ -692,25 +716,44 @@ function openExistingSubAgentModal(subAgent: {
 					@add="openSubAgentsModal"
 				>
 					<div v-for="subAgent in selectedSubAgents" :key="subAgent.id" :class="$style.chipGroup">
-						<AgentChipButton
-							icon="bot"
-							:invalid="subAgent.invalid"
-							:invalid-reasons="subAgent.invalidReasons"
+						<AgentItemContextMenu
 							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-sub-agent-row"
-							@click="openExistingSubAgentModal(subAgent)"
+							:enabled="props.supportsActivation ? subAgent.enabled : undefined"
+							@update:enabled="toggleSubAgent(subAgent.id, $event)"
+							@remove="removeSubAgent(subAgent.id)"
 						>
-							{{ subAgent.name }}
-						</AgentChipButton>
+							<AgentChipButton
+								:deactivated="!subAgent.enabled"
+								icon="bot"
+								:invalid="subAgent.invalid"
+								:invalid-reasons="subAgent.invalidReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-sub-agent-row"
+								@click="openExistingSubAgentModal(subAgent)"
+							>
+								{{ subAgent.name }}
+							</AgentChipButton>
+						</AgentItemContextMenu>
 					</div>
 				</AgentChipRow>
 			</template>
+			<div :class="$style.divider" aria-hidden="true" />
+			<AgentWebSearchSection
+				:config="props.config"
+				:disabled="props.disabled"
+				:project-id="props.projectId"
+				@update:config="emit('update:config', $event)"
+			/>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
+.deactivatedTool {
+	color: var(--text-color--subtle);
+}
+
 .section {
 	display: flex;
 	flex-direction: column;
@@ -736,5 +779,12 @@ function openExistingSubAgentModal(subAgent: {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--sm) * -1);
 }
 </style>

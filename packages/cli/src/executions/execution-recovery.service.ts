@@ -1,7 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import { type IExecutionResponse, ProjectRelationRepository, WorkflowEntity, User } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import {
+	type IExecutionResponse,
+	ExecutionRepository,
+	ProjectRelationRepository,
+	WorkflowEntity,
+	WorkflowRepository,
+	User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -230,7 +236,7 @@ export class ExecutionRecoveryService {
 
 		if (!exists) return null;
 
-		await this.executionCrashService.markAsCrashedWithoutCounting(executionId);
+		await this.executionCrashService.markAsCrashedWithoutCounting(executionId, 'startup-recovery');
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,

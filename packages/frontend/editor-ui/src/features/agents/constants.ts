@@ -1,13 +1,28 @@
-export const AGENTS_LIST_VIEW = 'AgentsListView';
-export const NEW_AGENT_VIEW = 'NewAgentView';
-export const AGENT_BUILDER_VIEW = 'AgentBuilderView';
-export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
-export const AGENT_VIEW = 'AgentView';
-export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
-export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
-export const PROJECT_AGENTS = 'ProjectAgents';
+export {
+	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	PROJECT_AGENTS,
+} from '@n8n/frontend-constants/agents';
 
 export const AGENTS_MODULE_NAME = 'agents';
+export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
+
+/** The shared "chat with a published agent over n8n Chat" screen. */
+export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
+
+/** The "browse agents available over n8n Chat" library screen. */
+export const AGENT_N8N_CHAT_LIBRARY_VIEW = 'AgentN8nChatLibraryView';
+
+/**
+ * n8n Chat agent search cap, shared by the library view and the "Chat with"
+ * picker. Matches the backend filter (`agentListFilterSchema.query` `.max(128)`,
+ * `@n8n/api-types`), so a longer search term never reaches the API.
+ */
+export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
 
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
@@ -18,6 +33,7 @@ export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
+export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
@@ -39,6 +55,15 @@ export const EXECUTIONS_SECTION_KEY = '__executions';
  */
 export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
 
+/** Agent n8n Chat threads fetched for the sidebar's "recent chats" list. */
+export const AGENT_N8N_CHAT_RECENT_THREADS_LIMIT = 10;
+
+/** Rows in the recent-chats lists: the sidebar and the "Chat history" dropdown. */
+export const RECENT_CHATS_LIMIT = 5;
+
+/** Page size for the agent side of the "All chats" view's infinite scroll. */
+export const AGENT_N8N_CHAT_HISTORY_PAGE_SIZE = 30;
+
 export {
 	CHAT_MESSAGE_STATUS,
 	TOOL_CALL_STATE,
@@ -50,3 +75,13 @@ export {
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
 export const NEW_SESSION_PARAM = 'newSession';
 export const OPEN_PREVIEW_PARAM = 'openPreview';
+/** Query-string key holding the embedded n8n Assistant panel's active thread id. */
+export const ASSISTANT_THREAD_PARAM = 'assistantThread';
+
+/**
+ * History-state key for the agent id minted at the click. Carried to the
+ * builder so the "clicked" and "created" telemetry events share a join key
+ * even though no agent exists yet. Kept out of the URL so a hand-authored
+ * query cannot force the builder to adopt an arbitrary id.
+ */
+export const PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';

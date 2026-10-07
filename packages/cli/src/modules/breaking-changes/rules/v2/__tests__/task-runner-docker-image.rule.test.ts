@@ -19,7 +19,7 @@ describe('TaskRunnerDockerImageRule', () => {
 
 			expect(metadata.version).toBe('v2');
 			expect(metadata.title).toBe('Remove task runner from n8nio/n8n docker image');
-			expect(metadata.severity).toBe('medium');
+			expect(metadata.impact).toBe('executionsFail');
 		});
 	});
 

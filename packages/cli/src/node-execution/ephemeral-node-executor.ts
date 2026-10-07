@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
@@ -377,10 +378,46 @@ export class EphemeralNodeExecutor {
 			);
 			return executionResult;
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = getErrorMessage(error);
 			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
 			return { status: 'error', data: [], error: message };
 		}
+	}
+
+	/** Resolve input expressions in the same context as a standalone node tool. */
+	async evaluateExpressions(
+		tool: EphemeralWorkflowToolLike,
+		expressions: Record<string, string>,
+		inputItems: INodeExecutionData[],
+	): Promise<Record<string, unknown>> {
+		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+		const context = new ExecuteContext(
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
+			0,
+			inputItems,
+			parts.inputData,
+			parts.executeData,
+			[],
+		);
+
+		return await withExpressionIsolate(parts.workflow, async () => {
+			const resolved: Record<string, unknown> = {};
+			for (const [name, expression] of Object.entries(expressions)) {
+				try {
+					// evaluateExpression adds the leading '=' itself.
+					resolved[name] = context.evaluateExpression(expression.slice(1));
+				} catch (error) {
+					throw new UserError(`Cannot resolve input "${name}": ${getErrorMessage(error)}`, {
+						cause: error,
+					});
+				}
+			}
+			return resolved;
+		});
 	}
 
 	async executeInline(request: InlineNodeExecutionRequest): Promise<NodeExecutionResult> {
@@ -397,7 +434,7 @@ export class EphemeralNodeExecutor {
 				request.nodeParameters,
 			);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = getErrorMessage(error);
 			this.logger.debug('Node execution validation failed', {
 				nodeType: request.nodeType,
 				error: message,
@@ -507,7 +544,7 @@ export class EphemeralNodeExecutor {
 				};
 			});
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = getErrorMessage(error);
 			return { ok: false, error: message };
 		} finally {
 			for (const closeFunction of closeFunctions) {
@@ -586,7 +623,7 @@ export class EphemeralNodeExecutor {
 			} catch (error) {
 				this.logger.warn('supplyData tool introspection failed', {
 					nodeType: tool.nodeType,
-					error: error instanceof Error ? error.message : String(error),
+					error: getErrorMessage(error),
 				});
 				return null;
 			}

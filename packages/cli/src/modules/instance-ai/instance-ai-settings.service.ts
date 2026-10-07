@@ -1,3 +1,4 @@
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -5,6 +6,7 @@ import {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	resolveInstanceAiPermissions,
 } from '@n8n/api-types';
 import type {
 	CreateCredentialDto,
@@ -15,6 +17,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
+	McpToolPermissions,
 	InstanceAiSandboxProvider,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
@@ -34,17 +37,13 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	InstanceCredentialBroker,
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -1248,6 +1247,15 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	getMcpToolPermissions(): McpToolPermissions {
+		return {
+			categories: {
+				read: this.permissions.mcpRead,
+				write: this.permissions.mcpWrite,
+			},
+		};
+	}
+
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
@@ -1274,11 +1282,6 @@ export class InstanceAiSettingsService {
 
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
-	}
-
-	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
-	isInstanceAiSetupPanelEnabled(): boolean {
-		return this.config.instanceAiSetupPanelEnabled;
 	}
 
 	/** Whether this instance is in the activation-capped trial cohort. */
@@ -1735,10 +1738,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
 		if (persisted.permissions) {
-			this.permissions = {
-				...DEFAULT_INSTANCE_AI_PERMISSIONS,
-				...persisted.permissions,
-			};
+			this.permissions = resolveInstanceAiPermissions(persisted.permissions);
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.mcpAccessEnabled !== undefined)
@@ -1860,7 +1860,9 @@ export class InstanceAiSettingsService {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
-					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
+					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
+					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
 				credentialSelections,
 			});
 		} catch (error) {

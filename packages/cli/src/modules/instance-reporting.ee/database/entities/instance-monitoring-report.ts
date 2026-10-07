@@ -1,5 +1,5 @@
 import { DateTimeColumn, JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 /** One measurement in a report; the shape the receiver accepts. */
 export type InstanceReportDataPoint =
@@ -9,11 +9,16 @@ export type InstanceReportDataPoint =
 /**
  * Where a report stands.
  *
+ * `sending` means a main has claimed the row for one request.
  * `skipped_after_max_retries` means the instance stopped trying that day, not
  * that the numbers were lost: only a delivered report crosses a day off, so a
  * skipped day is measured again and covered by the next report.
  */
-export type InstanceReportStatus = 'pending' | 'delivered' | 'skipped_after_max_retries';
+export type InstanceReportStatus =
+	| 'pending'
+	| 'sending'
+	| 'delivered'
+	| 'skipped_after_max_retries';
 
 /**
  * One instance report: what was sent to the central monitoring receiver, and
@@ -29,11 +34,18 @@ export type InstanceReportStatus = 'pending' | 'delivered' | 'skipped_after_max_
  * The retry state — {@link status}, {@link attempts} and {@link lastAttemptAt} —
  * lives here rather than in the scheduler's memory, so a restart resumes the
  * report's budget instead of granting a fresh one.
+ *
+ * At most one row is created per UTC day; see {@link reportDate}.
  */
 @Entity()
+@Index(['reportDate'], { unique: true, where: '"reportDate" IS NOT NULL' })
 export class InstanceMonitoringReport extends WithTimestamps {
 	@PrimaryColumn('uuid')
 	id: string;
+
+	/** UTC day the report was created on, as `YYYY-MM-DD`; not a day it covers. */
+	@Column({ type: 'varchar', length: 10, nullable: true })
+	reportDate: string | null;
 
 	/** The data point array exactly as sent. */
 	@JsonColumn()
@@ -52,9 +64,9 @@ export class InstanceMonitoringReport extends WithTimestamps {
 	attempts: number;
 
 	/**
-	 * When the last attempt finished, successful or not; `null` before the first.
-	 *
-	 * Persisted so the wait between attempts survives a restart.
+	 * When an active attempt started, or when the last attempt finished.
+	 * Uses the database clock. `null` before the first attempt.
+	 * While sending, this timestamp identifies the claim that can record a failure.
 	 */
 	@DateTimeColumn({ nullable: true })
 	lastAttemptAt: Date | null;

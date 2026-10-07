@@ -223,8 +223,9 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
-			// Rebuild the editor hand-off's resource attachments (workflow/agent) so
-			// the UI can re-surface them (chip + artifact) after a reload.
+			// Rebuild resource attachments from the durable JSON line inside
+			// `<thread-artifacts>` (or a legacy `<editor-context>`) so the UI can
+			// re-surface them (chip + artifact) after a reload.
 			const attachments = extractEditorContextResourceAttachments(text);
 			const context = extractAgentPreviewHandoffContext(text);
 

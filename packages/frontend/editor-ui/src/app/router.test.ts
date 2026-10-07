@@ -264,9 +264,6 @@ describe('router', () => {
 
 		test('waits for delayed flag hydration before allowing enrolled users through', async () => {
 			const posthog = usePostHog();
-			const hasPendingFeatureFlagsSpy = vi
-				.spyOn(posthog, 'hasPendingFeatureFlags')
-				.mockReturnValue(true);
 			const waitForFeatureFlagsSpy = vi
 				.spyOn(posthog, 'waitForFeatureFlags')
 				.mockImplementation(async () => {
@@ -283,7 +280,6 @@ describe('router', () => {
 				expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
 			} finally {
 				waitForFeatureFlagsSpy.mockRestore();
-				hasPendingFeatureFlagsSpy.mockRestore();
 			}
 		});
 	});
@@ -294,6 +290,7 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			mcpConnectionsAvailable: true,
 			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,

@@ -260,13 +260,13 @@ describe('AgentInfoPanel', () => {
 		},
 	);
 
-	it('renders instructions as a ghost markdown editor with a floating toolbar', function rendersInstructions() {
+	it('renders instructions as a contained markdown editor with a floating toolbar', function rendersInstructions() {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
-			variant: 'ghost',
+			variant: 'contained',
 			showToolbar: 'floating',
 			maxHeight: undefined,
 			placeholder: 'agents.builder.agent.instructions.placeholder',
@@ -281,6 +281,13 @@ describe('AgentInfoPanel', () => {
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props('modelValue')).toBe('');
 		expect(editor.props('placeholder')).toBe('agents.builder.agent.instructions.placeholder');
+	});
+
+	it('reports instructions input before its debounced config update', () => {
+		const wrapper = mountPanel('Cris');
+		wrapper.getComponent({ name: 'N8nMarkdownEditor' }).vm.$emit('update:modelValue', 'Crisp.');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
 	});
 
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {
@@ -307,6 +314,30 @@ describe('AgentInfoPanel', () => {
 			toolCallConcurrency: 2,
 			promptCaching: { enabled: true },
 		});
+		// A user-driven pick carries no meta — only an auto-applied default does.
+		expect(events.at(-1)?.[1]).toBeUndefined();
+	});
+
+	it('forwards the model selector\'s own "auto" source through to update:config', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+		};
+		const wrapper = mountModelPanel(config);
+
+		// The selector resolves its own verified default after a credential
+		// selection and tags it 'auto' — the panel must forward that tag, not
+		// treat it like a direct user pick.
+		wrapper
+			.findComponent({ name: 'AgentModelSelector' })
+			.vm.$emit('change', { provider: 'anthropic', model: 'claude-3-haiku' }, 'auto');
+		await wrapper.vm.$nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events).toHaveLength(1);
+		expect(events[0][1]).toEqual({ source: 'auto' });
 	});
 
 	it('preserves reasoning when selecting a model that supports it', async () => {
@@ -382,6 +413,7 @@ describe('AgentInfoPanel', () => {
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'credential-1',
 				}),
+				{ source: 'auto' },
 			]);
 		});
 
@@ -409,6 +441,7 @@ describe('AgentInfoPanel', () => {
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'credential-1',
 				}),
+				{ source: 'auto' },
 			]);
 			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(true);
 		});
@@ -437,6 +470,7 @@ describe('AgentInfoPanel', () => {
 					model: 'openai/gpt-5-mini',
 					credential: AI_GATEWAY_MANAGED_TAG,
 				}),
+				{ source: 'auto' },
 			]);
 		});
 

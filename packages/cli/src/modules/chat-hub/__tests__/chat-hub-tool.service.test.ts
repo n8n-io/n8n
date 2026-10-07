@@ -5,8 +5,7 @@ import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { NodeTypes } from '@/node-types';
 
 import type { ChatHubTool } from '../chat-hub-tool.entity';

@@ -8,8 +8,8 @@ workflows, nodes, custom code tools, or provider tools.
 
 ### Workflow
 
-Use this guidance before calling \`resolve_integration\`, \`search_nodes\`,
-\`search_mcp_servers\`, \`get_node_types\`, \`build_custom_tool\`, or adding,
+Use this guidance before calling \`agent-context\`, \`search_nodes\`,
+\`get_node_types\`, \`build_custom_tool\`, or adding,
 changing, or removing entries in \`tools[]\` / \`mcpServers\` / \`providerTools\`.
 
 For an external product, load \`agent-builder-external-services\` once and
@@ -17,9 +17,9 @@ follow it. It covers the chat-integration-versus-callable-tool decision, chat
 integration setup, and MCP servers. Load \`agent-builder-node-tools\` before
 configuring a node tool.
 
-- Chat/trigger integration: call \`list_integration_types\`, then
-  \`configure_channel\` with a returned type. Do not call \`resolve_integration\`
-  for chat/trigger integrations.
+- Chat/trigger integration: call \`agent-context({ type: "integrations" })\`, then
+  \`configure_channel\` with a returned type. Do not use the queried
+  integration lookup for chat/trigger integrations.
 - A configured chat integration generates its own context and action tools for
   every top-level Agent run, including scheduled tasks. When its capabilities
   include the requested action, do not add a same-platform node, MCP, or
@@ -27,7 +27,7 @@ configuring a node tool.
   is not, by itself, a reason to add another tool.
 - Callable external service: the conversation or trigger happens elsewhere and
   the agent only operates on the product. For each requested non-chat callable
-  service, call \`resolve_integration\` separately, using \`queries\` as
+  service, call \`agent-context\` with \`type: "integrations"\` separately, using \`queries\` as
   alternative search terms for that one service. Do not infer MCP availability
   from memory.
   - \`kind: "mcp"\`: follow the skill's MCP Servers section — credential,
@@ -37,13 +37,12 @@ configuring a node tool.
 
 Use \`search_nodes\` directly only when the user explicitly asks for an n8n node,
 when refining node results, or when a verified MCP server lacks the requested
-capability. Use \`search_mcp_servers\` directly only when refining MCP results or
-when the user explicitly asks to browse the MCP registry.
+capability. Refine MCP results with another \`agent-context\` integration query.
 
 Preference order for non-chat callable services:
-1. MCP servers selected by \`resolve_integration\`
-2. Node tools returned by \`resolve_integration\`
-3. Workflow tools (\`list_workflows\`)
+1. MCP servers returned in the \`agent-context\` integration result
+2. Node tools returned in the \`agent-context\` integration result
+3. Workflow tools (\`agent-context({ type: "attachable-workflows" })\`)
 4. Custom tools (\`build_custom_tool\`) — last resort
 
 Custom tools are for pure computation, validation, formatting, or planning logic;
@@ -51,7 +50,7 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 
 #### Workflow Tools
 
-- Call \`list_workflows\`; reference supported workflows with \`{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }\` using both values it returns.
+- Call \`agent-context({ type: "attachable-workflows" })\`; reference supported workflows with \`{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }\` using both values it returns.
 
 #### Node Tools
 
@@ -90,10 +89,10 @@ Custom tools are last resort and only for pure computation. Load
 
 ### Verify
 
-- Chat/trigger integrations bypassed \`resolve_integration\` and were set up
-  through \`configure_channel\`.
+- Chat/trigger integrations used the unqueried \`agent-context\` channel list
+  and were set up through \`configure_channel\`.
 - Each non-chat callable service was resolved separately through
-  \`resolve_integration\` unless the user explicitly requested an n8n node or
+  \`agent-context\` integration search unless the user explicitly requested an n8n node or
   custom MCP server.
 - Workflow tools reference discovered workflow IDs and names.
 - Provider tool keys match the configured model provider and the valid key list.`;

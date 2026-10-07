@@ -1,16 +1,16 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
@@ -113,11 +113,11 @@ describe('node type availability policy project controller RBAC', () => {
 
 describe('node type availability policy project controller license gating', () => {
 	afterEach(() => {
-		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	test('rejects a project admin with 403 when the license feature is disabled', async () => {
-		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
 		const response = await testServer.authAgentFor(projectAdmin).get(projectRoute(project.id));
 

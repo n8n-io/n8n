@@ -142,6 +142,7 @@ describe('kindColorToken', () => {
 	it('maps each kind to a CSS token', () => {
 		expect(kindColorToken('user')).toBe('var(--color--blue-400)');
 		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
+		expect(kindColorToken('skill')).toBe('var(--color--orange-400)');
 		expect(kindColorToken('tool')).toBe('var(--color--success)');
 		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
 		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
@@ -281,6 +282,48 @@ function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecut
 
 describe('flattenExecutionsToTimelineItems', () => {
 	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
+
+	it.each([
+		['structured output', { name: 'Structured skill' }, {}, 'Structured skill'],
+		['text output', { value: [{ text: '[Skill: "Text skill"]\nInstructions' }] }, {}, 'Text skill'],
+		['input name', undefined, { name: 'Input skill' }, 'Input skill'],
+		['input skill ID', undefined, { skillId: 'skill-123' }, 'skill-123'],
+		[
+			'malformed text output',
+			{ value: [{ text: '[Skill: "Malformed skill]\nInstructions' }] },
+			{},
+			'Malformed skill',
+		],
+	] as const)('maps a skill call using its %s', (_source, output, input, expectedName) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({
+					name: 'load_skill',
+					input,
+					output,
+					endTime: 200,
+					success: true,
+				}),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({
+			kind: 'skill',
+			skillName: expectedName,
+			toolName: 'load_skill',
+			toolOutcome: 'success',
+		});
+	});
+
+	it('maps an explicitly typed skill call', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({ kind: 'skill', name: 'custom_skill', input: { name: 'Triage' } }),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({ kind: 'skill', skillName: 'Triage' });
+	});
 
 	it('carries attachments on the user item', () => {
 		const items = flattenExecutionsToTimelineItems([
@@ -615,6 +658,60 @@ describe('flattenExecutionsToTimelineItems', () => {
 			withTimeline([{ type: 'text', content: 'hi there', timestamp: 1234 }]),
 		]);
 		expect(items[0]).toMatchObject({ kind: 'agent', content: 'hi there', timestamp: 1234 });
+	});
+
+	it.each([
+		{
+			label: 'text and attachments',
+			text: [{ type: 'text', text: 'Use this image' }],
+			content: 'Use this image',
+		},
+		{ label: 'attachments only', text: [], content: '' },
+	])('maps steered $label between agent output', ({ text, content }) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', content: 'Before steering', timestamp: 100 },
+					{
+						type: 'input',
+						timestamp: 200,
+						messageId: 'steered-user-message',
+					},
+					{ type: 'text', content: 'After steering', timestamp: 300 },
+				],
+				{
+					userMessage: `Original request\n${content}`,
+					inputMessages: [
+						{
+							id: 'original-input',
+							role: 'user',
+							content: [{ type: 'text', text: 'Original request' }],
+						},
+						{
+							id: 'steered-user-message',
+							role: 'user',
+							content: [
+								...text,
+								{
+									type: 'file',
+									fileId: attachment.id,
+									fileName: attachment.fileName,
+									mimeType: attachment.mimeType,
+									sizeBytes: attachment.sizeBytes,
+								},
+							],
+						},
+					],
+				},
+			),
+		]);
+
+		expect(items).toMatchObject([
+			{ kind: 'user', content: 'Original request', executionId: 'e-1' },
+			{ kind: 'agent', content: 'Before steering', timestamp: 100 },
+			{ kind: 'user', content, executionId: 'e-1', timestamp: 200, attachments: [attachment] },
+			{ kind: 'agent', content: 'After steering', timestamp: 300 },
+		]);
 	});
 
 	it('maps a workflow tool-call timeline event to kind:workflow with metadata', () => {

@@ -8,7 +8,10 @@
 // shape stays a driver concern and the assembly exists exactly once.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 
 import {
 	createBuildOrchestrator,
@@ -115,6 +118,10 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 	// Fired during getOrBuild, awaited in resolveSideBand.
 	const buildExpectationsByKey = new Map<string, Promise<BuildExpectationResult[]>>();
 	const runDebugByThreadId = new Map<string, Promise<InstanceAiRunDebugResponse[]>>();
+	const threadMemoryByThreadId = new Map<
+		string,
+		Promise<InstanceAiEvalThreadMemoryResponse | undefined>
+	>();
 
 	// Rows carry only per-scenario fields. The build-side fields (conversation,
 	// expectations, declared credentials) are sourced locally, keyed by fileSlug.
@@ -147,6 +154,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							messageBudget: buildArgs.messageBudget,
 							buildMode: buildArgs.buildMode,
 							promptVersion: buildArgs.promptVersion,
+							requiresMemoryCompaction: buildArgs.requiresMemoryCompaction,
 							allowUserExecution: buildArgs.allowUserExecution,
 							credentials: buildArgs.credentials,
 							seed: buildArgs.seed,
@@ -155,6 +163,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							timeoutMs: buildArgs.timeoutMs,
 							preRunWorkflowIds: lane.preRunWorkflowIds,
 							preRunDataTableIds: lane.preRunDataTableIds,
+							preRunFolderIds: lane.preRunFolderIds,
 							claimedWorkflowIds: lane.claimedWorkflowIds,
 							logger,
 							laneTag,
@@ -202,6 +211,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					buildTrace?: BuildResult['buildTrace'];
 					timeoutMs: number;
 					testCaseName?: string;
+					seedContext?: ScenarioSeedContext;
 				}) =>
 					await executeAgentScenario(
 						lane.client,
@@ -213,6 +223,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.testCaseName,
 						execArgs.buildTrace,
 						args.outputDir,
+						execArgs.seedContext,
 					),
 			),
 		};
@@ -250,6 +261,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		transcriptByThreadId,
 		buildExpectationsByKey,
 		runDebugByThreadId,
+		threadMemoryByThreadId,
 		agentContextByKey,
 	});
 
