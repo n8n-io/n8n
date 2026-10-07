@@ -1549,7 +1549,7 @@ onBeforeUnmount(() => {
 						>
 							<template #message="{ item }">
 								<N8nInput
-									v-if="heldQueueEdit?.id === item.id"
+									v-if="heldQueueEdit && heldQueueEdit.id === item.id"
 									v-model="heldQueueEdit.text"
 									type="textarea"
 									size="small"
@@ -1562,7 +1562,7 @@ onBeforeUnmount(() => {
 							</template>
 							<template #actions="{ item }">
 								<template v-if="isHeldQueueItem(item.id)">
-									<template v-if="heldQueueEdit?.id === item.id">
+									<template v-if="heldQueueEdit && heldQueueEdit.id === item.id">
 										<N8nButton
 											variant="ghost"
 											size="xsmall"
