@@ -91,6 +91,7 @@ Find the reference code with `git show <commit>` on the PoC branch.
 | Thread metadata patch | `de36dc477bb` | `agents/integrations/n8n-memory.ts` (`patchThread`) |
 | Client context and attachments | `dae18013de9` | `@n8n/api-types` `agents/dto.ts`, `system-agent-execution.service.ts` |
 | Editor on the Agents chat | `1e90e2e53b4`, `e8ba910a1bb`, `9502710cb10`, `3028069fffe`, `737414f3982` | `InstanceAiAgentsConversation.vue`, `components/agentsChat/InstanceAiConfirmationCard.vue`, `agentsChatThreadAdapter.ts`, `AgentChatPanel.vue` |
+| System-agent routes, queue kind and access floor | `72a1e54777a`, `0ff0df89705` | `agents/system-agents/system-agent-chat.controller.ts`, `system-agent-access.ts`, `agents/agent-chat-relay.service.ts`, editor `features/agents/utils/agentChatPath.ts` |
 | Interaction extensions | `18da4fa2e8e` | `ai/shared/agentsChat/interactionRegistry.ts`, `messageMappers.ts`, `instanceAi/assistantConfirmation.ts` |
 | Fixes found in review | `abbb17d9d59`, `907953b7131`, `e27ea706d55` | See section 12 |
 | Removals (v1 deletion reference) | `a473877b05c`, `0e60c5106da`, `31c32401060`, `0589c56632f`, `e0a0379ced8` | Use only in the final phase |
@@ -323,8 +324,8 @@ execution-service tests), routing in `agent-message-queue.service.ts`,
   registries come later, only when a second agent needs them.
 - **Agents admin setting:** system agents bypass it. Turning off custom
   agents does not turn off the Assistant. The PoC already does this.
-- **Queue kind:** add a `system` kind. The PoC reused `preview`; change the
-  queue service, the consumer and `listPending` filters accordingly.
+- **Queue kind:** add a `system` kind. `isInteractiveChatKind` treats
+  `preview` and `system` the same for steering, reordering and editing.
 - **Access: runtime floor plus provider.** At send, at queue pickup and at
   resume, the runtime checks for every system agent:
   1. the thread belongs to the agent, and the user owns it (`ownerId`,
@@ -342,9 +343,27 @@ execution-service tests), routing in `agent-message-queue.service.ts`,
 - **Routes:** system agents get their own routes (for example
   `/agents/system/:agentId/chat`, `/chat/resume`, queue, cancel, history),
   guarded by the runtime floor. Project-agent routes and their
-  `@ProjectScope('agent:execute')` guards stay unchanged. The PoC reused the
-  project-agent routes, so it required `agent:execute` on the working project
-  by accident.
+  `@ProjectScope('agent:execute')` guards stay unchanged. An existing thread
+  keeps its working project; a new session takes `projectId` from the query.
+
+**PoC alignment:** the PoC first reused the `preview` kind and the
+project-agent routes (so it required `agent:execute` by accident). Commits
+`72a1e54777a` (backend) and `0ff0df89705` (editor) align it with the
+decisions above:
+
+- `system-agents/system-agent-chat.controller.ts`: the `/agents/system`
+  routes (chat, resume, cancel, history, queue, attachments).
+- `system-agents/system-agent-access.ts`: `canUseSystemAgent` (the floor plus
+  the provider). `SystemAgentExecutionService.getUsableThread` adds thread
+  ownership. The queue consumer uses the same check.
+- `agent-chat-relay.service.ts`: SSE relay and attachment helpers shared by
+  both chat controllers. The project-agent controller has no system-agent
+  code left.
+- Editor: `features/agents/utils/agentChatPath.ts` picks the route base. The
+  system agent ids are a constant there; later they should come from the
+  backend settings.
+- Verified live: send, approval card, reload, resume, queue steering and
+  stop all go through `/agents/system/n8n-assistant/...`.
 
 **Acceptance:**
 
