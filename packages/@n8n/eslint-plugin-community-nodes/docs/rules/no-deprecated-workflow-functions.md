@@ -15,7 +15,7 @@ several ways — all of them are reported:
 
 ```typescript
 this.helpers.request(options); // execute() bound to the context
-context.helpers.requestOAuth2.call(context, ...); // context passed into a transport helper
+context.helpers.requestOAuth2.call(context, 'oAuth2Api', options); // context passed into a transport helper
 this.executeFunctions.helpers.request(options); // context stored on a class field
 const { helpers } = this;
 helpers.request(options); // destructured off the context, reported on the call
