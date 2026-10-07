@@ -1493,14 +1493,6 @@
 				"hash": "5faea85ebf23"
 			}
 		],
-		"packages/cli/src/permissions.ee/check-access.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 2,
-				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
-				"hash": "ffa998a4f0e7"
-			}
-		],
 		"packages/cli/src/scheduling/durable-job-provisioner.ts": [
 			{
 				"rule": "typeorm-persistence-boundary",
