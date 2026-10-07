@@ -13,7 +13,7 @@ const REDIS_PORT = Number(process.env.N8N_TEST_REDIS_PORT);
 const PREFIX = `job-return-${process.pid}-${Date.now()}`;
 const QUEUE_NAME = 'jobs';
 
-describe.skipIf(!REDIS_HOST || !REDIS_PORT)('throwJobBackToQueue (real Redis)', () => {
+describe.skipIf(!REDIS_HOST || !REDIS_PORT)('job return on shutdown (real Redis)', () => {
 	let control: Redis;
 	let queues: JobQueue[];
 
@@ -300,5 +300,89 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('throwJobBackToQueue (real Redis)', 
 		await returnToQueue();
 
 		expect(await control.hexists(jobKey, 'processedOn')).toBe(0);
+	});
+
+	describe('locally paused worker', () => {
+		const stateOf = async (queue: JobQueue, jobId: JobId) =>
+			await (await queue.getJob(jobId))?.getState();
+
+		it('does not fetch the next waiting job when a job completes on a paused worker', async () => {
+			const producer = createQueue();
+			const job1 = await addJob(producer, 'p1', 50);
+			const job2 = await addJob(producer, 'p2', 50);
+
+			const worker = createQueue();
+			const handled: JobId[] = [];
+			const completed = once(worker, 'completed') as Promise<[Job]>;
+			void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+				handled.push(activeJob.id);
+				await worker.pause(true, true);
+			});
+
+			const [completedJob] = await completed;
+
+			expect(completedJob.id).toBe(job1.id);
+			expect(await stateOf(producer, job1.id)).toBe('completed');
+			expect(await stateOf(producer, job2.id)).toBe('waiting');
+			expect(await control.exists(job2.lockKey())).toBe(0);
+			expect(handled).toEqual([job1.id]);
+		});
+
+		it('returns a job fetched by a completion when the worker pauses before processing it', async () => {
+			const producer = createQueue();
+			const job1 = await addJob(producer, 'p1', 50);
+			const job2 = await addJob(producer, 'p2', 50);
+
+			const worker = createQueue();
+			const handled: JobId[] = [];
+			let stopping = false;
+			const returned = once(worker, 'failed') as Promise<[Job, Error]>;
+			worker.on('completed', () => {
+				stopping = true;
+				void worker.pause(true, true);
+			});
+			void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+				handled.push(activeJob.id);
+				if (stopping) await throwJobBackToQueue(activeJob, mockLogger());
+			});
+
+			await returned;
+
+			expect(handled).toEqual([job1.id, job2.id]);
+			expect(await stateOf(producer, job1.id)).toBe('completed');
+			expect(await stateOf(producer, job2.id)).toBe('waiting');
+			expect(await control.exists(job2.lockKey())).toBe(0);
+		});
+
+		it('waits for a job fetched by a completion to return before the current jobs are finished', async () => {
+			const producer = createQueue();
+			await addJob(producer, 'p1', 50);
+			const job2 = await addJob(producer, 'p2', 50);
+
+			const worker = createQueue();
+			let stopping = false;
+			let currentJobsFinished: Promise<unknown> | undefined;
+			let returned = false;
+			worker.on('failed', () => {
+				returned = true;
+			});
+			worker.on('completed', () => {
+				stopping = true;
+				void worker.pause(true, true);
+				currentJobsFinished = Promise.all(
+					Object.values(Reflect.get(worker, 'processing') as Record<string, Promise<unknown>>),
+				);
+			});
+			void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+				if (stopping) await throwJobBackToQueue(activeJob, mockLogger());
+			});
+
+			await once(worker, 'completed');
+			await currentJobsFinished;
+
+			expect(returned).toBe(true);
+			expect(await stateOf(producer, job2.id)).toBe('waiting');
+			expect(await control.exists(job2.lockKey())).toBe(0);
+		});
 	});
 });
