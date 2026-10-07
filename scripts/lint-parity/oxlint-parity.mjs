@@ -66,6 +66,7 @@ const JS_PLUGIN_NAMESPACES = new Set([
 	'n8n-local-rules',
 	'playwright',
 	'@n8n/community-nodes',
+	'storybook',
 ]);
 
 function splitId(id) {
@@ -226,14 +227,27 @@ for (const id of [...eslintRules].sort()) {
 	missing.push({ id, native: target });
 }
 
-// Anything oxlint enforces that no ESLint rule maps onto. A rule we did not ask
-// for is as much a parity break as a rule we lost.
+/**
+ * Rules the oxlint layers enforce on purpose and no ESLint layer ever did:
+ * oxlint's native Vue script rules replaced `eslint-plugin-vue`,
+ * `require-macro-variable-name` is the n8n port of one of them, and
+ * `typescript/no-deprecated` was adopted with a baseline in #40168.
+ */
+const OXLINT_ONLY = [
+	/^vue\//,
+	'n8n-local-rules/require-macro-variable-name',
+	'typescript/no-deprecated',
+];
+const isOxlintOnly = (id) => OXLINT_ONLY.some((m) => (m instanceof RegExp ? m.test(id) : m === id));
+
+// Anything else oxlint enforces that no ESLint rule maps onto. A rule we did
+// not ask for is as much a parity break as a rule we lost.
 const expected = new Set();
 for (const id of eslintRules) {
 	const target = toOxlintId(id, native);
 	if (target) expected.add(canonical(target, native));
 }
-const extra = [...oxlintRules].filter((id) => !expected.has(id)).sort();
+const extra = [...oxlintRules].filter((id) => !expected.has(id) && !isOxlintOnly(id)).sort();
 
 const hasApplicableGap = (id) => {
 	const entry = gap[id];

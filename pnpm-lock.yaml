@@ -578,9 +578,6 @@ catalogs:
     eslint-plugin-n8n-nodes-base:
       specifier: ^1.16.7
       version: 1.16.7
-    eslint-plugin-oxlint:
-      specifier: 1.78.0
-      version: 1.78.0
     express:
       specifier: 5.1.0
       version: 5.1.0
@@ -922,7 +919,7 @@ catalogs:
       version: 10.5.10
     eslint-plugin-storybook:
       specifier: ^10.5.10
-      version: 10.5.10
+      version: 10.6.1
     storybook:
       specifier: ^10.5.10
       version: 10.5.10
@@ -2874,9 +2871,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vue-eslint-parser:
-        specifier: ^10.1.3
-        version: 10.1.3(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
@@ -3386,9 +3380,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(supports-color@8.1.1)(zod@3.25.76)
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../oxlint-config
@@ -3410,6 +3401,9 @@ importers:
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -5609,9 +5603,6 @@ importers:
       '@iconify-json/mdi':
         specifier: 'catalog:'
         version: 1.1.63
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config
@@ -5657,6 +5648,9 @@ importers:
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -5709,9 +5703,9 @@ importers:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
+        version: link:../../../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../../quality/testing/janitor
@@ -5742,6 +5736,12 @@ importers:
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -5878,9 +5878,6 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config
@@ -5946,10 +5943,13 @@ importers:
         version: 10.4.19(postcss@8.5.23)
       eslint-plugin-storybook:
         specifier: catalog:storybook
-        version: 10.5.10(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
+        version: 10.6.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6041,18 +6041,21 @@ importers:
 
   packages/frontend/@n8n/frontend-constants:
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
+        version: link:../../../@n8n/oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
-      eslint:
+      oxlint:
         specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6090,15 +6093,21 @@ importers:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
+        version: link:../../../@n8n/oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6151,12 +6160,12 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/frontend-vite-config':
         specifier: workspace:*
         version: link:../frontend-vite-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -6169,9 +6178,12 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
-      eslint:
+      oxlint:
         specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6197,9 +6209,9 @@ importers:
         specifier: 'catalog:'
         version: 1.0.15
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
+        version: link:../../../@n8n/oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -6212,6 +6224,12 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6252,9 +6270,9 @@ importers:
         specifier: catalog:frontend
         version: 11.4.5(vue@3.5.26(typescript@6.0.2))
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
+        version: link:../../../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../../quality/testing/janitor
@@ -6270,6 +6288,12 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6307,12 +6331,12 @@ importers:
         specifier: workspace:*
         version: link:../../../workflow
     devDependencies:
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../../quality/testing/janitor
@@ -6325,6 +6349,12 @@ importers:
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6380,9 +6410,9 @@ importers:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
+        version: link:../../../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../../quality/testing/janitor
@@ -6398,6 +6428,12 @@ importers:
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6459,9 +6495,9 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
+        version: link:../../../@n8n/oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -6500,7 +6536,13 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       eslint-plugin-storybook:
         specifier: catalog:storybook
-        version: 10.5.10(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
+        version: 10.6.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       playwright:
         specifier: catalog:e2e
         version: 1.62.1
@@ -6622,9 +6664,6 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../@n8n/eslint-config
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../../@n8n/expression-runtime
@@ -6844,12 +6883,6 @@ importers:
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
-      eslint-plugin-oxlint:
-        specifier: 'catalog:'
-        version: 1.78.0(oxlint@1.78.0(oxlint-tsgolint@0.21.1))
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -7194,9 +7227,6 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7239,12 +7269,12 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -7294,12 +7324,12 @@ importers:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
     devDependencies:
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/frontend-vite-config':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-vite-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../../quality/testing/janitor
@@ -7318,9 +7348,12 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
-      eslint:
+      oxlint:
         specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -7400,9 +7433,6 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7445,15 +7475,15 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       jsdom:
         specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -7518,9 +7548,6 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7560,12 +7587,12 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -7627,9 +7654,6 @@ importers:
       '@iconify/json':
         specifier: 'catalog:'
         version: 2.2.488
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7663,12 +7687,12 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
-      eslint:
-        specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -15387,12 +15411,6 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4 <5.9.0'
 
-  '@typescript-eslint/project-service@8.68.0':
-    resolution: {integrity: sha512-5GQtWZCXFcFYux955pvoS02WLc49pXNlvIxocKjS0clvwo3in1RdlzVKyiqQH9vE5AKWFLTaUgeQkOrTS+0Qxw==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-    peerDependencies:
-      typescript: '>=4.8.4 <6.1.0'
-
   '@typescript-eslint/project-service@8.70.0':
     resolution: {integrity: sha512-hFHbTNqhU9G+2eKFXCBVb1tjFT/LceiJ4+HfLO4pTpDI0KHi6iajpcFFkaSQ9gXmCh7n82A0PthaayEdN6mspQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -15410,10 +15428,6 @@ packages:
     resolution: {integrity: sha512-+AgL5+mcoLxl1vGjwNfiWq5fLDZM1TmTPYs2UkyHfFhgERxBbqHlNjRzhThJqz+ktBqTChRYY6zwbMwy0591AA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript-eslint/scope-manager@8.68.0':
-    resolution: {integrity: sha512-T5eXpcaJNg8bhjHJ8Rjp68Vq/QBteYtTKY8TZqVNPaUbuz0f6jI9t6aDkylwvalpAB9XTTFeFOjrjXAZ3YvmVA==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
   '@typescript-eslint/scope-manager@8.70.0':
     resolution: {integrity: sha512-8nP3Kwh5hlgZ4FicGvmznAmJe8UL4sdU8tLukrPaMuQmDuk4Y8xYfzu/aYZW4xT2JCgc7H/TpDI5cGlxcWJSqQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -15423,12 +15437,6 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       typescript: '>=4.8.4 <5.9.0'
-
-  '@typescript-eslint/tsconfig-utils@8.68.0':
-    resolution: {integrity: sha512-F7zrGQfiJHojPwi8vhxZQC1tWtJzvL74cK/nqri2lk8YUXvYaYwl263xOJ69jDWPUk1hmcdoayFwk9lX09npVw==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-    peerDependencies:
-      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/tsconfig-utils@8.70.0':
     resolution: {integrity: sha512-adnkeeNq9Sq1sUf4+FRVc0KdgYghzsgFpZSQVZVvY0LCuUuN0FnQgyGzCJeC4fW1cdXseBAjU2EOqUIjbNcZUw==}
@@ -15447,10 +15455,6 @@ packages:
     resolution: {integrity: sha512-0mYH3emanku0vHw2aRLNGqe7EXh9WHEhi7kZzscrMDf6IIRUQ5Jk4wp1QrledE/36KtdZrVfKnE32eZCf/vaVQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript-eslint/types@8.68.0':
-    resolution: {integrity: sha512-9RnpsGJjrAllCMefGVVsImJM24YurhC0Q1h4UbvivtvOqXmR/vEJge2OoE++z9m6hyg8T1Q8t5SNT6tHSbrxcg==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
   '@typescript-eslint/types@8.70.0':
     resolution: {integrity: sha512-asTOIYhDg4zdzOScCyaytrsV3cR6B4ecPQlXw/dJIm7J/MZTtCtfVII9JD8Geh4jTCrK/Xe6cg5UevoleMcoJQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -15460,12 +15464,6 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       typescript: '>=4.8.4 <5.9.0'
-
-  '@typescript-eslint/typescript-estree@8.68.0':
-    resolution: {integrity: sha512-OKKsD0tYmoNiU5PW2zehO1yO56jYOm1ShYlxon/Z0SJNidAkdVg86eg9ruRuoXf8xfnuWZGbwDsStkoXbZtIIA==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-    peerDependencies:
-      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/typescript-estree@8.70.0':
     resolution: {integrity: sha512-d9NmHMPEKQ7QCLLm1jI3zmoQBwT5KwFYjXBJ9ymZfKCUU+5rmTRykKAFvH5Qn/ZCds3CEAFS9OC9M/jkl0X2bA==}
@@ -15480,13 +15478,6 @@ packages:
       eslint: ^8.57.0 || ^9.0.0
       typescript: '>=4.8.4 <5.9.0'
 
-  '@typescript-eslint/utils@8.68.0':
-    resolution: {integrity: sha512-PB5gJMMOg0Q5P1tsgWtEAqQacJXq0qEqRHDX/YJ4FaTMLfZPpHB3gjl2EJuiZyPABxmj4ZQYiY9m1bdAJ5y7tQ==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-    peerDependencies:
-      eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
-      typescript: '>=4.8.4 <6.1.0'
-
   '@typescript-eslint/utils@8.70.0':
     resolution: {integrity: sha512-oZmtKJz/4fufZ2p3+Cn3ijEojcdfR+1zYDH2xKYrEly0dR/Q/1xUPRCOlKGxod78nWlU2UnDe09GZ3TaknBFGA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -15496,10 +15487,6 @@ packages:
 
   '@typescript-eslint/visitor-keys@8.35.0':
     resolution: {integrity: sha512-zTh2+1Y8ZpmeQaQVIc/ZZxsx8UzgKJyNg1PTvjzC7WMhPSVS8bfDX34k1SrwOf016qd5RU3az2UxUNue3IfQ5g==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@typescript-eslint/visitor-keys@8.68.0':
-    resolution: {integrity: sha512-YR65gGdGvTUAWLldC3xLOvOzamdGzB4A5/N8rehEaHs3Zvoe39BhgY+u0SPch1OvrVTfLcc55wsSgK2NcnTS/A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@typescript-eslint/visitor-keys@8.70.0':
@@ -18421,19 +18408,14 @@ packages:
     resolution: {integrity: sha512-lKo+stn4t2jXX/ZdmJv2ClUQnRZLwSOyqfqsYgD6I/wYwy9bqA6mna4CEzdQNFVg5f3/RODpd/JQMiITARY92g==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
-  eslint-plugin-oxlint@1.78.0:
-    resolution: {integrity: sha512-kTyevY8wGGOvmOuEoWsP+MN1PEUaAbjka3MqPIcjqp3ZW3lXiu8OX/HyNFhTG8qCZi0qWYqnvgMYOUFAsu/Diw==}
-    peerDependencies:
-      oxlint: ~1.78.0
-
   eslint-plugin-playwright@2.2.2:
     resolution: {integrity: sha512-j0jKpndIPOXRRP9uMkwb9l/nSmModOU3452nrFdgFJoEv/435J1onk8+aITzjDW8DfypxgmVaDMdmVIa6F7I0w==}
     engines: {node: '>=16.6.0'}
     peerDependencies:
       eslint: '>=8.40.0'
 
-  eslint-plugin-storybook@10.5.10:
-    resolution: {integrity: sha512-NeOu3axmhNZfRuHRciFH0a/OVgvtAJLRHAwiJjcGkPAcElNmwEPp+pqoiwxytx7kHInz7mVVoBfPwVc8kPmOLw==}
+  eslint-plugin-storybook@10.6.1:
+    resolution: {integrity: sha512-XBmXuQcI0wzxMYc0rWKIiydvUxgS+GzLesO1YK1adnj97LhMqqsnlalbM+nXfQo1JoH2F2CI12sAH9/dAC99Dw==}
     peerDependencies:
       eslint: '>=8'
 
@@ -24864,12 +24846,6 @@ packages:
     resolution: {integrity: sha512-Nykmg/Net1BhoS1tENGqcevDdgha4us0x2Xnin7n5SxxAH6+s10FXTWtg7E9+jhC3GWEE83lcFHMS/Ml4C1dog==}
     peerDependencies:
       vue: '>=2'
-
-  vue-eslint-parser@10.1.3:
-    resolution: {integrity: sha512-dbCBnd2e02dYWsXoqX5yKUZlOt+ExIpq7hmHKPb5ZqKcjf++Eo0hMseFTZMLKThrUk61m+Uv6A2YSBve6ZvuDQ==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-    peerDependencies:
-      eslint: ^8.57.0 || ^9.0.0
 
   vue-i18n@11.4.5:
     resolution: {integrity: sha512-rm8YJ6RpjOrkcgS2GLrZwLvs/VbhxbTSuEspbyXDo233+fPK0OMFNLOj3fdQYVKdOgcpSfLW91JhbqgpkkcBWA==}
@@ -33690,21 +33666,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.68.0(supports-color@8.1.1)(typescript@6.0.2)':
-    dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.68.0(typescript@6.0.2)
-      '@typescript-eslint/types': 8.68.0
-      debug: 4.4.3(supports-color@8.1.1)
-      typescript: 6.0.2
-    transitivePeerDependencies:
-      - supports-color
-
   '@typescript-eslint/project-service@8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)':
     dependencies:
       '@typescript-eslint/tsconfig-utils': 8.70.0(@typescript/typescript6@6.0.2)
       '@typescript-eslint/types': 8.70.0
       debug: 4.4.3(supports-color@8.1.1)
       typescript: '@typescript/typescript6@6.0.2'
+    transitivePeerDependencies:
+      - supports-color
+
+  '@typescript-eslint/project-service@8.70.0(supports-color@8.1.1)(typescript@6.0.2)':
+    dependencies:
+      '@typescript-eslint/tsconfig-utils': 8.70.0(typescript@6.0.2)
+      '@typescript-eslint/types': 8.70.0
+      debug: 4.4.3(supports-color@8.1.1)
+      typescript: 6.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -33728,11 +33704,6 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.35.0
     optional: true
 
-  '@typescript-eslint/scope-manager@8.68.0':
-    dependencies:
-      '@typescript-eslint/types': 8.68.0
-      '@typescript-eslint/visitor-keys': 8.68.0
-
   '@typescript-eslint/scope-manager@8.70.0':
     dependencies:
       '@typescript-eslint/types': 8.70.0
@@ -33747,13 +33718,13 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  '@typescript-eslint/tsconfig-utils@8.68.0(typescript@6.0.2)':
-    dependencies:
-      typescript: 6.0.2
-
   '@typescript-eslint/tsconfig-utils@8.70.0(@typescript/typescript6@6.0.2)':
     dependencies:
       typescript: '@typescript/typescript6@6.0.2'
+
+  '@typescript-eslint/tsconfig-utils@8.70.0(typescript@6.0.2)':
+    dependencies:
+      typescript: 6.0.2
 
   '@typescript-eslint/type-utils@8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
@@ -33768,8 +33739,6 @@ snapshots:
       - supports-color
 
   '@typescript-eslint/types@8.35.0': {}
-
-  '@typescript-eslint/types@8.68.0': {}
 
   '@typescript-eslint/types@8.70.0': {}
 
@@ -33806,21 +33775,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@8.68.0(supports-color@8.1.1)(typescript@6.0.2)':
-    dependencies:
-      '@typescript-eslint/project-service': 8.68.0(supports-color@8.1.1)(typescript@6.0.2)
-      '@typescript-eslint/tsconfig-utils': 8.68.0(typescript@6.0.2)
-      '@typescript-eslint/types': 8.68.0
-      '@typescript-eslint/visitor-keys': 8.68.0
-      debug: 4.4.3(supports-color@8.1.1)
-      minimatch: 10.2.3
-      semver: 7.7.3
-      tinyglobby: 0.2.17
-      ts-api-utils: 2.5.0(typescript@6.0.2)
-      typescript: 6.0.2
-    transitivePeerDependencies:
-      - supports-color
-
   '@typescript-eslint/typescript-estree@8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)':
     dependencies:
       '@typescript-eslint/project-service': 8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)
@@ -33836,6 +33790,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@typescript-eslint/typescript-estree@8.70.0(supports-color@8.1.1)(typescript@6.0.2)':
+    dependencies:
+      '@typescript-eslint/project-service': 8.70.0(supports-color@8.1.1)(typescript@6.0.2)
+      '@typescript-eslint/tsconfig-utils': 8.70.0(typescript@6.0.2)
+      '@typescript-eslint/types': 8.70.0
+      '@typescript-eslint/visitor-keys': 8.70.0
+      debug: 4.4.3(supports-color@8.1.1)
+      minimatch: 10.2.3
+      semver: 7.7.3
+      tinyglobby: 0.2.17
+      ts-api-utils: 2.5.0(typescript@6.0.2)
+      typescript: 6.0.2
+    transitivePeerDependencies:
+      - supports-color
+
   '@typescript-eslint/utils@8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       '@eslint-community/eslint-utils': 4.10.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -33848,17 +33817,6 @@ snapshots:
       - supports-color
     optional: true
 
-  '@typescript-eslint/utils@8.68.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)':
-    dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
-      '@typescript-eslint/scope-manager': 8.68.0
-      '@typescript-eslint/types': 8.68.0
-      '@typescript-eslint/typescript-estree': 8.68.0(supports-color@8.1.1)(typescript@6.0.2)
-      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
-      typescript: 6.0.2
-    transitivePeerDependencies:
-      - supports-color
-
   '@typescript-eslint/utils@8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       '@eslint-community/eslint-utils': 4.10.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -33870,15 +33828,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@typescript-eslint/utils@8.70.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)':
+    dependencies:
+      '@eslint-community/eslint-utils': 4.10.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
+      '@typescript-eslint/scope-manager': 8.70.0
+      '@typescript-eslint/types': 8.70.0
+      '@typescript-eslint/typescript-estree': 8.70.0(supports-color@8.1.1)(typescript@6.0.2)
+      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      typescript: 6.0.2
+    transitivePeerDependencies:
+      - supports-color
+
   '@typescript-eslint/visitor-keys@8.35.0':
     dependencies:
       '@typescript-eslint/types': 8.35.0
       eslint-visitor-keys: 4.2.1
-
-  '@typescript-eslint/visitor-keys@8.68.0':
-    dependencies:
-      '@typescript-eslint/types': 8.68.0
-      eslint-visitor-keys: 5.0.1
 
   '@typescript-eslint/visitor-keys@8.70.0':
     dependencies:
@@ -37228,20 +37192,15 @@ snapshots:
       - supports-color
       - typescript
 
-  eslint-plugin-oxlint@1.78.0(oxlint@1.78.0(oxlint-tsgolint@0.21.1)):
-    dependencies:
-      jsonc-parser: 3.3.1
-      oxlint: 1.78.0(oxlint-tsgolint@0.21.1)
-
   eslint-plugin-playwright@2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1)):
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       globals: 13.24.0
 
-  eslint-plugin-storybook@10.5.10(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2):
+  eslint-plugin-storybook@10.6.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2):
     dependencies:
-      '@typescript-eslint/types': 8.68.0
-      '@typescript-eslint/utils': 8.68.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
+      '@typescript-eslint/types': 8.70.0
+      '@typescript-eslint/utils': 8.70.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
       eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -45265,19 +45224,6 @@ snapshots:
       ts-map: 1.0.3
       vue: 3.5.26(typescript@6.0.2)
       vue-inbrowser-compiler-independent-utils: 4.71.1(vue@3.5.26(typescript@6.0.2))
-
-  vue-eslint-parser@10.1.3(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1):
-    dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
-      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
-      eslint-scope: 8.4.0
-      eslint-visitor-keys: 4.2.1
-      espree: 10.4.0
-      esquery: 1.7.0
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
-      semver: 7.7.3
-    transitivePeerDependencies:
-      - supports-color
 
   vue-i18n@11.4.5(vue@3.5.26(typescript@6.0.2)):
     dependencies:

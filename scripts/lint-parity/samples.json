@@ -26,7 +26,6 @@
 	],
 	"packages/@n8n/backend-services": ["src/index.ts", "test/setup-test-folder.ts"],
 	"packages/@n8n/backend-test-utils": ["src/db/projects.ts"],
-	"packages/quality/efficiency/scale/benchmark": ["src/commands/list.ts"],
 	"packages/@n8n/blob-storage": [
 		"src/__tests__/azure-byte-store.test.ts",
 		"src/azure-blob/azure-blob.config.ts"
@@ -40,11 +39,11 @@
 		"src/index.ts"
 	],
 	"packages/@n8n/client-oauth2": ["src/client-oauth2-token.ts", "test/client-oauth2.test.ts"],
-	"packages/@n8n/codemirror-lang-sql": ["src/complete.ts", "test/complete.test.ts"],
 	"packages/@n8n/codemirror-lang": [
 		"src/expressions/grammar.terms.ts",
 		"test/expressions/expressions.test.ts"
 	],
+	"packages/@n8n/codemirror-lang-sql": ["src/complete.ts", "test/complete.test.ts"],
 	"packages/@n8n/computer-use": [
 		"src/__mocks__/@inquirer/prompts.ts",
 		"src/config-templates.test.ts"
@@ -72,11 +71,11 @@
 		"src/rules/ai-node-package-json.test.ts"
 	],
 	"packages/@n8n/extension-sdk": ["src/backend/define.ts"],
+	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/inbound-auth": [
 		"src/__tests__/trusted-source-config.test.ts",
 		"src/trusted-source-config.ts"
 	],
-	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/instance-ai": [
 		"evaluations/__tests__/agent-report-rendering.test.ts",
 		"evaluations/computer-use/report-html.ts",
@@ -91,14 +90,14 @@
 		"src/apps/workflow-preview/App.vue",
 		"src/apps/workflow-preview/composables/use-workflow-preview.test.ts"
 	],
+	"packages/@n8n/mcp-browser": [
+		"src/__tests__/cdp-relay-attach.test.ts",
+		"src/adapters/agent-browser.ts"
+	],
 	"packages/@n8n/mcp-browser-extension": [
 		"src/approvedHosts.test.ts",
 		"src/approvedHosts.ts",
 		"src/ui/App.vue"
-	],
-	"packages/@n8n/mcp-browser": [
-		"src/__tests__/cdp-relay-attach.test.ts",
-		"src/adapters/agent-browser.ts"
 	],
 	"packages/@n8n/node-cli": [
 		"src/commands/build.test.ts",
@@ -285,7 +284,8 @@
 		"src/App.vue",
 		"src/__stories__/App.stories.ts",
 		"src/__tests__/Chat.spec.ts",
-		"src/__tests__/plugins/chat.test.ts"
+		"src/__tests__/plugins/chat.test.ts",
+		"src/index.ts"
 	],
 	"packages/frontend/@n8n/composables": [
 		"src/__tests__/packageBoundary.test.ts",
@@ -353,10 +353,23 @@
 		"src/index.ts",
 		"src/instance-registry.store.test.ts"
 	],
+	"packages/modules/mcp/frontend": [
+		"src/SettingsMCPAgentsView.test.ts",
+		"src/SettingsMCPAgentsView.vue",
+		"src/__tests__/setup.ts",
+		"src/clients.utils.ts"
+	],
 	"packages/modules/otel/frontend": [
 		"src/OtelSettingsRow.vue",
 		"src/SettingsOpenTelemetryView.test.ts",
 		"src/__tests__/setup.ts",
+		"src/index.ts"
+	],
+	"packages/modules/type-availability-policies/frontend": [
+		"src/__tests__/mocks.ts",
+		"src/__tests__/setup.ts",
+		"src/components/ContactInstanceAdminModal.test.ts",
+		"src/components/ContactInstanceAdminModal.vue",
 		"src/index.ts"
 	],
 	"packages/node-dev": ["src/Build.ts"],
@@ -367,14 +380,15 @@
 		"nodes/ActionNetwork/ActionNetwork.node.ts",
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
-	"packages/quality/policy/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/quality/efficiency/scale/benchmark": ["src/commands/list.ts"],
 	"packages/quality/environments/containers": [
 		"services/keycloak.ts",
 		"tests/resource-tracker.test.ts"
 	],
+	"packages/quality/policy/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/quality/policy/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
 	"packages/quality/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
 	"packages/quality/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
-	"packages/quality/policy/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
 	"packages/quality/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
 	"packages/workflow": [
 		"src/augment-object.ts",

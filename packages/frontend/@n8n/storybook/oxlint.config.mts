@@ -11,22 +11,19 @@ export default defineConfig({
 	// Not inherited through `extends`.
 	ignorePatterns: frontendConfig.ignorePatterns,
 	jsPlugins: [storybookPlugin],
-	rules: {
-		'no-prototype-builtins': 'warn',
-		'typescript/restrict-template-expressions': 'warn',
-	},
 	overrides: [
 		{
-			// The error-level rules of eslint-plugin-storybook's recommended config.
-			files: ['**/*.stories.ts'],
+			files: ['.storybook/main.ts'],
+			rules: { 'storybook/no-uninstalled-addons': 'error' },
+		},
+		{
+			// Storybook entry/config files are build tooling — allow devDependency imports.
+			files: ['.storybook/**'],
 			rules: {
-				'storybook/await-interactions': 'error',
-				'storybook/context-in-play-function': 'error',
-				'storybook/default-exports': 'error',
-				'storybook/no-renderer-packages': 'error',
-				'storybook/story-exports': 'error',
-				'storybook/use-storybook-expect': 'error',
-				'storybook/use-storybook-testing-library': 'error',
+				'import-x-alias/no-extraneous-dependencies': [
+					'error',
+					{ devDependencies: true, optionalDependencies: false, peerDependencies: false },
+				],
 			},
 		},
 	],

@@ -107,7 +107,6 @@ describe('createFrontend', () => {
 				'package.json',
 				'tsconfig.json',
 				'vite.config.ts',
-				'eslint.config.mjs',
 				'oxlint.config.mts',
 				'vize.config.ts',
 				'stylelint.config.mjs',

@@ -1,7 +1,11 @@
-import { defineConfig } from 'eslint/config';
-import { frontendConfig } from '@n8n/eslint-config/frontend';
+import { defineConfig } from 'oxlint';
+import { frontendConfig } from '@n8n/oxlint-config/frontend';
 
-export default defineConfig(frontendConfig, {
+export default defineConfig({
+	extends: [frontendConfig],
+	options: { typeAware: true },
+	// Not inherited through `extends`.
+	ignorePatterns: frontendConfig.ignorePatterns,
 	rules: {
 		// This package is L1: it sits beside `@n8n/design-system` and `@n8n/i18n`, below
 		// `@n8n/stores` and `@n8n/composables`. A helper that reached up to L2 would make every
@@ -26,7 +30,7 @@ export default defineConfig(frontendConfig, {
 							'@/**',
 						],
 						message:
-							'@n8n/frontend-test-utils is L1. It may import @n8n/api-types, @n8n/i18n and @n8n/design-system only. See the comment in eslint.config.mjs.',
+							'@n8n/frontend-test-utils is L1. It may import @n8n/api-types, @n8n/i18n and @n8n/design-system only. See the comment in oxlint.config.mts.',
 					},
 				],
 			},

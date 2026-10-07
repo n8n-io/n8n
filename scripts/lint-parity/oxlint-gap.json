@@ -36,13 +36,6 @@
 		"replacement": "Wait for the upstream emitDecoratorMetadata option, or use an approved shim that suppresses decorated files.",
 		"upstream": "https://github.com/oxc-project/oxc/issues/13609"
 	},
-	"frontend/no-restricted-syntax": {
-		"layer": "frontend",
-		"native": null,
-		"reason": "editor-ui uses package-specific AST selectors for workflow-store and modal-migration ratchets. The frontend keeps ESLint for these selectors.",
-		"impact": "None for the backend migration.",
-		"replacement": "Replace each selector with a focused rule before an Oxlint-only frontend migration."
-	},
 	"frontend/vue-template-rules": {
 		"layer": "frontend",
 		"native": null,
@@ -65,5 +58,139 @@
 		"reason": "The node and credential format rules come from eslint-plugin-n8n-nodes-base. They need a JS-plugin compatibility probe before they can be moved into the shared Oxlint layer.",
 		"impact": "An Oxlint-only nodes package would lose 82 node and 12 credential format checks.",
 		"replacement": "Verify the plugin through Oxlint's JS-plugin bridge, then translate its file-scoped rule tables."
+	},
+	"constructor-super": {
+		"layer": "frontend",
+		"native": "constructor-super",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"getter-return": {
+		"layer": "frontend",
+		"native": "getter-return",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-class-assign": {
+		"layer": "frontend",
+		"native": "no-class-assign",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-const-assign": {
+		"layer": "frontend",
+		"native": "no-const-assign",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-dupe-args": {
+		"layer": "frontend",
+		"native": null,
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-dupe-class-members": {
+		"layer": "frontend",
+		"native": "no-dupe-class-members",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-dupe-keys": {
+		"layer": "frontend",
+		"native": "no-dupe-keys",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-func-assign": {
+		"layer": "frontend",
+		"native": "no-func-assign",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-import-assign": {
+		"layer": "frontend",
+		"native": "no-import-assign",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-new-native-nonconstructor": {
+		"layer": "frontend",
+		"native": "no-new-native-nonconstructor",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-obj-calls": {
+		"layer": "frontend",
+		"native": "no-obj-calls",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-redeclare": {
+		"layer": "frontend",
+		"native": "no-redeclare",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-setter-return": {
+		"layer": "frontend",
+		"native": "no-setter-return",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-this-before-super": {
+		"layer": "frontend",
+		"native": "no-this-before-super",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-undef": {
+		"layer": "frontend",
+		"native": "no-undef",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-unreachable": {
+		"layer": "frontend",
+		"native": "no-unreachable",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-unsafe-negation": {
+		"layer": "frontend",
+		"native": "no-unsafe-negation",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"no-with": {
+		"layer": "frontend",
+		"native": "no-with",
+		"reason": "An `eslint:recommended` rule that TypeScript reports itself. The ESLint base turns it off for `.ts` files through the typescript-eslint override, whose globs omit `.vue`, so it stayed on for SFC scripts by accident. `vue-tsc` reports each of these for an SFC script.",
+		"impact": "None. `pnpm typecheck` rejects the same code.",
+		"replacement": "Retired."
+	},
+	"@typescript-eslint/naming-convention": {
+		"layer": "frontend",
+		"native": null,
+		"packages": ["packages/frontend/@n8n/design-system"],
+		"reason": "No oxlint rule. The design-system selector required camelCase or UPPER_CASE property names in `src/components/N8nFormInput/validators.ts`. It enforced style only.",
+		"impact": "Low. One file.",
+		"replacement": "Retired, as for the other package naming selectors."
 	}
 }

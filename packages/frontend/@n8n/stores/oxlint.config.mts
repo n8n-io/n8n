@@ -6,4 +6,7 @@ export default defineConfig({
 	options: { typeAware: true },
 	// Not inherited through `extends`.
 	ignorePatterns: frontendConfig.ignorePatterns,
+	rules: {
+		'typescript/no-unnecessary-type-assertion': 'warn',
+	},
 });

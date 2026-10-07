@@ -75,32 +75,33 @@ Keep `n8n-node-dev` on ESLint. The v3 removal plan makes an Oxlint migration unn
 
 Reconsider this exception only if the package removal plan changes.
 
-## Frontend package blockers
+## Frontend packages
 
-Oxlint lints only the script block of a Vue SFC. The Vize CLI (`vize lint`) closes the template gap: it parses the whole SFC natively, so it reports exact template positions, lints an SFC without a `<script>` block, and reports template parse errors. Vue packages run `vize lint` and `oxlint`; packages that still need an ESLint compatibility pass run it afterward.
+The frontend packages run Oxlint and the Vize CLI. They no longer run ESLint, and `@n8n/eslint-config` no longer has a frontend layer.
 
-- `@n8n/oxlint-config/vize` holds the 51 Vize rules (`vue/*` and `script/*`). `vue/block-order` becomes `vue/sfc-element-order`, and `vue/no-undef-components` becomes `vue/require-component-registration`. A package `vize.config.ts` imports it.
-- `@n8n/oxlint-config/vue` holds the 30 native Oxlint `vue/*` script rules, `n8n-local-rules/require-macro-variable-name` (a port of `vue/require-macro-variable-name`), and `@n8n/design-system/require-teleported-tooltip-in-dropdown` (which parses the template with `@vue/compiler-dom`).
+- `@n8n/oxlint-config/frontend` extends `base` and `vue`. It holds the TypeScript rules and the 30 native Oxlint `vue/*` script rules, plus `n8n-local-rules/require-macro-variable-name` (a port of `vue/require-macro-variable-name`) and `@n8n/design-system/require-teleported-tooltip-in-dropdown` (which parses the template with `@vue/compiler-dom`). A package config sets `options: { typeAware: true }` and spreads `frontendConfig.ignorePatterns`, because Oxlint passes neither through `extends`.
+- `@n8n/oxlint-config/vize` holds the 51 Vize template and SFC rules. A package `vize.config.ts` imports it. `vue/block-order` becomes `vue/sfc-element-order`, and `vue/no-undef-components` becomes `vue/require-component-registration`.
+- `typescript/consistent-type-imports` is on in the frontend layer. The base layer leaves it to ESLint because the Oxlint fixer breaks `emitDecoratorMetadata`, and no frontend package uses decorators.
 
-`eslint-plugin-vue` is gone. ESLint still parses `.vue` files with `vue-eslint-parser`, so the type-aware TypeScript rules still reach the SFC script. Oxlint's type-aware rules skip `.vue` files.
+Retired rules, each with an entry in `oxlint-gap.json`:
 
-`frontend/vue-template-rules` in `oxlint-gap.json` lists the seven rules without a Vize equivalent.
+- Seven `vue/*` rules without a Vize equivalent, and `vue/no-deprecated-filter`, which Vize misreads on a TypeScript union in a template cast.
+- Eighteen `eslint:recommended` JavaScript rules that ESLint applied to SFC scripts only because the typescript-eslint override globs omit `.vue`. TypeScript reports each of them.
+- `@typescript-eslint/naming-convention` in design-system, a style-only selector on one file.
+- `eslint-plugin-storybook`. Oxlint cannot load it, and the storybook package holds no story file.
 
 Known limits:
 
-- Vize does not read `extends` from a JSON path. A package config imports `vizeConfig` from `@n8n/oxlint-config/vize` and spreads it.
-- To suppress a rule for some files, add an `entries` item with `files` and `linter.rules` to the package `vize.config.ts`. Vize also reads `eslint-disable` comments inside `<template>`, but Vue keeps those comments in dev builds and snapshots.
+- Oxlint's type-aware rules skip `.vue` files. ESLint ran them on the SFC script through `vue-eslint-parser`. Vize has a `type/*` rule set (`typeAware: true`) that covers part of this, for example `type/no-floating-promises`. It is experimental and not enabled yet.
+- Vize does not read `extends` from a JSON path, so a package config imports `vizeConfig` and spreads it. To suppress a rule for some files, add an `entries` item with `files` and `linter.rules`.
 - Vize cannot run a JavaScript rule. The two n8n Vue rules stay in Oxlint.
-- `vue/attribute-hyphenation` stays at `warn` in editor-ui, as it was in ESLint.
+- Oxlint has no `no-restricted-syntax`. The editor-ui ESLint config held dormant (`off`) selector ratchets for the workflow-store migration and the modal-key ratchet (CAT-3688, CAT-3973). They are in git history, in `packages/frontend/editor-ui/eslint.config.mjs` before this change. Rewrite each as a focused rule before you turn it back on.
+- editor-ui carries package-wide `warn` downgrades, as its ESLint config did. `typescript/no-deprecated` is new to editor-ui, and Oxlint did not lint its test files before. Both groups are TODOs in `oxlint.config.mts` and in the code-health baseline.
 - Vize is experimental and releases often. The catalog pins one version, and `minimumReleaseAge` applies.
-- `oxlint-plugin-vize` is not used. It calls the native linter once for each rule and each file, which costs about 11 s in editor-ui, and it reports every template diagnostic at the start of the script block.
 
-Speed, editor-ui, 1,127 SFCs, 51 rules: `vize lint` takes 0.3 s. The same rules through `oxlint-plugin-vize` took 11 s, and through `eslint-plugin-vue` about 3 s of rule time on top of the ESLint parse.
+Speed, editor-ui, 1,127 SFCs: `vize lint` takes 0.3 s and Oxlint about 5 s. ESLint took about 92 s, most of it parsing every SFC for the type-aware rules.
 
-Suggested direction:
-
-1. Move the TypeScript rules of each frontend package to Oxlint, then remove the ESLint pass.
-2. Re-check the gap list when Vize releases new rules.
+To prove parity for a frontend package, snapshot ESLint from a commit that still has the ESLint configs, then run `oxlint-parity.mjs`. The parity script accepts the rules the Oxlint layers enforce on purpose beyond ESLint (`OXLINT_ONLY`).
 
 ## Node package blockers
 
@@ -140,7 +141,7 @@ The main exceptions are:
 3. Audit and reduce `naming-convention` package overrides.
 4. Re-test the two nursery rules.
 5. Run a JS-plugin bridge spike for `n8n-nodes-base`.
-6. Run Vue template rules through the Vize CLI. Re-check the Vize gap list on each upgrade.
+6. Enable Vize's type-aware rules for SFC scripts when they leave experimental status.
 
 ## Validation commands
 

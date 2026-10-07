@@ -6,4 +6,10 @@ export default defineConfig({
 	options: { typeAware: true },
 	// Not inherited through `extends`.
 	ignorePatterns: frontendConfig.ignorePatterns,
+	overrides: [
+		{
+			files: ['**/*.test.ts'],
+			rules: { 'typescript/no-unsafe-assignment': 'warn' },
+		},
+	],
 });

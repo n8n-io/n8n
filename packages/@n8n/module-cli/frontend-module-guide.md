@@ -105,8 +105,7 @@ packages/modules/my-feature/frontend/
 ├── package.json               # source-only; deps are L0-L2 only
 ├── tsconfig.json              # extends the shared module base
 ├── vite.config.ts             # vitest config + the shared source aliases
-├── eslint.config.mjs          # TypeScript rules
-├── oxlint.config.mts          # Vue script rules
+├── oxlint.config.mts          # TypeScript and Vue script rules
 ├── vize.config.ts             # Vue template rules
 ├── biome.jsonc
 ├── README.md
@@ -594,27 +593,9 @@ Narrow the type of each error by hand.
 ## Lint
 
 ```sh
-pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # vize, oxlint, then eslint
+pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # vize, then oxlint
 pnpm --filter @n8n/frontend-module-my-feature lint:fix        # no build needed to autofix
 ```
-
-**Note:** lint is stricter in a module than in the shell. `editor-ui/eslint.config.mjs` sets
-`'import-x/order': 'off'`. The shared frontend config keeps that rule on. Code that passed in
-editor-ui then fails in a module:
-
-```
-  2:1  error  `@n8n/stores/settings.store` import should occur before import of `vue`  import-x/order
-
-✖ 1 problem (1 error, 0 warnings)
-  1 error and 0 warnings potentially fixable with the `--fix` option.
-```
-
-`pnpm lint:fix` corrects this error. Every extraction PR gets these import-order changes, and they
-change no behaviour.
-
-Put those changes in one commit, so a reviewer can skip them. Then say so in the PR body. A new
-module author can read this error as a defect, and can then search for a problem that does not
-exist.
 
 ## Tests
 

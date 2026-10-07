@@ -14,6 +14,8 @@ export type ButtonSize = (typeof BUTTON_SIZE)[number];
 
 export interface ButtonProps {
 	/** Determines the visual style of the button */
+	// The legacy variants stay accepted until every caller has moved.
+	// oxlint-disable-next-line typescript/no-deprecated
 	variant?: ButtonVariant | LegacyButtonVariant;
 	/** Determines the size of the button */
 	size?: ButtonSize;

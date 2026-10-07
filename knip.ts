@@ -176,10 +176,6 @@ const config: KnipConfig = {
 				'web-tree-sitter',
 				// Target of the `stream` alias that @n8n/frontend-vite-config declares.
 				'stream-browserify',
-				// oxlint-rules.json names these plugins; @n8n/oxlint-config provides them.
-				'@stylistic/eslint-plugin',
-				'eslint-plugin-lodash',
-				'eslint-plugin-unused-imports',
 			],
 		}),
 		'packages/frontend/@n8n/storybook': pkg({

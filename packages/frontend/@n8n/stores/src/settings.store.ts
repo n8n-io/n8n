@@ -304,6 +304,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				location.protocol === 'http:' &&
 				(!['localhost', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
 			) {
+				// Replaces the whole document on purpose: the app must not render.
+				// oxlint-disable-next-line typescript/no-deprecated
 				document.write(buildInsecureConnectionWarning());
 				return;
 			}

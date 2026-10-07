@@ -1,6 +1,9 @@
 import { defineConfig } from 'oxlint';
-import { vueConfig } from '@n8n/oxlint-config/vue';
+import { frontendConfig } from '@n8n/oxlint-config/frontend';
 
 export default defineConfig({
-	extends: [vueConfig],
+	extends: [frontendConfig],
+	options: { typeAware: true },
+	// Not inherited through `extends`.
+	ignorePatterns: frontendConfig.ignorePatterns,
 });

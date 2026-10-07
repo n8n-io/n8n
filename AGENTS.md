@@ -248,24 +248,27 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
   - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
     operator import — trades a visible leak for an invisible one.
 
-### ESLint configuration layers
+### Lint configuration layers
 
-Rule policy lives in four shared configs in `@n8n/eslint-config`, and a package
-config picks exactly one:
+Rule policy lives in shared configs, and a package config picks exactly one
+layer. ESLint layers live in `@n8n/eslint-config`; Oxlint layers in
+`@n8n/oxlint-config`:
 
 | layer | subpath | for |
 |---|---|---|
-| `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
-| `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
-| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `baseConfig` | `@n8n/eslint-config/base`, `@n8n/oxlint-config/base` | runtime-agnostic libraries |
+| `backendConfig` | `@n8n/eslint-config/backend`, `@n8n/oxlint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
+| `frontendConfig` | `@n8n/oxlint-config/frontend` | Vue packages (Oxlint only; no ESLint layer) |
 | `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
 
-Vue rules do not run in ESLint. The Vize CLI (`vize lint`) runs the template
-rules from `@n8n/oxlint-config/vize`, through the package `vize.config.ts`.
-Oxlint runs the Vue script rules from `@n8n/oxlint-config/vue` (or
-`@n8n/oxlint-config/frontend` in a package that has moved to Oxlint). To
-suppress a template rule for some files, add an `entries` item to
-`vize.config.ts`. See `scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md`.
+Frontend packages do not run ESLint. Oxlint runs the TypeScript and Vue script
+rules from `@n8n/oxlint-config/frontend`, with `options: { typeAware: true }`.
+The Vize CLI (`vize lint`) runs the Vue template rules from
+`@n8n/oxlint-config/vize`, through the package `vize.config.ts`. Oxlint does
+not pass `ignorePatterns` through `extends`, so a package config spreads
+`frontendConfig.ignorePatterns`. To suppress a template rule for some files,
+add an `entries` item to `vize.config.ts`. See
+`scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md`.
 
 A package config may add `ignores`, an additive plugin config, a block that
 raises rules to `error`, and blocks scoped to `files`. It must not turn a rule

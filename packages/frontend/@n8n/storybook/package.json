@@ -9,8 +9,8 @@
     "build": "storybook build",
     "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix"
+    "lint": "oxlint . --quiet",
+    "lint:fix": "oxlint . --fix"
   },
   "dependencies": {
     "@n8n/chat": "workspace:*",
@@ -28,7 +28,7 @@
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:storybook",
     "@iconify/json": "catalog:",
-    "@n8n/eslint-config": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@storybook/addon-a11y": "catalog:storybook",
     "@storybook/addon-docs": "catalog:storybook",
@@ -42,6 +42,8 @@
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint-plugin-storybook": "catalog:storybook",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "playwright": "catalog:e2e",
     "prettier": "catalog:",
     "react": "18.2.0",

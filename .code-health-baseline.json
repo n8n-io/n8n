@@ -989,310 +989,6 @@
 				"hash": "26b2999a3856"
 			}
 		],
-		"packages/frontend/editor-ui/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 55,
-				"message": "packages/frontend/editor-ui turns 'no-restricted-syntax' down to 'off' for the whole package.",
-				"hash": "991d49a8245c"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 234,
-				"message": "packages/frontend/editor-ui turns 'n8n-local-rules/no-internal-package-import' down to 'warn' for the whole package.",
-				"hash": "4b3a85b06980"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 235,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/ban-ts-comment' down to 'off' for the whole package.",
-				"hash": "e8c5a011088f"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 236,
-				"message": "packages/frontend/editor-ui turns 'id-denylist' down to 'warn' for the whole package.",
-				"hash": "bd2977006e41"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 237,
-				"message": "packages/frontend/editor-ui turns 'no-case-declarations' down to 'warn' for the whole package.",
-				"hash": "e305144fdb0f"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 238,
-				"message": "packages/frontend/editor-ui turns 'no-useless-escape' down to 'warn' for the whole package.",
-				"hash": "9280bef13c13"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 239,
-				"message": "packages/frontend/editor-ui turns 'no-prototype-builtins' down to 'warn' for the whole package.",
-				"hash": "352fae23e0d1"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 240,
-				"message": "packages/frontend/editor-ui turns 'no-fallthrough' down to 'warn' for the whole package.",
-				"hash": "db7c8593f721"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 241,
-				"message": "packages/frontend/editor-ui turns 'no-extra-boolean-cast' down to 'warn' for the whole package.",
-				"hash": "0cbbb7983686"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 242,
-				"message": "packages/frontend/editor-ui turns 'no-sparse-arrays' down to 'warn' for the whole package.",
-				"hash": "750f119df597"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 243,
-				"message": "packages/frontend/editor-ui turns 'no-control-regex' down to 'warn' for the whole package.",
-				"hash": "5f096c4e5a30"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 244,
-				"message": "packages/frontend/editor-ui turns 'import-x/extensions' down to 'warn' for the whole package.",
-				"hash": "301322f12ba8"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 245,
-				"message": "packages/frontend/editor-ui turns 'import-x/no-cycle' down to 'warn' for the whole package.",
-				"hash": "3f9ee03a211f"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 246,
-				"message": "packages/frontend/editor-ui turns 'import-x/no-duplicates' down to 'warn' for the whole package.",
-				"hash": "7ff9cd71e584"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 247,
-				"message": "packages/frontend/editor-ui turns 'no-unsafe-optional-chaining' down to 'warn' for the whole package.",
-				"hash": "29c386f9afa1"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 248,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-restricted-types' down to 'warn' for the whole package.",
-				"hash": "674bc7c925bb"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 249,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/dot-notation' down to 'warn' for the whole package.",
-				"hash": "b01af73ed4af"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 250,
-				"message": "packages/frontend/editor-ui turns '@stylistic/lines-between-class-members' down to 'warn' for the whole package.",
-				"hash": "abd5d6c83376"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 251,
-				"message": "packages/frontend/editor-ui turns '@stylistic/member-delimiter-style' down to 'warn' for the whole package.",
-				"hash": "c48bcd875f1a"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 252,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-empty-interface' down to 'warn' for the whole package.",
-				"hash": "271c5309b542"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 253,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-for-in-array' down to 'warn' for the whole package.",
-				"hash": "249d350f8066"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 254,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-loop-func' down to 'warn' for the whole package.",
-				"hash": "fa39d584681d"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 255,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-non-null-assertion' down to 'warn' for the whole package.",
-				"hash": "875c5c8d162e"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 256,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-shadow' down to 'warn' for the whole package.",
-				"hash": "b4bfbb79e513"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 257,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-this-alias' down to 'warn' for the whole package.",
-				"hash": "cd21cdd292fa"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 258,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unnecessary-boolean-literal-compare' down to 'warn' for the whole package.",
-				"hash": "59d1ce2379ac"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 259,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
-				"hash": "2eb8b8a9ba23"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 260,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unused-expressions' down to 'warn' for the whole package.",
-				"hash": "27661db19f4f"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 261,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-var-requires' down to 'warn' for the whole package.",
-				"hash": "32b4b7a30c8e"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 262,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
-				"hash": "8379fe8350b5"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 263,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/restrict-plus-operands' down to 'warn' for the whole package.",
-				"hash": "f41881f25dad"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 264,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-redundant-type-constituents' down to 'warn' for the whole package.",
-				"hash": "edfe82c98ea3"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 265,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unsafe-enum-comparison' down to 'warn' for the whole package.",
-				"hash": "577beb091f06"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 266,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/prefer-promise-reject-errors' down to 'warn' for the whole package.",
-				"hash": "cb1d57707d43"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 267,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-base-to-string' down to 'warn' for the whole package.",
-				"hash": "96f813e59fa6"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 269,
-				"message": "packages/frontend/editor-ui turns '@typescript-eslint/restrict-template-expressions' down to 'warn' for the whole package.",
-				"hash": "affee27335fc"
-			}
-		],
-		"packages/modules/insights/frontend/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 24,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/naming-convention' down to 'warn' for the whole package.",
-				"hash": "3da608aa064b"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 25,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-argument' down to 'warn' for the whole package.",
-				"hash": "e9ae1f320e01"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 26,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-assignment' down to 'warn' for the whole package.",
-				"hash": "a488f2f44a8e"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 27,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-call' down to 'warn' for the whole package.",
-				"hash": "58fd1d708522"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 28,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-member-access' down to 'warn' for the whole package.",
-				"hash": "7de9b4bde334"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 29,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-return' down to 'warn' for the whole package.",
-				"hash": "14aa32c2f578"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 30,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/await-thenable' down to 'warn' for the whole package.",
-				"hash": "f6b34bf81039"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 31,
-				"message": "packages/modules/insights/frontend turns '@typescript-eslint/require-await' down to 'warn' for the whole package.",
-				"hash": "b857963c49d1"
-			}
-		],
-		"packages/frontend/@n8n/design-system/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 12,
-				"message": "packages/frontend/@n8n/design-system turns 'no-prototype-builtins' down to 'warn' for the whole package.",
-				"hash": "f7e604999631"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 13,
-				"message": "packages/frontend/@n8n/design-system turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
-				"hash": "e6d8e187bb0b"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 14,
-				"message": "packages/frontend/@n8n/design-system turns '@typescript-eslint/restrict-template-expressions' down to 'warn' for the whole package.",
-				"hash": "86a0b84b8415"
-			}
-		],
-		"packages/frontend/@n8n/i18n/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 6,
-				"message": "packages/frontend/@n8n/i18n turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
-				"hash": "5836fd4581b2"
-			}
-		],
-		"packages/frontend/@n8n/stores/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 6,
-				"message": "packages/frontend/@n8n/stores turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
-				"hash": "63e2dd35dc47"
-			}
-		],
 		"packages/quality/testing/playwright/eslint.config.mjs": [
 			{
 				"rule": "lint-config-layering",
@@ -1397,6 +1093,232 @@
 				"line": 459,
 				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
 				"hash": "9ac3dbae3d22"
+			}
+		],
+		"packages/frontend/editor-ui/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 53,
+				"message": "packages/frontend/editor-ui turns 'typescript/ban-ts-comment' down to 'off' for the whole package.",
+				"hash": "96b746aa192a"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 54,
+				"message": "packages/frontend/editor-ui turns 'id-denylist' down to 'warn' for the whole package.",
+				"hash": "db994134abda"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 56,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-deprecated' down to 'warn' for the whole package.",
+				"hash": "625a16d8b3c6"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 57,
+				"message": "packages/frontend/editor-ui turns 'no-case-declarations' down to 'warn' for the whole package.",
+				"hash": "50ecc9a0415e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 58,
+				"message": "packages/frontend/editor-ui turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "789be480c176"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 59,
+				"message": "packages/frontend/editor-ui turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "633d0da567a1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 60,
+				"message": "packages/frontend/editor-ui turns 'no-fallthrough' down to 'warn' for the whole package.",
+				"hash": "7d3d0e1b195f"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 61,
+				"message": "packages/frontend/editor-ui turns 'no-extra-boolean-cast' down to 'warn' for the whole package.",
+				"hash": "8f125c88c40f"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 62,
+				"message": "packages/frontend/editor-ui turns 'no-sparse-arrays' down to 'warn' for the whole package.",
+				"hash": "6faebd835f97"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 63,
+				"message": "packages/frontend/editor-ui turns 'no-control-regex' down to 'warn' for the whole package.",
+				"hash": "718680739fee"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 64,
+				"message": "packages/frontend/editor-ui turns 'no-unsafe-optional-chaining' down to 'warn' for the whole package.",
+				"hash": "26211216e721"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 65,
+				"message": "packages/frontend/editor-ui turns 'no-unused-expressions' down to 'warn' for the whole package.",
+				"hash": "e6c9429341b6"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 66,
+				"message": "packages/frontend/editor-ui turns 'import/no-cycle' down to 'warn' for the whole package.",
+				"hash": "7adcd603a0ca"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 67,
+				"message": "packages/frontend/editor-ui turns 'import/no-duplicates' down to 'warn' for the whole package.",
+				"hash": "1be83473d5b6"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 68,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-restricted-types' down to 'warn' for the whole package.",
+				"hash": "4c7067ed56af"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 69,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-for-in-array' down to 'warn' for the whole package.",
+				"hash": "70a41982af1c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 70,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-this-alias' down to 'warn' for the whole package.",
+				"hash": "9b227a017c33"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 71,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-unnecessary-boolean-literal-compare' down to 'warn' for the whole package.",
+				"hash": "723773cc8025"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 72,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "72d6acbaf0b1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 73,
+				"message": "packages/frontend/editor-ui turns 'typescript/prefer-promise-reject-errors' down to 'warn' for the whole package.",
+				"hash": "212f2fbc3ffc"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 74,
+				"message": "packages/frontend/editor-ui turns 'typescript/restrict-plus-operands' down to 'warn' for the whole package.",
+				"hash": "5f3310664146"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 75,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-redundant-type-constituents' down to 'warn' for the whole package.",
+				"hash": "5b22b8a546e6"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 76,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-unsafe-enum-comparison' down to 'warn' for the whole package.",
+				"hash": "0c6d8b41c362"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 77,
+				"message": "packages/frontend/editor-ui turns 'typescript/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "7cd826ad0ffb"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 78,
+				"message": "packages/frontend/editor-ui turns 'typescript/restrict-template-expressions' down to 'warn' for the whole package.",
+				"hash": "6c97c51e7004"
+			}
+		],
+		"packages/frontend/@n8n/design-system/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 15,
+				"message": "packages/frontend/@n8n/design-system turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "9644c437d97d"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 16,
+				"message": "packages/frontend/@n8n/design-system turns 'typescript/restrict-template-expressions' down to 'warn' for the whole package.",
+				"hash": "20da8ce6d1ef"
+			}
+		],
+		"packages/frontend/@n8n/i18n/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/frontend/@n8n/i18n turns 'typescript/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "bedf7d582984"
+			}
+		],
+		"packages/frontend/@n8n/stores/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/frontend/@n8n/stores turns 'typescript/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "ca544d7d57ca"
+			}
+		],
+		"packages/modules/insights/frontend/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 25,
+				"message": "packages/modules/insights/frontend turns 'typescript/no-unsafe-argument' down to 'warn' for the whole package.",
+				"hash": "719529d32936"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 26,
+				"message": "packages/modules/insights/frontend turns 'typescript/no-unsafe-assignment' down to 'warn' for the whole package.",
+				"hash": "db4bf5263f35"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 27,
+				"message": "packages/modules/insights/frontend turns 'typescript/no-unsafe-call' down to 'warn' for the whole package.",
+				"hash": "74fa2ebf203b"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 28,
+				"message": "packages/modules/insights/frontend turns 'typescript/no-unsafe-member-access' down to 'warn' for the whole package.",
+				"hash": "0ea56f1ffd20"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 29,
+				"message": "packages/modules/insights/frontend turns 'typescript/no-unsafe-return' down to 'warn' for the whole package.",
+				"hash": "1aefbbf73416"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 30,
+				"message": "packages/modules/insights/frontend turns 'typescript/await-thenable' down to 'warn' for the whole package.",
+				"hash": "22180940277b"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 31,
+				"message": "packages/modules/insights/frontend turns 'typescript/require-await' down to 'warn' for the whole package.",
+				"hash": "f60f7eec1ed5"
 			}
 		]
 	}
