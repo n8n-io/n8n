@@ -26,6 +26,18 @@ const stamp = (name: string, field: string): INode =>
 		options: {},
 	});
 
+/** A Set node that copies `a` from A's paired item, which it reaches through its direct input. */
+const readsA = (name: string): INode =>
+	node(name, 'n8n-nodes-base.set', {
+		assignments: {
+			assignments: [
+				{ id: 'fromA-id', name: 'fromA', value: "={{ $('A').item.json.a }}", type: 'number' },
+			],
+		},
+		includeOtherFields: true,
+		options: {},
+	});
+
 const chain = (...names: string[]): IConnections =>
 	Object.fromEntries(
 		names
@@ -118,6 +130,33 @@ test.describe(
 			expect(firstItem(runData, 'B')).toEqual({ b: 'pinned' });
 			// C ran on the pinned item, not on what B would have produced from A.
 			expect(firstItem(runData, 'C')).toEqual({ b: 'pinned', c: expect.any(Number) });
+		});
+
+		test('should resolve a paired item through a pinned node @engine:v2', async ({ api }) => {
+			const { id: workflowId } = await api.workflows.createWorkflow({
+				...workflow('lineage'),
+				nodes: [
+					node(TRIGGER_NAME, 'n8n-nodes-base.manualTrigger'),
+					stamp('A', 'a'),
+					stamp('B', 'b'),
+					readsA('C'),
+				],
+				pinData: { B: [{ json: { b: 'pinned' } }] },
+			});
+
+			// Up to B: A runs, B is pinned, and C lies after the destination.
+			const first = await api.workflows.runToNode(workflowId, 'B');
+			const upToB = runDataOf(await api.workflows.waitForExecutionById(first.executionId));
+			expect(upToB).not.toHaveProperty('C');
+
+			// To C: A's results are reused and B is pinned, so C's lookup walks the
+			// pinned item's lineage back to A's reused output.
+			const second = await api.workflows.runToNode(workflowId, 'C', { runData: upToB });
+			const execution = await api.workflows.waitForExecutionById(second.executionId);
+			expect(execution.status).toBe('success');
+
+			const partialRun = runDataOf(execution);
+			expect(firstItem(partialRun, 'C')?.fromA).toEqual(firstItem(upToB, 'A')?.a);
 		});
 	},
 );
