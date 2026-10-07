@@ -44,7 +44,7 @@ type VmScript = {
 type VmModule = typeof import('node:vm');
 
 let warnedAboutBrowserFallback = false;
-let engine: RegexEngine;
+let internalEngine: RegexEngine;
 
 export function parseRegexLiteral(value: string): RegexLiteral {
 	const literal = value.toString();
@@ -93,7 +93,7 @@ function nativeEngine(): RegexEngine {
 		warnedAboutBrowserFallback = true;
 		LoggerProxy.warn('Using native regular expression engine without timeout protection');
 	}
-	/* eslint-disable n8n-local-rules/no-dynamic-regexp -- isomorphic native fallback; backend overrides via setSafeRegexEngine */
+	/* eslint-disable n8n-local-rules/no-dynamic-regexp -- isomorphic native fallback; backend overrides via setInternalRegexEngine */
 	return {
 		exec: (pattern, input, flags) => new RegExp(pattern, flags).exec(input),
 		test: (pattern, input, flags) => new RegExp(pattern, flags).test(input),
@@ -178,21 +178,31 @@ function createDefaultEngine(): RegexEngine {
 	return vm ? nodeVmEngine(vm) : nativeEngine();
 }
 
-export function setSafeRegexEngine(regexEngine: RegexEngine): void {
-	engine = regexEngine;
+export function setInternalRegexEngine(regexEngine: RegexEngine): void {
+	internalEngine = regexEngine;
 }
 
-export function resetSafeRegexEngine(): void {
-	engine = createDefaultEngine();
+export function resetInternalRegexEngine(): void {
+	internalEngine = createDefaultEngine();
 }
 
-engine = createDefaultEngine();
+/** @deprecated Renamed to {@link setInternalRegexEngine}. */
+export const setSafeRegexEngine = setInternalRegexEngine;
 
-export const safeRegex: RegexEngine = {
-	exec: (pattern, input, flags) => engine.exec(pattern, input, flags),
-	test: (pattern, input, flags) => engine.test(pattern, input, flags),
+/** @deprecated Renamed to {@link resetInternalRegexEngine}. */
+export const resetSafeRegexEngine = resetInternalRegexEngine;
+
+internalEngine = createDefaultEngine();
+
+/** For a pattern n8n itself authored. Always the built-in engine, whatever an instance selects for a user's patterns. */
+export const safeInternalRegex: RegexEngine = {
+	exec: (pattern, input, flags) => internalEngine.exec(pattern, input, flags),
+	test: (pattern, input, flags) => internalEngine.test(pattern, input, flags),
 	replace: (pattern, input, flags, replacement) =>
-		engine.replace(pattern, input, flags, replacement),
-	matchAll: (pattern, input, flags) => engine.matchAll(pattern, input, flags),
-	split: (pattern, input, flags) => engine.split(pattern, input, flags),
+		internalEngine.replace(pattern, input, flags, replacement),
+	matchAll: (pattern, input, flags) => internalEngine.matchAll(pattern, input, flags),
+	split: (pattern, input, flags) => internalEngine.split(pattern, input, flags),
 };
+
+/** @deprecated Renamed to {@link safeInternalRegex}. */
+export const safeRegex: RegexEngine = safeInternalRegex;
