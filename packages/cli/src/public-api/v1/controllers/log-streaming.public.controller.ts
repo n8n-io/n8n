@@ -171,7 +171,9 @@ export class LogStreamingPublicController {
 
 		// A delivery failure is a failed test, not a server error.
 		try {
-			return { success: await this.destinationService.testDestination(id) };
+			const result = await this.destinationService.testDestination(id);
+
+			return { success: result };
 		} catch {
 			return { success: false };
 		}
