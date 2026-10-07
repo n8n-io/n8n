@@ -97,6 +97,7 @@ export class AgentChatStreamConsumer {
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
+		stream = this.separateTextSteps(stream);
 		if (this.options.disableStreaming || options.forceBuffered || options.throwOnDeliveryError) {
 			await this.consumeBuffered(stream, thread, options);
 			return;
@@ -268,6 +269,33 @@ export class AgentChatStreamConsumer {
 			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
 		} finally {
 			await responseLifecycle.finish();
+		}
+	}
+
+	// Preserve paragraph breaks when the bridge extracts text from the full stream.
+	private async *separateTextSteps(
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
+		let hasText = false;
+		let needsSeparator = false;
+		for await (const chunk of stream) {
+			if (chunk.type === 'text-delta' && chunk.delta) {
+				yield hasText && needsSeparator ? { ...chunk, delta: `\n\n${chunk.delta}` } : chunk;
+				hasText ||= chunk.delta.trim().length > 0;
+				needsSeparator = false;
+				continue;
+			}
+			if (chunk.type === 'finish-step') {
+				needsSeparator = true;
+			} else if (
+				chunk.type === 'message' ||
+				chunk.type === 'tool-call-suspended' ||
+				chunk.type === 'error'
+			) {
+				hasText = false;
+				needsSeparator = false;
+			}
+			yield chunk;
 		}
 	}
 
