@@ -1846,6 +1846,8 @@ export type InstanceAiThreadSourcePersisted =
  * - `handoff_credential_setup` — credential help from the editor, credentials
  *   list, or the workflow artifact in a live thread
  * - `handoff_fix_with_ai` — the in-thread fix-with-AI offer after a failed run
+ * - `automation_offer` — the in-thread "Make it automatic" offer after a
+ *   workflow from the thread runs successfully
  * - `handoff_setup_panel_execute` — the setup panel's Execute button; lands
  *   mid-thread rather than as a first message
  * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
@@ -1867,6 +1869,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_execution_error',
 	'handoff_credential_setup',
 	'handoff_fix_with_ai',
+	'automation_offer',
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
 	'template_adjustment',

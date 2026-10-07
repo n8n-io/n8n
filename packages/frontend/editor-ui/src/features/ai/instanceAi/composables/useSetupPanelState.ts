@@ -3,6 +3,7 @@ import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
+import { collectToolCalls } from '../agentTreeToolCalls';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
 
 export interface SetupPanelRow {
@@ -83,23 +84,17 @@ export function useSetupPanelState(options: {
 		const id = toValue(options.workflowId);
 		let pending = false;
 		let latestCompletedAt: string | undefined;
-		function visit(node: InstanceAiAgentNode) {
-			for (const call of node.toolCalls) {
-				if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
-					continue;
-				const earlySetup =
-					call.toolName === 'credentials' &&
-					call.args.action === 'setup' &&
-					call.result.preBuild === true;
-				if (!earlySetup && !['build-workflow', 'submit-workflow'].includes(call.toolName)) continue;
-				if (latestCompletedAt && call.completedAt && call.completedAt < latestCompletedAt) continue;
-				pending = earlySetup;
-				latestCompletedAt = call.completedAt;
-			}
-			for (const child of node.children) visit(child);
-		}
-		for (const message of thread.messages) {
-			if (message.agentTree) visit(message.agentTree);
+		for (const call of collectToolCalls(thread.messages)) {
+			if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
+				continue;
+			const earlySetup =
+				call.toolName === 'credentials' &&
+				call.args.action === 'setup' &&
+				call.result.preBuild === true;
+			if (!earlySetup && !['build-workflow', 'submit-workflow'].includes(call.toolName)) continue;
+			if (latestCompletedAt && call.completedAt && call.completedAt < latestCompletedAt) continue;
+			pending = earlySetup;
+			latestCompletedAt = call.completedAt;
 		}
 		return pending;
 	});

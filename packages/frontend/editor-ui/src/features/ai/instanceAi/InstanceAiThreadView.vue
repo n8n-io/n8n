@@ -36,6 +36,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
+import AutomationOfferPanel from './components/automation/AutomationOfferPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiAgentsConversation from './components/InstanceAiAgentsConversation.vue';
@@ -53,6 +54,7 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useAutomationOffer } from './composables/useAutomationOffer';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 
@@ -107,6 +109,8 @@ const activeFixWithAiOffer = computed(() => {
 		workflowName: thread.producedArtifacts.get(run.workflowId)?.name,
 	};
 });
+
+const automationOffer = useAutomationOffer(thread, () => failedRun.value);
 
 // --- "Test your agent" offer (post-setup suggestion) ---
 const isAgentEvalsEnabled = useAgentEvalsFlag();
@@ -838,6 +842,12 @@ function handleNewThreadClick() {
 								:failed-count="activeFixWithAiOffer.errors.length"
 								@fix-with-ai="handleFixWithAiFromOffer"
 								@dismiss="dismissFixWithAiOffer"
+							/>
+							<AutomationOfferPanel
+								v-else-if="automationOffer.offer"
+								:workflow-name="automationOffer.offer.name"
+								@accept="automationOffer.accept"
+								@dismiss="automationOffer.dismiss"
 							/>
 						</Transition>
 						<Transition name="confirmation-slide">

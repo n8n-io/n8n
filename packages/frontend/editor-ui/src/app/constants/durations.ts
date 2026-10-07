@@ -52,6 +52,12 @@ export const AGENT_CAPABILITY_ACTIVE_MIN_DURATION = 300;
 /** Keeps a completed setup item visible briefly before returning to the checklist. */
 export const SETUP_PANEL_SUCCESS_DELAY = 650;
 
+/**
+ * Delay before text goes into a live region that was just added to the page.
+ * Screen readers do not reliably read a live region that arrives with its text.
+ */
+export const LIVE_REGION_ANNOUNCE_DELAY = 150;
+
 /** Hover-intent delays for reveal-on-hover affordances (e.g. a collapsed group's description). */
 export const HOVER_DELAY = {
 	/** Delay before a hovered affordance reveals its content. */

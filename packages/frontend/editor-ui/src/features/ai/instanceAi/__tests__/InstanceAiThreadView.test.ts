@@ -17,19 +17,15 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
-import type {
-	InstanceAiHandoffContext,
-} from '@n8n/api-types';
-
+import type { InstanceAiHandoffContext } from '@n8n/api-types';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
-import {
-	defaultModuleSettings,
-	makeThread,
-} from './createThreadComponentRenderer';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IWorkflowDb } from '@/Interface';
+import { defaultModuleSettings, makeThread } from './createThreadComponentRenderer';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -579,7 +575,6 @@ describe('InstanceAiThreadView', () => {
 		expect(button).toHaveAccessibleName('Loaded session title');
 	});
 
-
 	describe('setup panel', () => {
 		function seedSetupArtifacts(enabled = true) {
 			const variant = enabled ? 'variant' : 'control';
@@ -797,7 +792,6 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-
 	it('redirects to the empty view when the thread cannot be found', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -818,20 +812,6 @@ describe('InstanceAiThreadView', () => {
 
 		expect(routerReplaceSpy).not.toHaveBeenCalled();
 	});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	it('opens artifacts when narrow and restores them in the pinned layout', async () => {
 		mockWindowSizeState.width.value = 900;
@@ -1226,7 +1206,6 @@ describe('InstanceAiThreadView', () => {
 		expect(builderChat).toHaveClass('agentPreviewLayoutTransition');
 	});
 
-
 	it('closes the agent artifact preview from the wrapper toggle', async () => {
 		const { getByTestId, queryByTestId, user } = await renderAgentArtifact();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
@@ -1451,6 +1430,130 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
+	describe('make-it-automatic offer', () => {
+		function seedWorkflow(name = 'Daily report') {
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name }],
+			]) as typeof thread.producedArtifacts;
+			mockedStore(useWorkflowsListStore).getWorkflowById.mockImplementation((id: string) =>
+				id === 'wf-1'
+					? ({ id, name, active: false, activeVersionId: null } as IWorkflowDb)
+					: undefined,
+			);
+		}
+
+		// Builds the workflow (so the preview opens) and runs it successfully.
+		function buildAndRun(turn = 1) {
+			thread.messages.push({
+				id: `msg-build-and-run-${turn}`,
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					children: [],
+					toolCalls: [
+						{
+							toolCallId: `tc-build-${turn}`,
+							toolName: 'build-workflow',
+							args: {},
+							isLoading: false,
+							result: { success: true, workflowId: 'wf-1' },
+						},
+						{
+							toolCallId: `tc-run-${turn}`,
+							toolName: 'executions',
+							args: { action: 'run', workflowId: 'wf-1' },
+							isLoading: false,
+							result: { executionId: `exec-run-${turn}`, status: 'success' },
+						},
+					],
+				},
+			});
+		}
+
+		it('offers to make the workflow automatic after a successful run', async () => {
+			seedWorkflow();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			buildAndRun();
+
+			const panel = await findByTestId('automation-offer-panel');
+			expect(panel).toHaveTextContent('"Daily report" worked. n8n can run it for you.');
+		});
+
+		it('asks the Assistant to make the workflow automatic and hides the offer', async () => {
+			seedWorkflow();
+			const user = userEvent.setup();
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			buildAndRun();
+
+			await user.click(await findByTestId('automation-offer-accept'));
+
+			expect(thread.sendMessage).toHaveBeenCalledWith('Make "Daily report" automatic', {
+				authorship: { kind: 'prefill', prefillType: 'automation_offer' },
+			});
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+				dismissedContextKeys: ['automation-offer:wf-1'],
+			});
+			await vi.waitFor(() => {
+				expect(queryByTestId('automation-offer-panel')).not.toBeInTheDocument();
+			});
+		});
+
+		it('gives way to the fix-with-AI offer', async () => {
+			seedWorkflow();
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			buildAndRun();
+			await findByTestId('automation-offer-panel');
+
+			await vi.waitFor(() => {
+				expect(workflowPreviewEmit).not.toBeNull();
+			});
+			workflowPreviewEmit?.('workflow-failures', {
+				workflowId: 'wf-1',
+				executionId: 'exec-2',
+				errors: [{ nodeName: 'Send Email', errorMessage: 'Timeout' }],
+			});
+
+			expect(await findByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+			expect(queryByTestId('automation-offer-panel')).not.toBeInTheDocument();
+		});
+
+		it('waits for a newer successful run after the workflow fails in the preview', async () => {
+			seedWorkflow();
+			const user = userEvent.setup();
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			buildAndRun();
+			await findByTestId('automation-offer-panel');
+			await vi.waitFor(() => {
+				expect(workflowPreviewEmit).not.toBeNull();
+			});
+
+			workflowPreviewEmit?.('workflow-failures', {
+				workflowId: 'wf-1',
+				executionId: 'exec-2',
+				errors: [{ nodeName: 'Send Email', errorMessage: 'Timeout' }],
+			});
+			await user.click(await findByTestId('instance-ai-fix-with-ai-dismiss'));
+
+			await vi.waitFor(() => {
+				expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+			});
+			expect(queryByTestId('automation-offer-panel')).not.toBeInTheDocument();
+
+			buildAndRun(2);
+
+			expect(await findByTestId('automation-offer-panel')).toBeInTheDocument();
+		});
+	});
+
 	describe('test-your-agent suggestion', () => {
 		const AGENT_TARGET = { agentId: 'agent-1', projectId: 'project-1', name: 'Trip Planner' };
 
@@ -1648,5 +1751,4 @@ describe('InstanceAiThreadView', () => {
 			expect(store.disposeRuntime).toHaveBeenCalledWith('thread-1');
 		});
 	});
-
 });
