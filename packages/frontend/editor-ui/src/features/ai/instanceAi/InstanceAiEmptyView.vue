@@ -4,7 +4,12 @@ import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
+import type {
+	AgentChatListItem,
+	InstanceAiAttachment,
+	InstanceAiFileAttachment,
+	InstanceAiThreadSource,
+} from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -87,7 +92,14 @@ import {
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 import { useAgentsN8nChatVariant } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import { AGENT_N8N_CHAT_VIEW } from '@/features/agents/constants';
 import N8nChatAgentSection from '@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue';
+import N8nChatAgentPicker from '@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue';
+import {
+	discardPendingN8nChatMessage,
+	stashPendingN8nChatMessage,
+} from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
+import { base64ToFile } from '@/app/utils/fileUtils';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -156,9 +168,16 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
-// AGENT-957: variant A replaces the empty state with an agent picker, so it must
-// force the default layout and win over every other empty-state experiment.
-const { isVariantA: isAgentsN8nChatVariantA } = useAgentsN8nChatVariant();
+// Variant A replaces the empty state with an agent picker, variant B with a
+// "Chat with [agent]" picker — both force the default layout and win over
+// every other empty-state experiment.
+const { isVariantA: isAgentsN8nChatVariantA, isVariantB: isAgentsN8nChatVariantB } =
+	useAgentsN8nChatVariant();
+const forcesDefaultEmptyLayout = computed(
+	() => isAgentsN8nChatVariantA.value || isAgentsN8nChatVariantB.value,
+);
+// Variant B's picker selection: null is n8n Assistant, matching its own v-model contract.
+const selectedChatAgent = ref<AgentChatListItem | null>(null);
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
 const composerHasContent = ref(false);
@@ -172,21 +191,21 @@ const {
 	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
 } = useInstanceAiInspirationFromTaxonomyExperiment();
 const showProactiveStarter = computed(
-	() => isProactiveAgentExperimentEnabled.value && !isAgentsN8nChatVariantA.value,
+	() => isProactiveAgentExperimentEnabled.value && !forcesDefaultEmptyLayout.value,
 );
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
 // keeps precedence.
 const isSplitLayoutActive = computed(
 	() =>
-		isSplitVariantEnabled.value && !showProactiveStarter.value && !isAgentsN8nChatVariantA.value,
+		isSplitVariantEnabled.value && !showProactiveStarter.value && !forcesDefaultEmptyLayout.value,
 );
 const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 	() =>
 		typeof personalizedPromptSuggestionsVariant.value === 'string' &&
 		!showProactiveStarter.value &&
 		!isSplitLayoutActive.value &&
-		!isAgentsN8nChatVariantA.value &&
+		!forcesDefaultEmptyLayout.value &&
 		settingsStore.isWorkflowBuilderAvailable,
 );
 const personalizedPromptSuggestionResolution = ref<
@@ -203,7 +222,7 @@ const isTaxonomySegmentResolved = computed(
 			'taxonomy',
 );
 const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
-	if (showProactiveStarter.value || isSplitLayoutActive.value || isAgentsN8nChatVariantA.value) {
+	if (showProactiveStarter.value || isSplitLayoutActive.value || forcesDefaultEmptyLayout.value) {
 		return false;
 	}
 
@@ -396,9 +415,23 @@ const shouldShowPersonalizedPromptSuggestions = computed(() =>
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
-	// AGENT-957: variant A shows the agent picker, not suggestion chips.
+	// Variant A shows the agent picker, not suggestion chips.
 	if (isAgentsN8nChatVariantA.value) {
 		return { placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY };
+	}
+
+	// Variant B shows its own "Chat with" picker above; the composer only gets
+	// suggestions while n8n Assistant (not an agent) is the current selection.
+	if (isAgentsN8nChatVariantB.value) {
+		if (selectedChatAgent.value) return {};
+		return {
+			suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+			suggestionsComponent: WorkflowPreviewSuggestions,
+			suggestionsComponentProps: {
+				label: i18n.baseText('agents.n8nChatPage.picker.tryAskingAssistant'),
+			},
+			suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+		};
 	}
 
 	if (showProactiveStarter.value) {
@@ -496,12 +529,30 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 });
 
+// Variant B always overrides the placeholder with who is selected, agent or Assistant.
+const n8nChatPickerPlaceholder = computed(() =>
+	i18n.baseText('agents.n8nChatPage.picker.placeholder', {
+		interpolate: { name: selectedChatAgent.value?.name ?? i18n.baseText('instanceAi.view.title') },
+	}),
+);
+// An agent chat does not need the workflow builder, so a selected agent keeps the composer usable.
+const isComposerAvailable = computed(
+	() => settingsStore.isWorkflowBuilderAvailable || !!selectedChatAgent.value,
+);
+// Mentions only make sense against the Assistant, so they're off while an agent is selected.
+const inputMentionsEnabled = computed(() => mentionsEnabled.value && !selectedChatAgent.value);
+
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 // Layout changes mount a new, empty composer.
 watch(chatInputRef, () => {
 	composerHasContent.value = false;
 });
 const isStartingThread = ref(false);
+// Blocks switching the recipient while a send targeting the current one is being
+// prepared (e.g. a file still encoding), so it cannot land with the wrong agent.
+const isChatAgentPickerDisabled = computed(
+	() => isStartingThread.value || !!chatInputRef.value?.isPreparingSubmission,
+);
 
 watch(
 	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
@@ -582,6 +633,35 @@ async function handleSubmit(
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
+	if (selectedChatAgent.value) {
+		const agentId = selectedChatAgent.value.id;
+		// Resource attachments (workflow/agent/nodes references) don't apply to an
+		// agent's own n8n Chat page, only binary files do.
+		const fileAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
+		);
+		const files = fileAttachments.map((attachment) =>
+			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
+		);
+		// Nothing the agent can take (e.g. only resource references): keep the draft.
+		if (!message.trim() && files.length === 0) {
+			restoreDraftAfterFailedSubmit(restoreDraft);
+			return;
+		}
+		const pendingMessage = { agentId, text: message, files };
+		stashPendingN8nChatMessage(pendingMessage);
+		acceptDraft();
+		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
+		// A blocked or cancelled navigation must not leave the hand-off for a later
+		// visit. Only discard and restore the draft if the slot still holds this
+		// submission: a second submit made while this push was pending already
+		// replaced it, and that one must not lose its stash or its draft.
+		if (failure && discardPendingN8nChatMessage(pendingMessage)) {
+			restoreDraftAfterFailedSubmit(restoreDraft);
+		}
+		return;
+	}
+
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -764,7 +844,13 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</template>
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
-				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
+				<N8nChatAgentPicker
+					v-if="isAgentsN8nChatVariantB"
+					v-model="selectedChatAgent"
+					:project-id="selectedProject"
+					:disabled="isChatAgentPickerDisabled"
+				/>
+				<InstanceAiEmptyState v-else :title-key="emptyStateTitleKey" :show-title-icon="true" />
 				<div ref="centeredInput" :class="$style.centeredInput">
 					<InstanceAiFreeNudge
 						:eligible="
@@ -781,14 +867,15 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
-					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+					<WorkflowBuilderUnavailableNotice v-if="!isComposerAvailable" />
 					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
-						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
-						:mentions-enabled="mentionsEnabled"
+						:is-workflow-builder-available="isComposerAvailable"
+						:mentions-enabled="inputMentionsEnabled"
 						:mention-project-id="selectedProject"
+						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
@@ -801,9 +888,10 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
-				<!-- AGENT-957: variant A shows the agent picker here instead of the workflow preview. -->
+				<!-- Variant A shows the agent picker here instead of the workflow preview;
+				variant B drops the preview canvas entirely (hover preview stays off). -->
 				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA" />
-				<Transition v-else name="workflow-preview-fade">
+				<Transition v-else-if="!isAgentsN8nChatVariantB" name="workflow-preview-fade">
 					<div
 						v-if="activeWorkflowPreview && hasSpaceForPreview"
 						:class="$style.workflowPreviewWrapper"

@@ -4,6 +4,7 @@ import { flushPromises } from '@vue/test-utils';
 import type { AgentChatListResponse } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
+import { AGENT_N8N_CHAT_SEARCH_MAX_LENGTH } from '../../constants';
 import { useN8nChatAgents } from './useN8nChatAgents';
 
 const listN8nChatAgentsMock = vi.fn();
@@ -96,6 +97,23 @@ describe('useN8nChatAgents', () => {
 
 		expect(listN8nChatAgentsMock).toHaveBeenLastCalledWith(expect.anything(), {
 			query: '  support  ',
+			skip: 0,
+			take: 50,
+			sortBy: 'usage:desc',
+		});
+	});
+
+	it('caps the query before it reaches the API', async () => {
+		listN8nChatAgentsMock.mockResolvedValue({ count: 0, data: [] });
+		const query = ref('a'.repeat(200));
+		const page = ref(1);
+		const pageSize = 50;
+
+		useN8nChatAgents({ query, page, pageSize });
+		await flushPromises();
+
+		expect(listN8nChatAgentsMock).toHaveBeenCalledWith(expect.anything(), {
+			query: 'a'.repeat(AGENT_N8N_CHAT_SEARCH_MAX_LENGTH),
 			skip: 0,
 			take: 50,
 			sortBy: 'usage:desc',

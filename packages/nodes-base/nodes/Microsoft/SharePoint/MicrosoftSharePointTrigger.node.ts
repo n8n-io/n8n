@@ -67,9 +67,6 @@ export class MicrosoftSharePointTrigger implements INodeType {
 				},
 			},
 		],
-		// Stays out of the node picker until the whole trigger is built. Note this
-		// also labels the node "Deprecated" in the NDV until it is removed.
-		hidden: true,
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

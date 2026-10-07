@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { AGENT_N8N_CHAT_SEARCH_MAX_LENGTH } from '../../constants';
 import { listN8nChatAgents } from '../../composables/useAgentApi';
 
 export interface UseN8nChatAgentsOptions {
@@ -36,7 +37,8 @@ export function useN8nChatAgents(options: UseN8nChatAgentsOptions) {
 		const version = ++requestVersion;
 		isLoading.value = true;
 		loadFailed.value = false;
-		const query = toValue(options.query);
+		// Caps the query before it reaches the API, which rejects a longer one (backend filter cap).
+		const query = toValue(options.query).slice(0, AGENT_N8N_CHAT_SEARCH_MAX_LENGTH);
 		const page = toValue(options.page);
 		const pageSize = toValue(options.pageSize);
 		try {

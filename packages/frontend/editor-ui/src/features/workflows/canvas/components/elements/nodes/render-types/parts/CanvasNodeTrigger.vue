@@ -8,10 +8,11 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 const {
 	name,
 	type,
@@ -49,6 +50,10 @@ const logsStore = useLogsStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { startChat } = useCanvasOperations();
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+	() => workflowDocumentStore.value.allNodes,
+);
 
 const chatTriggerNode = computed(() =>
 	(workflowDocumentStore.value?.allNodes ?? []).find(
@@ -125,16 +130,21 @@ async function handleClickExecute() {
 						/>
 					</KeyboardShortcutTooltip>
 				</template>
-				<N8nButton
-					variant="solid"
+				<N8nTooltip
 					v-else
-					icon="flask-conical"
-					size="large"
-					:disabled="isExecuting"
-					:data-test-id="testId"
-					:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
-					@click.capture="handleClickExecute"
-				/>
+					:disabled="!unusableCredentialReason"
+					:content="unusableCredentialReason"
+				>
+					<N8nButton
+						variant="solid"
+						icon="flask-conical"
+						size="large"
+						:disabled="isExecuting || !!unusableCredentialReason"
+						:data-test-id="testId"
+						:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
+						@click.capture="handleClickExecute"
+					/>
+				</N8nTooltip>
 			</template>
 		</div>
 	</div>
@@ -178,6 +188,10 @@ async function handleClickExecute() {
 		opacity: 1;
 		translate: 0 0;
 		pointer-events: all;
+	}
+
+	&.interactive.hovered button[disabled] {
+		opacity: 0.5;
 	}
 
 	&.isExperimentalNdvActive {

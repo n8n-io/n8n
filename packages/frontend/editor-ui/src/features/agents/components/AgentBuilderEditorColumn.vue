@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
@@ -99,9 +100,42 @@ const emit = defineEmits<{
 	'agent-changed': [];
 	'generate-eval-cases': [];
 	'open-preview': [];
+	'publish-agent': [];
+	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
+
+const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
+const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
+
+function onSetupTaskAction(task: SetupTask) {
+	if (task.id === 'publish-agent') {
+		emit('publish-agent');
+		return;
+	}
+
+	if (task.action.target.kind === 'tool') {
+		emit('add-tool', 'tools');
+		return;
+	}
+
+	if (task.action.target.kind === 'channel') {
+		agentTriggersSection.value?.openChannelModal();
+		return;
+	}
+
+	if (task.action.path === 'instructions') {
+		agentInfoPanel.value?.focusInstructions();
+		return;
+	}
+
+	if (task.action.path === 'model') {
+		agentInfoPanel.value?.focusModel();
+	}
+}
+
+defineExpose({ onSetupTaskAction });
 </script>
 
 <template>
@@ -133,6 +167,7 @@ const i18n = useI18n();
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
 					<AgentInfoPanel
+						ref="agentInfoPanel"
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
@@ -172,6 +207,7 @@ const i18n = useI18n();
 							/>
 						</template>
 						<AgentTriggersSection
+							ref="agentTriggersSection"
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
 							:disabled="childrenDisabled"
@@ -486,5 +522,13 @@ const i18n = useI18n();
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
 	}
+}
+
+.setupTasks {
+	padding-inline: var(--agent-builder-content-padding-inline);
+	padding-block-end: var(--spacing--lg);
+	max-width: var(--agent-builder-content-max-width);
+	margin: 0 auto;
+	width: 100%;
 }
 </style>

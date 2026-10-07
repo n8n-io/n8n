@@ -4,6 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { i18nInstance } from '@n8n/i18n';
 import type { AgentChatListItem } from '@n8n/api-types';
 
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../../../constants';
 import N8nChatAgentCard from '../N8nChatAgentCard.vue';
 
@@ -21,6 +22,7 @@ const router = createRouter({
 			name: AGENT_N8N_CHAT_VIEW,
 			component: stub,
 		},
+		{ path: '/assistant', name: INSTANCE_AI_VIEW, component: stub },
 	],
 });
 
@@ -41,6 +43,20 @@ function renderCard(props: Partial<InstanceType<typeof N8nChatAgentCard>['$props
 describe('N8nChatAgentCard', () => {
 	beforeEach(() => {
 		trackSelectedN8nChatAgentMock.mockClear();
+	});
+
+	it('renders n8n Assistant for a null agent, linking to the Assistant page without telemetry', async () => {
+		const wrapper = renderCard({ agent: null });
+		await router.isReady();
+
+		expect(wrapper.get('a').attributes('href')).toBe('/assistant');
+		expect(wrapper.get('[data-test-id="n8n-chat-agent-card-name"]').text()).toBe('n8n Assistant');
+		expect(wrapper.get('[data-test-id="n8n-chat-agent-card-description"]').text()).toBe(
+			'Turns plain language into working workflows and agents.',
+		);
+
+		await wrapper.get('a').trigger('click');
+		expect(trackSelectedN8nChatAgentMock).not.toHaveBeenCalled();
 	});
 
 	it('links to the agent n8n Chat view', async () => {

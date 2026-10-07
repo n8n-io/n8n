@@ -1995,6 +1995,7 @@ export class WorkflowService {
 		const validation = await this.workflowValidationService.validatePublisherCredentialAccess(
 			user,
 			nodes,
+			workflowId,
 		);
 
 		if (!validation.isValid) {

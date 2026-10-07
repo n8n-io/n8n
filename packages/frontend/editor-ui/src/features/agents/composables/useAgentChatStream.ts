@@ -476,9 +476,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	async function removeQueuedMessage(queueId: string): Promise<void> {
+	async function removeQueuedMessage(queueId: string): Promise<'removed' | 'failed'> {
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
-		if (!threadId || removingQueueIds.value.has(queueId)) return;
+		if (!threadId || removingQueueIds.value.has(queueId)) return 'failed';
 		const target = targetKey();
 		removingQueueIds.value.add(queueId);
 		try {
@@ -490,15 +490,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				queueId,
 				channel.value,
 			);
-			if (disposed || target !== targetKey()) return;
+			if (disposed || target !== targetKey()) return 'failed';
 			queueVersion++;
 			queuedMessages.value = queuedMessages.value.filter((item) => item.id !== queueId);
 			for (const [controller, session] of streams) {
 				if (session.queueId === queueId && !session.executionId) controller.abort();
 			}
+			return 'removed';
 		} catch (error) {
 			if (!disposed && target === targetKey())
 				showError(error, locale.baseText('agents.chat.queue.removeError'));
+			return 'failed';
 		} finally {
 			if (target === targetKey()) {
 				removingQueueIds.value.delete(queueId);
@@ -593,7 +595,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		executionId?: string;
 		needsStartValidation?: boolean;
 		busy?: boolean;
-		onAccepted?: () => void;
+		/** Gets the queue item id when the message was queued rather than started. */
+		onAccepted?: (queueId?: string) => void;
 		/**
 		 * Set when the stream emitted an `error` event. Callers (notably
 		 * `resume`) inspect this so they can roll back optimistic UI state
@@ -947,7 +950,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.queueId = event.queueId;
 				acceptedSessionId.value = event.sessionId;
 				detachExcessWaitingStreams();
-				session.onAccepted?.();
+				session.onAccepted?.(event.queueId);
 				session.onAccepted = undefined;
 				if (consumedQueueIds.has(event.queueId)) {
 					session.controller.abort();
@@ -1371,7 +1374,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
-		onAccepted?: () => void,
+		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
 	): Promise<{ outcome: StreamOutcome }> {
 		const controller = new AbortController();
@@ -1472,7 +1475,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function streamChat(
 		message: string,
 		files?: File[],
-		onAccepted?: () => void,
+		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
 	) {
 		const target = targetKey();
@@ -1660,7 +1663,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function sendMessage(
 		text: string,
 		files?: File[],
-		onAccepted?: () => void,
+		onAccepted?: (queueId?: string) => void,
 	): Promise<'sent' | 'busy'> {
 		const trimmed = text.trim();
 		if ((!trimmed && !files?.length) || isSubmitting.value || isLoadingHistory.value) return 'busy';
@@ -1691,8 +1694,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			void streamChat(
 				trimmed,
 				files,
-				() => {
-					onAccepted?.();
+				(queueId) => {
+					onAccepted?.(queueId);
 					release();
 				},
 				userMessage,
