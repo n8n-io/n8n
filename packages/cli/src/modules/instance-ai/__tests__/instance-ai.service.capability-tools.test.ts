@@ -3,6 +3,7 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	createInstanceAgent: vi.fn(),
 }));
 
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -108,6 +109,35 @@ describe('InstanceAiService capability tools', () => {
 			'mcp-tool-called',
 			expect.objectContaining({ user, toolName: 'parse_schedule', clientName: 'n8n-assistant' }),
 		);
+	});
+
+	it('applies the admin permission modes of the run to the capability tools', async () => {
+		const handler = vi.fn(() => ({ content: [{ type: 'text' as const, text: 'ran' }] }));
+		Container.get(CapabilityRegistry).register(
+			defineCapability({
+				name: 'guarded_tool',
+				scope: 'workflow:execute',
+				assistant: { permission: () => 'runWorkflow' },
+				build: () => ({ name: 'guarded_tool', config: { inputSchema: shape }, handler }),
+			}),
+		);
+		const permissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, runWorkflow: 'blocked' as const };
+
+		await createService(mock<EventService>()).createAgentFromEnvironment(
+			{ ...environment, context: { permissions } },
+			'thread-1',
+			'run-1',
+			user,
+			undefined,
+		);
+
+		const [{ tool }] = passedOptions().capabilityTools ?? [];
+		const output = await tool.handler?.(
+			{ text: 'hi' },
+			{ suspend: vi.fn(), resumeData: undefined },
+		);
+		expect(output).toMatchObject({ denied: true });
+		expect(handler).not.toHaveBeenCalled();
 	});
 
 	it('passes no capability tools when none are registered for the Assistant', async () => {

@@ -3698,10 +3698,17 @@ export class InstanceAiService {
 			checkpointStore: this.assistantCheckpointStore,
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			// The same capabilities that MCP clients get, built for this user.
+			// The same capabilities that MCP clients get, built for this user and the admin
+			// permission modes of this run.
 			capabilityTools: Container.get(CapabilityRegistry)
 				.list('assistant')
-				.map((capability) => toAssistantTool(capability, { user }, this.eventService)),
+				.map((capability) =>
+					toAssistantTool(
+						capability,
+						{ user, permissions: environment.context.permissions },
+						this.eventService,
+					),
+				),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both

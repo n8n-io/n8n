@@ -1,4 +1,5 @@
 import {
+	InstanceAiConfirmRequestDto,
 	instanceAiApprovalResumeSchema,
 	mcpConnectResumeSchema,
 	type InstanceAiConfirmRequest,
@@ -38,6 +39,40 @@ describe('buildResumeData', () => {
 		expect(buildResumeData({ approved: false })).toEqual({ approved: false });
 	});
 
+	it('passes the chosen values of a capability card through', () => {
+		const values = { target: 'production', notify: false };
+
+		expect(
+			buildResumeData(toConfirmationData({ kind: 'capabilityDecision', approved: true, values })),
+		).toEqual({
+			approved: true,
+			values,
+		});
+	});
+
+	it('omits values when a capability card sends none', () => {
+		expect(
+			buildResumeData(toConfirmationData({ kind: 'capabilityDecision', approved: false })),
+		).toEqual({
+			approved: false,
+		});
+	});
+
+	it('drops empty and false values, which the user did not submit', () => {
+		expect(
+			buildResumeData({
+				approved: true,
+				denied: false,
+				testTriggerNode: '',
+				domainAccessAction: '',
+			}),
+		).toEqual({ approved: true });
+		expect(buildResumeData({ approved: false, denied: true })).toEqual({
+			approved: false,
+			denied: true,
+		});
+	});
+
 	it('keeps an empty userInput, which is a submitted value', () => {
 		expect(buildResumeData({ approved: true, userInput: '' })).toEqual({
 			approved: true,
@@ -45,6 +80,16 @@ describe('buildResumeData', () => {
 		});
 	});
 });
+
+/**
+ * Capability cards resume with the fields of the `capabilityDecision` wire arm, without its
+ * kind. The cli capability bridge declares the same answer schema.
+ */
+function capabilityDecisionResumeSchema(): ZodType {
+	const arm = InstanceAiConfirmRequestDto.optionsMap.get('capabilityDecision');
+	if (!arm) throw new Error('The confirm DTO has no capabilityDecision kind');
+	return arm.omit({ kind: true });
+}
 
 /**
  * The drift guard for INS-1095: a resume payload the confirm API accepts must reach
@@ -75,6 +120,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		['filesystem gateway', gatewayConfirmationResumeSchema],
 		['domain gating', domainGatingResumeSchema],
 		['mcp-servers', mcpConnectResumeSchema],
+		['capability cards', capabilityDecisionResumeSchema()],
 	];
 
 	const rows: Array<{
@@ -173,6 +219,20 @@ describe('confirmation payload → tool resume schema contract', () => {
 			request: { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] },
 			targets: [['mcp-servers', mcpConnectResumeSchema]],
 		},
+		{
+			label: 'capability card with chosen values',
+			request: {
+				kind: 'capabilityDecision',
+				approved: true,
+				values: { target: 'production', notify: false },
+			},
+			targets: [['capability cards', capabilityDecisionResumeSchema()]],
+		},
+		{
+			label: 'capability card denial',
+			request: { kind: 'capabilityDecision', approved: false },
+			targets: [['capability cards', capabilityDecisionResumeSchema()]],
+		},
 	];
 
 	const cases = rows.flatMap(({ label, request, targets }) =>
@@ -208,6 +268,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		setupWorkflowApply: true,
 		setupWorkflowTestTrigger: true,
 		mcpConnect: true,
+		capabilityDecision: true,
 	} satisfies Record<InstanceAiConfirmRequestKind, true>;
 
 	it('covers every confirmation kind the API accepts', () => {

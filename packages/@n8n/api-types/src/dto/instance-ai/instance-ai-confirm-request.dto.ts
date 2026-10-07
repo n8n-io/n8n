@@ -107,6 +107,17 @@ const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
 	kind: z.literal('mcpConnect'),
 });
 
+/**
+ * One answer kind for the cards of every capability. Card variants differ only in the payload.
+ * `values` holds the options that the user chose, keyed by card field. The capability checks
+ * each value against the options that its card offered.
+ */
+const capabilityDecisionConfirmSchema = z.object({
+	kind: z.literal('capabilityDecision'),
+	approved: z.boolean(),
+	values: z.record(z.string().max(128), z.union([z.string().max(2048), z.boolean()])).optional(),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
@@ -120,6 +131,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
 	mcpConnectConfirmSchema,
+	capabilityDecisionConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;

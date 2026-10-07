@@ -123,6 +123,16 @@ describe('InstanceAiConfirmRequestDto', () => {
 			['mcpConnect (connected)', { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] }],
 			['mcpConnect (skipped)', { kind: 'mcpConnect', approved: false, connectedSlugs: [] }],
 			['mcpConnect (minimal)', { kind: 'mcpConnect', approved: false }],
+			// Capability cards: one answer kind for every capability
+			[
+				'capabilityDecision (chosen values)',
+				{
+					kind: 'capabilityDecision',
+					approved: true,
+					values: { target: 'production', notify: true },
+				},
+			],
+			['capabilityDecision (denied)', { kind: 'capabilityDecision', approved: false }],
 		];
 
 		test.each(cases)('%s', (_label, payload) => {
@@ -209,6 +219,29 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('domainAccessApprove without domainAccessAction', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'domainAccessApprove' });
+			expect(result.success).toBe(false);
+		});
+
+		test('capabilityDecision without approved', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'capabilityDecision',
+				values: { target: 'production' },
+			});
+			expect(result.success).toBe(false);
+		});
+
+		test.each([
+			['a number', { target: 3 }],
+			['an object', { target: { id: 'wf-1' } }],
+			['a list', { target: ['a', 'b'] }],
+			['a value that is too long', { target: 'x'.repeat(2049) }],
+			['a key that is too long', { ['k'.repeat(129)]: 'production' }],
+		])('capabilityDecision with %s in values', (_label, values) => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'capabilityDecision',
+				approved: true,
+				values,
+			});
 			expect(result.success).toBe(false);
 		});
 	});

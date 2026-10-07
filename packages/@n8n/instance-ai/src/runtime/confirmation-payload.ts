@@ -1,5 +1,7 @@
-import type { InstanceAiCredentialDestinationDecision } from '@n8n/api-types';
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiCredentialDestinationDecision,
+} from '@n8n/api-types';
 
 /**
  * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
@@ -34,9 +36,9 @@ export interface ConfirmationData {
 	autoSetup?: { credentialType: string; attemptId?: string };
 	credentialDestination?: InstanceAiCredentialDestinationDecision;
 	connectedSlugs?: string[];
+	/** Options chosen on a capability card, keyed by card field. */
+	values?: Record<string, string | boolean>;
 }
-
-
 
 /**
  * The two-step translation from a frontend confirmation to a tool resume payload:
@@ -54,58 +56,72 @@ export interface ConfirmationData {
  * still exercise the real translation.
  */
 
+type ConfirmRequestByKind = { [R in InstanceAiConfirmRequest as R['kind']]: R };
+type ConfirmRequestKind = keyof ConfirmRequestByKind;
+
+/**
+ * One converter for each confirmation kind. The mapped type fails typecheck for a new kind
+ * until it has a converter.
+ *
+ * Most kinds carry implicit approval (you wouldn't be submitting answers, selected
+ * credentials, or a setup action otherwise) — only `approval`, `domainAccessDeny`,
+ * `planDeny` and the kinds with an `approved` field carry a denial path.
+ */
+const CONFIRMATION_CONVERTERS: {
+	[K in ConfirmRequestKind]: (request: ConfirmRequestByKind[K]) => ConfirmationData;
+} = {
+	approval: (request) => ({
+		approved: request.approved,
+		userInput: request.userInput,
+		scope: request.scope,
+	}),
+	domainAccessApprove: (request) => ({
+		approved: true,
+		domainAccessAction: request.domainAccessAction,
+	}),
+	domainAccessDeny: () => ({ approved: false }),
+	planDeny: () => ({ approved: false, denied: true }),
+	questions: (request) => ({ approved: true, answers: request.answers }),
+	credentialSelection: (request) => ({ approved: true, credentials: request.credentials }),
+	credentialAutoSetup: (request) => ({
+		approved: true,
+		autoSetup: { credentialType: request.credentialType, attemptId: request.attemptId },
+	}),
+	credentialDestination: (request) => ({
+		approved: request.approved,
+		credentialDestination: { origin: request.origin },
+	}),
+	resourceDecision: (request) => ({ approved: true, resourceDecision: request.resourceDecision }),
+	mcpConnect: (request) => ({ approved: request.approved, connectedSlugs: request.connectedSlugs }),
+	capabilityDecision: (request) => ({ approved: request.approved, values: request.values }),
+	setupWorkflowApply: (request) => ({
+		approved: true,
+		action: 'apply',
+		nodeCredentials: request.nodeCredentials,
+		nodeParameters: request.nodeParameters,
+		skippedNodes: request.skippedNodes,
+	}),
+	setupWorkflowTestTrigger: (request) => ({
+		approved: true,
+		action: 'test-trigger',
+		testTriggerNode: request.testTriggerNode,
+		nodeCredentials: request.nodeCredentials,
+		nodeParameters: request.nodeParameters,
+	}),
+};
+
+function convertConfirmation<K extends ConfirmRequestKind>(
+	kind: K,
+	request: ConfirmRequestByKind[K],
+): ConfirmationData {
+	return CONFIRMATION_CONVERTERS[kind](request);
+}
+
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
- *  relevant to the submitted kind are populated — everything else stays undefined.
- *
- *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval`,
- *  `domainAccessDeny`, and `planDeny` carry a denial path. */
+ *  relevant to the submitted kind are populated — everything else stays undefined. */
 export function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
-	switch (request.kind) {
-		case 'approval':
-			return { approved: request.approved, userInput: request.userInput, scope: request.scope };
-		case 'domainAccessApprove':
-			return { approved: true, domainAccessAction: request.domainAccessAction };
-		case 'domainAccessDeny':
-			return { approved: false };
-		case 'planDeny':
-			return { approved: false, denied: true };
-		case 'questions':
-			return { approved: true, answers: request.answers };
-		case 'credentialSelection':
-			return { approved: true, credentials: request.credentials };
-		case 'credentialAutoSetup':
-			return {
-				approved: true,
-				autoSetup: { credentialType: request.credentialType, attemptId: request.attemptId },
-			};
-		case 'credentialDestination':
-			return {
-				approved: request.approved,
-				credentialDestination: { origin: request.origin },
-			};
-		case 'resourceDecision':
-			return { approved: true, resourceDecision: request.resourceDecision };
-		case 'mcpConnect':
-			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
-		case 'setupWorkflowApply':
-			return {
-				approved: true,
-				action: 'apply',
-				nodeCredentials: request.nodeCredentials,
-				nodeParameters: request.nodeParameters,
-				skippedNodes: request.skippedNodes,
-			};
-		case 'setupWorkflowTestTrigger':
-			return {
-				approved: true,
-				action: 'test-trigger',
-				testTriggerNode: request.testTriggerNode,
-				nodeCredentials: request.nodeCredentials,
-				nodeParameters: request.nodeParameters,
-			};
-	}
+	return convertConfirmation(request.kind, request);
 }
 
 /**
@@ -113,24 +129,29 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
  * tool's `resumeSchema` only ever sees keys the user actually submitted.
  */
 export function buildResumeData(data: ConfirmationData): Record<string, unknown> {
-	// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
-	// other tools use the flat credentials map. Prefer nodeCredentials when present.
-	const credentialsPayload = data.nodeCredentials ?? data.credentials;
+	const optionalFields: Record<string, unknown> = {
+		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
+		// other tools use the flat credentials map. Prefer nodeCredentials when present.
+		credentials: data.nodeCredentials ?? data.credentials,
+		domainAccessAction: data.domainAccessAction,
+		action: data.action,
+		nodeParameters: data.nodeParameters,
+		skippedNodes: data.skippedNodes,
+		testTriggerNode: data.testTriggerNode,
+		answers: data.answers,
+		resourceDecision: data.resourceDecision,
+		scope: data.scope,
+		autoSetup: data.autoSetup,
+		credentialDestination: data.credentialDestination,
+		denied: data.denied,
+		connectedSlugs: data.connectedSlugs,
+		values: data.values,
+	};
+	// Empty and false values were not submitted. An empty userInput was submitted, so it stays.
+	const submitted = Object.entries(optionalFields).filter(([, value]) => Boolean(value));
 	return {
 		approved: data.approved,
-		...(credentialsPayload ? { credentials: credentialsPayload } : {}),
 		...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
-		...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
-		...(data.action ? { action: data.action } : {}),
-		...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
-		...(data.skippedNodes ? { skippedNodes: data.skippedNodes } : {}),
-		...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
-		...(data.answers ? { answers: data.answers } : {}),
-		...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-		...(data.scope ? { scope: data.scope } : {}),
-		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
-		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
-		...(data.denied ? { denied: true } : {}),
-		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
+		...Object.fromEntries(submitted),
 	};
 }

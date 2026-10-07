@@ -1,6 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import { hasMcpMediaContent, mcpContentToModelParts, Tool, type BuiltTool } from '@n8n/agents';
-import type { McpScope } from '@n8n/api-types';
+import type { InstanceAiPermissions, McpScope } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { InstanceAiCapabilityTool } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
@@ -8,6 +8,18 @@ import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { RegisterToolFn, ToolDefinition } from '@/modules/mcp/mcp.types';
+
+import {
+	type CapabilityAnswer,
+	type CapabilityCard,
+	capabilityCardPayloadSchema,
+	type ConfirmationOptions,
+	DEFAULT_CAPABILITY_ANSWER_SCHEMA,
+	resolvePermissionMode,
+	runWithConfirmation,
+} from './capability-confirmation';
+
+export type { CapabilityAnswer, CapabilityCard } from './capability-confirmation';
 
 /** Where a capability is offered: to external MCP clients, to the n8n Assistant, or to both. */
 export type CapabilitySurface = 'mcp' | 'assistant';
@@ -30,7 +42,10 @@ export type CapabilityCallRunner = (
 	invoke: () => Promise<CallToolResult>,
 ) => Promise<CallToolResult>;
 
-export type AssistantToolRequest = CapabilityRequest & { runCall?: CapabilityCallRunner };
+/** What the n8n Assistant knows about the request: the user and the admin permission modes. */
+export type AssistantRequest = CapabilityRequest & { permissions?: InstanceAiPermissions };
+
+export type AssistantToolRequest = AssistantRequest & { runCall?: CapabilityCallRunner };
 
 /** A tool definition with an input shape, so that every surface validates input the same way. */
 export type CapabilityToolDefinition<S extends z.ZodRawShape> = ToolDefinition<S> & {
@@ -49,16 +64,37 @@ export type Capability = {
 	toAssistantTool(request: AssistantToolRequest): InstanceAiCapabilityTool;
 };
 
+/** The arguments of a capability after input validation. */
+export type CapabilityArgs<S extends z.ZodRawShape> = z.objectOutputType<S, z.ZodTypeAny>;
+
+/** How the n8n Assistant offers a capability. MCP clients own consent, so MCP ignores this. */
+export type CapabilityAssistantOptions<S extends z.ZodRawShape> = {
+	/** Keeps the tool in the core tool set of the n8n Assistant, not in tool search. */
+	alwaysLoaded?: boolean;
+	/** Returns a card to show before the action, or undefined to act at once. Runs as the acting user. */
+	confirm?: (
+		args: CapabilityArgs<S>,
+		context: CapabilityContext,
+	) => Promise<CapabilityCard | undefined>;
+	/**
+	 * Zod schema of the card answer after normalisation. Default: `{ approved, values? }`.
+	 * The bridge checks only `values` against the options that the card offered. Validate
+	 * every other answer field here or in `applyAnswer`.
+	 */
+	answerSchema?: z.ZodType<CapabilityAnswer>;
+	/** Merges the answer into the arguments before the handler runs. Default: arguments unchanged. */
+	applyAnswer?: (args: CapabilityArgs<S>, answer: CapabilityAnswer) => CapabilityArgs<S>;
+	/** The admin permission of the Assistant settings that applies to these arguments. */
+	permission?: (args: CapabilityArgs<S>) => keyof InstanceAiPermissions;
+};
+
 export type CapabilityInput<S extends z.ZodRawShape> = {
 	/** The tool name on every surface. It must be unique across capabilities and MCP tools. */
 	name: string;
 	scope: McpScope;
 	/** Defaults to every surface. */
 	surfaces?: readonly CapabilitySurface[];
-	assistant?: {
-		/** Keeps the tool in the core tool set of the n8n Assistant, not in tool search. */
-		alwaysLoaded?: boolean;
-	};
+	assistant?: CapabilityAssistantOptions<S>;
 	/** Builds the tool for each request, so that the handler acts as the acting user. */
 	build: (context: CapabilityContext) => CapabilityToolDefinition<S>;
 };
@@ -108,33 +144,95 @@ function describeIssues(error: z.ZodError): string {
 		.join('; ');
 }
 
-/** Builds an Assistant tool from the same definition that the MCP server registers. */
-function buildAssistantTool<S extends z.ZodRawShape>(
+type AssistantToolSetup<S extends z.ZodRawShape> = {
+	definition: CapabilityToolDefinition<S>;
+	runCall: CapabilityCallRunner;
+	context: CapabilityContext;
+	options?: CapabilityAssistantOptions<S>;
+	permissions?: InstanceAiPermissions;
+};
+
+/** Runs the handler of a tool with validated arguments. */
+type RunTool<S extends z.ZodRawShape> = (args: CapabilityArgs<S>) => Promise<unknown>;
+
+function needsConfirmation<S extends z.ZodRawShape>(options?: CapabilityAssistantOptions<S>) {
+	return options?.confirm !== undefined || options?.permission !== undefined;
+}
+
+/** The card for `require_approval` when the capability shows no card of its own. */
+function defaultCard<S extends z.ZodRawShape>(
 	definition: CapabilityToolDefinition<S>,
-	runCall: CapabilityCallRunner,
-): BuiltTool {
+): CapabilityCard {
+	const annotations = definition.config.annotations;
+	return {
+		message: `Allow the n8n Assistant to run "${annotations?.title ?? definition.name}"?`,
+		severity: annotations?.destructiveHint === true ? 'destructive' : 'warning',
+	};
+}
+
+function confirmationOptions<S extends z.ZodRawShape>(
+	setup: AssistantToolSetup<S>,
+	parse: (input: unknown) => CapabilityArgs<S>,
+	run: RunTool<S>,
+): ConfirmationOptions<CapabilityArgs<S>> {
+	const { definition, context, permissions, options = {} } = setup;
+	const { confirm, permission } = options;
+	return {
+		parse,
+		mode: (args) => resolvePermissionMode(permission?.(args), permissions),
+		confirm: confirm ? async (args) => await confirm(args, context) : undefined,
+		defaultCard: () => defaultCard(definition),
+		answerSchema: options.answerSchema ?? DEFAULT_CAPABILITY_ANSWER_SCHEMA,
+		applyAnswer: options.applyAnswer,
+		run,
+	};
+}
+
+/** Builds an Assistant tool from the same definition that the MCP server registers. */
+function buildAssistantTool<S extends z.ZodRawShape>(setup: AssistantToolSetup<S>): BuiltTool {
+	const { definition, runCall } = setup;
 	const inputSchema = z.object(definition.config.inputSchema);
-	const tool = new Tool(definition.name)
-		.description(definition.config.description ?? definition.name)
-		.input(inputSchema)
-		.handler(async (input, ctx) => {
-			// The runtime also validates. This check keeps direct calls to the same rules as MCP.
-			const parsed = inputSchema.safeParse(input);
-			if (!parsed.success) {
-				throw new UserError(
-					`Invalid input for ${definition.name}: ${describeIssues(parsed.error)}`,
-				);
-			}
-			const extra = { mcpReq: { _meta: {}, signal: ctx.abortSignal } };
+	// The runtime also validates. This check keeps direct calls and applied answers to the
+	// same rules as MCP.
+	const parseArgs = (input: unknown): CapabilityArgs<S> => {
+		const parsed = inputSchema.safeParse(input);
+		if (!parsed.success) {
+			throw new UserError(`Invalid input for ${definition.name}: ${describeIssues(parsed.error)}`);
+		}
+		return parsed.data;
+	};
+	const runWith =
+		(signal?: AbortSignal): RunTool<S> =>
+		async (args) => {
+			const extra = { mcpReq: { _meta: {}, signal } };
 			const result = await runCall(
 				definition.name,
-				parsed.data,
-				async () => await definition.handler(parsed.data, extra),
+				args,
+				async () => await definition.handler(args, extra),
 			);
 			return toAssistantOutput(result);
-		})
-		.toModelOutput(toModelOutput)
-		.build();
+		};
+
+	const builder = new Tool(definition.name)
+		.description(definition.config.description ?? definition.name)
+		.input(inputSchema)
+		.toModelOutput(toModelOutput);
+	const tool = needsConfirmation(setup.options)
+		? builder
+				.suspend(capabilityCardPayloadSchema)
+				.resume(setup.options?.answerSchema ?? DEFAULT_CAPABILITY_ANSWER_SCHEMA)
+				.handler(
+					async (input, ctx) =>
+						await runWithConfirmation(
+							input,
+							ctx,
+							confirmationOptions(setup, parseArgs, runWith(ctx.abortSignal)),
+						),
+				)
+				.build()
+		: builder
+				.handler(async (input, ctx) => await runWith(ctx.abortSignal)(parseArgs(input)))
+				.build();
 
 	const annotations = definition.config.annotations;
 	return annotations ? { ...tool, mcpAnnotations: annotations } : tool;
@@ -163,14 +261,16 @@ export function defineCapability<S extends z.ZodRawShape>(input: CapabilityInput
 		registerOn(register, request) {
 			register(buildTool({ ...request, surface: 'mcp' }));
 		},
-		toAssistantTool({ runCall = runDirectly, ...request }) {
+		toAssistantTool({ runCall = runDirectly, permissions, ...request }) {
 			if (!surfaces.includes('assistant')) {
 				throw new UnexpectedError(`Capability "${input.name}" is not offered to the n8n Assistant`);
 			}
-			const definition = buildTool({ ...request, surface: 'assistant' });
+			const context: CapabilityContext = { ...request, surface: 'assistant' };
+			const definition = buildTool(context);
+			const options = input.assistant;
 			return {
-				tool: buildAssistantTool(definition, runCall),
-				alwaysLoaded: input.assistant?.alwaysLoaded ?? false,
+				tool: buildAssistantTool({ definition, runCall, context, options, permissions }),
+				alwaysLoaded: options?.alwaysLoaded ?? false,
 			};
 		},
 	};
