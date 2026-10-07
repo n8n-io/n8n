@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { createEventBus } from '@n8n/utils/event-bus';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
-import Modal from '@/app/components/Modal.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/app/composables/useMessage';
@@ -32,7 +30,14 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { I18nT } from 'vue-i18n';
 
-import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInfoTip,
+	N8nText,
+} from '@n8n/design-system';
 const props = defineProps<{
 	data: {
 		id: string;
@@ -78,7 +83,7 @@ const workflowSharedWithProjects = computed(
 const loading = ref(true);
 let initializationPromise: Promise<void> | undefined;
 const isDirty = ref(false);
-const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[WORKFLOW_SHARE_MODAL_KEY]?.open === true);
 const sharedWithProjects = ref([
 	...(workflowSharedWithProjects.value ?? []),
 ] as ProjectSharingData[]);
@@ -210,7 +215,7 @@ const onSave = async () => {
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),
 		});
 		isDirty.value = false;
-		modalBus.emit('close');
+		closeDialog();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.shareModal.onSave.error.title'));
 	} finally {
@@ -218,7 +223,18 @@ const onSave = async () => {
 	}
 };
 
-const onCloseModal = async () => {
+async function closeDialog() {
+	if (uiStore.modalsById[WORKFLOW_SHARE_MODAL_KEY]?.open !== true) return;
+	const shouldClose = await onCloseModal();
+	if (shouldClose === false) return;
+	uiStore.closeModal(WORKFLOW_SHARE_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+const onCloseModal = async (): Promise<boolean | void> => {
 	if (isDirty.value) {
 		const shouldSave = await message.confirm(
 			i18n.baseText('workflows.shareModal.saveBeforeClose.message'),
@@ -274,97 +290,97 @@ watch(
 </script>
 
 <template>
-	<Modal
-		width="460px"
-		max-height="75%"
-		:title="modalTitle"
-		:event-bus="modalBus"
-		:name="WORKFLOW_SHARE_MODAL_KEY"
-		:center="true"
-		:before-close="onCloseModal"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:container-class="$style.dialog"
+		:header="modalTitle"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div v-if="!isSharingEnabled" :class="$style.container">
-				<N8nText>
-					{{
-						i18n.baseText(
-							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
-						)
-					}}
-				</N8nText>
-			</div>
-			<div v-else :class="$style.container">
-				<N8nInfoTip
-					v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
-					:bold="false"
-					class="mb-s"
-				>
-					{{
-						i18n.baseText('workflows.shareModal.info.sharee', {
-							interpolate: { workflowOwnerName },
-						})
-					}}
-				</N8nInfoTip>
-				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
-					<div>
-						<ProjectSharing
-							v-if="workflowHomeProject"
-							v-model="sharedWithProjects"
-							:home-project="workflowHomeProject"
-							:search-fn="searchFn"
-							:filter-fn="filterFn"
-							:roles="workflowRoles"
-							:readonly="!workflowPermissions.share"
-							:static="isHomeTeamProject || !workflowPermissions.share"
-							:disabled-tooltip="
-								isPersonalSpaceRestricted
-									? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
-									: undefined
-							"
-							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
-							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
-							@project-added="onProjectAdded"
-							@project-removed="onProjectRemoved"
-						/>
-						<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
-							<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
-								<template #projectName>
-									{{ workflowHomeProject?.name }}
-								</template>
-								<template #members>
-									<strong>
-										{{
-											i18n.baseText('workflows.shareModal.info.members.number', {
-												interpolate: {
-													number: String(numberOfMembersInHomeTeamProject),
-												},
-												adjustToNumber: numberOfMembersInHomeTeamProject,
-											})
-										}}
-									</strong>
-								</template>
-							</I18nT>
-						</N8nInfoTip>
-					</div>
-					<template #fallback>
-						<N8nText>
-							<I18nT
-								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-										.tooltip
+		<N8nDialogBody>
+			<div :class="$style.scroll" data-test-id="workflowShare-modal">
+				<div v-if="!isSharingEnabled" :class="$style.container">
+					<N8nText>
+						{{
+							i18n.baseText(
+								uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
+							)
+						}}
+					</N8nText>
+				</div>
+				<div v-else :class="$style.container">
+					<N8nInfoTip
+						v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
+						:bold="false"
+						class="mb-s"
+					>
+						{{
+							i18n.baseText('workflows.shareModal.info.sharee', {
+								interpolate: { workflowOwnerName },
+							})
+						}}
+					</N8nInfoTip>
+					<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+						<div>
+							<ProjectSharing
+								v-if="workflowHomeProject"
+								v-model="sharedWithProjects"
+								:home-project="workflowHomeProject"
+								:search-fn="searchFn"
+								:filter-fn="filterFn"
+								:roles="workflowRoles"
+								:readonly="!workflowPermissions.share"
+								:static="isHomeTeamProject || !workflowPermissions.share"
+								:disabled-tooltip="
+									isPersonalSpaceRestricted
+										? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
+										: undefined
 								"
-								tag="span"
-								scope="global"
-							>
-								<template #action />
-							</I18nT>
-						</N8nText>
-					</template>
-				</EnterpriseEdition>
+								:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
+								:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
+								@project-added="onProjectAdded"
+								@project-removed="onProjectRemoved"
+							/>
+							<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+								<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
+									<template #projectName>
+										{{ workflowHomeProject?.name }}
+									</template>
+									<template #members>
+										<strong>
+											{{
+												i18n.baseText('workflows.shareModal.info.members.number', {
+													interpolate: {
+														number: String(numberOfMembersInHomeTeamProject),
+													},
+													adjustToNumber: numberOfMembersInHomeTeamProject,
+												})
+											}}
+										</strong>
+									</template>
+								</I18nT>
+							</N8nInfoTip>
+						</div>
+						<template #fallback>
+							<N8nText>
+								<I18nT
+									:keypath="
+										uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+											.tooltip
+									"
+									tag="span"
+									scope="global"
+								>
+									<template #action />
+								</I18nT>
+							</N8nText>
+						</template>
+					</EnterpriseEdition>
+				</div>
 			</div>
-		</template>
+		</N8nDialogBody>
 
-		<template #footer>
+		<N8nDialogFooter>
 			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
 				<N8nButton @click="goToUpgrade">
 					{{
@@ -380,7 +396,7 @@ watch(
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
-				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
+				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="closeDialog">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 				<N8nButton
@@ -394,11 +410,22 @@ watch(
 					{{ i18n.baseText('workflows.shareModal.save') }}
 				</N8nButton>
 			</EnterpriseEdition>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
+.dialog {
+	display: flex;
+	flex-direction: column;
+	max-height: 75%;
+}
+
+.scroll {
+	min-height: 0;
+	overflow-y: auto;
+}
+
 .container {
 	display: flex;
 	flex-direction: column;
