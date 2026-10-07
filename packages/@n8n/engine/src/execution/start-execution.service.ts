@@ -136,21 +136,23 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): v
 			);
 		}
 		const steps = stepsByNode.get(step.nodeId) ?? [];
-		if (steps.some((other) => iterationOf(other) === iterationOf(step))) {
-			throw new GraphValidationError(
-				`Node ${step.nodeId} is seeded more than once at iteration ${iterationOf(step)}`,
-			);
-		}
 		steps.push(step);
 		stepsByNode.set(step.nodeId, steps);
 	}
 
+	// Sorted, a node's iterations must read 0, 1, 2, ...: a repeat or a gap breaks the sequence.
 	for (const [nodeId, steps] of stepsByNode) {
 		steps.sort((a, b) => iterationOf(a) - iterationOf(b));
 		steps.forEach((step, index) => {
-			if (iterationOf(step) !== index) {
+			const iteration = iterationOf(step);
+			if (index > 0 && iteration === iterationOf(steps[index - 1])) {
 				throw new GraphValidationError(
-					`Node ${nodeId} is seeded at iteration ${iterationOf(step)} but not at iteration ${index}`,
+					`Node ${nodeId} is seeded more than once at iteration ${iteration}`,
+				);
+			}
+			if (iteration !== index) {
+				throw new GraphValidationError(
+					`Node ${nodeId} is seeded at iteration ${iteration} but not at iteration ${index}`,
 				);
 			}
 		});
