@@ -11,6 +11,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import type { AgentSkillsService } from '@/modules/agents/agent-skills.service';
@@ -117,6 +118,7 @@ describe('AgentRepository', () => {
 				setup,
 				transactionRunner,
 				completion,
+				mock<AgentPolicyService>(),
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
