@@ -102,6 +102,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
+| [public.migration_workflow_owner](public.migration_workflow_owner.md) | 7 |  | BASE TABLE |
 | [public.oauth_access_tokens](public.oauth_access_tokens.md) | 3 |  | BASE TABLE |
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
@@ -161,8 +162,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 5 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
-| [public.workflow_suggestion](public.workflow_suggestion.md) | 11 |  | BASE TABLE |
-| [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 6 |  | BASE TABLE |
+| [public.workflow_suggestion](public.workflow_suggestion.md) | 16 |  | BASE TABLE |
+| [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 7 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -326,6 +327,9 @@ erDiagram
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;assignedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.migration_workflow_owner" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -406,6 +410,7 @@ erDiagram
 "public.workflow_suggestion" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.workflow_suggestion_activity" }o--o| "public.user" : "FOREIGN KEY (#quot;actorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
@@ -1363,6 +1368,15 @@ erDiagram
   timestamp_3__with_time_zone syncedAt
   varchar_16_ targetVersion
 }
+"public.migration_workflow_owner" {
+  timestamp_3__with_time_zone assignedAt
+  uuid assignedById FK
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ source
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+  varchar_36_ workflowId FK
+}
 "public.oauth_access_tokens" {
   varchar clientId FK
   varchar token
@@ -1925,6 +1939,10 @@ erDiagram
   varchar_128_ workflowName
 }
 "public.workflow_suggestion" {
+  varchar_32_ appliedAction
+  uuid appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason
@@ -1933,12 +1951,14 @@ erDiagram
   varchar_36_ id
   json payload
   varchar_36_ projectId FK
+  varchar_16_ resultKind
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }
 "public.workflow_suggestion_activity" {
   varchar_16_ action
+  uuid actorId FK
   varchar_16_ author
   timestamp_3__with_time_zone createdAt
   varchar_36_ id

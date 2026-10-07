@@ -291,6 +291,66 @@ describe('MigrationRules', () => {
 		});
 	});
 
+	describe('resolved workflow rules', () => {
+		const resolvedRule = {
+			...mockWorkflowIssue,
+			ruleId: 'rule-resolved',
+			ruleTitle: 'Resolved Rule',
+			ruleImpact: 'upgradeBlocked' as const,
+			nbAffectedWorkflows: 0,
+		};
+
+		it('lists a rule without open findings last, as resolved, with a link to its detail page', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [resolvedRule, mockWorkflowIssue],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('Resolved')).toBeInTheDocument();
+			});
+			expect(screen.getByText('Resolved').closest('a')).toBeInTheDocument();
+			expect(screen.queryByText('0 Workflows')).not.toBeInTheDocument();
+			const titles = screen
+				.getAllByRole('heading', { level: 3 })
+				.map((heading) => heading.textContent?.trim());
+			expect(titles).toEqual(['Test Rule 1', 'Resolved Rule']);
+			// The tab counts only the rule with open findings.
+			expect(screen.getByText('Workflow issues').parentElement).toHaveTextContent('1');
+		});
+
+		it('shows the empty state and keeps the resolved rules listed when no rule has open findings', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [resolvedRule],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('No workflow issues detected')).toBeInTheDocument();
+			});
+			expect(screen.getByText('Resolved Rule')).toBeInTheDocument();
+			expect(screen.getByText('Workflow issues').parentElement).not.toHaveTextContent(/\d/);
+		});
+	});
+
 	describe('instance issues tab', () => {
 		it('should display instance issues with all elements', async () => {
 			renderComponent();
