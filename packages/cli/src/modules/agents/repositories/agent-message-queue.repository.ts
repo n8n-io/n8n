@@ -42,6 +42,15 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		});
 	}
 
+	/**
+	 * Whether the thread has a queued or claimed message, hidden machine turns
+	 * included. A hidden follow-up turn waits here between two executions, so
+	 * the thread still has work when no execution runs.
+	 */
+	async hasItems(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(AgentMessageQueue, { threadId });
+	}
+
 	async findItem(threadId: string, id: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
 			where: { threadId, id },
