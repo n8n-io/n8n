@@ -85,7 +85,7 @@ export class N8nPackagesPublicController {
 		})
 		body: ImportPackageRequestDto,
 	): Promise<ImportResult> {
-		const { projectId, folderId } = body;
+		const { package: file, bindings, projectId, folderId, ...policies } = body;
 
 		try {
 			return await this.n8nPackagesService.importPackage({
@@ -93,27 +93,11 @@ export class N8nPackagesPublicController {
 				apiKeyScopes: req.tokenGrant?.apiKeyScopes,
 				projectId,
 				folderId,
-				credentialMatchingMode: body.credentialMatchingMode,
-				credentialMissingMode: body.credentialMissingMode,
 				bindings: {
-					credentials: new Map(Object.entries(body.bindings.credentials ?? {})),
+					credentials: new Map(Object.entries(bindings.credentials ?? {})),
 				},
-				workflowConflictPolicy: body.workflowConflictPolicy,
-				workflowPublishingPolicy: body.workflowPublishingPolicy,
-				workflowIdPolicy: body.workflowIdPolicy,
-				missingNodeTypeMode: body.missingNodeTypeMode,
-				projectConflictPolicy: body.projectConflictPolicy,
-				folderConflictPolicy: body.folderConflictPolicy,
-				overwriteDeletionPolicy: body.overwriteDeletionPolicy,
-				dataTableMatchingMode: body.dataTableMatchingMode,
-				dataTableMissingMode: body.dataTableMissingMode,
-				dataTableSchemaConflictPolicy: body.dataTableSchemaConflictPolicy,
-				variableMissingMode: body.variableMissingMode,
-				variableConflictPolicy: body.variableConflictPolicy,
-				variableParentPolicy: body.variableParentPolicy,
-				tagMissingMode: body.tagMissingMode,
-				tagConflictPolicy: body.tagConflictPolicy,
-				packageBuffer: Buffer.from(body.package.buffer),
+				packageBuffer: Buffer.from(file.buffer),
+				...policies,
 			});
 		} catch (error) {
 			this.eventService.emit('n8n-package-import-failed', {
