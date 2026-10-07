@@ -59,6 +59,17 @@ const emptyCounts = (): Record<ShadowOutcome, number> => ({
 
 const emptyBuckets = () => new Array<number>(LATENCY_BUCKET_BOUNDS_MS.length + 1).fill(0);
 
+/** A report with nothing in it, for a run that never started. */
+export function emptyReport(): ShadowReport {
+	return {
+		...emptyCounts(),
+		evaluations: 0,
+		legacy_latency_buckets: emptyBuckets(),
+		quickjs_latency_buckets: emptyBuckets(),
+		mismatches: [],
+	};
+}
+
 function bucketIndex(durationMs: number): number {
 	const index = LATENCY_BUCKET_BOUNDS_MS.findIndex((bound) => durationMs <= bound);
 	return index === -1 ? LATENCY_BUCKET_BOUNDS_MS.length : index;

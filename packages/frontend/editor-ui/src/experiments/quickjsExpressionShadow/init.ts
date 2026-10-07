@@ -9,7 +9,7 @@ import type { ShadowEvaluator } from 'n8n-workflow';
 import { QUICKJS_EXPRESSION_SHADOW_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 
-import { LATENCY_BUCKET_BOUNDS_MS, QuickJsExpressionShadow } from './shadowRunner';
+import { emptyReport, LATENCY_BUCKET_BOUNDS_MS, QuickJsExpressionShadow } from './shadowRunner';
 import type { ShadowReport } from './shadowRunner';
 
 export const DEFAULT_SAMPLE_RATE = 10;
@@ -144,19 +144,4 @@ export function stopQuickJsExpressionShadow() {
 	started = false;
 	stopActiveRun?.();
 	stopActiveRun = undefined;
-}
-
-function emptyReport(): ShadowReport {
-	return {
-		evaluations: 0,
-		same: 0,
-		different: 0,
-		unchecked: 0,
-		legacy_ok_quickjs_error: 0,
-		legacy_error_quickjs_ok: 0,
-		both_error: 0,
-		legacy_latency_buckets: [],
-		quickjs_latency_buckets: [],
-		mismatches: [],
-	};
 }

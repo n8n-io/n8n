@@ -119,80 +119,22 @@ function writeCanonical(value: unknown, state: CanonicalState): string {
 const MAX_SKELETON_LENGTH = 300;
 
 // Names that come from JavaScript or n8n, not from the user's data.
-const KNOWN_NAMES = new Set([
-	'Array',
-	'BigInt',
-	'Boolean',
-	'Date',
-	'DateTime',
-	'Duration',
-	'Error',
-	'Infinity',
-	'Interval',
-	'Intl',
-	'JSON',
-	'Map',
-	'Math',
-	'NaN',
-	'Number',
-	'Object',
-	'RegExp',
-	'Set',
-	'String',
-	'Symbol',
-	'break',
-	'case',
-	'catch',
-	'const',
-	'continue',
-	'decodeURI',
-	'decodeURIComponent',
-	'default',
-	'delete',
-	'do',
-	'else',
-	'encodeURI',
-	'encodeURIComponent',
-	'false',
-	'finally',
-	'for',
-	'function',
-	'if',
-	'in',
-	'instanceof',
-	'isFinite',
-	'isNaN',
-	'let',
-	'new',
-	'null',
-	'of',
-	'parseFloat',
-	'parseInt',
-	'return',
-	'switch',
-	'this',
-	'throw',
-	'true',
-	'try',
-	'typeof',
-	'undefined',
-	'var',
-	'void',
-	'while',
-]);
+const KNOWN_NAMES = new Set(
+	[
+		'Array BigInt Boolean Date DateTime Duration Error Interval Intl JSON Map Math Number Object',
+		'RegExp Set String Symbol decodeURI decodeURIComponent encodeURI encodeURIComponent isFinite',
+		'isNaN parseFloat parseInt Infinity NaN false null true undefined',
+		'break case catch const continue default delete do else finally for function if in instanceof',
+		'let new of return switch this throw try typeof var void while',
+	]
+		.join(' ')
+		.split(' '),
+);
 
 // Members that n8n or JavaScript define, so reading them does not reveal user data.
-const KNOWN_MEMBERS = new Set([
-	'binary',
-	'context',
-	'isExecuted',
-	'item',
-	'json',
-	'length',
-	'pairedItem',
-	'params',
-	'runIndex',
-]);
+const KNOWN_MEMBERS = new Set(
+	'binary context isExecuted item json length pairedItem params runIndex'.split(' '),
+);
 
 // n8n data proxy methods, and extensions that are not in the extension maps.
 const N8N_METHODS = ['all', 'first', 'isEmpty', 'isNotEmpty', 'itemMatching', 'last'];
