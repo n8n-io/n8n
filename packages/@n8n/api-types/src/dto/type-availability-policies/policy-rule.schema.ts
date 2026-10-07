@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import type { NonDelegatingPolicyAction, PolicyAction } from './policy-rule.types';
+import type {
+	NonDelegatingPolicyAction,
+	NonDelegatingPolicyRule,
+	PolicyAction,
+	PolicyRule,
+} from './policy-rule.types';
 import {
 	credentialTypePolicySelectorSchema,
 	nodeTypePolicySelectorSchema,
@@ -56,6 +61,17 @@ function ruleSchemasFor<Selector extends z.ZodTypeAny>(selector: Selector) {
 	};
 }
 
-export const nodeTypePolicyRuleSchemas = ruleSchemasFor(nodeTypePolicySelectorSchema);
+/** What one kind's rule schemas must parse into. `satisfies` keeps each kind honest against it. */
+type RuleSchemas<Rule, NonDelegatingRule> = {
+	rule: z.ZodType<Rule>;
+	ruleList: z.ZodType<Rule[]>;
+	nonDelegatingRuleList: z.ZodType<NonDelegatingRule[]>;
+};
 
-export const credentialTypePolicyRuleSchemas = ruleSchemasFor(credentialTypePolicySelectorSchema);
+export const nodeTypePolicyRuleSchemas = ruleSchemasFor(
+	nodeTypePolicySelectorSchema,
+) satisfies RuleSchemas<PolicyRule, NonDelegatingPolicyRule>;
+
+export const credentialTypePolicyRuleSchemas = ruleSchemasFor(
+	credentialTypePolicySelectorSchema,
+) satisfies RuleSchemas<PolicyRule, NonDelegatingPolicyRule>;
