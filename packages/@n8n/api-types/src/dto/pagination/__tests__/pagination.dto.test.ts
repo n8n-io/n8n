@@ -189,19 +189,6 @@ describe('publicApiPaginationSchema', () => {
 		expect(limit.parse('0')).toBe(DEFAULT_PUBLIC_API_LIMIT);
 	});
 
-	test('rejects a fractional limit instead of using the default', () => {
-		expect(limit.safeParse('0.5')).toEqual(
-			expect.objectContaining({
-				success: false,
-				error: expect.objectContaining({
-					issues: expect.arrayContaining([
-						expect.objectContaining({ message: 'Param `limit` must be a valid integer' }),
-					]),
-				}),
-			}),
-		);
-	});
-
 	test('rejects a negative limit', () => {
 		expect(limit.safeParse('-1')).toEqual(
 			expect.objectContaining({

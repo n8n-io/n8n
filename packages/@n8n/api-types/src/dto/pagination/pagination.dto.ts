@@ -62,7 +62,7 @@ const createLimitValidator = (maxItems: number) =>
 	z
 		.string()
 		.optional()
-		.transform((val) => (val ? Number(val) : DEFAULT_PUBLIC_API_LIMIT))
+		.transform((val) => (val ? parseInt(val, 10) : DEFAULT_PUBLIC_API_LIMIT))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `limit` must be a valid integer',
 		})
