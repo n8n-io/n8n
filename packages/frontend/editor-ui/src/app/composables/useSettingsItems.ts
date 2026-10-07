@@ -223,7 +223,7 @@ export function useSettingsItems() {
 			{
 				// The flag is read here because the middleware check does not run route guards.
 				id: 'settings-context',
-				order: 300,
+				order: 210,
 				icon: 'brain',
 				label: i18n.baseText('settings.context.title'),
 				position: 'top',

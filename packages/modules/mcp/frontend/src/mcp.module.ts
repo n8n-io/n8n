@@ -71,6 +71,7 @@ export const MCPModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-mcp',
+			order: 200,
 			icon: 'mcp',
 			get label() {
 				return useI18n().baseText('settings.mcp');

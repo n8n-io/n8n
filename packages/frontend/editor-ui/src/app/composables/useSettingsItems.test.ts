@@ -95,11 +95,13 @@ describe('useSettingsItems', () => {
 			activeModules.value = ['promotions'];
 			promotionsFlag.value = 'true';
 			vi.mocked(hasPermission).mockReturnValue(true);
-			// Module items.
+			// Module items in registration order, with the orders the real modules set.
 			settingsSidebarItems.value = [
-				{ id: 'settings-chat-hub', available: true, order: 200 },
-				{ id: 'settings-instance-ai', available: true, order: 210 },
-				{ id: 'settings-agents', available: true, order: 220 },
+				{ id: 'settings-mcp', available: true, order: 200 },
+				{ id: 'settings-chat-hub', available: true, order: 220 },
+				{ id: 'settings-instance-ai', available: true, order: 230 },
+				{ id: 'settings-agents', available: true, order: 240 },
+				{ id: 'settings-opentelemetry', available: true },
 			];
 
 			const ids = useSettingsItems().settingsItems.value.map(({ id }) => id);
@@ -124,10 +126,12 @@ describe('useSettingsItems', () => {
 				'settings-log-streaming',
 				'settings-community-nodes',
 				'settings-migration-report',
+				'settings-mcp',
+				'settings-context',
 				'settings-chat-hub',
 				'settings-instance-ai',
 				'settings-agents',
-				'settings-context',
+				'settings-opentelemetry',
 			]);
 		});
 	});
@@ -170,14 +174,14 @@ describe('useSettingsItems', () => {
 
 		it('sorts between module items with a lower and a higher order', () => {
 			settingsSidebarItems.value = [
-				{ id: 'settings-mcp', available: true, order: 290 },
-				{ id: 'settings-chat', available: true, order: 310 },
+				{ id: 'settings-mcp', available: true, order: 200 },
+				{ id: 'settings-chat-hub', available: true, order: 220 },
 			];
 
 			const ids = idsOf();
 
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-mcp') + 1);
-			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-chat') - 1);
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-chat-hub') - 1);
 		});
 
 		it('is hidden when the flag is off, because the route guard does not run here', () => {
