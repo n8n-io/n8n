@@ -55,6 +55,14 @@ const jsonwebtokenSubpathRestriction = {
 		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
 };
 
+// Verifying a token signed by a foreign key is the one thing JwtService cannot do.
+// This widens the allowlist to `decode` and `verify` only; `sign` stays restricted.
+const jsonwebtokenVerifyOnlyRestriction = {
+	...jsonwebtokenSigningRestriction,
+	allowImportNames: [...jsonwebtokenSigningRestriction.allowImportNames, 'decode', 'verify'],
+	message: 'Sign through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
@@ -67,17 +75,11 @@ export default defineConfig({
 	ignorePatterns: ['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**'],
 	rules: {
 		'n8n-local-rules/no-dynamic-import-template': 'error',
-		'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 		// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a violation.
 		'n8n-local-rules/no-guardrail-disable': [
 			'error',
 			{
 				guarded: [
-					{
-						rule: 'misplaced-n8n-typeorm-import',
-						message:
-							'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
-					},
 					{
 						rule: 'no-repository-in-public-api-handler',
 						message: 'Call a service instead of reaching the repository.',
@@ -157,7 +159,6 @@ export default defineConfig({
 				'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],
 			rules: {
 				'n8n-local-rules/require-public-api-controller': 'off',
@@ -227,7 +228,9 @@ export default defineConfig({
 			},
 		},
 		{
-			// The two places that hold the raw signing API. NEVER add to this list.
+			// The places that hold the raw signing API. The one admitted reason to be here besides
+			// JwtService itself: verifying tokens signed by a foreign key, which JwtService cannot
+			// verify. Do NOT add a file for any other reason.
 			files: [
 				// Owns the signing key and derives every audience from a purpose.
 				'./src/services/jwt.service.ts',
@@ -239,6 +242,24 @@ export default defineConfig({
 				'no-restricted-imports': [
 					'error',
 					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				],
+			},
+		},
+		{
+			// Verifies bearer tokens with the JWKS discovered for a trusted source. Only
+			// `decode` and `verify` are admitted; signing stays with JwtService.
+			files: ['./src/modules/inbound-auth-core/oauth2-bearer.driver.ts'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{
+						paths: [
+							POLICY_INTERNAL_RESTRICTION,
+							engineV2ModuleOnlyImport,
+							jsonwebtokenVerifyOnlyRestriction,
+						],
+						patterns: [jsonwebtokenSubpathRestriction],
+					},
 				],
 			},
 		},
@@ -269,143 +290,6 @@ export default defineConfig({
 			files: ['./src/databases/migrations/**/*.ts'],
 			rules: {
 				'unicorn/filename-case': 'off',
-			},
-		},
-		{
-			// @n8n/typeorm belongs in the persistence layer; exempt entities/repositories.
-			// Path-based (not suffix-only) so entity files without the `.entity.ts` suffix are covered.
-			files: [
-				'./src/databases/**/*.ts',
-				'./src/modules/**/database/entities/**/*.ts',
-				'./src/modules/**/database/repositories/**/*.ts',
-				'./src/modules/**/*.entity.ts',
-				'./src/modules/**/*.repository.ts',
-				'./test/**/*.ts',
-				'./src/**/__tests__/**/*.ts',
-			],
-			rules: {
-				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
-			},
-		},
-		{
-			// Permanent: legitimate TypeORM use outside the persistence tree. Do not remove.
-			// - db/revert.ts: MigrationExecutor (CLI migration tooling)
-			// - security-audit.repository.ts: PackagesRepository, relocation tracked separately
-			files: ['./src/commands/db/revert.ts', './src/security-audit/security-audit.repository.ts'],
-			rules: {
-				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
-			},
-		},
-		{
-			// Ratchet allowlist: known @n8n/typeorm leaks pending migration to @n8n/db.
-			// NEVER add to this list — a new leak must fail CI. Entries are removed as each file migrates.
-			files: [
-				// credentials/
-				'./src/credentials-helper.ts',
-				'./src/credentials/credential-connection-status-provider.interface.ts',
-				'./src/credentials/credential-connection-status-proxy.ts',
-				'./src/credentials/credential-dependency.service.ts',
-				'./src/credentials/credentials.controller.ts',
-				'./src/credentials/credentials.service.ee.ts',
-				'./src/credentials/credentials.service.ts',
-				// workflows/
-				'./src/workflows/workflow-finder.service.ts',
-				'./src/workflows/workflow-history/workflow-history.service.ts',
-				'./src/workflows/workflow-validation.service.ts',
-				'./src/workflows/workflow.service.ee.ts',
-				'./src/workflows/workflow.service.ts',
-				'./src/workflows/workflows.controller.ts',
-				// services/
-				'./src/services/export.service.ts',
-				'./src/services/folder.service.ts',
-				'./src/services/hooks.service.ts',
-				'./src/services/import.service.ts',
-				'./src/services/ownership-transfer/ownership-transfer-handler.registry.ts',
-				'./src/services/project.service.ee.ts',
-				'./src/services/public-api-key.service.ts',
-				// commands / controllers / eventbus / evaluation / public-api
-				'./src/commands/import/credentials.ts',
-				'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
-				// modules/** non-persistence services surfaced by narrowing the exemption
-				'./src/modules/agents/agent-knowledge.service.ts',
-				'./src/modules/agents/agent-publish.service.ts',
-				'./src/modules/agents/agent-task.service.ts',
-				'./src/modules/agents/builder/agents-builder.service.ts',
-				'./src/modules/agents/instance-ai-builder-delegate.adapter.ts',
-				'./src/modules/agents/integrations/n8n-memory.ts',
-				'./src/modules/agents/tools/workflow-tool-workflow-resolver.ts',
-				'./src/modules/breaking-changes/breaking-changes.service.ts',
-				'./src/modules/chat-hub/chat-hub-credentials.service.ts',
-				'./src/modules/chat-hub/chat-hub-workflow.service.ts',
-				'./src/modules/chat-hub/chat-hub.attachment.service.ts',
-				'./src/modules/data-table/data-table-ddl.service.ts',
-				'./src/modules/data-table/data-table.service.ts',
-				'./src/modules/data-table/utils/sql-utils.ts',
-				'./src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts',
-				'./src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts',
-				'./src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts',
-				'./src/modules/favorites/favorites.service.ts',
-				'./src/modules/insights/insights-collection.service.ts',
-				'./src/modules/instance-ai/instance-ai.adapter.service.ts',
-				'./src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts',
-				'./src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts',
-				'./src/modules/instance-ai/storage/typeorm-agent-memory.ts',
-				'./src/modules/instance-ai/storage/typeorm-observation-log-store.ts',
-				'./src/modules/instance-ai/suspended-thread-persistence.service.ts',
-				'./src/modules/log-streaming.ee/log-streaming-destination.service.ts',
-				'./src/modules/mcp/mcp-api-key.service.ts',
-				'./src/modules/mcp/mcp.settings.service.ts',
-				'./src/modules/oauth-jwe/oauth-jwe-key.service.ts',
-				'./src/modules/provisioning.ee/provisioning.service.ee.ts',
-				'./src/modules/provisioning.ee/role-mapping-rule.service.ee.ts',
-				'./src/modules/provisioning.ee/role-resolver.service.ee.ts',
-				'./src/modules/source-control.ee/source-control-context.factory.ts',
-				'./src/modules/source-control.ee/source-control-export.service.ee.ts',
-				'./src/modules/source-control.ee/source-control-import.service.ee.ts',
-				'./src/modules/source-control.ee/source-control-scoped.service.ts',
-				'./src/modules/source-control.ee/source-control-status.service.ee.ts',
-				'./src/modules/token-exchange/services/trusted-key.service.ts',
-				'./src/modules/workflow-index/workflow-dependency-query.service.ts',
-			],
-			rules: {
-				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
-			},
-		},
-		{
-			// Ratchet allowlist: known relabel leaks — business logic importing a TypeORM
-			// operator/driver type (`In`, `Not`, `EntityManager`, `FindOptionsWhere`, …) from
-			// `@n8n/db` instead of `@n8n/typeorm`. Same rule, same shrink-only contract:
-			// NEVER add to this list — a new relabel must fail CI. Entries removed as each file
-			// drops TypeORM in favor of a use-case repository method.
-			files: [
-				'./src/binary-data/database.manager.ts',
-				'./src/events/relays/telemetry.event-relay.ts',
-				'./src/executions/execution-data/db-store.ts',
-				'./src/executions/execution-persistence.ts',
-				'./src/executions/execution-recovery.service.ts',
-				'./src/executions/execution.service.ts',
-				'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
-				'./src/modules/agents/agents.service.ts',
-				'./src/modules/chat-hub/chat-hub-agent.service.ts',
-				'./src/modules/chat-hub/chat-hub-title.service.ts',
-				'./src/modules/chat-hub/chat-hub-tool.service.ts',
-				'./src/modules/chat-hub/chat-hub.models.service.ts',
-				'./src/modules/chat-hub/chat-hub.service.ts',
-				'./src/modules/chat-hub/chat-hub.settings.service.ts',
-				'./src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts',
-				'./src/permissions.ee/check-access.ts',
-				'./src/scheduling/durable-job-provisioner.ts',
-				'./src/scheduling/durable-scheduler.ts',
-				'./src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts',
-				'./src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts',
-				'./src/security-audit/risk-reporters/credentials-risk-reporter.ts',
-				'./src/services/role-cache.service.ts',
-				'./src/services/role.service.ts',
-				'./src/services/user.service.ts',
-				'./src/workflows/workflow-creation.service.ts',
-			],
-			rules: {
-				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
 			},
 		},
 		{

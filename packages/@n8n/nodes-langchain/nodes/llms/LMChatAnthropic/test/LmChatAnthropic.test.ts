@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ChatAnthropic } from '@langchain/anthropic';
-import type { LLMResult } from '@langchain/core/outputs';
 import {
+	anthropicTokensUsageParser,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getProxyAgent,
@@ -20,6 +20,7 @@ vi.mock('@langchain/anthropic', () => ({
 	ChatAnthropic: vi.fn(),
 }));
 vi.mock('@n8n/ai-utilities', () => ({
+	anthropicTokensUsageParser: vi.fn(),
 	getConnectionHintNoticeField: vi
 		.fn()
 		.mockReturnValue({ displayName: '', name: 'notice', type: 'notice', default: '' }),
@@ -1252,45 +1253,11 @@ describe('LmChatAnthropic', () => {
 			expect(notice!.displayOptions?.show?.['/options.promptCaching']).toEqual(['5m', '1h']);
 		});
 
-		describe('token usage parser', () => {
-			const parseUsage = async (usage?: Record<string, number>) => {
-				await lmChatAnthropic.supplyData.call(cacheContext({}), 0);
+		it('should report token usage with the shared Anthropic parser', async () => {
+			await lmChatAnthropic.supplyData.call(cacheContext({}), 0);
 
-				const { tokensUsageParser } = MockedN8nLlmTracing.mock.calls[0][1] as {
-					tokensUsageParser: (result: LLMResult) => Record<string, number>;
-				};
-				return tokensUsageParser({ generations: [], llmOutput: { usage } });
-			};
-
-			it('should report input and output tokens when no cache tokens are returned', async () => {
-				await expect(parseUsage({ input_tokens: 100, output_tokens: 20 })).resolves.toEqual({
-					completionTokens: 20,
-					promptTokens: 100,
-					totalTokens: 120,
-				});
-			});
-
-			it('should count cache writes and reads as prompt tokens', async () => {
-				await expect(
-					parseUsage({
-						input_tokens: 100,
-						output_tokens: 20,
-						cache_creation_input_tokens: 500,
-						cache_read_input_tokens: 1000,
-					}),
-				).resolves.toEqual({
-					completionTokens: 20,
-					promptTokens: 1600,
-					totalTokens: 1620,
-				});
-			});
-
-			it('should fall back to zero when the response carries no usage', async () => {
-				await expect(parseUsage(undefined)).resolves.toEqual({
-					completionTokens: 0,
-					promptTokens: 0,
-					totalTokens: 0,
-				});
+			expect(MockedN8nLlmTracing.mock.calls[0][1]).toMatchObject({
+				tokensUsageParser: anthropicTokensUsageParser,
 			});
 		});
 	});

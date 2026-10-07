@@ -22,7 +22,7 @@ breaking-changes/
          ...
       index.ts                # Side-effect imports for all rules
    database/
-      entities/               # migration_finding + migration_finding_sync tables
+      entities/               # migration_finding, migration_finding_sync, migration_workflow_owner tables
       repositories/           # Use-case-named DB access (BaseRepository + OperationContext)
    sync/
       migration-finding-diff.ts  # Pure diff of scan hits against stored findings

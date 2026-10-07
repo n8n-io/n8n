@@ -91,7 +91,7 @@ export interface ImportPackageCounts {
 		};
 	};
 	credentials: { matched: number; stubbed: number };
-	dataTables: { matched: number; created: number };
+	dataTables: { matched: number; created: number; updated: number };
 	variables: {
 		matched: number;
 		created: number;
