@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import ProjectMoveResourceModalCredentialsList from './ProjectMoveResourceModalCredentialsList.vue';
 import ProjectSharing from './ProjectSharing.vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -35,7 +34,11 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
-	N8nHeading,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -134,9 +137,15 @@ const processProjectName = (projectName: string) => {
 	return name ?? email;
 };
 
-const closeModal = () => {
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+const closeDialog = () => {
 	uiStore.closeModal(props.modalName);
 };
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const moveResource = async () => {
 	if (!selectedProject.value || loading.value) return;
@@ -150,7 +159,7 @@ const moveResource = async () => {
 			undefined,
 			shareUsedCredentials.value ? shareableCredentials.value.map((c) => c.id) : undefined,
 		);
-		closeModal();
+		closeDialog();
 		telemetry.track(`User successfully moved ${props.data.resourceType}`, {
 			[`${props.data.resourceType}_id`]: props.data.resource.id,
 			project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
@@ -205,179 +214,165 @@ onMounted(async () => {
 });
 </script>
 <template>
-	<Modal width="500px" :name="props.modalName" data-test-id="project-move-resource-modal">
-		<template #header>
-			<N8nHeading tag="h2" size="xlarge" class="mb-m pr-s">
-				{{
-					i18n.baseText('projects.move.resource.modal.title', {
-						interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
-					})
-				}}
-			</N8nHeading>
+	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
+		<N8nDialogHeader data-test-id="project-move-resource-modal">
+			<N8nDialogTitle class="pr-s">
+				{{ i18n.baseText('projects.move.resource.modal.title') }}
+			</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody :class="$style.content">
 			<N8nText>
 				<I18nT keypath="projects.move.resource.modal.message" scope="global">
-					<template #resourceName
-						><strong>{{ resourceName }}</strong></template
+					<template #resourceName>
+						<strong>{{ resourceName }}</strong></template
 					>
 					<template v-if="isResourceInTeamProject" #inTeamProject>
 						<I18nT keypath="projects.move.resource.modal.message.team" scope="global">
-							<template #resourceHomeProjectName
-								><strong>{{ homeProjectName }}</strong></template
+							<template #resourceHomeProjectName>
+								<strong>{{ homeProjectName }}</strong></template
 							>
 						</I18nT>
 					</template>
 					<template v-else #inPersonalProject>
 						<I18nT keypath="projects.move.resource.modal.message.personal" scope="global">
-							<template #resourceHomeProjectName
-								><strong>{{ homeProjectName }}</strong></template
+							<template #resourceHomeProjectName>
+								<strong>{{ homeProjectName }}</strong></template
 							>
 						</I18nT>
 					</template>
 				</I18nT>
 			</N8nText>
-		</template>
-		<template #content>
-			<div>
-				<ProjectSharing
-					v-model="selectedProject"
-					class="mr-2xs mb-xs"
-					:search-fn="searchFn"
-					:home-project="props.data.resource.homeProject"
-					:filter-fn="projectFilterFn"
-					:placeholder="i18n.baseText('projects.move.resource.modal.selectPlaceholder')"
-					:empty-options-text="
-						i18n.baseText('projects.move.resource.modal.message.noProjects', {
-							interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
+			<ProjectSharing
+				v-model="selectedProject"
+				:search-fn="searchFn"
+				:home-project="props.data.resource.homeProject"
+				:filter-fn="projectFilterFn"
+				:placeholder="i18n.baseText('projects.move.resource.modal.selectPlaceholder')"
+				:empty-options-text="
+					i18n.baseText('projects.move.resource.modal.message.noProjects', {
+						interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
+					})
+				"
+				data-test-id="project-move-resource-modal-select"
+			/>
+			<N8nText>
+				<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
+					<template #note>
+						<strong>{{
+							i18n.baseText('projects.move.resource.modal.message.note')
+						}}</strong></template
+					>
+					<template #resourceTypeLabel> {{ props.data.resourceTypeLabel }}</template>
+				</I18nT>
+				<span
+					v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
+					:class="$style.textBlock"
+				>
+					{{
+						i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
+							adjustToNumber: props.data.resource.sharedWithProjects?.length,
+							interpolate: {
+								count: props.data.resource.sharedWithProjects?.length ?? 0,
+							},
 						})
-					"
-					data-test-id="project-move-resource-modal-select"
-				/>
-				<N8nText>
-					<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
-						<template #note
-							><strong>{{
-								i18n.baseText('projects.move.resource.modal.message.note')
-							}}</strong></template
-						>
-						<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
-					</I18nT>
-					<span
-						v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
-						:class="$style.textBlock"
-					>
-						{{
-							i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
-								adjustToNumber: props.data.resource.sharedWithProjects?.length,
-								interpolate: {
-									count: props.data.resource.sharedWithProjects?.length ?? 0,
-								},
-							})
-						}}</span
-					>
-					<N8nCheckbox
-						v-if="shareableCredentials.length && !isTargetPersonalProject"
-						v-model="shareUsedCredentials"
-						:class="$style.textBlock"
-						data-test-id="project-move-resource-modal-checkbox-all"
-					>
-						<template #label>
-							<I18nT keypath="projects.move.resource.modal.message.usedCredentials" scope="global">
-								<template #usedCredentials>
-									<N8nTooltip placement="top">
-										<span :class="$style.tooltipText">
-											{{
-												i18n.baseText(
-													'projects.move.resource.modal.message.usedCredentials.number',
-													{
-														adjustToNumber: shareableCredentials.length,
-														interpolate: { count: shareableCredentials.length },
-													},
-												)
-											}}
-										</span>
-										<template #content>
-											<ProjectMoveResourceModalCredentialsList
-												:current-project-id="projectsStore.currentProjectId"
-												:credentials="shareableCredentials"
-											/>
-										</template>
-									</N8nTooltip>
-								</template>
-							</I18nT>
-						</template>
-					</N8nCheckbox>
-					<N8nCallout
-						v-if="unShareableCredentials.length && !isTargetPersonalProject"
-						theme="warning"
-						:class="$style.textBlock"
-					>
-						<I18nT
-							:keypath="
-								isPersonalSpaceRestricted
-									? 'projects.move.resource.modal.message.unAccessibleCredentials.personalSpaceNote'
-									: 'projects.move.resource.modal.message.unAccessibleCredentials.note'
-							"
-							scope="global"
-						>
-							<template #credentials>
+					}}</span
+				>
+				<N8nCheckbox
+					v-if="shareableCredentials.length && !isTargetPersonalProject"
+					v-model="shareUsedCredentials"
+					:class="$style.textBlock"
+					data-test-id="project-move-resource-modal-checkbox-all"
+				>
+					<template #label>
+						<I18nT keypath="projects.move.resource.modal.message.usedCredentials" scope="global">
+							<template #usedCredentials>
 								<N8nTooltip placement="top">
-									<span :class="$style.tooltipText">{{
-										i18n.baseText(
-											'projects.move.resource.modal.message.unAccessibleCredentials.count',
-											{
-												adjustToNumber: unShareableCredentials.length,
-												interpolate: { count: unShareableCredentials.length },
-											},
-										)
-									}}</span>
+									<span :class="$style.tooltipText">
+										{{
+											i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
+												adjustToNumber: shareableCredentials.length,
+												interpolate: { count: shareableCredentials.length },
+											})
+										}}
+									</span>
 									<template #content>
 										<ProjectMoveResourceModalCredentialsList
 											:current-project-id="projectsStore.currentProjectId"
-											:credentials="unShareableCredentials"
+											:credentials="shareableCredentials"
 										/>
 									</template>
 								</N8nTooltip>
 							</template>
 						</I18nT>
-					</N8nCallout>
-				</N8nText>
+					</template>
+				</N8nCheckbox>
 				<N8nCallout
-					v-if="isResolvableCredential"
+					v-if="unShareableCredentials.length && !isTargetPersonalProject"
 					theme="warning"
 					:class="$style.textBlock"
-					data-test-id="project-move-resource-modal-resolvable-warning"
 				>
-					{{ i18n.baseText('projects.move.resource.modal.message.resolvableConnections') }}
+					<I18nT
+						:keypath="
+							isPersonalSpaceRestricted
+								? 'projects.move.resource.modal.message.unAccessibleCredentials.personalSpaceNote'
+								: 'projects.move.resource.modal.message.unAccessibleCredentials.note'
+						"
+						scope="global"
+					>
+						<template #credentials>
+							<N8nTooltip placement="top">
+								<span :class="$style.tooltipText">{{
+									i18n.baseText(
+										'projects.move.resource.modal.message.unAccessibleCredentials.count',
+										{
+											adjustToNumber: unShareableCredentials.length,
+											interpolate: { count: unShareableCredentials.length },
+										},
+									)
+								}}</span>
+								<template #content>
+									<ProjectMoveResourceModalCredentialsList
+										:current-project-id="projectsStore.currentProjectId"
+										:credentials="unShareableCredentials"
+									/>
+								</template>
+							</N8nTooltip>
+						</template>
+					</I18nT>
 				</N8nCallout>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.buttons">
-				<N8nButton variant="ghost" class="mr-2xs" :disabled="loading" @click="closeModal">
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton
-					variant="solid"
-					:loading="loading"
-					:disabled="!selectedProject || loading"
-					data-test-id="project-move-resource-modal-button"
-					@click="moveResource"
-				>
-					{{
-						i18n.baseText('projects.move.resource.modal.button', {
-							interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
-						})
-					}}
-				</N8nButton>
-			</div>
-		</template>
-	</Modal>
+			</N8nText>
+			<N8nCallout
+				v-if="isResolvableCredential"
+				theme="warning"
+				data-test-id="project-move-resource-modal-resolvable-warning"
+			>
+				{{ i18n.baseText('projects.move.resource.modal.message.resolvableConnections') }}
+			</N8nCallout>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton variant="outline" :disabled="loading" @click="closeDialog">
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+			<N8nButton
+				variant="solid"
+				:loading="loading"
+				:disabled="!selectedProject || loading"
+				data-test-id="project-move-resource-modal-button"
+				@click="moveResource"
+			>
+				{{
+					i18n.baseText('projects.move.resource.modal.button', {
+						interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
+					})
+				}}
+			</N8nButton>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.buttons {
-	display: flex;
-	justify-content: flex-end;
+.content {
+	gap: var(--spacing--sm);
 }
 
 .textBlock {
