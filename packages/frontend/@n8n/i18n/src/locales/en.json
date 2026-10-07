@@ -8045,7 +8045,6 @@
 	"agents.relativeTime.minutesAgo": "{count}m ago",
 	"agents.relativeTime.hoursAgo": "{count}h ago",
 	"agents.relativeTime.yesterday": "Yesterday",
-	"agents.chat.running": "Running…",
 	"agents.chat.retry": "Resend message",
 	"agents.chat.retry.error": "Couldn't resend the message. Try again.",
 	"agents.chat.timestamp.today": "Today at {time}",

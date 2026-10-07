@@ -734,16 +734,6 @@ watch(
 				{{ i18n.baseText('agents.chat.retry') }}
 			</N8nButton>
 		</div>
-		<div
-			v-if="messagingState === 'receiving'"
-			:class="[$style.message, $style.runningStatus]"
-			role="status"
-			data-testid="agent-chat-running"
-		>
-			<N8nIcon icon="loader-circle" size="small" spin aria-hidden="true" />
-			<N8nText size="small" color="text-light">{{ i18n.baseText('agents.chat.running') }}</N8nText>
-		</div>
-
 		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
 			<div :class="$style.content">
 				<AgentTypingIndicator :class="$style.typingIndicator" />
@@ -772,13 +762,6 @@ watch(
 	&::-webkit-scrollbar {
 		display: none;
 	}
-}
-
-.runningStatus {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	color: var(--text-color--subtler);
 }
 
 .message {

@@ -845,7 +845,7 @@ async function retryMessage(messageId: string) {
 		if (retryDisabled.value) return;
 		inputText.value = message.content;
 		attachedFiles.value = files;
-		await onSubmit();
+		await submitDraft(message.content.trim(), files);
 	} catch (error) {
 		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.chat.retry.error'));
 	} finally {
@@ -997,8 +997,10 @@ function trackSentToN8nChat(hadNoMessagesBeforeSend: boolean) {
 }
 
 async function onSubmit(): Promise<SubmitResult> {
-	const text = inputText.value.trim();
-	const files = [...attachedFiles.value];
+	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
+}
+
+async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.

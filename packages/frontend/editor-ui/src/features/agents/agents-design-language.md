@@ -296,11 +296,7 @@ Show drag handles only when the queue has two or more messages. Put a six-dot dr
 
 Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
 
-## Preview activity and retries
-
-Show a running status while an Agent turn is active, including tool calls and
-history updates from another surface. Remove the status when the turn ends.
-Keep the composer available for queued messages.
+## Preview retries
 
 Show Resend message after the latest turn fails. Send the original message and
 its attachments through the normal send action. Keep the failed turn visible.

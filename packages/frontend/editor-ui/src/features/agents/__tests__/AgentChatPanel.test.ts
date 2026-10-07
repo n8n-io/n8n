@@ -10,6 +10,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import {
 	buildAgentConfigFingerprint,
 	type AgentConfigFingerprint,
@@ -406,6 +407,41 @@ describe('AgentChatPanel', () => {
 			expect(messagesMock.value.at(-1)?.status).toBe('error');
 			wrapper.unmount();
 		});
+
+		it.each([false, true])(
+			'resends from the preview page with attachments: %s',
+			async (withFile) => {
+				const file = new File(['invoice'], 'invoice.txt', { type: 'text/plain' });
+				messagesMock.value = failedMessages(
+					withFile ? [{ file, fileName: file.name, mimeType: file.type }] : undefined,
+				);
+				const router = createRouter({
+					history: createMemoryHistory(),
+					routes: [{ path: '/', component: { template: '<div />' } }],
+				});
+				const wrapper = mount(AgentPreviewChatPage, {
+					global: { plugins: [router] },
+					props: {
+						initialized: true,
+						projectId: 'p1',
+						agentId: 'a1',
+						agent: null,
+						localConfig: defaultAgentConfig,
+						connectedTriggers: [],
+						effectiveSessionId: 'thread-1',
+					},
+				});
+				await flushPromises();
+				wrapper.findComponent({ name: 'AgentChatMessageList' }).vm.$emit('retry', 'user');
+				await flushPromises();
+				expect(sendMessageMock).toHaveBeenCalledWith(
+					'Find the invoice',
+					withFile ? [file] : undefined,
+					expect.any(Function),
+				);
+				wrapper.unmount();
+			},
+		);
 
 		it.each(['draft', 'active', 'queue', 'budget'] as const)(
 			'does not resend with %s work',
