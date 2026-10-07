@@ -413,8 +413,8 @@ describe('MigrationFindingQueryService', () => {
 		});
 
 		it('adds the id of the project that owns each workflow', async () => {
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'rule-a', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
 					id: 'wf-1',
 					name: 'First',
 					activeVersionId: null,
