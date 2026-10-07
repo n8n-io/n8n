@@ -1,9 +1,7 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import { VARIABLE_MODAL_KEY } from '../environments.constants';
-import { computed, reactive, ref, onMounted, nextTick } from 'vue';
+import { computed, reactive, ref, onMounted } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nFormInput,
@@ -14,6 +12,9 @@ import {
 	N8nCallout,
 	N8nText,
 	N8nIcon,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
 } from '@n8n/design-system';
 import type { Rule, RuleGroup } from '@/Interface';
 import type { EnvironmentVariable, VariableModalOptions } from '../environments.types';
@@ -39,9 +40,8 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const sourceControlStore = useSourceControlStore();
 
-const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[VARIABLE_MODAL_KEY]?.open === true);
 const loading = ref(false);
-const keyInputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const keyValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'REQUIRED' },
@@ -199,9 +199,13 @@ const canCreate = computed(() => {
 	return destination.kind === 'pending' && destination.permissions.create;
 });
 
-function closeModal() {
+async function closeDialog() {
 	if (loading.value) return;
 	uiStore.closeModal(VARIABLE_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
 }
 
 async function handleSubmit() {
@@ -240,15 +244,8 @@ async function handleSubmit() {
 	}
 }
 
-onMounted(async () => {
+onMounted(() => {
 	void projectsStore.getMyProjects();
-	await nextTick();
-	const input = keyInputRef.value?.inputRef;
-	if (input) {
-		requestAnimationFrame(() => {
-			input.focus();
-		});
-	}
 	if (props.mode === 'new') {
 		// This validation rule is not added for "edit" mode
 		// since we added this rule a while after variables were released
@@ -265,111 +262,114 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		:title="modalTitle"
-		:event-bus="modalBus"
-		:name="VARIABLE_MODAL_KEY"
-		width="600px"
-		:lock-scroll="false"
-		:show-close="!loading"
-		:before-close="() => !loading"
-		:append-to-body="appendToBody"
+	<N8nDialog
+		:open="modalOpen"
+		size="xlarge"
+		:header="modalTitle"
+		:show-close-button="!loading"
+		:stacked="appendToBody === true"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="$style.form" @keyup.enter="handleSubmit">
-				<N8nCallout v-if="notice" theme="info">{{ notice() }}</N8nCallout>
-				<N8nText v-if="destinationName">{{ destinationName }}</N8nText>
-				<N8nFormInput
-					ref="keyInputRef"
-					v-model="form.key"
-					:disabled="fixedKey || loading"
-					:label="i18n.baseText('variables.modal.key.label')"
-					name="key"
-					focus-initially
-					data-test-id="variable-modal-key-input"
-					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
-					required
-					:validate-on-blur="true"
-					:validation-rules="keyValidationRules"
-					@validate="(value: boolean) => (formValidation.key = value)"
-				/>
+		<N8nDialogBody>
+			<div :data-test-id="`${VARIABLE_MODAL_KEY}-modal`">
+				<div :class="$style.form" @keyup.enter="handleSubmit">
+					<N8nCallout v-if="notice" theme="info">{{ notice() }}</N8nCallout>
+					<N8nText v-if="destinationName">{{ destinationName }}</N8nText>
+					<N8nFormInput
+						v-model="form.key"
+						:disabled="fixedKey || loading"
+						:label="i18n.baseText('variables.modal.key.label')"
+						name="key"
+						focus-initially
+						data-test-id="variable-modal-key-input"
+						:placeholder="i18n.baseText('variables.editing.key.placeholder')"
+						required
+						:validate-on-blur="true"
+						:validation-rules="keyValidationRules"
+						@validate="(value: boolean) => (formValidation.key = value)"
+					/>
 
-				<N8nCallout
-					v-if="keyExistsInSameScope"
-					theme="danger"
-					data-test-id="variable-modal-key-exists-error"
-				>
-					{{ i18n.baseText('variables.modal.error.keyExistsInProject') }}
-				</N8nCallout>
+					<N8nCallout
+						v-if="keyExistsInSameScope"
+						theme="danger"
+						data-test-id="variable-modal-key-exists-error"
+					>
+						{{ i18n.baseText('variables.modal.error.keyExistsInProject') }}
+					</N8nCallout>
 
-				<N8nCallout
-					v-else-if="globalVariableExistsWarning"
-					theme="warning"
-					data-test-id="variable-modal-global-exists-warning"
-				>
-					{{ i18n.baseText('variables.modal.warning.globalKeyExists') }}
-				</N8nCallout>
+					<N8nCallout
+						v-else-if="globalVariableExistsWarning"
+						theme="warning"
+						data-test-id="variable-modal-global-exists-warning"
+					>
+						{{ i18n.baseText('variables.modal.warning.globalKeyExists') }}
+					</N8nCallout>
 
-				<N8nFormInput
-					v-model="form.value"
-					:disabled="loading"
-					name="value"
-					:label="i18n.baseText('variables.modal.value.label')"
-					data-test-id="variable-modal-value-input"
-					:placeholder="i18n.baseText('variables.editing.value.placeholder')"
-					type="textarea"
-					:autosize="{ minRows: 3, maxRows: 6 }"
-					:maxlength="VALUE_MAX_LENGTH"
-					:validate-on-blur="true"
-					:validation-rules="valueValidationRules"
-					@validate="(value: boolean) => (formValidation.value = value)"
-				/>
+					<N8nFormInput
+						v-model="form.value"
+						:disabled="loading"
+						name="value"
+						:label="i18n.baseText('variables.modal.value.label')"
+						data-test-id="variable-modal-value-input"
+						:placeholder="i18n.baseText('variables.editing.value.placeholder')"
+						type="textarea"
+						:autosize="{ minRows: 3, maxRows: 6 }"
+						:maxlength="VALUE_MAX_LENGTH"
+						:validate-on-blur="true"
+						:validation-rules="valueValidationRules"
+						@validate="(value: boolean) => (formValidation.value = value)"
+					/>
 
-				<div v-if="showScopeField">
-					<N8nInputLabel :label="i18n.baseText('variables.modal.scope.label')" color="text-dark">
-						<N8nSelect
-							v-model="form.projectId"
-							size="large"
-							filterable
-							data-test-id="variable-modal-scope-select"
-						>
-							<template #prefix>
-								<N8nText
-									v-if="selectedProjectIcon?.type === 'emoji'"
-									:class="$style.menuItemEmoji"
-									>{{ selectedProjectIcon.value }}</N8nText
-								>
-								<N8nIcon v-else-if="selectedProjectIcon?.value" :icon="selectedProjectIcon.value" />
-							</template>
-							<N8nOption
-								v-for="option in projectOptions"
-								:key="option.value || 'global'"
-								:value="option.value"
-								:label="option.label"
-								:disabled="option.disabled"
-								:class="{ [$style.globalOption]: option.value === '' }"
+					<div v-if="showScopeField">
+						<N8nInputLabel :label="i18n.baseText('variables.modal.scope.label')" color="text-dark">
+							<N8nSelect
+								v-model="form.projectId"
+								size="large"
+								filterable
+								:teleported="false"
+								data-test-id="variable-modal-scope-select"
 							>
-								<div :class="$style.optionContent">
-									<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">{{
-										option.icon.value
-									}}</N8nText>
-									<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
-									<span>{{ option.label }}</span>
-								</div>
-							</N8nOption>
-						</N8nSelect>
-					</N8nInputLabel>
+								<template #prefix>
+									<N8nText
+										v-if="selectedProjectIcon?.type === 'emoji'"
+										:class="$style.menuItemEmoji"
+										>{{ selectedProjectIcon.value }}</N8nText
+									>
+									<N8nIcon
+										v-else-if="selectedProjectIcon?.value"
+										:icon="selectedProjectIcon.value"
+									/>
+								</template>
+								<N8nOption
+									v-for="option in projectOptions"
+									:key="option.value || 'global'"
+									:value="option.value"
+									:label="option.label"
+									:disabled="option.disabled"
+									:class="{ [$style.globalOption]: option.value === '' }"
+								>
+									<div :class="$style.optionContent">
+										<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">{{
+											option.icon.value
+										}}</N8nText>
+										<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
+										<span>{{ option.label }}</span>
+									</div>
+								</N8nOption>
+							</N8nSelect>
+						</N8nInputLabel>
+					</div>
 				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('variables.modal.button.cancel')"
 					data-test-id="variable-modal-cancel-button"
 					:disabled="loading"
-					@click="closeModal"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					:loading="loading"
@@ -379,8 +379,8 @@ onMounted(async () => {
 					@click="handleSubmit"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
