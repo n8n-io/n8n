@@ -51,6 +51,9 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	list-style: none;
+	margin: 0;
+	padding: 0;
 }
 
 .example {

@@ -24,12 +24,17 @@ describe('AgentsListIntro', () => {
 		).toBeInTheDocument();
 	});
 
-	it('focuses the composer on mount', async () => {
+	it('focuses the composer on mount and returns focus after it blurs', async () => {
 		const { getByRole } = renderComponent();
+		const composer = getByRole('textbox');
 
 		await nextTick();
+		expect(composer).toHaveFocus();
 
-		expect(getByRole('textbox')).toHaveFocus();
+		composer.blur();
+		await nextTick();
+
+		expect(composer).toHaveFocus();
 	});
 
 	it('emits create-blank when Create blank is clicked', async () => {

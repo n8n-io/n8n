@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { nextTick, onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { N8nButton, N8nChatInput, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentTemplate } from '../agentTemplates';
@@ -16,13 +16,26 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const draft = ref('');
 const chatInputRef = ref<{ focusInput: () => void } | null>(null);
+let isUnmounted = false;
+
+function focusComposer() {
+	if (isUnmounted || props.disabled) return;
+	chatInputRef.value?.focusInput();
+}
 
 onMounted(() => {
 	// The chat input replaces its textarea once after mount, so a sync focus does not stick.
-	void nextTick(() => {
-		chatInputRef.value?.focusInput();
-	});
+	void nextTick(() => focusComposer());
 });
+
+onBeforeUnmount(() => {
+	isUnmounted = true;
+});
+
+function onComposerBlur() {
+	// A focus call during the blur event is ignored. Wait until the event finishes.
+	void nextTick(() => focusComposer());
+}
 
 function onSubmit() {
 	const text = draft.value.trim();
@@ -47,7 +60,7 @@ function onSelectTemplate(template: AgentTemplate) {
 				{{ i18n.baseText('agents.builder.templates.subtitle') }}
 			</N8nText>
 		</div>
-		<div>
+		<div :class="$style.composerContainer">
 			<div :class="$style.createBlank">
 				<N8nButton
 					variant="ghost"
@@ -68,6 +81,7 @@ function onSelectTemplate(template: AgentTemplate) {
 				:disabled="disabled"
 				:placeholder="i18n.baseText('agents.list.intro.placeholder')"
 				input-test-id="agents-list-intro-input"
+				@blur="onComposerBlur"
 				@submit="onSubmit"
 			/>
 		</div>
@@ -95,6 +109,7 @@ function onSelectTemplate(template: AgentTemplate) {
 	align-items: center;
 	gap: var(--spacing--sm);
 	text-align: center;
+	margin-top: var(--spacing--2xl);
 }
 
 .createBlank {
@@ -105,6 +120,10 @@ function onSelectTemplate(template: AgentTemplate) {
 	:deep(button) {
 		--button--color: var(--text-color--subtle);
 	}
+}
+
+.composerContainer {
+	margin: var(--spacing--xl) 0;
 }
 
 .templatesLabel {
