@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_64390ec65834a0::t_a1c8f072df7201 140-147
+  s_64390ec65834a0::t_72f06ec14dfb7f 3
+  s_64390ec65834a0::t_bdf4b11ee2e931 8-13,26-37,47,55-68,73,81,110,114,131,134-139,148-159
+  s_64390ec65834a0::t_b15df1cbeb69dd 161,164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "93f12e9e52dd4bc3afd1e966d4bd29a6ae630859",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

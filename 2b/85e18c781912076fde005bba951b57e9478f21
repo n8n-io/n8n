@@ -1,0 +1,35 @@
+packages/@n8n/workflow-sdk/src/generate-types/schema-corpus-hash.test.ts
+  s_be6d12de03f718::t_cf6a60fcca0026 1-67
+packages/@n8n/workflow-sdk/src/generate-types/generate-node-defs-cli.test.ts
+  s_be6d12de03f718::t_cf6a60fcca0026 195-206
+packages/@n8n/workflow-sdk/src/generate-types/generate-node-defs-cli.ts
+  s_be6d12de03f718::t_cf6a60fcca0026 22,34-36,38-47,81-82
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_be6d12de03f718::t_cf6a60fcca0026 5234-5264,5322-5366
+  s_be6d12de03f718::t_82f4f377f8a09f 5367
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_be6d12de03f718::t_cf6a60fcca0026 21,41-44,141,558-562,569,586-599,607-608,611-615,625-641,646-650,686-692,695-703,714,725,742,753,765,769-827,842-846,852,861-862,864-865,867-868,870-872,874
+packages/nodes-base/nodes/Microsoft/Excel/MicrosoftExcel.node.ts
+  s_be6d12de03f718::t_cf6a60fcca0026 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2b85e18c781912076fde005bba951b57e9478f21",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

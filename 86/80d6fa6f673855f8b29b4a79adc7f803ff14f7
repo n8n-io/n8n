@@ -1,0 +1,29 @@
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.test.ts
+  s_1ddebd145e169d::t_e0a83f5f0fa530 121-135
+  s_1ddebd145e169d::t_54cf71c2a42ea8 2
+  s_1ddebd145e169d::t_7a6f694bc34a53 18-24,31
+  s_1ddebd145e169d::t_b3a569ee67ee13 151
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  h_435b1d7d3e52c0 4,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "8680d6fa6f673855f8b29b4a79adc7f803ff14f7",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1ddebd145e169d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25329478-fc35-41e6-93f3-3fc078d640ed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

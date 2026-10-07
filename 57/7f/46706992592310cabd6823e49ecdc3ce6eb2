@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_c13f3421a28d89::t_f33b1c1f9ebf30 176-181
+  s_c13f3421a28d89::t_9bde61877e9178 182
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_c13f3421a28d89::t_44f94618d7f24a 285-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "577f46706992592310cabd6823e49ecdc3ce6eb2",
+  "prompts": {},
+  "sessions": {
+    "s_c13f3421a28d89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59523f39-0a15-4e8a-bdcf-249c964bf84d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

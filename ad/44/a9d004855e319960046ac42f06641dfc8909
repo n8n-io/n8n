@@ -1,0 +1,19 @@
+packages/cli/src/modules/engine-v2/__tests__/engine-status.controller.test.ts
+  s_eda1948fcdabb8::t_2472661219aab0 6,155-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad44a9d004855e319960046ac42f06641dfc8909",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

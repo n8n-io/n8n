@@ -1,0 +1,24 @@
+packages/cli/src/modules/insights/insights.service.ts
+  s_c5a73481075afb::t_b0293a9531ad5a 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d8bc65bbe813865a595b55273c016f34cec0c87a",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c5a73481075afb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d613f4e-8722-42ce-82e5-6d0900809185",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_7d582b41f4f5d6::t_d5f5d9a9155512 59,67,749-785
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_9c30e64d236bdf::t_f0e30e2a087f69 251-307
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_7d582b41f4f5d6::t_4b720bf4d8b6ce 52-53,139-142
+packages/@n8n/engine/src/execution/wait-sweeper.ts
+  s_7d582b41f4f5d6::t_e10c44a7591745 55-68,70,99-100
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_7d582b41f4f5d6::t_e6ae8c752481a3 108,117-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e12dd832ac3e1979b64ba72131c254f67a6841b",
+  "prompts": {},
+  "sessions": {
+    "s_7d582b41f4f5d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63bff858-2ef6-4f03-8a08-35f7ca19bbb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

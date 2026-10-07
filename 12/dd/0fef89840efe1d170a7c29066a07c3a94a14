@@ -1,0 +1,399 @@
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 31-69,71-80,82-87,91-96
+packages/@n8n/backend-test-utils/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/editor-ui/src/app/composables/useCanvasOnlyExternalLinks.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-10,12-13,15-45
+packages/cli/src/services/__tests__/role-authorization.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 12-14,16-21,23-25,27-32,35,38-74
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 139-156,302-360,391,410
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 19-20
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 76-77
+packages/@n8n/permissions/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  ai_agent 78
+docs/generated/postgres-schema/public.agent_files.md
+  ai_agent 71
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/__snapshots__/Datatable.test.ts.snap
+  ai_agent 102-111
+packages/@n8n/eslint-config/src/rules/no-reka-ui-pagination.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1,3,5-9,11-18,20-21,23-27,29-33,35-41,44-46,48-60
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataPaginationBar.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 4,19-22,24-27
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/reka-ui.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-11
+packages/@n8n/scheduler/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 82
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 509-512,517,524-527,533
+packages/cli/src/services/role.service.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 144-152,183-190
+docs/generated/sqlite-schema/agent_history.md
+  ai_agent 74
+packages/@n8n/backend-network/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/eslint-config/src/configs/frontend.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 24
+docs/generated/postgres-schema/public.agent_history.md
+  ai_agent 67
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 94
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 210
+packages/@n8n/mcp-browser/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/listSearch.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-4,84-88
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 3-4,6-9,21-37
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 8-9,14-29,32,36-38,41-81,84-87,90-91,93,95,99-102,109,120,128-129,132,134,138-141,145,148,150,153-154,157,160,162-163,166-184,187,190,192,195-200,203,206,208,211-216,219,222,224,227-234,237,240,242-243,247-252,255-256,259,261-262,265-266,271-276,279,282-283,288,290-292,295,299,302-303,308,310-312,315-322,324-325,328,331-332,337,340,344-345,352-353,358,361,365,370-371,374,376-377,381-389,392,395,397-398,402-411,414,417,419-420,424-433,436,439,441-442,446-454,457,460-463,467-476,479,482,484-485,489-491,493-494,498-499,502-507,511-524,527-528,530-531,533-535,539-542,544,546-551,555-558,560,562-564,566-570,573-574,576-583,585-587,590,593-597,601-603,605-609,611-620,651,654-661,665-699,701,703-704,707,709,714
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 118-160
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 53-59,66,78-83,85,89,92-95,100,102-106,157,165-173,195-220
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 1392-1406,1426-1432,1440-1443,1447-1461
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 46,110
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 269-272,274,276-294,302-303
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 4,8,110-111,113-115
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/openai.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1,3,18-26,30-32,43,54
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 20
+packages/@n8n/cli/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  ai_agent 50
+packages/@n8n/instance-ai/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/@n8n/frontend-utils/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+packages/nodes-base/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/ai-utilities/src/model-discovery/providers/openai.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 4,17-21,30-36
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 34,161,232,276
+docs/generated/sqlite-schema/README.md
+  ai_agent 26,523
+packages/@n8n/agents/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/sqlite-schema/agent_checkpoints.md
+  ai_agent 63
+packages/@n8n/eslint-config/src/plugin.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 2,14-20
+packages/cli/test/integration/public-api/roles.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 6-11,32-48,345-362,597-611,739-975
+packages/frontend/@n8n/design-system/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+packages/cli/src/services/role-authorization.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 2,8-9,11-49
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 79-110,146-206
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 197-209
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  ai_agent 56
+packages/@n8n/typescript-config/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 60-70
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 4,22,63-65,69-73,216-222
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 50,330,500,502-503,505-508
+packages/testing/playwright/pages/components/RunDataPanel.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 51
+packages/frontend/@n8n/i18n/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+docs/generated/sqlite-schema/agents.md
+  ai_agent 9,25,83
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebar.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 47,99-104
+packages/cli/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 23,75,127
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  ai_agent 76
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 14,35,81
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 73,300-301
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  ai_agent 60
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  ai_agent 63
+docs/generated/sqlite-schema/project.md
+  ai_agent 132
+CHANGELOG.md
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-163
+packages/@n8n/expression-runtime/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/sqlite-schema/agents_memory_entries.md
+  ai_agent 86
+packages/core/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/postgres-schema/README.md
+  ai_agent 26,536
+packages/@n8n/vitest-config/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/testing/playwright/pages/DataTableView.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 64,68,72
+packages/@n8n/api-types/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-cleanup.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 30,72,91,111-161,189
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 2-10,18-19,23-26,30,32-34,37,40,44,46,48,50-59,62-66,69-73,76-88,90-92,95-103,105-108,110-112,114-116,118-120,122-133,135,137-138,140-144,146,148-157,159-161,163-222,227-236,238-254,256-270,273-311,314-347,351-353,360-365,367-382,388-393,395-410,413-418,421-423,432,435-440,442,444-445,448-449,452,454,458-461,463-474,478,483,485-487,490-493,495-497,499-502,506-510,519-520
+packages/@n8n/benchmark/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  ai_agent 66
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  ai_agent 75
+packages/@n8n/decorators/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 51,74,112,118,154-155,169,182,198,214,232,289,325,331,388,432
+packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 529
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  ai_agent 75
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/component-pagination.md
+  s_f019419fbecb2c::t_258f7fe5b9b806 5-6,14,16,18-24,26,28-34,36,38-39,41,43-49,54-55,60-63,68-69,76-78
+packages/@n8n/ai-utilities/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-38
+docs/generated/postgres-schema/public.agents_observations.md
+  ai_agent 82
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  ai_agent 55
+packages/@n8n/workflow-sdk/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/blob-storage/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 19,118,177,223
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 28,31,202-212,214-217,303-310,350-357,376-377,446-447
+packages/frontend/editor-ui/src/app/components/MainSidebar.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 17-18,27-30,54,215-232
+packages/frontend/editor-ui/src/app/composables/useCanvasOnlyExternalLinks.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-105
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 471,482,2120-2273
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  ai_agent 57
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  ai_agent 59
+packages/@n8n/create-node/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 6,57,128-129,513-519,766-878
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  ai_agent 66
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 1525-1526,2995,5162
+packages/@n8n/node-engine-compatibility/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/@n8n/chat/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 190-191,193-194
+packages/@n8n/ai-node-sdk/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 64-65
+package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 19-22,32,216-218,222-223
+packages/@n8n/chat-hub/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/typeorm/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 87
+packages/@n8n/mcp-apps/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 4,7-9,16-19,26-31,43-48,50,55-98
+packages/@n8n/client-oauth2/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/eslint-config/src/rules/no-reka-ui-pagination.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-93
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 33-39
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 120-126
+packages/frontend/@n8n/rest-api-client/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 215-224
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/deleteRole.generated.yml
+  ai_agent 1-42
+docs/generated/sqlite-schema/agents_observation_locks.md
+  ai_agent 70
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 92
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 102
+packages/frontend/@n8n/stores/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+packages/workflow/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/postgres-schema/public.project.md
+  ai_agent 126
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  ai_agent 76,268,296,353,372,398,425,463,532,589,641,681,724,761,823,841-855,896,918,943,962,966,968,983,1008,1028,1055,1074,1092,1128,1156,1174,1192,1353
+packages/@n8n/node-cli/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/computer-use/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 20,37-42
+packages/cli/src/modules/agents/__tests__/agent-config-import-repro.test.ts
+  s_f019419fbecb2c::t_b16087ff593179 95,164
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  ai_agent 59
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  ai_agent 66
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/__tests__/listSearch.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 33-34
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 28,737-739,743-745
+packages/nodes-base/nodes/Files/ExtractFromFile/actions/moveTo.operation.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 22-23,156
+docs/generated/sqlite-schema/agent_task_definition.md
+  ai_agent 65
+packages/frontend/@n8n/composables/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 8,11,22-23,144-160
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-106
+packages/cli/src/controllers/role.controller.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 17,30,33,66-69,81-84,119-122,139-143,146-148,160-163
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 54,92,151
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 18,25,1165-1169,1206-1210
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  ai_agent 70
+packages/cli/src/modules/agents/sub-agents/sub-agent-cleanup.service.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 5,29-31,33-41,44,55-63,65,67-71
+packages/@n8n/constants/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/test/integration/services/role.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1275-1278,1307-1310,1335-1340,1354-1359,1385-1390,1418-1423,1448-1452,1478-1482,1504-1508,1522-1528,1543-1547,1590-1595,1609-1612
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 183,240-241,321,323-324
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.stories.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 3,12,14-15,17,19,21-26,28-44,46,48,50-52,54,56,74-76,79-81,83-84,87,90,95,98-101,104-105,109,111-112,116,120-123,127,130-131,135-188,190-192,196,200-203,207-229,232-233,237,240-243,247-290,292-294,298-330,333-335,339-393,403-408,410,413-415,420-421,423,426
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.types.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1,7,9-46,51,55-56
+packages/@n8n/backend-common/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/nodes-langchain/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/utils/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebar.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-61
+packages/frontend/editor-ui/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 64-68,88-92,115-119,142-146
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 3,20,34,136-140,173-178,188-224
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 15,155
+packages/@n8n/config/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 13,15,668-850
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ListRuns/RunsSection.vue
+  s_f019419fbecb2c::t_258f7fe5b9b806 125-126,128-129
+packages/nodes-base/nodes/Files/ExtractFromFile/test/parseIcsCalendar.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-45
+packages/testing/playwright/pages/DataTableDetails.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 288-289
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  ai_agent 59
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 8,49,121-122,158-161,163-165,167-206,209-215,299-303,305-319,322-323,475,527
+packages/@n8n/db/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/postgres-schema/public.agent_task_definition.md
+  ai_agent 60
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 91
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 9,19,30-40,62-149
+packages/nodes-base/nodes/Files/ExtractFromFile/actions/parseIcsCalendar.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-11
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  ai_agent 83
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  ai_agent 78
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 751,772-808,887,905-908
+docs/generated/sqlite-schema/agent_files.md
+  ai_agent 74
+packages/cli/src/modules/agents/agent-config.service.ts
+  ai_agent 44,331-332,335,338
+scripts/licenses/license-overrides.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 74,76
+packages/@n8n/engine/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/@n8n/db/src/migrations/common/1786666615644-AddAgentRevisionColumn.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-19
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 4
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  ai_agent 63
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 27,60
+packages/@n8n/task-runner/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+docs/generated/sqlite-schema/agents_observations.md
+  ai_agent 85
+packages/cli/src/public-api/v1/openapi-gen/__tests__/request-body-schema-parity.test.ts
+  s_f019419fbecb2c::t_258f7fe5b9b806 1-41
+packages/@n8n/telemetry/package.json
+  s_f019419fbecb2c::t_258f7fe5b9b806 3
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  ai_agent 4,327-394
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  ai_agent 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "12dd0fef89840efe1d170a7c29066a07c3a94a14",
+  "prompts": {},
+  "sessions": {
+    "s_f019419fbecb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a42e06b0-e319-474d-a003-d3f5ee778b5f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

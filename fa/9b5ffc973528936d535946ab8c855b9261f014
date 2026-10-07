@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3d8ac664679bc8::t_a6290e50423ae1 788-794,802-808,810-817,863,1552
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_3d8ac664679bc8::t_0624381de9c7bd 111-123
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_3d8ac664679bc8::t_fcfaab260df5a2 26,43,1218-1256
+  s_3d8ac664679bc8::t_78cf98c6e5cbcc 292
+packages/@n8n/instance-ai/src/index.ts
+  s_3d8ac664679bc8::t_0624381de9c7bd 216
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_3d8ac664679bc8::t_eb09ff71e20e92 44,942-956
+  s_3d8ac664679bc8::t_b7c0a19ce9f1ef 940-941
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_3d8ac664679bc8::t_4006fb9a1ac579 49,241-259
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_3d8ac664679bc8::t_41d1cdf576edbd 65-71
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_3d8ac664679bc8::t_41d1cdf576edbd 81,85,88-93
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3d8ac664679bc8::t_4b3382ed5d6fdf 2653-2677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa9b5ffc973528936d535946ab8c855b9261f014",
+  "prompts": {},
+  "sessions": {
+    "s_3d8ac664679bc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f8ec19e-08e1-4fc1-b49f-bc86da6a6a42",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

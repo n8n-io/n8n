@@ -1,0 +1,22 @@
+scripts/instance-seeding/seedHistory.test.mjs
+  s_fc045f1683c1d5::t_fce7ea6296e44b 195-201,205-206,211-228
+  s_fc045f1683c1d5::t_a514cc49395c58 202-204,207-210
+scripts/instance-seeding/seedHistory.mjs
+  s_fc045f1683c1d5::t_5703e5379d8282 301-303,306,309-314,340-344,346,348,350-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b83dfb8b2de9782dd5ed242cd534065177ec6513",
+  "prompts": {},
+  "sessions": {
+    "s_fc045f1683c1d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "545e3f4e-b7cb-4042-bcac-71fca1f216f3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

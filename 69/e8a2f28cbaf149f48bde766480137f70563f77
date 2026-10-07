@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowId.ts
+  s_0b5094e3d365c6::t_21fb4587891af4 21-25,27
+packages/frontend/editor-ui/src/app/composables/useWorkflowId.test.ts
+  s_0b5094e3d365c6::t_c728554aaea4e8 95-103
+  s_0b5094e3d365c6::t_f59b24ce8a8532 76
+  s_0b5094e3d365c6::t_10e3ef44fb8407 13-16,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "69e8a2f28cbaf149f48bde766480137f70563f77",
+  "prompts": {},
+  "sessions": {
+    "s_0b5094e3d365c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe4f8555-fd5a-475e-947d-6eb828536be4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

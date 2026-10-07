@@ -1,0 +1,23 @@
+packages/@n8n/telemetry/src/events/workflow-reviews.ts
+  s_14d296036e0ac5::t_1e872788ccac83 56
+  s_14d296036e0ac5::t_31a7a0d25d76aa 77
+  s_14d296036e0ac5::t_1a1af129a895a7 67
+  s_14d296036e0ac5::t_13b15ece84b8ed 9,13
+  s_14d296036e0ac5::t_dfaeb77f868206 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6e90d4560246717247f402bdfbac26dd99cc761",
+  "prompts": {},
+  "sessions": {
+    "s_14d296036e0ac5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3baca53-0dc1-4028-ab67-4ccbff152285",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

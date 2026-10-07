@@ -1,0 +1,24 @@
+packages/cli/src/services/ownership.service.ts
+  s_9b010f0574a09c::t_24bd083f8a1f8b 233-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "cc893b7cf4803e44264c3b8ea67e85d8d270175e",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9b010f0574a09c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e27783b-7e86-4bbd-b6bd-6a9088c3ce15",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

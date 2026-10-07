@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_72b0e1f8aea84c::t_9de88dce151843 729-733
+  s_72b0e1f8aea84c::t_7e930689f1fb29 711-715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f01f66b73cdb3b2e5d728b8a3bdd4a4d3c0b6606",
+  "prompts": {},
+  "sessions": {
+    "s_72b0e1f8aea84c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e675b5d7-b9e2-492d-ad3c-46f9e4cdd54c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

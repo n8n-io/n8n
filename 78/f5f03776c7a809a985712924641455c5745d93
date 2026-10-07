@@ -1,0 +1,133 @@
+packages/cli/src/services/tag.service.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 123-137
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 14-18,38-42,50-56,62-63,188,196-198,200-207,212-214,217,244-252,256-257,260,263,265-271,282-286,349,357,376-399,498-524
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 20,142,161,182,186-188,197,205
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 2241-2242,2274-2280,2299-2300,2315-2319
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 54
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-266
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 79-80
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 14,17,70-71,126-127,350-385
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 453-650
+packages/@n8n/nodes-langchain/utils/aws/resolveBedrockRegion.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-17
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 4,7,70-82,88-89,221-299
+packages/frontend/editor-ui/src/app/utils/nodeTypeUtils.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 2,7-8,11,18,245-371
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 25-27,70,90,101,116,166,181-186,204,217,240,244-247,249,276,296,308,319,339
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-207
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 112-113,119-121
+packages/@n8n/cli/src/commands/package/import.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 5,98-109,145-146
+packages/@n8n/nodes-langchain/utils/aws/test/resolveBedrockRegion.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-34
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1066-1067,1082-1086
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 2-4,7,9,16-21,62-63,68,70,72-73,83-116,120-125,127-131,133-137,139-168,171
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 848-872,874-876,919-920,927-942,956,958-999
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 3,5-10,13-15,21-22,36-38,41-42,56,61-65,140,145-273,313-474
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-3,14-69
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 30-31,79-80,106-107,124-133
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 22-29
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.vue
+  s_442b113d88c721::t_fc7a41742ea6b6 60-64,71,74-78,82-86,112,115,117,119,124-131,133-141,183-188
+packages/@n8n/cli/src/commands/package/export.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 4
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/BedrockInvokeModelEmbeddings.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-209
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/methods/listModels.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-96
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-79
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_442b113d88c721::t_fc7a41742ea6b6 192-243
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow.schema.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 38-39
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-142
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 17-24,45-51
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-659
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/BedrockInvokeModelEmbeddings.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1-97
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 16,126,134-135
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 22-23,112-113
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 21-23
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 77-78,96-97,115-116,1225-1231,1318-1324,1380-1386,1444-1448
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 81-82,115-121,150-151
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_442b113d88c721::t_fc7a41742ea6b6 1043-1044
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 9-11,390
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 265-270,316-317
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 12-13,26-31
+packages/@n8n/cli/src/client.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 28-29
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 63
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 5,105-120,147-150,173-174,203-207,224-225,261-267,344,421-428,437
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 77-78
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 20-24
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 1,17,68,78,122-139
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 18-19,51-52
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 5,21,82-89,110-111,143-148
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 53-54
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 4,69-95
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 132
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 214-215
+packages/frontend/editor-ui/src/app/utils/nodeTypesUtils.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 329-332
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_442b113d88c721::t_fc7a41742ea6b6 29-38,59-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78f5f03776c7a809a985712924641455c5745d93",
+  "prompts": {},
+  "sessions": {
+    "s_442b113d88c721": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "607b7981-53e5-4851-ba95-f417c3acadff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

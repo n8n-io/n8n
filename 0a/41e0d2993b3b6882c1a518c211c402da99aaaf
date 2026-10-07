@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  s_6a17706f71c1c1::t_a6137a3d095eba 2,93,185
+  s_6a17706f71c1c1::t_23fd2e243661f3 131,142,151,443-444,453-463,468-484,486-495,498-501
+  ai_agent 271-273
+  s_6a17706f71c1c1::t_d8eec6462a2a28 182-184,186-200,262-270,274-286
+  s_6a17706f71c1c1::t_8423d8b6ca8776 464-467
+  s_6a17706f71c1c1::t_0eb28e0aa87085 89-92,94,132,134
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_6a17706f71c1c1::t_67b13ea1cd8ccb 8,341-342,347-445
+  ai_agent 343-346
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
+  s_6a17706f71c1c1::t_ac712d590d22d8 87-95,101,103-112,120-123,127-129,132-140,151,168
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  s_6a17706f71c1c1::t_03a8761f07df94 65-71,98-103,109,111-117,119-120,122,166-167,171
+  s_6a17706f71c1c1::t_60e812b4727f71 7,51,53-54,311-314
+  s_6a17706f71c1c1::t_2561757f47b3b3 284-294
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_6a17706f71c1c1::t_b5d793a09c2d78 189-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a41e0d2993b3b6882c1a518c211c402da99aaaf",
+  "prompts": {},
+  "sessions": {
+    "s_6a17706f71c1c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc88076d-1702-40dc-821b-87f66b937ff5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

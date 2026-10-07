@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  h_7555c3ee6524cf 7
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  h_7555c3ee6524cf 142,145,149,173,175,177,201,212,235,239,285-286,300,312
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  h_7555c3ee6524cf 38
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  h_7555c3ee6524cf 30
+packages/frontend/editor-ui/src/features/agents/composables/useAgentScopeProjectId.ts
+  h_7555c3ee6524cf 13
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  h_7555c3ee6524cf 5
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvAdvancedSection.vue
+  h_7555c3ee6524cf 23,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b234445654faf004f5a3b4ad9a64aeed89ae8a3",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

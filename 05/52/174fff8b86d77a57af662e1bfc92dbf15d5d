@@ -1,0 +1,33 @@
+.agents/review-rules/frontend/design-system.md
+  s_7e863ca4a1ca8d::t_fb7e8c1674692e 1,5-6,8,12-17,22-27,31-32
+  s_7e863ca4a1ca8d::t_345ff323ac7885 9-10,18-21,28-30,33
+.agents/review-rules/testing/coverage.md
+  s_7e863ca4a1ca8d::t_19763673d2c722 9-19,26-27
+cubic.yaml
+  s_7e863ca4a1ca8d::t_a8013ea5349328 178,180,189
+  s_7e863ca4a1ca8d::t_846b73f8effa34 191-196
+.agents/review-rules/frontend/accessible-interactions.md
+  s_7e863ca4a1ca8d::t_51409c25b44733 1-4,6,12,17
+  s_7e863ca4a1ca8d::t_891e2d29fb4302 5,7-11,13-16,18-19
+.agents/review-rules/frontend/workflow-document-store.md
+  s_7e863ca4a1ca8d::t_891e2d29fb4302 5-8,13-17,19-21
+.agents/review-rules/frontend/vue-reactivity.md
+  s_7e863ca4a1ca8d::t_6cb9dd93d0dff3 5-6,11-12,14-18,22-27,31-37
+  s_7e863ca4a1ca8d::t_baedf4b5b469c9 1-4,7-10,13,19-21,28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0552174fff8b86d77a57af662e1bfc92dbf15d5d",
+  "prompts": {},
+  "sessions": {
+    "s_7e863ca4a1ca8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93a49309-83d5-499d-bb59-d980de662a71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

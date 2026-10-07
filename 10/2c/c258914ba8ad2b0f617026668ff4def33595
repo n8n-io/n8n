@@ -1,0 +1,25 @@
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  h_435b1d7d3e52c0 27,69,125,127,131-133
+  s_c1d15edfc515bc::t_323e9eec51d3c3 126,128-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "102cc258914ba8ad2b0f617026668ff4def33595",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c1d15edfc515bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38efac4b-39f8-40a8-b56f-93fd96992492",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

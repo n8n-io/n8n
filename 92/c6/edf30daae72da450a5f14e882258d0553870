@@ -1,0 +1,22 @@
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-helpers.ts
+  s_456b1fff7bb2dc::t_6a6cd30963eb3d 90-121
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_456b1fff7bb2dc::t_43710fae4467c4 429-450
+  s_456b1fff7bb2dc::t_ebdd70f26b0783 6-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "92c6edf30daae72da450a5f14e882258d0553870",
+  "prompts": {},
+  "sessions": {
+    "s_456b1fff7bb2dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffba89ca-6fe5-4fd6-9331-7e707027dc54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

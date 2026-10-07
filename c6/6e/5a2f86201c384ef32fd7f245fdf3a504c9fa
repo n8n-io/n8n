@@ -1,0 +1,40 @@
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodeCallout.test.ts
+  s_326dd039c6d306::t_43182a7f126acc 1,4-5,7,9,22
+packages/modules/type-availability-policies/frontend/vite.config.ts
+  s_326dd039c6d306::t_034adc2dc6568e 2-3,15
+pnpm-lock.yaml
+  ai_agent 6735-6737,6741-6743,6757-6759,6778-6780,6784-6786,6805-6807
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.vue
+  s_326dd039c6d306::t_e80ec0163f9869 6,47,65
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_326dd039c6d306::t_6b7fa57c398070 8-9
+packages/modules/type-availability-policies/frontend/README.md
+  s_326dd039c6d306::t_d51385a4329986 30-33
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_326dd039c6d306::t_6b7fa57c398070 2424-2433
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_326dd039c6d306::t_6b7fa57c398070 38-41,732
+packages/modules/type-availability-policies/frontend/package.json
+  s_326dd039c6d306::t_6b7fa57c398070 22,24,38,40
+  s_326dd039c6d306::t_034adc2dc6568e 31,47
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.test.ts
+  s_326dd039c6d306::t_20cb46e4d85dfb 2,5-7
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodeCallout.vue
+  s_326dd039c6d306::t_c9cf298f1d7f45 4,6,23-29,44,57,67,75-77,80-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c66e5a2f86201c384ef32fd7f245fdf3a504c9fa",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

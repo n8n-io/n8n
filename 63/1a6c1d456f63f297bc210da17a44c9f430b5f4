@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/__tests__/telemetry-redaction.test.ts
+  s_2063b158e1d22e::t_d5053701f9494a 76-100
+packages/cli/src/modules/instance-ai/telemetry-redaction.ts
+  s_2063b158e1d22e::t_5854f7e95776fa 1-6,44-53,71-73,75-81,91
+  s_2063b158e1d22e::t_22cb36efa08557 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "631a6c1d456f63f297bc210da17a44c9f430b5f4",
+  "prompts": {},
+  "sessions": {
+    "s_2063b158e1d22e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9928491d-e144-48d5-a650-b29f141559bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

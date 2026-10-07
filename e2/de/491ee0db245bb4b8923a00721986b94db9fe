@@ -1,0 +1,51 @@
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_574de801a499a2::t_fbd9b276679d19 16,20
+  s_574de801a499a2::t_d9c7fa2897654c 24
+  s_574de801a499a2::t_c6a910917b4af8 21,77-83,87
+  s_574de801a499a2::t_4b121379aef46a 15,26
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_574de801a499a2::t_d5197a222ceaba 119-121
+  s_574de801a499a2::t_10c706e6799fcf 27
+  h_6ef4cecfee65a2 46,76,93,95,111
+  s_574de801a499a2::t_32558734987fad 1,4-7,10-19,24,29,36-38,52-66,69-70,72-73,77-92,94,96-110,112-114,122-134
+  s_574de801a499a2::t_ba0bba525e7aac 23
+  ai_agent 115-118
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_574de801a499a2::t_ca1b9be895b09a 8
+  s_574de801a499a2::t_ba318fed832ba8 353-358,361-362,369-376
+  s_574de801a499a2::t_c6a910917b4af8 4-7,9-10,14,22,26,29-34,45,56-69,82,210-263,267,270-277,279-280,283-351
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_574de801a499a2::t_7ae0237d2dd74e 75-82,86-87
+  ai_agent 83-85
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_574de801a499a2::t_0a9d14a1b83305 1-6,8-61
+  s_574de801a499a2::t_b8ed13e0837505 7
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_574de801a499a2::t_1f294e5d06bc58 481-519
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_574de801a499a2::t_c6a910917b4af8 12,28-48,51,59
+  s_574de801a499a2::t_2396ff69a6f4e3 3-6,18,82-96
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_574de801a499a2::t_c6a910917b4af8 210-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2de491ee0db245bb4b8923a00721986b94db9fe",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_574de801a499a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce9e9826-ea55-4907-9c77-610e1d7f982f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

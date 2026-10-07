@@ -1,0 +1,163 @@
+.agents/skills/public-api/SKILL.md
+  s_1b995c2a71c1af::t_6c7a2371bc9c81 135
+.agents/skills/public-api/reference.md
+  s_1b995c2a71c1af::t_94bc308d7d39e2 103
+.github/workflows/backport.yml
+  s_1b995c2a71c1af::t_5819c753a47af5 15-17
+.github/workflows/docker-build-push.yml
+  s_1b995c2a71c1af::t_c1464b29ab696a 612
+.github/workflows/release-create-github-releases.yml
+  s_1b995c2a71c1af::t_68dbab3c80902e 45-47
+.github/workflows/release-create-pr.yml
+  s_1b995c2a71c1af::t_d1911935e9cc6b 41-43
+.github/workflows/release-promote-github-release.yml
+  s_1b995c2a71c1af::t_7c04f13391930e 17-18
+.github/workflows/release-set-stable-npm-packages-to-latest.yml
+  s_1b995c2a71c1af::t_6a7b107753e1c4 7-8
+.github/workflows/release-update-pointer-tag.yml
+  s_1b995c2a71c1af::t_a8278fc5a5708a 25-26
+.github/workflows/sbom-generation-callable.yml
+  s_1b995c2a71c1af::t_263e171de4d8bc 30-33,38
+.github/workflows/test-evals-instance-ai.yml
+  s_1b995c2a71c1af::t_760b3b64f45bfd 229,282,284
+.github/workflows/util-approve-and-set-automerge.yml
+  s_1b995c2a71c1af::t_30f2b2b4e33660 12-14
+.github/workflows/util-backport-bundle.yml
+  s_1b995c2a71c1af::t_a788368a63139b 17-19
+.github/workflows/util-update-node-popularity.yml
+  s_1b995c2a71c1af::t_9796e51dda300a 9-11
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_1b995c2a71c1af::t_6838a381dba3b4 1,138,152,170,189,208,225,245,269,291,315,335,355,371,390
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_1b995c2a71c1af::t_b3d8c8ba3883a6 2
+packages/@n8n/benchmark/Dockerfile
+  s_1b995c2a71c1af::t_ce13120641edc6 9
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_1b995c2a71c1af::t_5a2116dbed970d 66,71-72
+packages/@n8n/decorators/src/system-task/__tests__/system-task.test.ts
+  s_1b995c2a71c1af::t_471b273dd93f27 17,33-34,37,61
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_1b995c2a71c1af::t_156a42dae2ff11 7,10-11,58,62-63,97,105,134-135,149-150,153
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_1b995c2a71c1af::t_5fc6bef3132fb1 314-322,371-379
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_1b995c2a71c1af::t_ee2090d666596d 35,51,69,99-104,171,241
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.ts
+  s_1b995c2a71c1af::t_44959afa7ff857 21-25,154,157-158,181,184-185,199-205,209
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_1b995c2a71c1af::t_4778a4c4615c13 6,58,645-651,679-684
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_1b995c2a71c1af::t_468370e7b82bbb 4,15,281,283-286,304-305,307-341,343-345,374-393,397-401,403,405-446,487,508-516,519-521
+packages/@n8n/scheduler/src/core/recurrence/__tests__/resolve.test.ts
+  s_1b995c2a71c1af::t_57c65b895979f9 3
+packages/@n8n/workflow-sdk/src/generate-types/generate-node-defs-cli.ts
+  s_1b995c2a71c1af::t_be41bf0dd758e6 22,34-35,37-38,72
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_1b995c2a71c1af::t_60d453e0dd702e 40,137,560,586-588,598-602,607,643-647,650,705-707,711,729-733,738-741,743-748,757-758,760-761,763-764,766-770,772,774-775
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_1b995c2a71c1af::t_85c9b43725b0d3 187
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_1b995c2a71c1af::t_4d50613332f2d8 218-219,273-274
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_1b995c2a71c1af::t_0cee0b64d2962b 10
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_1b995c2a71c1af::t_5e41642135a61a 100,186-187,335,381-386,416-417
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_1b995c2a71c1af::t_068c9ab2969a47 5-6,27-35,43-129,150,198-203,237-238
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_1b995c2a71c1af::t_8f7655f4c561b0 201,212,223,385,406-407,410,432-433
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_1b995c2a71c1af::t_98a3693a3b8bf6 24-27,30,38-39,44-83,300-301,334-335,389-390,400-401,404,407-416,426,440-441,443-444,456-458,468-498,510-522,531-544
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-node-loader.test.ts
+  s_1b995c2a71c1af::t_41b5355daabeec 51,110
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_1b995c2a71c1af::t_0d13e4a0cb8acc 17-20,34-41,61-67,198-213,289-290,314-315
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-search.test.ts
+  s_1b995c2a71c1af::t_488b5e4cd798c2 60
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_1b995c2a71c1af::t_a8618e4d5701da 10-13,28-38,40-42,48-51,56
+packages/cli/src/utils/__tests__/auth-fetch.test.ts
+  s_1b995c2a71c1af::t_f192bc745ca1a6 35,78,89-90,93-96,125
+packages/cli/src/utils/auth-fetch.ts
+  s_1b995c2a71c1af::t_a5fe32b45cb66b 1,26-32,81-108
+packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/ResizeWrapper.vue
+  s_1b995c2a71c1af::t_c5a842703a7668 313
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_1b995c2a71c1af::t_e1c470ae45d911 18
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_1b995c2a71c1af::t_931b9e103a8416 3361-3364
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useMcpServerConnect.ts
+  s_1b995c2a71c1af::t_f0fd2ac0d363f7 153
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiMcp.store.ts
+  s_1b995c2a71c1af::t_977db6dfabedc3 166-171
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_1b995c2a71c1af::t_237b0bfb91ff2e 325-326,329,331
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_1b995c2a71c1af::t_355c20970f43a8 302-317
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.test.ts
+  s_ebd7b9f2821ae5::t_443ebafbeaf4fb 1-2,4,6-29,31-41,44-46
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.workflow.json
+  s_ebd7b9f2821ae5::t_7702cc113f1ec5 1-124
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.test.ts
+  s_ebd7b9f2821ae5::t_54b1a1eb9ac37c 1-31,33-35,37-43,45-48
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflow.json
+  s_ebd7b9f2821ae5::t_526a4556eb5af5 1-129
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflowLink.test.ts
+  s_ebd7b9f2821ae5::t_954367b76f1ea3 1,3-17,19-42,45-46,49-63,65-67,69,71-72,74-77,80-81,83
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_ebd7b9f2821ae5::t_7285de735f0239 105-122
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_ebd7b9f2821ae5::t_f0266a97f5ebf1 69-71,75,77-81,84,86-89,94,102
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_ebd7b9f2821ae5::t_f61b468a72a01b 1,5,7-8,49,57,84
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/get.operation.ts
+  s_ebd7b9f2821ae5::t_8aacf1d93f5d58 1-49
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/index.ts
+  s_ebd7b9f2821ae5::t_6d46dbfae86fae 4,6,9,29-34,41-46,59,73,80,82
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/reply.operation.ts
+  s_ebd7b9f2821ae5::t_4f366d08a04547 1-112
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/sharedGuard.ts
+  s_ebd7b9f2821ae5::t_2911be1e211bf4 1-4,7-10,12-22
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_ebd7b9f2821ae5::t_1d08389760e82a 5
+packages/testing/containers/service-stack.ts
+  s_2665a71cebd554::t_fda44a5171bf28 51-52
+packages/testing/containers/stack.ts
+  s_2665a71cebd554::t_b6211a0d51cb49 167
+packages/testing/playwright/tests/e2e/instance-ai/README.md
+  s_2665a71cebd554::t_10c476f2414f05 7,13-14
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_1b995c2a71c1af::t_9a9e339655e029 23-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5160d927e81d9ee9da6141c07b8c66fffb98a1e2",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_2665a71cebd554": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a07149f-4235-4fe5-8d0e-5417503c5246",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_ebd7b9f2821ae5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74f2c17b-04a6-4afc-bf2c-d5405449b36a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,112 @@
+packages/@n8n/backend-common/oxlint.config.mts
+  s_220038b2328800::t_145106615df456 1-20
+scripts/lint-parity/oxlint-parity.mjs
+  s_220038b2328800::t_dbc53b57d17ac0 128-131
+  s_220038b2328800::t_67992b44b1e94b 20-21,169-170
+  s_220038b2328800::t_67caf87b143cf6 197,226-228
+packages/@n8n/backend-services/oxlint.config.mts
+  s_220038b2328800::t_e12285b22be257 7
+  s_220038b2328800::t_145106615df456 8
+packages/@n8n/ai-node-sdk/package.json
+  s_220038b2328800::t_0064f093e047e9 24-25,38,41-42
+packages/@n8n/scheduler/package.json
+  s_220038b2328800::t_0064f093e047e9 12-13,40,48-49
+packages/@n8n/eslint-config/src/rules/no-raw-enum.ts
+  s_220038b2328800::t_8bb7ea421bc226 1-23
+packages/@n8n/decorators/package.json
+  s_220038b2328800::t_0064f093e047e9 12-13,38,43-44
+packages/@n8n/ai-node-sdk/oxlint.config.mts
+  s_220038b2328800::t_145106615df456 1-8
+packages/@n8n/ai-node-sdk/eslint.config.mjs
+  s_220038b2328800::t_706e112e13d9f1 4
+packages/frontend/@n8n/frontend-constants/README.md
+  s_220038b2328800::t_3320d50af98915 33
+packages/@n8n/backend-services/package.json
+  s_220038b2328800::t_e12285b22be257 12-13
+packages/@n8n/eslint-config/src/rules/fixtures/raw-enum/oxlint.config.mts
+  s_220038b2328800::t_ef0a72e6bff4ba 2-4
+  s_220038b2328800::t_9ff302614354a4 1,5
+packages/@n8n/eslint-config/src/rules/fixtures/raw-enum/eslint.config.mjs
+  s_220038b2328800::t_ef0a72e6bff4ba 2,4-8
+packages/@n8n/decorators/oxlint.config.mts
+  s_220038b2328800::t_608bc71e2e27d2 8-13
+  s_220038b2328800::t_145106615df456 1-7,14-24
+packages/@n8n/backend-common/eslint.config.mjs
+  s_220038b2328800::t_a90262e268831f 4-11,13
+packages/frontend/@n8n/frontend-constants/eslint.config.mjs
+  s_220038b2328800::t_3320d50af98915 10,14
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_220038b2328800::t_3320d50af98915 14
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_220038b2328800::t_8bb7ea421bc226 35,71
+packages/@n8n/eslint-config/src/rules/fixtures/raw-enum/invalid.ts
+  s_220038b2328800::t_ef0a72e6bff4ba 2-7
+  s_220038b2328800::t_82fcee90b86dd5 1
+packages/@n8n/config/oxlint.config.mts
+  s_220038b2328800::t_145106615df456 1-16
+scripts/lint-parity/samples.json
+  s_220038b2328800::t_c18c13030528bb 27
+packages/@n8n/eslint-config/src/rules/no-raw-enum.test.ts
+  s_220038b2328800::t_5bc201ca68c451 35
+  s_220038b2328800::t_8bb7ea421bc226 1-34,36-43
+scripts/lint-parity/verify-raw-enum-bridge.mjs
+  s_220038b2328800::t_8bb7ea421bc226 1-4,11,13,15-21,27-28,42-43,48,60-61
+  s_220038b2328800::t_c838959359425b 8-10,12,14,29-41
+  s_220038b2328800::t_7cf31e7339a8a1 44-47,49-59
+  s_220038b2328800::t_ef0a72e6bff4ba 5-7
+  s_220038b2328800::t_67caf87b143cf6 22-26
+packages/@n8n/config/package.json
+  s_220038b2328800::t_0064f093e047e9 12-13,32,36-37
+packages/frontend/editor-ui/eslint.config.mjs
+  s_220038b2328800::t_3320d50af98915 326-330
+  s_220038b2328800::t_ced4da8e57d420 325
+packages/@n8n/backend-common/package.json
+  s_220038b2328800::t_0064f093e047e9 12-13,41,47-48
+scripts/lint-parity/oxlint-gap.json
+  s_220038b2328800::t_8b44832d757862 39-45
+packages/@n8n/computer-use/oxlint.config.mts
+  s_220038b2328800::t_145106615df456 1-7
+packages/@n8n/eslint-config/src/rules/fixtures/raw-enum/valid.ts
+  s_220038b2328800::t_ef0a72e6bff4ba 1-4
+  s_220038b2328800::t_82fcee90b86dd5 5
+packages/@n8n/syslog-client/src/constants.ts
+  s_220038b2328800::t_3320d50af98915 1
+packages/@n8n/local-gateway/oxlint.config.mts
+  s_220038b2328800::t_145106615df456 1-8
+packages/@n8n/oxlint-config/src/configs/base.ts
+  s_220038b2328800::t_8bb7ea421bc226 226
+packages/@n8n/computer-use/package.json
+  s_220038b2328800::t_0064f093e047e9 19-20,58,65-66
+packages/@n8n/eslint-config/src/plugin.ts
+  s_220038b2328800::t_8bb7ea421bc226 34
+packages/@n8n/local-gateway/package.json
+  s_220038b2328800::t_0064f093e047e9 10,32,39-40
+packages/@n8n/scheduler/oxlint.config.mts
+  s_220038b2328800::t_145106615df456 1-9,11-21
+  s_220038b2328800::t_3b6b83de21dc18 10
+packages/@n8n/decorators/eslint.config.mjs
+  s_220038b2328800::t_706e112e13d9f1 11-14
+  s_220038b2328800::t_db7c55b9bb63d8 15-16
+packages/@n8n/nodes-langchain/nodes/Guardrails/actions/checks/pii.ts
+  s_220038b2328800::t_3320d50af98915 21
+packages/@n8n/backend-services/README.md
+  s_220038b2328800::t_e12285b22be257 42
+pnpm-lock.yaml
+  s_220038b2328800::t_09789dc5b52e05 1318-1320,1327-1332,1652-1654,1670-1675,2194-2196,2215-2220,2246-2248,2258-2263,2454-2456,2469-2474,3052-3054,3073-3078,3858-3860,3882-3887
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef0e9694e894c5b5a00ac422d3092d13f30c2231",
+  "prompts": {},
+  "sessions": {
+    "s_220038b2328800": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f32f268e5ffecxHS8Ci9w6d9ID",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

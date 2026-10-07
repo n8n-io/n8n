@@ -1,0 +1,107 @@
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 29
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_ddc54b33f858e5::t_49918b232cb7eb 15-22,25-41,67-70,72
+packages/cli/src/modules/insights/insights-compaction.task.ts
+  s_ddc54b33f858e5::t_ac4b70f530754a 23
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3,22-27
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  s_ddc54b33f858e5::t_ac4b70f530754a 24
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 4
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 20
+packages/@n8n/decorators/src/system-task/__tests__/system-task.test.ts
+  s_ddc54b33f858e5::t_0bc3bb47305baf 33,58,80
+  s_ddc54b33f858e5::t_9be36aebc5d676 3-8
+packages/cli/src/services/pruning/__tests__/execution-pruning-soft-delete.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 21
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_ddc54b33f858e5::t_551e3587d8a029 169,181,191,202,399,417,428,440,612,614,644,662,694,709,724,746,780,807,817,940,1047,1171,1187,1222,1429
+packages/cli/src/license/license-renewal.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3
+packages/cli/src/scheduling/system-tasks/__tests__/dummy.task.ts
+  s_ddc54b33f858e5::t_551e3587d8a029 12
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3,24-30
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 14
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 22
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 4
+  s_ddc54b33f858e5::t_ac4b70f530754a 25
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3,22-26
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_ddc54b33f858e5::t_0bc3bb47305baf 15
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3
+  s_ddc54b33f858e5::t_ac4b70f530754a 23
+packages/cli/src/modules/insights/__tests__/insights-pruning.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 19
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 16
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3,24-28
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 27
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 21
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_ddc54b33f858e5::t_3b795e5dcf3251 50-51,54,61-64,204,232-235,239-240,243,245,250-252,304,329,336-351,384,391,393,468-473,483,504,549-550
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-job-registrar.test.ts
+  s_ddc54b33f858e5::t_92b58affdacec6 31
+packages/cli/src/modules/insights/__tests__/insights-compaction.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 19
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  s_ddc54b33f858e5::t_0bc3bb47305baf 11
+packages/cli/src/services/pruning/activity-pruning.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 6
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 16
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  s_ddc54b33f858e5::t_ac4b70f530754a 24
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 2
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3
+  s_ddc54b33f858e5::t_ac4b70f530754a 24
+packages/@n8n/decorators/src/system-task/__tests__/placement.test.ts
+  s_ddc54b33f858e5::t_e293890a6c7229 7
+  s_ddc54b33f858e5::t_760da498c5b193 32,43
+  s_ddc54b33f858e5::t_0bc3bb47305baf 1,3,11,14-16,18,21-23,25,28,36,39
+  s_ddc54b33f858e5::t_9be36aebc5d676 4-6,8-9,29-31,33-34,40-42,44-45
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 3
+  s_ddc54b33f858e5::t_ac4b70f530754a 23
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  s_ddc54b33f858e5::t_ac4b70f530754a 23
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 4
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_ddc54b33f858e5::t_5b8f8dddb27e65 4,24-28
+packages/cli/src/license/__tests__/license-renewal.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 20
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key-refresh.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 14
+packages/cli/test/integration/scheduling/system-task-provisioning.test.ts
+  s_ddc54b33f858e5::t_92b58affdacec6 42
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  s_ddc54b33f858e5::t_bb68bc79f67af3 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c611751798b1e9a78f48a320d6f016dbca845a0",
+  "prompts": {},
+  "sessions": {
+    "s_ddc54b33f858e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "314a58e3-b05d-4e53-a6da-0fc2dd5704c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

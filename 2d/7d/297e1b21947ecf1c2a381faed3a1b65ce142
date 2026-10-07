@@ -1,0 +1,80 @@
+packages/core/src/execution-engine/node-execution-context/utils/get-input-connection-data.ts
+  s_6a94bf7fd1f709::t_4ed6776c97530a 38
+  s_6a94bf7fd1f709::t_85c274c39578e3 446-456
+packages/workflow/src/data-table.types.ts
+  s_6a94bf7fd1f709::t_e31d76dd136dc7 271-272
+packages/cli/src/task-runners/task-managers/__tests__/data-request-response-builder.test.ts
+  s_6a94bf7fd1f709::t_7f5f1df4cb1ee0 114
+  s_6a94bf7fd1f709::t_b22338bec658e8 28
+packages/workflow/src/interfaces.ts
+  s_6a94bf7fd1f709::t_e31d76dd136dc7 3228
+packages/workflow/test/expression.test.ts
+  s_6a94bf7fd1f709::t_4ed6776c97530a 1016-1018,1033,1035-1037
+packages/workflow/src/data-table-expression-refs.ts
+  s_6a94bf7fd1f709::t_63f22c8ef6e24b 101-106
+  s_6a94bf7fd1f709::t_e254c2850bdb78 4-5,14,16,37-39,54-55,67-68,71,76-78,83,86-92,95-100,107-108,112,117,124-137,142-143,155-156,158-161
+packages/core/src/execution-engine/node-execution-context/utils/get-additional-keys.ts
+  s_6a94bf7fd1f709::t_e31d76dd136dc7 51-53
+packages/cli/src/task-runners/task-managers/data-request-response-builder.ts
+  s_6a94bf7fd1f709::t_85c274c39578e3 54
+packages/@n8n/task-runner/src/runner-types.ts
+  s_6a94bf7fd1f709::t_85c274c39578e3 104
+packages/@n8n/task-runner/src/js-task-runner/js-task-runner.ts
+  s_6a94bf7fd1f709::t_85c274c39578e3 495
+packages/frontend/editor-ui/src/app/composables/useDataTableExpressions.test.ts
+  s_6a94bf7fd1f709::t_73cf401d4758fe 1-69
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.ts
+  s_6a94bf7fd1f709::t_35d66ad8e7eda4 107-108,111-120,146,204,253
+packages/frontend/editor-ui/src/app/composables/useDataTableExpressions.ts
+  s_6a94bf7fd1f709::t_35d66ad8e7eda4 12,20-21,23-24,26-27,41-42,47-50,56-57,60,63-64,72-76,80
+  s_6a94bf7fd1f709::t_63f22c8ef6e24b 44-46
+  s_31091a67d599db::t_0dcf857e7bde09 62
+packages/core/src/execution-engine/data-table-expressions.ts
+  s_31091a67d599db::t_0dcf857e7bde09 109
+  s_6a94bf7fd1f709::t_0c3db05fde9bd5 4,12,19-31,54,64-66,72,87,90,103,106,110-113,115-116,122-127,129-134
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6a94bf7fd1f709::t_35d66ad8e7eda4 803-804
+packages/core/src/execution-engine/__tests__/data-table-expressions.test.ts
+  s_6a94bf7fd1f709::t_4ed6776c97530a 107-111,119-123,139-141,149-151,155,157,163-164,166-167
+  s_6a94bf7fd1f709::t_63f22c8ef6e24b 152-154
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/dataTable.completions.test.ts
+  s_6a94bf7fd1f709::t_35d66ad8e7eda4 48,51,53,57-61
+packages/workflow/test/data-table-expression-refs.test.ts
+  s_6a94bf7fd1f709::t_4ed6776c97530a 1,19,23-25,28,34,40,44,48-56,58,67-68,77,81,88,92
+  s_6a94bf7fd1f709::t_63f22c8ef6e24b 27
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/datatype.completions.ts
+  s_6a94bf7fd1f709::t_35d66ad8e7eda4 107,1312-1316
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts
+  s_6a94bf7fd1f709::t_35d66ad8e7eda4 98,146
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  s_6a94bf7fd1f709::t_4ed6776c97530a 175,177,180,183-184,186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2d7d297e1b21947ecf1c2a381faed3a1b65ce142",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_31091a67d599db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9c8686c-8105-40a9-aaf4-814fc474608d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    },
+    "s_6a94bf7fd1f709": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e67e3d5c-9f8e-423a-967d-6e967f52fd29",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

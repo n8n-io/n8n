@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/record-live-run.test.ts
+  s_79816dde457615::t_2af08a39cb1385 196-200,202-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e57d82014758787808ee8a414842bca501689f1f",
+  "prompts": {},
+  "sessions": {
+    "s_79816dde457615": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "405ec799-db43-4b44-b902-3a43be6ae24e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

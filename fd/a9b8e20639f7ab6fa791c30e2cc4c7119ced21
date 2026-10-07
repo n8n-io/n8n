@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_da76d9a372587f::t_2626976e98579e 662-664
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_da76d9a372587f::t_fd0c4996709391 150-151,159
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_da76d9a372587f::t_dba5cc7614d14a 12,53,65,97,122,128
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_da76d9a372587f::t_4541ad8f65bfcf 146-155
+  s_da76d9a372587f::t_a8ae9e7391945f 375-378
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_da76d9a372587f::t_74c1c6f17a43b4 701-707
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_da76d9a372587f::t_e363aa8eafb282 152-155
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_da76d9a372587f::t_a0c7b24b1ffe5a 497-499
+  s_da76d9a372587f::t_d76a66fcab6725 66
+  s_da76d9a372587f::t_547d6dd809e9ba 481-483
+packages/@n8n/telemetry/src/events/agents.ts
+  s_da76d9a372587f::t_41b8589d85e9bf 191
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_da76d9a372587f::t_ce8c809fb43182 46
+  s_da76d9a372587f::t_6d22a80a05bab7 896-898,906,910
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_da76d9a372587f::t_6bcdb2a8a31474 69-70
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_da76d9a372587f::t_483e8daa657bd3 578
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_da76d9a372587f::t_e0575155d78005 7673
+packages/cli/src/modules/agents/attachable-workflows.service.ts
+  s_da76d9a372587f::t_e34e2dd00f3a99 11-12
+  s_da76d9a372587f::t_a2a1adadaea4c3 62
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_da76d9a372587f::t_ad74e5477be54f 1368
+  s_da76d9a372587f::t_066d3d61f9904e 1375-1379,1381-1382
+  s_da76d9a372587f::t_e059c09d53e76d 1380
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_da76d9a372587f::t_c2539dd818a658 1327
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_da76d9a372587f::t_45973642c4e100 544-546
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_da76d9a372587f::t_b128c2bd698ac1 572-588
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_da76d9a372587f::t_d383d44c237211 628-629,631
+  s_da76d9a372587f::t_2d42c543319a7d 630
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_da76d9a372587f::t_79151bc883ceb0 68,78
+  s_da76d9a372587f::t_acdca112c45301 347
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_da76d9a372587f::t_f3938336311216 245
+  s_da76d9a372587f::t_41946abba16c8b 244,246-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fda9b8e20639f7ab6fa791c30e2cc4c7119ced21",
+  "prompts": {},
+  "sessions": {
+    "s_da76d9a372587f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "36580568-4139-410e-9a53-a65ce73b9023",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

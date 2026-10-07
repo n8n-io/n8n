@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/workflowGenerativeUi.store.ts
+  s_41deaec97af571::t_84ecf4729df618 2,26,28
+  s_41deaec97af571::t_8fba515f487f87 3,71-74,233-240,249,255
+  s_41deaec97af571::t_5c006205dbad00 137,215
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_41deaec97af571::t_0cd87741598fa6 39-46,80-94,98-99,328-329,347-348
+  s_41deaec97af571::t_bf8997e19c88f6 95-97
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/ViewPicker.vue
+  s_41deaec97af571::t_9bd7204811a7ea 2
+  s_41deaec97af571::t_a3b22bd056d118 1,3-118
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/FollowUpBar.vue
+  s_41deaec97af571::t_e3ec7f44af3c77 1-57
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/GenerativeUiOverlay.vue
+  s_41deaec97af571::t_9bd7204811a7ea 8,39
+  s_41deaec97af571::t_cc1f0dd4ba0c97 1-7,9-38,40-151
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/history.ts
+  s_41deaec97af571::t_60e41d62ddea62 12-15
+packages/frontend/editor-ui/src/app/types/telemetry.ts
+  s_41deaec97af571::t_70ce5932490c01 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36a2e7d4f7236809d8edabed456db5cdcfe28b63",
+  "prompts": {},
+  "sessions": {
+    "s_41deaec97af571": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "29159458-eacb-4648-84a7-4dc40a39a73e",
+        "model": "gpt-5.6-sol-medium"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

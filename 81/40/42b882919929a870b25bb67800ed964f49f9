@@ -1,0 +1,24 @@
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_16d4e8a0de1253::t_e55cccd6a7fe97 5-9,58-66,72,87
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_16d4e8a0de1253::t_df9b580143cea0 15-19
+  s_16d4e8a0de1253::t_f766afe47d4b31 20
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_16d4e8a0de1253::t_5db4556db4d1f9 345-358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "814042b882919929a870b25bb67800ed964f49f9",
+  "prompts": {},
+  "sessions": {
+    "s_16d4e8a0de1253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af11b873-b1fc-4934-9c2a-446a1ba02bb5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

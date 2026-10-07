@@ -1,0 +1,39 @@
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_a8b11f747ee91e::t_cab10a024675f8 227,457
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_a8b11f747ee91e::t_cab10a024675f8 219,439
+packages/@n8n/db/src/migrations/common/1784000000051-BackfillInstanceAiEventLog.ts
+  s_a8b11f747ee91e::t_b14fcf1428eab9 326
+  s_a8b11f747ee91e::t_c84de2f4e14208 1-293,298-325,327-373,375-526
+  s_a8b11f747ee91e::t_7004f3a08cdcc5 294-297,374
+packages/@n8n/instance-ai/docs/configuration.md
+  s_a8b11f747ee91e::t_9d8e836885de28 170-178
+packages/@n8n/instance-ai/docs/architecture.md
+  s_a8b11f747ee91e::t_9d8e836885de28 278-283
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_a8b11f747ee91e::t_9fcbec3f212706 176-181,184
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_a8b11f747ee91e::t_9d8e836885de28 415-421
+packages/@n8n/config/test/config.test.ts
+  s_a8b11f747ee91e::t_74fa94d60d904c 358
+packages/@n8n/db/src/migrations/common/1784000000051-BackfillInstanceAiEventLog.test.ts
+  s_a8b11f747ee91e::t_681332ad419e20 8,44
+  s_a8b11f747ee91e::t_37e741e4d11997 204,337-342
+  s_a8b11f747ee91e::t_8a2f5e447ea8e1 1-7,9-43,45-203,205-336,343-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3e9dd8847dfde38f71387d135f0b2ec7cdb03309",
+  "prompts": {},
+  "sessions": {
+    "s_a8b11f747ee91e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c6b651d-6fbc-49c2-a7a6-06d9a1233a37",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

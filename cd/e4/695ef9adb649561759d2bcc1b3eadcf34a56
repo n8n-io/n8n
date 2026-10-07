@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/eslint.config.mjs
+  s_6eb3add10e67c1::t_edf245eb681cae 367-376
+  s_6eb3add10e67c1::t_fd929ba51a1ce7 1,6-18,411
+scripts/lint-parity/diff.mjs
+  s_6eb3add10e67c1::t_a96aa317319329 72
+scripts/lint-parity/expected-editor-ui-bridge.json
+  s_6eb3add10e67c1::t_a96aa317319329 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cde4695ef9adb649561759d2bcc1b3eadcf34a56",
+  "prompts": {},
+  "sessions": {
+    "s_6eb3add10e67c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "416647ba-ceb9-4ddb-9008-a0e34a4b1157",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

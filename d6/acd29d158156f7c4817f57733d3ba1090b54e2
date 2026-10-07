@@ -1,0 +1,14 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  h_9b272a633435fb 119-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6acd29d158156f7c4817f57733d3ba1090b54e2",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

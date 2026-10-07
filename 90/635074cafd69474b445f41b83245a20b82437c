@@ -1,0 +1,61 @@
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_1e64f28420d21e::t_99b99d68fbdf1c 1,3,8-10
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_1e64f28420d21e::t_7868652252644f 56
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_1e64f28420d21e::t_eeedb48d261948 163-166
+  s_1e64f28420d21e::t_28aeefcd4d5213 161-162,167
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_1e64f28420d21e::t_fa0ba91b46a8ea 312,344-347
+  s_1e64f28420d21e::t_8e20dc78648d60 353
+  s_1e64f28420d21e::t_c086371f762411 3,5,8-9,29-33,35-37,278-293,296-300,324-340
+  s_1e64f28420d21e::t_a53f36a46b7d43 350
+  s_1e64f28420d21e::t_7868652252644f 2,6,12-15,294-295,301-311,313-323,341-343,348-349,351-352,354-357
+packages/cli/src/modules/agents/utils/delegated-child-checkpoints.ts
+  s_1e64f28420d21e::t_7868652252644f 1-5,8-12,16-17,21
+  s_1e64f28420d21e::t_1b7e2a0601ff46 6-7,13-15,18-20,22-55
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_1e64f28420d21e::t_5895566cea7b37 14,100
+  s_1e64f28420d21e::t_49552c40cf8c8c 357,372-373,401-404
+  s_1e64f28420d21e::t_b1695626a8e060 87,93,322-324,326,329-330,361,377-387,390-391,395-397,422
+  s_1e64f28420d21e::t_500ee65283325e 86
+  s_1e64f28420d21e::t_a53f36a46b7d43 398-400
+  s_1e64f28420d21e::t_21064b4ac6d0c8 389,405
+  s_1e64f28420d21e::t_7868652252644f 6-11,20,114-149,325,327-328,335-356,358-360,362-371,374-376,388
+  s_1e64f28420d21e::t_5bf8d85a79702d 88,406-421
+  s_1e64f28420d21e::t_c54ad07693ec60 331-334,392-394
+  s_1e64f28420d21e::t_fa0ba91b46a8ea 321
+  s_1e64f28420d21e::t_ace4b82bb5cd1c 423
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_1e64f28420d21e::t_0d058f5e48b578 4,18-21
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_1e64f28420d21e::t_8e20dc78648d60 516
+  s_1e64f28420d21e::t_eeedb48d261948 522
+  s_1e64f28420d21e::t_61b99728b4448f 8,123,505,507-512,514-515,517,520,523-527
+  s_1e64f28420d21e::t_451b5f68a90095 502
+  s_1e64f28420d21e::t_0d058f5e48b578 506
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_1e64f28420d21e::t_99b99d68fbdf1c 45,208-209
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_1e64f28420d21e::t_0d058f5e48b578 1186,1194,1208,1222
+  s_1e64f28420d21e::t_24effd8f6ec384 3,71,89,102,439,527,963
+  s_1e64f28420d21e::t_645038745e864d 1187-1189,1195-1199,1201-1203,1209-1211,1229
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_1e64f28420d21e::t_99b99d68fbdf1c 151-163,171-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "90635074cafd69474b445f41b83245a20b82437c",
+  "prompts": {},
+  "sessions": {
+    "s_1e64f28420d21e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c3b8-0cf9-7663-8671-60fcbfb59686",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

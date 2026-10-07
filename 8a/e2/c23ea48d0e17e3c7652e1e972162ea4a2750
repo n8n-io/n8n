@@ -1,0 +1,19 @@
+packages/testing/playwright/pages/CanvasPage.ts
+  s_55ca930e99f67b::t_5923ea64990482 595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ae2c23ea48d0e17e3c7652e1e972162ea4a2750",
+  "prompts": {},
+  "sessions": {
+    "s_55ca930e99f67b": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1784561185891",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

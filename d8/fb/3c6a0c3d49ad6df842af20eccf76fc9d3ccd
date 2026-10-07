@@ -1,0 +1,33 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_574de801a499a2::t_6449bd018ce334 210-217
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_574de801a499a2::t_940cf5b6ad6dda 9,24-44,47,55
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_574de801a499a2::t_505ad701ed3087 80-86,90
+  s_574de801a499a2::t_40845dc55dfa48 165,179-231
+  s_574de801a499a2::t_41913c575433b8 26
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_574de801a499a2::t_3a5eb0e5be25c7 1,4-7,10-19,23,27,31-35,41-43,51,57-71,74-75,77-78,81-139
+  s_574de801a499a2::t_263e1f5aaf7bae 28
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_574de801a499a2::t_2dd45f491cf32e 209,218-236,238-239,242-271,274-279,286-350
+  s_574de801a499a2::t_6b9bd61ba184ed 4-9,13,21,25,28-33,44,55-66
+  s_574de801a499a2::t_dc524ee31fb56f 81
+  ai_agent 212-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8fb3c6a0c3d49ad6df842af20eccf76fc9d3ccd",
+  "prompts": {},
+  "sessions": {
+    "s_574de801a499a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce9e9826-ea55-4907-9c77-610e1d7f982f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

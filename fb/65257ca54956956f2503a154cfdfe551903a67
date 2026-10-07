@@ -1,0 +1,47 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_b04c58447561ba::t_304afeae66774a 333,368,391
+packages/cli/src/modules/agents/__tests__/agent-thread-turn-coordinator.test.ts
+  s_b04c58447561ba::t_304afeae66774a 131
+  s_b04c58447561ba::t_283c2accb99c00 130,160
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b04c58447561ba::t_7ed803b4fae39f 298-300,311-313
+packages/cli/src/modules/agents/agent-thread-turn-coordinator.ts
+  s_b04c58447561ba::t_582f70cb1d3dd4 110
+  s_b04c58447561ba::t_ef99d5405600f0 60
+  s_b04c58447561ba::t_c5eac4558406c4 6
+  s_b04c58447561ba::t_2f044a2e08686d 150-152,162,168-169,174,176,179-184,188,190
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_b04c58447561ba::t_bea3c3c3791b21 268,284
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_b04c58447561ba::t_5f1d95a6fd35ca 905-907
+  s_b04c58447561ba::t_0624218579d348 1262
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b04c58447561ba::t_1993b09249a840 866
+  s_b04c58447561ba::t_823329c42c39bd 885
+  s_b04c58447561ba::t_1d00ae36ea7d6b 902
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b04c58447561ba::t_bef719691e4897 69
+  s_b04c58447561ba::t_497b37cf74c00f 99-103
+  s_b04c58447561ba::t_a3e092885af793 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fb65257ca54956956f2503a154cfdfe551903a67",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

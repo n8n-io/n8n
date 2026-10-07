@@ -1,0 +1,70 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_24615e7b7bf287::t_acfe4fbea1746d 320
+  s_109f6edacd6e91::t_4ceccc63cd00d0 540,559,566
+  s_13cf415df802d6::t_fc4d1a8e755941 440
+  s_13cf415df802d6::t_a2e439341f24de 334
+  s_109f6edacd6e91::t_31f29d41a86b4f 489-491,493-497,499-501
+  s_24615e7b7bf287::t_16061cae9a7a22 324-326
+  s_24615e7b7bf287::t_76d17d70a875e7 313,317-319,321-323
+  s_13cf415df802d6::t_02b47ef8a20a55 437
+  s_13cf415df802d6::t_3129db3f9e8307 436,492,498
+  s_109f6edacd6e91::t_6d53686f3ddfec 327,329-333,335-340
+  s_13cf415df802d6::t_5732cd06638286 328
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_24615e7b7bf287::t_c194fa3a6ffddc 711-764
+  s_109f6edacd6e91::t_34e3a5b19b8cd1 765
+  s_13cf415df802d6::t_78f54e224d6d1c 867-884
+  s_109f6edacd6e91::t_1a571951d107d6 767,769-770,772-866,885-886
+  s_13cf415df802d6::t_3129db3f9e8307 766,768,771
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_24615e7b7bf287::t_385313a56ee277 114-117
+  s_24615e7b7bf287::t_f3304486925f2a 21
+packages/@n8n/client-oauth2/src/types.ts
+  s_24615e7b7bf287::t_78f5ee5909a8d4 37
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/authentication.test.ts
+  s_24615e7b7bf287::t_f6686dbd9d8c30 152-154
+  s_24615e7b7bf287::t_e9523fa53b9be2 159-164
+  s_24615e7b7bf287::t_2e127e9a310d3b 128-132
+  s_24615e7b7bf287::t_34136b034475e6 168-198
+  s_24615e7b7bf287::t_3661f60c3c994e 141,143-151,156
+  s_24615e7b7bf287::t_3a9c4d14423747 157-158,165
+  s_24615e7b7bf287::t_a9adacfd5c9157 133-140,142,155,166-167
+  s_24615e7b7bf287::t_44f3a8571026a3 367-402
+packages/workflow/src/interfaces.ts
+  s_109f6edacd6e91::t_9e36c2ed4ed53e 96-101
+  s_24615e7b7bf287::t_b8a2c326b8c9cd 52-57
+  s_13cf415df802d6::t_3129db3f9e8307 102
+  s_24615e7b7bf287::t_5934602d6a2a52 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4a803313cf401e2fd9c7b4e7a64d5932f1d6144e",
+  "prompts": {},
+  "sessions": {
+    "s_109f6edacd6e91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90123c0f-d96c-40f3-aaa9-ea9842ae92a4",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_13cf415df802d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c0ec642-e533-422b-82bc-34688614dc2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_24615e7b7bf287": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d94b6d6a-e08c-4f8a-9905-70591c8aed8a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_538cfdd783f5c4::t_b7e93ee3409536 65,67
+packages/@n8n/api-types/src/schemas/__tests__/agent-evals.schema.test.ts
+  s_538cfdd783f5c4::t_a09f075a95b48a 87-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "209c80ce0f52912e07ee8bff61e2823fa2e69159",
+  "prompts": {},
+  "sessions": {
+    "s_538cfdd783f5c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "496579f8-0b92-4b38-954d-90c6642ecbba",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

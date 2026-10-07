@@ -1,0 +1,75 @@
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_7311b1fbc9592e::t_354538f1c912ed 43
+packages/cli/src/controllers/__tests__/me.controller.test.ts
+  s_7311b1fbc9592e::t_afd18c5713ddd3 51,81,90-125,131-132,141,148,151,210,225-226,233
+packages/frontend/@n8n/rest-api-client/src/api/users.ts
+  s_7311b1fbc9592e::t_88d1de86c82bac 2-4
+  s_7311b1fbc9592e::t_d38548e7beb088 156-176
+packages/frontend/editor-ui/src/features/core/auth/views/ConfirmEmailChangeView.vue
+  s_7311b1fbc9592e::t_28dcfaddd25e52 1-4,6-7,9-13,17-22,24-30,32-63,65-67,69-76,95
+  s_7311b1fbc9592e::t_c385f4ab050872 5,8,14-16,23,31,64,68,77-94,96-117
+packages/frontend/editor-ui/src/app/router.ts
+  s_7311b1fbc9592e::t_d0606aebd85532 37-38
+  s_7311b1fbc9592e::t_c352bbea06aaa6 606-617
+  s_7311b1fbc9592e::t_99eda0e888d5b8 605
+packages/cli/test/integration/me.api.test.ts
+  s_7311b1fbc9592e::t_6c5eb375fcb2e7 497-498,501-503
+  s_7311b1fbc9592e::t_9bbb2a188607db 148,155-157,165-178,180-181,183-184,188
+  s_7311b1fbc9592e::t_858750dc7b91e6 52-54,62-68
+  s_7311b1fbc9592e::t_086c1fa7952903 322,329-331,339-345,350,424,442-444,453-459
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.test.ts
+  s_7311b1fbc9592e::t_43b9d583e47ff4 79-127
+  s_7311b1fbc9592e::t_085ff83e5f3abc 2,5
+packages/@n8n/api-types/src/dto/user/__tests__/user-update-request.dto.test.ts
+  s_7311b1fbc9592e::t_e4ef71711dc47e 62-73
+  s_7311b1fbc9592e::t_44e4e6dd6b8112 74
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7311b1fbc9592e::t_b23063e21fe918 3806-3807
+  s_7311b1fbc9592e::t_8b523ad059ca9d 222-229
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_7311b1fbc9592e::t_7b9e87a8de2905 342-360
+  s_7311b1fbc9592e::t_b44fa623e1f672 2-4
+  s_7311b1fbc9592e::t_8d86758b24a9d2 551
+  s_7311b1fbc9592e::t_5d46cc9fb5393b 361
+  s_7311b1fbc9592e::t_b78a8c5e5fddd2 552-553
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_7311b1fbc9592e::t_49e10cd8d30c90 181-182,221-225
+  s_7311b1fbc9592e::t_5a2fd24b967cf8 236-257,259-265,277-278,287,289,291,298,304-325,329-331
+  s_7311b1fbc9592e::t_0d93e35d562add 3
+packages/cli/src/external-hooks.ts
+  s_7311b1fbc9592e::t_1a14a083d9e4f3 107
+  s_7311b1fbc9592e::t_ee03b847e7198c 1
+packages/frontend/@n8n/stores/src/users.store.test.ts
+  s_7311b1fbc9592e::t_3f44026fa81e53 9-20,29-32,41-44
+  s_7311b1fbc9592e::t_2fee2309ec6e5a 58
+  s_7311b1fbc9592e::t_aee9e33763e473 456-520
+packages/cli/src/controllers/me.controller.ts
+  s_7311b1fbc9592e::t_f268e67439d16c 66,71,79,88,91,96
+  s_7311b1fbc9592e::t_1ab4bfe5ab1c00 50
+packages/frontend/editor-ui/src/features/core/auth/views/ConfirmEmailChangeView.test.ts
+  s_7311b1fbc9592e::t_03c5857ca3d0dd 1-40,42-47,49-57,59,61-93
+  s_7311b1fbc9592e::t_754b01220a169e 58
+  s_7311b1fbc9592e::t_72a50f4c05da0d 41,48
+  s_7311b1fbc9592e::t_8198e932d24059 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "54cddb3aebd62cac4967300af41ab91c45d4ee34",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7311b1fbc9592e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de4cec1d-123f-4d99-b0ad-6adf6b09d748",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

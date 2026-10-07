@@ -1,0 +1,39 @@
+packages/@n8n/instance-ai/evaluations/langtracer/to-exported.ts
+  s_ae00d8808d8447::t_a87d0171c81134 53,59-69
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_ae00d8808d8447::t_73381f9497bb39 378-400
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_ae00d8808d8447::t_b500474dcf5dee 32
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_ae00d8808d8447::t_c2af31489e13d9 15,257
+packages/@n8n/instance-ai/evaluations/harness/chat-loop.ts
+  s_ae00d8808d8447::t_8b5db0b06f080f 313-317,344-345,360
+  s_ae00d8808d8447::t_3fd9c0a41a79a3 348-357,359
+  s_ae00d8808d8447::t_b500474dcf5dee 19,23
+packages/@n8n/instance-ai/evaluations/__tests__/external-workflow-edits.test.ts
+  s_ae00d8808d8447::t_7cc49fa3ad09b8 96,112
+  s_ae00d8808d8447::t_b500474dcf5dee 6-7
+  s_ae00d8808d8447::t_44471c5e56adfe 95,102-111,113-126,130,143,163,173
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-to-exported.test.ts
+  s_ae00d8808d8447::t_db10b90f0b3abe 114-122
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_ae00d8808d8447::t_2c49ce4b9289e4 222-223,226-229
+  s_ae00d8808d8447::t_8dd7d2838f6fbc 284-293
+  s_ae00d8808d8447::t_41c18f1a92bd4b 121-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6a0bc6c9cfab7247bdb36e822be52ac5d4888e5",
+  "prompts": {},
+  "sessions": {
+    "s_ae00d8808d8447": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06aede3-a708-47dc-a92b-0d8715b8d978",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

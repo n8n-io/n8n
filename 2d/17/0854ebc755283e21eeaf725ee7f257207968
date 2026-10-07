@@ -1,0 +1,19 @@
+packages/@n8n/task-runner/src/js-task-runner/require-resolver.ts
+  s_f0e19076c79049::t_8d350fa541949c 100-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2d170854ebc755283e21eeaf725ee7f257207968",
+  "prompts": {},
+  "sessions": {
+    "s_f0e19076c79049": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f0e19076c79049",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mikerepec@pm.me>"
+    }
+  }
+}

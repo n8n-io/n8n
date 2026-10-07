@@ -1,0 +1,27 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_6415615520e467::t_041bb1e12f6907 19,161-164,167-174
+packages/frontend/editor-ui/vite/node-fs-promises-shim.ts
+  s_6415615520e467::t_041bb1e12f6907 1-11
+packages/frontend/editor-ui/vite.config.mts
+  s_6415615520e467::t_041bb1e12f6907 41-75,78
+packages/frontend/editor-ui/vite/aliases.mts
+  s_6415615520e467::t_13f45ca55b8bd9 23-36
+packages/frontend/editor-ui/vite/expression-runtime-stub.ts
+  s_6415615520e467::t_041bb1e12f6907 2-6,9-34,42,45-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "13c2b9cf8ce9c28bdc1a30dd06913d9fa98e7df1",
+  "prompts": {},
+  "sessions": {
+    "s_6415615520e467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c28131-e714-48ea-a3dd-ddf5f46fbde8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

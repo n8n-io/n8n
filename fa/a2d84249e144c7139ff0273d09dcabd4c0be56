@@ -1,0 +1,49 @@
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_d15034b3cbc778::t_ece29a23a34cb2 9-16,41,46-47,99-104,112-167,172,188-200,225-246
+  s_d15034b3cbc778::t_8d51eda966b14e 57,323,393,398-402,404-410
+  s_d15034b3cbc778::t_659061245ee1ab 385
+  s_7c60ac0b471cf2::t_793aa7e5f42ee1 171
+  s_d15034b3cbc778::t_54f0668520ae8d 28-31,44-45,89-94,170,173-178,212-224,250,271,298
+  s_d15034b3cbc778::t_9d28cce0e65afd 36-37,42-43,105-108,253,286-291,346-382,387-392,395-397,403,412-415
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  s_d15034b3cbc778::t_ac7abc6439d7eb 18-21
+  s_d15034b3cbc778::t_f1448040093372 63-74
+packages/@n8n/scheduler/src/core/index.ts
+  s_d15034b3cbc778::t_4ec8957c71dc99 80
+packages/@n8n/scheduler/src/core/reconciliation/index.ts
+  s_d15034b3cbc778::t_4ec8957c71dc99 3
+packages/@n8n/scheduler/src/core/reconciliation/options.ts
+  ai_agent 1-33
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_d15034b3cbc778::t_03a20d3b399aaf 361-395
+  s_d15034b3cbc778::t_d05ddbd5db23fa 5,472-520,528-530,532-535,538,542,544,547-548,552
+  s_d15034b3cbc778::t_75d8d98beeaa34 100-226
+  s_d15034b3cbc778::t_18b0e8f5b90718 521-527,531
+  s_d15034b3cbc778::t_d7d84b68871e0a 231-294
+  s_d15034b3cbc778::t_ecb0727dea8562 536-537,539-541,543,545-546,549-551
+  s_7c60ac0b471cf2::t_e9af358c351c3b 295-314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "faa2d84249e144c7139ff0273d09dcabd4c0be56",
+  "prompts": {},
+  "sessions": {
+    "s_7c60ac0b471cf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0097287e-6c78-43bf-90ca-fa186ed48a6b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_d15034b3cbc778": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5af38261-8873-4c30-be0a-dee2f9578ac4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

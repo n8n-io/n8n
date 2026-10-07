@@ -1,0 +1,21 @@
+packages/@n8n/utils/src/redaction/sanitize-error-detail.ts
+  s_04b7b854d094b6::t_763f0eddcd7ca8 3-7
+packages/@n8n/utils/src/redaction/sanitize-error-detail.test.ts
+  s_04b7b854d094b6::t_61155244e268fa 25-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "546cf3398c40b40e81659921abf74bedd519f40a",
+  "prompts": {},
+  "sessions": {
+    "s_04b7b854d094b6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ee896a89-b376-4611-bae8-2520d3f014f0",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

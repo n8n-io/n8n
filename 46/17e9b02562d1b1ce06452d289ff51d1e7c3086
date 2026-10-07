@@ -1,0 +1,55 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4ac255d31d4818::t_aa97ffdfb2caf4 1561,7751
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_4ac255d31d4818::t_f2c41615a9f5af 284,289,295,300,302,307,310-311,313-319
+  s_4ac255d31d4818::t_51e44cb88d508e 368-404
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_4ac255d31d4818::t_d24a498bec6839 2,480-527,585-619
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_4ac255d31d4818::t_94d48513a98528 222-223,228-232,236-241
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_4ac255d31d4818::t_89d1266803b84a 170,172,174-175,199,203-216,218-228,234-235,240,242,244,248,250-253
+  s_4ac255d31d4818::t_bbfdc1c0d24e4c 171
+  s_4ac255d31d4818::t_0624b56b4a9259 230-231,233,236-239,241,243,245-247,249
+  s_4ac255d31d4818::t_be42c26490f78d 217
+  s_4ac255d31d4818::t_8974075e6c46ed 9-10,173,229,232
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_4ac255d31d4818::t_1f99e28934b809 1098-1100
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_4ac255d31d4818::t_250acd71fc5d12 525
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_4ac255d31d4818::t_706b6d5b57341a 27,119-120,123-125,161-174
+  s_4ac255d31d4818::t_e9fd22cd01eac1 5,121-122
+  s_4ac255d31d4818::t_52f38bdd22b118 16,267-283,492
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_4ac255d31d4818::t_d4d698bcf74597 116,126-137,145-151
+  s_4ac255d31d4818::t_5a6252d18bef75 11,51,55,98-100,166,168-171,175-180
+  s_4ac255d31d4818::t_4cd88cc0544aa6 181-182
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_4ac255d31d4818::t_99fafa342a0686 507-517
+  s_4ac255d31d4818::t_04a42f103237be 16,19-24,84-85,141,147,160-163,168,191-194,196,198
+  s_4ac255d31d4818::t_fc5ecb2f75909d 518-520,525
+packages/@n8n/agents/src/sdk/agent.ts
+  s_4ac255d31d4818::t_1820f794daf9f7 1187-1189,1200-1201
+  s_4ac255d31d4818::t_b4862a41d377ff 1202-1203
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_4ac255d31d4818::t_5ac6cfeca9a724 137
+  s_4ac255d31d4818::t_ea2997ecd9a405 8,37,122-136,138-142,297-300
+  s_4ac255d31d4818::t_06cb98378581e3 301-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4617e9b02562d1b1ce06452d289ff51d1e7c3086",
+  "prompts": {},
+  "sessions": {
+    "s_4ac255d31d4818": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "59165f5c-6518-4b66-b303-3c73c4371cf1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

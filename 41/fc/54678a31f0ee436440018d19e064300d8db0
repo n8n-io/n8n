@@ -1,0 +1,36 @@
+packages/cli/src/services/__tests__/role.service.authorization.test.ts
+  s_56c01a41783ce1::t_1792414af934b4 1-54
+packages/cli/src/controllers/role.controller.ts
+  s_56c01a41783ce1::t_2b822d7b7908c2 30
+  s_56c01a41783ce1::t_d19306309f8837 65,77,112,131,147
+  s_56c01a41783ce1::t_be12a3efa43b1c 17
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_56c01a41783ce1::t_4372c9d46619d6 15-16
+packages/cli/src/services/role.service.ts
+  s_56c01a41783ce1::t_fa318a6fb425d2 36,44,46
+  s_56c01a41783ce1::t_8a9449e17d340c 74-79
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_56c01a41783ce1::t_d19306309f8837 44
+  s_56c01a41783ce1::t_c3692f21477ce8 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "41fc54678a31f0ee436440018d19e064300d8db0",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_56c01a41783ce1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e732907-7277-4e4a-acda-b16d3f4678db",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

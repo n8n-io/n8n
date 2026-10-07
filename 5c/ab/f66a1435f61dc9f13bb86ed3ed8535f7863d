@@ -1,0 +1,24 @@
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_b9ebde5ebc00ba::t_57b3cd56f730bd 101
+  s_b9ebde5ebc00ba::t_e2d2ee5b0e513f 152
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_b9ebde5ebc00ba::t_282e47d799acd6 151,159
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_b9ebde5ebc00ba::t_e6ff9469e6432b 85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5cabf66a1435f61dc9f13bb86ed3ed8535f7863d",
+  "prompts": {},
+  "sessions": {
+    "s_b9ebde5ebc00ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a1339cc-ffc0-4c67-9927-7f58b5b5cdcd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.validation.test.ts
+  s_6a7d5f1a01d9ec::t_12d4020e4d7c38 104-118
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/create.operation.ts
+  s_6a7d5f1a01d9ec::t_ccdbdaee9d6c03 133-136,145-146
+  s_6a7d5f1a01d9ec::t_49971b1d89318b 137-144
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/getAll.operation.ts
+  s_6a7d5f1a01d9ec::t_49971b1d89318b 34
+  s_6a7d5f1a01d9ec::t_62427f170e5884 32-33
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.clamp.test.ts
+  s_6a7d5f1a01d9ec::t_2481af276ba0ea 41
+  s_6a7d5f1a01d9ec::t_9f1e71c0572faf 40,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "09aed5790c31c8d35a6665ffd594c8ecf4bae2b1",
+  "prompts": {},
+  "sessions": {
+    "s_6a7d5f1a01d9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a07b1d9-b11c-42d1-9e09-61ac14d5005c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

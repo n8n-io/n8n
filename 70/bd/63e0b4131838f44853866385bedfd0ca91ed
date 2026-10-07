@@ -1,0 +1,95 @@
+packages/cli/src/modules/usage-report/__tests__/usage-report-crypto.util.test.ts
+  s_d99f4099828f6d::t_55593e36f77822 1-109
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_d99f4099828f6d::t_829424c3787458 64
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_d99f4099828f6d::t_500e88b904f1a9 132-167
+packages/@n8n/constants/src/index.ts
+  s_d99f4099828f6d::t_24d5f90617a528 54
+packages/cli/src/services/workflow-statistics.service.ts
+  s_d99f4099828f6d::t_a6e2391e7b6b01 128-135
+  s_d99f4099828f6d::t_2cfb0f57468652 180-186
+  s_d99f4099828f6d::t_3cb6887829ab9b 9
+  s_d99f4099828f6d::t_0b83abdf2467e2 123-127
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_d99f4099828f6d::t_5ff65978015775 213,427
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_d99f4099828f6d::t_5ff65978015775 222,445
+packages/cli/src/modules/usage-report/usage-report-ledger-file.service.ts
+  s_d99f4099828f6d::t_dca04704d5fba0 1-2,5-44,46-60
+  s_d99f4099828f6d::t_00659814f18696 3-4
+  s_d99f4099828f6d::t_50216b8df1a6d5 45
+packages/cli/src/modules/usage-report/__tests__/usage-report-checkpoint.service.test.ts
+  s_d99f4099828f6d::t_679610ca35aabe 1-4,6-7,9-10,12,17-59,70,74-76,78-128,130-139,141-157
+  s_d99f4099828f6d::t_8e8a4bf5595864 5,13-16
+  s_d99f4099828f6d::t_8dd6ead8e9cc2b 8,11
+  s_d99f4099828f6d::t_0310ee7a1defdb 129,140
+  s_d99f4099828f6d::t_67bc3c831bb037 60-69,71-73,77
+packages/cli/src/commands/usage-report/__tests__/export.test.ts
+  s_d99f4099828f6d::t_416b9f8e1d8b81 1-133
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_d99f4099828f6d::t_c7c01b4b4e9490 51
+  s_d99f4099828f6d::t_5ece204543099e 86
+packages/cli/src/commands/usage-report/export.ts
+  s_d99f4099828f6d::t_b31e751bfd8e5f 1-4,6-10,12-100,102-114
+  s_d99f4099828f6d::t_c1dfb0d1a8ea4b 5,11
+  s_d99f4099828f6d::t_aee47a8dd7da77 101
+  s_d99f4099828f6d::t_7e01739f88e075 115-117
+packages/cli/src/modules/usage-report/usage-report.config.ts
+  s_d99f4099828f6d::t_befc47d0e33f6f 1-19
+packages/@n8n/config/src/configs/logging.config.ts
+  s_d99f4099828f6d::t_14c0834ed0935d 54
+packages/cli/src/modules/usage-report/usage-report-checkpoint.service.ts
+  s_d99f4099828f6d::t_87c90c78e8b695 110
+  s_d99f4099828f6d::t_d1634ae1df4eea 1-6,8-15,17-19,21-109,111-150,155-166,169-195
+  s_d99f4099828f6d::t_a87da3a62ede89 7,16,20
+  s_d99f4099828f6d::t_a8f90fd6202ec1 151,167-168
+  s_d99f4099828f6d::t_e2702af77a1158 152-154
+packages/@n8n/db/src/migrations/common/1784000000045-CreateUsageReportCheckpointTable.ts
+  s_d99f4099828f6d::t_9b11ef68d6325c 3-4,9-10,12-22,25
+  s_d99f4099828f6d::t_8da0b3d26abae3 6-8,11
+  s_d99f4099828f6d::t_5ff65978015775 1-2,5,23-24
+packages/cli/src/modules/usage-report/database/entities/usage-report-checkpoint.ts
+  s_d99f4099828f6d::t_56ec0a39e5a0de 1-24
+packages/cli/src/__tests__/license.test.ts
+  s_d99f4099828f6d::t_061b95608fb4d3 232-282
+packages/cli/test/migration/1784000000045-create-usage-report-checkpoint-table.test.ts
+  s_d99f4099828f6d::t_617727ac70088b 1-6,8,12-14,19-20,22-26,28-30,34,37
+  s_d99f4099828f6d::t_402696754f7078 7,9-11,15-18,21,27,31-33,35-36,38-61
+packages/cli/src/modules/usage-report/usage-report-crypto.util.ts
+  s_d99f4099828f6d::t_3cb7809d9098b1 136
+  s_d99f4099828f6d::t_0e5addb16c3f1e 1-12,14-135,137
+  s_d99f4099828f6d::t_4c93c3d6148c32 13
+  s_d99f4099828f6d::t_b54d00690810cd 138-140
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_d99f4099828f6d::t_ddba4f89a11879 36
+packages/cli/src/modules/usage-report/usage-report.module.ts
+  s_d99f4099828f6d::t_049b9407e939e1 1-30
+packages/cli/src/license.ts
+  s_d99f4099828f6d::t_e891f32ae45be2 420-441
+packages/cli/src/modules/usage-report/database/repositories/usage-report-checkpoint.repository.ts
+  s_d99f4099828f6d::t_cfb3b04b53529b 1-24
+packages/cli/src/controllers/e2e.controller.ts
+  s_d99f4099828f6d::t_46399a9d0b6719 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "70bd63e0b4131838f44853866385bedfd0ca91ed",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d99f4099828f6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa1468be-da33-4332-8d21-79f895f10bbb",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

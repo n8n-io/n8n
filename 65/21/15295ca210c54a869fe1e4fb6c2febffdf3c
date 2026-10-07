@@ -1,0 +1,21 @@
+docs/generated/postgres-schema/public.agent_eval_result.md
+  ai_agent 1-99
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 9,51-52,107-133
+docs/generated/postgres-schema/public.agent_eval_run.md
+  ai_agent 1-138
+docs/generated/postgres-schema/README.md
+  ai_agent 13-16,157-164,346-399
+docs/generated/postgres-schema/public.agent_eval_rating.md
+  ai_agent 1-93
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,50-52,97-133
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  ai_agent 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "652115295ca210c54a869fe1e4fb6c2febffdf3c",
+  "prompts": {}
+}

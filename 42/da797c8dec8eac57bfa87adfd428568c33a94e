@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.vue
+  s_756f30de40ce04::t_4fced39c9e8e60 28-32,34
+  s_756f30de40ce04::t_dfa3b64197ccef 12-16,33
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.test.ts
+  s_756f30de40ce04::t_376d53f3175d7b 89,94-105
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_756f30de40ce04::t_cabb9e4d38ec9b 5404-5406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42da797c8dec8eac57bfa87adfd428568c33a94e",
+  "prompts": {},
+  "sessions": {
+    "s_756f30de40ce04": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5124076b-1e6f-483c-b0cd-314e9eaa9724",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

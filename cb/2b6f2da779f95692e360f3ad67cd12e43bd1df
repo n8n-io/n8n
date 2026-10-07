@@ -1,0 +1,21 @@
+packages/cli/src/webhooks/__tests__/webhook.service.test.ts
+  s_d8b0b9f692c6f3::t_d36f9740effc70 10-15,598-636
+packages/workflow/src/interfaces.ts
+  s_d8b0b9f692c6f3::t_29519a7884d541 3013
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cb2b6f2da779f95692e360f3ad67cd12e43bd1df",
+  "prompts": {},
+  "sessions": {
+    "s_d8b0b9f692c6f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_d8b0b9f692c6f3",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

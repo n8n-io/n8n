@@ -1,0 +1,38 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_085c0b1c9b4239::t_0176a57ef9c735 2139-2140
+packages/frontend/editor-ui/src/features/environments/environments.store.ts
+  s_085c0b1c9b4239::t_9d57ed13abbcfd 173
+  s_085c0b1c9b4239::t_5c822ab650f5b6 138-158
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_085c0b1c9b4239::t_9f66ff1192acc6 123-201
+  s_085c0b1c9b4239::t_3610b1a98c4d33 901
+  s_085c0b1c9b4239::t_1844fee28b19ac 41
+  s_085c0b1c9b4239::t_78408d1d75fb10 961,970-972
+  s_085c0b1c9b4239::t_f41b00b747714d 1358-1361
+  s_085c0b1c9b4239::t_2859367daa0f1c 326
+  s_085c0b1c9b4239::t_958aab7a4218d5 832-836
+  s_085c0b1c9b4239::t_cf7f2dd3f3dabf 424-429
+  s_085c0b1c9b4239::t_fc979174f501a4 853-871
+  s_085c0b1c9b4239::t_1f3fcd9bd5c9aa 933
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "d866167349b6e124b26b81ff72edc7ba19508362",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_085c0b1c9b4239": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85aaad12-49a1-4786-b4d4-865dfc15cb86",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

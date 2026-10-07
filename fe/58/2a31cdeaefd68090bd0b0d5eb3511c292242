@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_a5409503c848af::t_de90cb28f93b57 2256
+  s_a5409503c848af::t_b429190c9d77c3 1699
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "fe582a31cdeaefd68090bd0b0d5eb3511c292242",
+  "prompts": {},
+  "sessions": {
+    "s_a5409503c848af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbf70c02-d532-424d-ae5c-2092247a5d05",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

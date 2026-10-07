@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_b221f3f61b7709::t_8a1554f1577187 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "69b2bbd46cc473f925d32c386645864ac05916d5",
+  "prompts": {},
+  "sessions": {
+    "s_b221f3f61b7709": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb402-083b-7fe2-b911-7b051bf5ba72",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  s_2fc564e3187e71::t_a06b2ef0115ba4 29-39,41
+  s_8b86eb076521e6::t_2262bf27071b5a 5-8,21
+packages/cli/src/scheduling/system-tasks/system-task-run-observer.ts
+  s_2fc564e3187e71::t_a06b2ef0115ba4 1-2,4-7,17-20,23-26,30,33-34,36,48-54
+  s_2fc564e3187e71::t_49158a1f6c5075 8-16,37-47
+  s_2fc564e3187e71::t_a334ec5620771d 35
+  s_8b86eb076521e6::t_2262bf27071b5a 3,21-22,27-29,31-32,55
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 12-13,43,56,68
+  s_8b86eb076521e6::t_b12b642dc00445 870-916,918-972,974-975,977-978,993-1052,1055-1129
+  s_2fc564e3187e71::t_d59c9ebb920408 973,976,979-992,1053-1054
+  s_2fc564e3187e71::t_b5cee77d497a1e 917
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-job-registrar.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 12,145,153,155,208-219
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 6-7,19,25,33,91,157-197,215-230
+  s_2fc564e3187e71::t_d59c9ebb920408 138-149
+  s_2fc564e3187e71::t_b5cee77d497a1e 198-214
+packages/cli/src/scheduling/system-tasks/system-task-job-registrar.ts
+  s_2fc564e3187e71::t_d59c9ebb920408 15
+  s_2fc564e3187e71::t_441512006aceab 94-97
+  s_8b86eb076521e6::t_2262bf27071b5a 11-12,65
+packages/cli/test/integration/scheduling/system-task-provisioning.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 13,178
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  s_8b86eb076521e6::t_566ea3a748b429 84-108
+  s_2fc564e3187e71::t_b5cee77d497a1e 109-124
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_2fc564e3187e71::t_d59c9ebb920408 23
+  s_2fc564e3187e71::t_441512006aceab 363-365
+  s_2fc564e3187e71::t_40efaaf7a6475e 368-372
+  s_8b86eb076521e6::t_bd1c1d4166fb7f 374-377
+  s_8b86eb076521e6::t_2262bf27071b5a 19-21,26,85,225-230,246-247,274,276-278,281,286,288-291,310,336,341-344,366-367
+  s_2fc564e3187e71::t_aee555b2935744 218-219,235-238,248
+  s_2fc564e3187e71::t_a06b2ef0115ba4 121,147,234,245,275,287,345-348,373
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  s_8b86eb076521e6::t_2262bf27071b5a 14-15,17-18,29,109
+  s_2fc564e3187e71::t_aee555b2935744 107
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-run-observer.test.ts
+  s_2fc564e3187e71::t_551722c9f1c186 1-13,16-33
+  s_2fc564e3187e71::t_9ab108a2c505ff 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa8ef37ea12288f38071e26299d6da2cc05e3143",
+  "prompts": {},
+  "sessions": {
+    "s_2fc564e3187e71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43cbfc44-a81b-4873-b6bf-317bdcb62056",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_8b86eb076521e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f155d013-6503-4c9b-bdf2-af0961d3e187",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

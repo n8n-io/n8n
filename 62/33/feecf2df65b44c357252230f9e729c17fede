@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/core/auth/views/ConfirmEmailChangeView.test.ts
+  s_0990e06268d89b::t_d715afa3a45695 48-50
+  s_0990e06268d89b::t_50ba5c4c22183d 59
+  s_0990e06268d89b::t_0aca52a754e7e3 68-69
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.test.ts
+  s_0990e06268d89b::t_6cb49d719e2b05 126-152
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_0990e06268d89b::t_232ce9fcf0097c 57
+  s_0990e06268d89b::t_485f267a7c869a 391
+  s_0990e06268d89b::t_8bae2c68587a5d 245-247
+packages/frontend/editor-ui/src/features/core/auth/views/ConfirmEmailChangeView.vue
+  s_0990e06268d89b::t_9799673cd324a1 45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6233feecf2df65b44c357252230f9e729c17fede",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0990e06268d89b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fab127da-d600-430b-b385-5c5b5a437d66",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

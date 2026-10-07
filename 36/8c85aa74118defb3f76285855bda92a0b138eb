@@ -1,0 +1,36 @@
+packages/@n8n/workflow-sdk/src/generate-types/schema-coverage-cli.ts
+  s_be6d12de03f718::t_b534e45e3163f9 1-34
+packages/@n8n/workflow-sdk/src/generate-types/schema-coverage.test.ts
+  s_be6d12de03f718::t_b534e45e3163f9 1-196
+packages/@n8n/workflow-sdk/src/generate-types/schema-coverage.ts
+  s_be6d12de03f718::t_b534e45e3163f9 1-133
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.test.ts
+  s_be6d12de03f718::t_b534e45e3163f9 1-310
+packages/@n8n/workflow-sdk/package.json
+  s_be6d12de03f718::t_b534e45e3163f9 58-59
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.ts
+  s_be6d12de03f718::t_b534e45e3163f9 1-292
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest-cli.ts
+  s_be6d12de03f718::t_b534e45e3163f9 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "368c85aa74118defb3f76285855bda92a0b138eb",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

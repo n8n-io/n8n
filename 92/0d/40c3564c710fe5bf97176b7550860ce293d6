@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/goal-graph/__tests__/expressions.test.ts
+  s_024ce339f8a2d8::t_e39c53c1e5d8c1 76-86
+packages/cli/src/modules/agents/goal-graph/expressions.ts
+  s_024ce339f8a2d8::t_e39c53c1e5d8c1 130,132-135,155-156,162-165
+  ai_agent 157-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "920d40c3564c710fe5bf97176b7550860ce293d6",
+  "prompts": {},
+  "sessions": {
+    "s_024ce339f8a2d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff99e9f6-00f9-4dbe-a810-20f8921a1504",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

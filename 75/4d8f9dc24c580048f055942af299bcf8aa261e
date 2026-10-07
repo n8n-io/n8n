@@ -1,0 +1,22 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_52a6680ca581de::t_9fa30b38596f45 1436-1552
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_52a6680ca581de::t_5fa288c8c64ace 651
+  s_52a6680ca581de::t_518a0d29d378e9 625-650,652-677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "754d8f9dc24c580048f055942af299bcf8aa261e",
+  "prompts": {},
+  "sessions": {
+    "s_52a6680ca581de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b22a0e5-3b38-4d39-a4e1-9ab25b68e9a0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

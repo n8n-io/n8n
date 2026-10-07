@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_2befc5b848a61f::t_09faf5eb873c57 9,632-651,778-786,806-810
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2befc5b848a61f::t_09faf5eb873c57 7388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2a1363657b9dbe90972cbbc7e7aa1a761a09cc7f",
+  "prompts": {},
+  "sessions": {
+    "s_2befc5b848a61f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd4a7712-be19-4f96-8a57-1fa2c72164a3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

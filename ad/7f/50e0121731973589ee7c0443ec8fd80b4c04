@@ -1,0 +1,29 @@
+packages/cli/src/modules/breaking-changes/rules/v3/agent-node-version.rule.ts
+  s_e8da077d6e2537::t_13d460f70b18b9 15-16,25,27,29,41,51-52,59-65
+  s_e8da077d6e2537::t_ba2deda057f262 6
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/agent-removed-modes.rule.test.ts
+  s_e8da077d6e2537::t_2a86726c91a96a 1-119
+packages/cli/src/modules/breaking-changes/rules/v3/agent-node-mode.ts
+  s_e8da077d6e2537::t_b4aa3f748689e1 1-36
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_e8da077d6e2537::t_70a3d40a03b526 24
+packages/cli/src/modules/breaking-changes/rules/v3/agent-removed-modes.rule.ts
+  s_e8da077d6e2537::t_ba2deda057f262 6
+  s_e8da077d6e2537::t_a3fce3634528d1 1-5,7-24,26-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad7f50e0121731973589ee7c0443ec8fd80b4c04",
+  "prompts": {},
+  "sessions": {
+    "s_e8da077d6e2537": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02fb29ee-32a9-4c64-8682-ff413bf860e0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

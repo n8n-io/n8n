@@ -1,0 +1,28 @@
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.schema.id.yml
+  s_4421161553e71a::t_37813ae2a7bfaa 6
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.transfer.yml
+  s_4421161553e71a::t_47f86827ce5341 6
+packages/cli/src/public-api/v1/openapi.yml
+  s_4421161553e71a::t_e0a7f7c05fb558 30
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.yml
+  s_4421161553e71a::t_0eda6e51dabd7e 6
+  s_4421161553e71a::t_00ea81e61362ad 42
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.yml
+  s_4421161553e71a::t_f78b84ca59fde8 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a34f41d58b72bf9761fc9adf358017a36f42a492",
+  "prompts": {},
+  "sessions": {
+    "s_4421161553e71a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97ed6b28-9179-4056-8a15-f21b8c407909",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

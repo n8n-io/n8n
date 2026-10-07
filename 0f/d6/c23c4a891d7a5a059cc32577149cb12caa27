@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_27bf8a929ab032::t_f529547f3aed26 3-5,8,13,19,25,29-35,37-38,40-41,45-145
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_27bf8a929ab032::t_4bf575a6431a1d 1450-1530
+  s_27bf8a929ab032::t_6cc58a33e76093 30
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_27bf8a929ab032::t_93864721dff5a0 153-154,160-164,166-168
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.ts
+  s_27bf8a929ab032::t_702d11b4628bde 4-8,10-19,21,26-30,32-33,38-40
+  s_27bf8a929ab032::t_ede9aad39b823e 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "0fd6c23c4a891d7a5a059cc32577149cb12caa27",
+  "prompts": {},
+  "sessions": {
+    "s_27bf8a929ab032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57771f1a-68b5-48e6-a727-09b13409333e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

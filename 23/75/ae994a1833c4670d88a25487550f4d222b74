@@ -1,0 +1,46 @@
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_578c591731c26a::t_82919e4267c6aa 119-138,145,159-166
+  s_578c591731c26a::t_fed100d2f6c2ee 219
+  s_578c591731c26a::t_9e839c52b410fa 17-21
+  s_578c591731c26a::t_7e49c30ae7374a 216-218,220-226
+  s_578c591731c26a::t_a0380efcd62657 215
+  s_578c591731c26a::t_7d2dc489ebc8a5 170,239,241
+packages/@n8n/agents/src/runtime/streaming/stream-stall.ts
+  s_578c591731c26a::t_aa0dd2e36b9f9a 1-24,33-40,42-44,46-47,49-56,64-72,74-92
+  s_578c591731c26a::t_1a51dd4fd9a4a4 57-63
+  s_578c591731c26a::t_59b247448d8b16 73
+  s_578c591731c26a::t_999603cbedfa9e 25-32,41,45,48
+packages/@n8n/agents/src/index.ts
+  s_578c591731c26a::t_fa20b388de55d2 123-125
+  s_578c591731c26a::t_78b54008734b73 122
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-stall.test.ts
+  s_578c591731c26a::t_056ebc6741dd82 1-17,19-30,45-55,62-65,67-96,98-121,128-130,132-134
+  s_578c591731c26a::t_be00ad9c2c9073 18
+  s_578c591731c26a::t_01dffbf22fa688 31-44
+  s_578c591731c26a::t_d03e9084dabe6c 56-61,66
+  s_578c591731c26a::t_853e24022b39d6 122-127,131
+  s_578c591731c26a::t_8d9ed671e33864 97
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_578c591731c26a::t_c33059670651d1 191-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2375ae994a1833c4670d88a25487550f4d222b74",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_578c591731c26a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0beb087-0899-47b2-bb3e-38ff260bc0ec",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

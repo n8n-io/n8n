@@ -1,0 +1,77 @@
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_4499a4f322c2c0::t_4091ae476dd32b 10
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_4499a4f322c2c0::t_1e2a5fa3fd2bf4 10
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_4499a4f322c2c0::t_099366935c0c8d 12
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_4499a4f322c2c0::t_ddcea0872cad27 5
+packages/frontend/editor-ui/src/app/init.ts
+  s_4499a4f322c2c0::t_f498cef2139e8e 16
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_4499a4f322c2c0::t_bf2582570ab32f 11
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/stores/credentialsAppSelection.store.test.ts
+  s_4499a4f322c2c0::t_f2e28877ffabb8 26
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/stores/credentialsAppSelection.store.ts
+  s_4499a4f322c2c0::t_26316734c9e4a5 3
+packages/frontend/editor-ui/src/experiments/personalizedTemplates/stores/personalizedTemplates.store.ts
+  s_4499a4f322c2c0::t_9a067535dfc558 8
+packages/frontend/editor-ui/src/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store.ts
+  s_4499a4f322c2c0::t_e078052f6ff914 4
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store.ts
+  s_4499a4f322c2c0::t_f1365ca99495c8 3
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store.ts
+  s_4499a4f322c2c0::t_dfc6f2ab57d853 2
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility.test.ts
+  s_4499a4f322c2c0::t_a52a36c85352f7 15
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility.ts
+  s_4499a4f322c2c0::t_3fa86db6312708 1
+packages/frontend/editor-ui/src/experiments/templateRecoV2/stores/templateRecoV2.store.ts
+  s_4499a4f322c2c0::t_e8e89a392d5800 3
+packages/frontend/editor-ui/src/experiments/utils.test.ts
+  s_4499a4f322c2c0::t_2c5d3be6989a7d 18
+packages/frontend/editor-ui/src/experiments/utils.ts
+  s_4499a4f322c2c0::t_d0b42480ce0224 3
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.test.ts
+  s_4499a4f322c2c0::t_fda43284ea2df1 19
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.vue
+  s_4499a4f322c2c0::t_48c87b462cf336 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_4499a4f322c2c0::t_85e766def1067b 21
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_4499a4f322c2c0::t_92adbab2403b31 280
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_4499a4f322c2c0::t_5c831e41c4f00f 20
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.test.ts
+  s_4499a4f322c2c0::t_5db6455e415270 11
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_4499a4f322c2c0::t_e2b7ae514ae890 20
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_4499a4f322c2c0::t_fb7a4ad8d05c29 9
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_4499a4f322c2c0::t_fbd19a2294872d 10
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/EmailConfirmationBanner.vue
+  s_4499a4f322c2c0::t_c9c11ddb64b672 7
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.test.ts
+  s_4499a4f322c2c0::t_10a50898278d61 4
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.vue
+  s_4499a4f322c2c0::t_2141625bf823ee 4
+packages/frontend/editor-ui/src/features/workflows/templates/templates.store.ts
+  s_4499a4f322c2c0::t_4b0aba9da438d8 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "ac02e76565884afa1b42bf32426cee126fee4944",
+  "prompts": {},
+  "sessions": {
+    "s_4499a4f322c2c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be882bc9-335e-4bdf-b948-e7356564f28f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListEmptyState.vue
+  s_167f5a2407f9f5::t_c93944589e3029 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "71e5a8621c491339a57bb1eef76057316c287eb2",
+  "prompts": {},
+  "sessions": {
+    "s_167f5a2407f9f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69dd51d6-7911-4022-b187-68c7c1834e33",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

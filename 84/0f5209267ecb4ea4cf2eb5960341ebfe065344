@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_cc58d4474583da::t_457370bec8bb02 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "840f5209267ecb4ea4cf2eb5960341ebfe065344",
+  "prompts": {},
+  "sessions": {
+    "s_cc58d4474583da": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff187-8788-76d2-ac51-5297ef1e4d9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

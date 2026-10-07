@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  s_805dfaf49a4974::t_aced175c346cc4 294-318
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_805dfaf49a4974::t_8bafcaa76f03b9 192-193,195-200
+packages/@n8n/instance-ai/skills/probe-user/SKILL.md
+  s_805dfaf49a4974::t_c476ebcef4cfe0 87-97
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_805dfaf49a4974::t_927870bebb4d56 37-38,65
+  s_805dfaf49a4974::t_3883ad70b0eee5 12,57-61,66-69,218-221
+packages/@n8n/instance-ai/src/index.ts
+  s_805dfaf49a4974::t_3551021aefc32f 7,131-134,316
+  s_805dfaf49a4974::t_df935276302777 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "11681b1fccd60b9ebb99ced9a2604371f901e27b",
+  "prompts": {},
+  "sessions": {
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

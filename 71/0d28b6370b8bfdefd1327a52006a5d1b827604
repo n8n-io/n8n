@@ -1,0 +1,51 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_be6d12de03f718::t_b67f9465826bc6 3666-3667
+  s_be6d12de03f718::t_2dc42113483611 146
+  s_be6d12de03f718::t_56fa7f693bcaca 3676,3678-3682,3687-3688,3691-3743,3746-3752
+  s_be6d12de03f718::t_7f32e73487cb9c 495,505
+  s_be6d12de03f718::t_62b939560fe0c2 69
+  s_be6d12de03f718::t_f05806fab30e26 3673-3675
+  s_be6d12de03f718::t_d22aead69e7482 3677
+  s_be6d12de03f718::t_89f6ce8b97c4cb 3669-3672
+packages/cli/src/node-execution/execute-node.service.ts
+  s_be6d12de03f718::t_5d844bea85e38f 317-327
+packages/@n8n/instance-ai/src/types.ts
+  s_be6d12de03f718::t_c2393b52f93724 472-477
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_be6d12de03f718::t_22f0c19c54f42c 99-102
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_be6d12de03f718::t_feedf42af76db3 550
+  s_be6d12de03f718::t_2447910474fec2 84
+  s_be6d12de03f718::t_0579ca557af445 544-549,551-614
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_be6d12de03f718::t_8de087e92a4d37 441,453-466
+  s_be6d12de03f718::t_2c2fcf3b1f318a 467
+packages/@n8n/instance-ai/docs/tools.md
+  s_be6d12de03f718::t_5b65f65f575076 786-788
+  s_be6d12de03f718::t_94fef9e0ddf6b3 817-821
+  s_be6d12de03f718::t_ff6e0b5b1a7aaa 695,699
+  s_be6d12de03f718::t_8f5dd85b334836 810
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_be6d12de03f718::t_68d8bb66aeca2a 301-315
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_be6d12de03f718::t_414e8bf82a6049 511-527
+packages/@n8n/instance-ai/skills/one-off-operations/SKILL.md
+  s_be6d12de03f718::t_2f19a2f90589d3 69-71,77-79
+  s_be6d12de03f718::t_a9bd205cd80b26 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "710d28b6370b8bfdefd1327a52006a5d1b827604",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

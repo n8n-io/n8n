@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FixedCollection/FixedCollectionItem.vue
+  s_75d4b883e37547::t_0c66891c5e930e 152-153
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_75d4b883e37547::t_d8648922838033 165-166,505,1288,1317,1349
+  s_75d4b883e37547::t_a425d7f7900864 5
+  s_75d4b883e37547::t_2179c49cdb5d56 251,255-257
+  s_75d4b883e37547::t_930dc5826e6897 419,421,427
+  s_75d4b883e37547::t_23fbf08157adcc 141-147
+  s_75d4b883e37547::t_066c66c6c24b5e 148
+  s_75d4b883e37547::t_f4dc90672525f0 443,455,469
+  s_75d4b883e37547::t_87202e9b55ab77 445,447,453-454,456,463,465,470
+  s_75d4b883e37547::t_a7a87f98ee70a0 504,1287,1316,1348
+  s_75d4b883e37547::t_516f139fbc46d8 1680,1682,1689,1692,1704,1713
+  s_75d4b883e37547::t_f6f14bcf908309 1635,1661,1667,1669
+  s_75d4b883e37547::t_c0288f87178e3f 41-44
+  s_75d4b883e37547::t_f48f7c1843b13b 2
+  s_75d4b883e37547::t_5801c64cc99f47 149-155
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_75d4b883e37547::t_f82ff6f5e178b6 11
+  s_75d4b883e37547::t_4d03f5f6ce50ff 874
+  s_75d4b883e37547::t_6706102850c157 955
+packages/frontend/editor-ui/src/features/ndv/parameters/components/Collection/CollectionParameter.test.ts
+  s_75d4b883e37547::t_a7923eff6adf36 3-10,22-46,52-53,55-56,59-70,72-73,75,77-82,84-85,91-96,98-155,158-233,236-408,411-412,414,417-426,429-432,436,440-444,446-448,451-468,471-472,474,477-480,483-485,488-512,514-538,541-570
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.vue
+  s_75d4b883e37547::t_e0c7daa6c53404 137
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_75d4b883e37547::t_cc4e44ee296afa 2066,2083
+  s_75d4b883e37547::t_236ba6b99ef915 705
+  s_75d4b883e37547::t_84b74ae18f74ab 103
+packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_75d4b883e37547::t_9e1a19f8f20e31 773
+  s_75d4b883e37547::t_ae3e19956626d4 384
+  s_75d4b883e37547::t_1ee8edf438d2d5 283,288
+  s_75d4b883e37547::t_121c469d4ffaa3 99
+  s_75d4b883e37547::t_a1cf7d9b30c638 793-794
+  s_75d4b883e37547::t_db01c6e4421e1b 777-779
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FixedCollection/FixedCollectionParameter.test.ts
+  s_75d4b883e37547::t_a7923eff6adf36 7-9,22,32-40,76,79-81,83-129,132-139,141-143,145-155,157-228,231-238,240-261,263-266,268-287,290-292,294-331,333-343,345-388,390-439,442-454,456-458,460-481,483-958
+packages/frontend/editor-ui/src/features/ndv/parameters/components/Collection/CollectionParameter.vue
+  s_75d4b883e37547::t_14fc543be72bda 2-3,6-13,15-32,48-264,268-332,334-398,400-429
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FixedCollection/FixedCollectionParameter.vue
+  s_75d4b883e37547::t_c20ec632fa567e 2-30,32-35,55-61,67-578,582-877,879-909
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "db00ccb7639826c22c425501807d3480880479ac",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_75d4b883e37547": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2d102c8-f4ed-4d73-af45-43e476cfaf90",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

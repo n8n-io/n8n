@@ -1,0 +1,40 @@
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_a30166418b3128::t_10a5e398167a88 282-294,296-302,304-309,311-314,316-321
+  h_32d8cd6a0d6aad 295,303,310,315
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_a30166418b3128::t_9eddd92226773e 84
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_a30166418b3128::t_df5c80cc572772 1090,1092
+  h_32d8cd6a0d6aad 1093,1103
+  s_a30166418b3128::t_1c1ac84784b0ca 1089,1094-1100,1102,1104-1105
+  s_a30166418b3128::t_0f0d7fcf24835c 1091
+  s_a30166418b3128::t_df268dc5d98154 1101
+packages/cli/src/security-audit/risk-reporters/credentials-risk-reporter.ts
+  s_a30166418b3128::t_1c1ac84784b0ca 2,13,23,25,119,125-126
+  h_32d8cd6a0d6aad 22,118,121,129,133,136
+  s_a30166418b3128::t_2941805f64ac61 130-132,134
+packages/cli/test/integration/security-audit/credentials-risk-reporter.test.ts
+  s_a30166418b3128::t_f350b27a63faa0 310
+  s_a30166418b3128::t_574b94101ac15a 259-309,311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab96f07a5ce260fab64e9cde35ffa3421b6e067b",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a30166418b3128": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef0c8dae-286a-4882-8e9e-dcbdc0cb30a4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

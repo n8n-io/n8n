@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_6ce85d4a1f6067::t_e7f755054af98a 477
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_6ce85d4a1f6067::t_e7f755054af98a 233
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_6ce85d4a1f6067::t_e7f755054af98a 49
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_6ce85d4a1f6067::t_e7f755054af98a 576,623
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_6ce85d4a1f6067::t_e7f755054af98a 478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "455642995bc08ee2896af03c11262e66e5fe7be4",
+  "prompts": {},
+  "sessions": {
+    "s_6ce85d4a1f6067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a4c4-d4ab-7d52-b983-c70679bb264f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

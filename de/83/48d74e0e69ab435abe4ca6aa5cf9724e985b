@@ -1,0 +1,24 @@
+packages/cli/src/modules/mcp/__tests__/create-workflow-from-code.tool.test.ts
+  s_418b8ffdd3bbde::t_6dcb5d68c19f60 483-511
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_418b8ffdd3bbde::t_a04834f3c1852f 3340
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_418b8ffdd3bbde::t_4af6c91d340cfd 465-473
+  s_418b8ffdd3bbde::t_319b1ccb4d829f 503-504
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de8348d74e0e69ab435abe4ca6aa5cf9724e985b",
+  "prompts": {},
+  "sessions": {
+    "s_418b8ffdd3bbde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d67fd248-8dd1-4b4e-831f-13262d231518",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

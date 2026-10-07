@@ -1,0 +1,43 @@
+packages/@n8n/ai-utilities/src/model-discovery/providers/groq.ts
+  s_70fb4223a7d1db::t_b46b6c2150c678 1-16
+packages/@n8n/ai-utilities/src/model-discovery/providers/openai.ts
+  s_70fb4223a7d1db::t_9ac375593a952b 1-39
+packages/@n8n/ai-utilities/src/model-discovery/providers/mistral.ts
+  s_70fb4223a7d1db::t_abf38b9cd8b35b 1-16
+packages/@n8n/ai-utilities/src/model-discovery/providers/nvidia.ts
+  s_70fb4223a7d1db::t_0b97d6d58df8fe 1-27
+packages/@n8n/ai-utilities/src/model-discovery/providers/deepseek.ts
+  s_70fb4223a7d1db::t_8d28300d4d75c9 1-4
+packages/@n8n/ai-utilities/src/model-discovery/providers/vercel.ts
+  s_70fb4223a7d1db::t_6176a74c078154 1-4
+packages/@n8n/ai-utilities/src/model-discovery/providers/google.ts
+  s_70fb4223a7d1db::t_859e0f428bba38 1-27
+packages/@n8n/ai-utilities/src/model-discovery/providers/openrouter.ts
+  s_70fb4223a7d1db::t_153d6a5cbf516c 1-7
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_70fb4223a7d1db::t_65e5cc699c042e 1-11,19-23,54-64
+packages/@n8n/ai-utilities/src/model-discovery/providers/xai.ts
+  s_70fb4223a7d1db::t_117c73c699b43a 1-4
+packages/@n8n/ai-utilities/src/model-discovery/providers/anthropic.ts
+  s_70fb4223a7d1db::t_01d6699cd800e5 1-17
+packages/@n8n/ai-utilities/src/model-discovery/providers/cohere.ts
+  s_70fb4223a7d1db::t_02a64be14d5e8c 1-17
+packages/@n8n/ai-utilities/src/model-discovery/request.ts
+  s_70fb4223a7d1db::t_0b3e5571deecdf 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f6ec816edaaa2725fd675862b023e8723c4d4ec8",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

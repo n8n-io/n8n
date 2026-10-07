@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_bf228004167ea9::t_bd6ef141adc7b8 13
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_bf228004167ea9::t_bf0ed0062ab405 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e1543c2418254bce304f25744c8c40c76fc1e7e9",
+  "prompts": {},
+  "sessions": {
+    "s_bf228004167ea9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fb2a365-6374-498a-a0af-584989e16ac7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

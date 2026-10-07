@@ -1,0 +1,23 @@
+packages/workflow/src/expression.ts
+  s_787a5906beeff1::t_dc88d86df505de 657-661
+packages/workflow/test/node-parameters/request-field-expression.test.ts
+  s_787a5906beeff1::t_2c5c00416ecc38 28,142-144
+packages/workflow/test/trusted-template.test.ts
+  s_787a5906beeff1::t_2bc20121e6c9dd 103-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4de0033a132d0d878ec3d13d8de2af47b0e43871",
+  "prompts": {},
+  "sessions": {
+    "s_787a5906beeff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_787a5906beeff1",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

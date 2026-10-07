@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_95c73d897a5d27::t_567ad05947b226 2272,2330-2334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9d29e70160555cf0ab00ef91c0eaec957e3ce7e8",
+  "prompts": {},
+  "sessions": {
+    "s_95c73d897a5d27": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a966-e367-7d72-a4cb-5df670f59db3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  ai_agent 1-37
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  ai_agent 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66a93b3d4184b99448192f6c548df45fe3714a64",
+  "prompts": {}
+}

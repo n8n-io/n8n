@@ -1,0 +1,115 @@
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 39,47-78
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 90,103,226-228,253-264,316-344
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 18-21,120-204
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 1-256
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 281-285,291,300-302,309
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/lets-a-real-parent-agent-call-delegate-subagent-and-use-its-result.json
+  s_19f94c3f95a069::t_0e033b5ddd169f 12,73,75-80,83-86,88,92-93,95,97,122,129,131-136,139-142,144,148-149,151,153,169,191,197,210-211,263,265-270,273-276,278,282-283,285,287
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 26,259,281-285,292
+packages/core/src/nodes-loader/scan-directory-for-packages.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 1-2,29-49
+packages/core/src/execution-engine/workflow-active-triggers-state.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 17-33
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 3,8-9,46-59,82,84-85,133-150,171-172,348-541
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 72-79
+packages/@n8n/instance-ai/evaluations/data/workflows/whatsapp-faq-assistant.json
+  s_19f94c3f95a069::t_0e033b5ddd169f 1-54
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 91-131
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 595-596
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderTelemetry.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 7,25-38,85-100
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 15
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-json-config.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 53-59,74,381,389-417,449,571,582
+packages/cli/src/modules/agents/__tests__/agent-telemetry.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 44
+packages/testing/playwright/tests/e2e/mcp-registry/mcp-registry.spec.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 4,9
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 47-52
+packages/cli/src/modules/agents/utils/sub-agent-resolver.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 4-7,13,16,18-20,23,26-30
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 2135-2141
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 191-225
+packages/@n8n/agents/src/__tests__/integration/tool-call-upsert.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 11-15,78-79,88-89,92-93,95-96,142,144-146,210-212,214-220
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 15,19-56,266-268,272-276
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_19f94c3f95a069::t_0e033b5ddd169f 4,17,19,55,59,65-67,100-123,158-161,344-359,365-411,449,493-496,517,529,569,597-631,642,722-723
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_19f94c3f95a069::t_0e033b5ddd169f 6,8-9,13,24-26,28-37,40-41,50-72,78-80,83-86,89-92,95-96,98-101,115-117,122,127-139,141-142,144,147-149,152,156-167,171-178,187-220,223,225-231,234-237,239,241-253,274-278,282,286-288,290,293-298,302,305,314,318-344,347-351
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 41
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 706-717,793-856,4305-4311,4805,4813-4817
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 197,283,351-352
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 189-195
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 21
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 273,283,294,301-303,312,327,480,492,494-497,503,522-525,541-586
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_19f94c3f95a069::t_0e033b5ddd169f 117
+packages/core/src/nodes-loader/__tests__/scan-directory-for-packages.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 1-106
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 15,20-26,56,58,366-371,381-414,416-418,461-470,527-551,571-575
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 49
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 152-188,273,585-594,596-603
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_19f94c3f95a069::t_0e033b5ddd169f 125,130,285-286,288-298,300-313,315,458,489,633
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/stream-emits-sub-agent-lifecycle-chunks-and-events.json
+  s_19f94c3f95a069::t_0e033b5ddd169f 12,76,79-84,87-90,93,98-99,101,103,136,138-143,146-149,151,155-156,158,160,176,198,217-218,273,276-281,284-287,290,295-296,298,300
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_19f94c3f95a069::t_0e033b5ddd169f 6714,6716-6717,6721-6725,6737,6742-6744,6746-6747
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_19f94c3f95a069::t_0e033b5ddd169f 10,173-185
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 1-2,10-17,159-161,182-183,185,191-216
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 755-757,785-786
+packages/cli/src/modules/agents/builder/skills/sub-agents.skill.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 51,54-61,68-73,79-87,91,119
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 13-18,943-999,1047-1116
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 72,289,300
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 3260,4088,4153,4572,4602,4616,4621,4638-4645
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_19f94c3f95a069::t_0e033b5ddd169f 7,48-51,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c23904dd5debd51b6d09ccae73d656eb96c67ffc",
+  "prompts": {},
+  "sessions": {
+    "s_19f94c3f95a069": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efa48-60c0-71e3-8399-a06a23fbb7b2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

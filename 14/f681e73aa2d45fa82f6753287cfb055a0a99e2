@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_95c73d897a5d27::t_0e13d8c2925ea4 2313-2339
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_95c73d897a5d27::t_122043990cbe75 10,2127-2139,2363-2368,2374-2378
+  s_d27d09d94cc9ff::t_6c6fd5213e2902 2379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "14f681e73aa2d45fa82f6753287cfb055a0a99e2",
+  "prompts": {},
+  "sessions": {
+    "s_95c73d897a5d27": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a966-e367-7d72-a4cb-5df670f59db3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

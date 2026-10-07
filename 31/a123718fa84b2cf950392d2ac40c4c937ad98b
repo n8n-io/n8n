@@ -1,0 +1,30 @@
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-preferences.dto.test.ts
+  s_2138fd2cfb76ec::t_0444048e029748 4-11
+  s_2138fd2cfb76ec::t_5696f56ccb54be 12-27,30-38,40-57,60-63,66-73,75-80,82-90,93,95-102,105,107-115,117,119-120,122,124-127,129-137,139-141,143-144,146-161
+  s_2138fd2cfb76ec::t_b85bbc31f3bf21 213
+  s_2138fd2cfb76ec::t_a955383b4e3f2b 167-175,177-188,190-194,196-202,205-212,214-216
+  s_2138fd2cfb76ec::t_309866ba50efa7 1
+packages/@n8n/api-types/src/__tests__/helpers/zod-object-keys-match.ts
+  s_2138fd2cfb76ec::t_b59d10d56f715a 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "31a123718fa84b2cf950392d2ac40c4c937ad98b",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2138fd2cfb76ec": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "02c0a3d3-b542-4d3c-b40c-957149418e2d",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

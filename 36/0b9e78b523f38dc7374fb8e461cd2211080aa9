@@ -1,0 +1,177 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_82508c87469e04::t_fdc6ed92e2e1de 564-583
+  s_82508c87469e04::t_f0e3593f347855 19-20
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_82508c87469e04::t_cd5ca3cfcdcfb2 60-67
+  s_82508c87469e04::t_a40302aa4d1b83 133-137
+  s_82508c87469e04::t_b7b2482e45c1fa 204-205
+  s_82508c87469e04::t_b45cf0b409552d 244
+  s_82508c87469e04::t_4dc9e5cc0fca15 284-288
+  s_82508c87469e04::t_7d90492e2f54de 311-318
+  s_82508c87469e04::t_9d454b9c281f79 129-132,138
+  s_82508c87469e04::t_e24867908e8f7a 373
+  s_82508c87469e04::t_95086a97a3882e 22,24,41,54-59
+  s_82508c87469e04::t_a74831c0e76ef5 501
+  s_82508c87469e04::t_60cf88d843780e 148-149
+  s_82508c87469e04::t_122dfbae359b65 499-500,502-510
+  s_82508c87469e04::t_ef77c91f04a6da 409-420
+packages/frontend/editor-ui/src/features/agents/__tests__/ToolIoView.spec.ts
+  s_82508c87469e04::t_d4713772146fc7 129-142
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_82508c87469e04::t_a6d2b96ab18bba 489,498
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_82508c87469e04::t_6f06b9ccf88ec1 136-137
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_82508c87469e04::t_fcd3f9c39206e1 65
+  s_82508c87469e04::t_345c98c47c4346 21
+  s_82508c87469e04::t_536e352908ba8d 97,112
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_82508c87469e04::t_6c87cf9b3989b0 57-58
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_82508c87469e04::t_2e93dd0a533946 30
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_82508c87469e04::t_3d7a307e48acc5 89
+  s_82508c87469e04::t_0e8a99f911a750 132-133
+  s_82508c87469e04::t_a8d0e0246646b1 122
+  s_82508c87469e04::t_a97cfac9de0d08 17,26
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_82508c87469e04::t_48de53010c57a7 583,595,605-608,620-630,653,663,668-672,679,686,691-695
+  ai_agent 596-604,664-667,687-690
+  s_82508c87469e04::t_8fd7f5eec35ffe 414-418,434
+  s_82508c87469e04::t_f690d1a62b8981 8-15
+  s_82508c87469e04::t_1774feb9724002 475
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_82508c87469e04::t_1d77c17948b016 438
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_82508c87469e04::t_addce435080366 182-185
+  s_82508c87469e04::t_8e5786d9479e2d 57
+  s_82508c87469e04::t_e7d29752e9b01a 32
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_82508c87469e04::t_64055b3b0427b8 35
+packages/cli/src/modules/agents/json-config/__tests__/reconcile-node-tool-mocks.test.ts
+  s_82508c87469e04::t_e21a56e319eec7 191-195
+  s_82508c87469e04::t_aa5be6517c8972 1-69,75-128,134-140,146-190,196-199,205-238
+  ai_agent 70-74,129-133,141-145,200-204
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_82508c87469e04::t_ca9c1dbc663090 199-201
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_82508c87469e04::t_78551205f23bb6 3-4,6
+  s_82508c87469e04::t_55284ac68af95d 78-90,95-104
+  ai_agent 91-94
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_82508c87469e04::t_9796cde9c6a38b 34
+  s_82508c87469e04::t_1fdf71434c9139 257
+packages/cli/src/modules/agents/json-config/reconcile-node-tool-mocks.ts
+  ai_agent 7-10
+  s_82508c87469e04::t_314f75619dd82d 1-6,11-91
+packages/frontend/editor-ui/src/features/agents/components/AgentMiniEditor.vue
+  s_82508c87469e04::t_193be4fcade6d0 4-5,15,32-37
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82508c87469e04::t_59e15ace721e0d 16,28
+  s_82508c87469e04::t_b40dc1e879e46d 420-433
+  s_82508c87469e04::t_c3293443c0c278 70-79
+  s_82508c87469e04::t_24d61302ddcf0b 562-566
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolMockSection.test.ts
+  s_82508c87469e04::t_97eac53d985ee2 1-5,7-10,27-29,32-33,35-44,72,86-93,100-102,105-106,113-119,121,123-136,139-145,148-164,167-171,173,175-176,178-180,182-184,186,188,190-192,194-205,207,210-211,213-218,220,222-223,226-228,230-234,236-238,240-244,246-254,257-260,262-264,266,268-269
+  s_82508c87469e04::t_5847d3bf582f32 45-52
+  s_82508c87469e04::t_bea02677fd784f 267
+  s_82508c87469e04::t_7e90a191700d75 59-66,76-79
+  s_82508c87469e04::t_71385d5b66b37d 122
+  s_82508c87469e04::t_258015312031df 6,53-58,67-71,73-75,80-85,103-104,107-112,120,137-138,146-147,165-166,172,174,177,181,185,187,189,193,206,208-209,212,219,221,224-225,229,235,239,245,255-256,261,265
+  s_82508c87469e04::t_04bd7fdb1beec5 11-26,30-31,34
+  s_82508c87469e04::t_e048f5755c222d 94-99
+packages/frontend/editor-ui/src/features/agents/components/AgentToolMockSection.vue
+  ai_agent 131-133,235-240
+  s_82508c87469e04::t_270b94245ea854 184-197,243-253
+  s_82508c87469e04::t_773e0cad302956 1-49,52-75,86-91,93-130,134-183,198-220,241-242,254-298
+  s_82508c87469e04::t_a89578f5801b7b 80-82
+  s_82508c87469e04::t_ef8b7926f3463d 76-79,83-85,92
+  s_82508c87469e04::t_b303302d87eb81 50-51
+  s_82508c87469e04::t_e4835b2e074a55 221-234
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_82508c87469e04::t_341dd397aa9f41 231
+  s_82508c87469e04::t_2cde68c9fb70f6 50
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82508c87469e04::t_82b07d0b066095 46
+  s_82508c87469e04::t_1e4c86c224429a 172
+  s_82508c87469e04::t_0ef122c263e440 31-37
+  s_82508c87469e04::t_5b30e4709c07c3 690-737
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_82508c87469e04::t_d56378eb10d4a1 841-847,849-859,861-886
+  ai_agent 848,860
+  s_82508c87469e04::t_bc54b1dca4d8ca 909
+  s_82508c87469e04::t_145e75f51fad6a 291
+  s_82508c87469e04::t_1b1b922d4fbca9 713-714
+  s_82508c87469e04::t_62271372ccc82f 68
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_82508c87469e04::t_f455c2bc5fb69e 193-198
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  ai_agent 119-120
+  s_82508c87469e04::t_c3a08b8cdadc73 108-109,114,122-123
+packages/frontend/editor-ui/src/features/agents/components/ToolIoView.vue
+  s_82508c87469e04::t_d1156268680861 244-246
+  s_82508c87469e04::t_ca59c117710b27 4
+  s_82508c87469e04::t_8b73ac5ca16f1c 205-207
+  s_82508c87469e04::t_f3477b71f05d5a 39-40,42
+  ai_agent 194-204
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_82508c87469e04::t_543be551452a55 172-196
+  s_82508c87469e04::t_cbd157acb76bb5 75
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_82508c87469e04::t_0bc903b7350d09 7867
+  s_82508c87469e04::t_f4f28e76b8b400 7536-7537
+  s_82508c87469e04::t_3b04f2d041e396 7857-7866,7868-7869
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_82508c87469e04::t_0c0799e20a2086 39
+  s_82508c87469e04::t_91612840575a46 126
+  s_82508c87469e04::t_480cc96dee1271 144
+  s_82508c87469e04::t_49a2d2fbfdfe8b 2381-2395,2400-2488
+  s_82508c87469e04::t_8204c1e12f0113 94
+  ai_agent 2396-2399
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.types.ts
+  s_82508c87469e04::t_f2420bec48298a 63
+  s_82508c87469e04::t_0fcd8e37ff7383 26-27,40-41
+packages/cli/src/modules/agents/json-config/node-tool-mock-reconcile.service.ts
+  s_82508c87469e04::t_841618106c4178 1-24
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.utils.ts
+  s_82508c87469e04::t_e4205d6c8c2a26 24,35,46,63,72
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_82508c87469e04::t_fbe0e2ea6319a7 71
+  s_82508c87469e04::t_c54cd0365d9303 50
+  s_82508c87469e04::t_afccaabe571c8c 119-122
+  s_82508c87469e04::t_b677ee7c5aaa61 15-16,25,33-34
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_82508c87469e04::t_2db3dcaf00ac5f 33-34
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_82508c87469e04::t_9e2967d0c05a43 399-400
+  s_82508c87469e04::t_de084b61ffe327 637
+packages/frontend/editor-ui/src/features/agents/utils/agentToolMock.ts
+  s_82508c87469e04::t_a4cf4fba27ba1c 1-10,14-30
+  ai_agent 11-13
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_82508c87469e04::t_e86bb5bcb9f634 570
+  ai_agent 70-75
+  s_82508c87469e04::t_259943950bba60 322-324
+  s_82508c87469e04::t_9b884c51125f51 566-569,571-579
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_82508c87469e04::t_1c4521f3473c50 253-302
+packages/cli/src/modules/agents/json-config/reconcile-node-tool-gateway-credentials.ts
+  s_82508c87469e04::t_cc3be7a610fdb9 35-36
+  s_82508c87469e04::t_15fc56c1c395de 54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "360b9e78b523f38dc7374fb8e461cd2211080aa9",
+  "prompts": {},
+  "sessions": {
+    "s_82508c87469e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71432a2-03b0-4483-9061-b9d762e81bfb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

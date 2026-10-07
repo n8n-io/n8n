@@ -1,0 +1,19 @@
+packages/cli/src/evaluation.ee/insights/__tests__/insights-context-builder.test.ts
+  s_62bddef00d4057::t_34b46d62539114 53,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b72bd5b98d0fb460c4aec42ce4f28f311a68399c",
+  "prompts": {},
+  "sessions": {
+    "s_62bddef00d4057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6396ed9-3aa0-4d3f-8dfd-eea7869f2328",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

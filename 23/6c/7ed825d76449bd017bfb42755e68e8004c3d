@@ -1,0 +1,26 @@
+packages/nodes-base/credentials/test/MicrosoftTeamsOAuth2Api.credentials.test.ts
+  s_2c7827ba862797::t_2f70c91e658f3f 74
+  s_2c7827ba862797::t_ed47e9597b9a86 91
+  s_2c7827ba862797::t_197cecad5ba6f9 15
+  s_2c7827ba862797::t_55c2c9d0462b50 109
+  s_2c7827ba862797::t_3c7f6f6d95d560 118
+packages/nodes-base/credentials/MicrosoftTeamsOAuth2Api.credentials.ts
+  s_2c7827ba862797::t_4717e3ddf699ce 78-90
+  s_2c7827ba862797::t_21875eaaa2e323 3-6,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "236c7ed825d76449bd017bfb42755e68e8004c3d",
+  "prompts": {},
+  "sessions": {
+    "s_2c7827ba862797": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5393bff7-b480-4657-9d8d-2c7197f59f09",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_f076c670c90238::t_1931e3257c7053 1236-1296,1306-1356
+  s_f076c670c90238::t_84d2809a435a6a 1297-1300
+  s_f076c670c90238::t_f2a1c968723cff 42-53
+  s_f076c670c90238::t_2f3526265aa57d 1301-1305
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiProactive.ts
+  s_f076c670c90238::t_711c3d7e354faa 3-4
+  s_f076c670c90238::t_9ef4c947d3e6d3 87-91,93-97,99-104,197
+  s_f076c670c90238::t_925bbc236d5541 150-156,160-166,170,177-196
+  s_f076c670c90238::t_9231248dc114d0 121-122,125-126
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f076c670c90238::t_6cf713e4b391fe 6964-6965
+  s_f076c670c90238::t_f0c182fce38cae 6980-6981
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_f076c670c90238::t_b0574695348055 128
+  s_f076c670c90238::t_7ca5a650beccf7 423-451
+  s_f076c670c90238::t_9f04bc290115a3 43-44
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiProactive.test.ts
+  s_f076c670c90238::t_98272ba4ec3fc9 184-205
+  s_f076c670c90238::t_3429b942cb166c 240-272,274-311
+  s_f076c670c90238::t_0d998694fc26ad 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cbdc76ac59402990b8019b155f0d568df34730ec",
+  "prompts": {},
+  "sessions": {
+    "s_f076c670c90238": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce50b67d-826e-4198-888d-724210193f70",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

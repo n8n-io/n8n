@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.test.ts
+  s_69276910d55928::t_2ba1a5040cefdc 106-107,113-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c673ea76d0c40eef091710315045af255e0de4b",
+  "prompts": {},
+  "sessions": {
+    "s_69276910d55928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf407e0e-1aec-47ea-96b8-59c49e0c1506",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

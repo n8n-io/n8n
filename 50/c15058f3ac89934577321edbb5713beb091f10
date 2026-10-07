@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_a5630915c5ba0e::t_e6511fd04efbe9 9
+  s_a5630915c5ba0e::t_5080745912d42c 639-642,646,662
+  s_a5630915c5ba0e::t_a1613d0b8b4623 914
+  s_a5630915c5ba0e::t_5eac5a64112e09 948
+  s_a5630915c5ba0e::t_2c66b2d57c0db2 996-1001,1004-1006,1009,1031
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_a5630915c5ba0e::t_8a4b2cb7444650 806-884
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50c15058f3ac89934577321edbb5713beb091f10",
+  "prompts": {},
+  "sessions": {
+    "s_a5630915c5ba0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d26675dc-a0b7-43aa-be23-999caa8d7e49",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

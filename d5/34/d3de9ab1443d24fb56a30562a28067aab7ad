@@ -1,0 +1,16 @@
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  h_5d40c27a8fdfd1 6
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  h_5d40c27a8fdfd1 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d534d3de9ab1443d24fb56a30562a28067aab7ad",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

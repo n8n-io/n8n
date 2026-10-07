@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/fix-with-assistant.test.ts
+  s_cc061af4a03de9::t_ae2ff26e4509c7 215,229-236
+packages/frontend/editor-ui/src/features/agents/utils/fix-with-assistant.ts
+  s_cc061af4a03de9::t_55df9208b0c0ea 15,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3194136d81039d32ecd877f9f13117450f4d5dc4",
+  "prompts": {},
+  "sessions": {
+    "s_cc061af4a03de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c80490fb-33d8-43b1-abd0-5563fedb856c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

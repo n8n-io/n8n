@@ -1,0 +1,40 @@
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  ai_agent 18-19,21,69,76-80,82,85-91,98-99,101
+  s_1057459915ebdc::t_9df1a6cc12fef8 92,5,51-52,93-94,96,100,104-110,112-116,144,152-156,174,186,287
+  s_1057459915ebdc::t_38e6e257d74ee2 275,53,95,111,212,223-224,248,258,265,279-282,284-286
+  s_1057459915ebdc::t_bcd2e253594d1e 217-222,283
+packages/cli/test/integration/workflow-history-compaction.service.test.ts
+  s_1057459915ebdc::t_dcd8741cc55e6e 126,209,262,303,346
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  ai_agent 1-32,34-35,37,39,41-46,48-55,57-60
+  s_1057459915ebdc::t_9d0ac6e15757cc 33,36,38,40,47,56
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_1057459915ebdc::t_2cacaeb2b3157e 3,222-223,225-231,233-234,239,241,243-244,250,252-254,261-262,265-267,270-272,274-283,285-286,288-298,300,302-307,309-315,317,319-320,322-328,330,332-337,345,353
+  ai_agent 52,56,69,73,93,95,97,111,116,139,163,187,208,213,370,375
+  s_1057459915ebdc::t_a7c578515ba5b4 268-269,273,284,287,299,301,308,316,318,321,329,331,338-344,346-352,355
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  ai_agent 1-31,33-35,37-38
+  s_1057459915ebdc::t_ab40007e85c4b3 32,36
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  ai_agent 1-26,28,30,32,34-38,40-43
+  s_1057459915ebdc::t_9d0ac6e15757cc 27,29,31,33,39
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  ai_agent 1-33,35,37-38
+  s_1057459915ebdc::t_ab40007e85c4b3 34,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "378b63f6fd8db34ff171be107af64e26b76aef2a",
+  "prompts": {},
+  "sessions": {
+    "s_1057459915ebdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe1186a5-619a-4f80-95bd-fa54d570b158",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

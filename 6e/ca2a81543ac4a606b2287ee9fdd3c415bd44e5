@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 1072,1085
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 204-205,237-238
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 375,384
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 209-212,239-246,253-260,273,345
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 2,215-218
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 1439-1442,1552-1555,1836,1871,2050
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 314,326
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableCard.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 152,161
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 343,353
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_06d41a8e84ea88::t_c7eaa5c26c26f1 247,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6eca2a81543ac4a606b2287ee9fdd3c415bd44e5",
+  "prompts": {},
+  "sessions": {
+    "s_06d41a8e84ea88": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a993-efef-7747-9c08-6f2e52801883",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

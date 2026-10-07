@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_8d349550a4341a::t_7923e3870c4473 180-191,193
+  s_8d349550a4341a::t_a8f1711d5044c1 110-120
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_8d349550a4341a::t_62f2b41b1e6ca2 930-931,936-981
+  s_8d349550a4341a::t_62a2de1bbc11b4 932-935
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "90c35d0c1adddc573e202054fba00f2808464583",
+  "prompts": {},
+  "sessions": {
+    "s_8d349550a4341a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f1bb678-bf8b-490e-8e42-2d690a68589a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

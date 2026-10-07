@@ -1,0 +1,26 @@
+packages/cli/test/integration/access-control/instance-roles.test.ts
+  s_de0e036bc7ac28::t_60fe91b94f60d5 41-45
+  s_de0e036bc7ac28::t_6a107302fc9338 81-82,85-86
+  s_de0e036bc7ac28::t_7b4bc7d2fd8c80 1-40,46-80,83-84,87-178
+  s_de0e036bc7ac28::t_e7b3a6ec3c73d7 179-181
+packages/cli/test/integration/access-control/shared-setup.ts
+  s_de0e036bc7ac28::t_c11b0be7ca0661 13
+  s_de0e036bc7ac28::t_4515497718b89d 227-243
+  s_de0e036bc7ac28::t_39ce27c02411a8 226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "1b692b7a4c303bdebbb78e1b605c4b6ceafdf28e",
+  "prompts": {},
+  "sessions": {
+    "s_de0e036bc7ac28": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecd95a34-b0ce-4b18-8f90-2c678fa033e0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

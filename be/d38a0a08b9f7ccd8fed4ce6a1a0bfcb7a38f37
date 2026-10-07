@@ -1,0 +1,27 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.test.ts
+  s_532ce48be8abc6::t_f293faea9e3370 246-247,261-262,268
+  s_532ce48be8abc6::t_fd8a9a8eb556ea 12,31,37,241-245,248,250-260,263,265-267,269-272
+  s_532ce48be8abc6::t_313e12b91e6f6f 249,264
+  s_532ce48be8abc6::t_c5b09e29aa4d3b 273
+packages/@n8n/workflow-sdk/src/workflow-builder/constants.ts
+  s_532ce48be8abc6::t_a0b40586279751 18,30
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.ts
+  s_532ce48be8abc6::t_110d3f1d9029d6 18,27,36,242-246
+  s_532ce48be8abc6::t_eca78aa248bdf2 247-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "bed38a0a08b9f7ccd8fed4ce6a1a0bfcb7a38f37",
+  "prompts": {},
+  "sessions": {
+    "s_532ce48be8abc6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "96d9a549-82cb-485b-9659-b75ab1ef27ca",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

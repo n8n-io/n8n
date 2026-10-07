@@ -1,0 +1,21 @@
+packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
+  s_0a1f18b2a7d90a::t_f803fe7cb2a92b 70-71
+packages/cli/src/deprecation/deprecation.service.ts
+  s_0a1f18b2a7d90a::t_4658ca9ff87dee 94-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aae0f85877ada53ddff21e08ca440f6847502d54",
+  "prompts": {},
+  "sessions": {
+    "s_0a1f18b2a7d90a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_0a1f18b2a7d90a",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

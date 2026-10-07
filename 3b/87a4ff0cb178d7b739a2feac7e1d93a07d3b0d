@@ -1,0 +1,44 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_af7a4e8964d154::t_c91880d537de29 4-7,154-167,171,181,193,203,216
+packages/cli/src/workflow-helpers.ts
+  s_af7a4e8964d154::t_c91880d537de29 361-365,370,375,471,475-476
+  s_af7a4e8964d154::t_70bcf736606cb5 418-420,431-433,457-458,477,482,487-489
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_af7a4e8964d154::t_c91880d537de29 2,7,17,34,39,53,58,68-71,91-92,102-138,232,236-242,262-284
+  s_af7a4e8964d154::t_d3a6597d2c1d01 286-294,296-312
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_af7a4e8964d154::t_c91880d537de29 2-7,291-300,304-310
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_af7a4e8964d154::t_c91880d537de29 154,159-161,267,271,274,278-291
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_af7a4e8964d154::t_c1c219185b665f 37-44,89-91,95,102,107,116-119,141,145
+  s_af7a4e8964d154::t_19e152a1b4402d 1-9,12-16,18-36,45-63,65-70,73-78,81,92-94,96-101,103-106,108-115,120-125,127-132,135,142-144,146-147
+  s_af7a4e8964d154::t_f05ee7ff51fc2d 11,83-88,126,137-140
+  s_af7a4e8964d154::t_423bb8cb4e2155 10,17,64,71-72,79-80,82,133-134,136
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_af7a4e8964d154::t_c91880d537de29 16,43-51,67,77-136,151,165,183-191,203-207,218-220,230-255,260,286,314-318,409-419,466,470-474
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_af7a4e8964d154::t_c91880d537de29 297-300,307,310-311,315-334
+  s_af7a4e8964d154::t_4e24e43897dcbf 301-306,308-309,312-314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b87a4ff0cb178d7b739a2feac7e1d93a07d3b0d",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

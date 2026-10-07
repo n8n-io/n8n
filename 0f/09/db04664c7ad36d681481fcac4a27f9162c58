@@ -1,0 +1,24 @@
+packages/@n8n/agents/src/__tests__/integration/helpers.ts
+  s_b27df4b175479e::t_3969ad83408870 6,9
+  s_b27df4b175479e::t_ad34f9b52b15af 63-94
+packages/@n8n/agents/src/__tests__/integration/reasoning-tool-replay.test.ts
+  s_b27df4b175479e::t_c2fcc5a385ae92 1-82
+packages/@n8n/agents/src/__tests__/integration/cassettes/reasoning-tool-replay/openai-replays-reasoning-across-a-tool-call-round-trip.json
+  s_b27df4b175479e::t_f18a08e1b9aa91 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "0f09db04664c7ad36d681481fcac4a27f9162c58",
+  "prompts": {},
+  "sessions": {
+    "s_b27df4b175479e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78efe118-ae4c-4c30-b02f-ef1f2ef2e255",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

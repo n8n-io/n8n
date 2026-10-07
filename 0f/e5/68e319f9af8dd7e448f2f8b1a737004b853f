@@ -1,0 +1,14 @@
+packages/frontend/@n8n/public-api-client/src/utils.test.ts
+  h_c63dce324dfc7b 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0fe568e319f9af8dd7e448f2f8b1a737004b853f",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,113 @@
+packages/cli/src/executions/pre-execution-checks/index.ts
+  s_74dc43a5ee571f::t_be9e6458d80557 3
+packages/cli/src/workflow-runner.ts
+  s_74dc43a5ee571f::t_be042cc44e2c15 51-54
+  s_74dc43a5ee571f::t_2f476c32846071 265-266,276-277
+  s_74dc43a5ee571f::t_756679d9ddb822 103
+  s_74dc43a5ee571f::t_1855bed7773686 267-275
+  h_ed1b2d65e81e8e 35-36,40,43
+packages/@n8n/config/src/configs/executions.config.ts
+  s_74dc43a5ee571f::t_a1b3280a0f5ff0 199
+  s_74dc43a5ee571f::t_def7aec7bdaddf 197-198,203-205
+  h_ed1b2d65e81e8e 202
+  s_74dc43a5ee571f::t_d2d5f7fafbeea8 200-201
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_74dc43a5ee571f::t_989c6024a76efa 195,198
+  s_74dc43a5ee571f::t_03468fe12c3382 191-194,196,200-201,203
+  s_74dc43a5ee571f::t_e7ea1d0b458601 43
+  s_74dc43a5ee571f::t_4aa829fb4c98ff 47
+  s_74dc43a5ee571f::t_aae3b9ae086471 197
+  s_74dc43a5ee571f::t_f4e21e27add66e 199,202,204-205
+  s_74dc43a5ee571f::t_06e2b620f43475 48-50
+  s_74dc43a5ee571f::t_c5daaed57f49dc 206-208
+  s_74dc43a5ee571f::t_083d224bece698 82
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_74dc43a5ee571f::t_000dbb997eb565 198-211
+  s_74dc43a5ee571f::t_e62b4eda40b799 191
+  s_74dc43a5ee571f::t_ba6f3b9b07e44b 38
+  s_74dc43a5ee571f::t_e1c93e1c73c5bc 131
+packages/cli/src/errors/pre-execute-blocked.error.ts
+  s_74dc43a5ee571f::t_5803a72f0a331a 1-7,10-11,13-15,17-18
+  s_74dc43a5ee571f::t_9b2ca746163d7b 8-9,12,16
+packages/@n8n/config/test/config.test.ts
+  s_74dc43a5ee571f::t_db991dc129dba2 558
+packages/cli/src/workflow-execute-additional-data.ts
+  s_74dc43a5ee571f::t_1affea9f9a8a2a 69
+  s_74dc43a5ee571f::t_70de167e260591 59
+  h_ed1b2d65e81e8e 55-56
+  s_74dc43a5ee571f::t_0fc5a4cd9bca7e 336
+  s_74dc43a5ee571f::t_483dd4f5c79797 327-335
+  s_74dc43a5ee571f::t_1765dd83c70c39 51-54
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_74dc43a5ee571f::t_b3a04b83143676 310,318-328
+  h_ed1b2d65e81e8e 13,30,36,43
+  s_74dc43a5ee571f::t_e8dea3b67880a7 752,827,1001,1160,1306,1413,1469,1512
+  s_74dc43a5ee571f::t_c55820f282dd38 34
+  s_74dc43a5ee571f::t_8fcc0d266c3c52 240
+  s_74dc43a5ee571f::t_3a1f35963baa27 112,133
+  s_74dc43a5ee571f::t_295e5ea5ea779e 308-309,311-317,329-330
+  s_74dc43a5ee571f::t_e46827341ab7e7 31
+packages/cli/src/executions/pre-execution-checks/workflow-pre-execute-gate.ts
+  h_ed1b2d65e81e8e 7-8
+  s_74dc43a5ee571f::t_720a80a08781f6 62
+  s_74dc43a5ee571f::t_0a5fc5d858ef54 3
+  s_74dc43a5ee571f::t_a74b2499a558e5 1,17-19,27,35-38
+  s_74dc43a5ee571f::t_f69d28be42ad74 2,4-6,10-16,20-26,28-34,39-53,64-65
+  s_74dc43a5ee571f::t_86718e476e6fc8 9
+  s_74dc43a5ee571f::t_b6fd2370139b34 54-61,63
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  h_ed1b2d65e81e8e 36-37
+  s_74dc43a5ee571f::t_3ab89d94c2636e 2
+  s_74dc43a5ee571f::t_7847230804d438 485-496
+  s_74dc43a5ee571f::t_89d8abb9951b3c 27-35
+packages/cli/src/executions/pre-execution-checks/__tests__/workflow-pre-execute-gate.test.ts
+  s_74dc43a5ee571f::t_0fad7dce1dedd5 8
+  s_74dc43a5ee571f::t_6c47954efaf267 76-80
+  s_74dc43a5ee571f::t_d3c061b1f8b1f6 46-51
+  s_74dc43a5ee571f::t_1136a621e320ad 62,66-75,81
+  s_74dc43a5ee571f::t_12cc93a6aec1ae 6-7
+  s_74dc43a5ee571f::t_fc96aeb5ca65ea 1-5,9-45,52-61,63-65,82-92
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_74dc43a5ee571f::t_59e54040be1a7c 961
+  s_74dc43a5ee571f::t_93e51efc3e7545 915-916
+  s_74dc43a5ee571f::t_bebe09915fa25d 42-45
+  s_74dc43a5ee571f::t_627924246613cf 828
+  s_74dc43a5ee571f::t_5b54da51178dd0 940-941,943-952,954-960,962-964
+  s_74dc43a5ee571f::t_6cd6e1a5e15bf8 953
+  s_74dc43a5ee571f::t_e3fd08ee07670d 942
+  s_74dc43a5ee571f::t_ae467c04b2f8b0 11-13
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_74dc43a5ee571f::t_3fd3431ccafac8 612
+  s_74dc43a5ee571f::t_502bdc07cfbd86 922-925
+  s_74dc43a5ee571f::t_bcfaa7b7a5e491 928-934
+  s_74dc43a5ee571f::t_9f0751a3cfc11c 451,454
+  s_74dc43a5ee571f::t_781276c2193b5c 53-55
+  s_74dc43a5ee571f::t_b8fdab93331f60 1356,1359
+  s_74dc43a5ee571f::t_6fe43200e0554f 211
+  s_74dc43a5ee571f::t_66b82c5d535e2c 1308,1347,1555,1825
+  h_ed1b2d65e81e8e 7-8,32,36
+  s_74dc43a5ee571f::t_8b8519fdd2657f 4
+  s_74dc43a5ee571f::t_f329b0547d3abd 926-927
+  s_74dc43a5ee571f::t_820f7e8fa46c18 31,33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "16c30bf2c4fb7b0a0c54e8ae44d9c0cd4485e708",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74dc43a5ee571f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "005fc3ff-735a-4494-a3a8-82f316ec18a2",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

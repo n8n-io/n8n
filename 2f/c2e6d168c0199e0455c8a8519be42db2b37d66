@@ -1,0 +1,97 @@
+packages/cli/src/modules/project-files/project-files.module.ts
+  s_749e9217782dea::t_a7b4ab562cc0a6 2,8-12
+  s_749e9217782dea::t_8695fc01a53987 35-40
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_749e9217782dea::t_838289e4c461b6 2822-2829,2872
+packages/cli/test/integration/modules/project-files.api.test.ts
+  s_749e9217782dea::t_42554e6e763894 59-62
+  s_749e9217782dea::t_f44ff931ca4913 1-20,23-34,54-58,63-357
+  s_749e9217782dea::t_9b4782f5724f14 35,37-53
+  s_749e9217782dea::t_1a0ecc2cafa52d 21-22
+  s_749e9217782dea::t_42eb83b064098f 36
+PROJECT_FILES_PLAN.md
+  s_749e9217782dea::t_064a102e98d742 25-26,334-335,463-465
+packages/cli/src/modules/project-files/project-file.service.ts
+  s_749e9217782dea::t_00e4a5f99e4937 36-43
+  s_749e9217782dea::t_27c82258b09a8e 83,85,88,98-100,102
+  s_749e9217782dea::t_d53e367381b1e2 301-306,315,319-328
+packages/@n8n/config/test/config.test.ts
+  s_749e9217782dea::t_1b19cafacef5dc 204-206
+packages/@n8n/api-types/src/dto/project-file/rename-project-file.dto.ts
+  s_749e9217782dea::t_a49355963bdde3 1-9
+packages/@n8n/permissions/src/scope-information.ts
+  s_749e9217782dea::t_af395db3dde301 131-155
+packages/cli/src/modules/project-files/project-file-upload.middleware.ts
+  s_749e9217782dea::t_fc9d6d7fbbc8bc 6
+  s_749e9217782dea::t_1210984878b0ea 35-40,43-44
+  s_749e9217782dea::t_02191011153600 1-5,7-34,41-42,45-69
+packages/cli/test/integration/shared/types.ts
+  s_749e9217782dea::t_d8be2061b9e1e0 54,67
+packages/cli/src/modules/project-files/project-file-cleanup.service.ts
+  s_749e9217782dea::t_f7dcf28b593faa 1-82
+packages/@n8n/api-types/src/index.ts
+  s_749e9217782dea::t_88edbe4fb262bd 8
+packages/@n8n/api-types/src/dto/project-file/upload-project-file-query.dto.ts
+  s_749e9217782dea::t_8c8c47afb71d20 1-11
+packages/@n8n/permissions/src/constants.ee.ts
+  s_749e9217782dea::t_9e348f3970acbd 72-74
+packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.ts
+  s_749e9217782dea::t_838289e4c461b6 29
+packages/@n8n/api-types/src/dto/index.ts
+  s_749e9217782dea::t_3347faa44ff9f3 75-81
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_749e9217782dea::t_d8be2061b9e1e0 363-366
+packages/cli/test/integration/modules/project-files.integration.test.ts
+  s_749e9217782dea::t_3ffc1924258ddc 75,86-87
+  s_749e9217782dea::t_a2e8fe73b0e5e6 179-194
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_749e9217782dea::t_0cc61d2f62b2a0 7,15
+packages/@n8n/api-types/src/dto/project-file/list-project-files-query.dto.ts
+  s_749e9217782dea::t_e7d6809e32adc0 1-10
+packages/@n8n/telemetry/src/events/project-files.ts
+  s_749e9217782dea::t_3b14fd0c9bfce8 1-26
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_749e9217782dea::t_a8ee0f263d9674 129-134
+packages/cli/src/modules/project-files/__tests__/project-files.controller.scopes.test.ts
+  s_749e9217782dea::t_238b3101888d1e 1-59
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_749e9217782dea::t_a8ee0f263d9674 64-68,126-130,176-180,207-208
+packages/cli/src/modules/project-files/project-files.controller.ts
+  s_749e9217782dea::t_1431d9c13fbe17 1-20,22-252
+  s_749e9217782dea::t_e933214652bab6 21
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_749e9217782dea::t_340547a4658456 174,178-179,183-185
+  s_749e9217782dea::t_e4b09f2a25ef72 53
+packages/cli/src/modules/project-files/project-file-response.service.ts
+  s_749e9217782dea::t_d3326e8693e076 1-64
+packages/@n8n/config/src/configs/project-files.config.ts
+  s_749e9217782dea::t_82385ca0dec1b7 1-3
+  s_749e9217782dea::t_ecca57fad8d63d 38-60
+packages/@n8n/api-types/src/project-file.ts
+  s_749e9217782dea::t_deb09ac085c93a 1-46
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_749e9217782dea::t_e32fba052ed9f8 37,150
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_749e9217782dea::t_838289e4c461b6 25
+packages/cli/src/modules/project-files/project-files.types.ts
+  s_749e9217782dea::t_fde7ac1cd74dab 35-46
+  s_749e9217782dea::t_51872309703976 1-2
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_749e9217782dea::t_d539cfcb378d81 134-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2fc2e6d168c0199e0455c8a8519be42db2b37d66",
+  "prompts": {},
+  "sessions": {
+    "s_749e9217782dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9256f74-4f49-46ff-9964-3b3c3eb85678",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

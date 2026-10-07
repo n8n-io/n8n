@@ -1,0 +1,26 @@
+docs/generated/sqlite-schema/git_connection_project.md
+  ai_agent 36
+packages/@n8n/db/src/migrations/common/1787089039726-CreateGitConnectionProjectTable.ts
+  s_f180b2f3fffe6c::t_e185d4665927b8 26-29
+docs/generated/postgres-schema/public.git_connection_project.md
+  ai_agent 28
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection-project.entity.ts
+  s_f180b2f3fffe6c::t_e31cae3d547241 27
+  s_f180b2f3fffe6c::t_a6b25131a468de 2-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "be7e4ade4b7c6da0cc01da5d604535e5e7108e0b",
+  "prompts": {},
+  "sessions": {
+    "s_f180b2f3fffe6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20e23070-5cd7-4528-991c-c7c347105355",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

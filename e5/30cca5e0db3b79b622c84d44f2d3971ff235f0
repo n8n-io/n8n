@@ -1,0 +1,19 @@
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_c0ff7996de381d::t_c869a5e4bc4f95 3-8,15-29,77-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e530cca5e0db3b79b622c84d44f2d3971ff235f0",
+  "prompts": {},
+  "sessions": {
+    "s_c0ff7996de381d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e3e0f35-3152-4e44-8757-6434e89e66a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

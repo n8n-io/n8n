@@ -1,0 +1,32 @@
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/azure-key-vault.test.ts
+  s_dfe877659fb524::t_340b40cde63864 1
+  s_dfe877659fb524::t_a58b13b5d0c913 15-27
+  s_dfe877659fb524::t_87a694526067c1 102-215
+  s_dfe877659fb524::t_861d2a23c92715 217,242,277,316,343,389
+packages/cli/src/modules/external-secrets.ee/providers/azure-key-vault/types.ts
+  s_dfe877659fb524::t_1c3c833bca0f8f 3-4,10-12
+packages/cli/src/modules/external-secrets.ee/providers/azure-key-vault/azure-key-vault.ts
+  s_dfe877659fb524::t_3355f555f0e743 202-219
+  s_dfe877659fb524::t_a73f381240e88d 8
+  s_dfe877659fb524::t_e73015d5876239 52-82,92-125
+  s_dfe877659fb524::t_5b99a1d34b43d4 25-44
+  s_dfe877659fb524::t_7ae0828d99951f 179-180,186-189
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue
+  s_dfe877659fb524::t_99cda1746d96c4 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b20e95807eba2bff73de9ba89d0046d4ce2a0836",
+  "prompts": {},
+  "sessions": {
+    "s_dfe877659fb524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22ff56d8-f7a8-4ea6-8ec5-db38a92afc56",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/identity/services/external-idp-auth.strategy.ts
+  s_16453cac85f858::t_2115d0a2c26b59 1-82
+packages/cli/src/modules/identity/identity.module.ts
+  s_16453cac85f858::t_c16ab27fe49c02 40-46
+packages/cli/src/modules/identity/services/__tests__/external-idp-auth.strategy.test.ts
+  s_16453cac85f858::t_52039c6225e4f5 1-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4b6e8451ab10e43133801a3969eb461e7f8b12b1",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

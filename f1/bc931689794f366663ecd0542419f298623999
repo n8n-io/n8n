@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-08-11-agent-620-workflow-execution-log-design.md
+  s_41467604892014::t_b8d2ae8bbcbc25 15,17
+  s_41467604892014::t_81b3b994a92f87 1-14,16,18-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f1bc931689794f366663ecd0542419f298623999",
+  "prompts": {},
+  "sessions": {
+    "s_41467604892014": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff0d5-4b9b-79c2-bb18-a2b862faa9c6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

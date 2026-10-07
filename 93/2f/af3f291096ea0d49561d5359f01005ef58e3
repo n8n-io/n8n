@@ -1,0 +1,48 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_ef6739ab5baa92::t_929693d48152bd 2281
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_8da08d332e19fe::t_aa40f75a558698 83-93
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_8da08d332e19fe::t_c66c71eed6e598 23-26
+packages/cli/eslint.config.mjs
+  s_29ee7206aed9c9::t_3705aa9d9643ad 186
+  s_29ee7206aed9c9::t_950f49c0a8986b 55
+  s_29ee7206aed9c9::t_65a67d3be9a0d4 16-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "932faf3f291096ea0d49561d5359f01005ef58e3",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_29ee7206aed9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b31e83cc-f297-4ef2-91b3-2e9ddb176f33",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_8da08d332e19fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f4d5619-191e-4daf-bb68-5dc1b13c3b79",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ef6739ab5baa92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45e93f5f-10e7-406e-8667-6136ca9e5c7c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

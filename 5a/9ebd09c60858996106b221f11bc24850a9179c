@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_81236510e40a37::t_f3c5b8de8069ea 9-10
+  s_81236510e40a37::t_33a270c6d21153 155
+  s_81236510e40a37::t_9e19a87325ab01 245-252
+  s_81236510e40a37::t_5b360436b2276f 1-6
+  s_81236510e40a37::t_40ec83cadcb541 44-49
+  s_81236510e40a37::t_b640b05e02b22e 156-160,166-176,182
+  s_81236510e40a37::t_bac8d418b8db01 227-231
+  s_81236510e40a37::t_e104fbda7451ad 177-181
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_81236510e40a37::t_cc35f5f6522387 578-607
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a9ebd09c60858996106b221f11bc24850a9179c",
+  "prompts": {},
+  "sessions": {
+    "s_81236510e40a37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46ac684a-8b63-438d-9361-58436e039d01",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

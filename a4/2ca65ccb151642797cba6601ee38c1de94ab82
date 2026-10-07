@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_93363bf5a44361::t_456f6fb4ffc47e 350
+  s_93363bf5a44361::t_54892c90459bc5 165
+  s_93363bf5a44361::t_85f5ce9695dce8 29-33
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_93363bf5a44361::t_88ef4bfcd276f7 74
+  s_93363bf5a44361::t_c8e526c6154b88 4
+  s_93363bf5a44361::t_b0d6c1aa37443b 460-465
+  s_93363bf5a44361::t_82795b5b2e28f5 466-468
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_93363bf5a44361::t_abaf6fc8c12694 60
+  s_93363bf5a44361::t_92d243627c9f55 124
+  s_93363bf5a44361::t_97a687874d4934 28
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_93363bf5a44361::t_bea31137484d8b 15
+  s_93363bf5a44361::t_1e930a1668a235 385-399
+  s_54d886c14e1a6a::t_9307c009558da0 400-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "a42ca65ccb151642797cba6601ee38c1de94ab82",
+  "prompts": {},
+  "sessions": {
+    "s_54d886c14e1a6a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2a608a0-7198-498e-99d6-5ce60c1e367c",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_93363bf5a44361": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d55143f2-e650-403a-b431-b1c96916a327",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

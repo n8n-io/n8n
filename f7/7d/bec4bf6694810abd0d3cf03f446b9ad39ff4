@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-writer-guard.test.ts
+  s_ffa0492de4d6b4::t_d4ffce9e6dc710 1-22
+packages/cli/test/migration/1790683443934-add-agent-message-steering.test.ts
+  s_ffa0492de4d6b4::t_77edb09c1770f3 120-125,146-153
+  s_ffa0492de4d6b4::t_7fade163ad5d81 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f77dbec4bf6694810abd0d3cf03f446b9ad39ff4",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

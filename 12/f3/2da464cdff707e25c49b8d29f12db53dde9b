@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6ce85d4a1f6067::t_835a87bfbd6617 8013
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_6ce85d4a1f6067::t_ea3f424da85373 209-212,235-238
+  s_6ce85d4a1f6067::t_835a87bfbd6617 19-24,200-208,213-234,239-245
+  s_6ce85d4a1f6067::t_95927c39cb7070 246
+packages/frontend/editor-ui/src/features/ai/shared/composables/useFileDrop.ts
+  s_6ce85d4a1f6067::t_835a87bfbd6617 50,59-62,72
+packages/frontend/editor-ui/src/features/ai/shared/composables/useFileDrop.test.ts
+  s_6ce85d4a1f6067::t_835a87bfbd6617 55-88
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_6ce85d4a1f6067::t_835a87bfbd6617 3-10,114-126,249-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "12f32da464cdff707e25c49b8d29f12db53dde9b",
+  "prompts": {},
+  "sessions": {
+    "s_6ce85d4a1f6067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a4c4-d4ab-7d52-b983-c70679bb264f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

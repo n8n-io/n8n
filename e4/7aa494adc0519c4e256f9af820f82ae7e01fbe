@@ -1,0 +1,19 @@
+.boundaries-baseline.json
+  s_54f44f88f4a743::t_c015f91f6d3b34 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e47aa494adc0519c4e256f9af820f82ae7e01fbe",
+  "prompts": {},
+  "sessions": {
+    "s_54f44f88f4a743": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f825bd7-be35-4f1b-92f8-f4daddeebcfe",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

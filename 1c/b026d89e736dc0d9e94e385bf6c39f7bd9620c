@@ -1,0 +1,21 @@
+.agents/skills/create-issue/SKILL.md
+  s_7bb689d09afa62::t_48c330d2205c0e 80,83,86
+  s_7bb689d09afa62::t_faf551692f323d 115,120-122,124-127
+  s_7bb689d09afa62::t_6881779189830b 76-79,82,85,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1cb026d89e736dc0d9e94e385bf6c39f7bd9620c",
+  "prompts": {},
+  "sessions": {
+    "s_7bb689d09afa62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba522aff-a196-4ca1-9cba-fa30c8d14a08",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

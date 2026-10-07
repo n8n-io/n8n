@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_20545d194f0c9f::t_485977fd979885 857-859,861,863-876
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_20545d194f0c9f::t_a770829ae43514 2139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "45b97c8a2e5194ea708f70a17f7fe3305da833a7",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_20545d194f0c9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ea4ae67-bc89-48d9-938a-a21b7fba058d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

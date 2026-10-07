@@ -1,0 +1,27 @@
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/HoverCard.vue
+  s_d983b630f7acf9::t_f712e9b2e19b6d 158
+  s_d983b630f7acf9::t_554548720fb058 3
+  s_d983b630f7acf9::t_eba958279f2000 175-176
+  s_d983b630f7acf9::t_43c756824a4f5e 78
+  s_d983b630f7acf9::t_ab09c194fa16f5 171-174
+  s_d983b630f7acf9::t_62edf3e3ca4668 41-42
+  s_d983b630f7acf9::t_409195accea8fe 177-178
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/__snapshots__/HoverCard.test.ts.snap
+  s_d983b630f7acf9::t_9772ec7004c26e 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "787e790096958e8d748199e6c5f04d61bd7aa30f",
+  "prompts": {},
+  "sessions": {
+    "s_d983b630f7acf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66779c2c-77a8-4b13-af38-9c2d9c3153c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

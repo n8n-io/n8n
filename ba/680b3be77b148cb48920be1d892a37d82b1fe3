@@ -1,0 +1,31 @@
+packages/cli/test/integration/policy/workflow-start.policy.test.ts
+  s_fa1da8bd22ae88::t_20da437eb0bac3 18-19
+  s_fa1da8bd22ae88::t_77969b38f307cd 83
+  s_fa1da8bd22ae88::t_35d29c76a60404 317-334
+packages/modules/type-availability-policies/frontend/src/policy-violations/PolicyViolationList.vue
+  s_66e0f21ba02487::t_f909e6f46ac398 2,4,10-11,13,25,32-33,35-36,43,50-54,56-75,79-84,86-88,90-91,93-116,126,129-139,142-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ba680b3be77b148cb48920be1d892a37d82b1fe3",
+  "prompts": {},
+  "sessions": {
+    "s_66e0f21ba02487": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b8ee062-7189-4b0e-9fa0-b50866a5d3de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_fa1da8bd22ae88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d758a5-27ef-4d66-81d2-ae0dccfd8226",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

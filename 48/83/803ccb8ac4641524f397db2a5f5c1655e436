@@ -1,0 +1,21 @@
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.controller.test.ts
+  s_d187a68a363af6::t_cadd1fc2eeaa2b 47,50-51
+packages/cli/src/modules/chat-hub/chat-hub.controller.ts
+  s_d187a68a363af6::t_a5d6a5f847b151 74-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4883803ccb8ac4641524f397db2a5f5c1655e436",
+  "prompts": {},
+  "sessions": {
+    "s_d187a68a363af6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a657a77-c0d7-401e-b08b-5f7d646d3582",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

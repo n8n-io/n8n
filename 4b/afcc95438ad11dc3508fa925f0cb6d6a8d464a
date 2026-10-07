@@ -1,0 +1,163 @@
+packages/cli/templates/form-trigger.handlebars
+  s_176da1aff184f0::t_4aefab4c9dc5dd 696
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-163
+packages/testing/playwright/playwright.config.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 146-148,155-157
+.github/workflows/docker-sbom-probe.yml
+  s_176da1aff184f0::t_4aefab4c9dc5dd 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 12,44,49,61-67,69-78,154-162
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useIsNodeContextEnabled.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-13
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 16,97,116-122,143-145
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/NodeChip.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-191
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 103-106,226-228,566-570,614-636,960-965,1121-1125,1585-1588,1878,1910,1953
+.devcontainer/codespaces/docker-compose.yml
+  s_176da1aff184f0::t_4aefab4c9dc5dd 30
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_176da1aff184f0::t_4aefab4c9dc5dd 2101,2548,4529,4547,7507-7511
+packages/nodes-base/credentials/WordpressOAuth2Api.credentials.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 50
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 53,659-666,745-746,889-892
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/__tests__/useContextMenu.nodeContext.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-205
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 12,14,58-59,73-75,96,348-364,590-594
+packages/cli/src/modules/chat-hub/chat-message.repository.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 7,9,18,22,24
+.github/scripts/github-helpers.test.mjs
+  s_176da1aff184f0::t_4aefab4c9dc5dd 3-5,21,94-129
+.github/scripts/sync-master-to-3x.mjs
+  s_176da1aff184f0::t_4aefab4c9dc5dd 76
+packages/cli/src/utils/__tests__/form-trigger-completion-template.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-46
+.github/workflows/util-publish-api-schema.yml
+  s_176da1aff184f0::t_4aefab4c9dc5dd 9,13-14
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAddNodesToChat.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-55
+.boundaries-baseline.json
+  s_176da1aff184f0::t_4aefab4c9dc5dd 2
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 192-195
+packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 16,53,97,122,129-131,133-146,148,150-152,154-162,164,166-169,171-196,208,211-213,215-223,225-242,244,246-249,251-264,1260,1271,1286,1303,1320,1323-1332,1334-1351,1355-1381,1390,1447,1453-1480,1731,1869-1884,1886,1888-1891,1893-1913
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 2,6,16-17,22-24,82-88,90,121
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/__tests__/CanvasSelectionToolbar.nodeContext.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-46
+packages/testing/playwright/reporters/a11y-reporter.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-139
+.github/workflows/util-sync-master-to-3x.yml
+  s_176da1aff184f0::t_4aefab4c9dc5dd 72,76-77
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 7-12,27,286-317,348-354
+packages/nodes-base/credentials/test/WordpressOAuth2Api.credentials.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 17-23
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 249-254,294
+packages/testing/playwright/fixtures/a11y.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 2,39-56,86-87,90-98,109,119-158,167-184,189-192
+.github/workflows/test-bench-reusable.yml
+  s_176da1aff184f0::t_4aefab4c9dc5dd 2
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-agent.service.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 502-504
+packages/cli/src/modules/chat-hub/chat-hub-agent.repository.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1,3,8-10
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/NodesAttachmentChips.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-491
+.github/scripts/github-helpers.mjs
+  s_176da1aff184f0::t_4aefab4c9dc5dd 251,253-254
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 261-263,266,278-283
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiMessage.nodesAttachment.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-58
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 4,229
+packages/testing/playwright/AGENTS.md
+  s_176da1aff184f0::t_4aefab4c9dc5dd 200-230
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 97-103
+packages/cli/src/modules/chat-hub/chat-hub-title.service.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 88,118
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 33,67,73,163-166,471-482
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 34-43,69,124-136
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 49-65,361-363,1099
+packages/cli/src/modules/chat-hub/chat-session.repository.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1,3,10-12
+packages/@n8n/api-types/src/index.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 404
+packages/cli/src/modules/chat-hub/chat-hub-agent.service.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 229-231,240
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 12-16,19-20,111,114,173,192-194,303,310-314,318,328,330,334-336,352,356-367,369-370,373-395,599-610
+packages/cli/templates/form-trigger-completion.handlebars
+  s_176da1aff184f0::t_4aefab4c9dc5dd 123
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 73,302-305,435
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/pendingDraftAttachment.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useAddNodesToChat.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-110
+packages/cli/src/modules/chat-hub/chat-hub.service.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 477,536,632,692,777,834,915,988,1059,1100,1144,1186
+.gitignore
+  s_176da1aff184f0::t_4aefab4c9dc5dd 49
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 22,263-267
+packages/testing/playwright/vitest.config.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 8-13
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 65-70
+.github/workflows/test-e2e-reusable.yml
+  s_176da1aff184f0::t_4aefab4c9dc5dd 181-183,201-211
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-203
+packages/testing/playwright/fixtures/a11y.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 6,9-11,15,17-19,80-167
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-113
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-workflow.service.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1,10,40,74,85-104,106-109,112-215,1294,1318,1343,1368
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 152-211
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 5,8,12,15,18,220-247,252,499-541
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.pendingAttachments.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-72
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/NodesAttachmentChips.test.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-291
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_176da1aff184f0::t_4aefab4c9dc5dd 12,26,55,105-108,117-120,168-173,251-263
+packages/testing/playwright/reporters/a11y-reporter.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 1-159
+.github/scripts/quality/cubic-config.schema.json
+  s_176da1aff184f0::t_4aefab4c9dc5dd 8,25,66,71,83,88,162,274,277,280
+packages/testing/playwright/composables/journeys/admin-views-executions-list.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 6,103-111,115,120-124
+packages/testing/playwright/tests/e2e/journeys/admin-views-executions-list.spec.ts
+  s_176da1aff184f0::t_4aefab4c9dc5dd 10-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4bafcc95438ad11dc3508fa925f0cb6d6a8d464a",
+  "prompts": {},
+  "sessions": {
+    "s_176da1aff184f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8cc965-adbd-49e9-a63e-907c657a03a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

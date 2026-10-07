@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/composables/useAppCredentials.test.ts
+  s_2dd11acf1bf19d::t_eba618feb4815f 393-419
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/composables/useAppCredentials.ts
+  s_2dd11acf1bf19d::t_890ca0c89d6527 167,177-181
+  s_2dd11acf1bf19d::t_f75ba903955a33 220-221
+packages/nodes-base/credentials/test/ConfluenceCloudOAuth2Api.credentials.test.ts
+  s_2dd11acf1bf19d::t_c3e9205af5c964 98-122
+packages/cli/src/constants.ts
+  s_2dd11acf1bf19d::t_f0d4bb67c05fe1 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3fc7afda24f829bd6a99416c61781cce48554ed8",
+  "prompts": {},
+  "sessions": {
+    "s_2dd11acf1bf19d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e4031ed-9151-4cc4-abed-6d95597b73f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

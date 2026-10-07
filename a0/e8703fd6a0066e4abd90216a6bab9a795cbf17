@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_365b472d5d8c59::t_dcdaa11a2f87b4 92,102
+  s_365b472d5d8c59::t_a2bccd60e257b1 1602-1606
+  s_365b472d5d8c59::t_1abf3d3d852e5f 1607
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a0e8703fd6a0066e4abd90216a6bab9a795cbf17",
+  "prompts": {},
+  "sessions": {
+    "s_365b472d5d8c59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb19c6f7-a030-4ca5-b2ee-0cd60963272c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

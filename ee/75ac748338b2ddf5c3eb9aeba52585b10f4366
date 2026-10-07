@@ -1,0 +1,22 @@
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_05699d202e4b29::t_3f495f283e5d2b 352,359-364,370
+  s_05699d202e4b29::t_21a9c8650b0279 382-383
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_05699d202e4b29::t_d531a029a53b7e 369-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee75ac748338b2ddf5c3eb9aeba52585b10f4366",
+  "prompts": {},
+  "sessions": {
+    "s_05699d202e4b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69c70e7b-d87f-4acf-ac44-625be8b32c3d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

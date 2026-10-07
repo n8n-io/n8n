@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_57021d01bead91::t_6a25005443c6b7 269
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_57021d01bead91::t_ab58b4b2bb150c 371,432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "739113604000fd915698034191ca8181b57a7916",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_57021d01bead91": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "09de77bb-79c2-4d70-a22e-ce1032a8476d",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

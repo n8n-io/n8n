@@ -1,0 +1,20 @@
+packages/@n8n/db/src/migrations/common/1787826404992-AddRequireBranchForPromotionToGitConnection.ts
+  s_cf478dbb68f525::t_cf2645f6d3fff8 10-15,26-28
+  s_cf478dbb68f525::t_cfacda6f96b51b 5,16-25,30-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "33fa2689164db9fb7a757798e22b7373cdf2bb6c",
+  "prompts": {},
+  "sessions": {
+    "s_cf478dbb68f525": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a085901d-23a6-4264-9a5a-8b9b83f78780",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

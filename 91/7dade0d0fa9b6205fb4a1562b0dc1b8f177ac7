@@ -1,0 +1,21 @@
+packages/cli/src/evaluation.ee/test-runs.controller.ee.ts
+  ai_agent 166-178,180-182,187
+packages/@n8n/api-types/src/schemas/evaluations.schema.ts
+  ai_agent 21-25
+packages/@n8n/db/src/repositories/test-case-execution.repository.ee.ts
+  ai_agent 81-87,89-90
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 5890,5907-5973
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  ai_agent 569,670,685,695,765-775,778-781,783-785,788
+packages/@n8n/api-types/src/schemas/__tests__/evaluations.schema.test.ts
+  ai_agent 1-54
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  ai_agent 2095-2099,3026-3028,3119-3331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "917dade0d0fa9b6205fb4a1562b0dc1b8f177ac7",
+  "prompts": {}
+}

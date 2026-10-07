@@ -1,0 +1,30 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_e61cec36903ae7::t_bf54d9ec3ee2bf 1145-1148
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_e61cec36903ae7::t_577b357d0c5f8c 217
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_e61cec36903ae7::t_0212d9286deac4 503-540
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_e61cec36903ae7::t_a89f9fc7d11f5f 366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6e5c8bbf0ca27a2f0f29df2068b67caff69ad03f",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e61cec36903ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8dc114a-bfa9-4ec8-8109-a97a40763935",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

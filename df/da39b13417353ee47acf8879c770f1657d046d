@@ -1,0 +1,32 @@
+packages/@n8n/telemetry/src/events/credentials.ts
+  s_48f671bf14760e::t_0dd4d9b37f9799 22-25
+  s_48f671bf14760e::t_a05b0f6bf02a92 18
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_48f671bf14760e::t_5114f38ba8f890 1415-1416
+packages/@n8n/telemetry/src/__tests__/credential-description.test.ts
+  s_48f671bf14760e::t_a05b0f6bf02a92 31
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_48f671bf14760e::t_5114f38ba8f890 13,787,816,920,1162-1163,1176
+packages/@n8n/telemetry/credential-descriptions.md
+  s_48f671bf14760e::t_a05b0f6bf02a92 16
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialOAuth.test.ts
+  s_48f671bf14760e::t_5114f38ba8f890 950,963,980,998,1011,1209,1212
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_48f671bf14760e::t_5114f38ba8f890 9,452,473,487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dfda39b13417353ee47acf8879c770f1657d046d",
+  "prompts": {},
+  "sessions": {
+    "s_48f671bf14760e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af97-fe52-7d72-861c-6ba2a89001dd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

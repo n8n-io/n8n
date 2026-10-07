@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_36ebedc5f27b45::t_920dab2e6d65b7 541,551,553
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_36ebedc5f27b45::t_920dab2e6d65b7 484
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_36ebedc5f27b45::t_fa3680036a6200 191-194
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_36ebedc5f27b45::t_8b333ea6c365a7 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a2c5dfdbe5b2c797a90edc20730340fda2341416",
+  "prompts": {},
+  "sessions": {
+    "s_36ebedc5f27b45": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae8b-9e45-7221-8078-abeff0858142",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

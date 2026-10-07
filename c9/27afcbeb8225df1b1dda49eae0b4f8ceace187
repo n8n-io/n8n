@@ -1,0 +1,34 @@
+pnpm-workspace.yaml
+  s_3518e47f915512::t_86e78b46d404f1 42,89,138,233,264-273
+  s_8922c248897f62::t_3535b824faaad9 45
+packages/frontend/@n8n/storybook/package.json
+  s_8922c248897f62::t_f5de1d2e776a2c 30
+packages/frontend/editor-ui/package.json
+  s_8922c248897f62::t_cf755215f65766 137
+pnpm-lock.yaml
+  s_8922c248897f62::t_96332a4ef0470f 114-116,5680,5682,6081,22511-22512,29459,42113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c927afcbeb8225df1b1dda49eae0b4f8ceace187",
+  "prompts": {},
+  "sessions": {
+    "s_3518e47f915512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_3518e47f915512",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_8922c248897f62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8922c248897f62",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

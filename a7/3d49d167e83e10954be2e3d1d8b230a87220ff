@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/evaluations/cli/ci-metadata.ts
+  s_263baedf5e3003::t_d6818af4c79dcf 7-11,22-27,34,41-45,49-60
+.github/workflows/util-eval-roster-snapshot.yml
+  s_263baedf5e3003::t_a8b5a0321fbd1d 1-73
+.github/WORKFLOWS.md
+  s_263baedf5e3003::t_99a87b15811f51 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a73d49d167e83e10954be2e3d1d8b230a87220ff",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_263baedf5e3003": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "484ecec0-7c1b-432f-913b-0a9df79cebb5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

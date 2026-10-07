@@ -1,0 +1,39 @@
+packages/nodes-base/credentials/common/atlassian-scopes.ts
+  s_081879bbe7ac70::t_e1fb1ab0f6989b 1-22,26-59
+packages/nodes-base/credentials/JiraSoftwareCloudOAuth2Api.credentials.ts
+  s_081879bbe7ac70::t_67a6050d73c16a 3-5
+  s_081879bbe7ac70::t_93a22a12047517 10
+packages/nodes-base/package.json
+  s_081879bbe7ac70::t_9a411c7fc3af66 91
+  s_081879bbe7ac70::t_f31054254c7fb8 53
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_081879bbe7ac70::t_05029468222555 13
+  s_081879bbe7ac70::t_541034c7601119 15
+  s_081879bbe7ac70::t_771cddd7f2ee42 17
+  s_081879bbe7ac70::t_98b9f6984f622f 42-43
+packages/nodes-base/utils/atlassian.ts
+  s_081879bbe7ac70::t_75aaee67e9aa5c 1-94
+packages/nodes-base/credentials/AtlassianOAuth2Api.credentials.ts
+  s_081879bbe7ac70::t_9c3688863d67eb 3-5
+  s_081879bbe7ac70::t_124cc06dfc26de 1-2,6-17,30-102
+  s_081879bbe7ac70::t_f57fa26b6741c5 18-29
+packages/nodes-base/credentials/ConfluenceCloudOAuth2Api.credentials.ts
+  s_081879bbe7ac70::t_89049d83c5c044 1-2,6-45
+  s_081879bbe7ac70::t_e1574721d7ace2 3-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b321d29905217b29c56d5a90b049c6e9abeff814",
+  "prompts": {},
+  "sessions": {
+    "s_081879bbe7ac70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e386c37-4618-44fc-a3db-f8b160648a8f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

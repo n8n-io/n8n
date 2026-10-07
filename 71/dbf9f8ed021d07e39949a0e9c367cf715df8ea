@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_5113da58741f6d::t_d1ceb98bde1433 1-4,137-172
+  s_5113da58741f6d::t_241480861fc6b2 173
+packages/@n8n/db/src/migrations/common/1785456000000-AllowDiscordAgentChatSubscriptions.ts
+  s_5113da58741f6d::t_a839a495e3e628 8-9
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5113da58741f6d::t_153ac963a806d1 7824,7828-7830
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_5113da58741f6d::t_6e55eb421ca841 298
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_5113da58741f6d::t_7dd7958dfc4813 18,28,225
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_5113da58741f6d::t_fcd26a5c760dd0 41,514,519,597
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_5113da58741f6d::t_d0f4f6a30cfefe 1-49,53
+  s_5113da58741f6d::t_be48f3c93921d5 50-52
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelDiscordSetup.vue
+  s_5113da58741f6d::t_0340bff406c414 2-3,117,122,124,127-128,130,136,146-148,150,153,156,170,175,177,180-181,183
+  s_5113da58741f6d::t_8f209e5dfa9fb0 5
+  s_5113da58741f6d::t_a03731f4bfc11a 87
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_5113da58741f6d::t_ece9aa9b62192a 17,154-156,290,421,741-745,759,783,788-800
+  s_5113da58741f6d::t_39faf1a9775c0e 801-802
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_5113da58741f6d::t_392dab2f14835d 124
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_5113da58741f6d::t_e46da8f45ed12d 114-127
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_5113da58741f6d::t_9b1aca3d521e18 120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "71dbf9f8ed021d07e39949a0e9c367cf715df8ea",
+  "prompts": {},
+  "sessions": {
+    "s_5113da58741f6d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3b298141-c419-44c6-8d40-5e6665a156c2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

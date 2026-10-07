@@ -1,0 +1,91 @@
+packages/cli/src/modules/project-files/project-file.repository.ts
+  s_749e9217782dea::t_b6e37275fdc99b 98,103
+  s_749e9217782dea::t_590f256c8b7689 106-121
+  s_749e9217782dea::t_0ba82ea7443bfa 7-10,12,18-49,54-85,87-89,91-97,99-102,104-105,122-202
+  s_749e9217782dea::t_7a4feebc8ab7ef 86,90
+  s_749e9217782dea::t_8a91e462bca54c 1-6,11,13-17
+  s_749e9217782dea::t_e94b4dbbb07b98 50-53
+packages/@n8n/db/src/migrations/common/1786000000000-CreateProjectFilesTable.ts
+  s_749e9217782dea::t_8e31a62bf25391 1-103
+  s_749e9217782dea::t_abee72b261f4d9 104-105
+packages/@n8n/config/src/configs/project-files.config.ts
+  s_749e9217782dea::t_7b629278715a26 1-35
+packages/cli/test/integration/modules/project-files.integration.test.ts
+  s_749e9217782dea::t_54c6fce37b13dd 14
+  s_749e9217782dea::t_7ea93c2ad80b4c 68,71,263
+  s_749e9217782dea::t_c3172e223dc680 352,360-363,365-377,379
+  s_749e9217782dea::t_47afefe96b56dc 49-65
+  s_749e9217782dea::t_b513d2b25cad6b 88-90,93,98-99
+  s_749e9217782dea::t_28a2a7f4dea307 9,11,19
+  s_749e9217782dea::t_f7ed2c62bfc526 1-8,10,12-13,15-18,20-48,66-67,69-70,72-87,91-92,94-97,100-149,154-155,162-262,264-351,353-359,364,378,380-391
+  s_749e9217782dea::t_8c68702c8f78bd 150-153,156-161
+  s_749e9217782dea::t_48605b6455cf09 392-394
+packages/@n8n/config/src/configs/logging.config.ts
+  s_749e9217782dea::t_4a1cc49c575611 29
+packages/cli/src/modules/project-files/project-files.types.ts
+  s_749e9217782dea::t_2bcf4344765729 1-41
+packages/cli/src/modules/project-files/errors/project-file-name-conflict.error.ts
+  s_749e9217782dea::t_a02e1224758e78 1-7
+packages/cli/src/modules/project-files/project-file.entity.ts
+  s_749e9217782dea::t_b852352b64c725 1-65
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_749e9217782dea::t_cb3e58498ae164 51,88
+packages/cli/src/modules/project-files/utils/size-utils.ts
+  s_749e9217782dea::t_0a26b901a62dd1 1-21
+packages/cli/src/modules/project-files/errors/project-file-quota-exceeded.error.ts
+  s_749e9217782dea::t_c44ba949a502bf 1-19
+packages/@n8n/config/test/config.test.ts
+  s_749e9217782dea::t_73f65492a8a435 200-204
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_749e9217782dea::t_1b551ec2d56ec9 48
+packages/cli/src/modules/project-files/project-file.service.ts
+  s_749e9217782dea::t_1492008a57b8d7 89
+  s_749e9217782dea::t_9bc9056ef5ea75 1-5,7-88,90-160,165,167,169,171-250,252-257,259-317
+  s_749e9217782dea::t_be25ba220eed39 6
+  s_749e9217782dea::t_d87ded767b1abe 251,258
+  s_749e9217782dea::t_1f8e462f08a99b 161-164,166,168,170
+packages/cli/src/modules/project-files/project-files.module.ts
+  s_749e9217782dea::t_47f1828730534d 1-35
+packages/cli/src/modules/project-files/errors/project-file-concurrent-modification.error.ts
+  s_749e9217782dea::t_952196fd024012 1-12
+packages/@n8n/db/src/entities/binary-data-file.ts
+  s_749e9217782dea::t_ff4788945603b4 11
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_749e9217782dea::t_5ba6da1be9d38e 12
+packages/cli/src/modules/project-files/errors/project-file-not-found.error.ts
+  s_749e9217782dea::t_2cbb3af639a665 1-7
+packages/cli/src/modules/project-files/errors/project-file-too-large.error.ts
+  s_749e9217782dea::t_59b9dc962b1eb0 3
+  s_749e9217782dea::t_c0f33f793116c7 1-2,4-12
+packages/@n8n/config/src/index.ts
+  s_749e9217782dea::t_48813a0673a5a1 86
+  s_749e9217782dea::t_8f237b018f59c7 287
+  s_749e9217782dea::t_9933472c2086fb 40
+  s_749e9217782dea::t_05d4f0b4ee5204 286
+  s_749e9217782dea::t_9d7ed28c1101ce 288
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_749e9217782dea::t_2a6f81dd52dce5 161
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_749e9217782dea::t_f155a6432dad5b 19-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "114a82b64a0faa52f5317859cb11c2a68a8c3fcb",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_749e9217782dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9256f74-4f49-46ff-9964-3b3c3eb85678",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

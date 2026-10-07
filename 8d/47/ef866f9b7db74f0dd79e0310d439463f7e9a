@@ -1,0 +1,39 @@
+packages/cli/test/integration/scheduling/shared/job-factory.ts
+  s_940781c2f2b22c::t_52d11966d51c68 6-7
+packages/cli/test/migration/1787306400000-generalize-scheduled-job-owner.test.ts
+  s_940781c2f2b22c::t_515e18444d6996 52
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_940781c2f2b22c::t_d374b87da4d876 18,619-632
+  s_fd14e5d6c273e0::t_13f55fbb3eac6d 67
+  s_940781c2f2b22c::t_e3cfc574da41d6 636-650
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_940781c2f2b22c::t_515e18444d6996 441-442
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_940781c2f2b22c::t_52d11966d51c68 13-16,18,58-60,62-65,76,89,106,109-111,134-136
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_940781c2f2b22c::t_51b2e2ed325251 21-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d47ef866f9b7db74f0dd79e0310d439463f7e9a",
+  "prompts": {},
+  "sessions": {
+    "s_940781c2f2b22c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db7b124a-280c-4b5f-9daa-bb3c549c49b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_fd14e5d6c273e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7edd1df-b889-4e1e-b8e0-1cb648f7e7c3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

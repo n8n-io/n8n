@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_e7b82576de0350::t_a0af431d9a3bd5 11
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_e7b82576de0350::t_c74325ce936349 43-45
+packages/nodes-base/nodes/Microsoft/test/GenericFunctions.test.ts
+  s_e7b82576de0350::t_8af16c4e571146 140,147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "e5a1583e76c45b4b2122d427f8e4e903bd92c8ec",
+  "prompts": {},
+  "sessions": {
+    "s_e7b82576de0350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8559a775-ab76-4c98-9eef-2dc047602094",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

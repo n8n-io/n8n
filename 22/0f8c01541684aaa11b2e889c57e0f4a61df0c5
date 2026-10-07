@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/MicrosoftDynamicsOAuth2Api.credentials.ts
+  s_7023f0b32a2be9::t_5c90dd0bd6644f 104-126,131
+packages/nodes-base/credentials/test/MicrosoftDynamicsOAuth2Api.credentials.test.ts
+  s_7023f0b32a2be9::t_8537f25363edff 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "220f8c01541684aaa11b2e889c57e0f4a61df0c5",
+  "prompts": {},
+  "sessions": {
+    "s_7023f0b32a2be9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17d9dcc3-cfc2-48ed-bd94-c9cb5e6bd4f2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

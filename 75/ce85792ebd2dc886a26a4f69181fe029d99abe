@@ -1,0 +1,34 @@
+packages/core/src/execution-engine/node-execution-context/poll-context.ts
+  s_6358c8cb4cd2a5::t_b857efd3b8ac22 48-50
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_6358c8cb4cd2a5::t_c8fa31a4dbf256 169-172
+  s_6358c8cb4cd2a5::t_ee42b136ea594c 122-125
+  s_6358c8cb4cd2a5::t_f19e78ddee677d 50-51
+  s_6358c8cb4cd2a5::t_ef3b8d39ebe83c 148-150
+  s_6358c8cb4cd2a5::t_5e2dabb4df8be0 218-220
+  s_6358c8cb4cd2a5::t_2acf27f930c946 236-238
+  s_6358c8cb4cd2a5::t_256dc8468c99ba 262-263
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_6358c8cb4cd2a5::t_96147a0357a7f1 386-388,391-392
+  s_6358c8cb4cd2a5::t_3d47fb25d36f22 288-290,292-295
+  s_6358c8cb4cd2a5::t_78b9e2bfe3297c 313-314
+  s_6358c8cb4cd2a5::t_2b35fb9638ce7a 357-360
+packages/workflow/src/interfaces.ts
+  s_6358c8cb4cd2a5::t_a844f3324e2342 1420-1424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "75ce85792ebd2dc886a26a4f69181fe029d99abe",
+  "prompts": {},
+  "sessions": {
+    "s_6358c8cb4cd2a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1f2839c-15c8-45f2-a3c3-ad2077007168",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

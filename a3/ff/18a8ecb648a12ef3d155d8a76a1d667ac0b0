@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_9c30e64d236bdf::t_16dfff7e190fd6 25-34
+packages/testing/playwright/playwright-projects.ts
+  s_9c30e64d236bdf::t_c05bfa110ae392 211-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a3ff18a8ecb648a12ef3d155d8a76a1d667ac0b0",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/Outlook/v2/transport/index.ts
+  s_768f033e6fe33a::t_1c65ac90d7eda2 188
+packages/nodes-base/nodes/Microsoft/Outlook/test/trigger/GenericFunctions.test.ts
+  s_768f033e6fe33a::t_a19a71c0e1dcb9 186
+  s_768f033e6fe33a::t_a24407fb8bd6d9 881
+  s_768f033e6fe33a::t_d54046ba068750 291
+  s_768f033e6fe33a::t_6e833625568640 317
+packages/nodes-base/nodes/Microsoft/Outlook/trigger/GenericFunctions.ts
+  s_768f033e6fe33a::t_053b594f8c9565 107-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7192a996b8e0dfc3430846f15556e10f6a43e76e",
+  "prompts": {},
+  "sessions": {
+    "s_768f033e6fe33a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da0be38a-3d09-4b8c-91c9-2a290c191b69",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

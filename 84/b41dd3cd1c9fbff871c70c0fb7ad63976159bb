@@ -1,0 +1,21 @@
+packages/nodes-base/utils/microsoft/test/transport.test.ts
+  s_6a7d5f1a01d9ec::t_161cdeaf45e8bd 101-110
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/create.validation.test.ts
+  s_6a7d5f1a01d9ec::t_f1f2f0a09f7169 178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "84b41dd3cd1c9fbff871c70c0fb7ad63976159bb",
+  "prompts": {},
+  "sessions": {
+    "s_6a7d5f1a01d9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a07b1d9-b11c-42d1-9e09-61ac14d5005c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

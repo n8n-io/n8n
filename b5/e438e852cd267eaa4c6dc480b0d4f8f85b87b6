@@ -1,0 +1,15 @@
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  h_9b272a633435fb 314
+  h_9b272a633435fb 281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5e438e852cd267eaa4c6dc480b0d4f8f85b87b6",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

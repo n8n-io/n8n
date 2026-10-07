@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  s_6d276b1414fa1d::t_be17d2f8dd0a69 61-73,75-85
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/templates.test.ts
+  s_6d276b1414fa1d::t_8208c66a69e684 299-301
+  s_6d276b1414fa1d::t_9a3f08ecb1e1ac 9-14,18-35,153-189,192-200,203-207,210-217,220-225,228-233,236-240,243-244,246,249-257,260-264,267-274,277-285,287-298,302-311,313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "841c98e4c19f036adec58e1894be032464309c5d",
+  "prompts": {},
+  "sessions": {
+    "s_6d276b1414fa1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6218b41-86bd-46db-8b99-33c8733c3b10",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

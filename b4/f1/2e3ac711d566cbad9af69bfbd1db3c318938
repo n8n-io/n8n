@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_37f71569fe57a7::t_f2d4baec4feb5b 386
+  s_37f71569fe57a7::t_335c4fb6a943b8 387-391
+  s_37f71569fe57a7::t_627e768e7ffc2f 250
+packages/testing/playwright/tests/e2e/workflows/editor/canvas/node-groups.spec.ts
+  s_37f71569fe57a7::t_bf49599b583869 70-83
+packages/frontend/@n8n/design-system/src/components/N8nInlineTextEdit/InlineTextEdit.vue
+  s_37f71569fe57a7::t_13642a749ce625 141
+  s_37f71569fe57a7::t_3926ad8b455286 138
+packages/testing/playwright/pages/CanvasPage.ts
+  s_37f71569fe57a7::t_d76d7b2bb3f2b1 1184-1201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4f12e3ac711d566cbad9af69bfbd1db3c318938",
+  "prompts": {},
+  "sessions": {
+    "s_37f71569fe57a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1ea4358-ac29-41d4-8e8e-da67182f8c6c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

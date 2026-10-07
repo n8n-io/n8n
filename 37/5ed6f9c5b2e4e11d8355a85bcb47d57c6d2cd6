@@ -1,0 +1,19 @@
+packages/cli/src/modules/ldap.ee/ldap.service.ee.ts
+  s_1d37d4b19933d8::t_637a46d4da480d 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "375ed6f9c5b2e4e11d8355a85bcb47d57c6d2cd6",
+  "prompts": {},
+  "sessions": {
+    "s_1d37d4b19933d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce211d59-5732-485c-8538-d5fcac24cdc9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

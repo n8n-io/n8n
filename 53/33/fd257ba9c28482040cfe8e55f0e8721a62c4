@@ -1,0 +1,23 @@
+packages/cli/src/__tests__/load-nodes-and-credentials.test.ts
+  s_241d2fbc86d0f3::t_842e07f55d0d1e 520-610
+  s_241d2fbc86d0f3::t_46d42a0f38416e 9,13
+  s_241d2fbc86d0f3::t_760cb9b35d6b11 14
+packages/cli/src/load-nodes-and-credentials.ts
+  s_241d2fbc86d0f3::t_4572bc99b18782 354-373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5333fd257ba9c28482040cfe8e55f0e8721a62c4",
+  "prompts": {},
+  "sessions": {
+    "s_241d2fbc86d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a89408a0-7bb5-49bb-9209-f821ac47ab47",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

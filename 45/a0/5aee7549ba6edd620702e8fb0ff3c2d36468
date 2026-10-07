@@ -1,0 +1,27 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_024ce339f8a2d8::t_0ca6593cb4dfe2 7658
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_024ce339f8a2d8::t_43b176cdcc2e2a 199-213
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_024ce339f8a2d8::t_adabf773103d6f 7-8,11,13-18,26-31,39
+  s_024ce339f8a2d8::t_222a7e85eb7d80 55
+  s_024ce339f8a2d8::t_5b6f7e01a7446e 85-93
+  s_024ce339f8a2d8::t_46b340f798375a 112-116
+  s_024ce339f8a2d8::t_b824cdd0ed13f6 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45a05aee7549ba6edd620702e8fb0ff3c2d36468",
+  "prompts": {},
+  "sessions": {
+    "s_024ce339f8a2d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff99e9f6-00f9-4dbe-a810-20f8921a1504",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

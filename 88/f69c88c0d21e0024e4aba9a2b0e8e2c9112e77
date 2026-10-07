@@ -1,0 +1,22 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_d0e9b43a636764::t_680fca3b8a113a 1883-1910
+  s_d0e9b43a636764::t_87b598f8488c78 1756,1759,1782-1784,1789-1799,1828-1829,1846,1859,1870,1879,1925,1964,1976
+packages/cli/src/workflows/workflow.service.ts
+  s_d0e9b43a636764::t_f390fe6be62117 1346-1357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88f69c88c0d21e0024e4aba9a2b0e8e2c9112e77",
+  "prompts": {},
+  "sessions": {
+    "s_d0e9b43a636764": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dae7824-17ea-4f33-8099-6a9b1af82418",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

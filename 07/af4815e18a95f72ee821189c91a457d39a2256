@@ -1,0 +1,23 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_7cc679151e24b7::t_9de1365b0c8ad1 782-798
+  s_7cc679151e24b7::t_b6f460e6021ede 799-800
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_7cc679151e24b7::t_89577bb9cc5a7e 1150-1155
+  s_7cc679151e24b7::t_f7534994ca628d 55,57,60,956-957,959,963,997-1004,1015,1022-1023,1027-1030,1041,1058,1105,1119-1120,1134-1149,1156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "07af4815e18a95f72ee821189c91a457d39a2256",
+  "prompts": {},
+  "sessions": {
+    "s_7cc679151e24b7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7982d985-d9bf-402b-b2d2-e61e60b1276f",
+        "model": "grok-4.5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

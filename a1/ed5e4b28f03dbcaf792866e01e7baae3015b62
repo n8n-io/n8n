@@ -1,0 +1,39 @@
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_be6d12de03f718::t_e2b903bf3604cc 163
+  s_be6d12de03f718::t_a82943cb69c201 3
+  s_be6d12de03f718::t_2590480501569b 40,181
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.node-usage.test.ts
+  s_be6d12de03f718::t_e8c47d97e94219 140
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_be6d12de03f718::t_7ac9efcd18e472 434
+  s_be6d12de03f718::t_4aca9e1299c3b8 571,573,577,587
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_be6d12de03f718::t_e4372bbcdb8834 1375
+  s_be6d12de03f718::t_a263cfc6f1a124 1447-1451,1467,1474-1514
+  s_be6d12de03f718::t_1db4593a21bcdb 1515-1517
+packages/@n8n/instance-ai/skills/one-off-operations/SKILL.md
+  s_be6d12de03f718::t_e93fdb14296d4d 77-79
+packages/cli/src/node-execution/execute-node.service.ts
+  s_be6d12de03f718::t_f5e7e681c1933a 70-73
+  s_be6d12de03f718::t_63687e15450452 103
+  s_be6d12de03f718::t_fe5ee53d191de5 40
+  s_be6d12de03f718::t_727a23452530be 183
+  s_be6d12de03f718::t_f0a50914c82d6c 2
+  s_be6d12de03f718::t_c022cfce072e7c 204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a1ed5e4b28f03dbcaf792866e01e7baae3015b62",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

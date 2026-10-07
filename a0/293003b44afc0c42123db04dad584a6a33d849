@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_ef8734a1a9d434::t_62c3917c0ee620 292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "a0293003b44afc0c42123db04dad584a6a33d849",
+  "prompts": {},
+  "sessions": {
+    "s_ef8734a1a9d434": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2384e80-02bf-49f2-bb42-c49c34374e77",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

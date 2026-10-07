@@ -1,0 +1,20 @@
+packages/nodes-base/credentials/SupabaseApi.credentials.ts
+  s_fefbc5985f8175::t_f247bf531f4d45 22-23
+  s_fefbc5985f8175::t_11db75854db1c9 26,33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4ca55b3b24ed7cbd30467eddf564a97b074c2983",
+  "prompts": {},
+  "sessions": {
+    "s_fefbc5985f8175": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b96c1492-05d9-4fd4-be90-0bb729eae822",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

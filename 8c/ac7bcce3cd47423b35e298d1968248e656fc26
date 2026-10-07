@@ -1,0 +1,80 @@
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_5be157f6e91b85::t_23170537487ab8 1-5
+  s_5be157f6e91b85::t_f4aafc0844c245 14,16-22,67,79,84-85,106-108
+  s_5be157f6e91b85::t_eacf390e6333f4 86-95
+packages/cli/src/modules/oauth-server/__tests__/oauth-clients.controller.api.test.ts
+  s_5be157f6e91b85::t_e435a24c17ef35 31-41
+packages/cli/src/modules/mcp/__tests__/get-instance-context.tool.test.ts
+  s_5be157f6e91b85::t_9ce034d486f355 1-78,80-143,145-158
+packages/cli/src/modules/oauth-server/oauth-consent.service.ts
+  s_5be157f6e91b85::t_c3b4c593f5a1c8 149
+  s_5be157f6e91b85::t_ad340d220f271f 124
+packages/cli/src/modules/oauth-server/oauth-clients.controller.ts
+  s_5be157f6e91b85::t_631c83f8caea61 66
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_5be157f6e91b85::t_1420766d29ac5b 75-78,209-211
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_5be157f6e91b85::t_fef795cc3fa213 9-10,15-21,33,60,77-78,129,184,363,379,394,413,415,424-425,432-452,454-461,463-468,515-516,518,522-523,527-528,530-532,536-537,540,542-543,545-547,551,555,558,561-584,591,596-597,612,617-618,642,660-661,663,724-725,753,779-782,786-788,791,795,798-800,805,809-810,813-821,823-824,1160,1191,1217,1248,1330,1362,1397,1418,1439,1459,1468
+packages/@n8n/config/test/config.test.ts
+  s_5be157f6e91b85::t_f4aafc0844c245 271,297
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_5be157f6e91b85::t_1a6d28321ad4c7 295
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_5be157f6e91b85::t_a0d56fcdd738ff 7-8,14-15,21,29-35,37-47,83-84,92-93,99-102,110-111,119-121,135,165,181-182,190-200,212,229,248,265,282,298,315,331,342-344,362,387,413,431,446,471,509,518,527,551,583,608,640,652,675,691,711,726,741,765,784,803,820,835,848,863,874,885-1328
+packages/cli/src/services/pruning/__tests__/activity-pruning.task.test.ts
+  s_5be157f6e91b85::t_507892db6ad5c8 18
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_5be157f6e91b85::t_b9937b56fb9b29 4-10,15-21,29,33-39,69-73,77-92,112-115,138-146,178,195-199,222-223,225-226,231-338,340-389,391-436,449-491,521-525
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_5be157f6e91b85::t_b623f742935038 968,1018-1019
+packages/@n8n/config/src/configs/activity-log.config.ts
+  s_5be157f6e91b85::t_2c825b8dc7a5ee 6,10
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_5be157f6e91b85::t_b623f742935038 14,1863
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_5be157f6e91b85::t_3da13792e69854 3,67
+packages/cli/test/integration/instance-context.service.test.ts
+  s_5be157f6e91b85::t_3da3bebd931c58 541-545,565-569,707-711,732-736,813,833
+  s_5be157f6e91b85::t_34be5a3d490f55 12,17-19,64,80,104,129,132,161,189,195,222,252,267,281,288,305,318,342,359-540,546-564,570-706,712-731,737-757,774,794
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_5be157f6e91b85::t_8cb63d5ebb9b5e 635
+  s_5be157f6e91b85::t_f4aafc0844c245 6-7,31,39,56-61,86-95,100-103,146,149-155,242,261,263,265-269,273-274,276,449-456,464-465,467-468,472,513-515,518,624-634,636-716,752-759,815,825,974,982
+  s_5be157f6e91b85::t_7e6fe99d6c6602 275
+  s_5be157f6e91b85::t_00b1316b086c7a 466
+packages/cli/src/posthog/index.ts
+  s_5be157f6e91b85::t_3da13792e69854 283
+packages/cli/src/services/protected-resource.registry.ts
+  s_5be157f6e91b85::t_3da13792e69854 56
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_5be157f6e91b85::t_3da13792e69854 793-794
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_5be157f6e91b85::t_66ecd51b3ac790 390,430
+packages/cli/test/integration/activity-event-relay.test.ts
+  s_5be157f6e91b85::t_e29404a0d40a7b 122
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_5be157f6e91b85::t_4c09d0ba6aec49 2,45-53,55,101-102,109-110,118,126,147,164,172-173,183,188,191,203,211,383,395,416,437,458,490,512,521,530,550,567,595,609,627,647,666,686
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_5be157f6e91b85::t_c2e10929558b38 47,61,71,84,122,140,152-154,170-172,180-181
+  s_5be157f6e91b85::t_730e469cb53f4c 1-2,11,26,34,39,46,57-60,62-70,72-83,85-111,119,137,150-151,155-169,175
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_5be157f6e91b85::t_6ed9a572294313 4-5,29-34,101-104,142-159
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_5be157f6e91b85::t_1a26a071bf60a5 190-206,210-212
+  s_5be157f6e91b85::t_9b4c2767307a99 209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cac7bcce3cd47423b35e298d1968248e656fc26",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

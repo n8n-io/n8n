@@ -1,0 +1,39 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  s_3732d26101b68f::t_b0f124d6e98fb0 104
+  s_3732d26101b68f::t_42245dd69a56f5 76
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_3732d26101b68f::t_16e717d352db8a 4035-4041
+  s_3732d26101b68f::t_424fd84f4420df 410-417
+  s_3732d26101b68f::t_735ca9d2e9eefe 2921-2930
+  s_3732d26101b68f::t_57b6886c94b061 5198-5204
+  s_3732d26101b68f::t_a89b217029f3ef 512,2883-2905
+  s_3732d26101b68f::t_39e63a52b75c04 1512
+  s_3732d26101b68f::t_42207cd81e623a 513-519
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_3732d26101b68f::t_a6c3808b3e758c 663
+  s_3732d26101b68f::t_b0f124d6e98fb0 4043
+  s_3732d26101b68f::t_fa99c2b679c8ce 760
+  s_3732d26101b68f::t_1bb45741b13c66 4216-4338
+  s_3732d26101b68f::t_42245dd69a56f5 4014
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7f0bc2c2745835ca57d83a3db5e115441e1f3260",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_3732d26101b68f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3697bcd-67b6-4a36-886c-4521f547549e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_f3c9e6db456d8f::t_524d20aeb36dd8 38-42,43,46
+  s_f3c9e6db456d8f::t_778edbc2d838b3 59
+  h_7555c3ee6524cf 180
+  s_f3c9e6db456d8f::t_1291cd595575e3 318-319,322
+  s_f3c9e6db456d8f::t_f1f97cd947f4ee 417-425
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_f3c9e6db456d8f::t_6b8c9b9bb0dc3c 1-8,10,22-29,34-37,43-56,58,63-92,94-112,125-129,131-133,138-142,146-149,182-197,199-200,210,151-152,154-159,118,121
+  s_f3c9e6db456d8f::t_8ee12131344ac3 11-14,18-21,30-33
+  ai_agent 15-17
+  s_f3c9e6db456d8f::t_61d7c98bae3934 38-42
+  s_f3c9e6db456d8f::t_6854a5751e433f 57
+  s_f3c9e6db456d8f::t_a70833f8fde864 93
+  s_f3c9e6db456d8f::t_3687924b49547b 124,130,134-137,143-145
+  s_f3c9e6db456d8f::t_16de2fdebf6c12 198,201-208
+  s_f3c9e6db456d8f::t_3e0b2d81ff7a2b 209,160,162,167-168,172,174,180-181,122-123
+  s_f3c9e6db456d8f::t_18bfa8a42671a3 150,153,163-164
+  s_bfe6a865a3bf73::t_f629349d9e9545 161,165-166,169-171,173,175-179
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-9,11-13,16-31,33-35,37,53-77,80-89,92-109,127,131-145,153,155-162,166-171,185-187,204,255-266,278,288-289,337-374,385,389-390,392,396-409,417-418,447,465,415,151,383
+  s_f3c9e6db456d8f::t_215638f4be1e5f 10
+  s_f3c9e6db456d8f::t_2a2c426e89a273 14
+  s_f3c9e6db456d8f::t_8e341613919eae 32
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 36
+  s_f3c9e6db456d8f::t_546f61ee1155e0 38-40
+  s_f3c9e6db456d8f::t_489963625ad545 42-52,188-193,290-291
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 110-112,114-117
+  s_f3c9e6db456d8f::t_715b40c294a666 120-126,128-130
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 194-203,205-216
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 273,281
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 282-284,304-312,330-331
+  s_f3c9e6db456d8f::t_495bf9bc203fff 285,297-301
+  s_f3c9e6db456d8f::t_1e453de502744e 393,395
+  s_05cd7ab5f956cf::t_35616ad850b841 394
+  s_f3c9e6db456d8f::t_40d80601d668de 410-411,91,412-414,416,152,384
+  s_f3c9e6db456d8f::t_b923d23f7ad7e1 453
+  h_7555c3ee6524cf 313,315,319,321,325-329,332-333
+  s_05cd7ab5f956cf::t_d576ddf1e82633 314,320,324
+  s_05cd7ab5f956cf::t_a89fd654b5e082 316-317,322-323
+  s_f3c9e6db456d8f::t_341d441fc1aa70 90
+  s_f3c9e6db456d8f::t_bfe4881e1ecc7b 241
+  s_bfe6a865a3bf73::t_e9293ef5a348ba 172-184
+  s_f3c9e6db456d8f::t_b908cf851754d0 217-219
+  ai_agent 220-223,226-240,243-249,251,253-254
+  s_f3c9e6db456d8f::t_173aa9faa6c0c2 275-277
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 375-377,379,381-382,386-387
+  s_f3c9e6db456d8f::t_0758910a50cc74 380,388
+  s_f3c9e6db456d8f::t_4ce1ef0cd4469b 422,426
+  s_f3c9e6db456d8f::t_ee8ffe0dde1b9c 432-435,441-442,445-446,450-451,456,459
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_f3c9e6db456d8f::t_3d32c16c813f34 38-39
+  s_f3c9e6db456d8f::t_86b676e26d3d4d 206-223,180-181,184,187-188
+  s_f3c9e6db456d8f::t_e04d6e04cb69ad 179,182-183,185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ac6b29983ce7b18190d5c807dcab2279c4a6d9d",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_bfe6a865a3bf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "430bf789-cf05-4910-9dda-8fa7dfba9d21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

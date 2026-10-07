@@ -1,0 +1,20 @@
+packages/cli/src/modules/otel/otel.service.ts
+  s_fa21170c500bbf::t_c7f04e5e58a24e 78-81
+  s_fa21170c500bbf::t_c6acce1c22930e 167-169,171-185,189-190,192-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41e16ee847cac69dc4721a3e6dcd88f19334de87",
+  "prompts": {},
+  "sessions": {
+    "s_fa21170c500bbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a7e062f-7986-4e8e-92a3-0c7d5a16f6d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

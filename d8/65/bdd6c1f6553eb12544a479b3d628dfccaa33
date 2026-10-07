@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_4c6c236098f392::t_e1ff2cc6b74551 19-22
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_4c6c236098f392::t_780fbac9a0fe46 3,23-35,37-38
+  s_4c6c236098f392::t_644b2d31fc550e 2,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d865bdd6c1f6553eb12544a479b3d628dfccaa33",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4c6c236098f392": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d07b440-3bba-46b2-9b67-d43e408010d0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

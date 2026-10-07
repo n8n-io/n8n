@@ -1,0 +1,37 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_085981bf6bbf08::t_7916a05125a341 3738-3750
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceSection.vue
+  s_085981bf6bbf08::t_604874b1a36c8b 1-52
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_085981bf6bbf08::t_69c275c218cfe2 19
+  s_085981bf6bbf08::t_2891c87534f4ef 140-141
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_085981bf6bbf08::t_6c24dbe3227ff7 23,36
+  s_085981bf6bbf08::t_06c4c315fc5d6d 54,56,59,62,68,70
+  s_085981bf6bbf08::t_91d92eab9cc91d 1
+  s_085981bf6bbf08::t_a372d4c7f9b9ea 2-22,24-35,37-53,55,57-58,60-61,63-67,69,71-86,88,90-94
+  s_085981bf6bbf08::t_b0790d0c6636b7 87,89
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_085981bf6bbf08::t_7a02a9a3b65efd 1-158
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceSection.test.ts
+  s_085981bf6bbf08::t_573d9fa70c6dc2 1-82
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_085981bf6bbf08::t_fbbd7162710d67 175-187
+  s_085981bf6bbf08::t_5d9ddec6f29dd3 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c6b212a7d9a652b491fcc36c7430a3b62454457",
+  "prompts": {},
+  "sessions": {
+    "s_085981bf6bbf08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2d8d7ce-e36d-4032-ad1e-0006b9e00102",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

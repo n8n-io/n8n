@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.test.ts
+  s_3e35b5e2e4b304::t_bc7b35304d377e 45-54,56-57,67-74,77-78,80
+  s_3e35b5e2e4b304::t_f458477ca3daf4 55,75-76,79
+  s_3e35b5e2e4b304::t_3d4f0db0087bec 81
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.vue
+  s_3e35b5e2e4b304::t_bc7b35304d377e 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe0e4a4d12196be79b50e03ced7102e84f0f6400",
+  "prompts": {},
+  "sessions": {
+    "s_3e35b5e2e4b304": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b011-e509-7ab1-9669-6c432e516d9c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

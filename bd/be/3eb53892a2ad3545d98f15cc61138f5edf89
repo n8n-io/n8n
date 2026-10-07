@@ -1,0 +1,29 @@
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_9c0f1cc2fdb6d3::t_4eb80f5f72e11c 121
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentials.generated.yml
+  ai_agent 1-79
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 6-11
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredential.generated.yml
+  ai_agent 1-63
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_9c0f1cc2fdb6d3::t_b4fbf0045a5f1d 39
+pnpm-lock.yaml
+  ai_agent 181-182,752,1304,1404,4008-4010,4320,6047-6050,6087-6092,6129-6131,6144-6146,6150-6152,6159-6161,6168-6170,6174-6176,6180-6182,6186-6188,6192-6194,6198-6245,6249-6263,6282-6284,6300-6302,6309-6314,6342-6344,6348-6350,6375-6377,6387-6389,6396-6401,6420-6422,6426-6428,6432-6434,6438-6443,6453-6470,6495-6497,6937-6938,8271-8274,8302-8305,8330-8336,10068-10069,10976-10977,13585-13586,15765-15767,20427-20429,23160-23162,26324-26334,26377-26385,26435,26437-26438,26440-26453,26458,26545,29436,30408,33050,35711-35717,41527,41529,41533,44986,44988,44990-44994
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bdbe3eb53892a2ad3545d98f15cc61138f5edf89",
+  "prompts": {},
+  "sessions": {
+    "s_9c0f1cc2fdb6d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c503480-7151-4d14-ad15-455a9de538a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

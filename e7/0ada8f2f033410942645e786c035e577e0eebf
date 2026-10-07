@@ -1,0 +1,25 @@
+packages/core/src/execution-engine/requests-response.ts
+  s_46af6a60d26d9b::t_737975fe127222 273-276
+  s_46af6a60d26d9b::t_e5e67d50ea1f49 272
+packages/core/src/execution-engine/__tests__/workflow-execute-process-process-run-execution-data.test.ts
+  s_46af6a60d26d9b::t_4f01f43afb76a8 654-667,669-742
+  s_46af6a60d26d9b::t_34b36b075afb90 668
+packages/core/src/execution-engine/__tests__/requests-response.test.ts
+  s_46af6a60d26d9b::t_3abee8fff981f5 499-594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e70ada8f2f033410942645e786c035e577e0eebf",
+  "prompts": {},
+  "sessions": {
+    "s_46af6a60d26d9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a570602c-9753-49ff-a1f9-cca068e3aa93",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

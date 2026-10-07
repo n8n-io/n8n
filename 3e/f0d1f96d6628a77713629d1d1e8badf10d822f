@@ -1,0 +1,20 @@
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 2-6,10-11,13,253-326
+  s_6358c8cb4cd2a5::t_109006a1e56d1c 1,327-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3ef0d1f96d6628a77713629d1d1e8badf10d822f",
+  "prompts": {},
+  "sessions": {
+    "s_6358c8cb4cd2a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1f2839c-15c8-45f2-a3c3-ad2077007168",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

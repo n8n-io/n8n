@@ -1,0 +1,20 @@
+packages/@n8n/nodes-langchain/utils/oauth2-token-provider.ts
+  s_894c4e86d9aaa6::t_7231d15eeefd28 4
+  s_894c4e86d9aaa6::t_516dc089054e93 98-100,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d720028869d09d19523aaf9bed6352e363e4618",
+  "prompts": {},
+  "sessions": {
+    "s_894c4e86d9aaa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56ec0584-63f8-42b4-aa55-e67df50c5303",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

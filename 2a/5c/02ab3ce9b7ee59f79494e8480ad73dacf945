@@ -1,0 +1,61 @@
+packages/cli/test/integration/public-api/sso-oidc.test.ts
+  s_d0f0160c46e424::t_6e1d65f6bfd97e 108
+  s_d0f0160c46e424::t_3fbfbefc92f890 88
+  s_d0f0160c46e424::t_930b8d680dc219 214-227
+  s_d0f0160c46e424::t_bdb9bad4ee04ad 38
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  s_d0f0160c46e424::t_b4bfbf3fa053c5 238-267
+packages/@n8n/api-types/src/dto/oidc/config.dto.ts
+  s_d0f0160c46e424::t_b62dc6ec2094b0 15,28
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_d0f0160c46e424::t_742cc95a20167e 214,235,331
+  s_d0f0160c46e424::t_4bdfc07f78e2a8 899-949,954-956
+  s_d0f0160c46e424::t_30dcba1fb0ea44 950-953
+packages/@n8n/api-types/src/dto/oidc/__tests__/config.dto.test.ts
+  s_d0f0160c46e424::t_0497c7eb5e23ee 29,34-45
+  s_d0f0160c46e424::t_fcd2800a80f317 46-47
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/schemas/oidc-configuration.yml
+  s_d0f0160c46e424::t_7bab6f35a60eba 51-56
+  s_d0f0160c46e424::t_b87bb17fc5a0b5 11
+packages/frontend/editor-ui/src/features/settings/sso/components/OidcSettingsForm.vue
+  s_d0f0160c46e424::t_d77fbd8cf20c4b 191
+  s_d0f0160c46e424::t_06326880634725 89
+  s_d0f0160c46e424::t_7f9e42bc489438 409,430-444,449
+  s_d0f0160c46e424::t_fc0775f53dff36 74
+  s_d0f0160c46e424::t_184bf76ffa626d 122
+  s_d0f0160c46e424::t_e75fdd447fed5a 445-448
+  s_d0f0160c46e424::t_6899a2aae76c32 450
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/schemas/oidc-configuration.update.yml
+  s_d0f0160c46e424::t_295b123875f2ad 57-62
+  s_d0f0160c46e424::t_3d4499b1319188 15
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  s_d0f0160c46e424::t_073f0963176694 193-198
+  s_d0f0160c46e424::t_cb24858f9293d8 152-155,157-174
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_d0f0160c46e424::t_040de0048404eb 433-437
+  s_d0f0160c46e424::t_f1b2c981abf44d 46,57
+packages/frontend/editor-ui/src/features/settings/sso/views/SettingsSso.test.ts
+  s_d0f0160c46e424::t_e98db913e6dbdf 536-568,572
+  s_d0f0160c46e424::t_0c3c38b53ea0a1 569-571
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_d0f0160c46e424::t_342807241b21c1 1372-1385
+  s_d0f0160c46e424::t_265ba6b972eb5c 73,87,100,125,149,164,189,216,249,303,349,451,526,564,594
+packages/frontend/editor-ui/src/features/settings/sso/sso.test.ts
+  s_d0f0160c46e424::t_8b2dd6d09fd91c 197,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2a5c02ab3ce9b7ee59f79494e8480ad73dacf945",
+  "prompts": {},
+  "sessions": {
+    "s_d0f0160c46e424": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6089579-6930-4d20-bb7f-8c282f9d55a5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

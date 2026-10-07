@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.api.test.ts
+  s_8eaa7371fd4b6c::t_d0b3fe42554cc7 29-31,45-52
+  s_8eaa7371fd4b6c::t_b10e22a787472d 1-28,32-44,53-61
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/views/GitConnectionsView.vue
+  s_8eaa7371fd4b6c::t_5839dfa5b4a5b5 203-206,266-269
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/components/GitConnectionDialog.vue
+  s_8eaa7371fd4b6c::t_35edd98baf2059 445
+  s_8eaa7371fd4b6c::t_b53fafde2b309f 228,432-444,446-448
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.api.ts
+  s_8eaa7371fd4b6c::t_9888308e11a065 15-18,22-37,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c11d0e484385f9bf3d9e07bc29d6bd6cd0cf09f",
+  "prompts": {},
+  "sessions": {
+    "s_8eaa7371fd4b6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82d42d15-2ef5-4e0b-ab2f-ad07bd4aad3d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

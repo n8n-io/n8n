@@ -1,0 +1,16 @@
+packages/cli/src/task-runners/task-runner-process-base.ts
+  h_32d8cd6a0d6aad 5
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  h_32d8cd6a0d6aad 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e08e6111919fad6d199c2b03ab5099abffc55b52",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/chat/chat-service.ts
+  s_85185a50bbdc9a::t_067f1ee6390a22 288
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_85185a50bbdc9a::t_6dd023ff43f961 565-568,570,572-573,575,606-608,635,645,655-656,744,755,769
+packages/core/src/execution-engine/workflow-execute.ts
+  s_85185a50bbdc9a::t_ed78f12df671ba 1930-1932
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_85185a50bbdc9a::t_514fdbda6b5255 255,293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a489b488bb4dedeacb532f9b112421d16f4505e2",
+  "prompts": {},
+  "sessions": {
+    "s_85185a50bbdc9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf84099-366c-4ae8-b636-b1f0355e2eb0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

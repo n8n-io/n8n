@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.vue
+  s_b4db7664cbeeb3::t_366d09230925c4 45-46
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.test.ts
+  s_b4db7664cbeeb3::t_f8cf3c72c1d035 84
+  s_b4db7664cbeeb3::t_f9f929ff41b12b 143-162
+  s_b4db7664cbeeb3::t_d735e04079b89c 175,191,207
+  s_b4db7664cbeeb3::t_d12e70564de65b 123,133,163
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMembersRoleCell.vue
+  s_b4db7664cbeeb3::t_c34c8b76c1268b 26
+  s_b4db7664cbeeb3::t_fd35e70960008b 43
+  s_b4db7664cbeeb3::t_13c1afa439ee13 6
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.vue
+  s_b4db7664cbeeb3::t_0be8a785a5cbc9 56-57
+packages/frontend/editor-ui/src/features/roles/components/RoleSelectDropdown.vue
+  s_b4db7664cbeeb3::t_313bc2acacbdcf 35
+  s_b4db7664cbeeb3::t_19728ea63f48b5 163
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b4db7664cbeeb3::t_77cb361312d91f 2842-2843,2846
+  s_b4db7664cbeeb3::t_71e780a6bed651 2847
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "3b9bd3f8cbc9552bb799fd0001ad8ddd2c2deb8e",
+  "prompts": {},
+  "sessions": {
+    "s_b4db7664cbeeb3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "edad5a26-2e0b-4140-b8c1-044ce9182e41",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

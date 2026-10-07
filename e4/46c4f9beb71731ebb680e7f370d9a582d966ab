@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/create.mentions.workflow.json
+  s_aa4dc5d9a1db02::t_6effccfac5739d 80,86,90
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_aa4dc5d9a1db02::t_6effccfac5739d 29-30,32-37,322-328,403-408
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_aa4dc5d9a1db02::t_6effccfac5739d 189,194-195,320-321,443-456
+  s_aa4dc5d9a1db02::t_6178d84cbe3cee 197-203,217-230
+  s_aa4dc5d9a1db02::t_052400475801a4 46-50
+  s_aa4dc5d9a1db02::t_954683a808e8c3 231,457-458
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/create.mentions.test.ts
+  s_aa4dc5d9a1db02::t_6effccfac5739d 10-15,20,31-33,40,44-45,60,66,70-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e446c4f9beb71731ebb680e7f370d9a582d966ab",
+  "prompts": {},
+  "sessions": {
+    "s_aa4dc5d9a1db02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3be6a95-6503-4192-954e-1d5f96c876b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

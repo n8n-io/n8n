@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_aac3c659ad6281::t_78a3e08a831e75 1237
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_aac3c659ad6281::t_055a5119dd4c87 4562-4564
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.test.ts
+  s_aac3c659ad6281::t_78a3e08a831e75 68-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8cc93a27f412255f04789064f2ffb3477fdd80af",
+  "prompts": {},
+  "sessions": {
+    "s_aac3c659ad6281": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b55cd66-8737-4967-89c3-4c0fed532b74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/workflow/src/mcp-helpers.ts
+  s_95de11c49048b8::t_1bdb896b43a659 8,12-32
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_95de11c49048b8::t_1bdb896b43a659 44
+  s_95de11c49048b8::t_46cc0489fd1bee 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9e3ca0917e08aad05e1c1fdd06029d36c22304b1",
+  "prompts": {},
+  "sessions": {
+    "s_95de11c49048b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28dcfb2e-d83c-4b2d-9160-5bf3bcf6d168",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

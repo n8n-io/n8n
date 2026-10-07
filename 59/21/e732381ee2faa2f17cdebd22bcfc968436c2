@@ -1,0 +1,14 @@
+packages/cli/src/commands/hypervisor.ts
+  h_435b1d7d3e52c0 113-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5921e732381ee2faa2f17cdebd22bcfc968436c2",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

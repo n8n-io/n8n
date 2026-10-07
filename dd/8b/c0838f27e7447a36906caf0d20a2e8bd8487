@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_adb5d982725a9c::t_a7f7b1af54927e 384,391-394,398-400
+  s_adb5d982725a9c::t_f7614cee5be771 314,318-321
+  s_adb5d982725a9c::t_480a3cff7c49cf 15-19,34-49
+  s_adb5d982725a9c::t_0973da021213fb 337,340,342-345
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_adb5d982725a9c::t_7f8d835542d1bb 536
+  s_adb5d982725a9c::t_b1389936d0002c 303-304
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_adb5d982725a9c::t_6d6c3c37837358 182
+  s_adb5d982725a9c::t_f368070b62b150 7-12
+  s_adb5d982725a9c::t_9e8201915b4c14 435-443
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_adb5d982725a9c::t_d3e3c1c890ee99 2576,2583-2584,2590-2591
+  s_adb5d982725a9c::t_50d5b29cf0f4b3 2571-2573,2575,2577-2582,2585
+  s_adb5d982725a9c::t_4329e20c62a84c 2574,2589
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_fe1dc9ee0129f0 240-244
+  s_adb5d982725a9c::t_7f6ea108ddd495 200-202,204
+  s_adb5d982725a9c::t_4329e20c62a84c 203
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_adb5d982725a9c::t_107973e59f6a0d 457
+  s_adb5d982725a9c::t_1856d89cc9ce02 73
+  s_adb5d982725a9c::t_5457643761c371 450-456,458-460
+  s_adb5d982725a9c::t_735b647c4a32b1 4
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_adb5d982725a9c::t_72ae5a7b49c280 126
+  s_adb5d982725a9c::t_cc2641fee44233 29
+  s_adb5d982725a9c::t_261309e94e3112 70
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff.ts
+  s_adb5d982725a9c::t_14a48662b953fd 14-20,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd8bc0838f27e7447a36906caf0d20a2e8bd8487",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

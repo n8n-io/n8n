@@ -1,0 +1,55 @@
+packages/cli/src/modules/promotions/trackers/local-review.tracker.ts
+  s_2144c6cc460872::t_3b0e094a382b27 1-53
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_2144c6cc460872::t_81ca7a65105b08 77
+  s_2144c6cc460872::t_44a6d8d21842d3 58
+  s_2144c6cc460872::t_955e644347ba33 23
+packages/cli/src/events/event.service.ts
+  s_2144c6cc460872::t_dfc6422837d25a 10,17-18
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_2144c6cc460872::t_407e411d6b2a22 27
+  s_2144c6cc460872::t_825db592853132 69
+  s_2144c6cc460872::t_9d7723a5213fcc 88
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_2144c6cc460872::t_0338f99302f5b3 56
+  s_2144c6cc460872::t_a165736fd719bf 75
+  s_2144c6cc460872::t_10c3da4f67b8fc 23
+packages/cli/src/modules/promotions/promotion-signals.service.ts
+  s_2144c6cc460872::t_33eee2b2200979 1-41
+packages/cli/src/events/maps/workflow-review.event-map.ts
+  s_2144c6cc460872::t_7e8a7f9f9e0c08 2-15
+  ai_agent 1
+packages/cli/src/modules/promotions/promotion-model.ts
+  s_2144c6cc460872::t_75b6d573814793 54-62
+  s_2144c6cc460872::t_8c108558cfde17 19-27
+packages/cli/src/modules/promotions/models/git-review.model.ts
+  s_2144c6cc460872::t_d7e7c7869490a8 72-73,83
+  s_2144c6cc460872::t_66bc494bc655d2 18-21
+  s_2144c6cc460872::t_e937321437cb9c 47-49
+  s_2144c6cc460872::t_dff34657bb9372 222-239
+packages/cli/src/modules/promotions/promotions.module.ts
+  s_2144c6cc460872::t_25fd38d3ffe965 17-19
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_2144c6cc460872::t_489db44195cc95 68
+  s_2144c6cc460872::t_fef7b5772b5c34 33
+  s_2144c6cc460872::t_c6396823cbe1fe 248
+  s_2144c6cc460872::t_32e0cc9e714f9f 361
+  s_2144c6cc460872::t_dfccec4c09769c 498-509
+  s_2144c6cc460872::t_6d42617df6207c 463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94c3d22442470427637c9380d17ceb5e9a5ef91c",
+  "prompts": {},
+  "sessions": {
+    "s_2144c6cc460872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0378ebcb-e648-4207-a4b8-d1f27320ce7f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

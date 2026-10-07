@@ -1,0 +1,47 @@
+packages/@n8n/db/src/services/typeorm-transaction.ts
+  s_b0fa2cc091be34::t_0bbc019b254fb2 1,5,13,16-17,29-32,43-56,58,60,62-63
+packages/@n8n/db/AGENTS.md
+  s_96550401d446ff::t_1aaabdf4b52ee7 19-25
+packages/cli/eslint.config.mjs
+  s_96550401d446ff::t_903f3814e846fd 212-246
+  s_96550401d446ff::t_814493b3dc2213 211
+packages/@n8n/eslint-config/src/rules/misplaced-n8n-typeorm-import.ts
+  s_96550401d446ff::t_d92680d27367be 3-19,27-30,36-37,41-43,45-61
+packages/@n8n/eslint-config/src/rules/misplaced-n8n-typeorm-import.test.ts
+  s_96550401d446ff::t_ce8a603e76718f 1-60
+packages/@n8n/eslint-config/src/rules/no-misplaced-typeorm-import-disable.ts
+  s_96550401d446ff::t_29e20886785fb4 19
+packages/cli/AGENTS.md
+  s_96550401d446ff::t_6080eac243bfa1 25-32
+  s_96550401d446ff::t_d28aaad92970a6 44-64
+packages/@n8n/db/src/services/__tests__/typeorm-transaction.test.ts
+  s_b0fa2cc091be34::t_147279def95bb5 61-84
+  s_b0fa2cc091be34::t_29b8d50b6d7b62 1,13,30
+  s_b0fa2cc091be34::t_e09f9935cc9cb0 85-87
+packages/@n8n/db/src/services/transaction.ts
+  s_b0fa2cc091be34::t_5f5fc4c3dd4567 19-23,25-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c646189f98c3e788869f719b5c91d3216524d3cb",
+  "prompts": {},
+  "sessions": {
+    "s_96550401d446ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4dfad11-bd3b-4ad0-9fda-c7a6fbb21b77",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_b0fa2cc091be34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b024dea6-3bef-487e-8cfd-c5651240a827",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.vue
+  s_5f8b302470a26f::t_bc60809634708b 220,225
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_5f8b302470a26f::t_110f7ed841df22 168-169
+  s_5f8b302470a26f::t_be6b3fed33b53f 232,239,244
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  h_760178ed151f13 309
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.vue
+  s_5f8b302470a26f::t_658deeab5b6ce5 183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9d6c21eb8e4a2501180f3db43841ab8f3d9eb28d",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5f8b302470a26f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d10af785-2b18-4599-be7b-3926df463841",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

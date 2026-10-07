@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_a0923d22156cf4::t_958c1c9004c543 365
+  s_a0923d22156cf4::t_c24dbf03b68ca3 218-221,224,226
+  s_a0923d22156cf4::t_7e425dda25dbd8 255,258,264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "519508f7a3c08ee34ded23a9018d2a0584da5e14",
+  "prompts": {},
+  "sessions": {
+    "s_a0923d22156cf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "311ad581-0f6a-4456-9a3b-b80f199fff11",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

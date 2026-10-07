@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_19c108ca02ed6d::t_83b757bab7b584 1589
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_19c108ca02ed6d::t_6e3b07e40d06ce 5,24,26
+  s_19c108ca02ed6d::t_50b7d4899a4ccd 21-22
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_19c108ca02ed6d::t_02b8fb54de41b1 3,321,324,331-332,370-371,373
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_19c108ca02ed6d::t_afc2cdb879b51c 335-353
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_19c108ca02ed6d::t_dba09efc1a45d1 402-447
+packages/frontend/editor-ui/src/features/agents/utils/agentPreviewUrl.ts
+  s_19c108ca02ed6d::t_9b620dfb338b4a 1-46
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMarkdownChunk.test.ts
+  s_19c108ca02ed6d::t_afc2cdb879b51c 46-59,61-62
+  s_19c108ca02ed6d::t_51b357c3fe22b4 60
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_19c108ca02ed6d::t_dba09efc1a45d1 1342-1359
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_19c108ca02ed6d::t_dba09efc1a45d1 353-360,1733-1741
+  s_19c108ca02ed6d::t_08c711b917ca63 1742-1743
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agentPreviewUrl.test.ts
+  s_19c108ca02ed6d::t_9b620dfb338b4a 1-51
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_19c108ca02ed6d::t_83b757bab7b584 43-47,52,59,67-71,78-91,225-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e000df0a8a9433ad5f8c1878dbec1d1c96158e6f",
+  "prompts": {},
+  "sessions": {
+    "s_19c108ca02ed6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c92-b5f8-7720-8bf6-29b2466e189a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

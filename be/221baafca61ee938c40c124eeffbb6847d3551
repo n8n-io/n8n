@@ -1,0 +1,71 @@
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_8df1f1b34b9d13::t_4b944569c6d5ac 118
+  s_8df1f1b34b9d13::t_bc2e97b1854b47 226
+  s_8df1f1b34b9d13::t_5564e5df2a4849 332-350
+  s_8df1f1b34b9d13::t_9c689665e8f08a 33
+  s_8df1f1b34b9d13::t_2675e523fd57d3 74-77
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8df1f1b34b9d13::t_63b8092f7df159 181
+  s_8df1f1b34b9d13::t_016897d20f999b 198
+  s_8df1f1b34b9d13::t_b75d4223cffa72 532-562
+  s_8df1f1b34b9d13::t_3423dfd734b62a 1144-1173
+  s_8df1f1b34b9d13::t_36012bbccd5e1f 1134-1137,1139
+  s_8df1f1b34b9d13::t_746e43017bcbf9 174
+packages/@n8n/instance-ai/src/types.ts
+  s_8df1f1b34b9d13::t_b14836c8d24595 869-875
+  s_8df1f1b34b9d13::t_36a3ef8e794813 1386-1393
+packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts
+  s_8df1f1b34b9d13::t_fbfb9fcb065755 1303
+  s_8df1f1b34b9d13::t_0aa346861cf761 493
+  s_8df1f1b34b9d13::t_8fc53520a77384 474-480
+  s_8df1f1b34b9d13::t_471af3379b1e6b 184
+  s_8df1f1b34b9d13::t_0d26be18c06191 1758-1763,1770
+  s_8df1f1b34b9d13::t_2b4fd6f3db0d78 81-83,85-92,94-96,98-100,102-118,121-133,135,137,139-148
+  s_8df1f1b34b9d13::t_0909299a9cf72a 1193-1212
+  s_8df1f1b34b9d13::t_1a3aa813097ef9 8
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_8df1f1b34b9d13::t_18ef84263c7fcb 88
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_8df1f1b34b9d13::t_725a24350b5344 1520-1539,1541-1553
+  s_8df1f1b34b9d13::t_59d861885209d3 1540
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8df1f1b34b9d13::t_3e6c5ec91ae6c5 761-764,766-769
+  s_8df1f1b34b9d13::t_43dbc891502c9d 4134
+  s_8df1f1b34b9d13::t_31a8fc60a9f468 63
+  s_8df1f1b34b9d13::t_66ada663e9ff07 1503-1506
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_8df1f1b34b9d13::t_0246359db63160 68-75
+  s_8df1f1b34b9d13::t_e50aeb662368e3 297
+  s_8df1f1b34b9d13::t_fce5ab5b5d4ef9 6
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_8df1f1b34b9d13::t_79cdb57cf60017 22
+  s_8df1f1b34b9d13::t_26090d7524d08a 356-360
+  s_8df1f1b34b9d13::t_38deed857ee669 1052,1065-1071,1074,1076-1077,1080,1098,1101,1112-1126,1136-1138,1165-1181,1184-1189,1192,1195-1222,1224-1229,1233-1238,1241-1242,1244-1253,1255-1257,1259-1267,1270-1275,1278-1279,1281-1290,1294
+  s_8df1f1b34b9d13::t_914fa338785488 1095-1097
+  s_8df1f1b34b9d13::t_538c8c3c2f3377 1291-1293
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_8df1f1b34b9d13::t_f3a401b09a7066 134-136
+packages/@n8n/instance-ai/src/index.ts
+  s_8df1f1b34b9d13::t_5e03b8accb6d7f 225-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "be221baafca61ee938c40c124eeffbb6847d3551",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8df1f1b34b9d13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c0ae6241-b92b-4d09-952e-b606baf77ef3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_cc18b3a8e9e1de::t_6b7ea1627a8b9c 467
+  s_cc18b3a8e9e1de::t_67037ce696b46c 233
+packages/cli/test/migration/1785843640527-create-workflow-review-activity-tables-and-baseline.test.ts
+  s_cc18b3a8e9e1de::t_ccf0bd3d604182 362-365,369-372
+  ai_agent 366-368
+  s_cc18b3a8e9e1de::t_c40940c1ed4ca7 378,386-388
+  s_cc18b3a8e9e1de::t_65a73555d14c5a 401-403
+  s_cc18b3a8e9e1de::t_65ccf4b0437b7d 14,18-19
+  s_cc18b3a8e9e1de::t_9636e540d06d61 37-41,43,46-47,49-52,54
+  s_cc18b3a8e9e1de::t_4b601d1ee62473 42,44-45,48,53,55-57
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_cc18b3a8e9e1de::t_9f17cb6e1523c5 485
+  s_cc18b3a8e9e1de::t_5887402b3345a5 241
+packages/@n8n/db/src/migrations/common/1785843640527-CreateWorkflowReviewActivityTablesAndBaseline.ts
+  s_cc18b3a8e9e1de::t_b4ef188043a400 23-25,29,32-33
+  s_cc18b3a8e9e1de::t_4d277de1232e90 7-8,11
+  s_cc18b3a8e9e1de::t_94aace4311b35e 119-155
+  s_cc18b3a8e9e1de::t_0edb66265adf5c 35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27510fe781e1a410d47951c4eb8a37d55f313d96",
+  "prompts": {},
+  "sessions": {
+    "s_cc18b3a8e9e1de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fcc2b1b0-d1c8-445a-b611-e870d0582ea1",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

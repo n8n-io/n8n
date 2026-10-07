@@ -1,0 +1,33 @@
+packages/@n8n/backend-network/src/proxy/proxied-agents.ts
+  s_73ed793ba33632::t_9edba5aed288ee 74-75
+  s_73ed793ba33632::t_479543b12b3ba3 88-89
+  s_73ed793ba33632::t_edaef4742ac3cb 11-16,18-34,37-42,50
+packages/@n8n/backend-network/src/proxy/__tests__/proxied-agents.test.ts
+  s_73ed793ba33632::t_575e251ba81b40 39,46-59
+packages/@n8n/backend-network/src/http/__tests__/node-agents.test.ts
+  s_73ed793ba33632::t_1bf6f11731e465 76,84
+packages/@n8n/client-oauth2/test/client-oauth2.test.ts
+  s_73ed793ba33632::t_da3d5c0009f030 296
+  s_73ed793ba33632::t_80cce04d981866 313-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e1a6a8c017189d629480d877106a424ce265ff5",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_73ed793ba33632": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45c077af-8932-45eb-a2b6-76c2d41189bd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

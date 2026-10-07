@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_5700e03e95a293::t_c397f931a09f38 1
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_5700e03e95a293::t_132ce06d38691e 2,34-36,56-70,72-75,79-81,90-91,93-94,133-136,141-153,160-163,172-173,175-189,192-195,199-200,202-203,206,214,220-223,226-232,234,251-252,259-262,288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8e8592979ac520100c7f436c92bd9dc2f940f42c",
+  "prompts": {},
+  "sessions": {
+    "s_5700e03e95a293": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccc2cd64-3f59-4800-bf2b-a5085bbb39c2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

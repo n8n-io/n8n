@@ -1,0 +1,14 @@
+packages/cli/src/oauth/oauth.service.ts
+  h_44f8d1c0f2f8c4 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cb6c12d2693f4f2f3d5dca9e909d3da0e13d950d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

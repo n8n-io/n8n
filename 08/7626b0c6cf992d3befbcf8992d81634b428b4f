@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_708bf7758dbb62::t_87c6933c9eafc9 590-592
+  s_0a1e4ea5b77169::t_e036fa45a7dcb1 460
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.test.ts
+  s_0a1e4ea5b77169::t_b716956bee5474 313-315,317
+packages/frontend/editor-ui/src/app/components/common/SelectableCard.vue
+  s_0a1e4ea5b77169::t_562329023d4b58 56-58
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_0a1e4ea5b77169::t_58adaacc477a36 243-259
+  s_0a1e4ea5b77169::t_4e38c34e81d8ea 333
+  s_0a1e4ea5b77169::t_31ddd272b10dd1 23
+  s_0a1e4ea5b77169::t_7116486a5fe6a1 260-284,286-289,293-332
+  s_0a1e4ea5b77169::t_4d3e50abad7d41 53,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "087626b0c6cf992d3befbcf8992d81634b428b4f",
+  "prompts": {},
+  "sessions": {
+    "s_0a1e4ea5b77169": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "309c9ede-b26e-42d9-99c5-51d0003ba4d3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_708bf7758dbb62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7daba9b-ebfc-405c-be05-73253e2fdd5a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

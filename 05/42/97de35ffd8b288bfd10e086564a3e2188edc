@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_7e73d932529dbe::t_a8a624cdd81e2b 21
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7e73d932529dbe::t_60d002f813d3a7 2168-2169
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_7e73d932529dbe::t_85ac79394e5f9a 53
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.test.ts
+  s_7e73d932529dbe::t_85ac79394e5f9a 45,72,78
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_7e73d932529dbe::t_e0aa2a3d3cc4bc 456-465,467-469
+  s_7e73d932529dbe::t_f1779016579f46 31
+  s_7e73d932529dbe::t_cad304f36b0810 48
+  s_7e73d932529dbe::t_009f9c19b7ddd8 466
+  s_7e73d932529dbe::t_0e010102992bc0 252
+  s_7e73d932529dbe::t_2438b142892754 15-16
+  s_7e73d932529dbe::t_cd3bd80221d931 141-144
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_7e73d932529dbe::t_c219499548e7bb 183-184
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_7e73d932529dbe::t_654e0d6c6a6950 12
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_7e73d932529dbe::t_85ac79394e5f9a 64
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.json
+  s_7e73d932529dbe::t_35798dc779845e 9
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_7e73d932529dbe::t_aa6209d59b4c4f 117
+  s_7e73d932529dbe::t_98d676d61897b3 22
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_7e73d932529dbe::t_4454ea709cf631 900-932,934-945
+  s_7e73d932529dbe::t_6cfdc50ea73cf9 933
+  ai_agent 1238
+  s_7e73d932529dbe::t_b20df46407b829 1211-1237,1239-1252
+  s_7e73d932529dbe::t_fcb0042ca629a4 39,41-42,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "054297de35ffd8b288bfd10e086564a3e2188edc",
+  "prompts": {},
+  "sessions": {
+    "s_7e73d932529dbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55e31275-cbfe-47dc-a65e-bbd320d7308e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

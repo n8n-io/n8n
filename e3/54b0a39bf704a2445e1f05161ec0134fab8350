@@ -1,0 +1,20 @@
+packages/@n8n/api-types/src/dto/insights/insights-summary-public.dto.ts
+  s_47da1741f2a499::t_70b85c9561197c 8-9
+  s_47da1741f2a499::t_1f98749e14c18c 25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e354b0a39bf704a2445e1f05161ec0134fab8350",
+  "prompts": {},
+  "sessions": {
+    "s_47da1741f2a499": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a92ceed2-8c1d-4d09-a606-485a4cb0de0a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

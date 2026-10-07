@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_1a30b35e849e33::t_c7a4cc6136e333 2,4,10-19,26-30,37,48-66,68-84,112-113,130-131,134-137,140-141,144-167
+packages/testing/playwright/pages/components/InstanceAiSidebar.ts
+  s_1a30b35e849e33::t_c7a4cc6136e333 19,25-27,33
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_1a30b35e849e33::t_c7a4cc6136e333 122-125,127
+packages/testing/playwright/tests/infrastructure/benchmarks-local/instance-ai/cancel-abort.spec.ts
+  s_1a30b35e849e33::t_c7a4cc6136e333 44-45
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_1a30b35e849e33::t_c7a4cc6136e333 474,1226
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-sidebar.spec.ts
+  s_1a30b35e849e33::t_c7a4cc6136e333 24,36-37,59,67,78,114-117
+packages/testing/playwright/utils/benchmark/instance-ai-driver.ts
+  s_1a30b35e849e33::t_c7a4cc6136e333 105-106
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_1a30b35e849e33::t_c7a4cc6136e333 848,871
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_1a30b35e849e33::t_c7a4cc6136e333 9,12,19-23,25,32,42,49,77-89,95-97,151-165,204-205,211,215-218,221,231,238,245,281,297-332,364,387-469
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_1a30b35e849e33::t_c7a4cc6136e333 2-3,107,164
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_1a30b35e849e33::t_c7a4cc6136e333 2,22,29-58,141,161,163-170,172-178,195-197,250-256,260-266,271-317
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1a30b35e849e33::t_c7a4cc6136e333 6969-6970
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_1a30b35e849e33::t_c7a4cc6136e333 5-6,13-21,23,26-37,39-42,48,52-53,55-60,87-95,104,120-157,176-188,199,201,206-207,209-210,231-249,251-252,254-272,274-298,300-310,312-343,345-357,359-362,366-368,374,382,391,394-460,463-484,490-499,503-506,521,525-527,533,546,554,559,566,575,586,608-609,611,616
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_1a30b35e849e33::t_c7a4cc6136e333 178,514-517,688-697,722-725,747,749,761,767,785,791,834,836
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d81707fa7e8374ca07eb0454a1d248f59ddab24d",
+  "prompts": {},
+  "sessions": {
+    "s_1a30b35e849e33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d61e7c6d-d29a-47e2-acc4-9d591602f01a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

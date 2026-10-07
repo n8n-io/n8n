@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_dff57e7b253b23::t_d5a847f89a62f4 403
+  s_dff57e7b253b23::t_ef5fa49ca0d466 286-291,302-305,312,316-318,326-328,343-345,352,354-359,364,369,377-387,391-396,399-402,404-418,420-435
+  s_dff57e7b253b23::t_e40a93004bba4c 306,349,360,419
+  s_dff57e7b253b23::t_e05c4c3966e8b3 2,4,14,17-18,47,124-159,189-196,202,205,223-236,242-263
+  ai_agent 237-241
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dff57e7b253b23::t_ef5fa49ca0d466 7282-7283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "422dd6c8ba69dd757e62319a7f1f580f65a9c204",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

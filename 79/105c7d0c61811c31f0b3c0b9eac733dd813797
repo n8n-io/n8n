@@ -1,0 +1,24 @@
+packages/cli/test/integration/scheduling/README.md
+  s_0bfa56f5deaef6::t_a4d6b8c1656941 61-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79105c7d0c61811c31f0b3c0b9eac733dd813797",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0bfa56f5deaef6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d707eb59-aed6-46ba-aa22-dfa9b2874d09",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

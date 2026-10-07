@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_2b7d02f57d7e91::t_ac0780e3fda600 128,133-142
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_2b7d02f57d7e91::t_eb739440544ba2 238,275-282,284-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7ddd4ba559bb0f180908e54980eb9289d95146d3",
+  "prompts": {},
+  "sessions": {
+    "s_2b7d02f57d7e91": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d11ced47-7cf3-41dd-bb94-cac7bbe9a9c7",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/dto/otel/__tests__/update-otel-settings.dto.test.ts
+  s_ada8159a3486db::t_48c9cea77bc83e 132-154
+  s_ada8159a3486db::t_59f75c58ba85bb 230-241
+packages/cli/src/modules/otel/otel.config.ts
+  s_ada8159a3486db::t_47d5aa23d11c27 1,5
+packages/@n8n/api-types/src/dto/index.ts
+  s_ada8159a3486db::t_4b6f2f0a7e80b9 393
+packages/@n8n/api-types/src/dto/otel/update-otel-settings.dto.ts
+  s_ada8159a3486db::t_99c7f6174e3188 13-14,28
+  s_ada8159a3486db::t_ab3e9e26bd0cf8 26-27
+  s_ada8159a3486db::t_7413bb975fa5f3 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7477c23092388a912eb9cf059cd2fd6d4029d8ce",
+  "prompts": {},
+  "sessions": {
+    "s_ada8159a3486db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fd1def4-bd8c-4649-8a4a-834550604347",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

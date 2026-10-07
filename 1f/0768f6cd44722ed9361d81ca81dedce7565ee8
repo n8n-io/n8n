@@ -1,0 +1,38 @@
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_9a2a7a8eef9b2d::t_e1065e26610b01 9,24,81,86
+  s_9aca2e09ff6b67::t_ee284d9fea9248 80,82,84
+  ai_agent 140-142,158
+  s_e092ff55a47017::t_82e52d356fb5ce 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f0768f6cd44722ed9361d81ca81dedce7565ee8",
+  "prompts": {},
+  "sessions": {
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9aca2e09ff6b67": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c54e-dd44-7bb0-975c-7f43d2ff8e1f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_e092ff55a47017": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b382-8a71-72a3-95d5-32e5b9112548",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

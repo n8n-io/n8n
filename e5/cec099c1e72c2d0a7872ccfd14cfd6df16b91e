@@ -1,0 +1,72 @@
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_e6e46c0663c897::t_11e8c10c2bb5a6 46
+packages/cli/src/modules/otel/otel.config.ts
+  s_e6e46c0663c897::t_aae3cc9394de53 2,4-7,14-19
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_e6e46c0663c897::t_17ac52d34f72a8 316
+  s_e6e46c0663c897::t_2865f080157813 87
+packages/cli/src/modules/otel/__tests__/otel-settings.controller.test.ts
+  s_e6e46c0663c897::t_5594ca41454a1e 145
+  s_e6e46c0663c897::t_9b06740aa443f4 118-127
+  s_e6e46c0663c897::t_80d60d8ab1b324 22
+  s_e6e46c0663c897::t_e56800dc22b6a4 173-187
+packages/cli/src/public-api/v1/handlers/otel/otel.mapper.ts
+  s_e6e46c0663c897::t_692da6568fdddc 8
+packages/cli/package.json
+  s_e6e46c0663c897::t_3a976f6136a864 143
+  s_e6e46c0663c897::t_5b5c77924e3230 185
+packages/@n8n/api-types/src/dto/otel/test-otel-trace.dto.ts
+  s_e6e46c0663c897::t_573f4793a80883 6
+packages/cli/test/integration/public-api/otel-settings.test.ts
+  s_e6e46c0663c897::t_1703eb4e817d42 69
+  s_e6e46c0663c897::t_ea29a0f454ca5e 15
+  s_e6e46c0663c897::t_c2caa9084c02ba 83
+  s_e6e46c0663c897::t_9472be8727a6bb 28
+  s_e6e46c0663c897::t_0b4daea4ea40f6 176-206
+packages/cli/src/modules/otel/otel.constants.ts
+  s_e6e46c0663c897::t_7c18a55737eb97 17-24
+  s_e6e46c0663c897::t_9d5d4a55602151 5
+packages/cli/src/modules/otel/otel-settings.service.ts
+  s_e6e46c0663c897::t_7aa5006e9008f9 87
+  s_e6e46c0663c897::t_ea32c6725e711a 103
+  s_e6e46c0663c897::t_0d6a54aa93ccd5 16
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-settings.yml
+  s_e6e46c0663c897::t_b7521f0a71847d 9
+  s_e6e46c0663c897::t_b43eacaf5173f6 24-33,41-43
+pnpm-lock.yaml
+  ai_agent 4185-4187,4311-4313
+packages/@n8n/api-types/src/dto/otel/__tests__/update-otel-settings.dto.test.ts
+  s_e6e46c0663c897::t_6b2f927a7245a1 90
+  s_e6e46c0663c897::t_bc2d0c7360391f 52-73
+  s_e6e46c0663c897::t_db1090b230d7d6 6
+  s_e6e46c0663c897::t_da8a23b48da9d3 112-137
+packages/cli/src/modules/otel/__tests__/otel-settings.service.test.ts
+  s_e6e46c0663c897::t_8b1d7404a6f842 40
+  s_e6e46c0663c897::t_d8bc16304ea166 5
+  s_e6e46c0663c897::t_7b18354c8c5404 258-259
+  s_e6e46c0663c897::t_7fab5b3e0655ce 229-254
+  s_e6e46c0663c897::t_764d280a6a6f27 178
+  s_e6e46c0663c897::t_aaacb56ac365d9 285-298
+  s_e6e46c0663c897::t_42db1bc9d3676d 98-136
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-test-trace.yml
+  s_e6e46c0663c897::t_2ad58f2b3a2a8f 7
+  s_e6e46c0663c897::t_fff3bd3714b2e3 14-23,31-33
+packages/@n8n/api-types/src/dto/otel/update-otel-settings.dto.ts
+  s_e6e46c0663c897::t_edbe58a8baf39f 7-9,11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e5cec099c1e72c2d0a7872ccfd14cfd6df16b91e",
+  "prompts": {},
+  "sessions": {
+    "s_e6e46c0663c897": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a309780b-11f9-45a7-9027-d04b51797bac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <ocdejong@Oliviers-MacBook-Pro.local>"
+    }
+  }
+}

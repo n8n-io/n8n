@@ -1,0 +1,36 @@
+packages/@n8n/instance-ai/evaluations/run/persist.ts
+  s_a2999f6753c62b::t_4bfa9cd11b4580 18-22,308,342,368,494
+.github/workflows/test-evals-instance-ai.yml
+  s_a2999f6753c62b::t_4bfa9cd11b4580 768
+packages/@n8n/instance-ai/evaluations/ARCHITECTURE.md
+  s_a2999f6753c62b::t_4bfa9cd11b4580 77-78
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-format.test.ts
+  s_a2999f6753c62b::t_7ee25311c45c29 172-181
+packages/@n8n/instance-ai/evaluations/comparison/format.ts
+  s_a2999f6753c62b::t_4bfa9cd11b4580 55-56,58-59,191,502-503,725,751,1026-1027
+packages/@n8n/instance-ai/evaluations/__tests__/write-partial-results.test.ts
+  s_a2999f6753c62b::t_a240f124fdec78 8
+  s_a2999f6753c62b::t_b233ac8fd922f1 208-211
+  s_a2999f6753c62b::t_7ee25311c45c29 194-207,212-215
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_a2999f6753c62b::t_4bfa9cd11b4580 173
+packages/@n8n/instance-ai/evaluations/run/reporters.ts
+  s_a2999f6753c62b::t_7ee25311c45c29 87
+  s_a2999f6753c62b::t_4bfa9cd11b4580 9,114-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a9d0c21534b7f6b15f96600fa83fbfb29f157318",
+  "prompts": {},
+  "sessions": {
+    "s_a2999f6753c62b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a080bf-405e-70f0-8af9-fbce616d04c3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

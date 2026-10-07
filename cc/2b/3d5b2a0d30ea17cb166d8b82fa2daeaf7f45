@@ -1,0 +1,125 @@
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/connect.generated.yml
+  ai_agent 1-39
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_9d2f77e977a9aa::t_c9830293688af1 36
+packages/@n8n/cli/src/commands/git-connections/update.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 1-21
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_9d2f77e977a9aa::t_bf12cb925088db 1-41
+packages/@n8n/cli/package.json
+  s_9d2f77e977a9aa::t_f71e2cd981a36f 69-71
+packages/@n8n/cli/src/commands/git-connections/list.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 1-21
+packages/@n8n/cli/src/commands/git-connections/create.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 1-20
+packages/cli/src/controllers/e2e.controller.ts
+  ai_agent 107
+packages/cli/src/modules/git-connections.ee/database/entities/project-git-connection.entity.ts
+  s_9d2f77e977a9aa::t_6cf82e899ebb1f 1-39
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_9d2f77e977a9aa::t_08de30efe3afc4 8
+docs/generated/sqlite-schema/project_git_connection.md
+  s_9d2f77e977a9aa::t_b84cc2dd86b480 1-74
+packages/@n8n/cli/src/client.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 216-244,246-247
+  s_9d2f77e977a9aa::t_325bb3e7cfc1e0 245
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/list.generated.yml
+  ai_agent 1-79
+packages/cli/src/public-api/v1/services/git-connections-public-api.service.ts
+  s_9d2f77e977a9aa::t_08de30efe3afc4 1-48
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_9d2f77e977a9aa::t_c11191303e9a24 39-40
+packages/@n8n/db/src/migrations/common/1786547629549-CreateProjectGitConnectionTable.ts
+  s_9d2f77e977a9aa::t_bdf64c6260b3c8 1-3,25-26,29-30
+  s_9d2f77e977a9aa::t_1d84188d05a6f7 4,27-28
+  s_9d2f77e977a9aa::t_41d4666c7e8d81 5-24
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_9d2f77e977a9aa::t_c11191303e9a24 72,116
+packages/cli/src/modules/git-connections.ee/git-connections.module.ts
+  s_9d2f77e977a9aa::t_6cf82e899ebb1f 1-23
+packages/@n8n/backend-common/src/locking/lock-service.interface.ts
+  s_9d2f77e977a9aa::t_1d84188d05a6f7 11
+packages/@n8n/cli/src/commands/git-connections/delete.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 1-17
+packages/@n8n/cli/src/commands/git-connections/get.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 1-16
+packages/@n8n/cli/src/commands/git-connections/connect.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 1-22
+packages/@n8n/cli/src/commands/git-connections/disconnect.ts
+  s_9d2f77e977a9aa::t_ebcbcae5047355 1-16
+packages/@n8n/constants/src/index.ts
+  s_9d2f77e977a9aa::t_1d84188d05a6f7 20
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/delete.generated.yml
+  ai_agent 1-26
+docs/generated/postgres-schema/README.md
+  s_9d2f77e977a9aa::t_b84cc2dd86b480 98,1213-1226
+docs/generated/sqlite-schema/README.md
+  s_9d2f77e977a9aa::t_b84cc2dd86b480 98,1200-1213
+packages/cli/test/integration/shared/types.ts
+  s_9d2f77e977a9aa::t_20256723f4eb81 73
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_9d2f77e977a9aa::t_1d84188d05a6f7 17
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_9d2f77e977a9aa::t_5a7b1be687b14d 1-66,69-95,97-98,102-116,118-127,130-138,140-292
+  s_9d2f77e977a9aa::t_41d4666c7e8d81 67-68,96,117
+  s_9d2f77e977a9aa::t_fa67fdc2b00ab4 99-101,128-129,139
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_9d2f77e977a9aa::t_bf12cb925088db 1-21,23-59,61-74,81-83,128-139
+  s_9d2f77e977a9aa::t_97ec70162f1a7e 22,75-80
+  s_9d2f77e977a9aa::t_d395c7e57c3db4 60
+  s_9d2f77e977a9aa::t_6076a21a318f36 84-127
+packages/cli/test/migration/1786547629549-create-project-git-connection-table.test.ts
+  s_9d2f77e977a9aa::t_60b4341327d348 1-53
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_9d2f77e977a9aa::t_1d84188d05a6f7 1-66
+packages/@n8n/config/src/configs/logging.config.ts
+  s_9d2f77e977a9aa::t_c9830293688af1 35
+docs/generated/postgres-schema/public.project_git_connection.md
+  s_9d2f77e977a9aa::t_b84cc2dd86b480 1-69
+packages/@n8n/api-types/src/dto/index.ts
+  s_9d2f77e977a9aa::t_1d84188d05a6f7 100-111
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 14-31
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/update.generated.yml
+  ai_agent 1-66
+packages/cli/src/public-api/v1/shared/spec/schemas/gitConnectionPublicDto.generated.yml
+  ai_agent 1-48
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/create.generated.yml
+  ai_agent 1-62
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_9d2f77e977a9aa::t_08de30efe3afc4 1-12,14-96,98-113,115-130,132-147,149-164,168-170
+  s_9d2f77e977a9aa::t_b47665792e8639 13,97,114,131,148,165-166
+  s_9d2f77e977a9aa::t_41d4666c7e8d81 167
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/disconnect.generated.yml
+  ai_agent 1-27
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/get.generated.yml
+  ai_agent 1-27
+packages/@n8n/cli/src/index.ts
+  s_9d2f77e977a9aa::t_f71e2cd981a36f 25-31,90-96
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_9d2f77e977a9aa::t_30d0107fa8145a 1-5,7-41,43-89,92-102,104-108,111-112,114,116-157,161-173
+  s_9d2f77e977a9aa::t_9ff8810a54034d 6,90-91,103,109-110,113,160
+  s_9d2f77e977a9aa::t_fa67fdc2b00ab4 42,115
+  s_9d2f77e977a9aa::t_41d4666c7e8d81 158-159
+packages/cli/src/modules/git-connections.ee/database/repositories/project-git-connection.repository.ts
+  s_9d2f77e977a9aa::t_6cf82e899ebb1f 1,3-11,13,15-19
+  s_9d2f77e977a9aa::t_5a7b1be687b14d 2,12,14
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_9d2f77e977a9aa::t_bf12cb925088db 4-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc2b3d5b2a0d30ea17cb166d8b82fa2daeaf7f45",
+  "prompts": {},
+  "sessions": {
+    "s_9d2f77e977a9aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fef86-afad-73a3-8d1c-8af22b70a593",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Zendesk/__tests__/ZendeskVersioning.test.ts
+  s_eb9c59cce09aff::t_e27799a7f371e8 18-20,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ba64a9cb7bdb26f91b3c3c05204a9de9d8597735",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_eb9c59cce09aff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8647f294-002d-4179-a3e7-b07210ec03ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

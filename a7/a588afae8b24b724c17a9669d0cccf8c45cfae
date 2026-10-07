@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_78bcef4cf1110e::t_d1e6c0c04b3c1b 143-144
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_78bcef4cf1110e::t_51b6d216bbd461 59-60
+  s_78bcef4cf1110e::t_7e82ea9ed1be58 61
+  s_78bcef4cf1110e::t_864153286e57e8 196-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a7a588afae8b24b724c17a9669d0cccf8c45cfae",
+  "prompts": {},
+  "sessions": {
+    "s_78bcef4cf1110e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cb0dab5a-7c87-42b3-b273-a3a9083a1888",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

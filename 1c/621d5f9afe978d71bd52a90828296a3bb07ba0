@@ -1,0 +1,26 @@
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_559010fa992cf2::t_634ae8395962a3 359-362
+  s_559010fa992cf2::t_8055405e4bab5a 376-378
+  s_559010fa992cf2::t_54be99bedfe617 381,383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1c621d5f9afe978d71bd52a90828296a3bb07ba0",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_559010fa992cf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2363cf6-c0e4-4dcc-8c49-bbbf6c17e044",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

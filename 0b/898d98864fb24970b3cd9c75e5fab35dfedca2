@@ -1,0 +1,28 @@
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_74dc43a5ee571f::t_b3482ff0678f0e 283,285-286,289-297,301-305
+  s_74dc43a5ee571f::t_b3ef7867b0370c 339
+  s_74dc43a5ee571f::t_8966ad1c71bc78 237
+  s_74dc43a5ee571f::t_1e3f1fd3da76b5 351
+packages/cli/src/workflow-runner.ts
+  s_74dc43a5ee571f::t_0c030b81cfd6d5 389,399-404
+  s_74dc43a5ee571f::t_3265651e3e8595 268-275
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_74dc43a5ee571f::t_7c0f85c12da4bc 188
+  s_74dc43a5ee571f::t_9d9d6ab6e37bb2 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0b898d98864fb24970b3cd9c75e5fab35dfedca2",
+  "prompts": {},
+  "sessions": {
+    "s_74dc43a5ee571f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "005fc3ff-735a-4494-a3a8-82f316ec18a2",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

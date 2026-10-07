@@ -1,0 +1,35 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_7ebcd75c1a619d::t_84594586e5f13b 3553-3612
+  s_7ebcd75c1a619d::t_19486902beea16 1233-1234,1237
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_7ebcd75c1a619d::t_02efe2c0cbab2d 43
+  s_7ebcd75c1a619d::t_0cdc717f582b29 341-347,354-371
+  s_7ebcd75c1a619d::t_f6f58afe295bb6 372-374
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_7ebcd75c1a619d::t_6fa64cbdfeaea6 82-97
+  s_7ebcd75c1a619d::t_989df3963ac507 364
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_7ebcd75c1a619d::t_756badf17cdf39 1341-1490
+  s_7ebcd75c1a619d::t_dff9e2905f3bc8 220-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "382e785dffc69daf14e118b62a43d720d7fd2e87",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7ebcd75c1a619d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b8954bd8-7f5a-4aba-9467-ea2fecdf42a1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/test/node-description-parity.test.ts
+  s_bf68401b8c4fe8::t_253fa367108e44 17-24,135,145-177,180,182,184-187,191,195-214,220-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "c28caf286de8031e9331ecb45e1fdc4cd4fddd49",
+  "prompts": {},
+  "sessions": {
+    "s_bf68401b8c4fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_bf68401b8c4fe8",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

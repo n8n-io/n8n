@@ -1,0 +1,18 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  h_c63dce324dfc7b 213,427
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  h_c63dce324dfc7b 221,445
+packages/@n8n/db/src/migrations/common/1784000000045-AddExternalIdToWorkflow.ts
+  h_c63dce324dfc7b 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "72e57b4c801063bdb0c6e97b307b258fdf15a76e",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

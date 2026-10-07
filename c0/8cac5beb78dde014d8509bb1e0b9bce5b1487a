@@ -1,0 +1,39 @@
+packages/frontend/@n8n/composables/src/__tests__/packageBoundary.test.ts
+  s_77eed0cf11f1b6::t_e335cad1903864 7
+packages/frontend/@n8n/composables/src/useToast.test.ts
+  s_45cc85fd82b333::t_1554b8cb143757 244
+packages/frontend/@n8n/composables/src/useToast.ts
+  s_45cc85fd82b333::t_4f5147ca8a1e2a 33
+packages/frontend/editor-ui/src/app/composables/useNotificationForViews.test.ts
+  s_45cc85fd82b333::t_1f41e3b8432c10 15
+packages/frontend/editor-ui/src/app/composables/useNotificationForViews.ts
+  s_45cc85fd82b333::t_dfdfb20717e556 9
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_45cc85fd82b333::t_5ecee2fdf7bbe0 10
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_45cc85fd82b333::t_05af4326c37415 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c08cac5beb78dde014d8509bb1e0b9bce5b1487a",
+  "prompts": {},
+  "sessions": {
+    "s_45cc85fd82b333": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "012581e1-a8dd-4608-92e6-6d02223cc125",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    },
+    "s_77eed0cf11f1b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3829dd7e-eb4a-4209-91f3-521c94707b03",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

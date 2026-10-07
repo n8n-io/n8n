@@ -1,0 +1,16 @@
+single-instance-promotion-prototype/no-skill/5_PLAN_SUMMARY.md
+  h_c63dce324dfc7b 1-25
+single-instance-promotion-prototype/no-skill/5_PROMPT.md
+  h_c63dce324dfc7b 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "c798a7c5c1aae3e6ca21a193c5b42180747919ea",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/cli/src/evaluation.ee/test-runner/__tests__/workflow-compiler.service.test.ts
+  ai_agent 3-8
+  s_480bad97573db7::t_674578634d8b34 26,45-56
+  s_480bad97573db7::t_87cc82b7d83683 128
+  s_480bad97573db7::t_dec8f3115f7d85 111-127,129-131
+  s_480bad97573db7::t_ccd50f5935246f 11
+  s_480bad97573db7::t_9df0daf3014afc 285-291,293-306,308-322
+  s_480bad97573db7::t_2ea878f8597c46 136
+  s_480bad97573db7::t_1d9d394e4df615 292
+  s_480bad97573db7::t_af63729b005fed 2,9,18-25,27-44
+  s_480bad97573db7::t_ee71ddfa8ff66e 245
+  s_480bad97573db7::t_0b019f2f2e6965 246-251
+  s_480bad97573db7::t_fcfb39d8cd8f55 307
+packages/cli/src/evaluation.ee/test-runner/workflow-compiler.service.ts
+  ai_agent 423-424
+  s_480bad97573db7::t_edbc01c54a6c35 8,16,18,23
+  s_480bad97573db7::t_57c2987a167344 363-366,372,378,383-393,395,408,410-422,425-426
+  s_480bad97573db7::t_b7cdb83e1a36b6 48-51
+  s_480bad97573db7::t_ec0dafb37b9bd9 394,396-407,409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0447f22734add405dcdb5d320bbf74c6a6951f97",
+  "prompts": {},
+  "sessions": {
+    "s_480bad97573db7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db57dc11-9c68-4f4d-95ba-ca6ebb474ee0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

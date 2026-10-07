@@ -1,0 +1,24 @@
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_0607e661fb7835::t_551d7ffaf5f1f5 144-153,158-159,167-168,179-180
+  s_0607e661fb7835::t_8c1d4b6140c5d6 45-49
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_0607e661fb7835::t_ca446c436559f6 269-354
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_0607e661fb7835::t_7dde391aa8ccfe 58-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "8504889fdae63794cc970d8401b0eddeb8c3f07f",
+  "prompts": {},
+  "sessions": {
+    "s_0607e661fb7835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "830f0844-9f81-4a6a-bb3d-8a1f2786d064",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

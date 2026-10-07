@@ -1,0 +1,25 @@
+packages/cli/src/public-api/v1/controllers/audit.public.controller.ts
+  s_e6454ae550915c::t_75afa896f2b517 1-48
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_e6454ae550915c::t_a1a402e249f715 6
+packages/cli/src/public-api/v1/handlers/audit/spec/paths/generateAudit.generated.yml
+  s_e6454ae550915c::t_0757367c2ec9d8 1-39
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e6454ae550915c::t_c9eb98abf6c0f1 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "5bce7156c096f23fd9ca15ea39ee054142bc6084",
+  "prompts": {},
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

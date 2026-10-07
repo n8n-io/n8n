@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_d726b8dcbbdf2d::t_9ae1ab94c1d32e 81
+packages/@n8n/backend-network/README.md
+  s_d726b8dcbbdf2d::t_b2ce0324b2f65c 105-106
+  s_d726b8dcbbdf2d::t_120a6821e09231 89-90
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  s_d726b8dcbbdf2d::t_ae9db4f952b5ee 246-247
+  s_d726b8dcbbdf2d::t_97fad1cf84f191 250-252
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_d726b8dcbbdf2d::t_ca61129217b981 2407-2408
+  s_d726b8dcbbdf2d::t_048f094a024d2b 2465
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.ssrf.test.ts
+  s_d726b8dcbbdf2d::t_459a6d4df86625 155-156,158-161,163,167
+  s_d726b8dcbbdf2d::t_9075ee84fef746 253-280
+packages/@n8n/backend-network/src/http/use-default-ssrf-policy.ts
+  s_d726b8dcbbdf2d::t_99910d0df23340 8-10,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3b58c3e2087e0caa8a5acf89de88fa025ee23a3",
+  "prompts": {},
+  "sessions": {
+    "s_d726b8dcbbdf2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967ace-b340-4e00-9c2b-f4527ce3862f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

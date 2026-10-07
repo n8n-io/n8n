@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_05cd7ab5f956cf::t_633839370fbe34 264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ea358022e82c35d09891e9d877751fde1b55988",
+  "prompts": {},
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

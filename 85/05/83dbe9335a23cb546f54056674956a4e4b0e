@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_38a97526681bca::t_2f1ad625168522 1039
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelActions.ts
+  s_38a97526681bca::t_fb2957d93d4912 267-273
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelActions.test.ts
+  s_38a97526681bca::t_8b3294924a86e6 34-37,39
+  s_38a97526681bca::t_fe28fc46d0f5a0 100-101
+  s_38a97526681bca::t_74f9c7e186adb6 491-495,499-500,507-511,513,518-521,526-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "850583dbe9335a23cb546f54056674956a4e4b0e",
+  "prompts": {},
+  "sessions": {
+    "s_38a97526681bca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f790004-de0e-4d7a-ac99-8d7e1a2d6612",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.ts
+  s_dab2d060d91655::t_209d110c3d5fc9 24,215-219,229-233,290,314,337,354,376,407,424,435,447,466-469,472
+packages/nodes-base/nodes/Elastic/ElasticSecurity/GenericFunctions.ts
+  s_dab2d060d91655::t_11ce23ba52847e 13-21,121
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/GenericFunctions.test.ts
+  s_dab2d060d91655::t_f6a109522fc5ef 1-19
+packages/nodes-base/nodes/Elastic/Elasticsearch/Elasticsearch.node.ts
+  s_dab2d060d91655::t_f5065340bf1094 19,105,126,184,196,260,263,297,336-340,352-356,374-380
+packages/nodes-base/nodes/Elastic/Elasticsearch/GenericFunctions.ts
+  s_dab2d060d91655::t_74f1b8cf898bce 12-20,106-112
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/GenericFunctions.test.ts
+  s_dab2d060d91655::t_cbcb2be8444eab 3,113-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8c39be23d5dd40c769002df342576b22e3f59f19",
+  "prompts": {},
+  "sessions": {
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

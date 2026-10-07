@@ -1,0 +1,59 @@
+packages/@n8n/db/src/migrations/common/1788522448804-CreateAgentWorkflowDependencyTable.ts
+  s_8cd1a0d19700c3::t_21023fb6dcfb8b 1-3,21-22
+  s_8cd1a0d19700c3::t_c2ed40a3fdfbd2 4-20,23
+packages/cli/src/modules/agents/__tests__/agent-dependency-index.service.test.ts
+  s_8cd1a0d19700c3::t_3116cfe09110d7 8,13,20,26,31,36,40,45
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_8cd1a0d19700c3::t_f7ad95f3cba808 3,15,19,29,36
+  s_8cd1a0d19700c3::t_b2d308be5e3be9 403-404,426-454
+  s_8cd1a0d19700c3::t_861288ec4b0af1 37-41,53,74-75,77-78,89,110,181,402,405,455-461,469
+packages/cli/src/modules/agents/agent-dependency-index.service.ts
+  s_8cd1a0d19700c3::t_800913814e2b17 6,16-17,27-28,32-33
+packages/cli/src/modules/agents/agents.module.ts
+  s_8cd1a0d19700c3::t_8c678a07a57d6d 237
+  s_8cd1a0d19700c3::t_5197e2d84d99c2 198-200
+packages/cli/src/modules/agents/repositories/agent-workflow-dependency.repository.ts
+  s_8cd1a0d19700c3::t_2b10141553d7e0 1-142
+  s_8cd1a0d19700c3::t_e81fcb13854283 143-145
+packages/cli/src/modules/agents/entities/agent-workflow-dependency.entity.ts
+  s_8cd1a0d19700c3::t_d0e30d7818038c 1-22
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_8cd1a0d19700c3::t_3d715d28ad91e4 78-79
+  s_8cd1a0d19700c3::t_ae5a36e2fd4125 344
+  s_8cd1a0d19700c3::t_5e3df113cdd015 21
+  s_8cd1a0d19700c3::t_f548ec79845f39 275,283-300,303
+packages/cli/src/modules/agents/__tests__/agent-workflow-dependency.repository.test.ts
+  s_8cd1a0d19700c3::t_700aebfa7b5661 1-144
+docs/generated/postgres-schema/README.md
+  s_8cd1a0d19700c3::t_96c6b20278c67c 29,196-197,591-595
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_8cd1a0d19700c3::t_17aad5af4ed184 1-84
+docs/generated/postgres-schema/public.agents.md
+  s_8cd1a0d19700c3::t_40381e4c7f8f67 10,66,230-234
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_8cd1a0d19700c3::t_e430da298057d7 12,69,127-131
+docs/generated/sqlite-schema/README.md
+  s_8cd1a0d19700c3::t_f990a283c85a68 29,179-180,578-582
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_8cd1a0d19700c3::t_9fc1da35b66317 1-94
+docs/generated/sqlite-schema/agents.md
+  s_8cd1a0d19700c3::t_fe2e601af8c4a0 21,68,232-236
+docs/generated/sqlite-schema/workflow_entity.md
+  s_8cd1a0d19700c3::t_9be09724a581eb 23,68,126-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5ef9448986774454bc73779bc4e6ded479b4b41a",
+  "prompts": {},
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

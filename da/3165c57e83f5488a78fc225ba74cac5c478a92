@@ -1,0 +1,32 @@
+packages/cli/src/posthog/index.ts
+  s_5be157f6e91b85::t_46bafd47af7b7e 32,35,284,319
+  s_5be157f6e91b85::t_59402e374edb5b 20,60,155-171,173-174,178,181-194,196,201-209,217,221-226,234-235,237,240,246
+  s_5be157f6e91b85::t_a570dd78d2c3d9 172
+packages/cli/test/integration/activity-event-relay.test.ts
+  s_5be157f6e91b85::t_0964713939797b 3,39,54-55,60-61,123-127,129-135,137-139
+  s_5be157f6e91b85::t_f87510a5a59099 6
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_5be157f6e91b85::t_3fd9a53d59ab7f 57-59,96,98,107,131,148,152,154,156-161,163-166,169,171,175,178-179
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_5be157f6e91b85::t_ee9ceb927cfdcd 67,100-101,103-104,107-110,114,116-119,143
+  s_5be157f6e91b85::t_9992e3e0658865 105
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_5be157f6e91b85::t_d743b1c55efc96 124-126,128-131,136,139-147,149-151,153-154
+  s_5be157f6e91b85::t_77981dd9e14cea 2,66-123,127,132-135,137,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da3165c57e83f5488a78fc225ba74cac5c478a92",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

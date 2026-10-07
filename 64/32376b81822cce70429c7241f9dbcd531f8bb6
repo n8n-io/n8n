@@ -1,0 +1,24 @@
+packages/cli/src/services/folder-finder.service.ts
+  s_b9e402b75ca46c::t_8623ce156a2d31 1-56
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_b9e402b75ca46c::t_e087d100aaf61d 1,4
+  s_b9e402b75ca46c::t_620c12bc1c759d 2-3,5-38,40-55,60-62
+  s_b9e402b75ca46c::t_e2701b5c95b0fa 39
+  s_b9e402b75ca46c::t_f4fe5ebcbabdc2 56-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6432376b81822cce70429c7241f9dbcd531f8bb6",
+  "prompts": {},
+  "sessions": {
+    "s_b9e402b75ca46c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0175b21f-7e7d-491e-a496-459c2da5cb60",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

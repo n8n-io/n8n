@@ -1,0 +1,79 @@
+packages/cli/src/scaling/queue/job-queue.interface.ts
+  s_ee871748970946::t_3970f2e7a0ebc3 1-68
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_ee871748970946::t_caf2f3f86e9ad3 34,654,699,732
+packages/cli/src/scaling/queue/in-memory-job-queue.ts
+  s_ee871748970946::t_f98e256b66f96c 1-161
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_ee871748970946::t_e73ca885596cbb 47,138,169,204,210,248,252,298,350,389,440,488,502,548,599,612,661,676,749,768,824,843,855,927,949,1022,1042,1100,1236,1259,1344,1439,1529,1629,1715,1742,1807,1884,2003,2070,2144,2166,2183,2197,2205,2220,2239,2245,2254,2261,2270,2276
+  s_ee871748970946::t_92e5933bec0e28 501
+  s_ee871748970946::t_f4fc7a9d5db6fe 2115
+  s_ee871748970946::t_6eb10b3036b68b 559-560
+packages/cli/src/scaling/job-processor.ts
+  s_ee871748970946::t_d5101821ea507d 224,236,247,359,449,462
+  s_ee871748970946::t_30a22a4b06f1ec 49
+  s_ee871748970946::t_34492577abe88c 66
+  s_ee871748970946::t_dd98f342247d1b 487
+  s_ee871748970946::t_9a8678414d1dde 503
+  s_ee871748970946::t_7f187e23922a1e 83
+packages/cli/src/scaling/queue/__tests__/job-queue.contract.ts
+  s_ee871748970946::t_ee035f9ee400d7 1-127
+packages/cli/src/scaling/__tests__/hypervisor-leader-election.test.ts
+  s_ee871748970946::t_cc28c70f2a2451 7
+  s_ee871748970946::t_0be6e993689ea7 60-61
+packages/cli/src/scaling/queue/__tests__/in-memory-job-queue.test.ts
+  s_ee871748970946::t_66d4d99c6d2173 1-8
+packages/cli/src/scaling/queue/__tests__/bull-job-queue.test.ts
+  s_ee871748970946::t_104249b7d39c45 198-199
+  s_ee871748970946::t_0cc333449d626b 158-160
+  s_ee871748970946::t_11f069062e91ac 11
+  s_ee871748970946::t_d9e08e88e00ced 86-91
+  s_ee871748970946::t_5db102e48f8edd 33-38
+  s_ee871748970946::t_630c1b6b2a1b6c 171
+  s_ee871748970946::t_269bd62151f01a 185
+  s_ee871748970946::t_2e3962e7edf8df 1-10,12-32,39-85,92-157,161-170,172-184,186-197,200-264
+packages/cli/src/scaling/scaling.service.ts
+  s_ee871748970946::t_1787c10388a961 133
+  s_ee871748970946::t_58677f787cabd7 21,28
+  s_ee871748970946::t_cf5bb1a173086b 48
+  s_ee871748970946::t_248328cc391178 56-65,67-69
+  s_ee871748970946::t_68ffd3ee41b9ab 33
+  s_ee871748970946::t_12043ed3251702 209
+  s_ee871748970946::t_8b0e8067c7e798 627
+  s_ee871748970946::t_b86fccc91b664a 415
+  s_ee871748970946::t_929c60f3728ad7 166
+  s_ee871748970946::t_ad61ac796f4dca 194
+  s_ee871748970946::t_3671a31b8bce20 10
+  s_ee871748970946::t_9f27cdd17c96c2 293,297
+  s_ee871748970946::t_d3f612bcf6aa71 492
+  s_ee871748970946::t_da93bfe1494e11 320,328-330
+  s_ee871748970946::t_aecddef360b539 221,231,237-238,242,245,250
+  s_ee871748970946::t_58b312e3810d06 109,115
+  s_ee871748970946::t_a23e11b857e431 150
+packages/cli/src/workflow-runner.ts
+  s_ee871748970946::t_30045521e2d2e4 593,598
+  s_ee871748970946::t_d0ff71751adc3b 646,665
+  s_ee871748970946::t_d0a578f7ee6a6e 551
+  s_ee871748970946::t_eee7b1aeee6b4b 54-55
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_ee871748970946::t_5c79a9e7fbc2ec 6,14-15,17-18,74-77,83,94-104,107,115,118-125,151,164,177,189,194-202,213,234,241,256,268,273,275,278,280-281,289,293,301,305,314,318-319,325,335,350,354,363,373,377,386,393,397,406,416,420,423,436,451,461-463,473-475,487,502-504,510,523
+  s_ee871748970946::t_3f85d0e3eb8cd5 524-525,533,569,598,626
+packages/cli/src/scaling/queue/bull-job-queue.ts
+  s_ee871748970946::t_c4d816d5c9b7f6 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b3928747b85e3dc8dff4001c085080330b29dfaa",
+  "prompts": {},
+  "sessions": {
+    "s_ee871748970946": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0aca0d0f-1b2b-435b-891c-746f9b5703b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

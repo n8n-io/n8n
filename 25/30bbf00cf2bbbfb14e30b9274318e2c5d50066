@@ -1,0 +1,183 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_ef8734a1a9d434::t_a9050e6d75afe1 349
+  s_ef8734a1a9d434::t_361d9312b440f6 196-211
+  s_ef8734a1a9d434::t_adf4c73d37d7a0 132,142,160,218,377,403,424
+  s_ef8734a1a9d434::t_5b76a1322571a5 271
+  s_ef8734a1a9d434::t_801d5d3db10f04 233
+  s_ef8734a1a9d434::t_c74589d49e81c2 324
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_ef8734a1a9d434::t_e58eabefa8f993 422
+  s_ef8734a1a9d434::t_2c81b569987c69 115
+  s_ef8734a1a9d434::t_06dc49be17039e 381
+  s_ef8734a1a9d434::t_f0541b7b311570 501
+  s_ef8734a1a9d434::t_56d507931d3f8a 175
+  s_ef8734a1a9d434::t_82e75d8d0051d0 540
+  s_ef8734a1a9d434::t_48ba2c305097c2 261
+  s_ef8734a1a9d434::t_ab4becd5fd9c35 221
+  s_ef8734a1a9d434::t_7b412c567b36ff 160
+  s_ef8734a1a9d434::t_c86d418af2fe53 206
+  s_ef8734a1a9d434::t_a3cc8792af843c 387
+  s_ef8734a1a9d434::t_eb68bd55e060b1 402
+  s_ef8734a1a9d434::t_b1f6fac4b40165 515
+  s_ef8734a1a9d434::t_4876b7f7982a60 135
+packages/@n8n/agents/src/runtime/loop/execution-counter.ts
+  s_ef8734a1a9d434::t_6d59bb8be55aa9 27-39
+packages/cli/src/interfaces.ts
+  s_ef8734a1a9d434::t_006ccbba044595 262-267
+  s_ef8734a1a9d434::t_50e81b2225e978 214-217,220-223
+  s_ef8734a1a9d434::t_51ca75d909684a 219
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_ef8734a1a9d434::t_5254733176104e 380
+  s_ef8734a1a9d434::t_f2e7b846afe9fb 91
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_ef8734a1a9d434::t_8bf3df9bf3d0b7 578
+  s_ef8734a1a9d434::t_727c3e72034328 349,517,603
+  s_ef8734a1a9d434::t_0c7353841666ee 175,199,286,361,388,464,500,567
+  s_ef8734a1a9d434::t_db2f2043a15a74 227-230
+  s_ef8734a1a9d434::t_d9160e703fef6a 220-226
+  s_ef8734a1a9d434::t_510dfbd2714af2 550-555
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_ef8734a1a9d434::t_148a2bb32037c8 388
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_ef8734a1a9d434::t_750623c049177a 185-191,207-213,233-239,267-273
+  s_ef8734a1a9d434::t_c6b298894203d3 171
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_ef8734a1a9d434::t_1a687240d5785c 286
+  s_ef8734a1a9d434::t_1a02aae00bad4b 162
+  s_ef8734a1a9d434::t_5b2321250568e1 154
+  s_ef8734a1a9d434::t_3912f59d95f960 123
+  s_ef8734a1a9d434::t_85e87fc371285f 92
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_ef8734a1a9d434::t_3add6a6154a5e3 195
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff.ts
+  s_ef8734a1a9d434::t_e5deaf9e61392b 55
+  s_ef8734a1a9d434::t_3f8ac35c2e3ff2 2
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_ef8734a1a9d434::t_34b542ad17efca 15
+  s_ef8734a1a9d434::t_21727b8341f7e1 141
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_ef8734a1a9d434::t_477eb1c730cfd3 76,97,112,161,187,214,241,264,292,329
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_ef8734a1a9d434::t_343e94acc9555f 26
+  s_ef8734a1a9d434::t_32220c99ce70ac 524
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_ef8734a1a9d434::t_d0d09b8b714bec 446,726
+  s_ef8734a1a9d434::t_3eb0bc1b2b882a 482
+  s_ef8734a1a9d434::t_f24a688ebe02cb 31-42
+  s_ef8734a1a9d434::t_788af66311ed13 89
+  s_ef8734a1a9d434::t_7a601154f8335d 162
+  s_ef8734a1a9d434::t_66985ea7fd856d 517
+  s_ef8734a1a9d434::t_390f043a9ceb52 200
+  s_ef8734a1a9d434::t_068c333267c08f 222
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_ef8734a1a9d434::t_26cdaa6f12c50f 235
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_ef8734a1a9d434::t_3a8c7e770a00cc 188
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_ef8734a1a9d434::t_56974a9bd49498 542-546
+  s_ef8734a1a9d434::t_57fc70755f7133 140
+  s_ef8734a1a9d434::t_b777ff175afafb 309
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_ef8734a1a9d434::t_02462c27cd4469 379,396-405
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_ef8734a1a9d434::t_82d3ad79812530 546,561
+  s_ef8734a1a9d434::t_3c049317a00c3e 181
+  s_ef8734a1a9d434::t_d51ce63be7935b 103-111
+  s_ef8734a1a9d434::t_830e02c17964ba 224
+  s_ef8734a1a9d434::t_4d5f8ab7cd1efa 340,357
+  s_ef8734a1a9d434::t_358b8c213f5333 39
+  s_ef8734a1a9d434::t_49c2bdb459edd2 424
+  s_ef8734a1a9d434::t_7d4e3a1196cb6a 655
+  s_ef8734a1a9d434::t_376972414b914e 713
+  s_ef8734a1a9d434::t_c3c6c06c71b143 686,697
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_ef8734a1a9d434::t_4d589d8c37ad8c 260
+  s_ef8734a1a9d434::t_a1e94554ae318b 37-43
+  s_ef8734a1a9d434::t_d3a0f8f5d8408a 22-23
+  s_ef8734a1a9d434::t_fa678269b11313 132
+  s_ef8734a1a9d434::t_73deb797a3c7ac 175
+  s_ef8734a1a9d434::t_df14727886525d 229,240
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_ef8734a1a9d434::t_384102ccc2b737 3960
+  s_ef8734a1a9d434::t_9a9c2517b1a38a 3978
+  s_ef8734a1a9d434::t_f8869f513ef5b7 40
+packages/@n8n/telemetry/src/events/agents.ts
+  s_ef8734a1a9d434::t_186bf24f0d3453 100,102,104,106-109,111,113,119
+  s_ef8734a1a9d434::t_3ede581eb46fd7 97-98,144-188
+  s_ef8734a1a9d434::t_a52b90306c5cd5 125,136-138
+  s_ef8734a1a9d434::t_35edb81cb379b1 114-118
+  s_ef8734a1a9d434::t_b28d4358632a3b 18-37
+  s_ef8734a1a9d434::t_2cc4fe20d231d2 101,103,105,110,112,120-124,126-135,139-143
+  s_ef8734a1a9d434::t_d87d2ba4023379 99
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_ef8734a1a9d434::t_d7ed5db8b6e5c6 666,710,730,741,749,757,775,786,797,805,818,841,849
+  s_ef8734a1a9d434::t_d7543d7f1aaf39 678
+  s_ef8734a1a9d434::t_94b6b8a3b96e69 504,512,515-516,518-520,522-523,526-527,530,558-560,562,572,580
+  s_ef8734a1a9d434::t_ee57ff2f2ccdf1 5
+  s_ef8734a1a9d434::t_7b16ef405cb3ba 643-647,657
+  s_ef8734a1a9d434::t_5c6e2bff570b15 469,471-472,476,478,483,485,494,496,502,513,517,525,529,531-532,534,540,545-546,548,561,569,574,578,592
+  s_ef8734a1a9d434::t_18e18b620f6778 470
+  s_ef8734a1a9d434::t_b9fe9b53f09cf3 495
+  s_ef8734a1a9d434::t_b2d224779ba185 501
+  s_ef8734a1a9d434::t_c2bf2aa402e4f1 514
+  s_ef8734a1a9d434::t_838aa52443b874 521
+  s_ef8734a1a9d434::t_25846f4843a585 524
+  s_ef8734a1a9d434::t_483d57b7658f64 528
+  s_ef8734a1a9d434::t_d898773390cca0 557
+  s_ef8734a1a9d434::t_ff7be8d3be9f3b 563
+  s_ef8734a1a9d434::t_8b9a9b4290e1c9 568
+  s_ef8734a1a9d434::t_b58f9b34b1e8c2 577
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue
+  s_ef8734a1a9d434::t_e33f0e21d38ff5 10
+  s_ef8734a1a9d434::t_b519611db6f796 56
+  s_ef8734a1a9d434::t_050881cd39dfdd 44
+  s_ef8734a1a9d434::t_0e075aa106d4f6 33
+packages/cli/src/telemetry/index.ts
+  s_ef8734a1a9d434::t_3646ba0b0b8024 341
+  s_ef8734a1a9d434::t_2591370f45ce8e 309-312,314
+  s_ef8734a1a9d434::t_e2c2ffeed6348b 21
+  s_ef8734a1a9d434::t_9647ef18667912 445
+  s_ef8734a1a9d434::t_fa9bf767a9ef2e 77
+  s_ef8734a1a9d434::t_bf8f63dc3c9556 13
+  s_ef8734a1a9d434::t_44f63de96ec23a 295-299,317
+  s_ef8734a1a9d434::t_96a0c6d82cdd80 349
+  s_ef8734a1a9d434::t_7261fb6cb187f9 87
+  s_ef8734a1a9d434::t_04cf56317400be 360
+  s_ef8734a1a9d434::t_9aad57c2949163 435
+  s_ef8734a1a9d434::t_08a55f6fad67cb 474,482
+  s_ef8734a1a9d434::t_3c42861c853f1b 294
+  s_ef8734a1a9d434::t_51922461729841 313
+packages/frontend/editor-ui/src/features/ai/mcpAccess/composables/useMcp.ts
+  s_ef8734a1a9d434::t_0a49e1b4c06eae 12
+  s_ef8734a1a9d434::t_16c67ec922e635 2
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_ef8734a1a9d434::t_a7677b22eeff21 284,307-314
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiAgentPreviewHandoff.test.ts
+  s_ef8734a1a9d434::t_629d1180dcab64 67-73
+  s_ef8734a1a9d434::t_56adbc0f30b385 104-111
+  s_ef8734a1a9d434::t_9b65a62afdece3 1
+packages/cli/src/modules/agents/utils/agent-execution-counter.ts
+  s_ef8734a1a9d434::t_796e0165862661 3,8-12,27
+  s_ef8734a1a9d434::t_564197c6ba0ead 20,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "2530bbf00cf2bbbfb14e30b9274318e2c5d50066",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ef8734a1a9d434": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2384e80-02bf-49f2-bb42-c49c34374e77",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

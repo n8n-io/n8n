@@ -1,0 +1,23 @@
+packages/@n8n/engine/docs/adr/ADR-2026-09-04-timeout-excludes-waiting-time.md
+  s_77655ca8fe3a59::t_ff5cc98a8d7b50 1-64
+packages/@n8n/engine/docs/adr/ADR-2026-09-04-resume-urls-carry-a-derived-token.md
+  s_77655ca8fe3a59::t_321bc7df232cef 1-100
+packages/@n8n/engine/docs/adr/ADR-2026-09-02-steps-declare-waits.md
+  s_77655ca8fe3a59::t_0a37ab40c13db6 111-122,128-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3a53f732837575be324ad8a4213378716bb5cb58",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

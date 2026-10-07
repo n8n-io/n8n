@@ -1,0 +1,24 @@
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-static-element-interactions.test.ts
+  ai_agent 31,37-51
+  s_51b74b4c66402b::t_4878079419808f 30
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-static-element-interactions.ts
+  s_51b74b4c66402b::t_4746d7a025f37a 17-18,24,40-41,49-51,52-62,87,90-91
+  ai_agent 16,42-48,88-89,96-97
+  s_51b74b4c66402b::t_3146cdd3ecb324 12,92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4e3721c54e13648984fa0a2b42bd58062923dfe5",
+  "prompts": {},
+  "sessions": {
+    "s_51b74b4c66402b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a066fc-4164-7ba9-be8c-26b9417381f5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

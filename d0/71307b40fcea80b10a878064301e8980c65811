@@ -1,0 +1,32 @@
+packages/@n8n/scheduler/src/observability/metrics.ts
+  ai_agent 40-41,57
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_37b3037d1e56c4::t_222f8b03f906f5 284
+  s_5a66d7c43a80a3::t_c91dd47b3a7f55 283,285
+packages/@n8n/scheduler/src/observability/attributes.ts
+  ai_agent 29-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d071307b40fcea80b10a878064301e8980c65811",
+  "prompts": {},
+  "sessions": {
+    "s_37b3037d1e56c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fd19c94-4cd5-47b2-9b97-9e2f6644c16a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_5a66d7c43a80a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28595c3b-b93f-45d3-a3cc-11ae56a011fe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

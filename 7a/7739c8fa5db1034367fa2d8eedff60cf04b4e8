@@ -1,0 +1,21 @@
+packages/@n8n/ai-utilities/src/json-schema/zod-to-json-schema.test.ts
+  s_da5426621c969e::t_805b47a56f2248 28-33
+packages/@n8n/ai-utilities/src/json-schema/zod-to-json-schema.ts
+  s_da5426621c969e::t_cf4a087bc9e13b 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7a7739c8fa5db1034367fa2d8eedff60cf04b4e8",
+  "prompts": {},
+  "sessions": {
+    "s_da5426621c969e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff86040e-c1d8-4a14-a182-45d56c97d053",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/catalog/CatalogView.vue
+  s_5e1597e8ea25b2::t_a1bc8f37a90893 351-360
+  s_5e1597e8ea25b2::t_828698efc4e3a5 298-305
+  s_5e1597e8ea25b2::t_6bce1e1004d740 306-324
+  s_5e1597e8ea25b2::t_1cf09401723279 164-167,171
+  s_5e1597e8ea25b2::t_1878e9639ed675 325,327,330-332,334-350
+  s_5e1597e8ea25b2::t_c8b2e7f6a72b08 479-489
+  s_5e1597e8ea25b2::t_b0ada3457b7e3f 328,409,419
+  s_5e1597e8ea25b2::t_cd8be0f33e01ad 524-526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8d2e1ad7c2c024affe67ef6db36fc64180e81171",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

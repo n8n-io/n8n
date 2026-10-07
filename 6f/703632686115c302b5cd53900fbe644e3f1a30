@@ -1,0 +1,47 @@
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_3c3daa52a6936b::t_6f99dcd5472c69 308
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_3c3daa52a6936b::t_aade861ccf14d0 72,85
+  s_3c3daa52a6936b::t_f25b9574a132db 14
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_3c3daa52a6936b::t_6a7d27b3238ca8 95-98
+  s_3c3daa52a6936b::t_f6c0163d609174 116
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_3c3daa52a6936b::t_92c15ac82d3dbc 635
+  s_3c3daa52a6936b::t_285103a05fce20 609-613
+packages/@n8n/cli/src/client.ts
+  s_3c3daa52a6936b::t_c3ffafa20cb25d 87
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_3c3daa52a6936b::t_ef0cbba4231035 376-379
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_3c3daa52a6936b::t_90137ba049b4d4 607
+  s_3c3daa52a6936b::t_265bdbf116706b 542
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_3c3daa52a6936b::t_128e83e528b25a 75
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_3c3daa52a6936b::t_233f8bb00648c5 212
+  s_3c3daa52a6936b::t_3855dcd49e6783 163-164
+  s_3c3daa52a6936b::t_5230ef616fc0d5 184-185
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
+  ai_agent 69-92,97,110-121,175
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_3c3daa52a6936b::t_f78c6ab3583545 486
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_3c3daa52a6936b::t_f820fc598fa1ec 169-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f703632686115c302b5cd53900fbe644e3f1a30",
+  "prompts": {},
+  "sessions": {
+    "s_3c3daa52a6936b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7bd95b7-f20e-49db-a9c3-375263843139",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

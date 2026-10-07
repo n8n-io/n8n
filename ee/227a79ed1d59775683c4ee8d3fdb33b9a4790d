@@ -1,0 +1,19 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-resolver-workflow.service.test.ts
+  s_186a03d235de8d::t_cb0d7e627bcf94 590-614
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee227a79ed1d59775683c4ee8d3fdb33b9a4790d",
+  "prompts": {},
+  "sessions": {
+    "s_186a03d235de8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "534bbfcf-4679-41c3-9233-7abee2d26b22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

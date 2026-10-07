@@ -1,0 +1,19 @@
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_caf3d1430d6b56::t_0ff15b87a84fb4 126-130,168-172,203-208,218-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c342a4132bb0367bf2c867422ef776046c0f4e6",
+  "prompts": {},
+  "sessions": {
+    "s_caf3d1430d6b56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5b89d54-ffed-44a9-91f6-e008e539fb57",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

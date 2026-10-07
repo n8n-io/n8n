@@ -1,0 +1,43 @@
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_5a66d7c43a80a3::t_c91dd47b3a7f55 304
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  s_940781c2f2b22c::t_2d62a88495fd7e 7-8
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_940781c2f2b22c::t_07214a560afe63 41-45,47,49-50,52-55,59-60,62-70,73-74,79-101,124,131,142-149,151-152,155-163,167-168,170-171,175-176,178-201,203,206,210,218,222-224
+packages/cli/src/scheduling/schedule-columns.ts
+  s_940781c2f2b22c::t_2d62a88495fd7e 6-62
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_fd14e5d6c273e0::t_ecd6e9c091b126 969-971
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fcf02e546b4b83d2091023be9c6bd36d69be6350",
+  "prompts": {},
+  "sessions": {
+    "s_5a66d7c43a80a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28595c3b-b93f-45d3-a3cc-11ae56a011fe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_940781c2f2b22c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db7b124a-280c-4b5f-9daa-bb3c549c49b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_fd14e5d6c273e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7edd1df-b889-4e1e-b8e0-1cb648f7e7c3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_3a7ac9263997db::t_a3415d4f8909c1 393-394
+  s_3a7ac9263997db::t_bfeaf520b49977 210-213,215-218
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.test.ts
+  s_3a7ac9263997db::t_eb1563a29488e4 91
+  s_3a7ac9263997db::t_2b17e045203ba3 4
+  s_3a7ac9263997db::t_8c2ea1f7652f11 129-130,132-161
+  s_3a7ac9263997db::t_fe6effae6710f4 131
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseRunResult.vue
+  s_3a7ac9263997db::t_8e6cce41dc702d 44
+  s_3a7ac9263997db::t_de702fc317b9f1 190,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e379998b6e228b16400b675cc5d53f80628456c7",
+  "prompts": {},
+  "sessions": {
+    "s_3a7ac9263997db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d07e89da-f145-46b7-afeb-052230f4ee69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

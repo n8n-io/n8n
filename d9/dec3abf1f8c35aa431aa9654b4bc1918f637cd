@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanel.test.ts
+  s_8a973eba2b19d4::t_c61433c5fc91d1 68
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_8a973eba2b19d4::t_b4c1a69319ac43 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d9dec3abf1f8c35aa431aa9654b4bc1918f637cd",
+  "prompts": {},
+  "sessions": {
+    "s_8a973eba2b19d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2adaa288-c29f-4ca4-90ad-9bb2de4bd755",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

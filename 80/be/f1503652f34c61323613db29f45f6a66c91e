@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/creation-tools.ts
+  s_81a7b3dfd1f412::t_6827eeb27825c2 104-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "80bef1503652f34c61323613db29f45f6a66c91e",
+  "prompts": {},
+  "sessions": {
+    "s_81a7b3dfd1f412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f423b-0e52-7c21-be92-8fde7fd2b611",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

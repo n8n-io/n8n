@@ -1,0 +1,24 @@
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_29e55ac5008ef6::t_4dd3d3eb924cd5 328-338,348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "853a2b85c474fc983f16ff41d1d0859efec453f6",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_29e55ac5008ef6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3108d23c-de53-4c34-8dbf-fe60f9ef8bc6",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-missing-mode.test.ts
+  s_c345592441274b::t_d0e9189c22da17 2-32,38-40
+  s_c345592441274b::t_73546b26093f80 1,33-37
+packages/cli/src/modules/n8n-packages/entities/variable/variable-missing-mode.ts
+  s_c345592441274b::t_688a5e551ac0b8 4-5,7
+  s_c345592441274b::t_b23ac8784d9f7e 17
+  s_c345592441274b::t_be603b50d218b1 6,8-10,13-16,18,23
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_c345592441274b::t_27c9fba34d331f 5
+  s_c345592441274b::t_0092681a4dae25 64-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0691017ba1fbece9c3d39ff869c442df5cc71f93",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c345592441274b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44d4b7e1-ff47-45f4-90e1-e74bbf6568a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

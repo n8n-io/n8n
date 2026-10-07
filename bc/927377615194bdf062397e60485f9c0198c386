@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/interfaces.ts
+  s_d57dc1bdefde8e::t_5b0aa2649fb311 1,7-14
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/getAll.operation.ts
+  s_d57dc1bdefde8e::t_da6462ca4e9f4d 94-101
+  s_d57dc1bdefde8e::t_12ee1ce3462e2c 11
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/listSearch.ts
+  s_d57dc1bdefde8e::t_9cb62415d9df97 25-32,34,45
+  s_d57dc1bdefde8e::t_9d8d2945392c05 3
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/transport/index.ts
+  s_d57dc1bdefde8e::t_1e489d030b38e1 62-72
+  s_d57dc1bdefde8e::t_9d4a5c41d1d803 6
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/getAll.operation.ts
+  s_d57dc1bdefde8e::t_a86cc124af610c 11
+  s_d57dc1bdefde8e::t_49dd43e5b9cd70 94-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bc927377615194bdf062397e60485f9c0198c386",
+  "prompts": {},
+  "sessions": {
+    "s_d57dc1bdefde8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bb02aa9-ecfd-4bd9-ad13-9c30e50de22b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_430d91f2c0a128::t_1bdeefe4e65a93 106-107,109
+  s_430d91f2c0a128::t_bea892c5d52630 108
+  s_6eb65a1ac12acf::t_e00e456626c04d 159-161,163-167
+  s_bd2c88dec3f0fd::t_586f46643e17f2 22-24,28,57-59,70-74,78-79,85-90,128-134,162,179,181
+  s_6eb65a1ac12acf::t_88191e38f5a8f9 1-21,25-27,29-56,60-69,75-77,80-84,91-105,110-127,135-158,168-178,180,182-228
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_430d91f2c0a128::t_1bdeefe4e65a93 39-44,73
+  s_6eb65a1ac12acf::t_59c4b080f37541 1-7,16-21,23,30-31,34-37,55-72,74-78,80-84,86-94,114-117,119-126,128-136,143,145-155,162-168
+  s_6eb65a1ac12acf::t_740efadf19cfe8 95
+  s_6eb65a1ac12acf::t_221173062c53a2 85
+  s_6eb65a1ac12acf::t_86b09abf456684 108,127
+  s_6eb65a1ac12acf::t_128b68d6ffbfb5 8-15,22,24-29,32-33,38,45-54,79,96-107,109-113,118,137-142,144,156-161
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/bindings.fixtures.ts
+  s_6eb65a1ac12acf::t_77ce08d2e336cf 1-12,14-22,24-31,33-67,73-79,89
+  s_6eb65a1ac12acf::t_86b09abf456684 13,23,32,68-72,80-88
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_430d91f2c0a128::t_7e336fa78dad2c 135-144,197,202-208,212-219,221-227,232-233,455
+  s_6eb65a1ac12acf::t_cd3235666f58f9 4-10,134,145,151-155,157,164-191,193-196,198-201,228-231,234-238,243-244,246-247,249-256,292-312,320-326,330-335,339-341,349-358,362-363,368-370,374-376,380-389,393-395,399-420,424-429,435-442,445-450,453-454,459-464,468-469,473-475,479-480,482-487,490-491,495-497,501-504,507-509,512-515
+  s_6eb65a1ac12acf::t_9a075d2e4df830 1,12-37,39-72,78-124,126-127,129-133,156,158-163,257-258,264-283,289-291,313-319,336-337,348,364-367,371-372,379,396-398,443-444,456,510-511,516-517
+  s_6eb65a1ac12acf::t_740efadf19cfe8 3,11,125,327-329,338,346-347,359-361,373,377-378,390-392,421-423,430-434,451-452,457-458,465-467,470-472,476-478,481,488-489,492-494,498-500,505-506
+  s_bd2c88dec3f0fd::t_586f46643e17f2 209-211,220,239-242,245,248
+  s_6eb65a1ac12acf::t_f4add6654c5684 2,38,73-77,128,146,150,342-345
+  s_6eb65a1ac12acf::t_ad20c34c1f9306 147-149
+  s_6eb65a1ac12acf::t_e00e456626c04d 259-263,284-288
+  s_430d91f2c0a128::t_01ab74f44466e4 192
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsApply.api.test.ts
+  s_6eb65a1ac12acf::t_77ce08d2e336cf 1-24
+  s_6eb65a1ac12acf::t_4e89032b0fb6b2 25-27
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6eb65a1ac12acf::t_faa4998d7cd8ba 8821-8822,8826,8829-8833,8836-8839,8841-8860
+  s_bd2c88dec3f0fd::t_586f46643e17f2 8834-8835
+  s_6eb65a1ac12acf::t_740efadf19cfe8 8823-8825,8827-8828,8840
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_430d91f2c0a128::t_c39a0802979fbf 136-155
+  s_6eb65a1ac12acf::t_4e33adf5cbc74b 1
+  s_6eb65a1ac12acf::t_77ce08d2e336cf 2-5,14-23,32,36-43,54,59-80,87-111,130-135,156-165,171-182,189-198,201-208,214-221,236-240,245-251
+  s_6eb65a1ac12acf::t_86b09abf456684 6-13,24-31,33-35,48-53,55-58,81-86,112-129,166-170,183-188,209-213,222-235,241-244
+  s_bd2c88dec3f0fd::t_586f46643e17f2 44-47,199-200
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsApply.api.ts
+  s_6eb65a1ac12acf::t_88191e38f5a8f9 1-24
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.types.ts
+  s_6eb65a1ac12acf::t_88191e38f5a8f9 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb01db26621254fafcad653a86736a62dd53d297",
+  "prompts": {},
+  "sessions": {
+    "s_430d91f2c0a128": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c4d2-2120-7a60-8d62-e3d2705e0754",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_6eb65a1ac12acf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b344-1cec-7c01-92ad-845d99ec2f8a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_bd2c88dec3f0fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93d554e7-f4cd-494d-9895-86b01a92e630",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

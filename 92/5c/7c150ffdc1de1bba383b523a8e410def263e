@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/dataModes.ts
+  s_5f8e628d007fa4::t_107024df0f869a 11-13,19-28
+  s_5f8e628d007fa4::t_285cf8fbdb5f96 29-30
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/dataModes.test.ts
+  s_5f8e628d007fa4::t_13e98b70784f90 6,21-36
+  s_dcea52ad05f3e5::t_cdc0bcaae46e26 37-38
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/append.test.ts
+  s_5f8e628d007fa4::t_27f80b9c09310d 214-229
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/append.operation.ts
+  s_5f8e628d007fa4::t_f855847536a41a 354-362
+  s_5f8e628d007fa4::t_3592af7c91f972 25
+  s_5f8e628d007fa4::t_c88b35c10d1ccb 418-440
+  s_5f8e628d007fa4::t_42dc21d0dbdbce 8-13,256-269,363,441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "925c7c150ffdc1de1bba383b523a8e410def263e",
+  "prompts": {},
+  "sessions": {
+    "s_5f8e628d007fa4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ec3a5a-6e03-4a43-9b73-176a2eae41a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_dcea52ad05f3e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa86040e-4be6-4812-92fc-f4f87bbbe2ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

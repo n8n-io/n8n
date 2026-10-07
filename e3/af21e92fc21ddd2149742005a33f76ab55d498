@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_687b6c06271385::t_47b26e68c02f14 491-495
+  s_687b6c06271385::t_d4836dc40c9233 513-516
+  s_687b6c06271385::t_5c3befe50409b3 517
+packages/frontend/@n8n/design-system/src/components/N8nSuggestedActions/SuggestedActions.vue
+  s_687b6c06271385::t_275e61a7463cb5 62
+  s_687b6c06271385::t_03d8d3530c871d 26
+packages/frontend/editor-ui/src/app/components/WorkflowProductionChecklist.vue
+  s_687b6c06271385::t_a1ecd9c3e78aad 298-299
+packages/frontend/editor-ui/src/app/components/WorkflowProductionChecklist.test.ts
+  s_687b6c06271385::t_0e703eed012f8c 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e3af21e92fc21ddd2149742005a33f76ab55d498",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_687b6c06271385": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d84fd11-3ba3-44d6-b50f-62f1d56ace4f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

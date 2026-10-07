@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_81236510e40a37::t_9df8b5b5dc7b74 143-144
+  s_81236510e40a37::t_7642d14e604b55 165-168,177,182
+packages/cli/test/integration/agents/agents-credential-provider.test.ts
+  s_81236510e40a37::t_a975f0caa04b3c 1-114,116-132
+  ai_agent 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13a6636ed5dfcec2ca98f7c126a4797b5f41ef37",
+  "prompts": {},
+  "sessions": {
+    "s_81236510e40a37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46ac684a-8b63-438d-9361-58436e039d01",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

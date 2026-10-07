@@ -1,0 +1,24 @@
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_66b4f2c79da3af::t_3d1b45749227df 121
+  s_66b4f2c79da3af::t_f673631641f9b4 118-120
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_66b4f2c79da3af::t_a2cc7eae561a5a 219-239
+  s_66b4f2c79da3af::t_61a47c44a7fe03 29-32,34-40,42-51
+  s_66b4f2c79da3af::t_a5d7558513c4ca 181,196,207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73fa1892f419988e7d4110f66657447787cf9084",
+  "prompts": {},
+  "sessions": {
+    "s_66b4f2c79da3af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38f586b1-c48f-41d2-bc4f-6eb2435f5ade",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

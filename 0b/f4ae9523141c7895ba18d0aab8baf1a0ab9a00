@@ -1,0 +1,15 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  ai_agent 292-293,338,387
+packages/frontend/editor-ui/src/app/components/MainSidebarHeader.vue
+  ai_agent 205-206,230-233
+packages/frontend/@n8n/design-system/src/css/mixins/_focus.scss
+  ai_agent 6,12
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  ai_agent 152-153,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0bf4ae9523141c7895ba18d0aab8baf1a0ab9a00",
+  "prompts": {}
+}

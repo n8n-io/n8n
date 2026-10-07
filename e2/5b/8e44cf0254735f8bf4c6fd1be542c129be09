@@ -1,0 +1,14 @@
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  h_2f80f0e06f710c 221-222,234,236,248-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e25b8e44cf0254735f8bf4c6fd1be542c129be09",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

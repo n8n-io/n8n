@@ -1,0 +1,20 @@
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_9989f75cbdaae8::t_d0a52016fd7062 633-635
+  s_9989f75cbdaae8::t_26b77591a2b805 782-784,788-807,812-814
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "59480ece763a0eaf3b01b5fbbef633e15d4afae3",
+  "prompts": {},
+  "sessions": {
+    "s_9989f75cbdaae8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565b4bd3-7c18-402f-81ce-b246c7b1b731",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

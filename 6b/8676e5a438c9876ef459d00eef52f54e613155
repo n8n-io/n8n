@@ -1,0 +1,46 @@
+packages/cli/src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts
+  s_182a54609314c2::t_c02e6833163836 1-57
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_182a54609314c2::t_ef3e551a44e488 258-264
+packages/cli/test/integration/public-api/sso-oidc.test.ts
+  s_182a54609314c2::t_83152be01fc981 1-7,12-164,166-167,172-211,217-297
+  ai_agent 8-11,212-216
+  s_182a54609314c2::t_ffa81801fd0046 165,168-171
+packages/@n8n/permissions/src/constants.ee.ts
+  s_182a54609314c2::t_fdbabc4754ec08 95
+packages/cli/src/public-api/types.ts
+  s_182a54609314c2::t_10268c04a540ec 401-409
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/schemas/oidc-configuration.update.yml
+  s_182a54609314c2::t_17eb7a5c4ec0e6 1-51
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/schemas/oidc-configuration.yml
+  s_182a54609314c2::t_cb0968ed116127 1-49
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_182a54609314c2::t_1d7331be4e8799 19
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/paths/settings.sso.oidc.yml
+  s_182a54609314c2::t_2704d34559e650 1-58
+packages/cli/src/public-api/v1/openapi.yml
+  s_182a54609314c2::t_861a428108bd6d 50-51
+  s_182a54609314c2::t_be6d5b42d4c84b 70-71
+packages/cli/src/public-api/v1/handlers/sso-oidc/sso-oidc.mapper.ts
+  s_182a54609314c2::t_0a84ab64ee8596 1-14
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_182a54609314c2::t_daf9acf9f5ced1 187-192
+packages/cli/test/integration/shared/types.ts
+  s_182a54609314c2::t_086ff21fe025e5 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b8676e5a438c9876ef459d00eef52f54e613155",
+  "prompts": {},
+  "sessions": {
+    "s_182a54609314c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2303d3a-2838-4479-86fc-b42a19fd31e6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

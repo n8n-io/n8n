@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_13481c28b6e1bd::t_0e90e8af332130 91
+  s_13481c28b6e1bd::t_bf7551ad7d0474 178
+  s_13481c28b6e1bd::t_e83798f1ac62b5 1947
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_13481c28b6e1bd::t_4ca42c9afa21cb 9-11,13-15,23-41,44-45,49,52-53,55,57,60-61,65
+packages/frontend/editor-ui/src/app/composables/useNotificationForViews.ts
+  s_13481c28b6e1bd::t_a49a64c5e65b5e 1-42
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_13481c28b6e1bd::t_72593bb3573bd6 2,5-8,10-29
+packages/frontend/editor-ui/src/app/composables/useNotificationForViews.test.ts
+  s_13481c28b6e1bd::t_e67d44007c030d 1-66
+packages/frontend/@n8n/composables/src/useToast.ts
+  s_13481c28b6e1bd::t_e807f629008864 8
+  s_13481c28b6e1bd::t_c5561dbb9fddee 27-34,36,42-48
+  s_13481c28b6e1bd::t_41e4369ec73292 94-95
+  s_13481c28b6e1bd::t_5b333c8bbe5fb4 119-123
+packages/frontend/@n8n/composables/src/useToast.test.ts
+  s_13481c28b6e1bd::t_d46ec024665f62 10
+  s_13481c28b6e1bd::t_a4b3ae4d48eb9c 242-249,251-253,255-260,271-272,274,280,282,284-287,289,299-300,302,304
+  s_13481c28b6e1bd::t_d2dab17d6eda6a 379-383,386,392,400-404,407-411
+  s_13481c28b6e1bd::t_fbbf8fe6e17f63 279,281,290-296
+  s_13481c28b6e1bd::t_2eb993ff78682e 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cf8591573b50d0e294047cd2eab66369dc01be44",
+  "prompts": {},
+  "sessions": {
+    "s_13481c28b6e1bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b36db4b-e768-44d8-9154-61f5a7ad79f4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_56eaf6c16ffff6::t_7f0b61d1a4f31a 51-54
+  s_56eaf6c16ffff6::t_ba05579033de48 17-18
+  ai_agent 12-14
+  s_56eaf6c16ffff6::t_87ebb9eeaef57b 19,22,25,28-31,35,39-40,44,47,49-50,55
+  s_56eaf6c16ffff6::t_e055ce162be295 11,15-16,20-21,23-24,26-27,32-34,36-38,41-43,45-46,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83073281d5c34dc13d78ab52e858ea3fbf0d357f",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_56eaf6c16ffff6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "76ead4fb-3548-491e-b966-5aad3a95a875",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

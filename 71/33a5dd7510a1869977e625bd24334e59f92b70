@@ -1,0 +1,39 @@
+packages/@n8n/computer-use/src/config.ts
+  s_4dc999f84de105::t_eca6cc4ef028c2 47-48
+  s_4dc999f84de105::t_17a8691e84895b 103
+  s_4dc999f84de105::t_e469b7b7af2b6b 433-441
+packages/@n8n/computer-use/src/cli.ts
+  s_4dc999f84de105::t_4ee5b2aa7d6809 120-121
+  s_4dc999f84de105::t_cf1207fde3a459 6
+  s_4dc999f84de105::t_90114a259019ed 178-187
+packages/@n8n/computer-use/src/config.test.ts
+  s_4dc999f84de105::t_4a5c177aa2aa21 9
+  s_4dc999f84de105::t_90fdbf3ef005d4 108-127
+packages/@n8n/computer-use/src/gateway-client.test.ts
+  s_4dc999f84de105::t_9b760ef08ccbc6 277-287
+packages/@n8n/computer-use/README.md
+  s_4dc999f84de105::t_bb70507ee073c4 128-131
+packages/@n8n/computer-use/src/gateway-client.ts
+  s_4dc999f84de105::t_62894d063467e9 511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7133a5dd7510a1869977e625bd24334e59f92b70",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4dc999f84de105": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1d18a9e-629e-4122-a42a-6f98d046e916",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

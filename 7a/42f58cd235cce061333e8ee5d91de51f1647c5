@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/append.test.ts
+  s_5f8e628d007fa4::t_a0461a8192dcda 222-258,260,262-269,276-277
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/append.operation.ts
+  s_5f8e628d007fa4::t_598f29de808496 360
+  s_5f8e628d007fa4::t_8cd6c68a1999a9 205-206,209,211-212,219-220,222-224,228,279-280,282-288,290,292-293,296-305,307-309,314-316,331-335,350-352,357-359,361
+  s_5f8e628d007fa4::t_38eec4ee23f827 170-173,177,180,184,187,201-204,207-208,210,213-218,221,225-227,229-235,241,243-244,246-250,252-256,258-268,270-277,281,289,291,294,310-313,318-330,336-343,347-349
+  s_5f8e628d007fa4::t_1a963de1cacbe0 278
+  s_5f8e628d007fa4::t_c4e79643e1f766 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7a42f58cd235cce061333e8ee5d91de51f1647c5",
+  "prompts": {},
+  "sessions": {
+    "s_5f8e628d007fa4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ec3a5a-6e03-4a43-9b73-176a2eae41a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

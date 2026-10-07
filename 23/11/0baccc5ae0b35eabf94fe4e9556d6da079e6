@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.test.ts
+  s_69276910d55928::t_e9771f24c7a5d2 1706-1742,1747-1766,1770-1804,1808-1811
+  s_69276910d55928::t_237bc02dfb820b 1743-1746
+  s_69276910d55928::t_d220bbdebd34b7 1805-1807
+  s_69276910d55928::t_808f595dbd9252 1767-1769
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  s_69276910d55928::t_09122a5b6edc91 46
+  s_69276910d55928::t_e10cb164526476 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "23110baccc5ae0b35eabf94fe4e9556d6da079e6",
+  "prompts": {},
+  "sessions": {
+    "s_69276910d55928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf407e0e-1aec-47ea-96b8-59c49e0c1506",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

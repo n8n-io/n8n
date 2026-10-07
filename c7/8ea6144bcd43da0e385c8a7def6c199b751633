@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_85629be8996a13::t_03354b36742605 73-74,597-601,636-640,650-656,821-823,831,846,849,852-856,864
+  s_85629be8996a13::t_c10bb6b26e3e47 71,684-685,795,817-818,820,824-825,827,830,839-840,845,848,851,857
+  s_85629be8996a13::t_167da526ccb437 826
+  s_85629be8996a13::t_bf717eb80a767a 239-246,249-251,254,290,841
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_85629be8996a13::t_4964e8d90c34b5 92-129,395-426,428-437,439-492,497,511-548,553,566
+  s_85629be8996a13::t_9caf073f883bbd 612-617,620,622-645,649-650,652,660-669,671-672
+  s_85629be8996a13::t_d74152777d1a08 427,438,493-496,498-510,549-552,554-565
+  s_77a32fd9603843::t_b3d29e9953be0d 567,670
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_85629be8996a13::t_57207b61315ef7 61-90
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_85629be8996a13::t_d74152777d1a08 14,60,93,181-193
+  s_85629be8996a13::t_8253c6c80d49f5 194-195
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_85629be8996a13::t_03354b36742605 71,147-152,154,278,280-284,287-290
+  s_85629be8996a13::t_368aec182097b8 153,155
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_85629be8996a13::t_a5587b5667da21 154-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c78ea6144bcd43da0e385c8a7def6c199b751633",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_85629be8996a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa392-cc89-7851-8dc2-697ffc4937ce",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

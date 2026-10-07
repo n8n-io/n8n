@@ -1,0 +1,26 @@
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_13d0f2e1be0144::t_865943e44889ca 64-66,68,73-74
+  s_13d0f2e1be0144::t_684fada72c2a59 69-70
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_13d0f2e1be0144::t_865943e44889ca 65-67
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_13d0f2e1be0144::t_51e6d3292b3b4f 64,122-125
+  s_13d0f2e1be0144::t_684fada72c2a59 69-71
+  s_13d0f2e1be0144::t_865943e44889ca 65-68,165-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9bb517d1d52908d1c6fa86d001121193065fcc02",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

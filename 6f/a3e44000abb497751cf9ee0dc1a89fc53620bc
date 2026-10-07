@@ -1,0 +1,24 @@
+scripts/instance-seeding/seedHistory.mjs
+  s_d6594e4cfdf1a3::t_3f6683df1b59ce 1,4,13-21,23,27-29,31-47,64-67,69-74,80-86,139-141,144-155,157-159,163-164,166-174,176-195,234-238,243-245,247-249,251-254,261,264-279,283-294,296-321,323-348,359-361,363-437
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 24-26,175,349-358
+  s_d6594e4cfdf1a3::t_af52d7408cbbaf 48,63
+  s_d6594e4cfdf1a3::t_c7f0a487bf1e75 94-138,142-143,156,160-162,165
+  s_d6594e4cfdf1a3::t_51c957444a5839 280-282
+  s_d6594e4cfdf1a3::t_ada609ea988107 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6fa3e44000abb497751cf9ee0dc1a89fc53620bc",
+  "prompts": {},
+  "sessions": {
+    "s_d6594e4cfdf1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4df11345-03b4-4c0a-b65a-4a0bf36e6cfa",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

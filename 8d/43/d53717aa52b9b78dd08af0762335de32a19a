@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_4020d04e2543bc::t_d4ff6a0a551f34 72,159-160,162-164,223,268-275
+  s_4020d04e2543bc::t_244281a692a74f 161
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_4020d04e2543bc::t_239682ab1f2e15 39-40,43-44
+  s_4020d04e2543bc::t_2b06e6e6832b6f 41,222-225
+  s_4020d04e2543bc::t_f721839f3e11b4 28-31,45-54,226-228
+  s_4020d04e2543bc::t_7e311086887de0 218,220,237,247
+  s_4020d04e2543bc::t_c0f08e2d0a4de1 12,22
+packages/frontend/editor-ui/src/features/ai/modelSelector/AiModelSelectorDropdown.vue
+  s_4020d04e2543bc::t_244281a692a74f 186,281
+  s_4020d04e2543bc::t_d4ff6a0a551f34 7-14,166-177,183,298-314
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4020d04e2543bc::t_244281a692a74f 4752
+  s_4020d04e2543bc::t_d4ff6a0a551f34 4751
+packages/frontend/editor-ui/src/features/ai/modelSelector/types.ts
+  s_4020d04e2543bc::t_d4ff6a0a551f34 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "8d43d53717aa52b9b78dd08af0762335de32a19a",
+  "prompts": {},
+  "sessions": {
+    "s_4020d04e2543bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efa1a-08d6-74e2-9f1c-4e770dfded86",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

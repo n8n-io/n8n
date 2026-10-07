@@ -1,0 +1,68 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_48a9073f5e5b8e::t_5714d2a2f25bb3 3
+  s_48a9073f5e5b8e::t_a61f01ff3adad3 396-399,405,417-420
+  s_48a9073f5e5b8e::t_7a184ff254e09d 261
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_48a9073f5e5b8e::t_4ca3335f87e549 9
+  s_48a9073f5e5b8e::t_bc90d4c7905533 763-764,769,771,777-778,784-787,789,792-796,798-799,801-803,806,809-810
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_48a9073f5e5b8e::t_e66097fff93058 451
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_48a9073f5e5b8e::t_be9fa8906efea0 875-880,892
+  s_48a9073f5e5b8e::t_45626e457631e5 1055-1056
+  s_48a9073f5e5b8e::t_17388ebdee1284 1137-1138
+  s_48a9073f5e5b8e::t_67b8ef0f6f50fd 69
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_48a9073f5e5b8e::t_1938942e804369 506,511-524
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_48a9073f5e5b8e::t_4a230b10723436 1287,1303-1310,1334
+  s_48a9073f5e5b8e::t_b6bed61b073730 1385,1398-1399,1406-1407,1414
+  s_48a9073f5e5b8e::t_8ce8f43b516906 1284-1286,1288-1290,1330-1333,1335-1337
+  s_48a9073f5e5b8e::t_acc8d2f159aa3b 1319-1329,1338-1345
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_48a9073f5e5b8e::t_51ab52e6cb1f9a 33
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_48a9073f5e5b8e::t_36000d7419479f 468-469,472-473,475,478,481,486,488,492,498,500,504,507-509,512,515,519,521,523
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_48a9073f5e5b8e::t_6067ed658179f7 683,685
+  s_48a9073f5e5b8e::t_59ae75faed1b99 808
+  s_48a9073f5e5b8e::t_13825c6d39b5f4 896
+  s_48a9073f5e5b8e::t_3368d5613ceef1 214-239
+  s_48a9073f5e5b8e::t_8769e3c4429936 283,369
+  s_48a9073f5e5b8e::t_53076935fe7e65 639-647,649-651
+  s_48a9073f5e5b8e::t_478676da4977d6 519
+  s_48a9073f5e5b8e::t_9fb252c81ff6c8 602-603,606-607
+  s_48a9073f5e5b8e::t_751c965691f5e5 652-654,657-682
+  s_48a9073f5e5b8e::t_60722db5b65466 565
+  s_48a9073f5e5b8e::t_c4cc6fb281623f 655-656
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_48a9073f5e5b8e::t_bb04a50d5d50a4 1696
+  s_48a9073f5e5b8e::t_42287411b892d1 450,519,589,747,790,827,866,962,1040
+  s_48a9073f5e5b8e::t_6f91df5642205e 1522
+  s_48a9073f5e5b8e::t_d92a5cafb7d3eb 326
+  s_48a9073f5e5b8e::t_6c2ade123bb936 1744-1749
+  s_48a9073f5e5b8e::t_b29246766531bc 1581-1582
+  s_48a9073f5e5b8e::t_744c0d442da654 300-325,327-342
+  s_48a9073f5e5b8e::t_32d2c36a837933 1669
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2909a3500671859badb3b396b44482ac2346f0ae",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_48a9073f5e5b8e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a19931a8-7702-45e1-8fad-174215ec548e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_79c1330350f45b::t_b36588b9631db4 112,148,154,182
+packages/@n8n/config/test/config.test.ts
+  s_79c1330350f45b::t_cf212ece88873f 687,728-736,762,820
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_79c1330350f45b::t_b38099cf099b62 255
+packages/@n8n/config/src/configs/agents.config.ts
+  s_79c1330350f45b::t_a9053722f7d59e 92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "41b59905a6cc8ad9445b428d1da6fef311ecf78c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_79c1330350f45b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fc11374c-217f-4b82-8d49-21b3672edaf9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

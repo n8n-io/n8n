@@ -1,0 +1,30 @@
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_a4556b837ab6e9::t_948ce20f9e794d 659-666
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_a4556b837ab6e9::t_e7d70dcb6cf615 9-11
+  s_a4556b837ab6e9::t_2ad47bcd84d8d2 17
+  s_a4556b837ab6e9::t_948ce20f9e794d 4,8,12-13,15-16,18,48-52,55-56
+packages/cli/src/auth/auth.service.ts
+  s_a4556b837ab6e9::t_cb51056ef3fea8 41-42,46-47
+  s_a4556b837ab6e9::t_f0bf6f0953beb6 387
+  s_a4556b837ab6e9::t_948ce20f9e794d 7,39-40,43-45,48-49,382,386
+packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
+  s_a4556b837ab6e9::t_86a0796e1bdf04 1-34,38-42
+  s_a4556b837ab6e9::t_46995fc7684aa5 35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "85759723bdbb2dea51255a370893500cc77f901d",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

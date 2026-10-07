@@ -1,0 +1,32 @@
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_c6542a835c36e8::t_fd52362cb4b073 277-291
+packages/@n8n/config/test/config.test.ts
+  s_088ff38dd5d51f::t_26152c296398ce 201-202,205
+  s_088ff38dd5d51f::t_add4d2250dba72 203
+  s_088ff38dd5d51f::t_e8f6479f02b844 204
+  s_c6542a835c36e8::t_fd52362cb4b073 382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31ccb599b34322aab4c30495ae4494d0c38fcec8",
+  "prompts": {},
+  "sessions": {
+    "s_088ff38dd5d51f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95b8e2c8-0712-4f25-a78d-8e30044b968c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    },
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/creation-tools.ts
+  s_5ecca14e2e268b::t_c233e2b1d75284 213,238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "886f83cb6709b6bf024590253b96a24c843f6b77",
+  "prompts": {},
+  "sessions": {
+    "s_5ecca14e2e268b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a80ae449-fd22-47de-a619-c190bc62440c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

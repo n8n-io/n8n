@@ -1,0 +1,14 @@
+single-instance-promotion-prototype/implementation-phase/PLAN_REQUIRED_ENVIRONMENT.md
+  h_c63dce324dfc7b 1-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "ed219c25b2442c5befbb0c7fc862b02ad523b9cb",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

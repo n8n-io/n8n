@@ -1,0 +1,36 @@
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_5ddf40544fde37::t_b9934254bfaa0b 1-135
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_7e33da95c1b48f 687,690-710,712-723
+  s_5ddf40544fde37::t_8b60465015bcb2 855-950
+  s_5ddf40544fde37::t_b9934254bfaa0b 21,456-501,503-508,513-686,688-689,711,724-853
+  s_5ddf40544fde37::t_df2f92c0fab6eb 509-512
+  s_5ddf40544fde37::t_0b805b18aa19ad 502
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_b9934254bfaa0b 152-166,282-493
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  s_5ddf40544fde37::t_b9934254bfaa0b 1-221
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_62c6a506c1ff10 304
+  s_5ddf40544fde37::t_2fc3d7aa954ff1 345-352
+  s_5ddf40544fde37::t_b9934254bfaa0b 15,17,24,26-27,56,65-73,219-220,286-303,305-319,321-344,353-395,397-403,753-831
+  s_5ddf40544fde37::t_2e9d09a2dee4e7 396
+  s_5ddf40544fde37::t_170b2e2619e21a 731-752
+  s_5ddf40544fde37::t_e6a2ffd64cc823 320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fd759fcf60a5e4442a47732a1979df3944700f0a",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null
+    }
+  }
+}

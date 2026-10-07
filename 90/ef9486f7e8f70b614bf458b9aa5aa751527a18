@@ -1,0 +1,32 @@
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_3c006b74f8808d::t_e976dd1d7ff6d8 108
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_3c006b74f8808d::t_e50b6dc03bc3a6 76-86
+  s_3c006b74f8808d::t_e80f4bf2e89fbf 38
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_3c006b74f8808d::t_1130069adf3405 93
+  h_c63dce324dfc7b 92
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_3c006b74f8808d::t_4a7347392e0518 515-541
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "90ef9486f7e8f70b614bf458b9aa5aa751527a18",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3c006b74f8808d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2cfae5c-9662-486f-9e91-9d8d7fe95df8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

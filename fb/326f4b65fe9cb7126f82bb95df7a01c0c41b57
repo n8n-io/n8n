@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_dd8f226d4368c9::t_27863f77158254 581-586
+  s_dd8f226d4368c9::t_afdc5ea6baf6a9 665-670
+  s_dd8f226d4368c9::t_e456e0ee749a5c 480-483,493-498,510-512,518,529-559,562
+  s_dd8f226d4368c9::t_8b61381a3483d6 560-561,563-565
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_dd8f226d4368c9::t_f0a5a0c0451b9a 354-364,370-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fb326f4b65fe9cb7126f82bb95df7a01c0c41b57",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

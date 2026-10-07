@@ -1,0 +1,539 @@
+packages/@n8n/db/src/repositories/__tests__/activity-event.repository.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-230
+packages/@n8n/scheduler/src/core/lifecycle/options.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 22-24,37-39,68,73
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-unsafe-connection-type-cast.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-125
+packages/cli/src/services/tag.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2,175
+packages/cli/test/migration/1788359043381-generalize-scheduled-job-owner.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-387
+packages/@n8n/scheduler/src/core/reconciliation/owner.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-74
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.workflow.json
+  s_61c25f16a88895::t_3b8bd7bab77987 1-123
+docs/generated/sqlite-schema/workflow_published_version.md
+  ai_agent 21
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 918-933
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 42-44,127-141,164-166,304-309
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 84,106-108,112,114-118,121,123-126,131,139-141
+packages/frontend/editor-ui/src/Interface.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 8,333,392
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/sharedGuard.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-24
+packages/@n8n/config/test/config.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 487-492
+packages/@n8n/scheduler/src/core/recurrence/kinds/cron.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 6,127
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 485-494,904-908
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/get.operation.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-49
+packages/cli/test/integration/scheduling/poll-trigger-job-registrar.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 16-17,100
+packages/@n8n/workflow-sdk/src/node-deprecation.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-24
+packages/@n8n/db/src/migrations/common/1788359043381-GeneralizeScheduledJobOwner.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-204
+packages/@n8n/scheduler/src/core/provisioning/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4
+packages/@n8n/scheduler/src/core/recurrence/field.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2,14-15,17,24
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelState.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-95
+packages/testing/performance/README.md
+  s_61c25f16a88895::t_3b8bd7bab77987 30,32
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 47,108-112,1367-1369,1733-1735,1954-1960,2001,2063-2065,2089,2385-2419,2465,3231-3233,3501-3503
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_61c25f16a88895::t_3b8bd7bab77987 50-52,66,106-109,235-236,632-635,645,673-690,993,1616,1940,1983
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 20-23,53-54,65,89-92
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAddNodesToChat.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2,4,13-17,23,35,39-45
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflowLink.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-85
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 364-420
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 17,187-189,240-242
+packages/cli/src/services/ai.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 68
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 476-515
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1805-1862,1886,1919,1952-1966
+packages/cli/src/scheduling/desired-job-name.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-23
+.github/workflows/ci-master.yml
+  s_61c25f16a88895::t_3b8bd7bab77987 49-50
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 127-178,711-771
+packages/@n8n/agents/src/runtime/streaming/stream-writer-guard.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 15-16,34,52-53,64
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 200-203
+packages/@n8n/scheduler/src/core/recurrence/kinds/interval.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4,51
+packages/cli/src/modules/type-availability-policies/dto/create-policy-document.dto.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-8
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 18-19,67,71,74-75,93,619-662
+packages/cli/src/modules/oauth-jwe/oauth-jwe-key.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2,214
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_61c25f16a88895::t_3b8bd7bab77987 38-39,882-883,893-898
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-48
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,56,106-117
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 6,92,201,212-305
+packages/@n8n/scheduler/src/core/errors.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 27-38,73-137
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 8-12,20-24,536-576,816-818,834-836,855-1018,1660-1678
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3-4,9-10,24-26,126-128,137-138,141-143,147-151,170-174,206,242,245-256,261-262,265,267,270-461,508-510,512,514-515,517-518,520-521,524-533,536-555
+packages/@n8n/db/src/entities/activity-event.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-123
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_61c25f16a88895::t_3b8bd7bab77987 540,1258-1260,1281-1282
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-78
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.workflow.json
+  s_61c25f16a88895::t_3b8bd7bab77987 1-124
+packages/workflow/src/interfaces.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3450-3457
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-405
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 145,334,667,960-982,985-987
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/meetingLocator.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-43
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflow.json
+  s_61c25f16a88895::t_3b8bd7bab77987 1-129
+packages/@n8n/db/src/entities/__tests__/entities-collection.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-58
+docs/generated/postgres-schema/public.workflow_published_version.md
+  ai_agent 10
+packages/cli/src/modules/type-availability-policies/dto/update-policy-document.dto.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-8
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4,6-7,10,30-35,42-53,66,80,87,89-90
+packages/frontend/editor-ui/vite.config.mts
+  s_61c25f16a88895::t_3b8bd7bab77987 41,142-146,151-155,206-208
+packages/cli/test/integration/scheduling/shared/job-factory.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3-8,16-18,20-21,32,60-73
+docs/generated/sqlite-schema/README.md
+  ai_agent 11,108,151-152,347-359,1323-1326
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,48,94-105
+packages/@n8n/scheduler/src/core/materializer/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 21
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2053-2084
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 9,170-173
+packages/nodes-base/credentials/JiraSoftwareServerPatApi.credentials.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 43
+scripts/mutation-health/README.md
+  s_61c25f16a88895::t_3b8bd7bab77987 112-129
+packages/cli/src/modules/type-availability-policies/__tests__/policy-shadow-lint.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-102
+packages/cli/src/modules/type-availability-policies/dto/policy-selector.schema.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-13
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-486
+packages/cli/test/migration/shared/index-columns.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-39
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1975-2064
+packages/@n8n/scheduler/src/core/materializer/owner-key.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-6,8,11-21,23-28,31
+packages/cli/src/modules/agents/utils/extract-agent-credential-ids.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 270-312
+packages/frontend/editor-ui/src/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue
+  s_61c25f16a88895::t_3b8bd7bab77987 174
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2,45-58
+packages/cli/src/controllers/ai.controller.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 204-210
+packages/cli/src/modules/type-availability-policies/dto/put-instance-policy.dto.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-12
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_61c25f16a88895::t_3b8bd7bab77987 23-26
+docs/generated/sqlite-schema/scheduled_job.md
+  ai_agent 9,31-34,46-54,63,86-89
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-session.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 19-48
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/test/ToolHttpRequest.node.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 26-37
+packages/@n8n/scheduler/src/core/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 34,57-63,70,75-95
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-unsafe-connection-type-cast.md
+  s_61c25f16a88895::t_3b8bd7bab77987 1-58
+packages/testing/playwright/pages/components/CodeNodeEditor.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 7-10,20
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,42,88-99
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/reply.operation.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-112
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 21-22,103-107
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-50
+packages/cli/src/modules/type-availability-policies/dto/__tests__/policy-selector.schema.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-27
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 98-101
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 903-906
+packages/@n8n/scheduler/src/core/provisioning/provisioner.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-5,11-22,27-29,31-39,48,52-54,64,70,82-109
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 570-572,579-598
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1,5,7-8,49,57,84
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 16,19-20,59,84,89-97,107-110,112-114,128,142,152,172,174,189,191,209,211,223,225,241,243,254,256,267,269,299,301,317,319,333,350,373,437,489,505,521,541,571,579,591,615,668,693,709,738,784,794,886,888,900,902,918,921,932-933,935,937,942-953,955,957-961,965-972,975-976,979,981-988,990,993-1014,1016
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 476-485
+packages/cli/src/modules/type-availability-policies/dto/__tests__/policy-rule.schema.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-60
+packages/@n8n/db/src/entities/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-7,49-51,103-107,146-148,199
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 7
+packages/core/test/helpers/constants.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2827-2959
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 296
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 188-199
+packages/@n8n/scheduler/src/core/reconciliation/store.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-73
+packages/cli/src/metrics/prometheus/__tests__/scheduler-metrics.service.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 127-129,169-171,326-333,358
+packages/@n8n/db/src/migrations/common/1788425788714-CreateActivityEventTable.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-103
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-job-registrar.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 13,34-36,40,48,51-52,58-59,81-86,98-99,243-249,294-295,303-304,316,318
+cubic.yaml
+  s_61c25f16a88895::t_3b8bd7bab77987 63-65,67-71,75-78,82-85,96-98
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 6-15
+packages/cli/src/scheduling/__tests__/workflow-scheduled-job-owner.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-49
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 14,56-63,66,68,73,76-79,93,100-101,175-179,198-200,216,231,248,254,269,289,306,321,329,376,394,413-420,458-465,503-510,524-531,546-553,563-570,588-595,612-627,644-659,757,866,882,887,897,905,913-914,922-923,935,937,956
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 114-115
+.github/test-metrics/e2e-impact-map.json
+  s_61c25f16a88895::t_3b8bd7bab77987 1
+packages/@n8n/scheduler/src/core/recurrence/kinds/recurring-cron.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 5,157
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 69-71
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/deleteExecution.generated.yml
+  ai_agent 80
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.deviations.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 27,58,69,78
+packages/@n8n/scheduler/src/observability/attributes.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 29-33
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 77-254,464
+packages/cli/src/scheduling/workflow-scheduled-job-owner.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-31
+packages/cli/src/workflows/publication/__tests__/format-node-failures.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-22
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_61c25f16a88895::t_3b8bd7bab77987 4878-4881
+packages/@n8n/scheduler/src/core/scheduler.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4,54-59
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 6-7,66,69-70,1019,1022-1023
+packages/core/src/execution-engine/workflow-execute.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 29,945-948,950-957,971,973,997-1016,1385,1395,1397
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 12,54-55,466-509,553-554
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 124-130,284-285,290-292,378-379,433-434,436-437,475-494,513-544,547,571-573
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-371
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_61c25f16a88895::t_3b8bd7bab77987 13-14,499-504
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 7,15,171
+packages/core/src/execution-engine/__tests__/workflow-execute-run-node.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 240-288
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 13
+packages/cli/eslint.config.mjs
+  s_61c25f16a88895::t_3b8bd7bab77987 220
+packages/nodes-base/utils/microsoft/transport.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 70
+packages/@n8n/scheduler/src/core/reconciliation/options.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-27
+packages/cli/src/__tests__/chat-shell.template.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 326-640
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/get.validation.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-243
+packages/cli/src/modules/type-availability-policies/dto/replace-attachments.dto.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-50
+packages/cli/test/integration/public-api/executions.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 626-745,1081-1095
+packages/nodes-base/credentials/JiraSoftwareServerApi.credentials.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 53
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2,12-16,18,58-60,62-65,76,89,106,109-111,134-136
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4,15-16,19,35-38,71-72,76-89,92-94,99-100,103,105,116,120-123,132,137-150,176-177,187,199-200,210,214,227-228,243-244,252,265-266,274-289,297,338-339,342,344,351,356-457
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.api.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 87
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1,3-7,9-28,30-93,96-103,105-128,130-163,165-209,211-218,220-223,225-232,235-268,271-274,277
+packages/@n8n/api-types/src/dto/executions/execution-public.openapi.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 34-36
+packages/cli/src/modules/type-availability-policies/dto/policy-rule.schema.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-42
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 10,20,22,45,77-87,93,98
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/get.workflow.json
+  s_61c25f16a88895::t_3b8bd7bab77987 1-107
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/provider-tool-executes-without-interruption-while-a-mixed-in-interruptible-tool-suspends.json
+  s_61c25f16a88895::t_3b8bd7bab77987 55,60,63,66,69,72,77-78,81,116-197,201,204,217,252,256-257,260,263,265-266,269,274-275,278
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 39,42,125-126,493-494,1276-1277,1986-1987,2054-2056,2059,2082-2084,2089-2093,2122-2123,2141,2154,2165,2174-2205,2220,2259,2271,2376-2377,2545-2546,2725-2726,2827-2828
+scripts/mutation-health/mutate.mjs
+  s_61c25f16a88895::t_3b8bd7bab77987 50,455-456,462-525,537-538,544,553-676,698,704-733,754-758
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 311-353
+packages/cli/src/scheduling/__tests__/desired-job-name.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-63
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 266,270,274-275,277-278
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_61c25f16a88895::t_3b8bd7bab77987 75
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 125
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useAddNodesToChat.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 8,10-12,37,40-43,56,119-144
+docs/generated/sqlite-schema/activity_event.md
+  ai_agent 1-98
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 32,2325-2332
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 7,11,13,98-100,121,314,319-322,326,349,364-367,383,385
+packages/@n8n/api-types/src/dto/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 370,374,377
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 5,7
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4,7,43-48,54
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelState.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-157
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 23-24,165,168-169
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 8,31-33,40-41,47-51,53-63,66-67,70,175-185,187-196
+packages/@n8n/scheduler/src/core/recurrence/resolve.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 5,24
+packages/@n8n/scheduler/src/observability/metrics.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 40-41,57
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 408-419,633
+packages/@n8n/scheduler/src/core/reconciliation/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-9
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecution.generated.yml
+  ai_agent 108
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/get.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-44
+packages/@n8n/scheduler/src/core/provisioning/__tests__/provisioner.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3,22-31,40,42-46,48-51,53,66,69,71-74,77-144
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 46-48,50-55,76-86,101-106,111-117,149-153
+packages/cli/src/modules/agents/utils/__tests__/extract-agent-credential-ids.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 81-93
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 481
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3,17,40,54,75-80,88,90,327-346
+packages/@n8n/workflow-sdk/src/validation/deprecated-node-validation.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-157
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 29,69
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 524-536
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 20-21,24,80-81,366-379,444-446
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 8
+packages/cli/test/integration/scheduling/scheduler-trigger-handler.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 24-25,122
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 10-11,62-64,66-67,78
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 784,787,833-868
+packages/cli/test/integration/scheduling/scheduler-retention.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 10-11,46-48,50-51,62
+packages/@n8n/scheduler/src/core/factory.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 11-14,28-35,89-101,164-167,187,192,219-240,516-621,686-695,736
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2251-2306
+packages/cli/test/integration/activity-event.repository.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-147
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-800
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 11,180
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3-14
+packages/@n8n/scheduler/src/core/recurrence/kinds/one-off.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 2,42
+packages/@n8n/constants/src/scheduler.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 120-121,142,151-175
+packages/cli/src/modules/type-availability-policies/dto/__tests__/replace-attachments.dto.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-66
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 107,114-124,128-138
+packages/@n8n/api-types/src/dto/executions/execution-public.dto.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 59-94
+packages/nodes-base/credentials/JiraSoftwareCloudApi.credentials.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 51
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/onlineMeeting/get.operation.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-51
+packages/@n8n/db/src/repositories/index.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-7
+packages/@n8n/scheduler/src/core/materializer/__tests__/owner-key.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3-7,10-26,29-48,53-54,69-72,78-97
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 70-85
+scripts/mutation-health/mutate.test.mjs
+  s_61c25f16a88895::t_3b8bd7bab77987 1,3-7,14-16,21-23,25,363-653
+packages/@n8n/api-types/src/dto/executions/list-executions-query.dto.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-52
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 44,93
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-16
+packages/cli/src/modules/type-availability-policies/policy-shadow-lint.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-81
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 320-338
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 270-271,279-283,287,320
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-unsafe-connection-type-cast.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-306
+packages/cli/src/workflows/workflow.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 64,67,124-125,1491-1505
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 239-242,724
+packages/@n8n/instance-ai/src/types.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 618-625
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 667-670
+docs/generated/postgres-schema/README.md
+  ai_agent 11,108,168-169,360-372,1336-1339
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/onlineMeeting/get.joinUrl.workflow.json
+  s_61c25f16a88895::t_3b8bd7bab77987 1-107
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/ToolHttpRequest.node.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 68-71
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-189
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecutions.generated.yml
+  ai_agent 1-25,27-49,51-55,57-69,71-77,79-233
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-233
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,50,100-111
+packages/cli/src/workflows/publication/format-node-failures.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-4
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 16-17,48-50,52-53,64,384,388,403,408,416-417,440-462,465-466
+packages/cli/src/scheduling/schedule-columns.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-85
+packages/cli/src/controllers/e2e.controller.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 34,206,270-272,306-309,322-325
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_61c25f16a88895::t_3b8bd7bab77987 22-24,45,330-362,761-786
+packages/cli/test/integration/scheduling/scheduler-benchmarks.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 15-16,175,178-179
+packages/@n8n/db/src/migrations/sqlite/1788359043381-GeneralizeScheduledJobOwner.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-10
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3,164-169
+packages/cli/templates/chat-shell.handlebars
+  s_61c25f16a88895::t_3b8bd7bab77987 132,390-393,398-402,467-502,773-789,792-793
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 75-78,121-132
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1004-1006,1036-1041
+packages/cli/src/modules/agents/workflow-agent-stream.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 3
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/templates.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 686-695,766-1158
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 7,14,16,35,60-63,65-66,96-109,114,123-126,134,136
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4-9,12-17,30-31,33,41-45,47,49-50,52-55,59-60,62-70,73-74,79-101,124,131,142-149,151-152,155-163,167-168,170-171,175-176,178-201,203,206,210,218,222-231,239,262,308,339,419,424-431
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 6-8
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 14,81
+packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1439-1481
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 95-104
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.limit.workflow.json
+  s_61c25f16a88895::t_3b8bd7bab77987 1-103
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 9,12,205-223
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 68,135-137,174
+docs/generated/sqlite-schema/scheduled_task.md
+  ai_agent 97-100
+packages/cli/test/migration/1788425788714-create-activity-event-table.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-235
+packages/cli/src/node-catalog/node-catalog.service.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 66-71,388-390,421
+docs/generated/postgres-schema/public.activity_event.md
+  ai_agent 1-94
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 23-24,43-48,62-63,186-189,268-281
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/getAllReplies.operation.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-66
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/owner.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-72
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 14-15,161,185,455
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 4,169-173,175-179,190-218,224-235
+scripts/build-n8n.mjs
+  s_61c25f16a88895::t_3b8bd7bab77987 137-153,155-160,164-173,176,178,180,182-201,203-403,405-407,411,414-415,417-419,422-460,462-502,504-507
+packages/cli/src/scheduling/__tests__/scheduled-job-owner-registry.test.ts
+  s_61c25f16a88895::t_3b8bd7bab77987 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4954fb66505a380b138a318d65c37ab74957229",
+  "prompts": {},
+  "sessions": {
+    "s_61c25f16a88895": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c430397-0614-49ec-84bc-eadc10ba77d5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

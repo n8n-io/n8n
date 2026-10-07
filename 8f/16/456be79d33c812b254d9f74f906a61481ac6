@@ -1,0 +1,31 @@
+packages/cli/src/commands/__tests__/execute-batch.test.ts
+  s_2b3e713f853fb2::t_a0b3ee3f69f295 113-116
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_2b3e713f853fb2::t_b5bb550ce455cf 181-184
+packages/cli/test/integration/commands/ldap/reset.test.ts
+  s_2b3e713f853fb2::t_a0fcab604e8851 366-369
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_2b3e713f853fb2::t_f52567c66b60e7 243-246
+packages/cli/src/commands/import/__tests__/workflow.test.ts
+  s_2b3e713f853fb2::t_2745ff49371583 77-80
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_2b3e713f853fb2::t_a89f6007560e77 145-148
+packages/cli/src/commands/__tests__/start.test.ts
+  s_2b3e713f853fb2::t_9bec9ceb72d389 375-378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8f16456be79d33c812b254d9f74f906a61481ac6",
+  "prompts": {},
+  "sessions": {
+    "s_2b3e713f853fb2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8122fe-54a5-42f2-89ae-b2ec231bd2bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

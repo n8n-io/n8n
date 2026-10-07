@@ -1,0 +1,77 @@
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_c0f61ec69ff856::t_3713a161c722c3 10
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_c0f61ec69ff856::t_7898e2518ba4d2 10
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_c0f61ec69ff856::t_ec2ea630ecc48e 12
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_c0f61ec69ff856::t_a02ce7a7e62847 5
+packages/frontend/editor-ui/src/app/init.ts
+  s_c0f61ec69ff856::t_a2e10b8ffc1c1a 16
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_c0f61ec69ff856::t_202a221e46a1c4 11
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/stores/credentialsAppSelection.store.test.ts
+  s_c0f61ec69ff856::t_bd86ff2d727350 26
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/stores/credentialsAppSelection.store.ts
+  s_c0f61ec69ff856::t_e479bc487c9c43 3
+packages/frontend/editor-ui/src/experiments/personalizedTemplates/stores/personalizedTemplates.store.ts
+  s_c0f61ec69ff856::t_8b2616f475c22a 8
+packages/frontend/editor-ui/src/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store.ts
+  s_c0f61ec69ff856::t_897fd17eefae04 4
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store.ts
+  s_c0f61ec69ff856::t_4ad7b6fd1427d8 3
+packages/frontend/editor-ui/src/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store.ts
+  s_c0f61ec69ff856::t_31b2d163a7f0ea 2
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility.test.ts
+  s_c0f61ec69ff856::t_a456f855a93f9d 15
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility.ts
+  s_c0f61ec69ff856::t_94e6d212f93c6d 1
+packages/frontend/editor-ui/src/experiments/templateRecoV2/stores/templateRecoV2.store.ts
+  s_c0f61ec69ff856::t_43d816f92647ca 3
+packages/frontend/editor-ui/src/experiments/utils.test.ts
+  s_c0f61ec69ff856::t_e20cc4f149aad7 18
+packages/frontend/editor-ui/src/experiments/utils.ts
+  s_c0f61ec69ff856::t_c68223ece34a49 3
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.test.ts
+  s_c0f61ec69ff856::t_42a3713e6a93af 19
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.vue
+  s_c0f61ec69ff856::t_468a3169affc0a 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_c0f61ec69ff856::t_c1b6b3ed5fa34e 21
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_c0f61ec69ff856::t_f7895dfddcaf7a 280
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_c0f61ec69ff856::t_d72a1c2b5f232b 20
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.test.ts
+  s_c0f61ec69ff856::t_ebf15be33a072e 11
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_c0f61ec69ff856::t_25f98fae72aa25 20
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_c0f61ec69ff856::t_09f9807d9df2f1 9
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_c0f61ec69ff856::t_871beea0a645f8 10
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/EmailConfirmationBanner.vue
+  s_c0f61ec69ff856::t_06d0db198c0540 7
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.test.ts
+  s_c0f61ec69ff856::t_c61d291305ca33 4
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.vue
+  s_c0f61ec69ff856::t_9c190ecbb55317 4
+packages/frontend/editor-ui/src/features/workflows/templates/templates.store.ts
+  s_c0f61ec69ff856::t_e90589d213b5d1 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a5fd237d0ff5c4bdd7dfa52a1e0d03d6e7499165",
+  "prompts": {},
+  "sessions": {
+    "s_c0f61ec69ff856": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b90ce41-1d7b-4991-b1c4-557f723b5999",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

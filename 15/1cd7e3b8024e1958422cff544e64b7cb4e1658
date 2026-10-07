@@ -1,0 +1,21 @@
+pnpm-lock.yaml
+  s_d3f6ecf4ef182f::t_b2fbc1604c117f 5570-5572,5606-5611
+packages/nodes-base/package.json
+  s_d3f6ecf4ef182f::t_b400d508a306dd 925,928-929
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "151cd7e3b8024e1958422cff544e64b7cb4e1658",
+  "prompts": {},
+  "sessions": {
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  h_760178ed151f13 309
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_5f8b302470a26f::t_d9410c4c369bcd 854-863
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_5f8b302470a26f::t_c0863a857ae8e1 238,244
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_5f8b302470a26f::t_5b74f3f1423c8b 80-81
+  s_5f8b302470a26f::t_ce7753a375f514 82-84
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_5f8b302470a26f::t_9cf41fee9c1726 877-878,881-883
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  s_5f8b302470a26f::t_d2a91b543519a5 4
+  s_5f8b302470a26f::t_ff8825cac63152 75-80
+  s_5f8b302470a26f::t_db8a7927e808f3 126-131
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  s_5f8b302470a26f::t_716854045fee6c 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9ed9bb08f65fe0b7f765fcf8b1b90382b0175be",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5f8b302470a26f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d10af785-2b18-4599-be7b-3926df463841",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

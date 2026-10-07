@@ -1,0 +1,20 @@
+packages/cli/test/integration/instance-context.service.test.ts
+  s_c6542a835c36e8::t_dbb0a8f8c338a4 1-131,139,152-155,161-163,167-276
+  s_c6542a835c36e8::t_002c0645d564d9 132-138,140-151,156-160,164-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40f95ee5a4f63c2a59424138cccc95ff03241435",
+  "prompts": {},
+  "sessions": {
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

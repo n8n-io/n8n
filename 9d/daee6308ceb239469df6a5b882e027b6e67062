@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_eae6ef118ad146::t_a7cb7cb8631d87 1616-1682
+  s_eae6ef118ad146::t_78c611dbd47e3f 1511
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_eae6ef118ad146::t_81c8b7e08bbcaf 938-941
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_eae6ef118ad146::t_54d508923e04c7 63,1843
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_eae6ef118ad146::t_f6c2e4c9f9a757 551
+  s_eae6ef118ad146::t_23e7ad1663be65 506-512
+  s_eae6ef118ad146::t_ed6f2c39ab1443 169
+  s_eae6ef118ad146::t_675b93e6842ba8 398
+  s_eae6ef118ad146::t_a95c17703b205e 72-77
+  s_eae6ef118ad146::t_8d80b564c00873 513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9ddaee6308ceb239469df6a5b882e027b6e67062",
+  "prompts": {},
+  "sessions": {
+    "s_eae6ef118ad146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50bff671-5fab-4eee-b068-5db7d02fa42d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

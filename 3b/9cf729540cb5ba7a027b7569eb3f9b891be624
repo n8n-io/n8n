@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/core/dataTable/components/AutomationStatusLink.vue
+  s_7189a6a4d7a286::t_4859b79a99af41 1-67
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AutomationStatusCellRenderer.vue
+  s_7189a6a4d7a286::t_4859b79a99af41 5,23
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableRowDialog.vue
+  s_7189a6a4d7a286::t_4859b79a99af41 18,23,78-82,268-277
+  s_7189a6a4d7a286::t_13982d61fb2a49 278-280
+packages/frontend/editor-ui/src/features/core/dataTable/components/AutomationStatusLink.test.ts
+  s_7189a6a4d7a286::t_b7e0c1267d977c 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3b9cf729540cb5ba7a027b7569eb3f9b891be624",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7189a6a4d7a286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "832eb13c-08ad-4a3d-9529-3ec6b9ae083e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

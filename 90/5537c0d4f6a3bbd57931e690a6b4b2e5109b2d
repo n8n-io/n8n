@@ -1,0 +1,9 @@
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 15-16,39-40,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "905537c0d4f6a3bbd57931e690a6b4b2e5109b2d",
+  "prompts": {}
+}

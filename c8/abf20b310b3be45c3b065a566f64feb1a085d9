@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigNodeContent.test.ts
+  s_c887a596d4b23c::t_7a5fa3dd42a025 6-9,17,27,61-63
+  s_c887a596d4b23c::t_0e2350303acef3 54
+  s_c887a596d4b23c::t_8933f756aa582c 64
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_c887a596d4b23c::t_0e2350303acef3 361,379
+  s_c887a596d4b23c::t_7a5fa3dd42a025 24-27,359-360,362-364,368-378,380-382
+  s_c887a596d4b23c::t_f4886ec31775af 365-367
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_c887a596d4b23c::t_7a5fa3dd42a025 49-52
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_c887a596d4b23c::t_7a5fa3dd42a025 6-9,30
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_c887a596d4b23c::t_7a5fa3dd42a025 20,61,120-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c8abf20b310b3be45c3b065a566f64feb1a085d9",
+  "prompts": {},
+  "sessions": {
+    "s_c887a596d4b23c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a019aa-1407-7383-a737-a118733d1977",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

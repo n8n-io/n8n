@@ -1,0 +1,47 @@
+packages/cli/test/integration/execution.repository.test.ts
+  s_4676cdd795dd0b::t_1b1d4e271b68f3 335,337,349,360,362
+  s_a5b31e07e4511c::t_ab31a57fab3f4d 347
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_4676cdd795dd0b::t_a083ccf05adad8 205-207
+  s_4676cdd795dd0b::t_b7f2c0a81b29c0 5,192-204,208-212
+packages/cli/src/executions/__tests__/enqueued-execution-recovery.service.test.ts
+  s_4676cdd795dd0b::t_1b1d4e271b68f3 24,35,47,86,99-105
+  s_4676cdd795dd0b::t_cc95d8f0aeca83 25
+packages/cli/src/executions/enqueued-execution-recovery.service.ts
+  s_4676cdd795dd0b::t_1b1d4e271b68f3 97,99-100
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_4676cdd795dd0b::t_d87fd4e4ff24fe 391-404,407,409-411
+  s_4676cdd795dd0b::t_1b1d4e271b68f3 385-390,405,412-413,416-422,424-426
+  h_8fb27e0cdf6d1e 414-415
+  s_a5b31e07e4511c::t_ab31a57fab3f4d 423
+  s_4676cdd795dd0b::t_a517d74dbf2e61 406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d39424075175a173c858bf298fba6231b327182d",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_4676cdd795dd0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa7d4-21bf-71a3-a79d-7feaaa232461",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_a5b31e07e4511c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fdb9051-c674-400a-a04b-221328512728",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

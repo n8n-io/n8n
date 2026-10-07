@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowSettings.yml
+  h_5d40c27a8fdfd1 122-129
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_bc1b6093516498::t_c99854c51f9a45 2183
+  s_bc1b6093516498::t_785063845c8abb 1573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "de9b776c241a6f0eaa1248f1ac68d3fb5fef042d",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bc1b6093516498": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6d8c234-2d9e-44c6-a753-318a830b1862",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

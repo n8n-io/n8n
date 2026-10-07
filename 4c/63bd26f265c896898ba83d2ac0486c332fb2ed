@@ -1,0 +1,24 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e709738dce3464::t_9973c413a7fc9e 1507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4c63bd26f265c896898ba83d2ac0486c332fb2ed",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e709738dce3464": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "026ea3e9-01fb-48cb-9f02-6495f17bb8ee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

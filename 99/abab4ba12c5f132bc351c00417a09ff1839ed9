@@ -1,0 +1,68 @@
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_1084be12b30fd7::t_0009ffddd2f77a 23,349-352
+packages/cli/src/oauth/oauth.service.ts
+  s_1084be12b30fd7::t_623e9613cd5cb4 785-786
+  s_1084be12b30fd7::t_99d386e6561ae6 831
+  s_1084be12b30fd7::t_dcf21fa1671b81 2-6,102-106,132-136,139,736,741-781,791,804-805,807-810,812-824,826-830,832-837,839-889,891
+  s_1084be12b30fd7::t_84a4e9da0ce681 1
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_1084be12b30fd7::t_b0648fecdad876 361
+packages/workflow/src/mcp-helpers.ts
+  s_1084be12b30fd7::t_0009ffddd2f77a 5-7,90-103
+  s_1084be12b30fd7::t_1ac96ccba4108e 104-105
+packages/@n8n/ai-utilities/src/__tests__/utils/refreshing-auth-fetch.test.ts
+  s_1084be12b30fd7::t_75e269ca75fd75 262-311,313-314
+  s_1084be12b30fd7::t_99d386e6561ae6 312
+packages/cli/src/utils/auth-fetch.ts
+  s_1084be12b30fd7::t_4206ed143b283a 18-19,77,84
+  s_1084be12b30fd7::t_6cf65a470e764c 64-65,67
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_1084be12b30fd7::t_75e269ca75fd75 237-238,242-257
+  s_1084be12b30fd7::t_99d386e6561ae6 239-241
+packages/@n8n/ai-utilities/src/utils/refreshing-auth-fetch.ts
+  s_1084be12b30fd7::t_4206ed143b283a 7,25,56-59
+packages/@n8n/agents/src/__tests__/integration/mcp-client-boundary.test.ts
+  s_1084be12b30fd7::t_623e9613cd5cb4 46
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_1084be12b30fd7::t_bcc232c6e3ead2 98
+  s_1084be12b30fd7::t_91c06a606eaab7 9,91-97,99-103
+  s_1084be12b30fd7::t_8bb61bca79e08c 104-105
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_1084be12b30fd7::t_e9d0f2ed514bdb 1,83,114,116,144
+  s_1084be12b30fd7::t_99d386e6561ae6 115,5445,5472,5731
+  s_1084be12b30fd7::t_b0648fecdad876 5387,5539,5549,5586,5650,5681,5743,5746,5765-5767
+  s_1084be12b30fd7::t_fa59763ad04c62 5391-5444,5446-5471,5473-5490,5720-5730,5732-5742,5744
+  s_1084be12b30fd7::t_7ed58cfedc2193 5745
+packages/cli/src/oauth/__tests__/oauth.service.integration.test.ts
+  s_1084be12b30fd7::t_e9d0f2ed514bdb 1,37,40-42,46
+packages/@n8n/agents/src/sdk/agent.ts
+  s_1084be12b30fd7::t_623e9613cd5cb4 877-878
+  s_1084be12b30fd7::t_97483d5497a7c4 884-893
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_1084be12b30fd7::t_60967856d37f6f 5-11,152-155,160-171,202-205
+  s_1084be12b30fd7::t_623e9613cd5cb4 51-52,77
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_1084be12b30fd7::t_623e9613cd5cb4 105-106,108-110
+  s_1084be12b30fd7::t_97483d5497a7c4 116-125
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_1084be12b30fd7::t_60967856d37f6f 470-477
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_1084be12b30fd7::t_d0e53104d5e5d7 200-234
+  s_1084be12b30fd7::t_b0648fecdad876 179,458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "99abab4ba12c5f132bc351c00417a09ff1839ed9",
+  "prompts": {},
+  "sessions": {
+    "s_1084be12b30fd7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a067f0-aff3-7543-8805-a1d1f5e6c6e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

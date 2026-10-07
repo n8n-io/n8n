@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.test.ts
+  s_794a1be4bba94d::t_552179bd801f43 151-175
+packages/frontend/editor-ui/src/features/workflows/readyToRun/composables/useEmptyStateDetection.ts
+  s_794a1be4bba94d::t_552179bd801f43 2-3,22-34,78-79
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_794a1be4bba94d::t_552179bd801f43 53,180-181,183,185,766-782,792-796,805,808-814,816-825,832,2178-2185,2568-2577
+  ai_agent 184
+  s_794a1be4bba94d::t_7b661796c067e8 732-740
+  s_794a1be4bba94d::t_4596b243d1bff5 182
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_794a1be4bba94d::t_ac0d850fc7a8a4 661-664
+  s_794a1be4bba94d::t_57a7778e4d2ec4 579
+  s_794a1be4bba94d::t_552179bd801f43 708-748
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_794a1be4bba94d::t_552179bd801f43 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fcadfedce885a7b5476da697061fa319052c4378",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

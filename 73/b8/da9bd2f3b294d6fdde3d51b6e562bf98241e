@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChipRow.vue
+  h_f8b427917eda26 107-112
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  h_f8b427917eda26 243-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73b8da9bd2f3b294d6fdde3d51b6e562bf98241e",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

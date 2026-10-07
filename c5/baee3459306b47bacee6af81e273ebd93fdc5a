@@ -1,0 +1,56 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_c53aeae67e70d0::t_f20acc5c6d744d 35
+  s_c53aeae67e70d0::t_0f92fc8b64e11c 255-257
+  s_c53aeae67e70d0::t_b84e2c362a3fb2 169
+  s_c53aeae67e70d0::t_3d219db1781897 65,71
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_c53aeae67e70d0::t_a66199698440d7 536
+  s_c53aeae67e70d0::t_5c2e2c3e99b857 47
+  s_c53aeae67e70d0::t_7156cb648b62a7 82-85
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_c53aeae67e70d0::t_42cbe886181d87 216,223
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_c53aeae67e70d0::t_8be761fd2cde37 199-202
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_c53aeae67e70d0::t_e6cb973531cd1b 613,621
+  s_c53aeae67e70d0::t_5e43e670526af6 321-323,336
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_c53aeae67e70d0::t_7699aa2a9ea0ad 615
+  s_c53aeae67e70d0::t_9cacee24286faf 237,241-245,251,254,262-273
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_c53aeae67e70d0::t_dc0ef897fe56f4 19-24,36,38,40
+  s_c53aeae67e70d0::t_f68356ad797f3b 62-64
+  s_c53aeae67e70d0::t_4b4939259bf031 82-83
+  s_c53aeae67e70d0::t_8b04ad2fea7ec7 271-279,283
+  s_c53aeae67e70d0::t_cbdf8345e3d35e 557-563
+  s_c53aeae67e70d0::t_420a65441af696 471-486,500-512,521
+  s_c53aeae67e70d0::t_624b18a5cb6903 284
+packages/frontend/editor-ui/src/Interface.ts
+  s_c53aeae67e70d0::t_7248b9868dea31 671-673
+  s_c53aeae67e70d0::t_3276b15212fca9 4
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_c53aeae67e70d0::t_98488291ad63ad 8-9,13,21-23
+  s_c53aeae67e70d0::t_7106bc07935259 189-210
+  s_c53aeae67e70d0::t_5dc995129c2ce2 226-248
+  s_c53aeae67e70d0::t_357d2cfe67e1c3 121
+  s_c53aeae67e70d0::t_f70dc878290eac 76-89,95-103
+  s_c53aeae67e70d0::t_c11fc3d64847b0 24
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_c53aeae67e70d0::t_a111877a85ca4a 566,583
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c5baee3459306b47bacee6af81e273ebd93fdc5a",
+  "prompts": {},
+  "sessions": {
+    "s_c53aeae67e70d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52e45bea-55bb-4cdb-aca2-13e1c962acef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

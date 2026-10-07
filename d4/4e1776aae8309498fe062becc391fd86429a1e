@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff.ts
+  s_adb5d982725a9c::t_eac4a4212a8a5b 14-20,24
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_adb5d982725a9c::t_40688af81b5355 24,37-38,73-82,87-143
+  ai_agent 29
+  s_adb5d982725a9c::t_5975209c6d5936 70-72
+  s_adb5d982725a9c::t_a54f79e7fa4d96 83-86
+  s_adb5d982725a9c::t_78002e877e1743 193
+  s_adb5d982725a9c::t_9cec55461f43ff 212
+  s_adb5d982725a9c::t_59bdc6ef60868a 300-303
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_adb5d982725a9c::t_af2673729040aa 6-7,14-19,32,34
+  s_adb5d982725a9c::t_c7e0873b1b1eb7 74-78,83-86,92-97,99,102-104,110-111
+  s_adb5d982725a9c::t_ff732abea11996 105-109
+  s_adb5d982725a9c::t_e03a977a35fbc3 133-137
+  s_adb5d982725a9c::t_c151511861701c 393-417,419-450
+  ai_agent 418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d44e1776aae8309498fe062becc391fd86429a1e",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

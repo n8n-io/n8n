@@ -1,0 +1,24 @@
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_52ebfe1ffb87fb::t_a8c0949f0e7605 601-608
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_52ebfe1ffb87fb::t_ac18543a677558 318,320-323
+  s_52ebfe1ffb87fb::t_24415d983611f8 178-180
+  s_52ebfe1ffb87fb::t_1ff495456dde56 312
+  s_52ebfe1ffb87fb::t_2a0e5a2d546522 211-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "48be032b1465a45789fd4d7f71637fa0e56a5825",
+  "prompts": {},
+  "sessions": {
+    "s_52ebfe1ffb87fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deaa7c0e-2dcb-468c-afaf-442d735dfc87",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

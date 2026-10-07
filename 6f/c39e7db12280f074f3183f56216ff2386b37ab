@@ -1,0 +1,74 @@
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_f2e7acc401d88b::t_899742f9f7fd90 145
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_f2e7acc401d88b::t_3d4502917c7d11 63-78
+  s_f2e7acc401d88b::t_6d79fc3ca7f655 88
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f2e7acc401d88b::t_e2228f9707c4d8 1084
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_f2e7acc401d88b::t_63e495299f4fe9 423-424
+  s_f2e7acc401d88b::t_ad270681e4a081 116
+  s_f2e7acc401d88b::t_e055936c92b23e 262
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_f2e7acc401d88b::t_c1a41c3631ba65 56
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_f2e7acc401d88b::t_526665f18c2c75 47-48
+  s_f2e7acc401d88b::t_b79b752d258a7f 121-130
+  s_f2e7acc401d88b::t_ce1d2e30d2def7 2
+  s_f2e7acc401d88b::t_97502e4d37209b 90-92
+  s_f2e7acc401d88b::t_0a6269ea31387a 154-156
+  s_f2e7acc401d88b::t_e9105849601b4b 24
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_f2e7acc401d88b::t_aa9f3d794ebde8 2317
+  s_f2e7acc401d88b::t_b9361c7fdcf35d 2277
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_f2e7acc401d88b::t_7608640223589c 42
+  s_f2e7acc401d88b::t_7869c389908d9f 125-127,130-132,139-143,151,168-175
+  s_f2e7acc401d88b::t_2fa290782bb577 11-17
+  s_f2e7acc401d88b::t_90d0ee0ae7461c 86
+  s_f2e7acc401d88b::t_1b4c18876c463a 114-115,117
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_f2e7acc401d88b::t_15bf946a25e946 25
+  s_f2e7acc401d88b::t_02cee8a6a8352d 124-132
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_f2e7acc401d88b::t_ff06b3a46554e7 243,266-295
+  s_f2e7acc401d88b::t_3c6ac63740b14d 118-130
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  ai_agent 374-380
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_f2e7acc401d88b::t_73ead9fd30af7c 118
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  ai_agent 125-131,151-157,181-187,224-230,284-290,400-406,471-477,616-622,663-669,692-698
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_f2e7acc401d88b::t_c65c1e42a13662 245
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_f2e7acc401d88b::t_d8eddfe2c07165 123,134
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_f2e7acc401d88b::t_0d3250c2422226 97-101
+  s_f2e7acc401d88b::t_52c1e63c57db34 196,198
+  s_f2e7acc401d88b::t_540fab34159323 223
+  s_f2e7acc401d88b::t_67e94fda6b656d 53
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_f2e7acc401d88b::t_036d9ded03f621 70-71,77
+  s_f2e7acc401d88b::t_4c2328db9161cd 2
+  s_f2e7acc401d88b::t_14d1f95666aa7a 83-130
+  s_f2e7acc401d88b::t_bc4c166553d968 27-34
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_f2e7acc401d88b::t_db3c29f403add2 1228,1321,1383,1447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6fc39e7db12280f074f3183f56216ff2386b37ab",
+  "prompts": {},
+  "sessions": {
+    "s_f2e7acc401d88b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc81e09b-56c0-4298-980d-617e84f5e6aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

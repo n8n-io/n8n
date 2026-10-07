@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/workspace/pack-workspace-sdk.ts
+  s_f8bcded4ea5f7a::t_da2a2b0438c204 156
+packages/@n8n/instance-ai/src/tools/orchestration/verification/prepare-run.ts
+  s_f8bcded4ea5f7a::t_51e3055715edfb 50
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_f8bcded4ea5f7a::t_51e3055715edfb 711
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "798276ca4d9ec3ead0de08658cc9d8489df15273",
+  "prompts": {},
+  "sessions": {
+    "s_f8bcded4ea5f7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0403bfdbffegQkKvvwvumrkEY",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

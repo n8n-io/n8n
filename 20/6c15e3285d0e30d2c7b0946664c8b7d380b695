@@ -1,0 +1,22 @@
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/createGitConnection.generated.yml
+  h_5d40c27a8fdfd1 5,61-62
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
+  h_5d40c27a8fdfd1 4-5,16-31,70-71,75,84-85
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  h_5d40c27a8fdfd1 83-86,120-160
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  h_5d40c27a8fdfd1 37
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  h_5d40c27a8fdfd1 35-37,77-80,96-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "206c15e3285d0e30d2c7b0946664c8b7d380b695",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

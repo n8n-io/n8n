@@ -1,0 +1,31 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_aad5ebba945a36::t_d5396ca6ae8add 215-216,221
+  s_aad5ebba945a36::t_fef6b0cc040dc1 15-16
+  s_aad5ebba945a36::t_2b9543c6878064 217-220,222-244
+  s_aad5ebba945a36::t_fe3055b3939a6b 99-101
+  s_aad5ebba945a36::t_151027b4f4837a 69,72
+  s_aad5ebba945a36::t_4a07e71e556308 162
+  s_aad5ebba945a36::t_6f50f29669c0e6 361-429
+  s_aad5ebba945a36::t_c0c00bf037b650 33
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_aad5ebba945a36::t_4709176d09f470 670,681
+  s_aad5ebba945a36::t_74fca3a896c561 6-11
+  s_aad5ebba945a36::t_2a273064884ecc 751,753-758
+  s_aad5ebba945a36::t_287fdcaeb5702b 614-669,671-680,682-750,752,759-760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40c6d3510c0728dc9f0de1398fa9c374f26e9083",
+  "prompts": {},
+  "sessions": {
+    "s_aad5ebba945a36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed258afe-89d2-491c-b2a0-98f19b3dead4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

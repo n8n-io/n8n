@@ -1,0 +1,38 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_8df1f1b34b9d13::t_9e6c1c4a1a157f 1498-1511
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_8df1f1b34b9d13::t_e33ea521bdb085 458
+  s_8df1f1b34b9d13::t_a21c732d0d2574 417
+  s_8df1f1b34b9d13::t_b5a4ecfa40298b 442-446
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_8df1f1b34b9d13::t_648cf1feecb68a 126-134
+  s_8df1f1b34b9d13::t_9c3075e0408ec8 1340,1394,1468,1515
+  s_8df1f1b34b9d13::t_3a331710f04a46 1361-1391
+  s_8df1f1b34b9d13::t_b5db74c29b8bfb 1418-1419,1441,1447-1453,1460
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8df1f1b34b9d13::t_2a72f093311cef 1013,1022-1025
+  s_8df1f1b34b9d13::t_fc7d05ffe8cd4b 858,884,936,1009-1012,1026-1034
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8df1f1b34b9d13::t_3a6a1f61feaaaa 2175-2188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f0f31b330a038b7f598f8ac10b02acc7b226d597",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8df1f1b34b9d13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c0ae6241-b92b-4d09-952e-b606baf77ef3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

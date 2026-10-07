@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.test.ts
+  s_e8596a764fed53::t_28ca54c608800c 160-198
+  s_e8596a764fed53::t_3f384718df0db2 11
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.ts
+  s_e8596a764fed53::t_f9423cca01b054 25
+  s_e8596a764fed53::t_3e7316bb52fea8 274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6dd8ddfdab2dd635c126961161744c6c858c6dee",
+  "prompts": {},
+  "sessions": {
+    "s_e8596a764fed53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "579e3553-9680-4b38-8d21-5fff0a053271",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/experiments/enhancedHitlTelegram/useEnhancedHitlTelegramExperiment.test.ts
+  s_60ce6e746ce9d3::t_fcd059b8a652ce 1-39
+packages/frontend/editor-ui/src/experiments/enhancedHitlTelegram/index.ts
+  s_60ce6e746ce9d3::t_f5086157e4f341 1
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_60ce6e746ce9d3::t_0705fec45ae57a 145-146
+  s_60ce6e746ce9d3::t_c15bfdd9b1d99b 184
+packages/frontend/editor-ui/src/experiments/enhancedHitlTelegram/useEnhancedHitlTelegramExperiment.ts
+  s_60ce6e746ce9d3::t_b8597c2a2e51d6 1-16
+packages/frontend/editor-ui/src/experiments/enhancedHitlTelegram/telegramHitlParameters.ts
+  s_60ce6e746ce9d3::t_90db8e554c45f4 1-14
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_60ce6e746ce9d3::t_659b47946fbd89 123
+  s_60ce6e746ce9d3::t_9c663e5e4c295a 27,31-32
+  s_60ce6e746ce9d3::t_1f40e38d70221e 213-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "055df04b0c42a30792e7a63ead32c0a8d6ed8acd",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

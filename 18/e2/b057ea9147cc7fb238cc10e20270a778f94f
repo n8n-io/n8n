@@ -1,0 +1,91 @@
+.agents/skills/public-api/reference.md
+  s_fbca3c74a16eb9::t_9777b828677d94 151-156
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_fbca3c74a16eb9::t_1bc635efed9444 182-184
+  s_fbca3c74a16eb9::t_9e7662d1229b31 202-203,211-212,217-219,222-226,229,232-238
+  s_fbca3c74a16eb9::t_d3464ca16fe504 204-210
+  s_fbca3c74a16eb9::t_dec84bdf462cca 162,167
+  s_fbca3c74a16eb9::t_caf95e7d1358ca 239-240
+packages/@n8n/decorators/src/controller/args.ts
+  s_fbca3c74a16eb9::t_af4316e794e29a 5,17-25,49-50
+packages/@n8n/api-types/src/schemas/public-api-uploaded-file.schema.ts
+  s_fbca3c74a16eb9::t_256f43d8e08b38 1-28
+packages/@n8n/api-types/src/index.ts
+  s_fbca3c74a16eb9::t_b104a047315995 178-181
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_fbca3c74a16eb9::t_62ff53ef33e7f0 33-37
+  s_fbca3c74a16eb9::t_d66ce7b7bb9ff4 1,16
+  s_fbca3c74a16eb9::t_1698f638c38fdb 501-550,559-707
+  s_fbca3c74a16eb9::t_af0e9b5b2fd445 551-558
+  s_fbca3c74a16eb9::t_de015df98d9b32 708-711
+packages/@n8n/decorators/src/controller/types.ts
+  s_fbca3c74a16eb9::t_1854b3d4fd1cd2 104-105
+  s_fbca3c74a16eb9::t_490ad225706cf0 25-33
+  s_fbca3c74a16eb9::t_c979b68dc6b7ca 36-47,49-55
+packages/@n8n/decorators/src/controller/__tests__/args.test.ts
+  s_fbca3c74a16eb9::t_d4badf03cd5c44 109-178
+packages/cli/src/public-api/public-api-media-type.ts
+  s_fbca3c74a16eb9::t_c7a5dedb056ea2 33-36,38-42,50
+  s_fbca3c74a16eb9::t_26892d873d0d6a 1,3
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_fbca3c74a16eb9::t_a44a18928a35de 2
+  s_fbca3c74a16eb9::t_71318d46656afe 1
+  s_fbca3c74a16eb9::t_f50237551d644c 356-377,400-459
+  s_fbca3c74a16eb9::t_50157ced78efbc 33-43
+  s_fbca3c74a16eb9::t_5216596db63079 378-399
+.agents/skills/public-api/SKILL.md
+  s_fbca3c74a16eb9::t_ac7126e3d6fa09 113,116-117
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_fbca3c74a16eb9::t_dbb615b4367e32 91-92,95-98,106-118,120,126-136
+  s_fbca3c74a16eb9::t_5d8082f099dbe1 219-230,232-237
+  s_fbca3c74a16eb9::t_58ec3da0074c09 10,20-21
+  s_fbca3c74a16eb9::t_9a0530bf82d407 176-195
+  s_fbca3c74a16eb9::t_857eeb87faa4c0 231
+  s_fbca3c74a16eb9::t_0f40ffbd094f12 137,196-199,238-244
+packages/cli/src/public-api/v1/openapi-gen/__tests__/request-body-schema-parity.test.ts
+  s_fbca3c74a16eb9::t_7d6f5e7b2192c5 36-40
+packages/cli/src/public-api/__tests__/public-api-multipart.test.ts
+  s_fbca3c74a16eb9::t_663c6bc212b482 1-80
+packages/@n8n/decorators/src/controller/index.ts
+  s_fbca3c74a16eb9::t_c6267d8d13bcea 21,23,30
+packages/@n8n/decorators/src/controller/__tests__/api-response.test.ts
+  s_fbca3c74a16eb9::t_b58cd375dd12ea 67-164
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_fbca3c74a16eb9::t_2ef4f9da486861 4-9,14-16,18-33,53-75,78-80,82
+packages/@n8n/api-types/src/schemas/__tests__/public-api-uploaded-file.schema.test.ts
+  s_fbca3c74a16eb9::t_5793d407c1cccd 1-2
+  s_fbca3c74a16eb9::t_2fc49399b14ea3 47-52
+  s_fbca3c74a16eb9::t_be38d2eaa39a6f 3-46,53-54
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_fbca3c74a16eb9::t_85b689be04eafa 145-146
+  s_fbca3c74a16eb9::t_81ab6217b8f4f6 285,289
+  s_fbca3c74a16eb9::t_860fb8846ef9a0 4,6,12,36-44
+  s_fbca3c74a16eb9::t_65cc4fe6cdb637 73-74,79-80
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_fbca3c74a16eb9::t_236ea0f9af76cf 64-66
+  s_fbca3c74a16eb9::t_607f81543a2078 100
+  s_fbca3c74a16eb9::t_7fb0a7908ccd98 157-168
+  s_fbca3c74a16eb9::t_895d9cdb5ed784 341,343-376
+  s_fbca3c74a16eb9::t_2daa6a950de09b 85
+  s_fbca3c74a16eb9::t_54c303ed541099 329,342
+packages/cli/src/public-api/public-api-multipart.ts
+  s_fbca3c74a16eb9::t_f80aa84897b150 1-20,22-42,44-78
+  s_fbca3c74a16eb9::t_288e75882ee938 21
+  s_fbca3c74a16eb9::t_1aed5a7cdd91d4 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "18e2b057ea9147cc7fb238cc10e20270a778f94f",
+  "prompts": {},
+  "sessions": {
+    "s_fbca3c74a16eb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6aa2af4-39ad-4e2d-bd20-527ecd684b02",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

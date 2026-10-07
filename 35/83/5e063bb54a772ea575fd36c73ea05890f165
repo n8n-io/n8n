@@ -1,0 +1,46 @@
+packages/@n8n/instance-ai/evaluations/__tests__/build-workflow-conversation-seed.test.ts
+  s_1898563af1e1ac::t_6d9b13a5bd0b5d 369-385,405-407
+  s_1898563af1e1ac::t_bb51f8671393ae 58,88-107,367-368,386-404,408-421
+  s_1898563af1e1ac::t_6ae1ecfd13e4f3 422-423
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_1898563af1e1ac::t_7460d762bd1666 33-41,45-47,49,51,301-302,312-323
+  s_1898563af1e1ac::t_c9d53d062be9db 324
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_1898563af1e1ac::t_31d4ebee947b8c 14,87,153,568-570,797-802,987-990,992-994,998-999,1003,1009-1033,1035-1039,1043,1046-1047
+  s_1898563af1e1ac::t_6d9b13a5bd0b5d 991
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_1898563af1e1ac::t_bb51f8671393ae 479-501,554-574
+  s_1898563af1e1ac::t_9b220055ef0f7a 575
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_1898563af1e1ac::t_31d4ebee947b8c 25,342,347
+packages/@n8n/instance-ai/evaluations/langtracer/to-exported.ts
+  s_1898563af1e1ac::t_0de8925bbaa4e9 28
+packages/@n8n/instance-ai/evaluations/clients/__tests__/n8n-client.test.ts
+  s_1898563af1e1ac::t_bb51f8671393ae 51-70
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-text.test.ts
+  s_1898563af1e1ac::t_bb51f8671393ae 123-131,155-172
+  s_1898563af1e1ac::t_59c9fa175cc5c7 173-175
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  s_1898563af1e1ac::t_31d4ebee947b8c 26-32,35-49,69,105
+packages/@n8n/instance-ai/evaluations/README.md
+  s_1898563af1e1ac::t_1c645e97376855 1032-1036
+  s_1898563af1e1ac::t_bb51f8671393ae 993,995-996,1004-1008,1010-1019
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-to-exported.test.ts
+  s_1898563af1e1ac::t_d6945317b89795 335-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "35835e063bb54a772ea575fd36c73ea05890f165",
+  "prompts": {},
+  "sessions": {
+    "s_1898563af1e1ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa46-de73-7d21-a1c0-00a174d6481a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

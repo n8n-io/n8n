@@ -1,0 +1,34 @@
+packages/testing/playwright/tests/e2e/scheduling/poll-trigger-cursor-migrated.spec.ts
+  s_a9d9501682746b::t_36271098b99a9d 68
+  s_a9d9501682746b::t_b34b9fcbda45d2 2
+packages/testing/playwright/services/api-helper.ts
+  s_a9d9501682746b::t_351162a41a8bad 261-269
+packages/testing/playwright/tests/e2e/scheduling/poll-trigger-helpers.ts
+  s_a9d9501682746b::t_3f0bd53aceaff7 139
+  s_a9d9501682746b::t_b5925623523670 140,143,145-146
+  s_a9d9501682746b::t_494f846682ea71 137-138
+packages/testing/playwright/tests/e2e/scheduling/poll-trigger-cursor-unmigrated.spec.ts
+  s_a9d9501682746b::t_8ead1daaea98fe 68
+  s_a9d9501682746b::t_3bfb8e018013c5 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "024d77e8adda203172ff665581801969b48662ce",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a9d9501682746b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56c1eebd-a38b-4797-b03c-b5b99c014dda",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

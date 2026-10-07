@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionHistoryDropdown.test.ts
+  s_8f0638df9beaf3::t_07791afc4cffcd 22
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.test.ts
+  s_8f0638df9beaf3::t_9802453fab32b0 152,157,163-164
+  s_8f0638df9beaf3::t_a82ee2bdf2a46e 65
+  s_8f0638df9beaf3::t_23246076371d88 49,74,81,148-151,153-156,158-162,165-171
+  s_8f0638df9beaf3::t_ad759d01258649 172-173
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
+  s_8f0638df9beaf3::t_6698409a9cad49 2,341-361
+  s_d27d09d94cc9ff::t_c24566c3bf48ac 362
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  s_8f0638df9beaf3::t_a17fd11d5646c0 1,57-58,177,182
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-sidebar.spec.ts
+  s_8f0638df9beaf3::t_6e8a36b676a798 50
+  s_8f0638df9beaf3::t_9883a41589f3c3 67
+  s_8f0638df9beaf3::t_ae3b33a7c3f199 63-64
+  s_8f0638df9beaf3::t_f61b072fabd0a7 51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f6e6e157a495b1377b1a5367667b5ef846be429c",
+  "prompts": {},
+  "sessions": {
+    "s_8f0638df9beaf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af20-9e0e-70f1-b1e1-d44c39cb3ff5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

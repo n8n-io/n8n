@@ -1,0 +1,264 @@
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_06d8cc46c65d83::t_629d29466fa9d3 42
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_06d8cc46c65d83::t_5f5b1d050da822 185,263-264,551,574-575,744,748-763
+  s_06d8cc46c65d83::t_9bdf40b810ec45 182-184
+  s_06d8cc46c65d83::t_e0b0d555f86967 260-262
+  s_06d8cc46c65d83::t_bf7ba71cf355e6 548-550
+  s_06d8cc46c65d83::t_d9dec2c3dee9ea 552-554,571-573
+  s_06d8cc46c65d83::t_84bd4af8cdb772 576-577
+  s_06d8cc46c65d83::t_1a15e48ff5373b 741-743
+  s_06d8cc46c65d83::t_0590c81519c7bc 745-747
+  s_06d8cc46c65d83::t_e045e76d233270 764-766
+  s_06d8cc46c65d83::t_0d6bb3671a0406 1,56,67,104-108,178,180-181,201,208,214,234-241,251-259,269,308-309,328-330,348-350,352-358,361,407-411,416,448-451,500,517-547,555-570,584,729-740,797
+packages/cli/src/modules/agents/integrations/platforms/discord-gateway.ts
+  s_06d8cc46c65d83::t_52bd7b4bfcef2b 41-45
+  s_06d8cc46c65d83::t_8981c1a06f32f7 175
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_06d8cc46c65d83::t_2301ae5410f3ef 95
+  s_06d8cc46c65d83::t_f97c2a86878ecf 328-360
+packages/cli/src/modules/agents/integrations/__tests__/helpers/discord/replay-test-context.ts
+  s_06d8cc46c65d83::t_0d56e0a4658020 250,262
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_06d8cc46c65d83::t_f9773a095ba75b 531,538-539,566,619-654,673,687,690-691,704,717,733
+  s_06d8cc46c65d83::t_cd479a1765f229 528-530
+  s_06d8cc46c65d83::t_7d9fe16e59b552 532-537
+  s_06d8cc46c65d83::t_50d251073e9ad8 540-542,563-565
+  s_06d8cc46c65d83::t_57ae9cd46599fc 567-569,616-618
+  s_06d8cc46c65d83::t_d7c48bc7d3028f 655-657,670-672
+  s_06d8cc46c65d83::t_0410ebcdc1b57e 674-676,684-686
+  s_06d8cc46c65d83::t_f2d4ba9e946020 688-689
+  s_06d8cc46c65d83::t_1a10c5a1a56032 692-694,701-703
+  s_06d8cc46c65d83::t_3e361016faf143 705-707,714-716
+  s_06d8cc46c65d83::t_1b6796fa5447d6 718-720,730-732
+  s_06d8cc46c65d83::t_b2807c66a3e573 734-736
+  s_06d8cc46c65d83::t_31fa332cf3dab4 15,18,114,121,140,518-527,543-562,570-615,658-669,677-683,695-700,708-713,721-729,737-757,801
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_06d8cc46c65d83::t_5906ca9a9d2fa1 147-150
+  s_06d8cc46c65d83::t_e6e71dcb8f4bad 224-227
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_7284fed452a674::t_5a089a0cd410e7 10
+  s_06d8cc46c65d83::t_4fabc99430f989 74-77,79-80,84,216-221
+.github/DEVELOPING_V3.md
+  s_06d8cc46c65d83::t_b63db39de245dd 16-17,30,110-114,127-179
+.github/WORKFLOWS.md
+  s_06d8cc46c65d83::t_4ed89cf1ec0f6a 184,415,418,429-436
+.github/scripts/sync-conflict-owners.mjs
+  s_06d8cc46c65d83::t_4b5749ea938c8b 6-9,32,38-41,44,83,92-102,108,119,144-153
+.github/scripts/sync-conflict-owners.test.mjs
+  s_06d8cc46c65d83::t_9552778442dcf7 22-31,76-80,87-92,96
+.github/scripts/sync-master-to-3x.mjs
+  s_06d8cc46c65d83::t_d053806998c147 3-4,6-10,12-14,16-37,40-42,64-81,88-118,122-129,141-144,146-149,151-158,160-185,196-201,209,241-242,245-247,249,251,262-270,272-289,293-308
+.github/scripts/sync-master-to-3x.test.mjs
+  s_06d8cc46c65d83::t_6bbd7bf163b223 6-10,13,33-39,45-70,80-86,89-95,98-110,115-123,127-162,166,171-173,175-228,230,233,243-246,252-256,260,269-270,272
+.github/test-metrics/e2e-impact-map.json
+  s_06d8cc46c65d83::t_b3771975b7be5c 1
+.github/workflows/test-get-n8n.yml
+  s_06d8cc46c65d83::t_410d92ecc2b340 1-98
+.github/workflows/util-sync-master-to-3x.yml
+  s_06d8cc46c65d83::t_9b0abe758fc286 3-15,53,91
+docker/get-n8n.sh
+  s_06d8cc46c65d83::t_28ca727ccb4056 2-13,15-483
+docker/test-get-n8n.sh
+  s_06d8cc46c65d83::t_bd5728d1b94d58 1-220
+packages/@n8n/api-types/src/agents/types.ts
+  s_06d8cc46c65d83::t_4d72a280e94271 45
+packages/@n8n/cli/docs/commands/package.md
+  s_06d8cc46c65d83::t_c8fb4c5e7c9e8d 75,84
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_06d8cc46c65d83::t_974e1cfdcaa400 3-4,7-8,10,13,71-90
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_06d8cc46c65d83::t_a57447e12bb9f4 14-16,148-165
+packages/@n8n/telemetry/src/events/agents.ts
+  s_06d8cc46c65d83::t_19c0117fbf9f0b 147,151-153,184,290,308,392,395,467,471
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_06d8cc46c65d83::t_d0af7541ecb14b 118
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_06d8cc46c65d83::t_4547401a457b40 2277,2317
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_06d8cc46c65d83::t_ad42507c42603b 1084
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_06d8cc46c65d83::t_d114322fc23091 7,13,44,56-57,60,69-70,77-78,144-175
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_06d8cc46c65d83::t_53fa27fb234846 42-47,216,247,273,301,307-310,314-316,333-334,339,362,367,369,379-380,383,406-407,444,453,463,472,483-505,511
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_06d8cc46c65d83::t_aca25c48203c26 262,271-278,287,331,346-347,352
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_06d8cc46c65d83::t_9aca26f05bae9d 282-284
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_06d8cc46c65d83::t_39c0d76f758f4d 11-12,19-20,25,42-43,108-118,120
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_06d8cc46c65d83::t_6b2eefed0ecaa1 49,141,143-144,184,233,236-241
+packages/cli/src/modules/agents/agent-setup-completion.service.ts
+  s_06d8cc46c65d83::t_49148890baa01c 68-70
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_06d8cc46c65d83::t_b5c5b7de0a5f91 192
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_06d8cc46c65d83::t_3aeb5219907d9f 56,75-77,85,87-89,194-196,264-265
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_06d8cc46c65d83::t_12fdca6e610fd3 231
+packages/cli/src/modules/agents/builder/interactive/__tests__/configure-channel.tool.test.ts
+  s_06d8cc46c65d83::t_0a229e4ebe44d6 98,110,116,124
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_06d8cc46c65d83::t_3817058a6e4e19 32,187,195,198-206,211,255-259,266,275,299,302-315,321
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_06d8cc46c65d83::t_36df5e33682598 33,36-39,49,52-53,60
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_06d8cc46c65d83::t_ce86ac1b7b67ee 74-75,100-105,116,147-157,193-194,262,401,427,429-431,433-440
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  s_06d8cc46c65d83::t_563bbc52721db6 20,34,38-40
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_06d8cc46c65d83::t_3fd6a704a1d287 85,92-94,101-102,104,352-354
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_06d8cc46c65d83::t_25a88f8fd2a9e9 220-221,225,232,235-248
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  s_06d8cc46c65d83::t_cd0cd265d46d5c 64-65,82
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_06d8cc46c65d83::t_747c2d417e4d7f 48
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_06d8cc46c65d83::t_e39eb741fd34f0 51-59,134-144,276,287,361-363,369-403,407-409,446-447
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_06d8cc46c65d83::t_8256cdfd30fb2a 30-31
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_06d8cc46c65d83::t_095f7eaa97c428 112,116-119
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_06d8cc46c65d83::t_b0872afecf1589 59,63-66
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_06d8cc46c65d83::t_127ddb04d36d89 42,337-360
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_06d8cc46c65d83::t_e4fc8fa16297c6 143
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_06d8cc46c65d83::t_c255c1171fce65 258-260,262-264,267-268
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_06d8cc46c65d83::t_ca72895c9d3caf 1419,1428-1431,1435-1439,1447-1453,1466,1469,1473-1479,1484-1488,1490-1498
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_06d8cc46c65d83::t_f194911ec69808 6-7,48-49,53-57,140-145
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_06d8cc46c65d83::t_5075c6ff65ac2c 75,905,967-968,1008-1009,1502-1512,1520
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_06d8cc46c65d83::t_e3d515d7381c97 115
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_06d8cc46c65d83::t_b0e5f9193644a5 1228,1321,1383,1447
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_06d8cc46c65d83::t_8691c017a0d910 24,29,376-382,395-498
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_06d8cc46c65d83::t_c8c3d714f49b74 5-10,15,131-137,157-163,187-193,230-236,290-296,406-412,477-483,489-602,736-742,783-789,812-818
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_06d8cc46c65d83::t_eb86a241808ee7 53,97-101,196,198,223
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_06d8cc46c65d83::t_974d984eec4ace 6,47,56
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_06d8cc46c65d83::t_4a549f0d6a364c 25,124-132
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_06d8cc46c65d83::t_e658618980a77e 123,134
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_06d8cc46c65d83::t_01fe4304b8a590 145
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_06d8cc46c65d83::t_5fbbeb656fef50 118-130,243,266-297
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_06d8cc46c65d83::t_927a72553ea32b 63-78,88
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_06d8cc46c65d83::t_27eebfc89d2aeb 2,24,38-40,47-48,90-92,121-130,144,154-156
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_06d8cc46c65d83::t_4c37bc83a4cba6 11-18,43,87,115-116,118,126-128,131-133,140-144,152,169-177
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_06d8cc46c65d83::t_238ae92412ff55 3,27-34,70-71,77-78,83-139
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_06d8cc46c65d83::t_bd0efb6cf90857 116,262,423-424
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_06d8cc46c65d83::t_6ac40816a4fbfa 269-274,523,547-554
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_06d8cc46c65d83::t_0b364e8ec085d3 196-202,235-238,246-248
+packages/cli/src/services/__tests__/tag.service.test.ts
+  s_06d8cc46c65d83::t_72c2e0b60a92d2 2,21
+packages/cli/src/services/tag.service.ts
+  s_06d8cc46c65d83::t_48ac7c8e6824a0 2,28,51-63
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_06d8cc46c65d83::t_8d12694c919867 22,43,76,91,116,120,122,127-128,130,132-133,135,139,141-183,185-195,198,297,302,304-318
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_06d8cc46c65d83::t_95ab115154c363 3,21-22,74
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_06d8cc46c65d83::t_63e77d567693bc 4,96
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_06d8cc46c65d83::t_2dccdfb8431d1f 9,23,28-39,47-56,80,94-96,114-115,119-124,127-132,194-208
+packages/cli/test/integration/commands/start.cmd.test.ts
+  s_06d8cc46c65d83::t_ec15ed313b0236 94
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_06d8cc46c65d83::t_d69820a0f033e3 1,4,466-478,480,482
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_06d8cc46c65d83::t_33edfbe77fb7bb 245
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_06d8cc46c65d83::t_e203eeda395829 506,529-530
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_06d8cc46c65d83::t_8d76ec00d1afc4 7931
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_06d8cc46c65d83::t_1064884653ea9a 525,1627-1730
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelListItem.test.ts
+  s_06d8cc46c65d83::t_787f93e10fa250 1-46
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_06d8cc46c65d83::t_3a5277d2c44b90 43,61-62,92,97-98,103-115,155-159,196-205,213-257
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChannelSetup.test.ts
+  s_06d8cc46c65d83::t_e998563791665d 57,105,122,136,145
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_06d8cc46c65d83::t_38cf9044f5d004 1,3-7,9-13,15-17,19,21-22,24,27,30-38,40,42-45,47-49,51-77,79,81-84
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_06d8cc46c65d83::t_519e08cefcece7 50,123
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelLinearSetup.vue
+  s_06d8cc46c65d83::t_65f9da14ee8732 381
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_06d8cc46c65d83::t_bd34d9db68a6ef 13,27,46,73-74,77,81-85,89-93
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_06d8cc46c65d83::t_9cf4e62537f809 42,65,121,185-189,207,277,309,318,321,427,441,466,490,568,584
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_06d8cc46c65d83::t_e9695ab42cc49b 379
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_06d8cc46c65d83::t_bfa6e823eed2ef 22,224
+packages/frontend/editor-ui/src/features/agents/components/AgentIntegrationCredentialConnection.vue
+  s_06d8cc46c65d83::t_f96722b0dd8a8b 63,144
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_06d8cc46c65d83::t_632fa6d79bea63 185-186
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_06d8cc46c65d83::t_da17582a130268 2,36,38,96,108-111,116-117,119
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_06d8cc46c65d83::t_e2fe6e34b8af90 30,216,249,258-259,264
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
+  s_06d8cc46c65d83::t_c3633f09894304 2-6,12-13,28,60,68,80,82,99,103,105,120,135,170-173,185
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_06d8cc46c65d83::t_25e7115d8628fa 1213,1216,1222-1251,1297,1299,1303-1305,1324-1332,1594
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_06d8cc46c65d83::t_00095bd0cd0856 20-25,28,32-33,55,69-70,81,97-101,119-126,158,161-162,176-185,294
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_06d8cc46c65d83::t_851c9533f69b4d 58,87,99,107,141,166,223,251,275
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_06d8cc46c65d83::t_10068ff4abf1e3 24,34
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_06d8cc46c65d83::t_723c674b8afeed 1-21
+packages/nodes-base/nodes/Kafka/test/Kafka.node.test.ts
+  s_06d8cc46c65d83::t_5e03aebcbf3cd8 3-9,13,18,24-30,166,214,265,304,329-331,350-352,373,389-423
+packages/nodes-base/nodes/Kafka/v1/KafkaV1.node.ts
+  s_06d8cc46c65d83::t_3229bf65d947eb 1-461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6cc591d652e4335dbb00de5b5837ad7a92b33beb",
+  "prompts": {},
+  "sessions": {
+    "s_06d8cc46c65d83": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0aa376d-db00-4b97-8029-282d85e81543",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_7284fed452a674": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3acfa79d-c0c8-4b66-91fe-edaa23aa5435",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

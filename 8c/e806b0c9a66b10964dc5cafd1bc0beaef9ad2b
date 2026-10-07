@@ -1,0 +1,114 @@
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/CalendarEvent.vue
+  ai_agent 6-39
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Tabs.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-12,34
+  ai_agent 13-33
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Form.vue
+  ai_agent 3-7,10-40
+  s_862a96e0ad7e35::t_6e614045787b2d 1-2,8-9
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/registry.ts
+  s_862a96e0ad7e35::t_0e22c65ccb0f62 1-35,39-43,45-48,51-61,66-70
+  ai_agent 36-38,44,49-50,62-65
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Decision.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-2,8-9
+  ai_agent 3-7,10-43
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Transform.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+  ai_agent 6-16
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Callout.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-15,18-20
+  s_862a96e0ad7e35::t_13c93d3d2e5ef0 16-17
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/nodeLookup.ts
+  s_862a96e0ad7e35::t_20513dec462940 11
+  s_862a96e0ad7e35::t_e071d8d85664da 1-10,12-13
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/AiTask.vue
+  ai_agent 6-19
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Crm.vue
+  ai_agent 3-9,12-33
+  s_862a96e0ad7e35::t_6e614045787b2d 1-2,10-11
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Knowledge.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+  ai_agent 6-16
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Email.vue
+  ai_agent 6-48
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Sms.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-16,19-21
+  s_862a96e0ad7e35::t_edd502ec5e6b6c 17-18
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Heading.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-4,8-9,18
+  ai_agent 5-7,10-17
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/ChatMessage.vue
+  ai_agent 6-19
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Approval.vue
+  ai_agent 6-21
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/HttpCall.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+  ai_agent 6-23
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Text.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-4,8-9,16
+  ai_agent 5-7,10-15
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Stack.vue
+  s_862a96e0ad7e35::t_bf8c2fd91e8bd6 2-4
+  s_862a96e0ad7e35::t_a71730377834d7 1,5-23
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/ActionCard.vue
+  s_862a96e0ad7e35::t_4705312cce5f92 1-122
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Timeline.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-12,31
+  ai_agent 13-30
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Grid.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-2,6,8-21
+  s_862a96e0ad7e35::t_70843f5d7e4258 3-5
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Spreadsheet.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+  ai_agent 6-21
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Terminal.vue
+  ai_agent 6-26
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Group.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-12,34
+  ai_agent 13-33
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/FileTransfer.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-2,9-10
+  ai_agent 3-8,11-28
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Wait.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+  ai_agent 6-16
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/NodeBrand.vue
+  s_862a96e0ad7e35::t_76008936577ff5 1-25
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Accordion.vue
+  ai_agent 13-33
+  s_862a96e0ad7e35::t_a71730377834d7 1-12,34
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Screen.vue
+  s_862a96e0ad7e35::t_a71730377834d7 1-12,31
+  ai_agent 13-30
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Database.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+  ai_agent 6-22
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/Step.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-5
+  ai_agent 6-16
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/components/When.vue
+  s_862a96e0ad7e35::t_6e614045787b2d 1-2,9-10
+  ai_agent 3-8,11-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ce806b0c9a66b10964dc5cafd1bc0beaef9ad2b",
+  "prompts": {},
+  "sessions": {
+    "s_862a96e0ad7e35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ac040033-fa9f-48ea-97c0-886b0a9383bb",
+        "model": "gpt-5.6-sol-medium"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

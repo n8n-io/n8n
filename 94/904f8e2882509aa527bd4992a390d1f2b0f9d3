@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 1-94
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 2279-2282
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 77,150-154,1176-1177,1181-1186,1310,1315,1372,1385-1389
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 7598
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 1-279,286-385
+  s_8c0bb2d06aee91::t_874b7a4e5410a4 280-285
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderPreviewHeader.vue
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 22,30,35-44,46-47,101,107-108,110
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 433-439,706-735
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_8c0bb2d06aee91::t_2cad7b95f3ba91 69,76-77,110,115-129,139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94904f8e2882509aa527bd4992a390d1f2b0f9d3",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

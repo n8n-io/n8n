@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_9d2edb6258abb2::t_dd4af03810a5ae 47,76-91
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_9d2edb6258abb2::t_bc80b9162b2c75 1179-1181,1188,1190
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_9d2edb6258abb2::t_e5d602e9bf3ebb 3,6-7,9,32,34-35,44-45,174-227,647,649-650,652-655,662-663,665-670,678,683-690,695,700-701,703-707
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "46104ae3e0d1c5a58905a4d19ec9b37cb8dcf1cf",
+  "prompts": {},
+  "sessions": {
+    "s_9d2edb6258abb2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3a2e7ae5-849c-48a6-8ff8-22cd67ab186d",
+        "model": "gpt-5.6-sol-xhigh"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

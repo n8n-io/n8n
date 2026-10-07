@@ -1,0 +1,42 @@
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_7dde44b7ae3a8b::t_482e84cd769790 50,53-59
+  s_7dde44b7ae3a8b::t_bf3f23b6beeff4 20,27-29,35
+  s_223f1264d5eab7::t_2adba102fc099c 969,982,1019,1022-1033,1066,1071,1076,1088,1103
+  s_223f1264d5eab7::t_4828ed9d074b38 966-968
+  s_223f1264d5eab7::t_5315edbe4533b3 970-972,979-981
+  s_223f1264d5eab7::t_aa26bc967edfac 983-985,1016-1018
+  s_223f1264d5eab7::t_f6d4b167cf045a 1020-1021
+  s_223f1264d5eab7::t_92a918ef21b863 1034-1036,1063-1065
+  s_223f1264d5eab7::t_56de2fb4ea020e 1067-1070
+  s_223f1264d5eab7::t_73a987519e97f7 1072-1075
+  s_223f1264d5eab7::t_724f8df1b747df 1077-1079,1085-1087
+  s_223f1264d5eab7::t_20e1975b31838a 1089-1091,1100-1102
+  s_223f1264d5eab7::t_f459a510472063 1104-1106
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_7dde44b7ae3a8b::t_46bfc233c43918 740-743,745-756
+  s_7dde44b7ae3a8b::t_6923c3766e624e 744
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d6e5165a8fbe522743a3e22dfbea28f40e41a9ba",
+  "prompts": {},
+  "sessions": {
+    "s_223f1264d5eab7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2f49fe5-83ef-4af9-b831-a747a12899a3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_7dde44b7ae3a8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dde24993-9443-48a7-a7af-9577d5a424b8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

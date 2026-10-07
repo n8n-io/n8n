@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_bc83fb448b2fad::t_926bc0a964eeec 2557-2558
+  s_bc83fb448b2fad::t_401b4d9898ca1c 2532-2535,2537,2542-2543,2546,2549-2551,2555-2556
+  s_bc83fb448b2fad::t_abfea206cacb95 27
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_bc83fb448b2fad::t_74fbf49d723f96 90,114-116,126-154,159-161
+  s_bc83fb448b2fad::t_710115102931b8 359-361
+  s_bc83fb448b2fad::t_ea84b2e6c669b6 329-358,362-392
+  s_bc83fb448b2fad::t_8cc4ff07a14729 27,29
+  s_bc83fb448b2fad::t_85e01367bb781f 183-202
+  s_bc83fb448b2fad::t_a2de9df83f610c 414-423,425,427
+  s_bc83fb448b2fad::t_23cc37bb320301 117-125
+  s_bc83fb448b2fad::t_54f4c86dca3119 1-17,34-89,91-113,155-158,162-182,203-328,393-413,424,426,428-447
+  s_bc83fb448b2fad::t_5f2a69d25c1cdd 18-26,28,30-33
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_bc83fb448b2fad::t_30389a67d1aecf 5,23
+packages/nodes-base/nodes/Kafka/test/v2/kafka-trigger-isolation.test.ts
+  s_bc83fb448b2fad::t_7b124e162fb806 44-45,47-49
+  s_bc83fb448b2fad::t_3f72146d25abf5 1-16,53-87
+  s_bc83fb448b2fad::t_b724cc6bb5eaa4 17-43,46,50-52
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.description.test.ts
+  s_bc83fb448b2fad::t_a2de9df83f610c 53-54
+  s_bc83fb448b2fad::t_074c415a5bf0f1 1-14,41-52,55,57-58,63-71
+  s_bc83fb448b2fad::t_6189d7e7957ebb 15-40,56,59-62
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2.node.ts
+  s_bc83fb448b2fad::t_e6adaa6bb4551c 1-9,17-24,27,30-352,358-365,368-376,378,390-412
+  s_bc83fb448b2fad::t_c0f4072deb97b8 25-26,28-29
+  s_bc83fb448b2fad::t_45207682a0f3a0 366-367,377,379-389
+  s_bc83fb448b2fad::t_0dc94fe70760c4 11-16
+  s_bc83fb448b2fad::t_2667a547423865 10
+  s_bc83fb448b2fad::t_1d113299a6caa5 353-357
+packages/nodes-base/nodes/Kafka/test/v2/__snapshots__/KafkaTriggerV2.node.description.test.ts.snap
+  s_bc83fb448b2fad::t_ef1c8c19b879f9 1-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2f5c5fdba33cb54127184a1fa17b1232d266b83c",
+  "prompts": {},
+  "sessions": {
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/workflow/src/interfaces.ts
+  s_33412ab6e22c2c::t_803f47ce4b7374 3691-3714
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-step-run-provenance.test.ts
+  s_33412ab6e22c2c::t_2a65b2bf9b2832 1-5,7-103
+  s_33412ab6e22c2c::t_1b945b84c1616c 6
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_33412ab6e22c2c::t_803f47ce4b7374 10,35-36
+packages/cli/src/modules/instance-ai/instance-ai-step-run-provenance.ts
+  s_33412ab6e22c2c::t_ca43efa2a6d6c5 1-34,36-65
+  s_33412ab6e22c2c::t_1b945b84c1616c 35
+packages/workflow/src/run-execution-data-factory.ts
+  s_33412ab6e22c2c::t_803f47ce4b7374 31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_33412ab6e22c2c::t_5d8b89f39f2a94 4450-4456
+  s_33412ab6e22c2c::t_e44edf89c3ba52 5561-5624
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_33412ab6e22c2c::t_84da949411cdf8 200
+  s_33412ab6e22c2c::t_82b720fd224ee0 2240-2261,2270,2284-2285,2287
+packages/@n8n/instance-ai/docs/tools.md
+  s_33412ab6e22c2c::t_1b945b84c1616c 613-619
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3677597d6c1ed47277b52ccf923243f4f1036a4a",
+  "prompts": {},
+  "sessions": {
+    "s_33412ab6e22c2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84ae465c-f394-4bba-81e6-5d6b56fee38d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

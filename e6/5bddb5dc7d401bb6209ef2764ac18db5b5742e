@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/Assignment.test.ts
+  s_b3ecdd88a67930::t_13c3d4edc88c56 25-43
+  s_b3ecdd88a67930::t_1b6354bbdd26f1 103-120
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.test.ts
+  s_b3ecdd88a67930::t_b59d16c4873644 388-415
+  s_b3ecdd88a67930::t_d1948f5634c817 300,304-309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e65bddb5dc7d401bb6209ef2764ac18db5b5742e",
+  "prompts": {},
+  "sessions": {
+    "s_b3ecdd88a67930": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc92b02e-23ce-4f50-95a7-b1c014f71311",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

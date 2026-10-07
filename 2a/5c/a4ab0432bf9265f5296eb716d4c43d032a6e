@@ -1,0 +1,48 @@
+packages/@n8n/permissions/src/scope-information.ts
+  h_435b1d7d3e52c0 105-108
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_f76d5384d236b1::t_d96535132b9c8e 45-46
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_f76d5384d236b1::t_168dd750ca8609 62-63
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.test.ts
+  s_f76d5384d236b1::t_08f7fd00f3eb96 719-723,728,733,742,749,759
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_435b1d7d3e52c0 2645-2646,2665-2666,2732-2735
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  h_435b1d7d3e52c0 10,15,36-37,40
+  s_66ec17bb218f51::t_5535cec16a42b7 32-35,38-39,41
+packages/frontend/editor-ui/src/features/roles/composables/useRoleEditorForm.ts
+  s_f76d5384d236b1::t_e337700ac4d08b 152
+  s_f76d5384d236b1::t_45de8676996093 26-31,40
+  s_f76d5384d236b1::t_b211d2d3959d23 80-82,86
+  s_f76d5384d236b1::t_2ed066ea6f176c 60-62,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2a5ca4ab0432bf9265f5296eb716d4c43d032a6e",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_66ec17bb218f51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b327817-a48b-48e8-a653-2b510ee2f155",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_f76d5384d236b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afb7fbb2-5840-493a-a894-b30042001f22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

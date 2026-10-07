@@ -1,0 +1,69 @@
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_18500f913373e6::t_65fc1bf055767a 521-561
+  s_18500f913373e6::t_77ff321951eaf4 2-3
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_18500f913373e6::t_0f0eb0504b6933 22-24,26-27
+  s_18500f913373e6::t_fa1359f7f78cea 6
+  s_18500f913373e6::t_7f8c8d517f4be9 25,28
+  s_18500f913373e6::t_1f260f6d668f60 65-67
+  s_18500f913373e6::t_60a39d55b878ab 7
+  s_18500f913373e6::t_7d25f0ea04dd86 31-32
+  s_18500f913373e6::t_6064e1e83cadbf 53-56
+  s_18500f913373e6::t_a5e1295ca4b309 44
+  s_18500f913373e6::t_fac88779f26d60 329,331
+  s_18500f913373e6::t_3f1af5000ba441 49-52,57-59,62,64
+  s_18500f913373e6::t_da2323afab38c2 301
+packages/nodes-base/credentials/common/aws/descriptions.ts
+  s_18500f913373e6::t_422730989f0953 2
+packages/nodes-base/credentials/common/aws/regions.ts
+  s_18500f913373e6::t_f94099ebfe1187 194
+  s_18500f913373e6::t_252c73309d836c 11
+  s_18500f913373e6::t_7472744948d2cc 1-10,12-193,195-206
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_18500f913373e6::t_ee5e1ca35e337b 284-301
+  s_18500f913373e6::t_568575a04243d7 211-219
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_18500f913373e6::t_00dd9e17bf2683 5
+  s_18500f913373e6::t_b031a9603a0f61 11
+  s_18500f913373e6::t_570ba50884c045 57
+  s_18500f913373e6::t_3b0bd16ada57a0 41-43
+  s_18500f913373e6::t_79a8a21ea73430 83
+packages/nodes-base/credentials/common/aws/types.ts
+  s_18500f913373e6::t_cc8d8922bd388a 1
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_18500f913373e6::t_5967d967df3ed5 8-9
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_18500f913373e6::t_385ce64a52ee00 9-10
+packages/nodes-base/credentials/common/aws/system-credentials-utils.test.ts
+  s_18500f913373e6::t_78a5f95cfb568e 881
+  s_18500f913373e6::t_54d6b4b4cc240c 979-1028
+  s_18500f913373e6::t_0f77b9262f3f6d 80-81
+  s_18500f913373e6::t_2fc97781164508 33-34
+  s_18500f913373e6::t_a06d6cc0bd08f9 835,872,911,941,959,976
+  s_18500f913373e6::t_44cdce79bfdb2a 100,113
+packages/nodes-base/credentials/common/aws/utils.ts
+  h_63d8ce7f01339b 2-3
+  s_18500f913373e6::t_f8054e080f7dc2 301
+  s_18500f913373e6::t_b8addc496e699c 18,20-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "0707a2e17a60c868ae7e6e516f5406ef768a8579",
+  "prompts": {},
+  "humans": {
+    "h_63d8ce7f01339b": {
+      "author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_18500f913373e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65e984b6-1287-439d-af4b-24e29ab8b9cd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

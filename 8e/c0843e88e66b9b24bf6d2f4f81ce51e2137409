@@ -1,0 +1,25 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a95b802c63e827::t_cd2ceaf849e2d7 7134-7135
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPromptSuggestions.test.ts
+  s_a95b802c63e827::t_20bb149c595478 10-13,56
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_a95b802c63e827::t_c5f207ba820a30 217,223,238-240,1048
+packages/frontend/editor-ui/src/features/ai/instanceAi/emptyStateSuggestions.ts
+  s_a95b802c63e827::t_2b13d3303bdee7 63-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ec0843e88e66b9b24bf6d2f4f81ce51e2137409",
+  "prompts": {},
+  "sessions": {
+    "s_a95b802c63e827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "024b92fa-6679-4dc3-94ec-5e701541da59",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

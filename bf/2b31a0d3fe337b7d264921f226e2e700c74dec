@@ -1,0 +1,32 @@
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_f3e0cf8bc1e610::t_10a82ec0cdd8b0 235
+  s_f3e0cf8bc1e610::t_3e30adf149c10d 20,45-46,51,88-90,94-96,100-102,106-108,112-115,119-122,126-128,132-134,138-140,144-146,150-152,163,169-170,222,224-234,236-239
+packages/@n8n/agents/src/__tests__/workspace/scoped-workspace.test.ts
+  s_f3e0cf8bc1e610::t_e1d2ba8addebe1 60-86
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_f3e0cf8bc1e610::t_d6c81140f26142 122,125,128,133-142
+  s_f3e0cf8bc1e610::t_4da1395598996f 143
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_f3e0cf8bc1e610::t_89652521173e90 48-51,57,74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bf2b31a0d3fe337b7d264921f226e2e700c74dec",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f3e0cf8bc1e610": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d29ad06f-d820-4c0a-a6df-11974076db34",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

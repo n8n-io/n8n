@@ -1,0 +1,19 @@
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_ee42d9b01b8d1f::t_bf8dbb19191173 99-103,105-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02e7a95104405f43f66ff9487ecdda54c8a1957c",
+  "prompts": {},
+  "sessions": {
+    "s_ee42d9b01b8d1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d647ce6a-2dc0-4fce-a2fc-9c07d717848c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

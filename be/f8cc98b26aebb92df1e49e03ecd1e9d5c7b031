@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_fab2dbf5ded45d::t_f8561f6b3b7642 495-496,499-528,532-536
+  s_fab2dbf5ded45d::t_c93edb130d68e9 477-479,685-686,688
+  s_fab2dbf5ded45d::t_ca6ead5d41fb4a 470
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_fab2dbf5ded45d::t_949a66e5112129 528,533,544
+  s_fab2dbf5ded45d::t_f06971be2b06e9 584-610
+  s_fab2dbf5ded45d::t_d89a13ac9462de 562-583
+  s_fab2dbf5ded45d::t_bf949bdf2f90d8 534
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "bef8cc98b26aebb92df1e49e03ecd1e9d5c7b031",
+  "prompts": {},
+  "sessions": {
+    "s_fab2dbf5ded45d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc83e-7c50-7f60-b884-4264bd2e1e15",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

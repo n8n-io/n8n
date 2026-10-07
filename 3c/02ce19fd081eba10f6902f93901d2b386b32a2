@@ -1,0 +1,38 @@
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_875055d503fc3d::t_192e332f653bce 79,105,133,139-141
+packages/cli/test/integration/scheduling/scheduled-job-lifecycle.test.ts
+  s_875055d503fc3d::t_3855237524608b 247,253,255-256,261
+  s_875055d503fc3d::t_2523b3071f825d 80-82
+  s_875055d503fc3d::t_3b5b5146687164 248-252,254,257-260,262-263
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_0f454de28694a3::t_887b2b9e58f9ab 107-112
+packages/cli/src/scheduling/seeded-cron.ts
+  s_875055d503fc3d::t_192e332f653bce 4-18
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_875055d503fc3d::t_194d19e62c134d 125-126,130,134,136,138,144-145
+  s_0f454de28694a3::t_684b91893fe64f 242-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c02ce19fd081eba10f6902f93901d2b386b32a2",
+  "prompts": {},
+  "sessions": {
+    "s_0f454de28694a3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cdda-18e0-7280-8ded-4ec0c3c7cf0c",
+        "model": "~openai/gpt-astra-latest"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_875055d503fc3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d142de32-c4da-4e81-9fa0-ea54f5c81e32",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

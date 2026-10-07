@@ -1,0 +1,44 @@
+packages/cli/src/modules/insights/insights-compaction.service.ts
+  s_5a21cbd8f9d3f2::t_7862e065db4f28 28-31
+  s_fb52b12ceafdd9::t_34fe8a4748cbc3 43,51,57-58
+  s_5a21cbd8f9d3f2::t_b6e2a775c52267 69-70,74,80-113
+  s_fb52b12ceafdd9::t_019c7462acd988 26-27
+  s_5a21cbd8f9d3f2::t_21a6aa6f328292 59,68,71-73,76-79
+packages/cli/src/modules/insights/insights.service.ts
+  s_5a21cbd8f9d3f2::t_ab4a84c62301c7 61
+  s_fb52b12ceafdd9::t_dfe2cf7a657204 59,66
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_5a21cbd8f9d3f2::t_88c74cdee88715 1131
+  s_5a21cbd8f9d3f2::t_73ea5e2246693f 1102-1108,1123-1127,1134-1146
+  s_5a21cbd8f9d3f2::t_7aa12bf063166b 1128-1130,1132-1133
+packages/cli/test/integration/insights/insights-vs-workflow-statistics.integration.test.ts
+  s_fb52b12ceafdd9::t_f897382820bbbe 101-104
+packages/cli/src/modules/insights/__tests__/insights-compaction.service.integration.test.ts
+  s_5a21cbd8f9d3f2::t_55c89a034167ad 405-406,449
+  ai_agent 491
+  s_5a21cbd8f9d3f2::t_bb03f5e79d0a84 383-385,397-404,407-448,450-490,492-493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a15cdb879420296a7d074b9e3d51e0291258963",
+  "prompts": {},
+  "sessions": {
+    "s_5a21cbd8f9d3f2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1726-c985-7ae3-ba55-ea619c3d508e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_fb52b12ceafdd9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d51e1ef6-c79e-4807-b7bf-0d40b25cfdc0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

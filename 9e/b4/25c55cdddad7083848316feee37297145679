@@ -1,0 +1,24 @@
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_af62986d6ef75e::t_8c0cb578400b19 2,9,23-24,34-48,555-648
+  s_af62986d6ef75e::t_01dae3b35a7a55 676
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_af62986d6ef75e::t_0f32b62f15f019 219-249
+  s_af62986d6ef75e::t_8340f35925aa8d 8-9,18,56-70,76,89,119-122,130-131,218
+  s_af62986d6ef75e::t_7be2a2e32a9c1b 250-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9eb425c55cdddad7083848316feee37297145679",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

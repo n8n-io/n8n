@@ -1,0 +1,21 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_7bb861bc24e503::t_be52595c1d35d9 1213-1215
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_7bb861bc24e503::t_87d7c3559f7891 1165-1181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c19567fa9e897b5d8939397fad8c9733b8fd92e3",
+  "prompts": {},
+  "sessions": {
+    "s_7bb861bc24e503": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1161c3ed-c11b-41b6-870e-4af130867645",
+        "model": "grok-4.5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

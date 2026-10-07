@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_af62986d6ef75e::t_57b85ef8e4304a 263-267
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_af62986d6ef75e::t_8e251a29a2c35e 292
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_af62986d6ef75e::t_b650432c848143 1133
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_af62986d6ef75e::t_7820a0e54477c5 1525
+  s_af62986d6ef75e::t_7b4d67d1fd6ec6 1169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3c6a0da0dccfdedfd8888ab727ac494a8a60e374",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

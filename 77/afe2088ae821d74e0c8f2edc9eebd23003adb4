@@ -1,0 +1,37 @@
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_d424aeb396dd2f::t_4f7cccb1d87cc8 420,426,428,430-433
+  h_32d8cd6a0d6aad 427,429
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  s_d424aeb396dd2f::t_90dbca0ce9c58d 436-437
+packages/nodes-base/nodes/Schedule/test/ScheduleTrigger.node.test.ts
+  s_d424aeb396dd2f::t_056e8a16819098 28,37-38
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_d424aeb396dd2f::t_030193d8ec9a8d 404-405,414-419
+  s_d424aeb396dd2f::t_0852c2e3f504c6 409-413
+  s_d424aeb396dd2f::t_c8f29bca6feabe 504
+  s_d424aeb396dd2f::t_93cd4567ae7bdc 543
+  s_d424aeb396dd2f::t_89b42a3cf83631 593
+  s_d424aeb396dd2f::t_b0a5f078510c08 627
+  s_d424aeb396dd2f::t_8ede67e4571842 399-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "77afe2088ae821d74e0c8f2edc9eebd23003adb4",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d424aeb396dd2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93cfef2c-46ff-40fc-b927-4d54e1df681c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

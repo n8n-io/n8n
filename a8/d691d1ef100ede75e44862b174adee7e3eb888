@@ -1,0 +1,151 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderTelemetry.test.ts
+  s_37b5f645225d08::t_0024572a39873c 140-164
+  s_37b5f645225d08::t_ebcb8dd6e10dae 3
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_37b5f645225d08::t_b42414efa374a4 65
+  s_37b5f645225d08::t_b42eddc8489fa4 278,284,290-294
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_37b5f645225d08::t_c641f43a4de35b 265-270,284,287
+  s_f35e98570d6579::t_c9c5d29b09dc44 288
+packages/@n8n/telemetry/src/events/agents.ts
+  s_37b5f645225d08::t_a369367b17dc4e 223-228
+packages/frontend/editor-ui/src/features/agents/composables/useAgentModelCredentials.ts
+  s_37b5f645225d08::t_4b7c8aecfa9afb 10
+  s_37b5f645225d08::t_4778dcaf637c16 44-45
+  s_37b5f645225d08::t_b58268a31171c5 72
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_37b5f645225d08::t_239b48cc05ac97 8-9
+  s_37b5f645225d08::t_15d279e54d7b82 62,69
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_37b5f645225d08::t_4df686b3ec1513 365-368
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_37b5f645225d08::t_0b95481f829dbc 913-934
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_37b5f645225d08::t_0e410ba3aad149 113-129
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_37b5f645225d08::t_c7e320f915cffe 40-51,54-63,68
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_37b5f645225d08::t_595bc09f67698b 31-33
+  s_37b5f645225d08::t_7cda663751d023 142,146-148,161
+  s_37b5f645225d08::t_5d11e28bd4579d 122
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_37b5f645225d08::t_8c7e7548fbb880 817-833
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_37b5f645225d08::t_8d1a56ff11dd0a 225-238
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.test.ts
+  s_37b5f645225d08::t_7de5157ea59381 1955,1992,2050,2096,2170,2206,2246,2291
+  s_37b5f645225d08::t_cb0574a48dd385 93
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_37b5f645225d08::t_4c985bb55f3f01 176
+  s_37b5f645225d08::t_fad89260fe47b0 498-500
+  s_37b5f645225d08::t_ba93cb30361687 380-382
+  s_37b5f645225d08::t_ecab4d1e03f3b3 140
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_37b5f645225d08::t_d9e63f9343acd0 14-19
+packages/cli/src/services/ai-gateway.service.ts
+  s_37b5f645225d08::t_93e7a0e1839b64 1-5
+  s_37b5f645225d08::t_665032db50f2ce 357-359
+  s_37b5f645225d08::t_d520aa3c3a5101 387-394,400-402
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_37b5f645225d08::t_f39a502067c092 202-204
+  s_37b5f645225d08::t_7e81cf14d76973 162-169
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_37b5f645225d08::t_5dec888e605276 17
+  s_37b5f645225d08::t_955e554d6f3da9 56
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_37b5f645225d08::t_512850ab4ecd47 24-30
+  s_37b5f645225d08::t_f5aa59250961e9 117
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_37b5f645225d08::t_bb3d7fd127a1fb 21,25-28
+  s_37b5f645225d08::t_1359583073d59b 4
+  s_37b5f645225d08::t_052d6bb710ae8b 31-37
+  s_37b5f645225d08::t_7fc3bde72b027f 30
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_37b5f645225d08::t_ca80fa829fe5bb 77-78,84
+  s_37b5f645225d08::t_c9567630027991 79-83,85
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_37b5f645225d08::t_8fd608d4c0d902 73-78
+  s_37b5f645225d08::t_2bcde5712fbf03 25-52
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_37b5f645225d08::t_99862714cfce47 13
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts
+  s_37b5f645225d08::t_e1b51279843848 202
+  s_37b5f645225d08::t_5eb02cba28630a 96-105
+  s_37b5f645225d08::t_48daa235fbabcc 35-38,41-51
+  s_f35e98570d6579::t_63abab8165959d 95
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_37b5f645225d08::t_85e17e94479f28 57-60,63-66
+  s_37b5f645225d08::t_3f2d900d8bb85e 51-53
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_37b5f645225d08::t_f2e61716fc027d 3
+  s_37b5f645225d08::t_b67d40e3585f48 13-17
+  s_37b5f645225d08::t_d661646fad5100 153-155,163
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_37b5f645225d08::t_d852d3204cc79b 28-43,45
+  s_37b5f645225d08::t_2d3747b652d20b 5
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_37b5f645225d08::t_1bbebf1608f1fc 35-39,41-53,65
+  s_37b5f645225d08::t_3d9d9f478f2222 23-24
+  s_37b5f645225d08::t_31d684ce789178 1
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_37b5f645225d08::t_b359b4b0c55f19 18
+  s_37b5f645225d08::t_d7b946e7e768bd 215
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_37b5f645225d08::t_6b8081d239cf2b 3
+  s_37b5f645225d08::t_e49a361193beb4 93-95,97
+  s_37b5f645225d08::t_2a5f035f6ab2a4 20
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentModelCredentials.test.ts
+  s_37b5f645225d08::t_f7136d28a6c4ac 35
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_37b5f645225d08::t_abca21773c9409 5060
+packages/frontend/editor-ui/src/app/composables/useAiGateway.ts
+  s_37b5f645225d08::t_5f8247bb14db47 66
+  s_37b5f645225d08::t_0a60bf2d9c4e44 28-30
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_37b5f645225d08::t_8bebdd96940852 82
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_37b5f645225d08::t_22c6f300723bfc 557-558
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_37b5f645225d08::t_667903ae97fc66 1626,1662,1698,1739
+  s_37b5f645225d08::t_79b8b2be01aae8 1507,1539
+  s_37b5f645225d08::t_f11c9fe47785a8 1430,1883
+  s_37b5f645225d08::t_cabcf65b86685a 55
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_37b5f645225d08::t_1920b60c890b26 247-251
+  s_37b5f645225d08::t_4a07d8e7f7cabb 232
+  s_37b5f645225d08::t_ba8c65302528c5 254,264-280
+  s_37b5f645225d08::t_9448037d6a0786 337-338
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_37b5f645225d08::t_8101b3627c17ad 617-620
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_37b5f645225d08::t_b4d2738ce41af6 196
+  s_37b5f645225d08::t_13ef95884d6244 451-453
+  s_37b5f645225d08::t_70a204f334e4c0 322-326
+  s_37b5f645225d08::t_03c827a40746dc 240-244,246,251-256
+  s_37b5f645225d08::t_925e8407fad2f2 114-119
+  s_37b5f645225d08::t_99a39615f5e356 373-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "a8d691d1ef100ede75e44862b174adee7e3eb888",
+  "prompts": {},
+  "sessions": {
+    "s_37b5f645225d08": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e5d34889-60fe-4c80-aa8f-5be55062b91f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f35e98570d6579": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1c151d1f-ed33-443b-9372-01a177422d31",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/@n8n/db/src/migrations/common/1788445119184-CreateCentralInstanceMonitoringReportTable.ts
+  s_0f006abfc5eb55::t_d1e6ff7ca97968 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6b861575111cbc42593fef39f3c62148dd6d69df",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0f006abfc5eb55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6bea28d-da58-438d-ba56-d6b975fc28d2",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

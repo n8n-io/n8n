@@ -1,0 +1,30 @@
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_857a488778ec6e::t_4a52fbf7996add 90-100,156
+  s_857a488778ec6e::t_595613bf117f4e 63,157
+  s_857a488778ec6e::t_52d4ab77bf5462 143-146
+packages/@n8n/agents/src/runtime/__tests__/runtime-helpers.test.ts
+  s_857a488778ec6e::t_7cf54f2ed9fa5e 22,28
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_857a488778ec6e::t_595613bf117f4e 971-979,983-984
+  s_857a488778ec6e::t_3843aaab9bd619 980-982,989-1002,1004-1020
+  s_857a488778ec6e::t_7cf54f2ed9fa5e 896-906,941-969,985-988,1003,1021
+  s_857a488778ec6e::t_1f3fd0c4cb3a70 970
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_857a488778ec6e::t_4a52fbf7996add 15,973
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "497644ab9d699e9e2fd2ff5815fb1b2998f840ec",
+  "prompts": {},
+  "sessions": {
+    "s_857a488778ec6e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af84-5a3f-7ed3-a5be-70870728c288",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

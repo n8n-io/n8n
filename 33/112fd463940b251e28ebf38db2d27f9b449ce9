@@ -1,0 +1,54 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_c7f2eb05574ce2::t_cb4a7b6aef8d16 107-137,194
+  s_c7f2eb05574ce2::t_00ea845ffd7ef8 178-193
+  s_c7f2eb05574ce2::t_4b711ab798cec7 3,5,14,17,28,44-46,51-72,140
+  s_c7f2eb05574ce2::t_19e3557a597412 235-240
+  s_c7f2eb05574ce2::t_e2bf4397b2aefa 73
+  s_c7f2eb05574ce2::t_22d37d257b0a87 138-139
+  s_c7f2eb05574ce2::t_507a95c6fb86ff 141
+  s_c7f2eb05574ce2::t_ddb40a3717c8e5 195
+  s_c7f2eb05574ce2::t_e7e31b99dfb2f4 241
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_c7f2eb05574ce2::t_0759c7a798e271 225-229,231-244,246-252,255-280,282-295
+  s_c7f2eb05574ce2::t_4bc3cca47fa98a 281
+  s_c7f2eb05574ce2::t_81dde89a604de4 59-61,76-78
+  s_c7f2eb05574ce2::t_52c22bfe24eb4c 93-110
+  s_c7f2eb05574ce2::t_aa9288a424e0fe 296,349-440
+  s_c7f2eb05574ce2::t_41f2389f73a5ad 3,8,12,17,20,29,38-43
+  s_4e81021c6567f0::t_b1728bcd115f19 44,297-298,441-442
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_c7f2eb05574ce2::t_517a23d3ab9ce7 471-596,599
+  s_c7f2eb05574ce2::t_2ef3c76e36121d 126-188
+  s_c7f2eb05574ce2::t_444fe5727edc9d 14,18
+  s_c7f2eb05574ce2::t_cefba85dcb72a5 40,47
+  s_c7f2eb05574ce2::t_792db8eedd672e 597-598
+  s_c7f2eb05574ce2::t_fcae7af59b401f 600-601
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_c7f2eb05574ce2::t_6be1a73f2a759d 26-35
+  s_c7f2eb05574ce2::t_ceee2259a6e675 1-5
+  s_c7f2eb05574ce2::t_4833e446d780c6 36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "33112fd463940b251e28ebf38db2d27f9b449ce9",
+  "prompts": {},
+  "sessions": {
+    "s_4e81021c6567f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "013ede52-1858-4647-bc13-cff498ab7a24",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

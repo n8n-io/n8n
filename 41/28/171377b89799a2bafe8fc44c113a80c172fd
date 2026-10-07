@@ -1,0 +1,86 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/get.test.ts
+  s_6a7d5f1a01d9ec::t_a0bec7a1efef6a 1-26
+  s_6a7d5f1a01d9ec::t_7b5bbb191844f2 1-26
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/get.validation.test.ts
+  s_6a7d5f1a01d9ec::t_53d352a405979e 1-66
+  s_aa4dc5d9a1db02::t_aa5cf9959bbacf 1-19,21-66
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/get.workflow.json
+  s_6a7d5f1a01d9ec::t_e7593f270db191 1-75
+  s_6a7d5f1a01d9ec::t_7b5bbb191844f2 1-75
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.clamp.test.ts
+  s_6a7d5f1a01d9ec::t_e87d9d483254a9 1-55
+  s_6a7d5f1a01d9ec::t_cab60ed5c93796 1-20,22-55
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.test.ts
+  s_6a7d5f1a01d9ec::t_4f9508d2529b3e 1-31
+  s_6a7d5f1a01d9ec::t_1906d4028e682d 1-31
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chat/getAll.workflow.json
+  s_6a7d5f1a01d9ec::t_192193856ac8c7 1-67
+  s_6a7d5f1a01d9ec::t_1906d4028e682d 1-67
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_6a7d5f1a01d9ec::t_5a843fb4a13245 85-104
+  s_6a7d5f1a01d9ec::t_4f0ac340d5e0fc 85-104
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_6a7d5f1a01d9ec::t_64b33c9db01e25 48
+  s_6a7d5f1a01d9ec::t_4f0ac340d5e0fc 48
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/get.operation.ts
+  s_6a7d5f1a01d9ec::t_e665f4a7d1fc74 1-46
+  s_6a7d5f1a01d9ec::t_a60a963e8cb119 1-29,31-46
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/getAll.operation.ts
+  s_6a7d5f1a01d9ec::t_bb8bcbb2c31a31 1-49
+  s_6a7d5f1a01d9ec::t_a60a963e8cb119 1-28,30-32,34-35,38-49
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/index.ts
+  s_6a7d5f1a01d9ec::t_bc19431b76f67c 1-55
+  s_6a7d5f1a01d9ec::t_a60a963e8cb119 1-55
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/sharedGuard.ts
+  s_6a7d5f1a01d9ec::t_7bd18c80b89d2c 1-24
+  s_6a7d5f1a01d9ec::t_79e0fa455a8a11 1-24
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/create.operation.ts
+  s_6a7d5f1a01d9ec::t_7fe8dd4026a8e7 9,80
+  s_6a7d5f1a01d9ec::t_98b94467d595f8 9,80
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/get.operation.ts
+  s_6a7d5f1a01d9ec::t_d273847e9a883d 7,39
+  s_6a7d5f1a01d9ec::t_98b94467d595f8 7,39
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/getAll.operation.ts
+  s_6a7d5f1a01d9ec::t_692035efb0278b 8,28
+  s_6a7d5f1a01d9ec::t_98b94467d595f8 8,28
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/sendAndWait.operation.ts
+  s_6a7d5f1a01d9ec::t_1653aa102af7a3 10,37
+  s_6a7d5f1a01d9ec::t_98b94467d595f8 10,37
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/sharedGuard.ts
+  s_6a7d5f1a01d9ec::t_0e9ccc3a5cac39 13
+  s_6a7d5f1a01d9ec::t_98b94467d595f8 13
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_6a7d5f1a01d9ec::t_d46e7cbb42608b 6
+  s_6a7d5f1a01d9ec::t_62e1baed532cdc 6
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/router.ts
+  s_6a7d5f1a01d9ec::t_eb5271db55c839 12,69-71
+  s_6a7d5f1a01d9ec::t_62e1baed532cdc 12,69-70
+  s_6a7d5f1a01d9ec::t_10bc7a58e22aeb 71
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/versionDescription.ts
+  s_6a7d5f1a01d9ec::t_2ba5dff41bf741 6,74,99-102,125
+  s_6a7d5f1a01d9ec::t_62e1baed532cdc 6,74,99-102,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4128171377b89799a2bafe8fc44c113a80c172fd",
+  "prompts": {},
+  "sessions": {
+    "s_6a7d5f1a01d9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a07b1d9-b11c-42d1-9e09-61ac14d5005c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_aa4dc5d9a1db02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3be6a95-6503-4192-954e-1d5f96c876b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

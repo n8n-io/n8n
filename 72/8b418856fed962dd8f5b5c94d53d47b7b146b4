@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b3870ba058e6f8::t_996781f05d7557 102-103,107,109
+packages/cli/src/modules/n8n-packages/__tests__/export-project-to-directory.integration.test.ts
+  s_b3870ba058e6f8::t_996781f05d7557 4
+packages/cli/src/modules/n8n-packages/io/directory/directory-package-writer.ts
+  s_b3870ba058e6f8::t_996781f05d7557 22,33,35,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "728b418856fed962dd8f5b5c94d53d47b7b146b4",
+  "prompts": {},
+  "sessions": {
+    "s_b3870ba058e6f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c9d-04e1-71b1-bad6-f92565fc72f2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

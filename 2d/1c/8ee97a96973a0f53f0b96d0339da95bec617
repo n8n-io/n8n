@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/variables/variable-write-public.dto.ts
+  s_a4b6e25f647aa9::t_a302f4ec33880b 16,19,27,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d1c8ee97a96973a0f53f0b96d0339da95bec617",
+  "prompts": {},
+  "sessions": {
+    "s_a4b6e25f647aa9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c0c918b-4350-4608-9acf-5bd3def6ca7b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

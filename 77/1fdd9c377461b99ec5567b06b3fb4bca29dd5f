@@ -1,0 +1,61 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_d4538605bb58de::t_d4852edd674a54 995-1001,1003-1004,1013,1017-1021,1136
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_d4538605bb58de::t_e2336469f93fa7 154,167-168
+  s_d4538605bb58de::t_eb4da91f7f2b0c 26,45,64,82,102,120,137,157,174,191
+packages/frontend/editor-ui/src/features/execution/executions/views/WorkflowExecutionsView.vue
+  ai_agent 321-324
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsList.vue
+  ai_agent 232-235
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.ts
+  s_d4538605bb58de::t_75099028d6a31d 11,64-66,71,162-163,165-173,182,187-188,191,194,199-201,203,236,356-358,378
+packages/cli/src/executions/execution.types.ts
+  s_d4538605bb58de::t_48df79fe206766 8
+packages/cli/src/executions/parse-range-query.middleware.ts
+  s_d4538605bb58de::t_a2bad39a74b032 2,10-11,22
+  s_d4538605bb58de::t_cc8457432f469c 1,34,60,63
+  s_d4538605bb58de::t_3434298b87e935 26-33,37,53-58
+packages/@n8n/api-types/src/index.ts
+  s_d4538605bb58de::t_d4852edd674a54 758-759,761
+  s_d4538605bb58de::t_2f281d83591e05 762
+packages/@n8n/db/src/entities/types-db.ts
+  s_d4538605bb58de::t_d4852edd674a54 240-241,255
+packages/@n8n/api-types/src/dto/executions/execution-list-pagination.ts
+  s_d4538605bb58de::t_d4852edd674a54 1-8
+packages/@n8n/api-types/src/dto/executions/compare-execution-list-items.ts
+  s_667c164ac76678::t_611b22b1dd03fe 3-6,10-11
+  s_d4538605bb58de::t_2f281d83591e05 1-2,7-9,12-18
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.test.ts
+  s_d4538605bb58de::t_e2336469f93fa7 83,119-120,128,195,228
+  s_d4538605bb58de::t_d324e04f69a594 140-151,158-169,176-178,183-184,189-192
+  ai_agent 152-157,170-175,179-182,185-188
+packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts
+  s_d4538605bb58de::t_75099028d6a31d 10,87
+packages/cli/src/executions/execution-cursor.ts
+  s_d4538605bb58de::t_2f281d83591e05 1-14,16-28,32-40
+  s_667c164ac76678::t_afe573cbf0de1a 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "771fdd9c377461b99ec5567b06b3fb4bca29dd5f",
+  "prompts": {},
+  "sessions": {
+    "s_667c164ac76678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a89ab19d-2c3d-40c2-95b1-da7a385e51d0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_d4538605bb58de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07d32-9dcb-7211-9690-77633250ea37",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

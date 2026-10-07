@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/analyze-result.test.ts
+  h_a348dde7c02e89 2-6,333-372
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  h_a348dde7c02e89 33-52,519-520,524-528
+packages/@n8n/instance-ai/src/tools/orchestration/verification/scripted-gate-run.ts
+  h_a348dde7c02e89 11,186-190
+packages/@n8n/instance-ai/src/types.ts
+  h_a348dde7c02e89 168-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "65e8c82da04c2562def7f95d2e3d47a9d201aaef",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

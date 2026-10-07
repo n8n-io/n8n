@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.perItem.test.ts
+  s_14f52ab61740a5::t_c3ba675f6178f9 25
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_14f52ab61740a5::t_c3ba675f6178f9 32,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2538b02175a1c73c91df70c432548444ab3887b3",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

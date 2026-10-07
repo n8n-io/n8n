@@ -1,0 +1,38 @@
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/azure-key-vault.test.ts
+  s_dfe877659fb524::t_340b40cde63864 1
+  s_dfe877659fb524::t_2ed01595ccb34b 22
+  s_dfe877659fb524::t_af5f2b326eb4bc 214,217,242,277,316,343,389
+  s_dfe877659fb524::t_a58b13b5d0c913 15-21,23-25
+  s_dfe877659fb524::t_7ebc376310aac8 105,121,137,153,215
+  s_dfe877659fb524::t_87a694526067c1 100-104,106-120,122-136,138-152,154-169,171-192,194-213
+  s_dfe877659fb524::t_77c0e5a8be06d6 170,193
+packages/cli/src/modules/external-secrets.ee/providers/azure-key-vault/azure-key-vault.ts
+  s_dfe877659fb524::t_8a72f24f4adc32 61,66-67,72-73
+  s_dfe877659fb524::t_7ae0828d99951f 182-183,189-191
+  s_dfe877659fb524::t_c14e840cf3a031 192,222
+  s_dfe877659fb524::t_9a135e92bf87c7 80
+  s_dfe877659fb524::t_a73f381240e88d 8
+  s_dfe877659fb524::t_e73015d5876239 52-60,62-65,68-71,74-79,81-85,95-128
+  s_dfe877659fb524::t_3355f555f0e743 205-221
+  s_dfe877659fb524::t_5b99a1d34b43d4 25-44
+packages/cli/src/modules/external-secrets.ee/providers/azure-key-vault/types.ts
+  s_dfe877659fb524::t_1c3c833bca0f8f 3-4,10-12
+packages/frontend/editor-ui/src/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue
+  s_dfe877659fb524::t_99cda1746d96c4 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8c8c10814f566c1306415e62bdb68a22a86cc048",
+  "prompts": {},
+  "sessions": {
+    "s_dfe877659fb524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22ff56d8-f7a8-4ea6-8ec5-db38a92afc56",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

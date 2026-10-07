@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/NodeIssueItem.vue
+  s_8ab5ba2d436c6d::t_7774ace7fa2210 71-72,80
+  s_82029241289295::t_40ee3d5374f1b6 81
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/NodeIssueItem.test.ts
+  s_8ab5ba2d436c6d::t_3884dfec51fb22 71-74,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b8c67ef99743bdf1c6fb9281a9ee378a1576b3a3",
+  "prompts": {},
+  "sessions": {
+    "s_82029241289295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff8bef7-44df-43fc-b7fe-52a1f3a099b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_8ab5ba2d436c6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3eacd850-21bb-4125-8c8c-5fb63227eeac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

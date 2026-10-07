@@ -1,0 +1,25 @@
+packages/cli/src/__tests__/utils.test.ts
+  s_f2d91d9bbf88d6::t_56388f9656fc92 2,11,14-54
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_f2d91d9bbf88d6::t_50c4fdf9eff235 22,24,944-1064
+packages/cli/src/scaling/job-processor.ts
+  s_f2d91d9bbf88d6::t_6264ea1d63c0cd 48,360-363,365-376
+packages/cli/src/utils.ts
+  s_f2d91d9bbf88d6::t_9295eca7948378 168-170,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dcd743c1dbf78b1695566bc8949ba9be82812df3",
+  "prompts": {},
+  "sessions": {
+    "s_f2d91d9bbf88d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f2d91d9bbf88d6",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

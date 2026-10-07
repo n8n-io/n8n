@@ -1,0 +1,25 @@
+packages/cli/src/modules/instance-ai/suspended-thread-persistence.service.ts
+  s_2e049f96149808::t_a8bbc0ece04aa1 32-33
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_2e049f96149808::t_23f9176bb10ba9 173-188
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_2e049f96149808::t_04a0a72e86d45a 465-466
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_2e049f96149808::t_4b0cc47d8e7b3d 101-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0d991ccf40c07c71227e669016adc2b908218d5",
+  "prompts": {},
+  "sessions": {
+    "s_2e049f96149808": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e56d8974-d525-45a0-96bd-34a22f48a9e3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

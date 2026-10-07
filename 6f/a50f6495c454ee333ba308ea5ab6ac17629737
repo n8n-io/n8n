@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_782619aac31c26::t_f9d65bcf572a92 14-17
+  s_782619aac31c26::t_aab4469b2577fa 131-134,138-147
+  s_782619aac31c26::t_29ee32ed0218fa 135-137,295,935,963-964,994-995,1025,1049,1075,1099,1114,1169-1170,1203,1232,1265,1305-1306,1356,3294
+packages/cli/test/integration/agents/agent-resource.repository.test.ts
+  s_782619aac31c26::t_a60d57e06e7103 1-52
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_782619aac31c26::t_56fecc4a4434af 210-212
+  s_782619aac31c26::t_18e12f219eaf68 20
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_782619aac31c26::t_a8adfb89b58646 622-623
+  s_782619aac31c26::t_a6622a1df1ad7b 26
+  s_782619aac31c26::t_038f69fd80b2e8 574-576
+  s_782619aac31c26::t_7c5d84889ee041 60-61
+  s_782619aac31c26::t_074c7bbaca9703 565
+  s_782619aac31c26::t_774cb01ea64405 591-592,600
+  s_782619aac31c26::t_4ee23003df71d5 612
+packages/cli/src/modules/agents/repositories/agent-resource.repository.ts
+  s_782619aac31c26::t_ebb405995af905 3-4,8-16,32-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6fa50f6495c454ee333ba308ea5ab6ac17629737",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

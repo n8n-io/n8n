@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_173fa657832f46::t_908b33a247139f 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c3eaef515322be66ce5a37cda28c485c3e24cf25",
+  "prompts": {},
+  "sessions": {
+    "s_173fa657832f46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08157-e938-7c02-8009-0537c94a87cc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

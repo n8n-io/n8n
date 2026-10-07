@@ -1,0 +1,118 @@
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_c491120e42f4d5::t_404bf6b6f4d387 13,946-950,955-956,958-962,964-970,1155-1160
+  s_f419c111b5246b::t_0b4456a54510e4 963
+packages/@n8n/instance-ai/evaluations/data/workflows/webhook-test-url-listener-before-publish.json
+  s_c491120e42f4d5::t_4f960b42b03e10 1-23
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_c491120e42f4d5::t_99cba486937a42 210-211
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  s_c491120e42f4d5::t_99cba486937a42 12-13,23
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_c491120e42f4d5::t_1a9fe3424ee47e 173,176-178,405-409,1755,1765-1767,1799,2098-2109,2206-2299,2301-2324,2326-2327
+  s_f419c111b5246b::t_f29d63d729d615 2300
+packages/cli/src/webhooks/__tests__/test-webhook-registrations.service.test.ts
+  s_c491120e42f4d5::t_64d9fa97b94043 41-43,45-51
+  s_c491120e42f4d5::t_5bc438b74b2eb5 44
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_c491120e42f4d5::t_99cba486937a42 728
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_c491120e42f4d5::t_25ffe5a1ac33e6 539-540,709-716,808-810,812,847
+  s_f419c111b5246b::t_951ad67c49c31f 811
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-test-listener.spec.ts
+  s_c491120e42f4d5::t_c12f5b8e293d43 60-63
+  s_c491120e42f4d5::t_4f960b42b03e10 89
+  s_c491120e42f4d5::t_7487584ceafca5 1-59,64-88,90-95
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c491120e42f4d5::t_99cba486937a42 725-728,961-962,2810-2811
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_c491120e42f4d5::t_ddfd4c096005c8 248,251-252
+  s_c491120e42f4d5::t_4f960b42b03e10 23,238-247,249-250,253-271
+packages/@n8n/instance-ai/src/types.ts
+  s_c491120e42f4d5::t_6ec8c9b27ae197 168-173,524-545,596-612,2039-2042
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/analyze-result.test.ts
+  s_c491120e42f4d5::t_64d9fa97b94043 2-6,333-370
+  s_c491120e42f4d5::t_f93249ad58696c 371-372
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_c491120e42f4d5::t_99cba486937a42 19-20,50-62,65-66,237-238,253
+packages/@n8n/instance-ai/src/tools/orchestration/verification/scripted-gate-run.ts
+  s_c491120e42f4d5::t_b96771117494ae 11
+  s_c491120e42f4d5::t_7da0b7179fd610 186-190
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_c491120e42f4d5::t_4f960b42b03e10 113-115
+  s_c491120e42f4d5::t_64d9fa97b94043 21,105-112
+  s_c491120e42f4d5::t_5ac9e463d9af8b 116-117
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_c491120e42f4d5::t_7487584ceafca5 10,61-71,760-852
+  s_c491120e42f4d5::t_d243aceaf0eed4 853-854
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_c491120e42f4d5::t_b96771117494ae 410,431,647-693,828-835,837-838
+  s_c491120e42f4d5::t_35973c21d5759f 395-401
+  s_c491120e42f4d5::t_4a70bf0f63f51b 7,10,46,391-394,402-409,411-430,432
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_c491120e42f4d5::t_4f960b42b03e10 183-188
+  s_c491120e42f4d5::t_7487584ceafca5 174-182,189-190
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_c491120e42f4d5::t_25ffe5a1ac33e6 12,359,404
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c491120e42f4d5::t_99cba486937a42 6973-6975
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_c491120e42f4d5::t_4f960b42b03e10 4508-4510,4521
+  s_c491120e42f4d5::t_ee014b7084ec53 4296,4310-4321,4324-4325,4327,4338-4507,4511-4520,4522-4530,4536-4546
+  s_c491120e42f4d5::t_3304a2b78f7da5 115,1268-1272,4212-4215,4221-4223,4239-4246,4267
+  s_f419c111b5246b::t_23a6592801d0a2 4326,4547
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_c491120e42f4d5::t_64d9fa97b94043 659-665,667-717
+  s_f419c111b5246b::t_95938dca0fcfd0 666
+packages/cli/src/webhooks/test-webhooks.ts
+  s_c491120e42f4d5::t_41a910adcdce6d 21,405-406,419,452-453,538,544
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_c491120e42f4d5::t_b384d1dcf1f9a0 824-829
+  s_c491120e42f4d5::t_64d9fa97b94043 705-733,735-763,765-788,790-817,820-823,830,833-836,847-894
+  s_c491120e42f4d5::t_05c89a1af7aeef 818-819,831-832,837-846
+  s_f419c111b5246b::t_acac320473d30e 734,764,789
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_c491120e42f4d5::t_404bf6b6f4d387 635,791,1456-1459
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_c491120e42f4d5::t_7da0b7179fd610 33-52,506-507,511-515
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_c491120e42f4d5::t_ddfd4c096005c8 140
+  s_c491120e42f4d5::t_1066efdf688848 2,10,133-139,141-142,153,163,169-170,173-176,180,232-243,245,247,249,262,304,306-307,309,312,314-333,338,341-346,350,357-391,393-394,408-455,491,494,500-504,518-519
+  s_c491120e42f4d5::t_05c89a1af7aeef 177-179,395-407
+  s_f419c111b5246b::t_0d2290b7288a39 308,392
+packages/@n8n/api-types/src/index.ts
+  s_c491120e42f4d5::t_25ffe5a1ac33e6 357
+packages/cli/src/webhooks/test-webhook-registrations.service.ts
+  s_c491120e42f4d5::t_41a910adcdce6d 54-57,80-83
+packages/@n8n/instance-ai/docs/tools.md
+  s_c491120e42f4d5::t_385257a543005c 529,574-593
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_c491120e42f4d5::t_fb66243c9ef7a0 243-255
+packages/@n8n/instance-ai/skills/progressive-building/SKILL.md
+  s_c491120e42f4d5::t_68aa923261a105 67-72
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_c491120e42f4d5::t_9035ec3d854354 961-964,987-988
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5d099faaa25c15ec71d7e4a7d6a3d84149a1c189",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f419c111b5246b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59d49e7-b86b-4d3d-b74b-81189cfd7e22",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

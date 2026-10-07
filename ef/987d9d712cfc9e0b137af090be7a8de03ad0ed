@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_98cf123401c046::t_40ea2ae1f38a12 159-163,1620
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_98cf123401c046::t_40ea2ae1f38a12 45-46,272
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_98cf123401c046::t_40ea2ae1f38a12 139,170,293-308
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPermissions.test.ts
+  s_98cf123401c046::t_40ea2ae1f38a12 110-140
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPermissions.ts
+  s_98cf123401c046::t_40ea2ae1f38a12 7-8,12-20,39-43,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef987d9d712cfc9e0b137af090be7a8de03ad0ed",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_98cf123401c046": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd44f34-8e05-442d-aa1b-26697eaed220",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

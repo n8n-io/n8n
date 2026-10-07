@@ -1,0 +1,14 @@
+packages/cli/src/__tests__/credentials-helper.test.ts
+  h_435b1d7d3e52c0 1224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "503a6398df191d47ecb7d35e868ab73edf7a3914",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

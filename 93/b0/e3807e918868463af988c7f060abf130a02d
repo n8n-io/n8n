@@ -1,0 +1,105 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-9,11-13,16-31,33-35,37,53-77,80-89,92-109,127,131-146,150-157,161-166,180-182,199,248-259,271,281-282,330-365,378,382-383,385,389-402,410-411,440,458,408,376,149
+  s_f3c9e6db456d8f::t_215638f4be1e5f 10
+  s_f3c9e6db456d8f::t_2a2c426e89a273 14
+  s_f3c9e6db456d8f::t_8e341613919eae 32
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 36
+  s_f3c9e6db456d8f::t_546f61ee1155e0 38-40
+  s_f3c9e6db456d8f::t_489963625ad545 42-52,183-188,283-284
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 110-112,114-117
+  s_f3c9e6db456d8f::t_715b40c294a666 120-126,128-130
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 189-198,200-211
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 266,274
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 275-277,297-305,323-324
+  s_f3c9e6db456d8f::t_495bf9bc203fff 278,290-294
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 366-367,368-370,372,374-375,379-380
+  s_f3c9e6db456d8f::t_1e453de502744e 386,388
+  s_05cd7ab5f956cf::t_35616ad850b841 387
+  s_f3c9e6db456d8f::t_40d80601d668de 403-404,91,405-407,409,377
+  s_f3c9e6db456d8f::t_b923d23f7ad7e1 446
+  h_7555c3ee6524cf 306,308,312,314,318-322,325-326
+  s_05cd7ab5f956cf::t_d576ddf1e82633 307,313,317
+  s_05cd7ab5f956cf::t_a89fd654b5e082 309-310,315-316
+  s_f3c9e6db456d8f::t_341d441fc1aa70 90
+  s_f3c9e6db456d8f::t_bfe4881e1ecc7b 236
+  s_bfe6a865a3bf73::t_e9293ef5a348ba 167-179
+  s_f3c9e6db456d8f::t_b908cf851754d0 212-214
+  ai_agent 215-218,221-235,238-247,147
+  s_f3c9e6db456d8f::t_173aa9faa6c0c2 268-270
+  s_f3c9e6db456d8f::t_0758910a50cc74 373,381
+  s_f3c9e6db456d8f::t_4ce1ef0cd4469b 415,419
+  s_f3c9e6db456d8f::t_ee8ffe0dde1b9c 425-428,434-435,438-439,443-444,449,452
+  s_f3c9e6db456d8f::t_41d81852c0cb47 15
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_f3c9e6db456d8f::t_524d20aeb36dd8 41-45
+  s_f3c9e6db456d8f::t_778edbc2d838b3 57
+  h_7555c3ee6524cf 180,241
+  s_f3c9e6db456d8f::t_1291cd595575e3 318-319,322
+  s_f3c9e6db456d8f::t_f1f97cd947f4ee 417-425,135
+  s_f3c9e6db456d8f::t_281cc81a02ce65 23-25
+  s_f3c9e6db456d8f::t_9086cb51d37444 70
+  s_f3c9e6db456d8f::t_c34fda7633f55f 132,134
+  s_f3c9e6db456d8f::t_c5486258a4b8f2 161,163
+  s_f3c9e6db456d8f::t_e406e6cfb7c8ac 242
+packages/@n8n/api-types/src/agents/types.ts
+  s_f3c9e6db456d8f::t_8c4e02a3833007 158-159,161-164
+  h_7555c3ee6524cf 160
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitySummary.ts
+  h_7555c3ee6524cf 28-29,65,67
+  s_05cd7ab5f956cf::t_93f4aea26407fa 30
+packages/cli/src/modules/agents/agents.service.ts
+  s_bfe6a865a3bf73::t_774b2fa598e883 102-103
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_f3c9e6db456d8f::t_b1c89c9bc49e22 1-6,9-12,14-15,23,31-41,114-115,117,120-123,125-142,144-149,151-154
+  s_f3c9e6db456d8f::t_6e545a8ebf016d 7
+  s_f3c9e6db456d8f::t_802bc3fafc410c 8,24-26,28-29
+  s_f3c9e6db456d8f::t_c51c8bacec62fc 44-47,49,54-98,102-113,118-119,124,143
+  s_f3c9e6db456d8f::t_5b5f11f7563b05 13,16-22
+  s_f3c9e6db456d8f::t_e2086490646eb8 50-53
+  s_f3c9e6db456d8f::t_399443e9f7c165 99-101
+  s_f3c9e6db456d8f::t_44165381fe8efb 150
+  h_7555c3ee6524cf 27,116
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_f3c9e6db456d8f::t_4fc094ca9bf950 5
+  s_f3c9e6db456d8f::t_c805c8c04b71af 27
+  s_f3c9e6db456d8f::t_5e6f0ec9869888 261-269
+  s_f3c9e6db456d8f::t_b3cd4f9251a528 325-327
+  h_7555c3ee6524cf 323-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "93b0e3807e918868463af988c7f060abf130a02d",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_bfe6a865a3bf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "430bf789-cf05-4910-9dda-8fa7dfba9d21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

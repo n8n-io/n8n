@@ -1,0 +1,29 @@
+packages/cli/src/controllers/role.controller.ts
+  s_21eed011adaaf5::t_34a28f6b911fd6 143-145
+packages/cli/src/services/role-authorization.ts
+  h_5d40c27a8fdfd1 2,8
+  s_21eed011adaaf5::t_0d1f080ff434ec 32,34-47,49
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_21eed011adaaf5::t_a0483ba2ba349b 218-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ca17bf8aa4e623df924e18a415bf14bf54ec23fd",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_21eed011adaaf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51920706-527a-41fb-a18a-2dcc579506d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

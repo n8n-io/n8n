@@ -1,0 +1,42 @@
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  ai_agent 284-286
+  s_57e225fc911797::t_c2116373916db1 276-278,294
+packages/@n8n/db/src/repositories/index.ts
+  s_57e225fc911797::t_9fb40db1985ecd 51-54
+packages/cli/src/workflows/workflow-published-data.service.ts
+  ai_agent 53-55
+  s_57e225fc911797::t_f4527e856cfcf6 13
+  s_57e225fc911797::t_dcd3d5289a4b28 4,50-51,61-62,65,78,95
+  s_57e225fc911797::t_928addb6c36464 14,52,64,66,68-70
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_57e225fc911797::t_667d37d75390f4 63-66,90-97,112
+  s_57e225fc911797::t_0932b344640f5d 67-89
+  s_57e225fc911797::t_176c20876e96a6 3,7-23,98-111
+packages/cli/src/workflows/__tests__/workflow-published-data.service.test.ts
+  s_57e225fc911797::t_c87bb29e8d0d13 8,52,123,128,146,162
+  s_57e225fc911797::t_9d9c4b1655bea2 54-67,165
+  s_57e225fc911797::t_dab6a058f18d0f 134-136
+  s_57e225fc911797::t_c39e80fa7eac16 53,68-70,107-119,125,140,142-144,148,150-152,156,158-160,164,167-169,189-192,196-199,203,212-215
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_57e225fc911797::t_7597764e6eba26 3,26,28-29,425,431,434-435
+  s_57e225fc911797::t_af62958eea1f1d 428,440-442,445-447
+  s_57e225fc911797::t_1d25f66b83468c 443
+  s_57e225fc911797::t_4bcb97c2236a70 27
+  ai_agent 472-474
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d81bc064a0b5f5c7bdb52de11c7b0dddd2c4bf5a",
+  "prompts": {},
+  "sessions": {
+    "s_57e225fc911797": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef3fb-528d-76f3-90d0-e2593962fef0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

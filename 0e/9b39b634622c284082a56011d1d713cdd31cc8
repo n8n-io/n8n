@@ -1,0 +1,72 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.api.ts
+  s_5d6be4e6bc70a6::t_adf661377afd1a 18-21
+  s_5d6be4e6bc70a6::t_05bb1879ad4e28 5
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/TestRunDetailView.vue
+  s_5d6be4e6bc70a6::t_5500546439528c 219
+  s_5d6be4e6bc70a6::t_6bab96ead033e3 235
+packages/cli/src/evaluation.ee/test-runs.controller.ee.ts
+  s_5d6be4e6bc70a6::t_68eea98330d74b 1-6,21
+  s_5d6be4e6bc70a6::t_731a6496947505 31
+  s_5d6be4e6bc70a6::t_7bfb6063d05261 74,80,108-109,116
+  s_5d6be4e6bc70a6::t_a13b7e0fa9d388 86-88
+  s_5d6be4e6bc70a6::t_9445a11a224477 7
+  s_5d6be4e6bc70a6::t_1ac947c3a98469 75-79,81-84,90-98,101-102,117,122,125-128
+  s_5d6be4e6bc70a6::t_33940abdd4e779 85,89,99-100,103-107
+packages/cli/src/evaluation.ee/__tests__/test-runs.controller.ee.test.ts
+  s_5d6be4e6bc70a6::t_9ff85c6f466c75 49
+  s_5d6be4e6bc70a6::t_9886bd1a9b4416 153,161,165-175,177-178,181,192-193,225
+  s_5d6be4e6bc70a6::t_fe26b0cd1b9623 183-184
+  s_5d6be4e6bc70a6::t_ed3d9e4173eb1c 154-160,162-164,176,179-180,182,185-191,194-224
+  s_5d6be4e6bc70a6::t_486f4da837e6ab 58
+  s_5d6be4e6bc70a6::t_c15410a12549cc 90-93,100
+  s_5d6be4e6bc70a6::t_0ee684b8b3c5de 21-41
+  s_5d6be4e6bc70a6::t_86235bb6e31cb2 2-8
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.test.ts
+  s_5d6be4e6bc70a6::t_3785c4fd994577 1390,1394
+  s_5d6be4e6bc70a6::t_69165abeec1a04 1300-1302,1391-1393
+  s_5d6be4e6bc70a6::t_a196b1f38dd894 1415-1421
+  s_5d6be4e6bc70a6::t_d1bf12ace01c28 1361-1366
+  s_5d6be4e6bc70a6::t_3ef3d9cd4e1022 1295-1299,1303-1319
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/MetricSummaryStrip.vue
+  s_5d6be4e6bc70a6::t_00160a2bfcd888 34
+  s_5d6be4e6bc70a6::t_27daf72473fc23 57
+  s_5d6be4e6bc70a6::t_b3cc4bf8ca1e61 4,17-19
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/MetricSummaryCard.vue
+  s_5d6be4e6bc70a6::t_246f85d0d3cbf3 55
+  s_5d6be4e6bc70a6::t_32005e1a1d8a46 3,20,28-32,36
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_ff0e17cef0d8a1 347,349
+  s_5d6be4e6bc70a6::t_ce653d62098b37 388,392
+  s_5d6be4e6bc70a6::t_11ae4bdd54174d 248-258
+  s_5d6be4e6bc70a6::t_f09fc959d99b48 371,375
+  s_5d6be4e6bc70a6::t_e2e22ace2e44de 276-281,284,288-291
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/TrendDeltaBadge.vue
+  s_5d6be4e6bc70a6::t_d5e403f55c3880 3,15,19-21
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/TestCaseCard.vue
+  s_5d6be4e6bc70a6::t_fe17b235132b40 5,22-24
+  s_5d6be4e6bc70a6::t_b7ccab8a85b75d 113
+  s_5d6be4e6bc70a6::t_e727abb10c61b3 69
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/TestCaseMetricRow.vue
+  s_5d6be4e6bc70a6::t_05bdd1868da1f0 4,17,27-31,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e9b39b634622c284082a56011d1d713cdd31cc8",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

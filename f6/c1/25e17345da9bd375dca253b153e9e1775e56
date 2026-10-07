@@ -1,0 +1,21 @@
+packages/cli/src/commands/__tests__/start.test.ts
+  s_28283f6f418ff4::t_4b147c619f5fe7 114
+  s_28283f6f418ff4::t_bd7eb7b1486d8a 42-44
+  s_28283f6f418ff4::t_ae58121e269f09 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f6c125e17345da9bd375dca253b153e9e1775e56",
+  "prompts": {},
+  "sessions": {
+    "s_28283f6f418ff4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce276e17-d81d-4e7f-9307-0b2e8e66524d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

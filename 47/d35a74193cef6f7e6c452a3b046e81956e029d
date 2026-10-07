@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  s_41beced8d882bd::t_3b6b4d2900104c 482-487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "47d35a74193cef6f7e6c452a3b046e81956e029d",
+  "prompts": {},
+  "sessions": {
+    "s_41beced8d882bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a730384a-87d1-4c39-a518-30a7d70181eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

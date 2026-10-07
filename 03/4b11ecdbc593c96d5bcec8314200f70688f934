@@ -1,0 +1,26 @@
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_d278a9ca262ecc::t_7cebb2a880b7c1 352,359-365
+  s_d278a9ca262ecc::t_022629589c083f 261-270
+  s_d278a9ca262ecc::t_e38d40ea8e87fc 326-337,344
+  s_d278a9ca262ecc::t_82cc392f7117f8 285-291
+  s_d278a9ca262ecc::t_09d357567f3da8 260
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_d278a9ca262ecc::t_2e3b3325707e55 806-835
+  s_d278a9ca262ecc::t_c07428ea3108ac 1393-1421,1424,1433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "034b11ecdbc593c96d5bcec8314200f70688f934",
+  "prompts": {},
+  "sessions": {
+    "s_d278a9ca262ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c99811d-f39d-45e0-b61a-52bfa6ade3fc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

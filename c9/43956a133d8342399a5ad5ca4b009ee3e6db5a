@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_a235dbe09d6bee::t_3ec4db87408d4c 234-248
+  s_a235dbe09d6bee::t_fb548123a7ddb8 843-848
+  s_a235dbe09d6bee::t_dd43082a4e6d3d 23
+  s_a235dbe09d6bee::t_c9d4fdef33124e 479-487
+  s_a235dbe09d6bee::t_8729493a559200 381
+  s_a235dbe09d6bee::t_ed7738edb8c725 1030
+  s_a235dbe09d6bee::t_c5c173630b1069 1420
+  s_a235dbe09d6bee::t_05e21231689342 935
+  s_a235dbe09d6bee::t_9c9dfc5563d064 1069
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_a235dbe09d6bee::t_48f01645d91632 228-235
+  s_a235dbe09d6bee::t_a127d4a97d5806 227
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_a235dbe09d6bee::t_c581b55a8e9268 646
+  s_a235dbe09d6bee::t_f60ec3eac5f2c3 111-114
+packages/@n8n/api-types/src/index.ts
+  s_a235dbe09d6bee::t_800989bfd8dbff 466-467
+  s_a235dbe09d6bee::t_3733ce40f8c487 335-336
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_a235dbe09d6bee::t_77090fdb1cb197 80-105
+  s_a235dbe09d6bee::t_2ccaf8099dc9e6 24
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_a235dbe09d6bee::t_1dd5a196a25e21 94
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_a235dbe09d6bee::t_63995565b23e29 511-524
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_a235dbe09d6bee::t_33c2510cb7a884 316-403
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_a235dbe09d6bee::t_22d91b0ab37c03 360-361
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_a235dbe09d6bee::t_bf3c5fd359073b 167-190
+  s_a235dbe09d6bee::t_ce75aedbbe886a 847-888
+packages/@n8n/config/test/config.test.ts
+  s_a235dbe09d6bee::t_85c9754ddd5e56 371
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.reducer.ts
+  s_a235dbe09d6bee::t_cc144b946e5c8c 298
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_a235dbe09d6bee::t_cf7a315b188404 1051
+  s_a235dbe09d6bee::t_9f1380df8e818f 1509-1515
+  s_a235dbe09d6bee::t_58af0ba8342240 1088
+  s_a235dbe09d6bee::t_d15b88eff0c70f 180
+  s_a235dbe09d6bee::t_ab0622b0c9dea2 948-984
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_a235dbe09d6bee::t_ac67b579516912 1278-1282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c943956a133d8342399a5ad5ca4b009ee3e6db5a",
+  "prompts": {},
+  "sessions": {
+    "s_a235dbe09d6bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f00e6df-fa03-417b-a459-c3a03b6bbe4f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

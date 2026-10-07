@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_d7677626d9e151::t_a6be43b4f39085 1025
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_d7677626d9e151::t_b994bcd0959b58 28
+packages/@n8n/db/src/migrations/common/1785828155091-AddAgentExecutionRuntimeState.ts
+  s_d7677626d9e151::t_50557d5be0961d 15-19,21
+  s_d7677626d9e151::t_38bc09f4562be6 8-10,20
+packages/cli/test/migration/1785828155091-add-agent-execution-runtime-state.test.ts
+  s_d7677626d9e151::t_f6d91d3f439c82 97-103
+  s_d7677626d9e151::t_0c70451e8e0d3f 22-24,90
+docs/generated/postgres-schema/public.agent_execution.md
+  s_d7677626d9e151::t_fce2ae15471311 50
+docs/generated/sqlite-schema/agent_execution.md
+  s_d7677626d9e151::t_5133f0101cfcbc 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a45d99fb071f62a19860a9a16eb6cc1290d964f2",
+  "prompts": {},
+  "sessions": {
+    "s_d7677626d9e151": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71b90d0a-3263-488d-8ea8-6c11e5a6cd43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

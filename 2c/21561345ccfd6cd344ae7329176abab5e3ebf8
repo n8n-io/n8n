@@ -1,0 +1,417 @@
+docs/generated/sqlite-schema/user.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 22,76-80,298-319
+packages/@n8n/blob-storage/src/types.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 10-56
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 220,441
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 462-510
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 3
+packages/@n8n/blob-storage/src/index.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-15
+packages/frontend/editor-ui/src/features/ai/assistant/focusedNodes.store.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12-13
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useAgGrid.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 13
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersProjectsModal.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-112
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsViewRunData.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/NodeErrorView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 5
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 18
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7
+docs/generated/sqlite-schema/README.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 122-125,291-301,1388-1415
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,375,380,383,385,389,399,418,421,423,427,437,488,492,495,498,501,503,507-508,511,532,535,537,541,551,583,599,628,632,635,638,641,643,647-648,651,667,676,683,686-687,690,693,695-696,698,702-703,706,774,781,785,788,791,794,796,800-801,804
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 3491-3494
+docs/generated/postgres-schema/public.user.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 11,70-74,292-313
+docs/generated/sqlite-schema/workflow_history.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 27,56,118-122
+  s_b3b1e477f194be::t_d39ca9dfe12817 123
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-74
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 3
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatFloatingMenu.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6
+packages/cli/src/executions/execution-data/__tests__/execution-data-json-store.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7,15,20
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 20-21
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-resolver-workflow.service.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 590-614
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 67
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocator.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 9,16
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatHubPanel.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersProjectsModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-139
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 8-13
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.virtualization.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 50-70
+packages/@n8n/api-types/src/schemas/user.schema.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4,24,55
+docs/generated/postgres-schema/public.workflow_review_request_reviewers.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-74
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 188-231
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 17
+packages/frontend/editor-ui/src/features/agents/components/AgentJsonCopyButton.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 5
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerNetAccordion.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ToolResultCode.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariablesUsageBadge.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 13
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,205-206,209,212,214-215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,375,380,383,385,389,399
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 13-14
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatSessionDropdown.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsViewKeyboardEventListener.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 3
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 61-65
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7-8
+packages/@n8n/cli/src/commands/package/import.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 33-38,101
+packages/@n8n/db/src/repositories/index.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 74-77
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CopyButton.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 3
+docs/generated/sqlite-schema/workflow_review_request_reviewers.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-85
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15
+packages/cli/src/executions/execution-data/execution-data-json-store.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1,3,10-19,26
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-error-reporter.service.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 9,12,15,123-155
+  s_b3b1e477f194be::t_65b788745705fe 156
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7,12-21,27-29,138,168,193,309
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-requirements.extractor.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 77-84,128-131,134
+  s_b3b1e477f194be::t_d86f488aa0c48a 132-133,135
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6,17,86,182
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 74-75
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,375,380,383,385,389,399,450,454,457,460,463,465,469-470,473,489,494,497,499,503,513,545,561-562,590,594,597,600,603,605,609-610,613,629,638,645,649,652,655,658,660,664-665,668,736,743,747,750,753,756,758,762-763,766
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolsManagerModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 25-26
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 16-17
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12-13,24,89-91
+  s_b3b1e477f194be::t_547c6ef0de295e 92-93
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 228,459
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-55
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 46
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-2,4,35-43,143,223,277,289
+packages/@n8n/blob-storage/src/__tests__/azure-byte-store.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-79
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 9
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/FilterConditions.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 21
+packages/@n8n/instance-ai/src/workspace/workspace-files.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 135-137,140,151
+packages/frontend/editor-ui/src/app/composables/useWorkflowId.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 21-25,27
+packages/frontend/AGENTS.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 16-17
+packages/frontend/editor-ui/src/app/composables/useKeybindings.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-id.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-31
+packages/frontend/editor-ui/src/features/agents/components/AgentSectionEditor.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 10-11
+docs/generated/postgres-schema/public.project.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12,54,186-198
+  s_b3b1e477f194be::t_374ad77fb6fe3c 199
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 45,362-366,405-409
+docs/generated/postgres-schema/public.workflow_review_request_workflow.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-100
+docs/generated/sqlite-schema/workflow_entity.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 23,85,295-299
+  s_b3b1e477f194be::t_08ee3a66d6ca11 300
+packages/@n8n/blob-storage/src/json-store.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-146
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-104
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-44
+packages/@n8n/db/src/entities/workflow-review-request-author.ee.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-10
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataParsedAiContent.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 10
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersProjectsCell.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1,5-7,14-26,28,30,32-33,35-36,42-67,69,78-101,106,113,117-118
+packages/@n8n/blob-storage/src/__tests__/mocks.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-27
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 350-380,798-830,3746-3749,3752,3766,3768,3809-3810,3895-3901,3916-3919,4902-4908,4911,4924,4926,4973-4974,5056-5062,5077-5080
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 28,32,35,38,41,43,47-48,51,67,76,83,86-87,90,93,95-96,98,102-103,106
+packages/frontend/editor-ui/src/app/components/CopyInput.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-files.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1,239-274
+  s_b3b1e477f194be::t_151374943cb444 275
+packages/@n8n/blob-storage/src/azure-byte-store.ee.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-38
+packages/@n8n/blob-storage/src/__tests__/json-store.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-212
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVSubConnections.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15
+packages/@n8n/blob-storage/src/__tests__/s3-byte-store.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-72
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataJsonActions.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 34
+packages/frontend/editor-ui/src/features/setupPanel/components/WebhookUrlPreview.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirements.extractor.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 5,25
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,342-343,346,348-349,351,355-356,359,412,416,419,422,425,427,431-432,435,451,460,467,470-471,474,477,479-480,482,486-487,490,558,565,569,572,575,578,580,584-585,588,601,606,611,614,616,620,627,630,692,699,702-703,706,709,711-712,714,718-719,722,738,743,746,748,752,762,781,784,786,790,800,851,855,858,861,864,866,870-871,874,897,900,902,906,916,946-949,952,968-969,997,1001,1004,1007,1010,1012,1016-1017,1020,1036,1045,1052,1056,1059,1062,1065,1067,1071-1072,1075,1143,1150,1154,1157,1160,1163,1165,1169-1170,1173
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingModal.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 11
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 26
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useAgGrid.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4,18
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6-7
+packages/workflow/src/constants.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 108
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-33
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6-7
+packages/@n8n/blob-storage/src/fs-byte-store.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-95
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 13
+docs/generated/sqlite-schema/workflow_review_request.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-124
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 224-234,279-280,554
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataJsonActions.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12-14
+packages/workflow/src/node-helpers.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 9-13,1823-1827
+docs/generated/postgres-schema/public.workflow_review_request.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-119
+docs/generated/sqlite-schema/workflow_review_request_workflow.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-109
+packages/frontend/editor-ui/src/app/stores/pushConnection.store.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6-7
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/client/useTypescript.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 14
+docs/generated/postgres-schema/public.workflow_history.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 16,51,113-117
+  s_b3b1e477f194be::t_3ed90d1e9ce518 118
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 23
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/static-sub-workflow-id.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-152
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 27
+packages/frontend/editor-ui/src/features/settings/sso/components/SamlSettingsForm.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 8
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 11
+packages/cli/test/migration/1784000000052-create-workflow-review-request-tables.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-344
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 11
+packages/@n8n/db/src/entities/workflow-review-request-workflow.ee.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-23
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4-5
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 368-420
+packages/cli/test/integration/users.api.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 604
+packages/frontend/editor-ui/src/experiments/resourceCenter/views/ResourceCenterView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 23-24
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12,86,304-308
+  s_b3b1e477f194be::t_3871e4136626e0 309
+packages/cli/eslint.config.mjs
+  s_b3b1e477f194be::t_e675d5f66b3eb7 50-62
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingCopyBlock.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/cli/src/modules/instance-ai/instance-ai-error-reporter.service.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 13-22,63-65
+  s_b3b1e477f194be::t_5bb527cb1ac589 66-71
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 14,29
+docs/generated/postgres-schema/README.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 122-125,304-314,1399-1426
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-reviewer.repository.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-78
+packages/frontend/editor-ui/src/features/core/auth/components/MfaSetupModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanelActions.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 3
+packages/testing/containers/services/n8n.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 48
+packages/@n8n/db/src/entities/workflow-review-request-reviewer.ee.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-11
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4,192,196-199
+docs/generated/sqlite-schema/project.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 23,60,192-204
+  s_b3b1e477f194be::t_c84d734dc3026a 205
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataSearch.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6,9
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/SuiteConfig.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15-16
+packages/frontend/editor-ui/src/features/setupPanel/setupPanel.store.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/@n8n/db/src/entities/index.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 65-74,130-137,186-189
+docs/generated/sqlite-schema/workflow_review_request_authors.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-84
+packages/frontend/editor-ui/src/features/execution/logs/composables/usePopOutWindow.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/@n8n/blob-storage/src/s3-byte-store.ee.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-36
+packages/frontend/editor-ui/src/app/composables/useActivityDetection.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4-5
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 10
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 5
+packages/frontend/editor-ui/src/features/execution/executions/views/WorkflowExecutionsView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 56
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 17
+packages/@n8n/cli/docs/commands/package.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 58
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 13-14
+packages/frontend/editor-ui/src/features/ai/assistant/components/AssistantsHub.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 6
+docs/generated/postgres-schema/public.workflow_review_request_authors.md
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-73
+packages/frontend/editor-ui/src/app/components/BreakpointsObserver.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 11
+packages/frontend/editor-ui/src/app/composables/useWorkflowId.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 13-16,18,76,95-101
+  s_b3b1e477f194be::t_462d6de5b4ed04 102-103
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 4
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/AssignmentCollection.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 208-211
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ExpressionEditModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 20
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariablesUsageBadge.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 5
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 11-12
+packages/@n8n/cli/src/client.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 19
+packages/@n8n/api-types/src/index.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 181
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.errorMessage.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-9,40-137
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersProjectsCell.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 2,21-22,28-39,47,50,53,56,59,62,65-76,78,80,82-85,88,94-96,102,104,106,108-110
+packages/testing/playwright/playwright.config.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 69
+packages/@n8n/blob-storage/src/__tests__/fs-byte-store.integration.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-141
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 300,307,341,346-373,480-509
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 113
+packages/cli/src/controllers/users.controller.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 139
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesSearchView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 15
+packages/@n8n/db/src/entities/workflow-review-request.ee.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-55
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingClientSetup.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-workflow.repository.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-70
+packages/@n8n/blob-storage/src/skipped-entry-deletion.error.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-11
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/Condition.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 27
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 11,360,530
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 7-8
+packages/@n8n/db/src/migrations/common/1784000000052-CreateWorkflowReviewRequestTables.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-198
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.test.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 66
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/components/AppSelectionPage.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 5
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 12-13
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_b3b1e477f194be::t_e675d5f66b3eb7 49,52-53,56,59,61-62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,412,416,419,422,425,427,431-432,435,456,459,461,465,475,507,523-524,552,556,559,562,565,567,571-572,575,591,600,607,610-611,614,617,619-620,622,626-627,630,698,705,708-709,712,714-715,717-718,720,724-725,728,741,746,751,754,756,760,767,770,832,839,843,846,849,852,854,858-859,862,875,880,885,888,890,894,901,904,955,959,962,965,968,970,974-975,978,999,1002,1004,1008,1015,1018,1054,1070-1071,1099,1103,1106,1109,1112,1114,1118-1119,1122,1138,1147,1154,1158,1161,1164,1167,1169,1173-1174,1177,1245,1252,1255-1256,1259,1262,1264-1265,1267,1271-1272,1275
+packages/frontend/editor-ui/src/app/components/AboutModal.vue
+  s_b3b1e477f194be::t_e675d5f66b3eb7 8
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 1-29
+packages/cli/src/commands/base-command.ts
+  s_b3b1e477f194be::t_e675d5f66b3eb7 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2c21561345ccfd6cd344ae7329176abab5e3ebf8",
+  "prompts": {},
+  "sessions": {
+    "s_b3b1e477f194be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f93fb2a-d420-4d18-b822-3d292b1472bb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-13,15-46,48-50,52-58
+  s_8be9ee4c0632ab::t_b7edf2105ad450 14
+  s_8be9ee4c0632ab::t_a0794ab10f462b 47,51
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_8be9ee4c0632ab::t_53e2b124656163 402-441
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_8be9ee4c0632ab::t_23cb21324fc972 1-58
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/modalOpeners.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-8
+packages/frontend/@n8n/frontend-module-sdk/src/declareCapability.test.ts
+  s_8be9ee4c0632ab::t_ee8317186cbb34 1-17
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_8be9ee4c0632ab::t_23cb21324fc972 1-22
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/workflowMcpAccessSync.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-12
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_8be9ee4c0632ab::t_e0e7afe3a8d8b1 1-21
+packages/frontend/@n8n/frontend-module-sdk/src/declareCapability.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-24
+packages/frontend/@n8n/frontend-module-sdk/README.md
+  s_8be9ee4c0632ab::t_e075c0db06cd44 6-8
+packages/frontend/@n8n/frontend-module-sdk/src/index.ts
+  s_8be9ee4c0632ab::t_e075c0db06cd44 5,13-16
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.test.ts
+  s_8be9ee4c0632ab::t_ee8317186cbb34 1-85
+packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts
+  s_8be9ee4c0632ab::t_e0e7afe3a8d8b1 13
+packages/frontend/editor-ui/src/main.ts
+  s_8be9ee4c0632ab::t_d76f906202f75f 35,61-62
+  s_8be9ee4c0632ab::t_a48ffbee580762 63
+packages/frontend/editor-ui/src/app/bootstrapRegistrations.test.ts
+  s_8be9ee4c0632ab::t_78b579c3b0b293 11-13,15,25
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9140964fb15e81aa398814f127d3c22c4a15b7a4",
+  "prompts": {},
+  "sessions": {
+    "s_8be9ee4c0632ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eae95162-f0a9-4fc2-a78c-2cff399c9192",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

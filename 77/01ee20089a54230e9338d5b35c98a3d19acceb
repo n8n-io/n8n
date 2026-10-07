@@ -1,0 +1,23 @@
+packages/cli/src/commands/base-command.ts
+  s_2b3e713f853fb2::t_97dab26e46e849 251-254
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_2b3e713f853fb2::t_cb7565e3e1495e 137-142,154-156
+packages/workflow/src/expression.ts
+  s_2b3e713f853fb2::t_2a628e6102cc5d 332-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7701ee20089a54230e9338d5b35c98a3d19acceb",
+  "prompts": {},
+  "sessions": {
+    "s_2b3e713f853fb2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8122fe-54a5-42f2-89ae-b2ec231bd2bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

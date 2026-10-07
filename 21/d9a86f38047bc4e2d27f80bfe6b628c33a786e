@@ -1,0 +1,22 @@
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_64390ec65834a0::t_2fdaf572564337 147-166
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_64390ec65834a0::t_5942f0bbd6c684 55-63
+  s_64390ec65834a0::t_978ef2c6d4ea4b 81-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "21d9a86f38047bc4e2d27f80bfe6b628c33a786e",
+  "prompts": {},
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

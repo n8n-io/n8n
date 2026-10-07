@@ -1,0 +1,29 @@
+packages/nodes-base/credentials/ZendeskOAuth2Api.credentials.ts
+  s_515860a37f1700::t_7e8c9b1d235963 114-131
+packages/nodes-base/nodes/Zendesk/__tests__/GenericFunctions.test.ts
+  s_515860a37f1700::t_1421ece00f9cf2 1-85
+packages/nodes-base/nodes/Zendesk/GenericFunctions.ts
+  s_515860a37f1700::t_2260f88c21126f 10-26,47,50,52,71
+  s_515860a37f1700::t_44ae3c7870d143 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "08df9d4d4e87b75e98b32ed63aca00c100e7ed16",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_515860a37f1700": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df835c4f-f17a-4de6-adaf-56e4b69d1e4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

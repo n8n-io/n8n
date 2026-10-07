@@ -1,0 +1,27 @@
+packages/cli/src/services/executions-filter-ai.service.ts
+  s_03d816ea3ae9c9::t_c6ccc809e3afdb 25-26
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.ts
+  s_03d816ea3ae9c9::t_6fd5dd0859069e 1
+  s_03d816ea3ae9c9::t_32ee53854678cd 158-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ce802b992f44720785577c628ae893813542508a",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

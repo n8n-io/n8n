@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialForm.vue
+  s_e5eb138ee1927f::t_e6c2cb25167169 123
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_e5eb138ee1927f::t_f82557e2a684e2 48-57,64-66,72-73,76-89
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_e5eb138ee1927f::t_17b7af5027f4a0 66-73,76-78
+  s_e5eb138ee1927f::t_ba1012c0d5c222 38-42
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_e5eb138ee1927f::t_56a89c6bf478e6 9,275-287,548
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_e5eb138ee1927f::t_f82557e2a684e2 815-838
+  s_e5eb138ee1927f::t_8c364bc2bff016 806-814
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.test.ts
+  s_e5eb138ee1927f::t_ce90a46bca15b0 3,76-94
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_e5eb138ee1927f::t_e6c2cb25167169 99-115
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.vue
+  s_e5eb138ee1927f::t_56a89c6bf478e6 2,8,53-60,72
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.test.ts
+  s_e5eb138ee1927f::t_f82557e2a684e2 161-176,178
+  s_e5eb138ee1927f::t_f319824fa51921 177,179
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_e5eb138ee1927f::t_413317faaa891a 11,48-66,84-85,104,109-121
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_e5eb138ee1927f::t_0e156bb08f1c1c 150-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f7c1e04a31198b43808d5cbe8055c3d59238d7e8",
+  "prompts": {},
+  "sessions": {
+    "s_e5eb138ee1927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87369f71-7cd7-4171-b908-682eacaab3f4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

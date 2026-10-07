@@ -1,0 +1,61 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useReviewVersionName.ts
+  s_b3a97c2b46082c::t_555ee7eb440ebd 15,27-32,40-43,50-54,58-62,64
+  s_b3a97c2b46082c::t_ebdf6ff79b9d35 39,63
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_b3a97c2b46082c::t_31ce109f766689 51-55,57
+  s_b3a97c2b46082c::t_ebdf6ff79b9d35 56,198
+  s_b3a97c2b46082c::t_7200f6d8c6748c 158
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  s_b3a97c2b46082c::t_ebdf6ff79b9d35 41,117
+  s_b3a97c2b46082c::t_d4d78af7525665 15
+  s_b3a97c2b46082c::t_df2655a6413766 159-167
+  s_b3a97c2b46082c::t_27ae7de8bbe7bc 36-40,42
+  s_b3a97c2b46082c::t_fc7e7b8a2f61c1 82
+  s_b3a97c2b46082c::t_f6b2bde26f2433 197
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_b3a97c2b46082c::t_0d6fb687f23a0f 149
+  s_b3a97c2b46082c::t_71a94a0efff4b5 277
+  s_b3a97c2b46082c::t_a68a89c61f20db 358
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_b3a97c2b46082c::t_c7b1721f2b9337 647
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_b3a97c2b46082c::t_13c9515e34609e 217-218
+  s_b3a97c2b46082c::t_2bb16fb93ba2b6 345
+  s_b3a97c2b46082c::t_ff4d077085f18c 353-368,370-390
+  s_b3a97c2b46082c::t_567849a81a6bf8 166-177
+  s_b3a97c2b46082c::t_cc4eb9b0d2253d 369
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_b3a97c2b46082c::t_00da0a5dfe52e3 282
+  s_b3a97c2b46082c::t_d70be3b2dcedc9 436,439
+  s_b3a97c2b46082c::t_8c0dc9d1151ae9 511-517
+  s_b3a97c2b46082c::t_a11cfb728dd1d3 447
+  s_b3a97c2b46082c::t_b0b5d53302331c 365
+  s_b3a97c2b46082c::t_dd104816486c17 489
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_b3a97c2b46082c::t_d898fd5802e9ba 79
+  s_b3a97c2b46082c::t_cfd5f6e6ae5094 24
+  s_b3a97c2b46082c::t_01e8351e0a6140 3
+packages/frontend/editor-ui/src/app/components/WorkflowVersionForm.vue
+  s_b3a97c2b46082c::t_bb633fa74d63c5 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e998a683c12a55016134407bffbe9ae8624369e8",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3a97c2b46082c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8453ad97-6f1f-4fd8-a505-1ca2bfad83d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

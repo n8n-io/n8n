@@ -1,0 +1,87 @@
+packages/@n8n/cli/src/commands/git-connections/delete.ts
+  ai_agent 5-7,11,13-14
+packages/@n8n/cli/src/output.ts
+  ai_agent 7,12-13,17-18,39,56,101,104
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  ai_agent 3,19-21
+packages/@n8n/cli/package.json
+  ai_agent 66-67
+packages/@n8n/decorators/src/system-task/index.ts
+  ai_agent 13
+packages/@n8n/cli/src/commands/git-connections/get.ts
+  ai_agent 5-7,11,13
+packages/@n8n/cli/src/client.ts
+  ai_agent 64-70,100,103,262,264-265,268-269,272-273,276-277,280-283,286-287,290-291,294-295,298-299,302-303,306-307,310-311
+packages/@n8n/cli/src/commands/git-connections/disconnect.ts
+  ai_agent 5-7,11,13
+packages/@n8n/cli/src/__tests__/client.test.ts
+  ai_agent 1,45-50,52,55-59,61-65,69,71-91,93,95,97-99,101,103-122,124,126,128-130
+packages/@n8n/cli/src/index.ts
+  ai_agent 25-36,95-104,118-119
+packages/@n8n/agents/src/runtime/tools/deferred-tool-manager.ts
+  ai_agent 173,224
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  ai_agent 12,25
+packages/@n8n/cli/src/commands/git-connections/pull.ts
+  ai_agent 5,7-10,14,16,18
+packages/@n8n/cli/src/commands/git-connections/remove-project.ts
+  ai_agent 5-6,8,15,17-22
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  ai_agent 149-150
+packages/@n8n/decorators/src/system-task/__tests__/whole-seconds.test.ts
+  ai_agent 1-12
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  ai_agent 71-77,180-182
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  ai_agent 4,187,207,229-232
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  ai_agent 748-763,775,780,792,797,810
+packages/@n8n/cli/src/commands/git-connections/push.ts
+  ai_agent 5,7-10,15,25,27,32
+packages/@n8n/cli/src/commands/git-connections/update.ts
+  ai_agent 5-7,10-11,15,18
+packages/@n8n/api-types/src/dto/promotions/promotion-checkout.dto.ts
+  ai_agent 12-13
+packages/@n8n/api-types/src/dto/promotions/promotion-config.dto.ts
+  ai_agent 85
+packages/@n8n/cli/src/commands/git-connections/list-projects.ts
+  ai_agent 5-7,11,13
+packages/@n8n/cli/src/commands/git-connections/clone.ts
+  ai_agent 5-7,10,14,16
+packages/@n8n/api-types/src/dto/promotions/promotion-connection.dto.ts
+  ai_agent 42,70,113,126,144-145,153
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  ai_agent 38-39,83-84
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  ai_agent 2,18-20
+packages/@n8n/api-types/src/dto/promotions/promotion-provider.dto.ts
+  ai_agent 169
+packages/@n8n/cli/src/commands/git-connections/list.ts
+  ai_agent 5-6,13,15-18
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  ai_agent 2,235,242
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  ai_agent 5-6,20-22,25-27
+packages/cli/src/modules/insights/insights-compaction.task.ts
+  ai_agent 2,18-20
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  ai_agent 2-3,23-38
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue
+  ai_agent 23
+packages/@n8n/cli/src/commands/git-connections/add-project.ts
+  ai_agent 5-6,8,15,17-19
+packages/@n8n/decorators/src/system-task/system-task.ts
+  ai_agent 10-11
+packages/@n8n/decorators/src/system-task/whole-seconds.ts
+  ai_agent 1-4
+packages/@n8n/cli/src/commands/git-connections/create.ts
+  ai_agent 5-6,9-10,14,17
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  ai_agent 221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a07a509538efda6ba9b9155185b56c5bb1d0b8c",
+  "prompts": {}
+}

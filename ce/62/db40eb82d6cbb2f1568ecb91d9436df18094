@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiBrowserUse.telemetry.ts
+  s_752d114ebe3035::t_47c0f3d9765785 6-9
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiBrowserUse.telemetry.test.ts
+  s_752d114ebe3035::t_fba163436a0914 16-26
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_752d114ebe3035::t_a3314a24da7351 6727
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserCredentialSetup/useInstanceAiBrowserCredentialSetupExperiment.test.ts
+  s_752d114ebe3035::t_be3545eb66fc15 25
+  s_752d114ebe3035::t_ba12b54d881af4 48,50,52-56
+  s_752d114ebe3035::t_e3757ab1278a58 2,12,20-24,29,49,51
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/useInstanceAiBrowserUseExperiment.ts
+  s_752d114ebe3035::t_3b5bab9c0e3e6a 10-12,15,17-21,27
+  s_752d114ebe3035::t_8defd0a4b1da8e 1,7,9,13-14,29
+  h_44f8d1c0f2f8c4 8,16
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/useInstanceAiBrowserUseExperiment.test.ts
+  s_752d114ebe3035::t_492d7e5066a8ac 51
+  s_752d114ebe3035::t_b40a2aaec854e6 8-11
+  s_752d114ebe3035::t_ddbd97535a5106 92,97
+  s_752d114ebe3035::t_816c77d2a5f2e4 130-163
+  s_752d114ebe3035::t_9b1cff05834c21 21-27,31,50,52-91,93-96,98-129
+  s_752d114ebe3035::t_cd73e89c3ce4d1 164-165
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseSetupModal.test.ts
+  s_752d114ebe3035::t_3f9c788fa925b2 120-124
+  s_752d114ebe3035::t_c0db84b3a3ab69 100-119,125-134
+  s_752d114ebe3035::t_68489153fc645f 53-61,65
+  s_752d114ebe3035::t_fcbbe08ece59d4 72
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/index.ts
+  s_752d114ebe3035::t_bddc67d34646b7 1-4
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserCredentialSetup/useInstanceAiBrowserCredentialSetupExperiment.ts
+  s_752d114ebe3035::t_a061003de119e0 5,10-12,15
+  s_752d114ebe3035::t_d2e672ddfdce22 17
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupContent.vue
+  s_752d114ebe3035::t_f93a1b3bb0170f 26
+  s_752d114ebe3035::t_8e685ec0e9736c 74-82
+  s_752d114ebe3035::t_4bbfa9beb7665d 53
+  s_752d114ebe3035::t_26da2e226432be 3,5
+  s_752d114ebe3035::t_8f9d54fddbc5bb 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ce62db40eb82d6cbb2f1568ecb91d9436df18094",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_752d114ebe3035": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87618139-4004-4da3-bac4-df74248212a2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

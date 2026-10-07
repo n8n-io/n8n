@@ -1,0 +1,54 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_278b5dc3633c05::t_f416f8c23b58c4 179-181,183
+  s_278b5dc3633c05::t_35500110509e05 132
+  s_278b5dc3633c05::t_bc7a3c135338f5 161
+  s_659d89565dd06e::t_9f84a208d36bcb 139
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_278b5dc3633c05::t_092f8615a436d5 20
+  s_278b5dc3633c05::t_efa07876e87673 103,106-107
+  s_278b5dc3633c05::t_f325617c15aa7c 123,139,167,179
+packages/frontend/editor-ui/src/features/workflowReviews/module.descriptor.ts
+  h_760178ed151f13 8
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  s_278b5dc3633c05::t_8b2acbf422b598 110,112-115,117-121,125
+  s_278b5dc3633c05::t_990523e42939c1 218-219,221-230,236-242,244-251
+  s_659d89565dd06e::t_18a3ba574e5ea1 101
+  s_278b5dc3633c05::t_99cafaef088714 5-13
+  h_760178ed151f13 231-235
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  s_278b5dc3633c05::t_232266d5e8fef1 121-131
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.vue
+  s_659d89565dd06e::t_126545bad8f611 38
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.store.ts
+  h_760178ed151f13 58
+  s_659d89565dd06e::t_5f95bd582215bb 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "58e36dd9409de0783113c9c1adbc205e686e4ede",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_278b5dc3633c05": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b77dc33-92bf-492b-8614-c5fa327f6901",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_659d89565dd06e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9438224-5514-4a69-9edd-5631763dfabc",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

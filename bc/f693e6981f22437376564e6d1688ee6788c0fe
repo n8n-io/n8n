@@ -1,0 +1,43 @@
+packages/cli/src/modules/n8n-packages/entities/credential/workflow-credential-references.ts
+  s_af7a4e8964d154::t_db61b6c5e6477e 1-8,10-40,43-49
+  ai_agent 9
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_af7a4e8964d154::t_ff01ae02294940 133
+packages/cli/src/workflow-helpers.ts
+  s_af7a4e8964d154::t_fada0168030316 300-301,310,341-342,350,354-355,360,363,366,376-378,387-388,395,399-400,417,419-420,431
+  s_af7a4e8964d154::t_75c0c24d02edb9 302-303,340,373,379,418
+  s_af7a4e8964d154::t_66930abdebddbe 374-375,380,416,426
+  s_af7a4e8964d154::t_2e79b295588f13 381-383
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_af7a4e8964d154::t_33e56c439d80f2 35,260-261,263-268
+packages/cli/src/modules/n8n-packages/entities/credential/credential-requirements.extractor.ts
+  s_af7a4e8964d154::t_ee794aa9a997a6 5,15-16,18-25
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-requirements.extractor.test.ts
+  s_af7a4e8964d154::t_f2123194864484 120-156
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_af7a4e8964d154::t_c6fbab59a7b156 299,306,308-309,311-315,321,324,327,335,339-341,346-363,365
+  s_af7a4e8964d154::t_85a6e2ccb5bc4c 9
+  s_af7a4e8964d154::t_451244044f944b 305,326,345
+  s_af7a4e8964d154::t_3d6a44ca8456eb 322
+  s_af7a4e8964d154::t_67c35c3a9a60b2 342-344
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_af7a4e8964d154::t_14bd927593372a 2,218,220-221,223
+  s_af7a4e8964d154::t_89e118445c298f 20,210
+  s_af7a4e8964d154::t_d42bc721ba06d1 148-209,211-217,219,222,224-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bcf693e6981f22437376564e6d1688ee6788c0fe",
+  "prompts": {},
+  "sessions": {
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

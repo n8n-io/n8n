@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Outlook/v2/descriptions/mailbox.description.ts
+  s_51def3912d3fc1::t_37dc28e60d41a2 6-8
+packages/nodes-base/nodes/Microsoft/Outlook/v2/helpers/utils.ts
+  s_51def3912d3fc1::t_4a789199d1e9c2 335-337
+packages/nodes-base/nodes/Microsoft/Outlook/v2/transport/index.ts
+  s_51def3912d3fc1::t_2849bea36376e9 59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "930883f2260208d143616fe1cdbbd8110adbf2d0",
+  "prompts": {},
+  "sessions": {
+    "s_51def3912d3fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31afa3d2-fd0e-4f42-93c3-95839cb0136c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

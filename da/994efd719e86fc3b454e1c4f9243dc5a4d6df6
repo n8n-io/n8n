@@ -1,0 +1,24 @@
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_93363bf5a44361::t_f038a8de149e4f 706
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "da994efd719e86fc3b454e1c4f9243dc5a4d6df6",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_93363bf5a44361": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d55143f2-e650-403a-b431-b1c96916a327",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

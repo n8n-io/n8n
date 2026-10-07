@@ -1,0 +1,163 @@
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_63fb8ae124025a::t_0d82f7294fb927 8-12
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_63fb8ae124025a::t_8655b2e54470b5 5
+  s_63fb8ae124025a::t_bbf8a1023cf948 335-357
+packages/cli/src/modules/operator-console/capture/log-capture.service.ts
+  s_63fb8ae124025a::t_0a3b88c3abc333 240-241,260
+  s_63fb8ae124025a::t_91483028d2d7dd 200
+  s_63fb8ae124025a::t_51958a799bf347 218
+  s_63fb8ae124025a::t_f98532d758f3fa 1-28,31-114,116-191,193-194,197-199,201-211,214,220-239,242-259,261-271
+  s_63fb8ae124025a::t_799c131254e36c 192,195-196,212-213,215-217,219
+  s_63fb8ae124025a::t_c65a98c0b7ddbf 115
+  s_63fb8ae124025a::t_e4c4c221cf6418 29-30
+packages/@n8n/backend-common/src/logging/execution-context.ts
+  s_63fb8ae124025a::t_f95143283eb20d 1-30
+packages/cli/src/modules/operator-console/producer/log-filter.ts
+  s_63fb8ae124025a::t_2f0e396be9fec8 1-88,94-111
+  s_63fb8ae124025a::t_eec779d791f0d4 89-93
+packages/cli/src/modules/operator-console/consumer/lease-manager.service.ts
+  s_63fb8ae124025a::t_f4b0ab512c3223 96-98
+  s_63fb8ae124025a::t_1cce11845429cc 1-95,99-126
+packages/cli/src/modules/operator-console/capture/__tests__/log-capture.service.test.ts
+  s_63fb8ae124025a::t_d593f697a93f1c 100-109
+  s_63fb8ae124025a::t_0a3b88c3abc333 81-85
+  s_63fb8ae124025a::t_1b14d3ceee3740 1-80,86-99,110-230
+packages/@n8n/instance-ai/src/tools/logs.tool.ts
+  s_63fb8ae124025a::t_31d5c3dc84cf04 1-4,6-23,25-43,49-58,60-93,95-155,157-278,283-349,351-383
+  s_63fb8ae124025a::t_ba1ad7b8da6ade 44-48,59,94,156,279-282,350
+  s_63fb8ae124025a::t_d8f13c2d947a5f 24
+  s_63fb8ae124025a::t_c3ba4b3f9d1652 5
+.agents/specs/operator-console.md
+  s_63fb8ae124025a::t_3488f96fd8e727 146-158
+  s_63fb8ae124025a::t_427d32fb1f8640 594-599
+  s_63fb8ae124025a::t_e620844965868f 638-646
+  s_63fb8ae124025a::t_501f63754e88bb 552-555
+  s_63fb8ae124025a::t_5e0e3b154e8422 205-210,213-214,218-220
+  s_63fb8ae124025a::t_e0fc39790cb5ea 397-432
+  s_63fb8ae124025a::t_dfda5d325bad68 579-584
+  s_63fb8ae124025a::t_23e140a05297b8 492-497
+  s_63fb8ae124025a::t_a9e82886034111 572-574
+  s_63fb8ae124025a::t_919d5020c221a3 556-561
+packages/cli/src/modules/operator-console/producer/log-producer.service.ts
+  s_63fb8ae124025a::t_a27f791bd3cc1b 2-7,10-13,15-32,37,39-74,76-108,110-143,145-192,194-242
+  s_63fb8ae124025a::t_3bba83e71fb452 1,8-9,14
+  s_63fb8ae124025a::t_c0275cf5b60fd1 75
+  s_63fb8ae124025a::t_fc3492a1ba49c5 109,144,193
+  s_63fb8ae124025a::t_751c7c3e31a17b 33-36,38
+packages/cli/src/modules/operator-console/capture/redactor.ts
+  s_63fb8ae124025a::t_0a3b88c3abc333 25-26,34-35,60-63
+  s_63fb8ae124025a::t_ae803fcf7656e0 20-21
+  s_63fb8ae124025a::t_5899bca8828f7b 110,114,123-125,127
+  s_63fb8ae124025a::t_5b44d793843c70 1-19,22-24,27-33,36-59,64-109,111-113,115-122,126,128
+packages/cli/src/modules/operator-console/capture/ring-buffer.ts
+  s_63fb8ae124025a::t_b5ba9b377b12e9 121,131
+  s_63fb8ae124025a::t_7a3024031c0aaf 1,6
+  s_63fb8ae124025a::t_e2e57e1bf7ff37 2-5,7-120,122-130,132-214
+packages/cli/src/modules/operator-console/__tests__/log-producer.service.test.ts
+  s_63fb8ae124025a::t_c4c2b62dc8a110 1-5,7-20,22-53,55-68,70-98,100-292,294-296,298-306,308-315,317-355
+  s_63fb8ae124025a::t_eec779d791f0d4 99
+  s_63fb8ae124025a::t_beff369826f3e2 6,54,69
+  s_63fb8ae124025a::t_fc3492a1ba49c5 21,293,297,307,316
+packages/@n8n/instance-ai/src/tools/log-query.port.ts
+  ai_agent 1-123
+packages/cli/src/modules/operator-console/capture/__tests__/redactor.test.ts
+  s_63fb8ae124025a::t_1d605e86520a1f 1-7,9-78
+  s_63fb8ae124025a::t_92a98c4391f84a 8
+packages/cli/src/modules/operator-console/capture/__tests__/ring-buffer.test.ts
+  s_63fb8ae124025a::t_f144194c9557d5 1-4,6-261
+  s_63fb8ae124025a::t_854843502f0aa9 5
+packages/cli/src/modules/operator-console/producer/log-stream-entry.ts
+  s_63fb8ae124025a::t_96ed75809ed0f1 21-22,27,29-31
+  s_63fb8ae124025a::t_dcfdcc5faeb710 43-49,52,54,56,58
+  s_63fb8ae124025a::t_eed8e350573a3f 1-20,23-26,28,32-42,50-51,53,55,57,59-117
+packages/cli/src/scaling/constants.ts
+  s_63fb8ae124025a::t_2856103996105d 52-54
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_63fb8ae124025a::t_a4a1903b401e86 82
+  s_63fb8ae124025a::t_e5cf6beb9c9123 125-126
+packages/cli/src/modules/operator-console/__tests__/lease-manager.service.test.ts
+  s_63fb8ae124025a::t_beff369826f3e2 5,17
+  s_63fb8ae124025a::t_6c68dc9b7a4e53 1-4,6-16,18-226
+packages/@n8n/backend-common/src/index.ts
+  s_63fb8ae124025a::t_a86e8c2f4858e3 6-9
+packages/cli/src/modules/operator-console/capture/__tests__/line-assembler.test.ts
+  s_63fb8ae124025a::t_0996f09261dc1c 1-111
+packages/cli/src/modules/operator-console/sources/log-source.ts
+  s_63fb8ae124025a::t_8be95b0a5d5215 5,11-13,18-27,30-35
+packages/cli/src/modules/operator-console/__tests__/log-filter.test.ts
+  s_63fb8ae124025a::t_eec779d791f0d4 72
+  s_63fb8ae124025a::t_a38ecfe8bfb3bc 1-71,73-269
+packages/cli/src/modules/operator-console/sources/redis-stream.source.ts
+  s_63fb8ae124025a::t_eec779d791f0d4 269
+  s_63fb8ae124025a::t_57480f6289d3ed 1-11,13-101,113-115,125-135,138-206,209-224,227-230,235-268,270-299
+  s_63fb8ae124025a::t_ecf3e812a9c98f 102-112,116-124,136-137
+  s_63fb8ae124025a::t_75b71676fff759 207-208,225-226,231-234
+  s_63fb8ae124025a::t_f4b0ab512c3223 12
+packages/cli/src/scaling/redis/redis.types.ts
+  s_63fb8ae124025a::t_c4a44286646241 9-10,18-19
+packages/cli/src/modules/operator-console/__tests__/log-file.source.test.ts
+  s_63fb8ae124025a::t_7422f62aefd4aa 184-190
+  s_63fb8ae124025a::t_d9f0420df43515 2-83,88-105,110-183,191-219
+  s_63fb8ae124025a::t_cdb5f1503d0295 1
+  s_63fb8ae124025a::t_0a3b88c3abc333 84-87,106-109
+packages/cli/src/modules/operator-console/sources/ring-buffer.source.ts
+  s_63fb8ae124025a::t_90393c474a5154 1-11,13-14,16-52,56-62,66-76,78-125
+  s_63fb8ae124025a::t_34f27d966f02e4 63-65
+  s_63fb8ae124025a::t_1bca8988403530 53-55
+  s_63fb8ae124025a::t_08d82910678cde 77
+  s_63fb8ae124025a::t_7ae9bc0312c5db 12,15
+packages/@n8n/backend-common/src/logging/__tests__/execution-context.test.ts
+  s_63fb8ae124025a::t_1cffce9647a902 1-81,87-88
+  s_63fb8ae124025a::t_4877862a16a6c3 82-86
+packages/@n8n/instance-ai/src/types.ts
+  s_63fb8ae124025a::t_ffca0051bd3e5e 1062-1064,1066
+  s_63fb8ae124025a::t_4d7165e87f197d 48
+  s_63fb8ae124025a::t_bd8e214e37498d 1065
+packages/cli/src/modules/operator-console/__tests__/redis-stream.source.test.ts
+  s_63fb8ae124025a::t_eec779d791f0d4 203
+  s_63fb8ae124025a::t_436c63b62f6ed7 1-4,6-40,46-48,53-67,70-75,77-79,82-84,86-93,97-104,107-113,116-123,125-129,131-137,139-149,151-153,155-167,169-175,177-199,201-202,204-245,247-260,262-272,274-276,278-290,292-294
+  s_63fb8ae124025a::t_05b416dd57dcec 5,41-45,49-52,68-69,76,80-81,85,94-96,105-106,114-115,124,130,138,150,154,168,176,200,246,261,273,277,291
+packages/@n8n/instance-ai/src/index.ts
+  s_63fb8ae124025a::t_3f29bf3b0ac58a 207
+  s_63fb8ae124025a::t_16c94a4f243dcf 199-206
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_63fb8ae124025a::t_f4ac8e8879e29d 45-46
+packages/@n8n/backend-common/src/logging/logger.ts
+  s_63fb8ae124025a::t_59314a308ef18c 6
+  s_63fb8ae124025a::t_6a393193066b88 320-337
+  s_63fb8ae124025a::t_b2d10b5da6e114 159-165
+  s_63fb8ae124025a::t_6df49fa1c21efa 18,23-52
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_63fb8ae124025a::t_6660278d2e6ba4 121-126
+  s_63fb8ae124025a::t_3b726842970317 167-171
+  s_63fb8ae124025a::t_49ee0f8c131be6 32
+packages/cli/src/modules/operator-console/sources/log-file.source.ts
+  s_63fb8ae124025a::t_0a3b88c3abc333 234-237
+  s_63fb8ae124025a::t_4227d588c15b97 1-233,238-315
+packages/cli/src/modules/operator-console/capture/line-assembler.ts
+  s_63fb8ae124025a::t_e1c8c4d4b23c69 1-98
+packages/@n8n/instance-ai/src/tools/__tests__/logs.tool.test.ts
+  s_63fb8ae124025a::t_08ccc685e4d904 1
+  s_63fb8ae124025a::t_f1c37637c3d1e7 10
+  s_63fb8ae124025a::t_ba1ad7b8da6ade 339-344
+  s_63fb8ae124025a::t_ad580b0e339dfb 9
+  s_63fb8ae124025a::t_6a43246bed4b1b 2-8,11-335,337,345-406
+  s_63fb8ae124025a::t_a7e6faa6baac4f 336,338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9422acac21496bd65a2759a2196697c3764ac722",
+  "prompts": {},
+  "sessions": {
+    "s_63fb8ae124025a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5cf8404-b5d2-4900-b9d5-47b84d4533a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

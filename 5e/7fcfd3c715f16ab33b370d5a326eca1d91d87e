@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_03d816ea3ae9c9::t_e49e89dd563018 27-31
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_03d816ea3ae9c9::t_a3eaa91e60b324 207-209
+packages/@n8n/api-types/src/dto/ai/executions-nl-filter-request.dto.ts
+  s_03d816ea3ae9c9::t_72c86cb5d80f83 1-19
+packages/@n8n/api-types/src/dto/ai/executions-nl-filter-response.dto.ts
+  s_03d816ea3ae9c9::t_4b0db1d9bce700 1-28
+packages/cli/src/services/frontend.service.ts
+  s_03d816ea3ae9c9::t_378555a94cd985 623-624
+  s_03d816ea3ae9c9::t_1b5eec2da22a95 394-396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5e7fcfd3c715f16ab33b370d5a326eca1d91d87e",
+  "prompts": {},
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

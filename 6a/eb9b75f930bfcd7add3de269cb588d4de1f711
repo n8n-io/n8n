@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseRunResult.vue
+  s_3a7ac9263997db::t_a24f73b30212c2 39-42,48
+  s_3a7ac9263997db::t_1c5595ec4462f8 66-70,73-78,81,86,88,98
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.test.ts
+  s_3a7ac9263997db::t_8c9a07426651de 10
+  s_3a7ac9263997db::t_5cc8a98c94ae06 215,217,220-223,228-251
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_3a7ac9263997db::t_d24cf3ec878072 427,429,434-435
+  s_3a7ac9263997db::t_435c6ab2f3df86 23
+  s_3a7ac9263997db::t_3a9a06327d21cd 205-241,244-246,248-250,255-258
+  s_3a7ac9263997db::t_2c73b0ee309d7f 2
+  s_3a7ac9263997db::t_ddaf5f0c1f3024 43
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseRunResult.test.ts
+  s_3a7ac9263997db::t_4d1c0e120e9491 2-96
+  s_3a7ac9263997db::t_ab0f834ebc0439 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6aeb9b75f930bfcd7add3de269cb588d4de1f711",
+  "prompts": {},
+  "sessions": {
+    "s_3a7ac9263997db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d07e89da-f145-46b7-afeb-052230f4ee69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

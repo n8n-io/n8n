@@ -1,0 +1,25 @@
+packages/@n8n/decorators/src/system-task/system-task-metadata.ts
+  s_a210c1160ac692::t_f3763653367cff 14
+  s_a210c1160ac692::t_b32441ae562a0c 36,41-55
+  s_a210c1160ac692::t_e714487992f674 56
+packages/@n8n/decorators/src/system-task/__tests__/system-task-metadata.test.ts
+  s_a210c1160ac692::t_8ca9bfb340dc86 81
+  s_a210c1160ac692::t_fd1289f5c361f2 1-2
+  s_a210c1160ac692::t_fcdea8d0b7fae6 89-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5c877c28b51d5f0ee5d8d6deebdf3a7647e2f816",
+  "prompts": {},
+  "sessions": {
+    "s_a210c1160ac692": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e0abdc3-655e-4132-9192-fc8b1430caac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

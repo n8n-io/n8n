@@ -1,0 +1,19 @@
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.test.ts
+  s_0892fce4f7e79e::t_90cd6cc64a5f9e 516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27b983facc1212dfc894461bee050f0a954a3a94",
+  "prompts": {},
+  "sessions": {
+    "s_0892fce4f7e79e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a54de11-f399-4b85-ba29-cbeb0c62e960",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

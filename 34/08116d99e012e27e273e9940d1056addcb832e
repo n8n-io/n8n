@@ -1,0 +1,44 @@
+packages/@n8n/agents/src/runtime/__tests__/model-token-counter.test.ts
+  s_02972e2c436d8a::t_d85c75cd2c7a3a 3
+  s_02972e2c436d8a::t_5103bb2cb553f9 6,11
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_02972e2c436d8a::t_27e2e76b13c27f 60
+  s_02972e2c436d8a::t_07c7c63ffeeaff 197
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_02972e2c436d8a::t_0e1a14210c425d 45
+packages/@n8n/agents/src/index.ts
+  s_02972e2c436d8a::t_8f1d197b458443 109-112
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_02972e2c436d8a::t_30821869f48dad 1
+packages/@n8n/agents/src/runtime/model/model-token-counter.ts
+  s_02972e2c436d8a::t_d293e3e07bb39d 15-23,25-28
+  s_02972e2c436d8a::t_43e3f3ca763fbb 1-14,24,29
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_02972e2c436d8a::t_15cd041a5ad8fa 17
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_02972e2c436d8a::t_1589ec7ede4b89 34
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_02972e2c436d8a::t_f593341f5e450c 5
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_02972e2c436d8a::t_19fb19f497070e 16
+  s_02972e2c436d8a::t_7f0a9e18c93f62 18
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_02972e2c436d8a::t_fa98765b1783af 28
+  s_02972e2c436d8a::t_f837f48f436eab 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3408116d99e012e27e273e9940d1056addcb832e",
+  "prompts": {},
+  "sessions": {
+    "s_02972e2c436d8a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "288d4719-b01e-42e0-bcfd-9ef695c5c336",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

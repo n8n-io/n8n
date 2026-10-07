@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_ae27317b881393::t_8d247241026c34 232-233,258
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_ae27317b881393::t_caaeddfa49ae51 346-356
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "71c76b414c45e93143ce39fd59c6cc3f58fcdd93",
+  "prompts": {},
+  "sessions": {
+    "s_ae27317b881393": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5032d241-3263-4f47-b54f-c4e117e16f0f",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

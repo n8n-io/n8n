@@ -1,0 +1,83 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/readRows.operation.ts
+  s_d617b0cea1e757::t_2755c2773e2661 224-227
+  h_63d8ce7f01339b 8-9,220,228
+  s_d617b0cea1e757::t_fd4238be0497e6 200-202
+  s_d617b0cea1e757::t_4dcef30964c843 214-219
+  s_d617b0cea1e757::t_a7e31a67dfb673 135,137,139,141,143,145,147
+  s_d617b0cea1e757::t_067aba88fa5abc 134,136,138,140,142,144,146,148-179,191,193-195,199,205-206,212-213,222-223
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.test.ts
+  s_d617b0cea1e757::t_700fb2126cf17d 1-36
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.workflow.json
+  s_d617b0cea1e757::t_50f43c1291876c 1-74
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_d617b0cea1e757::t_24c5b9ecdf4330 1-53,58-133,137-155,159-188,192-199,203-214
+  s_d617b0cea1e757::t_c5bf7220c0761e 54-57,134-136,156-158,189-191,200-202
+.boundaries-baseline.json
+  s_6f268c94c3a11b::t_5d8e82c589e573 2
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/clear-with-range.workflow.json
+  s_9afe0d6d8e9afc::t_7837517dd65df1 1-65
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/deleteWorksheet.test.ts
+  s_9afe0d6d8e9afc::t_324d109e8a54e1 1-95
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.sp.test.ts
+  s_9afe0d6d8e9afc::t_2a5d3cb1359d2d 1-30
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_9afe0d6d8e9afc::t_10b9e2cf5810a6 13-20
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/deleteWorksheet.operation.ts
+  s_9afe0d6d8e9afc::t_b2c13ea8e3ffc2 1-65
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/clear.workflow.json
+  s_9afe0d6d8e9afc::t_fa257e0f60c2e0 1-63
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_9afe0d6d8e9afc::t_d97e2bec65425d 135-142
+  s_9afe0d6d8e9afc::t_831e8d636ea7ed 98-109,120-121
+  s_9afe0d6d8e9afc::t_6bd019f216688b 9-10
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/clear.harness.test.ts
+  s_9afe0d6d8e9afc::t_deefcc62646fad 1-72
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.harness.test.ts
+  s_9afe0d6d8e9afc::t_52ec4a0abced1d 1-48
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.sp.workflow.json
+  s_9afe0d6d8e9afc::t_643716af904b3f 1-72
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.workflow.json
+  s_9afe0d6d8e9afc::t_41dc1708375c86 1-62
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/clear.test.ts
+  s_9afe0d6d8e9afc::t_9cb72d2c62df69 1-139
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/clear.operation.ts
+  s_9afe0d6d8e9afc::t_0ee93f139b6dd3 83-84
+  s_9afe0d6d8e9afc::t_1d3e0870d6d43d 1-82,85-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a63b99c168e8a7561dd9cde15966adadc0b20aa8",
+  "prompts": {},
+  "humans": {
+    "h_63d8ce7f01339b": {
+      "author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6f268c94c3a11b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08a45d53-e841-4699-a8be-08ab180887ef",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_9afe0d6d8e9afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae33d808-62f8-42b2-a194-4fa3c2cd5e31",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    },
+    "s_d617b0cea1e757": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b89a3ee-4aba-4b85-a778-80d03cbf21d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

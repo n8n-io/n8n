@@ -1,0 +1,32 @@
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_e414677a6d992f::t_2a129d76b874eb 1106-1128
+  s_e414677a6d992f::t_94e3ee0bace7f7 1188,1197-1199,1202-1210
+  s_e414677a6d992f::t_b0f98ecdd010e9 11
+  s_e414677a6d992f::t_e1aac9e15e1012 1005
+  s_e414677a6d992f::t_c487c4a69abb6b 1025
+  s_e414677a6d992f::t_1bd20c361a63c9 225-227
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_e414677a6d992f::t_bef60a90ec56eb 881-898
+  s_e414677a6d992f::t_0e7aeb9f2f0e7d 269-296
+  s_e414677a6d992f::t_d73174df43b73d 13-19
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_e414677a6d992f::t_5dc42aad320a02 100-111
+  s_e414677a6d992f::t_d1a1c8abb00ab4 131-133
+  s_e414677a6d992f::t_ce8ed15c04a1f8 76-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7997df034d5cba48134f5c28dc00e8c07541fc36",
+  "prompts": {},
+  "sessions": {
+    "s_e414677a6d992f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c56ed550-9fc6-4491-b874-c335e8c94087",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

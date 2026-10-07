@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Confluence/actions/page/delete.operation.ts
+  s_2ebe9c07d64221::t_e2dae5524a3d29 85-86,90,94
+packages/nodes-base/nodes/Confluence/test/actions/page/delete.operation.test.ts
+  s_2ebe9c07d64221::t_07d3f079bc862e 247
+  s_2ebe9c07d64221::t_87f9c10af5431d 146,163-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "18fe11d1bcf831087513706f89ed7681fc7cef9f",
+  "prompts": {},
+  "sessions": {
+    "s_2ebe9c07d64221": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97179d9b-4930-4bb9-a7e7-0b2c899a783f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

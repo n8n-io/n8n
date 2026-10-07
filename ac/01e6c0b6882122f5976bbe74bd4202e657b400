@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_9f30e357c1bf9d::t_7ca5d5904e7191 1640-1641
+  s_9f30e357c1bf9d::t_9188e5f0a2171c 196-201
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_9f30e357c1bf9d::t_bd4209f70f3602 649
+packages/testing/playwright/tests/e2e/regression/CAT-2395-node-spacing.spec.ts
+  s_9f30e357c1bf9d::t_b08d41624217e8 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ac01e6c0b6882122f5976bbe74bd4202e657b400",
+  "prompts": {},
+  "sessions": {
+    "s_9f30e357c1bf9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86539bcf-af50-43ad-a4ae-f42388f0e524",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

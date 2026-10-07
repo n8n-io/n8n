@@ -1,0 +1,21 @@
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_1b47839934c345::t_9d88d04976130b 574
+packages/cli/src/workflows/workflow.service.ts
+  s_1b47839934c345::t_f8bb981d608345 1074-1077,1083-1091,1093-1096
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9ef6bc078a7ee28b04cf44053e13ceab3e56bc91",
+  "prompts": {},
+  "sessions": {
+    "s_1b47839934c345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_1b47839934c345",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

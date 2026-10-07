@@ -1,0 +1,23 @@
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_5d3787b495fe2d::t_4ca69d886d6bac 84-86
+packages/cli/src/scaling/job-processor.ts
+  s_5d3787b495fe2d::t_4ca69d886d6bac 324
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_5d3787b495fe2d::t_4ca69d886d6bac 503-505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60be181d818c88ecfa7976d7288e14656926e713",
+  "prompts": {},
+  "sessions": {
+    "s_5d3787b495fe2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72d0d344-24c8-449f-8b80-cfb23d9085fd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

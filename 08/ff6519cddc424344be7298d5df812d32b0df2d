@@ -1,0 +1,52 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/switch-case.test.ts
+  s_554c5b2110274f::t_62719dc4c097ad 453-486
+  s_554c5b2110274f::t_e359e74be31da8 531-565
+  s_554c5b2110274f::t_18eb455d7e7b01 487-530
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/switch-case-handler.ts
+  s_554c5b2110274f::t_e00723b1de9aa2 47-51,64-67
+  s_554c5b2110274f::t_11ebdacfc09c56 91-93
+  s_554c5b2110274f::t_65c59c15eabf25 10-11
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/if-else-handler.ts
+  s_554c5b2110274f::t_0637fbe31a04f0 47-51,64-67
+  s_554c5b2110274f::t_90733db84c9427 10-11
+  s_554c5b2110274f::t_6eca8f087d2474 90-92
+packages/@n8n/workflow-sdk/src/workflow-builder/node-builders/node-builder.ts
+  s_554c5b2110274f::t_40c782e9296c79 408-411
+  s_554c5b2110274f::t_7273aa8c2f06fd 601-611
+  s_554c5b2110274f::t_9ec7ba389da07f 820-821,825-828
+  s_554c5b2110274f::t_8d7ba049e2515e 625-635
+  s_554c5b2110274f::t_5f9c5d94022ee5 894-895,899-902
+  s_554c5b2110274f::t_29a1e5bac2d202 577-587
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/branch-handler-utils.test.ts
+  s_554c5b2110274f::t_26878880dac9d3 57,59-61,63,65-68,70-71,74-75
+  s_554c5b2110274f::t_0b8627a75c48f6 58,62,64,69,72-73
+packages/@n8n/workflow-sdk/src/workflow-builder/control-flow-builders/if-else.test.ts
+  s_554c5b2110274f::t_31a8315ec8f455 873-907
+  s_554c5b2110274f::t_f93d2121561094 696-811
+  s_554c5b2110274f::t_baa45bc78a5fd4 637-695
+  s_554c5b2110274f::t_2bc62b8583a0cb 566-636
+  s_554c5b2110274f::t_93d6cf21f53c4c 812-872
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/branch-handler-utils.ts
+  s_554c5b2110274f::t_742706bb567a57 15
+  s_554c5b2110274f::t_8fb6a3c67baa2b 34-37,39-50
+  s_554c5b2110274f::t_3279c12672e545 109-112
+  s_554c5b2110274f::t_466ad7f83b59c5 38,51-52
+  s_554c5b2110274f::t_a7906d227d2ad2 60-63
+  s_554c5b2110274f::t_00ae95075a2634 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "08ff6519cddc424344be7298d5df812d32b0df2d",
+  "prompts": {},
+  "sessions": {
+    "s_554c5b2110274f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccac9df1-112b-4981-a822-264dc8e8ab63",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

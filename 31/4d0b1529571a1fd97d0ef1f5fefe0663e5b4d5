@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/finds-the-real-users-of-a-node-type.json
+  s_2cda0531643dad::t_297371a9695369 1-297
+packages/@n8n/instance-ai/evaluations/data/workflows/reads-a-folders-node-conventions-before-extending-it.json
+  s_2cda0531643dad::t_297371a9695369 1-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "314d0b1529571a1fd97d0ef1f5fefe0663e5b4d5",
+  "prompts": {},
+  "sessions": {
+    "s_2cda0531643dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79806e82-049b-43d0-9d0c-650e50a5028e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

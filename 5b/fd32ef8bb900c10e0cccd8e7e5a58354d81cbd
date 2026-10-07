@@ -1,0 +1,23 @@
+packages/frontend/@n8n/frontend-module-sdk/src/types/designSystemCompat.test.ts
+  s_ab22562da1f6f8::t_0dcb1e1fd73d4c 12-17,23-32
+  s_ab22562da1f6f8::t_733488a6b51f55 77-99
+  s_ab22562da1f6f8::t_b244fad875c80b 33-35
+  s_ab22562da1f6f8::t_45b1ef0ba10d07 100-102
+  s_ab22562da1f6f8::t_05494334c423d7 36-37,103,111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5bfd32ef8bb900c10e0cccd8e7e5a58354d81cbd",
+  "prompts": {},
+  "sessions": {
+    "s_ab22562da1f6f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd2b27a6-77c4-43dd-88ba-beef35097f39",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

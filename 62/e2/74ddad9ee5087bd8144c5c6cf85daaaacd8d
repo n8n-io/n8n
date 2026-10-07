@@ -1,0 +1,127 @@
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  ai_agent 74
+packages/@n8n/api-types/src/dto/credentials/create-credential.dto.ts
+  s_e0b2e76affaaa5::t_6305489ea35703 3,8
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  ai_agent 91
+docs/generated/postgres-schema/public.credential_dependency.md
+  ai_agent 51
+packages/cli/src/middlewares/list-query/dtos/credentials.select.dto.ts
+  s_e0b2e76affaaa5::t_8e4499dd7d5a84 8
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  ai_agent 58
+docs/generated/sqlite-schema/README.md
+  ai_agent 54,852
+docs/generated/postgres-schema/public.shared_credentials.md
+  ai_agent 50
+packages/@n8n/db/src/entities/types-db.ts
+  s_e0b2e76affaaa5::t_484418a2c2a780 104
+docs/generated/sqlite-schema/credentials_entity.md
+  ai_agent 9,20,68
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  ai_agent 53
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  ai_agent 55
+packages/@n8n/api-types/src/dto/credentials/__tests__/create-credential.dto.test.ts
+  s_e0b2e76affaaa5::t_0a9283e358356e 92-103
+  s_e0b2e76affaaa5::t_352290b9a888fb 49-66
+  s_e0b2e76affaaa5::t_7d8323a71f2079 177-196
+  s_e0b2e76affaaa5::t_7121351f3ae712 1
+docs/generated/sqlite-schema/shared_credentials.md
+  ai_agent 58
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  ai_agent 65
+packages/cli/test/migration/1789558029357-add-description-to-credentials.test.ts
+  s_736cafcf249461::t_4da0488f5b1d97 1-59,62-64,67-162
+  s_736cafcf249461::t_55a2ac64cb7816 60-61,65-66
+packages/cli/src/modules/mcp/__tests__/webhook-utils.test.ts
+  s_736cafcf249461::t_40b15bcf809c25 32
+docs/generated/sqlite-schema/credential_dependency.md
+  ai_agent 56
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  ai_agent 59
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_736cafcf249461::t_29f7a8b24ae1af 16-17
+packages/cli/src/requests.ts
+  s_e0b2e76affaaa5::t_fe4fcb5e1bd83e 77
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_e0b2e76affaaa5::t_afef30df79b7c8 1
+  s_736cafcf249461::t_7ab56e9d0e62a5 334
+  s_e0b2e76affaaa5::t_4fe00f139d7957 3121-3127,3131-3135,3137-3138
+  s_736cafcf249461::t_361d7352c3b490 3128-3130,3136
+  s_e0b2e76affaaa5::t_362a39372cecfb 318-333,335-370,376-385
+  ai_agent 371
+  s_736cafcf249461::t_81cf24f1975efd 372-375
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  ai_agent 61
+docs/generated/postgres-schema/public.credentials_entity.md
+  ai_agent 9,68
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  ai_agent 57
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_e0b2e76affaaa5::t_6534f1ed74d205 228,399,572
+docs/generated/postgres-schema/README.md
+  ai_agent 54,865
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  ai_agent 95
+packages/@n8n/db/src/migrations/common/1789558029357-AddDescriptionToCredentials.ts
+  s_e0b2e76affaaa5::t_60e6c7a119b110 3-5,7-18,20-23,25
+  s_e0b2e76affaaa5::t_486314cbae8a58 1-2,6,19,24,26-27
+docs/generated/sqlite-schema/instance_credential_assignment.md
+  ai_agent 54
+packages/cli/src/commands/import/credentials.ts
+  s_736cafcf249461::t_fbe490b0c8409e 456
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  ai_agent 64
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_736cafcf249461::t_1305f7d94748da 510-515
+  s_736cafcf249461::t_c86ed281259316 542
+  s_736cafcf249461::t_744c780edb8192 505-509,516-541,543-555
+packages/@n8n/db/src/entities/credentials-entity.ts
+  s_e0b2e76affaaa5::t_c3f1f3848ecb52 1
+  s_e0b2e76affaaa5::t_060f8f454acccb 3
+  s_e0b2e76affaaa5::t_70f47bf2e3cecd 20-32
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  ai_agent 63
+docs/generated/postgres-schema/public.instance_credential_assignment.md
+  ai_agent 46
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  ai_agent 71
+packages/@n8n/api-types/src/index.ts
+  s_e0b2e76affaaa5::t_12ef3537004ee8 183-186
+docs/generated/sqlite-schema/chat_hub_agents.md
+  ai_agent 76
+packages/@n8n/api-types/src/schemas/credential-description.schema.ts
+  s_e0b2e76affaaa5::t_377f438688e404 1-19
+packages/cli/src/credentials/credentials.service.ts
+  s_e0b2e76affaaa5::t_9df5adbb0b139c 197-210
+  s_e0b2e76affaaa5::t_d3c33a3f41e378 2078
+  s_e0b2e76affaaa5::t_8b6e6ca0f9ffc7 809-812
+  s_e0b2e76affaaa5::t_d8df4d75d595e4 2005-2006
+packages/cli/src/credentials/credentials.controller.ts
+  s_e0b2e76affaaa5::t_342a166c7cc782 323-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62e274ddad9ee5087bd8144c5c6cf85daaaacd8d",
+  "prompts": {},
+  "sessions": {
+    "s_736cafcf249461": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "202136a6-c3f7-4896-86e1-b17c7270ea67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    },
+    "s_e0b2e76affaaa5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ecc7e0-95f5-4024-8c33-383525c6937a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

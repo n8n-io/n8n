@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_a95a5287727af3::t_15eca26a8658fd 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cd6c90009ebbdc1f628cbedd7c4d60568fa55f23",
+  "prompts": {},
+  "sessions": {
+    "s_a95a5287727af3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd734-47be-7c62-a3cf-903358e64654",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

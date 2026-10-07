@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/skills/progressive-building/SKILL.md
+  s_c491120e42f4d5::t_bcd9a5d6c3c4f3 67-70
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_c491120e42f4d5::t_bcd9a5d6c3c4f3 963,986
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_c491120e42f4d5::t_fb3f4f567891a6 156,168-170,4722
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "daab9c96ad97fc984d2d5d29129ba6d96f6bbd67",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

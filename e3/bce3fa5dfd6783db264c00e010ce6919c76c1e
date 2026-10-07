@@ -1,0 +1,41 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.project.test.ts
+  s_af7a4e8964d154::t_7151a432181bea 69-78
+packages/cli/src/modules/n8n-packages/io/tar/tar-package-reader.ts
+  s_af7a4e8964d154::t_1c819ac66f0d8f 23-28,30,35-36,43-45,60-61,65-66,71-73,109-113
+  s_af7a4e8964d154::t_9cdb5ac99aa8b4 211-215
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_af7a4e8964d154::t_33e56c439d80f2 35,266-267,269-274,201
+  s_af7a4e8964d154::t_da68fcd41f7578 1
+  s_af7a4e8964d154::t_f6a239ac38f88e 185
+  s_af7a4e8964d154::t_14825420aac0dc 193-197,200,204,249,255
+  s_af7a4e8964d154::t_558fbb3ceb5890 198-199
+packages/cli/src/modules/n8n-packages/io/package-reader.ts
+  s_af7a4e8964d154::t_545dbdd2b55cb8 6
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_af7a4e8964d154::t_14bd927593372a 2,223,225-226,228
+  s_af7a4e8964d154::t_89e118445c298f 20,215
+  s_af7a4e8964d154::t_d42bc721ba06d1 153-214,216-222,224,227,229-230
+  s_af7a4e8964d154::t_648c39a77acee8 114-115
+  s_af7a4e8964d154::t_878588ad86e72a 116-117
+  s_af7a4e8964d154::t_11fed1442da5df 118
+packages/cli/src/modules/n8n-packages/io/__tests__/tar-package-reader.test.ts
+  s_af7a4e8964d154::t_dba4807c479385 70-80,83-84
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_af7a4e8964d154::t_46e5408e697667 37-40,48-56,91-99,315-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e3bce3fa5dfd6783db264c00e010ce6919c76c1e",
+  "prompts": {},
+  "sessions": {
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

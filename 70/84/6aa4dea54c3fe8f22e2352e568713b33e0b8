@@ -1,0 +1,66 @@
+packages/@n8n/instance-ai/src/runtime/__tests__/run-state-registry.test.ts
+  s_578c591731c26a::t_267743d2803b0c 1120-1139
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_578c591731c26a::t_baf34f2c5a0929 354-363
+packages/@n8n/instance-ai/src/runtime/liveness-policy.ts
+  s_578c591731c26a::t_105d339e9626f0 29-31
+packages/@n8n/config/test/config.test.ts
+  s_578c591731c26a::t_3d81c7c1c01a11 354
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_578c591731c26a::t_ae11b409d07068 155-158
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_578c591731c26a::t_f0d8688a4cdeb6 118-123
+  s_578c591731c26a::t_20742433267907 364-372
+  s_578c591731c26a::t_ccb65e7241988e 66-68
+  s_578c591731c26a::t_7eb6372924cc73 117,363
+packages/@n8n/instance-ai/src/runtime/__tests__/liveness-policy.test.ts
+  s_578c591731c26a::t_3b7bd7e64e4bf1 15,28-31
+  s_2a4cc143f766d4::t_929df52dfd02b4 32
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_578c591731c26a::t_9b8256fb4923fd 375-388
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_578c591731c26a::t_2717b55e7ecdbc 699-707
+  s_578c591731c26a::t_8601179bb6837d 684
+  s_578c591731c26a::t_7f083b454b5bcb 1209-1239
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_578c591731c26a::t_05f84e0c75ac96 155-157
+  s_578c591731c26a::t_931204abb0283f 159,175
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-liveness.service.test.ts
+  s_578c591731c26a::t_59789debf4c829 176-179
+  s_578c591731c26a::t_04356111ac01c9 122
+  s_578c591731c26a::t_088632168a75b2 84,95,107
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_578c591731c26a::t_3871e317320221 145-165
+packages/cli/src/modules/instance-ai/liveness/instance-ai-liveness.service.ts
+  s_578c591731c26a::t_1b4dbe3978a531 94-100
+  s_578c591731c26a::t_f11ae2f386174c 231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "70846aa4dea54c3fe8f22e2352e568713b33e0b8",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2a4cc143f766d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a9c2f26-a19c-4e0d-a5f6-59f4f2d39940",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_578c591731c26a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0beb087-0899-47b2-bb3e-38ff260bc0ec",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

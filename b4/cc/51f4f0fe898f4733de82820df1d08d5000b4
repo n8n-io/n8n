@@ -1,0 +1,23 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2c65f8c67a248c::t_755bb5f7616e8e 6452
+packages/frontend/editor-ui/src/app/components/FreeAiCreditsCallout.test.ts
+  s_2c65f8c67a248c::t_91730e6768e36c 65
+packages/frontend/editor-ui/src/app/components/FreeAiCreditsCallout.vue
+  s_2c65f8c67a248c::t_4f8e422c04021a 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4cc51f4f0fe898f4733de82820df1d08d5000b4",
+  "prompts": {},
+  "sessions": {
+    "s_2c65f8c67a248c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7df942a-0ddc-43b1-821e-53d13e483798",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/testing/playwright/tests/performance/canvas/fixtures/generate-workflow.ts
+  s_82029241289295::t_28be8eaefb6795 8-13,18,26
+packages/testing/playwright/tests/performance/canvas/helpers/canvas-ready.ts
+  s_82029241289295::t_8bf367dc2f9dac 7-9
+packages/testing/playwright/tests/performance/canvas/canvas-execution.spec.ts
+  s_82029241289295::t_d750eceb9d9f89 39-40,45,52
+packages/testing/playwright/tests/performance/canvas/canvas-load.spec.ts
+  s_82029241289295::t_12b08a4c3394a3 32
+  s_82029241289295::t_8e71c18c3b9ecc 10
+packages/testing/playwright/tests/performance/canvas/canvas-interactions.spec.ts
+  s_82029241289295::t_7b5e001e69f800 17
+  s_82029241289295::t_ad63f7f7c083f7 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "04e41d7a991261ace069aba6efef61eda0a43980",
+  "prompts": {},
+  "sessions": {
+    "s_82029241289295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff8bef7-44df-43fc-b7fe-52a1f3a099b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

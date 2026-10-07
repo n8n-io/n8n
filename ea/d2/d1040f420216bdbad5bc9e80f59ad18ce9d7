@@ -1,0 +1,513 @@
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 4,6-7,39-40
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 172-307
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-71
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/launchWorkflowThread.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-61
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 11-13,15,20-31,77
+.agents/review-rules/db-migrations/data-safety.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-27
+packages/workflow/test/expression-vm-errors.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 40
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 8,10,13,18-22,24,50-59,69-81,105-122,201,325-337,348-352,404-636,649-650
+packages/@n8n/constants/src/uuid.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-6
+packages/@n8n/eslint-config/src/configs/node.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 5,7-15,17
+packages/cli/test/integration/active-workflow-manager.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 28,140-153
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 11,43
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-89
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1300-1302,1315-1317
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 1-631
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 7-20
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-116
+scripts/smoke-n8n-image.mjs
+  s_f2be74e4f2dda6::t_211720cf835b6f 17
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 12,15,24,55-56,65-66,93-95,107-111,117-118,221-246,254,264
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 79-81
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 10-14,556-683
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-150
+.agents/review-rules/db-migrations/conventions-and-tests.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-32
+packages/@n8n/engine/package.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 28
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 31,1351-1376,2729-2772
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-100
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 47-49,302-304,334-336,744-745
+packages/@n8n/db/src/migrations/common/1787739515257-AddResourceToOAuthRefreshTokens.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-45
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 173-175
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 19-30
+packages/cli/src/policy/policy-violation.error.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 35-40,55-73
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/chat-trigger-resource.base.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 15,117
+.github/workflows/docker-build-smoke.yml
+  s_f2be74e4f2dda6::t_211720cf835b6f 35,42-44,52-75,91-92
+packages/@n8n/ai-utilities/src/__tests__/utils/log-ai-event.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 45-144
+packages/cli/src/modules/type-availability-policies/database/entities/type-availability-policy.entity.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-31
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v1/ToolWorkflowV1.node.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 25-26,202
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 142-145,183
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-adapters.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,37,57-97
+packages/@n8n/engine/src/execution/start-execution.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 13-17,42-47,61,64
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 1372-1383,2647
+packages/@n8n/node-engine-compatibility/src/guards.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,6-14
+.agents/review-rules/db-migrations/necessity-and-schema-design.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-41
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/ToolWorkflowV2.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 49,130-136,151-181,209,225-228,236-242,268,929-965,997-1045,1072-1106
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy.repository.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-89
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 35-36,91-92,751-752,1391-1392
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 10,33,62,106,117
+docs/generated/sqlite-schema/README.md
+  ai_agent 97,121-123,275,305-307,1229,1448-1473
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 15-16,48-51
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 23,334-406
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 173-186,222-226,237,239-241,256,276-279,295,299-301,325-326,342-343,347-387,406-409
+packages/workflow/vitest.config.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 28-34
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 33-34,68-69
+packages/cli/src/modules/oauth-server/__tests__/test-trigger-resource-lifetime.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 83-90
+packages/cli/src/workflows/publication/publication-result.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 24-25,56-67,72-73,75,84-95,97-102
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 305-328
+packages/@n8n/nodes-langchain/nodes/tools/ToolCode/ToolCode.node.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 8,89-177,315,335-336,344,357-374,376-381,385-392
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-4,29,59-63,69,97,106,117,124-128,149-165,178-179,183,199
+packages/cli/src/modules/oauth-server/__tests__/chat-trigger-test-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 316-323,393-400
+docs/generated/sqlite-schema/type_availability_policy.md
+  ai_agent 1-67
+packages/cli/test/integration/dynamic-credentials.ee/form-trigger-submit-gate.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 105-112
+packages/cli/src/workflows/workflow.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 547,609-611,865-868,893-909,1308-1313,1373-1377,1504-1506
+packages/core/src/execution-engine/workflow-execute.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 64,1578-2130,2203,2207,2221,2223,2226,2228,2262,2281,2283-2284,2286,2337,2339-2342,2344-2346,2360,2371,2382-2383,2386-2396,2401,2409,2411
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 549-622
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 37-38,66-106
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-42
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 21,6526-6681
+packages/@n8n/decorators/src/policy-check/__tests__/policy-mint.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 2,4-6,83-111
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 24
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 38-41
+packages/@n8n/eslint-config/src/rules/no-legacy-cipher-methods.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-59
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 17,422-424,465,469-470,496-500,526,531-682,692-694,720,722-723,736-739,744-751,754-850,854-871,878,1425,1497,1521-1560,1564-1566,1592-1594,1598
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-authorization.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 85,91,99-106,232-302
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 1-1129
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 306,312,333,339
+packages/cli/src/public-api/types.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 19
+packages/cli/src/executions/__tests__/execution-id.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,4,23-32
+packages/workflow/src/expression.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 221,232-236,245,253,258-274,326-328,340,649-654,657
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 28,32,35,38,41,43,47-48,51,67,76,83,87,90,93,96,98,102-103,106
+packages/testing/performance/benchmarks/expression-engine/patterns-quickjs.bench.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-41
+packages/cli/src/execution-lifecycle/execute-error-workflow.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 8,59-63
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 5,11,13,16,28-29,31,34-40,45-46
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 47-57,61-87,90-91,95,103,107,117,132,153,159,171,174,186,193-197,204-206,209,226,230,236,241,244,258,264,269,286,294,299,312
+.agents/review-rules/db-migrations/cross-db-compatibility.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-31
+packages/nodes-base/utils/__tests__/query-parameters.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 29-30,34-90
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 15,4987-4988,5029-5033,5036
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 2,15,172-178
+packages/cli/src/modules/oauth-server/database/entities/oauth-refresh-token.entity.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 36-43
+.github/scripts/docker/should-smoke-build.mjs
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-108
+packages/@n8n/config/src/schemas.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 4
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 15,20-27,107-114,328-335,344,348-380,426-433
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 33-34,646-648,831-833
+packages/@n8n/expression-runtime/package.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 46
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 15,105,385-387
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 27-32
+docs/generated/postgres-schema/public.type_availability_policy_scope.md
+  ai_agent 1-80
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 135-152
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 3-4,6,27-28,54,66,69-70,73-86,92,152-164
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 18-20,35,75-76,140-142,192-198,200-201,203-210,212-214,216-217,228-230,237,240,246-300,328-335,350,353-354,363-365
+packages/@n8n/decorators/src/policy-check/policy-cleared.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 3-4,25-27,44-45,47-48,50-58,60
+packages/cli/src/public-api/v1/controllers/__tests__/workflows.public.controller.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-72
+packages/frontend/@n8n/stores/src/constants.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 60
+packages/@n8n/expression-runtime/vitest.config.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-2,4,9-47
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 876,908,983,1022,1035-1036,1040,1045-1159
+packages/@n8n/decorators/src/policy-check/policy-mint.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-56
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 455,461,552,558,586,592,614,620,656,662
+packages/nodes-base/utils/query-parameters.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,7-8,24,34,41,54,66-71,78,81,83,89-94,96-121,123-129,135-138,140-157,168
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  ai_agent 9,21,31-32,54
+packages/@n8n/blob-storage/src/object-store/object-store.config.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,58-63
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 14,101,139-141
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 85,135-139,194-203,205,223,271,283-285
+packages/cli/src/policy/__tests__/policy-violation.error.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 7-11,95-122
+packages/core/src/encryption/cipher.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 21,28
+packages/nodes-base/nodes/MongoDb/MongoDb.node.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 17,41-54,277,311,341,358-374,947,977
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-193
+packages/@n8n/eslint-config/src/configs/encryption-boundary.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-22
+turbo.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 37-41
+packages/@n8n/ai-utilities/src/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 7
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12
+packages/@n8n/db/src/repositories/__tests__/workflow-update-content.repository.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-64
+packages/@n8n/node-engine-compatibility/src/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 5-10
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-95
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 45,48-49
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 318-325
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 4,80-81
+packages/@n8n/constants/src/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 10
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 3,19-23,26-32,47-57,123-129,158-164,298-304
+packages/@n8n/db/src/migrations/common/1787841960965-CreateTypeAvailabilityPolicyTables.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-118
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-test-trigger-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 398,412
+packages/cli/src/modules/type-availability-policies/database/entities/type-availability-policy-scope.entity.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-38
+packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 24-26,1412-1436
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 41,438-452,459,462,472,479-480,501-504
+packages/cli/src/modules/oauth-server/resource-identity.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-31
+packages/cli/src/constants.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 108-113
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 5-7,60-82,86-113,116,120-158,160-238,258,289,302-303,307-310,322,330-335,344,422,427,433,441,446-448,615,618,746-752,759,765-766,774-781,785-787,792-794
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 117-118,345-367
+packages/testing/performance/benchmarks/expression-engine/fixtures/pattern-benchmarks.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 30-33,119-127
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 160-176
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/ToolWorkflow.node.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 7-9,13-14,16,20-23,228-307
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 49,52-53,56,59,61-62,64,68-69,72,88,104,108,111,114,117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,263,266,328,335,339,342,345,348,350,354-355,358,379,382,384,397,448,452,455,457-458,461,463,467-468,471,492,495,497,510,540-543,546,562-563,591,595,598,601,604,606,610-611,614
+.github/scripts/docker/should-smoke-build.test.mjs
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-88
+packages/@n8n/config/src/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 65
+packages/@n8n/decorators/src/policy-check/__tests__/assert-cleared-for.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-52
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 450-453,580,852-854,958-960
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 7,9,15,106,108-115,118-124,127,132,249-251,253-256,258-259,262-263,265,269,271-272,274-277,279-381,680,684-686,689,693-695,699,701,713-753,755,852,862
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 26,349-350
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 11-12,16
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,61,211-219
+docs/generated/sqlite-schema/oauth_clients.md
+  ai_agent 88
+packages/@n8n/decorators/src/policy-check/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 16
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/test/ToolHttpRequest.node.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 56-59,90-125
+packages/cli/test/migration/1787841960965-create-type-availability-policy-tables.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-322
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 49,52-53,56,59,61-62,64,68-69,72,88,97,104,108,111,114,117,119,123-124,127,195,202,205-206,209,212,214-215,217,221-222,225,238,243,248,251,253,263,266,328,335,338-339,342,344-345,347-348,350,354-355,358,379,382,384,397,416,419,421,434,485,489,492,495,498,500,504-505,508,529,532,534,547,579,595,624,628,631,634,637,639,643-644,647
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 205-211,221-223,236-245,479-485,490
+packages/@n8n/ai-utilities/src/utils/redact-secrets.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-122
+docs/generated/postgres-schema/public.type_availability_policy_attachment.md
+  ai_agent 1-75
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 46-47,63-67,70-73,93-94,197-413,438-464,723-724,1176-1177,1364-1365,1443-1444
+packages/@n8n/expression-runtime/src/__tests__/test-bridge.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-27
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 65
+packages/cli/src/execution-lifecycle/__tests__/execute-error-workflow.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 10,130-208
+docs/generated/sqlite-schema/user.md
+  ai_agent 275
+.github/workflows/docker-build-push.yml
+  s_f2be74e4f2dda6::t_211720cf835b6f 317-318,367-372
+packages/testing/playwright/tests/e2e/instance-ai/open-by-default.spec.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-70
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 28,48,166-177
+packages/cli/src/modules/type-availability-policies/database/repositories/__tests__/version-bumps.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-127
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 19-21,172-173
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 177-191
+packages/@n8n/ai-utilities/src/utils/log-ai-event.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 4-5,12-14
+packages/cli/src/expression-observability/expression-observability.provider.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 56-59,174
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-53
+docs/generated/postgres-schema/public.type_availability_policy.md
+  ai_agent 1-62
+packages/nodes-base/nodes/MongoDb/test/MongoDB.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 6,134,151,161-180,511-588
+packages/testing/performance/benchmarks/expression-engine/micro-quickjs.bench.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-101
+packages/@n8n/node-engine-compatibility/package.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 38
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-387
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 49,53,56,59,62,64,68-69,72,88,97,104,108,111,114,117,119,123-124,127,195,202,205-206,209,212,214-215,217,221-222,225,238-239,244,249,252,254,264,267,329,336,340,343,346,349,351,355-356,359,412,416,419,422,425,427,431-432,435,451,460,467,471,474,477,480,482,486-487,490,558,565,569,572,575,578,580,584-585,588,601-602,607,612,615,617,627,630,692,699,703,706,709,712,714,718-719,722,743,746,748,761,780,783,785,798,849,853,856,859,862,864,868-869,872,895,898,900,913,943-946,949,965-966,994,998,1001,1004,1007,1009,1013-1014,1017
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-220
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 35,38,337,455,460,492,497,625,630,649,654,695,700,717,722,783,791,812,817,966,971,987,992,1013,1018,1039,1044,1066-1067,1123-1130,1141,1170,1636-1804,2169,2295,2298,2310,2427-2446,2461
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 20,29,41,47,68,82,99-101,115-117
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-133
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 49-53
+packages/cli/src/modules/oauth-server/__tests__/chat-trigger-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 372-379
+packages/@n8n/api-types/src/dto/workflows/update-workflow-query.dto.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-9
+packages/cli/src/executions/execution-id.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-2,11-18
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 22
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 72-88
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,39,137-151,171-178,194,211,244,271,312-425,873
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-52
+packages/@n8n/api-types/src/dto/workflows/update-workflow-public.dto.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-20
+packages/@n8n/eslint-config/src/rules/no-legacy-cipher-methods.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-109
+packages/@n8n/expression-runtime/src/__tests__/host-fn-shadowing.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 27,35,93,107-114,118,120,123-124
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 5,12-14,40,51,53-54,60,76-80,146,175,182-188,282,359-436,506-507,510,532-540,545-560
+packages/@n8n/agents/AGENTS.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 137-139
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-1333
+packages/@n8n/expression-runtime/src/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 8-11
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 283-317
+pnpm-lock.yaml
+  ai_agent 2293-2295,2537-2539,3196-3198,9957-9971,21457-21463,28945-28962,42441-42451
+packages/@n8n/ai-utilities/src/__tests__/utils/redact-secrets.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-153
+packages/@n8n/api-types/src/dto/workflows/create-workflow-public.dto.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,4
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,116-117,119,121,130-134,172-176,197-201,203-204,207-209,213-226,353-354,356,363-376,400,405-406
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 4,14-16,23,33-37,61-67,71,73,81-94,97-114,392-410
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 13,101,117-221,230,252,309-325,461
+packages/testing/performance/benchmarks/expression-engine/fixtures/data.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 157-172
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,263,266,328,335,339,342,345,348,350,354-355,358,411,415,418,421,424,426,430-431,434,455,458,460,473,487,496,499-539,541-542,544-549,554-555,583,586-587,590,593,595-596,598,602-603,606,622,631,638,642,645,648,651,653,657-658,661,729,736,740,743,746,749,751,755-756,759,772,777,782,785,787,797,800,862,869,873,876,879,882,884,888-889,892,905,910,915,918,920,930,933,984,988,991,994,997,999,1003-1004,1007,1028,1031,1033,1046,1078,1094-1095,1123,1126-1127,1130,1133,1135-1136,1138,1142-1143,1146
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 10,28-35,71-73,77,81,96-110,125,135,142-145,155,165,178,202,235,302
+packages/@n8n/nodes-langchain/nodes/tools/ToolCode/ToolCode.node.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 29,124-125
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 71-74
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/utils.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 26-27,902
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 49,53,56,59,62,64,68-69,72,88,97,104,108,111,114,117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,263,266,328,335,339,342,345,348,350,354-355,358,379,382,384,397
+packages/cli/src/policy/policy-enforcement.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 10-11,13
+packages/nodes-base/nodes/MongoDb/MongoDbProperties.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 3-5,215-231,241-242,244-257,294,297,438-458
+packages/@n8n/blob-storage/src/object-store/__tests__/object-store.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 51,65,69-83,144,152-153,157,160-174,181-183
+packages/cli/src/modules/oauth-server/database/repositories/oauth-refresh-token.repository.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 13
+docs/generated/postgres-schema/README.md
+  ai_agent 11
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/launchWorkflowThread.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-111
+packages/@n8n/node-engine-compatibility/src/types.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 16-22
+.github/WORKFLOWS.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 558-559
+packages/@n8n/expression-runtime/README.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 204-205
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 113
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-68
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 12-13
+packages/@n8n/db/src/services/transaction.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-2,43
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 24,47-53,60-68,86-88,104-105,247-260,292-340,373,381-382
+packages/cli/src/modules/type-availability-policies/database/entities/type-availability-policy-attachment.entity.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-30
+packages/@n8n/api-types/src/dto/index.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 155-156,170-171
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-test-trigger-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 256,270
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-177
+packages/@n8n/decorators/src/policy-check/policy-brand.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-7
+.agents/review-rules/README.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 18,29-34,42
+packages/@n8n/blob-storage/src/object-store/object-store.service.ee.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 59,61,80-83,98-99,101,103-108,110-113,389-392
+docs/generated/sqlite-schema/type_availability_policy_scope.md
+  ai_agent 1-85
+packages/workflow/test/setup-vm-evaluator.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 3-4,6-7,10,16-22
+packages/@n8n/expression-runtime/src/__tests__/typed-rpc.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 22,30,153,219,274,326,441,515,609,728,781,839-899
+packages/cli/src/active-workflow-manager.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 47-48,56,95-96,454-463,601-611,770-773,775-787,789-792,794-811,866,876-890,892,928,934
+cubic.yaml
+  s_f2be74e4f2dda6::t_211720cf835b6f 159-175,224-225
+packages/@n8n/agents/package.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 88-90
+docs/generated/sqlite-schema/type_availability_policy_attachment.md
+  ai_agent 1-82
+packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-39
+packages/@n8n/config/src/configs/__tests__/expression-engine.config.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 69-84,100-112
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-test-resource.resolver.api.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 326-333
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/utils/WorkflowToolService.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 29,98-112,133-134,144-145,187,201-202,220
+.agents/review-rules/db-migrations/performance-and-scale.md
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-25
+packages/cli/test/integration/policy/type-availability-policy-repositories.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-510
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 11,31-35,109-125,403-414,421-422,426-427,429-430,443-444,464,468,471-474,672-683,687,692,696-704,706-721,728-798
+packages/cli/eslint.config.mjs
+  s_f2be74e4f2dda6::t_211720cf835b6f 16-21,34-40,55-63,187-198,203-204,207-213,217-232
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 18-20,38-40,52-53,134,140-143,223-244,257-377,689,732-755,816-872,1043
+packages/@n8n/decorators/package.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 22-33
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_f2be74e4f2dda6::t_211720cf835b6f 1,48-49
+packages/@n8n/eslint-config/src/rules/fixtures/tsconfig.json
+  s_f2be74e4f2dda6::t_211720cf835b6f 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ead2d1040f420216bdbad5bc9e80f59ad18ce9d7",
+  "prompts": {},
+  "sessions": {
+    "s_f2be74e4f2dda6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45d015dc-b15d-4645-9885-38ba98f92a11",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

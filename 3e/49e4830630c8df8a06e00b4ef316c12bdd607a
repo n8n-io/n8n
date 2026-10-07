@@ -1,0 +1,40 @@
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_bb7d9b26b8514f::t_f5da02f5decbc2 85-103
+packages/@n8n/config/src/configs/evaluation.config.ts
+  s_bb7d9b26b8514f::t_0ae985e1da3fea 56-57,62-63,66-67
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_bb7d9b26b8514f::t_607781bcf12c4e 301
+  ai_agent 353
+  s_bb7d9b26b8514f::t_672c57e97582b0 292
+  s_bb7d9b26b8514f::t_27bec4506973be 393-394,398-399
+  s_bb7d9b26b8514f::t_a24d654d2d33a3 308
+  s_bb7d9b26b8514f::t_404535e0afa364 270-278
+  s_bb7d9b26b8514f::t_c2cb6c987450d7 347-349,354-361,363-371,373-380
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_bb7d9b26b8514f::t_ba1540aef0bffc 48-59,65
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_bb7d9b26b8514f::t_6798636c91ef3a 496-497
+  s_bb7d9b26b8514f::t_851715691c17fd 535-538
+  s_bb7d9b26b8514f::t_c64f467a1f8e46 563-594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e49e4830630c8df8a06e00b4ef316c12bdd607a",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bb7d9b26b8514f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3977fda-eb0a-42ec-87df-ad23a317d352",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

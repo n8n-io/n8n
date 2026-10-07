@@ -1,0 +1,22 @@
+packages/@n8n/ai-utilities/src/utils/refreshing-auth-fetch.ts
+  s_894c4e86d9aaa6::t_2ea3b499507f79 36-46
+  s_894c4e86d9aaa6::t_5d0876356078ff 148
+packages/@n8n/ai-utilities/src/__tests__/utils/refreshing-auth-fetch.test.ts
+  s_894c4e86d9aaa6::t_c7f22849d680df 64-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b38daf5fba4c9a6de8d827e24a0cf5e64ef8ced2",
+  "prompts": {},
+  "sessions": {
+    "s_894c4e86d9aaa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56ec0584-63f8-42b4-aa55-e67df50c5303",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

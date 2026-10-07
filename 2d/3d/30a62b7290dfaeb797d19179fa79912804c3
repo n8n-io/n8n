@@ -1,0 +1,48 @@
+packages/cli/src/metrics/prometheus/cached-metric-query.ts
+  s_acd82a5f1ce4df::t_761ed25b06ae7a 3,12-16,23-24,31-39,43-45,47-49,2,11,22,30
+  s_04ac28d9eefdf7::t_dd29611e57bbf1 4
+  s_7f121e9d042d61::t_22a20dc81409b2 1,5,17
+  s_04ac28d9eefdf7::t_56b5a81cbbeb4b 6-10
+  s_04ac28d9eefdf7::t_e22750b7345f67 18-21,26-29
+  s_7f121e9d042d61::t_1cc873adfc98c9 25,42,46
+  h_8fb27e0cdf6d1e 40-41
+packages/cli/test/integration/prometheus-metrics.test.ts
+  h_8fb27e0cdf6d1e 325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d3d30a62b7290dfaeb797d19179fa79912804c3",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_04ac28d9eefdf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7536abd2-6516-48fc-8107-23ad85753978",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_7f121e9d042d61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f21ec-55d9-72a0-93c6-0f92253ac2fd",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_acd82a5f1ce4df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dca83de3-c06e-47b3-a946-35b0c580bc37",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

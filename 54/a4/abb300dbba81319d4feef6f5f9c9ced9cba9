@@ -1,0 +1,41 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_ea3a951c56d25b::t_8d2977a598cf2a 64-71
+packages/@n8n/config/test/config.test.ts
+  s_ea3a951c56d25b::t_1e6d323011c727 638
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_ea3a951c56d25b::t_0c026d98ee6de1 2,42,56
+packages/cli/src/webhooks/live-webhooks.ts
+  s_ea3a951c56d25b::t_81f7813fb82c0c 2,6-12,50,141-146,149,198,203-232
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_ea3a951c56d25b::t_adf7fe27c2f701 52,1149-1154,1156,1159-1181,1187-1198,1206-1215,1218-1227,1230-1242
+packages/cli/src/webhooks/webhook.service.ts
+  s_ea3a951c56d25b::t_f28eaef510075b 10,343-347,354,387-397
+packages/nodes-base/nodes/Webhook/description.ts
+  s_ea3a951c56d25b::t_9086759fa1bdc6 7,22-24,27,29-36
+packages/nodes-base/nodes/Webhook/test/description.test.ts
+  s_ea3a951c56d25b::t_a91c3a568f44a1 1-19
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_ea3a951c56d25b::t_faa1489a591cb0 14,22-25
+packages/workflow/src/index.ts
+  s_ea3a951c56d25b::t_2a5726d220fd4c 34
+packages/workflow/src/standard-webhook-fields.ts
+  s_ea3a951c56d25b::t_551d33a80ff382 1-194
+packages/workflow/test/standard-webhook-fields.test.ts
+  s_ea3a951c56d25b::t_0fbb49bd33b180 1-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "54a4abb300dbba81319d4feef6f5f9c9ced9cba9",
+  "prompts": {},
+  "sessions": {
+    "s_ea3a951c56d25b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_ea3a951c56d25b",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

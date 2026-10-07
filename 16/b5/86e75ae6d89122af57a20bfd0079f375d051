@@ -1,0 +1,42 @@
+packages/nodes-base/credentials/common/aws/system-credentials-utils.test.ts
+  s_3d207dda725269::t_2f17c3b90ba5e0 8-11
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_3d207dda725269::t_990e27cdf3baa2 65-66
+  s_3d207dda725269::t_0349ef735336d5 232-233
+  s_3d207dda725269::t_209d46fead69cd 301
+  s_3d207dda725269::t_99b5df27a2453d 93-94
+  s_3d207dda725269::t_ee55849690cc8c 6-8
+  s_3d207dda725269::t_d13040bab501ef 176-177
+  s_3d207dda725269::t_57e72441e7da86 300
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.ts
+  s_3d207dda725269::t_475d62a02a2b6d 28-30
+  s_3d207dda725269::t_eb3b6f584cc707 59
+  s_3d207dda725269::t_d63d2f6ef9200e 92-96
+  s_3d207dda725269::t_1147e8d53bfc9f 83-85
+  s_3d207dda725269::t_09145b9ff292d5 77-79
+  s_3d207dda725269::t_49d1d8615d11f0 22-26
+  s_3d207dda725269::t_75474c8a97fd9a 102-106
+  s_3d207dda725269::t_456adecb913d79 1-21,27,31-58,60-61,69-72,74-76,81-82,86-87,89-91,97-101,108-109,111-128
+  s_3d207dda725269::t_19bf55389ceda6 62-68,73,80,88,107,110
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.test.ts
+  s_3d207dda725269::t_728adf884af679 1-137,140-146,148-170,172-270,272-275,277,279-280
+  s_3d207dda725269::t_91a2fad5829f87 138-139,147
+  s_3d207dda725269::t_692eaa12dc7d50 171
+  s_3d207dda725269::t_647c678f12efe1 271,276,278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "16b586e75ae6d89122af57a20bfd0079f375d051",
+  "prompts": {},
+  "sessions": {
+    "s_3d207dda725269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aaa5a934-174d-46b7-ae75-dd401cfe62e4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

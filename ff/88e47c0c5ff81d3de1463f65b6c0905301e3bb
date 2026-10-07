@@ -1,0 +1,30 @@
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  h_9b272a633435fb 44
+  s_b3870ba058e6f8::t_dab091ddbe0add 43,45
+packages/@n8n/cli/src/commands/git-connections/push.ts
+  s_b3870ba058e6f8::t_fa19a3da23775b 18
+  s_b3870ba058e6f8::t_dab091ddbe0add 7,17,19-26
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  h_9b272a633435fb 172-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ff88e47c0c5ff81d3de1463f65b6c0905301e3bb",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3870ba058e6f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c9d-04e1-71b1-bad6-f92565fc72f2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

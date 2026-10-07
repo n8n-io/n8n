@@ -1,0 +1,26 @@
+packages/n8n-test/demo/workflow.test.ts
+  s_157f08ca3b0299::t_d3c447494d6f9f 15-20
+packages/n8n-test/demo/setup.ts
+  s_157f08ca3b0299::t_7e61e9ba268f1a 2-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b954689ea328667a7cb09ec885c3501a74263e84",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

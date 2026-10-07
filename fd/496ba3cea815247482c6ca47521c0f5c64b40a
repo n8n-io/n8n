@@ -1,0 +1,29 @@
+packages/cli/src/services/project.service.ee.ts
+  h_c63dce324dfc7b 908
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  h_c63dce324dfc7b 133-137
+packages/cli/src/environments.ee/variables/__tests__/variables.service.integration.test.ts
+  s_e0221478a1fd9d::t_2f952372bf7443 1-6
+  s_e0221478a1fd9d::t_cc8caa829b4bcc 192-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fd496ba3cea815247482c6ca47521c0f5c64b40a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e0221478a1fd9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "124e864d-2b96-4727-8b3d-8e144cc8e690",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

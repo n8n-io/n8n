@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.store.ts
+  s_278b5dc3633c05::t_73269f9ee4fa43 46,54
+  s_278b5dc3633c05::t_733ab75d387efd 3,5
+  s_278b5dc3633c05::t_c3ef7135fe13e8 27
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  s_278b5dc3633c05::t_ff5fc94bd358f0 3-7,10-14,25,31-32,37
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_278b5dc3633c05::t_14e71601275869 3-5,29-33,35,38-40,48-49
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  s_278b5dc3633c05::t_4bc1566e1e00a7 2
+  s_278b5dc3633c05::t_4d3e0d86a4902e 11
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_278b5dc3633c05::t_c5816a79f6bad0 3-6
+  s_278b5dc3633c05::t_de90c114c421fa 119,121-122,143-145,151
+  s_278b5dc3633c05::t_58dfea84722e28 190,193
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.api.ts
+  s_278b5dc3633c05::t_4ce2c287af98d9 2-3,9,17,23-25
+packages/@n8n/api-types/src/workflow-review-request-summary.ts
+  s_278b5dc3633c05::t_a8d3695b061a76 1-26
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  s_278b5dc3633c05::t_55e169dfeb9a6e 56,91
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  s_278b5dc3633c05::t_1af97ac55d6191 36-37
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_278b5dc3633c05::t_060c199c7b9a79 466,471,489,498,511,520,547,571,574
+packages/@n8n/api-types/src/dto/index.ts
+  s_278b5dc3633c05::t_eba0d0773f49fe 290
+packages/@n8n/api-types/src/index.ts
+  s_278b5dc3633c05::t_f4589ea5b97bda 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48a92acbba6bc1a03c8d9c7c5d80f98a999a3eea",
+  "prompts": {},
+  "sessions": {
+    "s_278b5dc3633c05": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b77dc33-92bf-492b-8614-c5fa327f6901",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.ts
+  s_bf3d11075781d3::t_999256b2d23b30 1,15-21,23,203-205,223
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_bf3d11075781d3::t_19f9e817f623c8 20,24
+packages/@n8n/nodes-langchain/utils/databricks/constants.ts
+  s_bf3d11075781d3::t_22b16a6ea31120 2-3,14-29
+packages/@n8n/nodes-langchain/utils/databricks/error-handling.ts
+  s_bf3d11075781d3::t_1a2fafcd8573ce 4
+packages/@n8n/nodes-langchain/utils/databricks/gateway-config.ts
+  s_bf3d11075781d3::t_b430749a96feb5 1-81
+packages/@n8n/nodes-langchain/utils/databricks/model-services.ts
+  s_bf3d11075781d3::t_64e4f7683eb787 1-136
+packages/@n8n/nodes-langchain/utils/databricks/test/error-handling.test.ts
+  s_bf3d11075781d3::t_bb49272fe1af32 5
+packages/@n8n/nodes-langchain/utils/databricks/token-provider.ts
+  s_bf3d11075781d3::t_249eeae42a4d7f 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "38e9d294ab3e5edfa49a923731ec08c1418a2be4",
+  "prompts": {},
+  "sessions": {
+    "s_bf3d11075781d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bcbdbce0-7bcc-4a4a-acf1-25145ad93707",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

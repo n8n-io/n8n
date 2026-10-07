@@ -1,0 +1,44 @@
+packages/@n8n/ai-utilities/package.json
+  s_77a32fd9603843::t_9f52ddd963fe8b 33-35,85-88
+  s_85629be8996a13::t_fa9362c85bf907 89
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_77a32fd9603843::t_1980917f97c255 4676-4698
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_77a32fd9603843::t_1980917f97c255 64-77
+packages/@n8n/ai-utilities/src/model-capabilities/index.ts
+  s_77a32fd9603843::t_9f52ddd963fe8b 1-8
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_77a32fd9603843::t_1980917f97c255 810,853-856,858-863,865,867-880
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_77a32fd9603843::t_9f52ddd963fe8b 9,519
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_77a32fd9603843::t_9f52ddd963fe8b 271-274
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_77a32fd9603843::t_9f52ddd963fe8b 1-2,21-24,46,51-52,54
+  s_77a32fd9603843::t_c2e0d317330071 53,59-67
+  s_77a32fd9603843::t_44acdbfe4b1851 68-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bb960e433c753b85d4179152dfb7d09722d7a13e",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_85629be8996a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa392-cc89-7851-8dc2-697ffc4937ce",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

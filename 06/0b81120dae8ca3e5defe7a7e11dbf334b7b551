@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_ecdf2f2961dcf9::t_3f67e2c2eda1fc 41-44,47-49
+  s_ecdf2f2961dcf9::t_d85cd7c1cb083a 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "060b81120dae8ca3e5defe7a7e11dbf334b7b551",
+  "prompts": {},
+  "sessions": {
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

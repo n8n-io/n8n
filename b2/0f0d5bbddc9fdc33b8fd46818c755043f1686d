@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Telegram/tests/node/prepareChatApproval.test.ts
+  s_60ce6e746ce9d3::t_6fe272ff6fdcfd 93-110,217
+  s_60ce6e746ce9d3::t_0674ac1fcbab6c 203-211,213-215
+  s_60ce6e746ce9d3::t_2d89f93b23da59 212,216
+  s_60ce6e746ce9d3::t_4b5d90e53665b5 218
+packages/nodes-base/nodes/Telegram/hitl/setup.ts
+  s_60ce6e746ce9d3::t_329b7b1c761cee 1-2
+  s_60ce6e746ce9d3::t_873af50e99661e 23-29,31-34
+  s_60ce6e746ce9d3::t_fbbfff2d6308e3 137
+  s_60ce6e746ce9d3::t_ec3b300fdb3b38 18-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "b20f0d5bbddc9fdc33b8fd46818c755043f1686d",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

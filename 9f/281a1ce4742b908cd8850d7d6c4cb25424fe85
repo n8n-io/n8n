@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Kafka/test/v2/transport/LibraryLogger.test.ts
+  s_79c0473179aa3d::t_d3b7fb69b1131c 6
+  s_79c0473179aa3d::t_08a24d5e22d01f 3
+  s_79c0473179aa3d::t_3453b954b499f3 9
+  s_79c0473179aa3d::t_7cb1f340258bc8 1-2,4-5,7-8,10-80
+packages/nodes-base/nodes/Kafka/v2/transport/consumer.ts
+  s_79c0473179aa3d::t_3af19ea60000a4 43-54
+  s_79c0473179aa3d::t_7338e2e361426e 2,5
+  s_79c0473179aa3d::t_ec19b67978d81e 77,88
+packages/nodes-base/nodes/Kafka/v2/transport/LibraryLogger.ts
+  s_79c0473179aa3d::t_22b8e8cb2a474e 54
+  s_79c0473179aa3d::t_3769fafe4f4c30 1-53,55-66
+packages/nodes-base/nodes/Kafka/test/v2/transport/consumer.test.ts
+  s_79c0473179aa3d::t_65acdd24de2c4c 98-116
+  s_79c0473179aa3d::t_322db04fe563ed 1-3
+packages/nodes-base/nodes/Kafka/v2/transport/index.ts
+  s_79c0473179aa3d::t_533c191287b4fc 4-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9f281a1ce4742b908cd8850d7d6c4cb25424fe85",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

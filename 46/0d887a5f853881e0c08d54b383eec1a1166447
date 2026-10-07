@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/evaluations/harness/memory-context.ts
+  s_d7dc19b022f345::t_57d80fc2ae3057 10-12,205-209
+  s_d7dc19b022f345::t_3e3561ef4007c6 36-65,71-77,80,82-90
+  s_d7dc19b022f345::t_66a161d1687c41 159-177
+packages/@n8n/instance-ai/evaluations/__tests__/memory-context.test.ts
+  s_d7dc19b022f345::t_78319b13c0152c 135-138,140-143,146-147,150-168,171-175,177-190,192-197
+  s_d7dc19b022f345::t_4fae229f709b0d 144-145,148-149,169-170,198-204
+packages/@n8n/instance-ai/evaluations/system-prompts/memory-expectations-verify.ts
+  s_d7dc19b022f345::t_4048969d6637db 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "460d887a5f853881e0c08d54b383eec1a1166447",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

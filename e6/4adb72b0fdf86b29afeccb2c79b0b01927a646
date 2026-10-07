@@ -1,0 +1,82 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_adb5d982725a9c::t_9ed3c2d4869500 47-48
+  s_adb5d982725a9c::t_08e55f9407d7a0 72
+  s_adb5d982725a9c::t_f0e6033fe88785 146-147,150-159,162-165,168-169,171-219,222-225,227-228
+  s_adb5d982725a9c::t_d3e3c1c890ee99 220-221,226
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_adb5d982725a9c::t_9af004410f8920 43-44
+  s_adb5d982725a9c::t_cb7b176b5cdad1 114,117-118,120,125-126
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_adb5d982725a9c::t_2068afc45c2100 93-95
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_adb5d982725a9c::t_af2673729040aa 6-7,13-18,31,33
+  s_adb5d982725a9c::t_c7e0873b1b1eb7 70-74,79-82,88-92,94,97-99,105-106
+  s_adb5d982725a9c::t_ff732abea11996 100-104
+  s_adb5d982725a9c::t_4cb5da5b98a048 124-129
+  s_adb5d982725a9c::t_e03a977a35fbc3 130-132
+  s_adb5d982725a9c::t_73b9483c8bc000 168-193
+  s_adb5d982725a9c::t_168abc348e051b 217-222,225,236,240-261
+  s_adb5d982725a9c::t_e6ff4ffa353738 269-309
+  s_adb5d982725a9c::t_6988d6eb9913df 335,354,373
+  s_adb5d982725a9c::t_471a744745ca98 357-364,366-372
+  s_adb5d982725a9c::t_c151511861701c 385-408,410-426,428,430-438
+  ai_agent 409
+  s_adb5d982725a9c::t_48d6d5d33f2455 449,461-463
+  s_adb5d982725a9c::t_3725d56f8f66e7 471-499,501-504
+  s_adb5d982725a9c::t_d3e3c1c890ee99 507-552,668-722
+  s_adb5d982725a9c::t_200cb802a273d4 558,561
+  s_adb5d982725a9c::t_9884cc8749f164 599-606,613-621
+  s_adb5d982725a9c::t_f2ca52db69b48d 607-612
+  s_adb5d982725a9c::t_2b7aad769b5ece 723
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/instanceAiEmbed.types.test.ts
+  s_adb5d982725a9c::t_406cf1cae85863 21
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_adb5d982725a9c::t_931c6dd1f8a908 395
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_adb5d982725a9c::t_ab53b67e605e79 88-90
+  s_adb5d982725a9c::t_26ad473ccf7c7c 428-429,442-443,838-843
+  s_adb5d982725a9c::t_d514578304f2de 439-441
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_adb5d982725a9c::t_17b868a714c789 73-75
+  s_adb5d982725a9c::t_94de53a6c5be44 198-201,203-205,539
+  s_adb5d982725a9c::t_6af93917b7e251 202,207-210
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_adb5d982725a9c::t_635aa47e9a2f1b 397
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_adb5d982725a9c::t_17b868a714c789 14-23
+  s_adb5d982725a9c::t_40688af81b5355 28-29,68-77,82-84,97-133,136-138
+  s_adb5d982725a9c::t_83661818e9ae36 35
+  s_adb5d982725a9c::t_5975209c6d5936 65-67
+  s_adb5d982725a9c::t_a54f79e7fa4d96 78-81
+  s_adb5d982725a9c::t_d3e3c1c890ee99 85,94-96,324,331-334
+  s_adb5d982725a9c::t_401a38f3537d78 86-93
+  s_adb5d982725a9c::t_31e6ced19818cb 134-135
+  s_adb5d982725a9c::t_20aea1751f67b3 172,174-180,190-192
+  s_adb5d982725a9c::t_78002e877e1743 184
+  ai_agent 189
+  s_adb5d982725a9c::t_723cabb060d0be 193
+  s_adb5d982725a9c::t_9cec55461f43ff 203
+  s_adb5d982725a9c::t_329606cad6679b 211,213-221
+  s_adb5d982725a9c::t_90b8a0c9712d64 230-248,251-255,257-258,260-265,269,283-287
+  s_adb5d982725a9c::t_ce0374609be6f4 249-250,256,259
+  s_adb5d982725a9c::t_59bdc6ef60868a 291-294
+  s_adb5d982725a9c::t_82234d73215534 317-323,325-327
+  s_adb5d982725a9c::t_0ee0e327387e6d 366-369
+  s_adb5d982725a9c::t_6ee7e024531a6d 374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e64adb72b0fdf86b29afeccb2c79b0b01927a646",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

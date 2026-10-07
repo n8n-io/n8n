@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_2df5bb80907049::t_b8f34dc7505d57 343
+  s_2df5bb80907049::t_54d27ef76138c7 121-131,143-144,214,219,230,241,358,387,589
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_2df5bb80907049::t_3d8a6c30a35c68 450-452
+  s_2df5bb80907049::t_f6ec6e2fb759a6 445-449,453-456
+  s_2df5bb80907049::t_eb92ee045f1188 427-444,457-458
+  s_2df5bb80907049::t_35214b90a22e20 426
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_2df5bb80907049::t_0afdebe03b3f9d 171,173,185,276,398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "da4e4a58dc0105d9df45f7abf1ebe6165507d2bb",
+  "prompts": {},
+  "sessions": {
+    "s_2df5bb80907049": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa973-8fa0-7ea0-97af-f07c3b2abc9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

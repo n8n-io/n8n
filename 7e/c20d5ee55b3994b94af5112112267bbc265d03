@@ -1,0 +1,35 @@
+.github/workflows/test-e2e-reusable.yml
+  s_b0cb38bd8537de::t_59ca85808435f2 46
+packages/@n8n/config/src/configs/__tests__/expression-engine.config.test.ts
+  s_b0cb38bd8537de::t_ff54df528076b7 13-16,26-40
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_b0cb38bd8537de::t_c4b3b0b96a42dd 11-12,15
+packages/@n8n/config/test/config.test.ts
+  s_b0cb38bd8537de::t_2c9653fd07f9b7 629
+packages/@n8n/expression-runtime/README.md
+  s_b0cb38bd8537de::t_a03a3beca8ebd0 7-16,35,62,64-65,71-74,81-82,87-88,106-107,119,121,123,125-126,131,143-145,180-182,184-186,190-192,195-211,214,247-250,254-256,258
+packages/workflow/src/expression.ts
+  s_b0cb38bd8537de::t_c67e0e9b2b2af6 242,648
+packages/workflow/stryker.config.mjs
+  s_b0cb38bd8537de::t_828987178ee147 6,26
+packages/workflow/vitest.config.ts
+  s_b0cb38bd8537de::t_5c5676a7998868 17-18,24-25
+packages/workflow/vitest.stryker.config.ts
+  s_b0cb38bd8537de::t_87a720449c4891 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7ec20d5ee55b3994b94af5112112267bbc265d03",
+  "prompts": {},
+  "sessions": {
+    "s_b0cb38bd8537de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_b0cb38bd8537de",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

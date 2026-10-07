@@ -1,0 +1,56 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue
+  s_756f30de40ce04::t_3ccb88882f8b79 7-8
+  s_756f30de40ce04::t_5cbe0f46497917 60
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_756f30de40ce04::t_02a88d21838b83 22
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.vue
+  s_756f30de40ce04::t_dd402641798749 28-30
+  s_756f30de40ce04::t_a4df16beb82781 8
+  s_756f30de40ce04::t_d1a13ae3e27899 61
+  s_756f30de40ce04::t_d213427f63b59f 26
+  s_756f30de40ce04::t_2badfa4ce47e14 3
+  s_756f30de40ce04::t_88c25b525c164b 156-160,162
+  s_756f30de40ce04::t_b2d149088071bf 7,84
+  s_756f30de40ce04::t_cdbe021ed9b3e2 81,85,92
+  h_760178ed151f13 90,150,154,174-177
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_760178ed151f13 5411
+  s_756f30de40ce04::t_d7c3fe856fb9fa 5409
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  h_760178ed151f13 228
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_756f30de40ce04::t_18de9dd13b00a6 63
+  s_756f30de40ce04::t_d37d80842fe796 19
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.test.ts
+  h_760178ed151f13 95
+  s_756f30de40ce04::t_6f100722667b09 6-7,9,13-26,98-99,103-106
+  s_756f30de40ce04::t_f74dd51e51fa98 82
+  s_756f30de40ce04::t_e51303773039d8 115
+packages/frontend/editor-ui/src/features/workflow-reviews/formatUserDisplayName.ts
+  s_756f30de40ce04::t_897c1dabdedf0b 1-9
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_756f30de40ce04::t_8f2e366cc72524 5
+  s_756f30de40ce04::t_82d094c2698fd7 150
+  s_756f30de40ce04::t_7cc978971ff023 134,137-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d956b2ad49f7514bfd434fc9eb4b4af103d73808",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_756f30de40ce04": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5124076b-1e6f-483c-b0cd-314e9eaa9724",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

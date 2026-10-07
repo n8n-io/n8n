@@ -1,0 +1,30 @@
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  h_5d40c27a8fdfd1 141
+packages/@n8n/api-types/src/dto/roles/update-role-mapping-rule-public.dto.ts
+  s_d64d432ee2bd9a::t_09ba17d908f27b 6-8
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_d64d432ee2bd9a::t_a2635711f363f6 545,588,592-593,604-606,615,621,623-638,645,657,663,669,672,675,681,684,687,693,696,705,719,731,743,754,766,780
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
+  h_5d40c27a8fdfd1 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "625cda787b0d2d08d4ba5147dd8d2e476f9dba51",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d64d432ee2bd9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2dd4d14-a5c2-4343-994f-5e116c36149d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

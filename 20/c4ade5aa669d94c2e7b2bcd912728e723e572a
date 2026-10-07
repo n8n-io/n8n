@@ -1,0 +1,22 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_81dbdf4b8dba57::t_fff191e1c65e81 1048
+  s_81dbdf4b8dba57::t_61a9951995f983 1008
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_81dbdf4b8dba57::t_3c62b352dd36c6 512-516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "20c4ade5aa669d94c2e7b2bcd912728e723e572a",
+  "prompts": {},
+  "sessions": {
+    "s_81dbdf4b8dba57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f97065b2-585a-443c-a648-66d255018dac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,138 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewChangesSection.vue
+  s_1a2f017b901928::t_59759266d1a7fe 8,10,90-92,94,96-100,102-112,127-131,160-161
+  s_1a2f017b901928::t_46d48e0671091f 139-158
+  s_1a2f017b901928::t_fd5d4341be8067 9
+  s_1a2f017b901928::t_c6ff1aa567bf6a 23-24
+  s_1a2f017b901928::t_04a9fc2f421102 33-44
+  s_1a2f017b901928::t_39886acaeb8ac4 49-63
+  s_207230a01b0f33::t_beee7b676b7c1e 1-5,7,11-22,25-26,28-31,45-46,48,64-89,95,132-134,159,162-166
+  s_1a2f017b901928::t_f5e8ffe208739d 6
+  s_1a2f017b901928::t_ac83bed900447e 93,101
+  s_1a2f017b901928::t_08d0284ccdbbbb 113-117,119-123,125-126
+  s_1a2f017b901928::t_3f61870370a050 118
+  s_1a2f017b901928::t_b6018a091d050f 124
+  s_1a2f017b901928::t_dd36fe0e17ec77 135-138
+  h_9c8f56e3400786 27,32,47
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_1a2f017b901928::t_3963c1fe7fb5bd 195
+  s_1a2f017b901928::t_f6f12601aadcad 209,211
+  s_1a2f017b901928::t_46770063070b00 212
+  s_1a2f017b901928::t_ca718f32d0af24 106
+  s_1a2f017b901928::t_404a3b68bc3f77 210
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewChangesSection.test.ts
+  s_1a2f017b901928::t_fb0fc59848a3c4 197-216
+  s_1a2f017b901928::t_6e0320e7141a1b 88-90,93-94
+  s_1a2f017b901928::t_0d213dba3e2677 154,185
+  s_1a2f017b901928::t_9d7dbab3cc69c3 33-35
+  s_207230a01b0f33::t_e8687b4e6a9cff 1-6,8-32,36-87,95,97-134,139-147,150-153,155-166,169-170,234-235
+  s_1a2f017b901928::t_bb45b2663d064c 91-92
+  s_1a2f017b901928::t_00367ecdd13845 135-138,148-149
+  s_1a2f017b901928::t_ae6a57e1ab1f1f 167-168,177-184,186-196,217-233
+  s_1a2f017b901928::t_6913ba48ef020e 175
+  s_1a2f017b901928::t_0efa9928e8ff6e 96
+  s_1a2f017b901928::t_63590f583e7cc8 7
+  s_1a2f017b901928::t_1912a8d00bcc6c 171-174,176
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_1a2f017b901928::t_a01b55f590f295 155-161,179,181
+  s_1a2f017b901928::t_6e7388f0f17fb6 56-59,61-64,88-89
+  s_1a2f017b901928::t_8e8e15b7ec7f0a 120-122,124-128,143
+  s_1a2f017b901928::t_e6fa23cbf5f378 166
+  s_1a2f017b901928::t_9d361a5c86c0ac 115
+  s_1a2f017b901928::t_5d6a3e27997e5f 130
+  s_d52091f2d1d4d0::t_bc7f01b8736ac7 31-41
+  s_413059350e3ea1::t_51795bb05a8e86 91-95,139
+  h_9c8f56e3400786 26
+  s_d52091f2d1d4d0::t_46715d0bab70a3 65-87
+  s_d52091f2d1d4d0::t_5e5e7532204ece 3
+  s_1a2f017b901928::t_e20909bfd239e5 60
+  s_1a2f017b901928::t_d39f5fa16c0142 169-172
+  s_1a2f017b901928::t_6604482f8d2ea3 123
+  s_207230a01b0f33::t_37a495f7122add 1-2,4-25,27-30,42-55,90,96-114,116-119,129,131-138,140-142,144-154,162-165,167-168,173-178,180,182
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_1a2f017b901928::t_8b88334b11cdd7 92
+  s_207230a01b0f33::t_5a87cf8d64ff1f 107-117
+  s_1a2f017b901928::t_e89357bebac552 306,310-313
+  h_9c8f56e3400786 90
+  s_1a2f017b901928::t_5c7681a1c507ff 91,93
+  s_1a2f017b901928::t_9a34d7b71b7141 304-305,307,309,314
+  s_1a2f017b901928::t_9b0077f3fe579a 208
+  s_207230a01b0f33::t_a16a24f89187dc 265-272
+  s_207230a01b0f33::t_3c91e094fd43b7 6,12-13
+packages/frontend/editor-ui/src/app/components/layouts/PageViewLayout.vue
+  s_1a2f017b901928::t_b3ac9628ede44a 35-36
+  s_1a2f017b901928::t_1aa0783e0497a2 1-6,8,32-33
+  s_1a2f017b901928::t_4d6f50ba283335 34
+packages/frontend/editor-ui/src/features/workflow-reviews/constants.ts
+  s_207230a01b0f33::t_e48c065195a7e7 14-15,18
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_d52091f2d1d4d0::t_3ffff35476226a 188-197,200-234,236-238,242-245,247-256,264-267,269-278,282-303
+  h_9c8f56e3400786 126,178
+  s_207230a01b0f33::t_f091390a4461c8 103,107
+  s_d52091f2d1d4d0::t_7588cc477d8a05 21-35
+  s_d52091f2d1d4d0::t_916a761ff898a2 235,239-241,246,257-263,268,279-281
+  s_1a2f017b901928::t_a5a73c5c2c32d6 150
+  s_1a2f017b901928::t_da5193bab21572 179,183-184,186-187,198-199
+  s_1a2f017b901928::t_7cdcf540a2eee6 136
+  s_d52091f2d1d4d0::t_6eee5c8d63a5e6 37-52
+  s_207230a01b0f33::t_4ace58e0e4109d 1-15,18-20,53-90,93-102,104-106,108-125,127-135,137-149,151-177,180-182,185,304-305
+  s_1a2f017b901928::t_ae6b5359b9903a 16-17
+  s_d52091f2d1d4d0::t_30f4b3a088e12e 91-92
+  s_d52091f2d1d4d0::t_50a3ef77c13aae 36
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_d52091f2d1d4d0::t_4beee52079e9e3 611,614-616,626,629-632,645,648-650
+  s_d52091f2d1d4d0::t_2a19f5ccd0fb90 733-749
+  s_1a2f017b901928::t_c45a6ba3eb8658 31
+  s_207230a01b0f33::t_45f3a4cf143ae9 365,368,374
+  s_207230a01b0f33::t_74e9650472dde1 26-30,32-35
+  s_1a2f017b901928::t_e4be24638d213e 182-213
+  s_207230a01b0f33::t_8b79406126819c 327-364,366-367,369-373,375-381
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1a2f017b901928::t_970a6dc17660ab 5411-5412
+  s_207230a01b0f33::t_f9e7bc838ab033 5403-5407,5409-5410,5413
+  s_1a2f017b901928::t_efe3c4a17123e8 5408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b0cf6180b8d74a856a45d76eeb7e06624f88cf50",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1a2f017b901928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38ae9fad-4160-4f32-a616-4bf5b019532d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_207230a01b0f33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87dbdb9c-45ce-48f0-babc-7748959ee9de",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_413059350e3ea1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0580e1d2-7adb-484b-995f-12a4f67cc07a",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_d52091f2d1d4d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b00986a-81ff-43c3-a258-e835ed5b4b0e",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

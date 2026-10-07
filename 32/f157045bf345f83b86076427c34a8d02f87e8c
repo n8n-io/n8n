@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_4684d59d5a9b58::t_e4284f541cc815 92,247-253,674-677
+  s_4684d59d5a9b58::t_74e592821b664a 232,246
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasAgentNodeGeometry.ts
+  s_4684d59d5a9b58::t_9c228e5400a6b8 26
+  s_4684d59d5a9b58::t_297890992b6d8f 4-6,19,21-25,27-49,51,54-74
+  s_4684d59d5a9b58::t_e011f283fe1903 1-3,7-18,20,50,52-53,75-78
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_4684d59d5a9b58::t_f0cc822c7ee379 564,578
+  s_4684d59d5a9b58::t_7f8123cb3b4d9d 32,349,360,558,573
+  s_4684d59d5a9b58::t_62808d57ad29c8 365,579
+  s_4684d59d5a9b58::t_ec74a985413f2f 58,555-557,559-563,565-572,574-577
+  s_4684d59d5a9b58::t_fc5c607afcfd41 116-121,348,350-359,361-364
+  s_4684d59d5a9b58::t_dccd5270b2d921 366
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_4684d59d5a9b58::t_ae3c69d7bfb372 1071,1073-1077
+  s_4684d59d5a9b58::t_af641d4d6baa28 1624-1630
+  s_4684d59d5a9b58::t_012944d3d34319 1618,1620-1621,1623
+  s_4684d59d5a9b58::t_e4284f541cc815 157,201,1072,1619,1622
+  s_4684d59d5a9b58::t_6eeef144e4223f 1631-1632
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_4684d59d5a9b58::t_8cdaa73fcca075 586-599,601-602
+  s_4684d59d5a9b58::t_40952f724e9a77 40,565-573,575,577-585
+  s_4684d59d5a9b58::t_d412dc9ee4e46e 527-564
+  s_4684d59d5a9b58::t_7f8123cb3b4d9d 41,574,576,600
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_4684d59d5a9b58::t_9d570dd15a1bc2 189-192,197-199
+  s_4684d59d5a9b58::t_78524ab0b11df2 193-196
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_4684d59d5a9b58::t_0ae06d924c5fd4 15-19,638-641,644-645
+  s_4684d59d5a9b58::t_215ab9b961eef5 14
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasAgentNodeGeometry.test.ts
+  s_4684d59d5a9b58::t_b1168d2b74d425 74,89,93,108
+  s_4684d59d5a9b58::t_b5889ddc9ce7e4 1-73,75-88,90-92,94-107,109-110
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.test.ts
+  s_4684d59d5a9b58::t_81eb22de707c1b 30,67-79
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.ts
+  s_4684d59d5a9b58::t_29c2c32a868c59 42
+  s_4684d59d5a9b58::t_7c7f1549319bfc 127-130
+packages/frontend/editor-ui/src/features/agents/agentNodeCanvasGeometry.store.ts
+  s_4684d59d5a9b58::t_297890992b6d8f 4-5,7-13,16-27,29-34,37-40
+  s_4684d59d5a9b58::t_e011f283fe1903 1-3,6,14-15,28,35-36,41-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "32f157045bf345f83b86076427c34a8d02f87e8c",
+  "prompts": {},
+  "sessions": {
+    "s_4684d59d5a9b58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6806-99e9-71a1-bddc-3d0429f2069e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

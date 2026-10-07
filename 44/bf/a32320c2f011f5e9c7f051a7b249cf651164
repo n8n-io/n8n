@@ -1,0 +1,27 @@
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_bd2476b2677534::t_ca8b550ad4fd03 146-152
+  s_bd2476b2677534::t_16413e0e77bad9 23-27,36,128,133,153-156,166
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_bd2476b2677534::t_16413e0e77bad9 32-34
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_bd2476b2677534::t_16413e0e77bad9 13,192,195,201,205,208,214
+  s_bd2476b2677534::t_3d0654ed5c9186 77-79,83-85,94-96,106-108,149-152,165-168,181-184,259-261
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_bd2476b2677534::t_16413e0e77bad9 1158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44bfa32320c2f011f5e9c7f051a7b249cf651164",
+  "prompts": {},
+  "sessions": {
+    "s_bd2476b2677534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b3a1-17ea-78e0-94e2-443c3571931f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

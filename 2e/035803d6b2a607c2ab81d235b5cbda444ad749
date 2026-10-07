@@ -1,0 +1,52 @@
+packages/@n8n/api-types/src/index.ts
+  h_435b1d7d3e52c0 747
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.vue
+  s_0d56c0d5037269::t_8ad7f13a5c1ef9 73-85
+  s_0d56c0d5037269::t_8e9cf4bca713b3 20-24
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  s_0d56c0d5037269::t_387853950f2aa9 164-165,174-227,229-234,236-250
+  s_3331ae69c9bfc7::t_e041e05c253fc4 266,272,275-281
+packages/@n8n/api-types/src/constants/role-mapping.ts
+  h_435b1d7d3e52c0 19-20
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  s_0d56c0d5037269::t_912e01ee919db5 5
+  h_435b1d7d3e52c0 15-16,122-123,130,132-135,148,151-152,154-155,184-185,190-191,200-211
+  s_0d56c0d5037269::t_3d2a633b186391 14,17,125-128,137,139-147,156-183,186-189
+  s_3331ae69c9bfc7::t_853b5dfb1b1c6e 153
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0d56c0d5037269::t_e11273e9b1a6f5 245-246
+packages/cli/src/modules/provisioning.ee/constants.ts
+  h_435b1d7d3e52c0 3-4,14-15
+  h_435b1d7d3e52c0 1-2,5
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.test.ts
+  s_0d56c0d5037269::t_d06f25b86bacff 147-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2e035803d6b2a607c2ab81d235b5cbda444ad749",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0d56c0d5037269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94d5a4c2-058a-4aa4-a998-f3fdea89cd3c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_3331ae69c9bfc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e75d9cec-2ff3-4d75-a9d1-f76bbe50c00e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

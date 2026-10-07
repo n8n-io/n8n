@@ -1,0 +1,31 @@
+packages/cli/src/workflows/catalog.controller.ts
+  s_8a60b387177b0b::t_0d66fa8b7d29dc 33
+  s_8a60b387177b0b::t_349f095444e14d 49
+  s_8a60b387177b0b::t_f993af81d47b4f 21
+  s_8a60b387177b0b::t_25cae370c86962 39-48
+packages/cli/src/workflows/__tests__/catalog.service.test.ts
+  s_8a60b387177b0b::t_0f26601718af8d 5-11
+  s_8a60b387177b0b::t_2abe10baca5ab3 28,34,37,39
+  s_8a60b387177b0b::t_fb5bb766ebc17f 107-149,151-166
+  s_8a60b387177b0b::t_6ee12f7d55601a 150
+packages/cli/src/workflows/catalog.service.ts
+  s_8a60b387177b0b::t_e351098753cfbf 106-138
+  s_8a60b387177b0b::t_70fce0450407c7 4,6-7
+  s_8a60b387177b0b::t_99cc03bad85d71 31-48,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "32fb2405e588115fee9decfd602dd12378518d92",
+  "prompts": {},
+  "sessions": {
+    "s_8a60b387177b0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6036dc6f-cbd9-4e33-aeb8-df572d6fed3b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

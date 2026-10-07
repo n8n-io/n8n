@@ -1,0 +1,15 @@
+packages/cli/src/credentials/credentials.service.ts
+  h_ed1b2d65e81e8e 299
+  h_ed1b2d65e81e8e 311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "07e2ebb294133adf4522e553e1d88cc3eb5bbc66",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

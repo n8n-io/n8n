@@ -1,0 +1,97 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_3aaa503f47ada7::t_c46a2d0ac5db62 44,279
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_3aaa503f47ada7::t_c46a2d0ac5db62 29,179
+  s_3aaa503f47ada7::t_e096e8c1f9f3ea 16,253-319,323-343,398-433,439-450,454-457,1426,1430-1434
+  s_3aaa503f47ada7::t_3105af8d663021 320-322,451-453
+  s_3aaa503f47ada7::t_a009a4a3c246df 730,760,2193-2194,2225-2226
+  s_1efba383bbdf02::t_6001dee73041cb 434-438
+  s_3aaa503f47ada7::t_99e1ab5c42e96d 28,30,344-395
+  s_3aaa503f47ada7::t_b065785d07313a 396-397
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_3aaa503f47ada7::t_4f80c63528ee25 1-89,91-107,109-126,128-155,159-167,169-181,185-241
+  s_3aaa503f47ada7::t_7711c335de3b01 182-184
+  s_3aaa503f47ada7::t_a009a4a3c246df 108
+  s_1efba383bbdf02::t_0c559957b405b9 168
+  s_1efba383bbdf02::t_425402f4faa820 90,127,156-158
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_3aaa503f47ada7::t_4eee025d02b549 328-341,343-348,352-373
+  s_3aaa503f47ada7::t_c46a2d0ac5db62 18,139
+  s_3aaa503f47ada7::t_dd630f963e8f78 342
+  s_3aaa503f47ada7::t_3105af8d663021 349-351
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_3aaa503f47ada7::t_898ca115fb6b20 25,40,283
+  s_3aaa503f47ada7::t_0bf75539a656d4 904-912,914
+  s_3aaa503f47ada7::t_3105af8d663021 641-647
+  s_3aaa503f47ada7::t_b61b6ccb9c724b 512-529,531-552
+  s_3aaa503f47ada7::t_2010809f340aa3 578-614,630-640,648-666,684-711
+  s_3aaa503f47ada7::t_223c5b39952148 415-417,419-425,427-433,435-449,451-483,485-486
+  s_3aaa503f47ada7::t_7711c335de3b01 970
+  s_3aaa503f47ada7::t_7790dcac55f6e6 41,725-765,767-782,784-785,902
+  s_3aaa503f47ada7::t_7de33d11293ac4 844-845,847-848,850-856,858-859,861-887,889-901,983,988
+  s_3aaa503f47ada7::t_6a832cb4f3c624 903
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_3aaa503f47ada7::t_c0f21281e66000 28,39,41,97,296-300,357-361,398-402,587-604
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_3aaa503f47ada7::t_2d245817565762 20-21,24,42-46,57,102-103,181,183-184,187-189,195-197,201-202,204-208,210,212,214-215,218,222-226,235-239,252,349,352-353,355-375,377-379,381-383,385
+  s_3aaa503f47ada7::t_3a6cb3923381d2 54,60-67,97-99,104,186,190,193,209,213,228-232,242-247,253,255,258,260,348
+  s_3aaa503f47ada7::t_ae6130cad06fe8 100
+  s_3aaa503f47ada7::t_d36ff7fac7f344 376
+  s_3aaa503f47ada7::t_9923315487b77f 22-23,47-49,53,55
+  s_3aaa503f47ada7::t_8985cbafb5d002 194,227,233-234
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_3aaa503f47ada7::t_770660f5d64824 144-145,204,212,215-216,218-219,226-227,235-236,239-240,243-244,250,254-255,258,265,268
+  s_3aaa503f47ada7::t_3a6cb3923381d2 16,40-48,50,55-66,129
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_3aaa503f47ada7::t_ad04d4b27ec0d1 471,473-478,486
+  s_3aaa503f47ada7::t_1ca734b5309710 89,92,107,116-117
+  s_3aaa503f47ada7::t_7ad4f5f10470e8 22-28,103,181
+  s_3aaa503f47ada7::t_f512970d0dcd2d 87-88,90-91,94-102,104-106,108-110,113-115,118-162,164-180,182,184-187,189-190
+  s_3aaa503f47ada7::t_a3e9f4a283134f 93,111-112
+  s_3aaa503f47ada7::t_34bfeafe515d35 163,183,188,468,481-485
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_3aaa503f47ada7::t_d36ff7fac7f344 76-79,354
+  s_3aaa503f47ada7::t_b0a83a06f86d11 95,99-102,491,648
+  s_3aaa503f47ada7::t_e73c7a2ed88de4 15,20,23,36,38-44,356,369,375,647
+  s_3aaa503f47ada7::t_f8439401cc109b 412-418,422,424,426-428
+  s_3aaa503f47ada7::t_86ee5d54b5645f 380-381
+  s_3aaa503f47ada7::t_21806793b7d046 2,326-352,378,382-387,393-398,404-407,410
+  s_3aaa503f47ada7::t_ae6130cad06fe8 431-459,461
+  s_3aaa503f47ada7::t_61ea0836e28515 90,463-465,467-476,478-479,482-487,490,618-645
+  s_3aaa503f47ada7::t_5a7ee4b315b1d6 646
+  s_3aaa503f47ada7::t_460b0a8c8eb2c0 649
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_3aaa503f47ada7::t_99e1ab5c42e96d 5,310-317
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_3aaa503f47ada7::t_99e1ab5c42e96d 37,105-117
+  s_3aaa503f47ada7::t_34bfeafe515d35 222,253
+  s_3aaa503f47ada7::t_458b3eb05ff272 6,20-22,49,123,132,235
+  s_3aaa503f47ada7::t_cff9842602c04f 118-119
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_3aaa503f47ada7::t_3a6cb3923381d2 31,123,133,156,167,171,174,186-187,189,203,205,215-216,218,225-226,228
+  s_3aaa503f47ada7::t_97c1ee8bc99c11 158-166,168-170,172-173,206-214,217,219-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "527b8873c595da45930f191077d03f5523dddbf0",
+  "prompts": {},
+  "sessions": {
+    "s_1efba383bbdf02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b37d-7684-75f3-be0c-f37332104b52",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

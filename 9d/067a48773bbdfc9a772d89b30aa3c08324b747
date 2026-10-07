@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_521e3acc3ff0a1::t_ff0caeb3400b74 44-46,48-50
+  s_521e3acc3ff0a1::t_1f1df5bbfba30c 55
+  s_521e3acc3ff0a1::t_464578e81af349 69
+  s_521e3acc3ff0a1::t_831815e0c3f227 130
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_521e3acc3ff0a1::t_f426d24e075f13 432-451
+  s_521e3acc3ff0a1::t_0fe72938a5b1d6 452-453
+packages/nodes-base/nodes/Microsoft/ToDo/descriptions/TargetDescription.ts
+  s_521e3acc3ff0a1::t_d62d1ecf15f2aa 30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "9d067a48773bbdfc9a772d89b30aa3c08324b747",
+  "prompts": {},
+  "sessions": {
+    "s_521e3acc3ff0a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "986ac801-acfd-4610-acb2-7e2701d188bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

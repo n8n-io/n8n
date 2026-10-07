@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/evaluations/harness/runner.ts
+  s_842425d35fc733::t_30ffedc937e56a 346-351
+packages/cli/src/posthog/index.ts
+  s_842425d35fc733::t_8c4a0c90c20354 1-5
+  s_842425d35fc733::t_a0af3b98e7429c 175-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "166f37921452c7b3b430b474ddbb8739df25e9b4",
+  "prompts": {},
+  "sessions": {
+    "s_842425d35fc733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a760909-ed85-4b6f-894c-5d7b2d1c8180",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

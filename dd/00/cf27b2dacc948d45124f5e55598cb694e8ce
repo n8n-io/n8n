@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_d7dc19b022f345::t_44d227f403485c 646-649
+packages/@n8n/instance-ai/evaluations/data/workflows/carries-a-standing-preference-across-a-session-boundary.json
+  s_d7dc19b022f345::t_8fae1d34771f82 1,3-88
+  s_d7dc19b022f345::t_5ff3ed610f2803 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd00cf27b2dacc948d45124f5e55598cb694e8ce",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

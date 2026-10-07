@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_038506d786e9d5::t_316d06053d096b 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ab78bffcf33eb862062f3287f99ff2ddae95bfeb",
+  "prompts": {},
+  "sessions": {
+    "s_038506d786e9d5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d88bbd1a-ee2b-4a5f-bc06-78a87624ade0",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

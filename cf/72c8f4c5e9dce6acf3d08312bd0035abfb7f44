@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.vue
+  s_2384f15d380ad4::t_ee4bac98e7268b 7,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf72c8f4c5e9dce6acf3d08312bd0035abfb7f44",
+  "prompts": {},
+  "sessions": {
+    "s_2384f15d380ad4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c818-5622-751e-80e9-a38e413e940e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

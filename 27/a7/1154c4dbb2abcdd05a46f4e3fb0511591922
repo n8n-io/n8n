@@ -1,0 +1,27 @@
+packages/testing/containers/stack.ts
+  s_df3119b3f6ce42::t_bcaaa3616517bc 352
+  s_df3119b3f6ce42::t_9326aaa1ca0ece 42-47
+  s_df3119b3f6ce42::t_9af4e2427f3b58 254-256,258,260-261,265
+packages/testing/playwright/fixtures/base.ts
+  s_df3119b3f6ce42::t_c5d02c05ff4497 179-190
+  s_df3119b3f6ce42::t_7cf2d01b714d86 54
+packages/testing/playwright/tests/e2e/credentials/global.spec.ts
+  s_df3119b3f6ce42::t_fb2e64fac0ac69 69
+  s_df3119b3f6ce42::t_3a7b88ed3858c8 81-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "27a71154c4dbb2abcdd05a46f4e3fb0511591922",
+  "prompts": {},
+  "sessions": {
+    "s_df3119b3f6ce42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c45fca9b-6867-453d-951d-18d05e85293d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

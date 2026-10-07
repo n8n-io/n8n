@@ -1,0 +1,27 @@
+packages/cli/src/executions/__tests__/execution-id.test.ts
+  s_e71b5cafbbe06f::t_0e31971dea8faf 3,22-33
+packages/cli/eslint.config.mjs
+  s_e71b5cafbbe06f::t_c06421f2c5f62d 178
+  s_e71b5cafbbe06f::t_e46541dc9c8bc0 179-180,185-186,189
+  s_e71b5cafbbe06f::t_6571887bc35b92 28-34,174-177
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_e71b5cafbbe06f::t_d2b099abf00a04 10,73
+packages/cli/src/executions/execution-id.ts
+  s_e71b5cafbbe06f::t_c1e7b1b095fd6d 1-2,11-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4756855b348ddb516143190b0d0f8cf115f9e971",
+  "prompts": {},
+  "sessions": {
+    "s_e71b5cafbbe06f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e1fbaf6-37c5-4b77-883a-b616e8141e81",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

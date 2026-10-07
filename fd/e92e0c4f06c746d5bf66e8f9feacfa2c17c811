@@ -1,0 +1,60 @@
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_066cd2d6817d48 2
+  s_1d360ad69afd30::t_d2b5de3f16b25e 2004-2005,2023,2030-2051,2053-2055,2064-2066,2068-2085,2107,2109-2115,2117-2118,2151-2155,2158-2159
+  s_1d360ad69afd30::t_d48af9a3741af3 2024-2026,2028
+  s_1d360ad69afd30::t_a10d52bab04666 2056-2063
+  s_1d360ad69afd30::t_a0f37bc03d5221 2108,2116
+  s_1d360ad69afd30::t_decaa96e95905c 2150,2156
+packages/cli/src/scaling/job-processor.ts
+  s_1d360ad69afd30::t_4d4c603d958ce9 204
+  s_1d360ad69afd30::t_942250fbf1dfed 220
+packages/cli/src/scaling/scaling.service.ts
+  s_1d360ad69afd30::t_07bfa7b294392a 11
+  s_1d360ad69afd30::t_43765643ba8206 357-358,361
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_1d360ad69afd30::t_8236393f1cf394 7,9-12,15-16,91,93,97,102,104,108,112,116,120,122,126,130,133-134,153,158,160,163,168,170,272,500,588
+  s_1d360ad69afd30::t_cd05175f25739a 17
+  s_e5d1e3f565ab47::t_8dbe240152c63f 82,207,226-227,234-235,241,245-246,255,271,273,291-292,297-298,305,309,316,325-326,363-364,374,402,404-405,409,492-493,497,499
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_1d360ad69afd30::t_952c035019c7d0 327-329,341-343
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_1d360ad69afd30::t_fea7aa068a1a85 18
+  s_1d360ad69afd30::t_b2ed3418963f5b 483
+  s_1d360ad69afd30::t_bd5b6368734271 593-596,598-617,619,621-624
+  s_1d360ad69afd30::t_3385e153b4cc4c 597,625,627,644,648
+  s_1d360ad69afd30::t_397a8b5a13ce8b 618,620
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_1d360ad69afd30::t_70be280f223726 142,145,154-155,157
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_1d360ad69afd30::t_383fdfe808cfb6 1,3,7-8,23,26-29,89,100,110-111,150-151,220,224-225,241-242,253-254,342-344,368,371-372,379-381,385,388,396-397,405-406,417-419,421,424,433,435,445,447,481-482,484-495
+  s_1d360ad69afd30::t_292b6c129134e4 12
+  s_1d360ad69afd30::t_fe391421dc472c 22
+  s_1d360ad69afd30::t_11eee87d70db19 369-370
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_1d360ad69afd30::t_fbd8e87611b105 342-363
+  s_1d360ad69afd30::t_b2d1206447d0ce 412-431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fde92e0c4f06c746d5bf66e8f9feacfa2c17c811",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

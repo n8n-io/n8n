@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_8bd971f0249c00::t_b9cf2fd4eeb83a 98-100
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiQuestions.test.ts
+  s_8bd971f0249c00::t_f28a155ae37aa6 88-89,95
+  s_8bd971f0249c00::t_7a3d76cbcbd295 1,37-40,66-68,70-71,73-86,91-94,96-103,120-121,123,125,142-144,148-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "608a02a92de110f2b5abaccee931ac21cd00ec58",
+  "prompts": {},
+  "sessions": {
+    "s_8bd971f0249c00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39d0ad99-925e-4b24-a319-649f0cc67103",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

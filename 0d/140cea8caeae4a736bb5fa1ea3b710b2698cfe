@@ -1,0 +1,10 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_45e2f6fac3868c::t_219c82aaa9baee 880-882,884,901-903,906-907,6786-6792,6794-6797,6824,6826
+  s_45e2f6fac3868c::t_4ec4f6b06c0ad0 883,885,4353,5615,5702,5779,6454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d140cea8caeae4a736bb5fa1ea3b710b2698cfe",
+  "prompts": {}
+}

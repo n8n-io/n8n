@@ -1,0 +1,39 @@
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_79949d1bc3f895::t_e25416084b287f 117
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_79949d1bc3f895::t_e25416084b287f 64
+  s_79949d1bc3f895::t_c8e9e2d0903285 61-63,72
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_79949d1bc3f895::t_e25416084b287f 44,146
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_79949d1bc3f895::t_e25416084b287f 57-58,94
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_79949d1bc3f895::t_e25416084b287f 1976-1977,2006,2008,2023-2024,2032,2034
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_79949d1bc3f895::t_e25416084b287f 87,100
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_79949d1bc3f895::t_e25416084b287f 1122,1137,1145,1175,1220,1223,1245,1264,1267,1308,1311,1342,1351,1371
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_79949d1bc3f895::t_e25416084b287f 164-165,962-963,978-979
+packages/cli/src/events/maps/relay.event-map.ts
+  s_79949d1bc3f895::t_e25416084b287f 93,105
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_79949d1bc3f895::t_e25416084b287f 221,259,291,299
+  ai_agent 254-256,286-288,309-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7879482e909b49a441d65eb88b7f56f181eb24a",
+  "prompts": {},
+  "sessions": {
+    "s_79949d1bc3f895": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbc7cf1-6332-4810-bcf1-68f1fd2f389c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

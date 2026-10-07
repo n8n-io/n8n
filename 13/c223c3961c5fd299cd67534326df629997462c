@@ -1,0 +1,13 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_934a382079a856::t_d7398e3710c26a 1210-1227,1409,1413,1426-1427,1429-1454,1456-1458
+  s_934a382079a856::t_cae15ad0421443 1630,1633-1634
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_934a382079a856::t_81102f01010d76 95-99,103,106-107
+  s_934a382079a856::t_235b94432ac8b7 94,100-102,104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13c223c3961c5fd299cd67534326df629997462c",
+  "prompts": {}
+}

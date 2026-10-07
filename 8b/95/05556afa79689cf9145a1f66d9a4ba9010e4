@@ -1,0 +1,29 @@
+packages/core/src/execution-engine/workflow-active-triggers-state.ts
+  s_72c806d61e12d2::t_1768ada452207b 92-97
+  s_72c806d61e12d2::t_d6aaf298057752 98-99
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_72c806d61e12d2::t_450320348b894e 838-879,883-886,888-890
+  s_72c806d61e12d2::t_07b3c8b34d29a8 15-20
+  s_72c806d61e12d2::t_bbf92626c309d7 880-882,887
+  s_72c806d61e12d2::t_f0e8a0d8ae258a 891
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_72c806d61e12d2::t_423f8ec242e875 472-482
+  s_72c806d61e12d2::t_302f2df3d1ba06 483-485
+  s_72c806d61e12d2::t_69cd8b3ec14150 486-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8b9505556afa79689cf9145a1f66d9a4ba9010e4",
+  "prompts": {},
+  "sessions": {
+    "s_72c806d61e12d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3454581-e439-4779-af65-52bc313bbe43",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

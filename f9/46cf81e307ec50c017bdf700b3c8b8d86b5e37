@@ -1,0 +1,45 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  h_9c8f56e3400786 40-41,606
+  s_5a65f83634288a::t_753a58823352b0 4,9,38-39,51,77,468-470,476,565-605,607-613
+packages/@n8n/api-types/src/workflow-review-request-summary.ts
+  s_5a65f83634288a::t_088b5b2371da54 24-33
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_4fcf08cdf96e27::t_e1f541e05b2139 15,33,560,564-585,590-599,607-643,917,934-953,964-967
+packages/cli/src/events/maps/relay.event-map.ts
+  h_9c8f56e3400786 27-33
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  h_9c8f56e3400786 30,58,78,94,120,300,358,369-446
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  h_9c8f56e3400786 36,72,92
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  h_9c8f56e3400786 31,60,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f946cf81e307ec50c017bdf700b3c8b8d86b5e37",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4fcf08cdf96e27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "176ed94c-dc89-4c29-b63e-c468bc0dd11a",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_5a65f83634288a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5a80837-ce95-49be-a62c-d4316b826501",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

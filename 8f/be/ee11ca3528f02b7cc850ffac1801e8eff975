@@ -1,0 +1,14 @@
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  h_9b272a633435fb 298-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8fbeee11ca3528f02b7cc850ffac1801e8eff975",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

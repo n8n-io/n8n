@@ -1,0 +1,72 @@
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_d7bd7ccd8b27bd::t_b82187bb759b9a 35,111,129
+  s_d7bd7ccd8b27bd::t_8fed0d0eb10c01 10,27-34,36-41,55-56,58,62-64,72,79-80,91,94,96-98,102-105,108-110,115-118,121,125-127,131,133
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 57,59,66,68-69,73,75-76,82-83,85-86,90,92,95,99-101,106,112,114,122,124,128,130,132
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_d7bd7ccd8b27bd::t_033740472d10d6 726,754-755,828,849,873,895,909
+  s_d7bd7ccd8b27bd::t_76da0f3fc5ee63 13,934-936
+  s_d7bd7ccd8b27bd::t_559358a0bb2832 20-27
+  s_d7bd7ccd8b27bd::t_b82187bb759b9a 19
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 85,101,146,177,202,230,254,278,305,333,364,397,450,485,520,528,551,589-590,627-628,652,681,715,991,1040,1082,1127
+packages/cli/src/executions/executions.controller.ts
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 49
+packages/cli/src/executions/__tests__/execution-list-v1.service.test.ts
+  s_d7bd7ccd8b27bd::t_558916a65173ac 95-97
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 72,85,108,112,122
+  s_d7bd7ccd8b27bd::t_b82187bb759b9a 26
+  s_d7bd7ccd8b27bd::t_aadc072207032d 27-29
+  s_d7bd7ccd8b27bd::t_f7b8e43577f7f9 42-43,49,58-61
+  s_d7bd7ccd8b27bd::t_c5bf56a6b279c6 113-115
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 138
+packages/cli/src/executions/execution-list-v2.service.ts
+  s_d7bd7ccd8b27bd::t_fcdfc2bf071728 60-63,65-66,68,72,75-77,79
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 46
+  s_d7bd7ccd8b27bd::t_f4e0e3fe979bd9 226-228
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_d7bd7ccd8b27bd::t_3256e74d2853ec 46-48
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 94,100,121,138,147,164,180,184,194,198,206,210,271,273,294,306
+  s_d7bd7ccd8b27bd::t_6707badd462d4f 215,217
+  s_d7bd7ccd8b27bd::t_07fc83fac319b0 263-265
+  s_d7bd7ccd8b27bd::t_e5de878e9074af 16
+  s_d7bd7ccd8b27bd::t_b82187bb759b9a 45,272
+  s_d7bd7ccd8b27bd::t_5d96cf80d1620d 244
+packages/cli/src/executions/execution-list.service.ts
+  s_d7bd7ccd8b27bd::t_e9083cac61b7bc 28,36,44
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 51,58,64
+  s_d7bd7ccd8b27bd::t_5a10ed1e99fc8a 93-96
+  s_d7bd7ccd8b27bd::t_f12891e007b866 32-35,37,54-57
+  s_d7bd7ccd8b27bd::t_4ca4575643e473 9-15,27,39-43,45,47-48,50,62
+  h_8fb27e0cdf6d1e 49
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 42,84,130,137,150,158,165,180,184,192,213,233
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 113,131
+packages/cli/src/executions/execution-cursor.ts
+  s_d7bd7ccd8b27bd::t_179e2e39da3c24 42-46
+packages/cli/src/executions/execution-list-v1.service.ts
+  s_d7bd7ccd8b27bd::t_2084b91680495e 69-71,73-76,80
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 38
+  s_d7bd7ccd8b27bd::t_2e1a1d11fe2a79 40,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c8e6a271cb687f7b052c2287ffc1a4e3895303d3",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_d7bd7ccd8b27bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edee8da2-eddc-464d-90f4-93834788f73b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

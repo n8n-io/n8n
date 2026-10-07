@@ -1,0 +1,33 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_04de9bba1e1713::t_5b14a04bab485d 176-178
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_04de9bba1e1713::t_e3335a9b279b92 2203,2223,2253,2304
+packages/@n8n/workflow-sdk/src/types/base.ts
+  s_04de9bba1e1713::t_3671ecb944fb20 90-94,331,471
+packages/@n8n/workflow-sdk/src/workflow-builder/workflow-import.ts
+  s_04de9bba1e1713::t_5b14a04bab485d 96
+packages/@n8n/workflow-sdk/src/codegen/codegen-roundtrip.test.ts
+  s_04de9bba1e1713::t_5a4c5c30fb2d77 209-214,265-270
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_04de9bba1e1713::t_5b14a04bab485d 4644
+packages/@n8n/workflow-sdk/src/codegen/code-generator.ts
+  s_04de9bba1e1713::t_5b14a04bab485d 297-299
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/unknown-config-keys-validator.ts
+  s_04de9bba1e1713::t_5b14a04bab485d 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99b1affa23add3f5c6fea37dbee96b77c5544527",
+  "prompts": {},
+  "sessions": {
+    "s_04de9bba1e1713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae81c3-30b7-4a88-a02c-609425de8d74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

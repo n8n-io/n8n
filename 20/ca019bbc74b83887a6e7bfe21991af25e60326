@@ -1,0 +1,54 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/addWorksheet.sp.workflow.json
+  s_dcea52ad05f3e5::t_07aaa64448f534 1-72
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/deleteWorkbook.operation.ts
+  s_dcea52ad05f3e5::t_b73639c87c5707 1-51
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorkbook.workflow.json
+  s_dcea52ad05f3e5::t_7ba8687138f17e 1-67
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/workbook/addWorksheet.test.ts
+  s_dcea52ad05f3e5::t_244a302b5d3311 1-165
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_dcea52ad05f3e5::t_bbba797d43374d 83-86
+  s_dcea52ad05f3e5::t_8bd083510aecb4 132
+  s_dcea52ad05f3e5::t_79ec52b180820e 112,125-131
+  s_dcea52ad05f3e5::t_f1f4343d20a91f 9
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/addWorksheet.operation.ts
+  s_dcea52ad05f3e5::t_156fb502e901b6 1-46,61-69,71,74-76,92-111
+  s_dcea52ad05f3e5::t_81e08efd7b6f3a 77-82,84-91
+  s_dcea52ad05f3e5::t_834e61f68786fd 83
+  s_dcea52ad05f3e5::t_1864c77daa30d2 47-60,70,72-73
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/addWorksheet.sp.test.ts
+  s_dcea52ad05f3e5::t_150cc63dcf6530 1-46
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/workbook/deleteWorkbook.test.ts
+  s_dcea52ad05f3e5::t_8f3f224daacdf1 1-85
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorkbook.harness.test.ts
+  s_dcea52ad05f3e5::t_1a05ad9370584b 1-31
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/sessions.ts
+  s_dcea52ad05f3e5::t_26eeee8d4a3cdb 1-15,17-37
+  s_dcea52ad05f3e5::t_df63c47930fccb 16
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/addWorksheet.harness.test.ts
+  s_dcea52ad05f3e5::t_c7890408a927e7 1-52
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_dcea52ad05f3e5::t_0939937be63e0e 13-20
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/addWorksheet.workflow.json
+  s_dcea52ad05f3e5::t_6ac9f36a15ef1d 1-72
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/Workbook.resource.ts
+  s_dcea52ad05f3e5::t_849f87f430347f 1-37
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/sessions.test.ts
+  s_dcea52ad05f3e5::t_1853e0f936a500 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "20ca019bbc74b83887a6e7bfe21991af25e60326",
+  "prompts": {},
+  "sessions": {
+    "s_dcea52ad05f3e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa86040e-4be6-4812-92fc-f4f87bbbe2ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

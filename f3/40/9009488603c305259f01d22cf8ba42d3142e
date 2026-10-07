@@ -1,0 +1,39 @@
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_2cda0531643dad::t_8d3e0ba8a33412 433-435
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_2cda0531643dad::t_97c93f7dbb935f 219-227
+packages/cli/src/modules/mcp/__tests__/search-workflows.tool.test.ts
+  s_2cda0531643dad::t_464a57135987da 110,122,282
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_2cda0531643dad::t_b475cfada01ef5 95-96,100-105,118-119,125-128
+  s_2cda0531643dad::t_1218cde179257f 97
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_2cda0531643dad::t_97c93f7dbb935f 256-258
+packages/cli/src/modules/mcp/tools/search-workflows.tool.ts
+  s_2cda0531643dad::t_8d3e0ba8a33412 16
+  s_2cda0531643dad::t_92f8cd7f33a4ca 39-50
+  s_2cda0531643dad::t_1218cde179257f 51-56,144,146,165,213,258-260
+  s_2cda0531643dad::t_5bcfaf75ade672 84-97,103-108
+  s_2cda0531643dad::t_f4d2d7fa62c47a 119
+  s_2cda0531643dad::t_22e54fd0354ab1 142-143,154-164,166-168
+  s_2cda0531643dad::t_160a5ca7918b75 205-212,214-215,220-245,254-257,272
+  s_2cda0531643dad::t_6e8ec60b8dd954 284-285,295,307,320-328,334-338,340-342,344-352
+  s_2cda0531643dad::t_66a68bf5bb5cb7 286-294
+  s_2cda0531643dad::t_696f6b14f556fc 339,343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3409009488603c305259f01d22cf8ba42d3142e",
+  "prompts": {},
+  "sessions": {
+    "s_2cda0531643dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79806e82-049b-43d0-9d0c-650e50a5028e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

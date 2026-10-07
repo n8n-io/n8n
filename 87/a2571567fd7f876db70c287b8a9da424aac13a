@@ -1,0 +1,36 @@
+packages/nodes-base/credentials/RundeckApi.credentials.ts
+  s_dd981cc6ce0e33::t_7f7c3d9acee6a7 30,53
+  s_dd981cc6ce0e33::t_5c63a5abc9719e 70
+  s_dd981cc6ce0e33::t_8a673865ed6814 31-52
+packages/nodes-base/nodes/Rundeck/RundeckApi.ts
+  s_dd981cc6ce0e33::t_61e70500a3f300 45
+  s_dd981cc6ce0e33::t_34d3bca07fc2ac 13
+  s_dd981cc6ce0e33::t_6f744c86f6ca0c 25-35
+packages/nodes-base/nodes/Rundeck/Rundeck.node.ts
+  s_dd981cc6ce0e33::t_bf7a12e86940ad 19
+packages/nodes-base/nodes/Rundeck/__tests__/RundeckApi.test.ts
+  s_dd981cc6ce0e33::t_81dd98c3976657 3-6,11,13-23,26,33,35-36,48,50,52,73-75
+  s_dd981cc6ce0e33::t_959081f85aacf1 27-28,31,37-38,40,46-47,49,51,53-54,57,62,64-66,68
+  s_dd981cc6ce0e33::t_bfb61786822272 1-2,7-10,12,24-25,29-30,32,34,39,41-45,55-56,58-61,63,67,69-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "87a2571567fd7f876db70c287b8a9da424aac13a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dd981cc6ce0e33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b04ce68-10d4-4c7e-9592-b7d5b7e62978",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

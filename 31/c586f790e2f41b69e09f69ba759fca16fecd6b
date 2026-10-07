@@ -1,0 +1,83 @@
+packages/modules/otel/frontend/src/otel.store.test.ts
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 1-391
+packages/modules/otel/frontend/src/otel.store.ts
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 1-145
+packages/modules/otel/frontend/src/OtelStatusControl.vue
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 1-25,28-109
+  s_3582abfb0ab93a::t_79ab6357dd39ca 26-27
+packages/modules/otel/frontend/src/__tests__/setup.ts
+  s_3582abfb0ab93a::t_fbebcb3496147e 1-3,6-10,19-21
+  s_3582abfb0ab93a::t_501a1abc4642b1 4,11-18
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 5
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_3582abfb0ab93a::t_3b551029845a9a 47
+packages/modules/otel/frontend/biome.jsonc
+  s_3582abfb0ab93a::t_fbebcb3496147e 1-4
+packages/modules/otel/frontend/src/__tests__/render.ts
+  s_3582abfb0ab93a::t_054d8f909f7229 1-36
+packages/modules/otel/frontend/src/otel.api.test.ts
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 1-86
+packages/frontend/editor-ui/src/app/stores/ui.store.settingsPages.test.ts
+  s_3582abfb0ab93a::t_c5232a01203bda 1-51
+packages/modules/otel/frontend/vite.config.ts
+  s_3582abfb0ab93a::t_d504b2c4344acb 5,15-41
+  s_3582abfb0ab93a::t_f6a14a3e8795ea 4
+  s_3582abfb0ab93a::t_fbebcb3496147e 1-3,6-14,42-51
+packages/modules/otel/frontend/src/otel.module.ts
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 1-8,12-52
+  s_3582abfb0ab93a::t_544714cd8698b7 9-11
+packages/modules/otel/frontend/README.md
+  s_3582abfb0ab93a::t_fb4ed155b6dc2a 1-42
+packages/frontend/editor-ui/tsconfig.json
+  s_3582abfb0ab93a::t_bf771d30073eaa 34-35
+packages/frontend/editor-ui/eslint.config.mjs
+  s_3582abfb0ab93a::t_23514fcfcf8b15 266
+  s_3582abfb0ab93a::t_fea4e7537b2005 328
+  s_3582abfb0ab93a::t_c33f50adba3e9e 5-29
+packages/modules/otel/frontend/package.json
+  s_3582abfb0ab93a::t_5a24cb33ca5e38 39
+  s_3582abfb0ab93a::t_a2e0ef5c81f743 48
+  s_3582abfb0ab93a::t_cecbc5b4414eed 1-31,33-38,40-47,49-53
+  s_3582abfb0ab93a::t_b5c151d5215f08 32
+packages/modules/otel/frontend/tsconfig.json
+  s_3582abfb0ab93a::t_7652fcdf6b3165 1-21
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_3582abfb0ab93a::t_c5f9baecbe5b14 10
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.vue
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 2-4,22-26
+  s_3582abfb0ab93a::t_b1e8d0d05a9456 21
+  s_3582abfb0ab93a::t_a346060be1bccc 36-41,186,194,279,285,317
+packages/frontend/editor-ui/package.json
+  s_3582abfb0ab93a::t_0f5bd3fb6c859c 53
+packages/modules/otel/frontend/src/otel.module.test.ts
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 6
+  s_3582abfb0ab93a::t_d2e9de56cfafd3 2-3,9-73
+  s_3582abfb0ab93a::t_3afe85d40a0a56 1,4-5,7-8,74-75
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.test.ts
+  s_3582abfb0ab93a::t_cd7a8ba799df2d 5
+  s_3582abfb0ab93a::t_cbbd8b1b8434af 3-4,6,202-379
+  s_3582abfb0ab93a::t_002719ed8c9ff4 38-44
+  s_3582abfb0ab93a::t_a1585893352829 47-49
+packages/modules/otel/frontend/src/index.ts
+  s_3582abfb0ab93a::t_c6e41989f495c2 1-4
+packages/modules/otel/frontend/eslint.config.mjs
+  s_3582abfb0ab93a::t_fbebcb3496147e 1-4
+pnpm-lock.yaml
+  s_3582abfb0ab93a::t_e8d150ebecc9e4 5928-5930,6405-6492,25155,25158,25170-25171,25178,25224,25231,25246,25271,25285,25292,25296,25805,25824-25825,25832,25834,25841,27724,31844,31870,31900,31913,31926,31939,31952,32594,32748,33535-33536,38692,42804-42806,43144-43145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "31c586f790e2f41b69e09f69ba759fca16fecd6b",
+  "prompts": {},
+  "sessions": {
+    "s_3582abfb0ab93a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "076004fe-4874-4520-887e-3e62d00a2db0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

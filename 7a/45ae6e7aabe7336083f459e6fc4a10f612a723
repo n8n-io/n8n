@@ -1,0 +1,32 @@
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_816e8d02944032::t_3fe575d42c6273 86-88
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_816e8d02944032::t_079ff57539adeb 22
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_816e8d02944032::t_577ff0e37c558d 38-46,52-54
+  s_816e8d02944032::t_c5844f17d193c6 64
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_816e8d02944032::t_2a9a8f182d611f 12,52,61-70,84,86-91,94-97,99,103-104,107,123,141,159,191,200-209,223,225-230,233-236,238,242-243,246,267,270,272,285,299,304,307,309,322,341,344,346,359,373,413,422-431,445,447-452,455-458,460,464-465,468,489,492,494,507,521,539,555,587,596-605,619,621-626,629-632,634,638-639,642
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_816e8d02944032::t_b7a05e5386d87b 12,52,61-70,84,86-91,94-97,99,103-104,107,123,141,154,167,170-171,185,190,195,227,236-245,259,261-266,269-272,274,278-279,282,297,302,307,310,312,322,325,339,379,388-397,411,413-418,421-424,426,430-431,434,450,466-469,472,476,485,498,501-502,508-520,529-534,539,544,576,585-594,608,610-615,618-621,623,627-628,631,646-647,652,657,660,672,675,694,697,699,712,726,731,734,736,749,763,803,812-821,835,837-842,845-848,850,854-855,858,881,884,886,899,913,931,947-948,979,988-997,1011,1013-1018,1021-1024,1026,1030-1031,1034
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_816e8d02944032::t_3513d492caf4bf 12,52,61-70,84,86-91,94-97,99,103-104,107,123,141,159,191,200-209,223,225-230,233-236,238,242-243,246,267,270,272,285,299,339,348-357,371,373-378,381-384,386,390-391,394,410,428,431,446,478,487-496,510,512-517,520-523,525,529-530,533,546,551,556,559,561,571,574,636,643,645-650,653-656,658,662-663,666,682,722,731-740,754,756-761,764-767,769,773-774,777,798,801,803,816,830,848,852,868-869,900,909-918,932,934-939,942-945,947,951-952,955
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_816e8d02944032::t_4a773d1bb8faca 12,52,61-70,84,86-91,94-97,99,103-104,107,123,141,159,191,200-209,223,225-230,233-236,238,242-243,246,269,272,274,287,306,309,311,324,338,378,387-396,410,412-417,420-423,425,429-430,433,454,457,459,472,486,502-505,508,524,556,565-574,588,590-595,598-601,603,607-608,611
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7a45ae6e7aabe7336083f459e6fc4a10f612a723",
+  "prompts": {},
+  "sessions": {
+    "s_816e8d02944032": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e4a4a35f-e2a9-42e5-be67-c9e9bd76db57",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

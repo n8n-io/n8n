@@ -1,0 +1,28 @@
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_6c03a3aeed0aff::t_1faf0a4d09e09b 82-86
+  s_6c03a3aeed0aff::t_7c24d9ca6c8451 1478-1504
+  s_6c03a3aeed0aff::t_7a30a2dc93a135 1307,1309-1321,1324
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_6c03a3aeed0aff::t_ffcb0c854ec908 689-691,694-705
+packages/cli/src/modules/source-control.ee/__tests__/source-control-status.service.test.ts
+  s_6c03a3aeed0aff::t_c009c4b0c3b24f 2733-2780
+  s_6c03a3aeed0aff::t_c615766d300020 113-117
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_6c03a3aeed0aff::t_b634e9da7775be 2974-3022
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f65e798abc76d4ee75b1550d1631bdb3400b39b9",
+  "prompts": {},
+  "sessions": {
+    "s_6c03a3aeed0aff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d31eb2e6-e6a3-4d3e-9b31-d4ed736f02c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

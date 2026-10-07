@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_1a30b35e849e33::t_7373b849624bc2 2-4,32-33,35-36,38-39,41-42,159
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_1a30b35e849e33::t_7373b849624bc2 21,224,226-228,233,239,428,445,457,459
+  s_1a30b35e849e33::t_43c783690720bb 325,443-444,455-456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ee58f00a4b37f22195ff94a670c8137e5a45e774",
+  "prompts": {},
+  "sessions": {
+    "s_1a30b35e849e33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d61e7c6d-d29a-47e2-acc4-9d591602f01a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

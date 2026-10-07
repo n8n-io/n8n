@@ -1,0 +1,37 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_02a777933ab145::t_9492f5471c956d 60
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-variables.integration.test.ts
+  s_02a777933ab145::t_56c068c5fd76ce 444-508
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_02a777933ab145::t_66b12d81b7e5de 51
+  s_02a777933ab145::t_50816dfa8bdcae 71-72
+  s_02a777933ab145::t_ccd8bd71421df5 126,139
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_02a777933ab145::t_c575018e801ae5 98-108
+  s_02a777933ab145::t_6b3fca5a3e7f52 6
+  s_02a777933ab145::t_b7adc8fe86b9cf 145
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_02a777933ab145::t_40e0887d2552e5 19
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_02a777933ab145::t_f80b88214b43c6 225-228,230-242,264-281
+  s_02a777933ab145::t_499922283b7032 390
+  s_02a777933ab145::t_ceb82f5b49045e 361
+  s_02a777933ab145::t_a5bf29a09b71ce 413
+  s_02a777933ab145::t_b8b252c7572d4d 436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e6abdd4d9308a84d92e99d53ba110e0f7c0c8cd",
+  "prompts": {},
+  "sessions": {
+    "s_02a777933ab145": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dff27aeb-468c-49f2-a407-5e630c63d6cc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_62bddef00d4057::t_5281892651287a 122-125
+  s_62bddef00d4057::t_7c089c876a1a11 264-267
+packages/cli/src/evaluation.ee/insights/insights-model-resolver.ts
+  s_62bddef00d4057::t_052929d8e0ed79 78-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e83448aa7a836620925ca087928e1e806c5ba23b",
+  "prompts": {},
+  "sessions": {
+    "s_62bddef00d4057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6396ed9-3aa0-4d3f-8dfd-eea7869f2328",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.legacy.scss
+  s_3a07eaa53870a8::t_2c87041fa0d3c5 39
+  s_3a07eaa53870a8::t_cedfc793b4fa0f 14-18,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7d89244a3d7baba4ec0dcd8a4f1eea160436d1dd",
+  "prompts": {},
+  "sessions": {
+    "s_3a07eaa53870a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eba7fcd0-9d36-42ec-b03b-8f451af49650",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/@n8n/agents/src/sdk/guardrails/redactor.ts
+  s_ee0a7d7555b428::t_a6cbdba9e99389 154
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_946e26c5225853::t_149f491fc19bbb 79,257
+  s_ee0a7d7555b428::t_87467826d58cb7 74-78,80,255-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "285f0f835dc5af686dab8b63b8359c7fc1d44a79",
+  "prompts": {},
+  "sessions": {
+    "s_946e26c5225853": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4d77e6e0-4bc0-4fe0-bd46-7dcb60963f4d",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ee0a7d7555b428": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aac8f4ff-fd42-4ec6-936b-dfd8c6738e8a",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

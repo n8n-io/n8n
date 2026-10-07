@@ -1,0 +1,47 @@
+packages/cli/src/public-api/index.ts
+  s_730d90151bd153::t_e187d4b733a3fc 16
+  s_730d90151bd153::t_aebeca4b9634d0 384,388-390
+packages/cli/src/public-api/v1/__tests__/public-api-error-response.test.ts
+  h_c63dce324dfc7b 99-100,103-106,111,114-116
+  s_730d90151bd153::t_32761c396311d0 2
+  s_730d90151bd153::t_e1b2f70feffbde 101-102,107,121-122
+  s_730d90151bd153::t_5c2e96aebb42ee 108-110,112-113,117-118,120
+  s_730d90151bd153::t_4d611e6cce33ed 119
+packages/cli/src/errors/http-error-classifier.ts
+  h_c63dce324dfc7b 91-92
+  s_730d90151bd153::t_d35018bdcb323c 58-66
+  s_730d90151bd153::t_16f037bd2e7b22 1
+  s_730d90151bd153::t_fa9eee555b8bb2 93
+  s_730d90151bd153::t_60eba3d18affd0 94-96
+packages/cli/test/integration/public-api/insights.test.ts
+  s_730d90151bd153::t_d8f42204dc4b23 115,118,123
+  s_730d90151bd153::t_109af17101022a 113-114,116-117,119-122
+packages/cli/src/public-api/v1/public-api-error-response.ts
+  s_730d90151bd153::t_337766e313c771 3,11-16
+packages/cli/src/errors/__tests__/http-error-classifier.test.ts
+  s_730d90151bd153::t_3d0cba1c4d58fb 67-68
+  h_c63dce324dfc7b 55-66,73
+  s_730d90151bd153::t_c2735bd96e3a83 69-72,74-76
+  s_730d90151bd153::t_f28a2ae9f5ea31 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "414d5b884cf58eff2933895a3d94a29ee936d59d",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_730d90151bd153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a85f7bc-f6a2-4000-9b03-bd9ef82ddefb",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_e2504e875a073c::t_1a841db9222d66 628-629
+  s_e2504e875a073c::t_e5a74c00e40f92 169-170,177-202,219-234,243-250,341,358-363,365-373,380,444
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e2504e875a073c::t_e5a74c00e40f92 1067,1082,1100,1139
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e2504e875a073c::t_fbf3592a72abbe 4
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_e2504e875a073c::t_8da03d81cd78b6 1
+  s_e2504e875a073c::t_fbf3592a72abbe 24,26-28
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e2504e875a073c::t_31a2596a6ccc5b 19-24,109-116,315,329,336,377,392
+packages/@n8n/api-types/src/agents/index.ts
+  s_e2504e875a073c::t_fbf3592a72abbe 5
+packages/cli/src/modules/agents/__tests__/harness-runtime-identity.test.ts
+  s_e2504e875a073c::t_e5a74c00e40f92 8,44
+packages/@n8n/api-types/src/agents/agent-harness-models.ts
+  s_e2504e875a073c::t_fbf3592a72abbe 1-32
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_e2504e875a073c::t_fbf3592a72abbe 21,491-493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "60a557656b19dbc911c4878f436fd5e47000a7ff",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_6e77fe4cc014e6::t_351ef0c70f5da8 316
+  s_6e77fe4cc014e6::t_76cde766bc2248 289,292
+  s_6e77fe4cc014e6::t_1db94bf130d2a0 503
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.11",
+  "base_commit_sha": "4a784cd4b071b187234f1d151b2548f0438d3dc1",
+  "prompts": {},
+  "sessions": {
+    "s_6e77fe4cc014e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdd6190c-9d17-4b6c-91b0-fd41ff41ac4f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

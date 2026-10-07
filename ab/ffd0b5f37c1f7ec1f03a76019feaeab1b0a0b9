@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_f3e0cf8bc1e610::t_3217d41c767863 308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "abffd0b5f37c1f7ec1f03a76019feaeab1b0a0b9",
+  "prompts": {},
+  "sessions": {
+    "s_f3e0cf8bc1e610": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d29ad06f-d820-4c0a-a6df-11974076db34",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

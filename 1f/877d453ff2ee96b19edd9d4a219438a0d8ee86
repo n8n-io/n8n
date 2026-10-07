@@ -1,0 +1,22 @@
+packages/cli/test/integration/execution-run-summaries.test.ts
+  s_c6542a835c36e8::t_d362b9e2e25a02 136-138
+  s_c6542a835c36e8::t_169a1ebadf5864 1-135,139-176
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_c6542a835c36e8::t_139405fdc61adb 670-760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f877d453ff2ee96b19edd9d4a219438a0d8ee86",
+  "prompts": {},
+  "sessions": {
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/nodes/__tests__/preferred-chat-model.test.ts
+  s_eeb9c272315e92::t_c9e421ef4b3c2a 108-116
+packages/@n8n/instance-ai/src/tools/nodes/preferred-chat-model.ts
+  s_eeb9c272315e92::t_c269305ac29c62 104-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "433f7940227cf3f6a89fd919f7179b0c3dafa297",
+  "prompts": {},
+  "sessions": {
+    "s_eeb9c272315e92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bcc4bfe-3b5a-4dae-b5a3-e3a88f5ae886",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

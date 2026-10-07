@@ -1,0 +1,21 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_c5af3107e0afb1::t_e71893d1363690 56-83
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_c5af3107e0afb1::t_ba4b12834a7988 84-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aed4ab70a61beeca6de9eaecab0618bd3dbc04d2",
+  "prompts": {},
+  "sessions": {
+    "s_c5af3107e0afb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f30216-16b1-463d-983f-29dcd10464ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

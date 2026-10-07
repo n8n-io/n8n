@@ -1,0 +1,38 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.test.ts
+  s_77e2521f9359d8::t_2aac75d5eceb35 5-18
+  s_77e2521f9359d8::t_70c43df266fd79 435-498,553
+  s_77e2521f9359d8::t_1279375e14ddf4 499,527-552
+  s_77e2521f9359d8::t_c7f8c4cbdff4eb 500-526
+packages/@n8n/workflow-sdk/src/index.ts
+  s_77e2521f9359d8::t_3529bd6118753e 240-243
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.ts
+  s_77e2521f9359d8::t_711aa0e6b62559 30,32
+  s_77e2521f9359d8::t_9d6b3c5c09659e 226-230
+  s_77e2521f9359d8::t_1d592d2d1fabb1 455
+  s_77e2521f9359d8::t_56512be5705af4 31
+  s_77e2521f9359d8::t_d5131404196ed8 207,213-225,231-234
+  s_77e2521f9359d8::t_29f7540d5f457b 492-498,666-672,685-691
+  s_77e2521f9359d8::t_4ef0b96647e061 734-737,749,757-763
+  s_77e2521f9359d8::t_0ef0fc59af1d34 712-733,738-748,750-756,764-767
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b7c111f0e0071312bc7b3c43a9700354ea522c13",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_77e2521f9359d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "002a141a-8e10-481b-9445-fb7a8e4b8876",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

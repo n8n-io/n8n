@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_fbcba9a12a0371::t_08dbf00daf5a9a 478-518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1f7b333ba5261e1cc9509e4ffd00f88521dc3a6d",
+  "prompts": {},
+  "sessions": {
+    "s_fbcba9a12a0371": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46276b44-3ef9-4476-9cea-4a47a1bfe1f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

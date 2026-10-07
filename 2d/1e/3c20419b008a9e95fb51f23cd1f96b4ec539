@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_9ead6d01467d76::t_b26672142eb1da 411
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_9ead6d01467d76::t_59bc33adc5931b 188-189,191,223,226,251
+  s_9ead6d01467d76::t_a35acaf337b87a 211-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2d1e3c20419b008a9e95fb51f23cd1f96b4ec539",
+  "prompts": {},
+  "sessions": {
+    "s_9ead6d01467d76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0247512a-9273-49a8-bd14-fbb3375d35eb",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

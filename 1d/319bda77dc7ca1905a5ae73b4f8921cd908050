@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_bcad48c2962531::t_cd82a88480a8bb 128-130
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowVersionListItem.yml
+  s_bcad48c2962531::t_978c790d6b8d67 1-41
+packages/cli/src/public-api/v1/openapi.yml
+  s_bcad48c2962531::t_cfcf4d5d0435ba 102-103
+packages/cli/src/public-api/types.ts
+  s_bcad48c2962531::t_de5817ab1bd96c 169
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_bcad48c2962531::t_caa5b10d479f30 895-999
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.history.yml
+  s_bcad48c2962531::t_b7a89d7ae15fd3 1-37
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_bcad48c2962531::t_e827585b01baae 1,23-26
+  s_bcad48c2962531::t_9e2bf3eb3d84b1 52
+  s_bcad48c2962531::t_9f02fac783c022 167-184,189-197
+  s_bcad48c2962531::t_1e8fede7e69a20 185-188
+  s_bcad48c2962531::t_3e22111e68f163 27-29
+  h_ed1b2d65e81e8e 19,21,30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1d319bda77dc7ca1905a5ae73b4f8921cd908050",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bcad48c2962531": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b7164d4e-821a-434c-97d3-b5dc64c728c1",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

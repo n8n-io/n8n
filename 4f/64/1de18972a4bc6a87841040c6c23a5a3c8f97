@@ -1,0 +1,27 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/error-handling.ts
+  ai_agent 6-16,21
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  ai_agent 11,121-129,131-136,184-186
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/token-provider.test.ts
+  s_894c4e86d9aaa6::t_13fb106214f070 509-527
+  s_894c4e86d9aaa6::t_65f9c833b171f4 578
+  s_894c4e86d9aaa6::t_5b5358a5d1e72f 472-488,492
+  s_894c4e86d9aaa6::t_3c61f4b8166c8c 561
+  s_894c4e86d9aaa6::t_b23e59ce542686 546
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f641de18972a4bc6a87841040c6c23a5a3c8f97",
+  "prompts": {},
+  "sessions": {
+    "s_894c4e86d9aaa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56ec0584-63f8-42b4-aa55-e67df50c5303",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

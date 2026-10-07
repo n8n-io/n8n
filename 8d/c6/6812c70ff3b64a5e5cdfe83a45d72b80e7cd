@@ -1,0 +1,60 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_8afcebef7d15aa::t_bb85f56c2af2dc 10,195
+  s_8afcebef7d15aa::t_6681d748dec7d7 18,135,137-138,143-153,162-169,171-172,174-175,180-194,196-198,200-202
+  s_379ad6ba9d6637::t_f973d8173132e5 136,154-155,157-161,173,199,203-205
+  s_8afcebef7d15aa::t_06e83e8fa182d5 139-142,176-179
+  s_379ad6ba9d6637::t_0e1fb6abb170e1 156
+  s_379ad6ba9d6637::t_12b63933404488 170,206
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_8afcebef7d15aa::t_c2eb584945e11f 63
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_8afcebef7d15aa::t_e2837adbd22e26 14-17,135-149,153-154,156-163,165-173,175-180
+  s_379ad6ba9d6637::t_ca6f27fd40f70f 134,155,174
+  s_8afcebef7d15aa::t_06e83e8fa182d5 150,152
+  s_379ad6ba9d6637::t_0e1fb6abb170e1 151
+  s_379ad6ba9d6637::t_69f5eb0753ef16 164
+  s_379ad6ba9d6637::t_12b63933404488 181
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_8afcebef7d15aa::t_e7bb07c651ae5b 22-25,135-148,150-165
+  s_379ad6ba9d6637::t_6abfd181a11e05 134
+  s_379ad6ba9d6637::t_0e1fb6abb170e1 149
+  s_8afcebef7d15aa::t_06e83e8fa182d5 166
+  s_379ad6ba9d6637::t_12b63933404488 167
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_8afcebef7d15aa::t_9e9006607fe984 19,144-165,167-177
+  s_379ad6ba9d6637::t_c1ebb00e82f7e4 166,178-179
+packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
+  s_8afcebef7d15aa::t_925282394e594f 3,78-113
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_8afcebef7d15aa::t_822250349a3925 1
+  s_8afcebef7d15aa::t_cc1c13f4dd065e 27,76
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_8afcebef7d15aa::t_721a9d3af64bb6 1
+  s_8afcebef7d15aa::t_a4175c799bf0f9 34,37,156,158,181,196,198
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_8afcebef7d15aa::t_255fbcc78ec936 1,30,33,85,88,105-111,129,145,148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8dc66812c70ff3b64a5e5cdfe83a45d72b80e7cd",
+  "prompts": {},
+  "sessions": {
+    "s_379ad6ba9d6637": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f46e5-51cb-7b11-b347-f5afe4cdae90",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8afcebef7d15aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4151-46fb-7303-9526-e7f2de8e2586",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

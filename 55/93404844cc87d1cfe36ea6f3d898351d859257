@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue
+  s_b3f23ab76a494c::t_b351f837029862 22,33-34,55,57-58
+  s_b3f23ab76a494c::t_cf554b9b58cae4 3,64
+  s_b3f23ab76a494c::t_ed8574baef8748 38,44
+  s_b3f23ab76a494c::t_059fae10ef175c 23-32,37,39-43,45-47,49-51
+  s_b3f23ab76a494c::t_af864b1534c5d0 48,54,56,60
+  s_b3f23ab76a494c::t_1975825e8e11ab 62-63
+  s_b3f23ab76a494c::t_872ed66fdfb791 1-2,4-21,35-36,52-53,59,65-66
+  s_b3f23ab76a494c::t_12d480d8764f49 61
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.test.ts
+  s_b3f23ab76a494c::t_fe4db0fae50eb3 1-43
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  s_b3f23ab76a494c::t_60ab9f6ec36084 53
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b3f23ab76a494c::t_872ed66fdfb791 54,93-96,700-701
+  h_9c8f56e3400786 53,87
+  s_b3f23ab76a494c::t_77508911ec9f79 685
+  s_b3f23ab76a494c::t_db71fb05e80031 702
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_b3f23ab76a494c::t_12d480d8764f49 3-4,11-19,22-23,38,49,52-54,56,90,92
+  s_b3f23ab76a494c::t_54c3edd2d2746f 29,31,39-41
+  s_b3f23ab76a494c::t_1cc202f5a1a58b 32,44,50,64,89,93
+  s_b3f23ab76a494c::t_326ef525bad1c8 63,66,70-82
+  s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,5-10,20-21,24-28,30,33-37,42-43,45-48,51,55,57-62,65,67-69,83-88,91,94-98
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b3f23ab76a494c::t_872ed66fdfb791 4377-4378
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_b3f23ab76a494c::t_872ed66fdfb791 36-37
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_b3f23ab76a494c::t_22a1eb3cb6c481 813,820,822
+  s_b3f23ab76a494c::t_68145028428e67 824-840,842-843
+  s_b3f23ab76a494c::t_0f8e77cca0658a 845-846
+  s_b3f23ab76a494c::t_a584ef981bc939 23-24,138,150-160,751-812,814-815,817-819,823,844
+  s_b3f23ab76a494c::t_1cc202f5a1a58b 841
+  s_b3f23ab76a494c::t_932fc07f1f89ec 821
+  s_b3f23ab76a494c::t_8503968d324586 161
+  s_b3f23ab76a494c::t_12d480d8764f49 816
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_b3f23ab76a494c::t_60ab9f6ec36084 228
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.ts
+  s_b3f23ab76a494c::t_b2af89bb108ca4 13
+  s_b3f23ab76a494c::t_872ed66fdfb791 1-12,14-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5593404844cc87d1cfe36ea6f3d898351d859257",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

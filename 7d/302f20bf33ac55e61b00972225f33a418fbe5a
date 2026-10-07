@@ -1,0 +1,23 @@
+packages/cli/test/integration/database/repositories/workflow-publish-history.repository.test.ts
+  s_6a1784db41f32d::t_be319358afd221 209,228-232,238,247,254,263,273,282,292,300-321
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_6a1784db41f32d::t_ccbb5cd453f9b6 44,46-48
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_6a1784db41f32d::t_cfe7324e7eadad 532-541
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7d302f20bf33ac55e61b00972225f33a418fbe5a",
+  "prompts": {},
+  "sessions": {
+    "s_6a1784db41f32d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fb3834-3b63-4372-a9f8-b84e113530bd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

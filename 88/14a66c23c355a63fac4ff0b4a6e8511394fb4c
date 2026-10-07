@@ -1,0 +1,90 @@
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_08237d1656b328::t_9f08fdfa6b6459 18
+  s_08237d1656b328::t_43c75da6b043a0 80,83-84
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_08237d1656b328::t_60733e43e1fdfb 1-6
+  s_08237d1656b328::t_aaaa3623cef295 201,206-211
+packages/cli/src/modules/agents/__tests__/agents-builder.service.test.ts
+  s_08237d1656b328::t_905add42530c00 48-49
+  s_08237d1656b328::t_583735a62c0e0d 9-10
+  s_08237d1656b328::t_a7b4aadcebc6df 4,11,13-17
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_08237d1656b328::t_9364d30d865d5e 208-210
+  s_08237d1656b328::t_9a7c3b44843a90 94,133,192
+  s_08237d1656b328::t_40a8f4ba73aa6b 245-271,274-277,287
+  s_08237d1656b328::t_0cb10b081ec5aa 4,12,18,25-26,44-51,53-56,59-60,77-78
+  s_08237d1656b328::t_a7b4aadcebc6df 13,29,34-38
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_08237d1656b328::t_026187213e0329 2-8
+  s_08237d1656b328::t_b6601672146bd9 4129
+  s_08237d1656b328::t_518d0ce76cb918 64
+  s_08237d1656b328::t_724295e82a19e2 1691,1696-1718
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_08237d1656b328::t_f9539cb2f1e3eb 994-999,1044-1049,1077-1082
+  s_08237d1656b328::t_aebc2ab389af46 264-265,441-442,656-657,705-706,769-770,801-802,835-836,987-988,1037-1038
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_08237d1656b328::t_a708b3e572ae05 256-258,278-280,297-299,310-315
+  s_08237d1656b328::t_310dd18f6d2c00 89,97-98,111-112,125-130,141-146
+  s_08237d1656b328::t_b5d80516cde66b 166-171,189-190,205-210
+  s_08237d1656b328::t_90f5dd25997b99 77-79
+  s_08237d1656b328::t_a7b4aadcebc6df 17
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_08237d1656b328::t_79bb5d0b40bf9c 15-17
+  s_08237d1656b328::t_da19ce68cb9417 116
+  s_08237d1656b328::t_2f3ec07d5e8769 152-182
+  s_08237d1656b328::t_5fba3e4ac7b54b 124-127,139,149
+  s_08237d1656b328::t_9b4a81b3d65eb6 92,94
+  s_08237d1656b328::t_3dcbd2a1b5de00 150-151
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_08237d1656b328::t_4b9a390bf376a3 94
+  s_08237d1656b328::t_b0305365f189f7 19-22,33-36,93,99-105,113,116-117,124-125,152-153,159-161,183-184,199-200,205-210,220,296-297,303,306,317-322,325-327,333-334,336-352
+  s_08237d1656b328::t_a7b4aadcebc6df 7-10,17
+  s_08237d1656b328::t_183d1d9d67e35f 335
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  s_08237d1656b328::t_ad3791d4bce1bb 105-140
+packages/@n8n/instance-ai/src/stream/usage-accumulator.ts
+  s_08237d1656b328::t_c6d83c9bf71596 136-149
+  s_08237d1656b328::t_3fa2e40d41c3b0 1
+  s_08237d1656b328::t_9fb98dcaeb7d83 150
+packages/@n8n/instance-ai/src/types.ts
+  s_08237d1656b328::t_14595fe0a124c0 7
+  s_08237d1656b328::t_bd1c13f1939b43 1253-1254
+  s_08237d1656b328::t_e690dae4b6ae4e 854-857,861,863
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_08237d1656b328::t_1691cc3d3fb8ff 59-72
+  s_08237d1656b328::t_d932b545e7fa77 3837-3844,3849-3863,3869-3880,3891-3901
+  s_08237d1656b328::t_45b8f8bee96494 3845-3848,3864-3868,3881-3890
+  s_08237d1656b328::t_58dcbc05dc7f72 181
+  s_08237d1656b328::t_20198658542818 3902-3903
+packages/cli/src/modules/agents/builder/agents-builder-settings.service.ts
+  s_08237d1656b328::t_5a258f341e5e3a 43-45
+  s_08237d1656b328::t_a7b4aadcebc6df 18
+  s_08237d1656b328::t_5dd5ee1a9acea5 46-47
+packages/@n8n/instance-ai/src/index.ts
+  s_08237d1656b328::t_dff2918e67434c 506-507
+  s_08237d1656b328::t_2e7da9c1ae535e 25
+  s_08237d1656b328::t_8d185c2740a58d 113-115
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_08237d1656b328::t_b4e7598bb39abf 130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8814a66c23c355a63fac4ff0b4a6e8511394fb4c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_08237d1656b328": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3bcf71c2-0f7d-4d53-b679-4278e8a609ff",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

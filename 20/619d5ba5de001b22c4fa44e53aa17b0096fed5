@@ -1,0 +1,45 @@
+packages/cli/test/integration/scheduling/shared/job-factory.ts
+  s_940781c2f2b22c::t_52d11966d51c68 6-7
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_940781c2f2b22c::t_51b2e2ed325251 21,24-25,40,43,90,331-332,369-370
+packages/@n8n/scheduler/src/core/errors.ts
+  s_940781c2f2b22c::t_36324788654ce3 109-110,119,130
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_940781c2f2b22c::t_07214a560afe63 41,43,63-65,81-83,86-92,98-101,143,157,159-160,167-168,175-176,187-188,198-199,222-224
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_940781c2f2b22c::t_52d11966d51c68 13-16,135-136
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_940781c2f2b22c::t_1f1d51ef61f451 31-32,40-41,48,50-51,59-60,66-67,177-178,180-182,188,195
+packages/@n8n/scheduler/src/core/provisioning/provisioner.ts
+  s_940781c2f2b22c::t_38b4c23c039baa 19,27-29,36,52,84-85
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_940781c2f2b22c::t_515e18444d6996 441-442
+packages/cli/test/migration/1787306400000-generalize-scheduled-job-owner.test.ts
+  s_940781c2f2b22c::t_515e18444d6996 52
+packages/@n8n/db/src/migrations/common/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_940781c2f2b22c::t_d10ff2b449e4c0 13-14,33-34,36-39,41-43,96-98,120-121,168-170,196-197
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_940781c2f2b22c::t_b0bff91e7fecef 269,280-281,283-284,311-313,315-316,348,350-351,359-360,413-415,505-507,514-515
+packages/@n8n/db/src/migrations/sqlite/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_940781c2f2b22c::t_36324788654ce3 4-6
+packages/cli/src/scheduling/schedule-columns.ts
+  s_940781c2f2b22c::t_2d62a88495fd7e 6-7,58-59,61-62
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  s_940781c2f2b22c::t_2d62a88495fd7e 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20619d5ba5de001b22c4fa44e53aa17b0096fed5",
+  "prompts": {},
+  "sessions": {
+    "s_940781c2f2b22c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db7b124a-280c-4b5f-9daa-bb3c549c49b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

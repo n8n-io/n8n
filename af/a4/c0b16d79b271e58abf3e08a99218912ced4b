@@ -1,0 +1,36 @@
+packages/@n8n/nodes-langchain/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts
+  s_0b4fdfbac98492::t_2542eba2af1aa4 17-20,356-360,368
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_0b4fdfbac98492::t_2542eba2af1aa4 25-28,188-192,213
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_0b4fdfbac98492::t_55a812d4614fb5 8-9,226,234-256,259-261,265-278
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  s_0b4fdfbac98492::t_55a812d4614fb5 109-110,161-168,173-176
+  s_0b4fdfbac98492::t_740b5f54d1d223 169-172
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.ts
+  s_0b4fdfbac98492::t_2542eba2af1aa4 35-36,45,53
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_0b4fdfbac98492::t_2542eba2af1aa4 16-19,264-268,270
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_0b4fdfbac98492::t_2542eba2af1aa4 16-19,269-270,274,285-287
+packages/@n8n/nodes-langchain/nodes/llms/test/LmOpenAi.test.ts
+  s_0b4fdfbac98492::t_55a812d4614fb5 126-151
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_0b4fdfbac98492::t_2542eba2af1aa4 8-11,20,24-25,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "afa4c0b16d79b271e58abf3e08a99218912ced4b",
+  "prompts": {},
+  "sessions": {
+    "s_0b4fdfbac98492": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95a594ed-c5bf-4cb3-a0eb-748c3416e949",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

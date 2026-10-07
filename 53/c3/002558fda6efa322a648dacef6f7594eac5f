@@ -1,0 +1,27 @@
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_77655ca8fe3a59::t_f3351481bb397f 140-141
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_77655ca8fe3a59::t_43bee55321c8a8 594
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_77655ca8fe3a59::t_f0fba534a1b04a 100,209
+packages/workflow/src/constants.ts
+  s_77655ca8fe3a59::t_1ee4b3ae5818a0 12-17
+packages/workflow/src/interfaces.ts
+  s_77655ca8fe3a59::t_7c73cbfed8c17e 1354-1356
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "53c3002558fda6efa322a648dacef6f7594eac5f",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,211 @@
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 356-357
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 60-97
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1235-1244
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 2,27-35,110-143
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 81-89,120-127,192-197,199,201-203,217-218,224,232-234,236-237,246,248,260,268-270,272-273,282,284
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 11,122-124,126-127
+packages/frontend/editor-ui/src/app/composables/useDocumentTitle.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 6,10-22,26-34
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 75
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 4-5,49,53-61,84-90,626-632,665-677,679-692
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 58-91,104-107,109,111-116,177-233
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1269
+packages/nodes-base/nodes/Discord/test/v2/node/member/unban.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-19
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 19,53,129,150-152,210-224,250-265,271-274,304
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialOAuth.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 395-399,439,463-485,501,510,513,521-522,525,534-535,813-817,849-850,989-1009
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 20-32
+packages/cli/src/services/instance-activation.service.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-51
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 4,18-21,54,130-144,287-290,383-396,448,455,460,463-487,489-491,536,564-571,580,708,711-715,718-734,743,763,776,779,782-784,786,789-793,796,800-801,803-813,816-819,824,826-827,837,961-1019,1049-1052,1069,1071,1084-1093,1095-1372,1380-1382,1386,1389,1409,1414-1418,1423-1425,1435-1439,1453-1506,1520,1876,1896
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 86,465-470
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 197-203,227-229,234,236-246,256,262,267,324-335,368-369,376
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 37,52-63
+packages/nodes-base/nodes/Discord/test/v2/node/member/timeout.workflow.json
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-78
+packages/nodes-base/nodes/Discord/test/v2/node/member/unban.workflow.json
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-77
+pnpm-workspace.yaml
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 72
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-credit-display.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-81
+packages/@n8n/api-types/src/push/instance-ai.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1,23
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 4,8-18,26-31,35-36,60,85-90,157,161,169,173,181-182,184-185,191-192,206-247,253,255,259,262-295,297-304,306,308-310,312,315-318,320-329,331-335,338-340,342-347,349-355,360
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 13,121,126-128,130,538,575,610
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 4,39,64,73,103,140-143,166-172,197-198,225,230,498,509,513-548,552-555,564-568,579,587-595,630,640,696-697,700-704,706-722,724-736,901-911,1313-1318,1321-1324,1347,1359-1360,1367,1385-1388,1390,1393,1398,1401-1402,1407-1416,1421-1422,1425-1429,1434,1442-1444,1446-1450,1454-1468,1472-1475,1481-1482,1497,1502-1503,1578-1580,1590-1592,1595,1602,1604-1608,1614,1616,1618,1638,1641,1648,1650,1720,1733-1757,1764-1765,1778,1839-1853
+packages/@n8n/api-types/src/index.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 398
+packages/nodes-base/nodes/Discord/test/v2/node/member/timeout.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-26
+packages/nodes-base/nodes/Discord/v2/helpers/utils.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 9,95-108
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 29,50,160-166,172,202,319
+packages/nodes-base/nodes/Discord/test/v2/node/member/ban.workflow.json
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-78
+packages/nodes-base/nodes/Discord/v2/actions/node.type.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 6
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-activation-lock.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-302
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 32,92,97,249-257,409,412-419,421-424,426-441,444-445,449-455,491-492,534,915-924,926-1014,1114,1190-1198,1207,1223,1259,1270-1271,1289-1297
+packages/nodes-base/nodes/Discord/test/v2/node/member/ban.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-25
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 14,26-29,41-48,70-86,95,144-146
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 15,28,53-62,163
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 14,58-61,63,141-200,205,207-212,215,221-231
+pnpm-lock.yaml
+  ai_agent 166-167,1266,1366,4224,10178-10179,27693
+packages/nodes-base/nodes/Discord/v2/actions/member/unban.operation.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-63
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 30-31,38,40-46,56-57,73-76,80,83,90-92,187-188,190-194,197,200,206-208,260-269,296,347-348,389-401
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 95
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1,33-36,41-43,48,57-58,68-110,151,153-155,159-162,164,171,175,184
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.errorMessage.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1,106,134-156
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 3,7-12,21,25-30,33,35,49-53,60-69,96-111,119,138,141-147,152,155,160-197,236,253-304,364,440-488
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-message.repository.integration.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-107
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 12-16
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 31,99-100,103,382-390,636-672
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 125
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 8,64-67
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 117,301-305
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 4,15,32-35,41,116,130,134,228-229,231-256,291,389,440,448,452,461-500,506-532,1247-1371,1430-1444
+packages/frontend/editor-ui/src/app/composables/useDocumentTitle.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 3,5,114-155
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-271
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1033-1048,1056,1078,1093,1106,1114,1122,1168
+packages/nodes-base/nodes/Discord/v2/actions/member/kick.operation.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-63
+packages/nodes-base/nodes/Discord/v2/actions/member/timeout.operation.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-80
+packages/testing/playwright/tests/e2e/credentials/oauth.spec.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 25-26,28-29
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ffb7ac8df0495d::t_097fc2501dbe2a 379-380,1134-1135,1506-1507,6744,7303,7782
+packages/cli/src/modules/instance-ai/repositories/instance-ai-message.repository.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 11-32
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 41,51,89,93,133-137,222,228-232
+packages/nodes-base/nodes/Discord/v2/helpers/__tests__/utils.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 4,364-410
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 205-217
+packages/nodes-base/nodes/Discord/v2/transport/discord.api.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 21
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 7,195-196,205-209,226-309
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-2,4-10,800,816,922-925,1323,1340,1359,1368-1611
+packages/cli/src/services/__tests__/instance-activation.service.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-76
+packages/cli/src/modules/instance-ai/instance-ai-credit-display.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-40
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 717,826-829,979,1049-1052,5466,5473-5476
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 655,716
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 40-41,111-117,129-135,160,302-303
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1,147
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 212
+packages/nodes-base/nodes/Discord/test/v2/node/member/kick.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-24
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 41,52,140-149
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 12,15-17,53-62,70-72,77-157,263-265,267-268
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 5,8-23,26,35-40,53,59,78-84
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 2,5,27-32,34,36-39,45,47-48,165-170,173,206-211,215-245,253,257-276,280-325,327-331,333-355,358-366,371-378,382,385
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 24,29,49-53,170,172,174
+packages/nodes-base/nodes/Discord/test/v2/node/member/kick.workflow.json
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-78
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 178-180
+packages/nodes-base/nodes/Discord/test/v2/transport/discord.api.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 265-280
+packages/nodes-base/nodes/Discord/v2/actions/member/index.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 3,5,8-9,12,27-32,39-44,57-68,81,83,86-87
+packages/@n8n/config/test/config.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 363-364
+packages/nodes-base/nodes/Discord/v2/actions/common.description.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 269-351
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-179
+packages/cli/src/services/workflow-statistics.service.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 24,231-258
+packages/nodes-base/nodes/Discord/v2/actions/member/ban.operation.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 1-75
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 2,5-7,10-11,28,32-39,47-49,175-204
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiView.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 10,80-91
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 43,131,147,290-305,340-351
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 21,141,957-968,987-993,2250-2251
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 23-26,82
+packages/cli/src/services/ai.service.ts
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 101-106
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_ffb7ac8df0495d::t_3dd9f46f633a94 2-5,9-11,15-24,28-33,37-42,44-45,48-49,52-53,57-61,66-77,79-102,104-151,155-160,162-165,168,171-174,177-179,185,187-188,191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05c6521407d8814b2d140ecff64e85ea27e3539b",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

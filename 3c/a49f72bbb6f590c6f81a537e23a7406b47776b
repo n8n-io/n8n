@@ -1,0 +1,11 @@
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  ai_agent 41,164,172-210,633-635
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  ai_agent 538-587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3ca49f72bbb6f590c6f81a537e23a7406b47776b",
+  "prompts": {}
+}

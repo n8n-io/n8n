@@ -1,0 +1,41 @@
+packages/@n8n/db/src/entities/workflow-review-activity.ee.ts
+  s_87b7dc096911b8::t_ebdce4849fd7a2 15-19,26-28
+  s_87b7dc096911b8::t_0f437973923de8 46-50
+docs/generated/postgres-schema/public.workflow_review_activity.md
+  s_87b7dc096911b8::t_f78cebd804189a 12
+docs/generated/postgres-schema/README.md
+  s_87b7dc096911b8::t_f78cebd804189a 129
+docs/generated/sqlite-schema/README.md
+  s_87b7dc096911b8::t_f78cebd804189a 129
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_87b7dc096911b8::t_0331cfd04bfff6 70
+packages/cli/test/migration/1785843640527-create-workflow-review-activity-tables.test.ts
+  s_87b7dc096911b8::t_9f846544e72bac 243-246
+  s_87b7dc096911b8::t_f5832197894071 277,281-287,291,294-298,300,302-303
+  s_87b7dc096911b8::t_e9016039fbf0a1 233
+  s_87b7dc096911b8::t_de496d990b2184 201,209-213
+  s_87b7dc096911b8::t_54fbc217617b2e 59-63
+  s_87b7dc096911b8::t_6e87564fe63d98 124-127,131-136,144,150-155,157
+docs/generated/sqlite-schema/workflow_review_activity_comment.md
+  s_87b7dc096911b8::t_f78cebd804189a 9
+packages/@n8n/db/src/migrations/common/1785843640527-CreateWorkflowReviewActivityTables.ts
+  s_87b7dc096911b8::t_2d2aac8f3d0262 31
+packages/@n8n/db/src/entities/workflow-review-activity-comment.ee.ts
+  s_87b7dc096911b8::t_75a38c6aca135f 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3d85ec9c792a9cfe8aa994fde5aa7a58098b3a4",
+  "prompts": {},
+  "sessions": {
+    "s_87b7dc096911b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a6260b0-b810-4125-8749-e2239809baa5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

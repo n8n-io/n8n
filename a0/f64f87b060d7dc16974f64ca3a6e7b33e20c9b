@@ -1,0 +1,44 @@
+packages/cli/src/scaling/job-processor.ts
+  s_1d360ad69afd30::t_2eb0ea41a49b4d 202-205
+  s_1d360ad69afd30::t_95929851bd0338 4
+  s_1d360ad69afd30::t_b64b940b8be254 224-227
+  s_1d360ad69afd30::t_03b32d9c92e768 60
+  s_1d360ad69afd30::t_12cd443ce4073b 79
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_fdbe3e420fb3e4 47
+  s_1d360ad69afd30::t_dffbfa4f193d9c 5-10
+  s_1d360ad69afd30::t_adbda6b092b042 2052,2067
+  s_1d360ad69afd30::t_f8f146c67d52f5 2086,2088-2106,2119-2124,2132
+  s_1d360ad69afd30::t_ed9d6dd59fcd4a 2087
+  s_1d360ad69afd30::t_5d005a2d668ef2 2006-2022,2027,2029
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_1d360ad69afd30::t_ed9d6dd59fcd4a 61-64,183-185,203-206,208-213,342-348,431-437
+  s_1d360ad69afd30::t_aac58defac9651 1-6,8,13-14,18,20,22-23,25-26,28-29,31-35,37-39,41-45,47-52,54-55,57-60,67-70,72,74-76,78-84,86-104,106-107,110-118,120-182,186-199,202,214-225,228,238-240,244-246,250,254,264-266,270-272,278,280,282,291-341,349-430,438-448
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_1d360ad69afd30::t_10505c5c916b61 143-149,152
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_1d360ad69afd30::t_80b8a324eb35cf 4-6,9-11,13-21,24-25,29-51,53-55,57-138,141-142,145-176,179-195,198-199,202-205,207-256,260-262,264-265,267,274-282,291-292,294-295,297-303,306-312,315-366,382-414
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_1d360ad69afd30::t_fee3993d949d3a 330-338
+  s_1d360ad69afd30::t_df3a05acdf0c31 66
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_1d360ad69afd30::t_0f8f16416f3468 39-40
+  s_1d360ad69afd30::t_46ec720ddcc884 296-341
+  s_1d360ad69afd30::t_a49d13d3490035 225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a0f64f87b060d7dc16974f64ca3a6e7b33e20c9b",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

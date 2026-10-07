@@ -1,0 +1,20 @@
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_2c71bf175aff26::t_2ddf0dffb337bb 482
+  s_2c71bf175aff26::t_9e2499aeee8e0c 525-526,530-531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "565621d3a98bc4d0d029620c146c7ef6bf5397ca",
+  "prompts": {},
+  "sessions": {
+    "s_2c71bf175aff26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "518de82a-588e-4385-a673-bc8905837c90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

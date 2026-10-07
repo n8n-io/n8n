@@ -1,0 +1,25 @@
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 1-130
+packages/@n8n/engine/docs/adr/ADR-20260904-resume-urls-carry-a-derived-token.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 1-100
+packages/@n8n/engine/docs/adr/ADR-20260828-trigger-settlement-before-execution.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 1-63
+packages/@n8n/engine/docs/adr/ADR-20260904-timeout-excludes-waiting-time.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "87f0ad8e865f16a4a178a4c98424e067e9141c08",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_6be063ec52937f::t_ed286a8b16dbdd 210-212
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_6be063ec52937f::t_1af699569a72d9 135-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4fc767d7ee6abaab38bdcdfde1212645dcff3c75",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6be063ec52937f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d2c786a-b73c-497c-975b-bd543ea0dba0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

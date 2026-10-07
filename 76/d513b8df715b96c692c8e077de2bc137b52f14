@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_2bd119b0725629::t_631187ef61afd3 30
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_2bd119b0725629::t_8eb8da1d691d1b 1352-1356
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_2bd119b0725629::t_ba34cd79d60de8 842-844,848
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_2bd119b0725629::t_2d6442727b6c96 1084-1088
+packages/cli/src/modules/agents/agents.service.ts
+  s_2bd119b0725629::t_f24756bbf7fa8b 11
+  s_2bd119b0725629::t_599e23798c81f5 19
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_2bd119b0725629::t_85de6cd3891427 188-221
+  s_2bd119b0725629::t_5b66087752669c 46-48
+  s_2bd119b0725629::t_aa916b1a569bd3 2
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_2bd119b0725629::t_01ddc5d921524f 74-92,94,107
+  s_2bd119b0725629::t_281e3af81937d4 71-73,93,95-106,108-114
+  s_2bd119b0725629::t_bb5c4adce5e678 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "76d513b8df715b96c692c8e077de2bc137b52f14",
+  "prompts": {},
+  "sessions": {
+    "s_2bd119b0725629": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1cde2796-9a1c-4349-8a73-52bd570aa54b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

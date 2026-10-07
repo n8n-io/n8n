@@ -1,0 +1,23 @@
+packages/testing/playwright/tests/e2e/api/webhook-isolate-skip.spec.ts
+  s_a07d5b98c55b9c::t_5e4ec24494b416 1-58
+packages/testing/playwright/workflows/webhook-isolate-skip-expression.json
+  s_a07d5b98c55b9c::t_e62dd224357644 1-57
+packages/testing/playwright/workflows/webhook-isolate-skip-static.json
+  s_a07d5b98c55b9c::t_3400c043cb40e0 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6ecd74418e4357ba9eb105d492fba3df320b80df",
+  "prompts": {},
+  "sessions": {
+    "s_a07d5b98c55b9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_a07d5b98c55b9c",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

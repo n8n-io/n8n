@@ -1,0 +1,22 @@
+packages/core/src/encryption/cipher.ts
+  s_fc46fb8dee3e6b::t_f0235e5bdbbcdf 146,160-167,169-175
+  s_fc46fb8dee3e6b::t_e60e4e120c1ec0 168
+packages/core/src/encryption/__tests__/cipher.test.ts
+  s_fc46fb8dee3e6b::t_6c3b8044574b11 440-479
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3ff69c99ac731e36eafb444bcb61a20fa7670943",
+  "prompts": {},
+  "sessions": {
+    "s_fc46fb8dee3e6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c1cac4e-0d5f-4a1a-ba34-eb3ac20c1cff",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

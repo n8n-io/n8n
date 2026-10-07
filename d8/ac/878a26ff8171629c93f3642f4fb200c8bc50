@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/WorkflowTagsManager.vue
+  s_f097ae7830c597::t_08580ba15366fa 9
+  s_f097ae7830c597::t_41105227f4ae5f 94-96
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/AnnotationTagsManager.ee.vue
+  s_f097ae7830c597::t_4e452a9718d689 99-101
+  s_f097ae7830c597::t_887565b36b93ce 9
+  s_f097ae7830c597::t_3722a1117c94a4 14
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsManager.vue
+  s_f097ae7830c597::t_80006b06831892 22-24
+packages/frontend/editor-ui/src/features/shared/tags/tags.store.ts
+  s_f097ae7830c597::t_57736a0bef99bb 9,16-33,36
+  s_f097ae7830c597::t_798e52406caa72 120
+  s_f097ae7830c597::t_af34ffa461a458 140
+  s_f097ae7830c597::t_392fc299a5a55d 150
+  s_f097ae7830c597::t_57e5891d33f07b 98
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsView/TagsView.vue
+  s_f097ae7830c597::t_175b552e429de8 18-20
+  s_f097ae7830c597::t_8ae1f3aeb1e57b 68-69
+packages/frontend/editor-ui/src/features/shared/tags/tags.store.test.ts
+  s_f097ae7830c597::t_9cfb08d46e223a 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "d8ac878a26ff8171629c93f3642f4fb200c8bc50",
+  "prompts": {},
+  "sessions": {
+    "s_f097ae7830c597": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "723eb4ac-6542-4e6e-94e3-1d81188c12f6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

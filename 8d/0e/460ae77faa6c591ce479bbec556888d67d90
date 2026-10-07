@@ -1,0 +1,30 @@
+packages/frontend/@n8n/design-system/package.json
+  s_492f26dc5708cf::t_024e00baf2bbc0 62-63
+  s_492f26dc5708cf::t_c11ff8b09ba279 101-103
+  s_492f26dc5708cf::t_d1a6f22d1b14ee 104
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_492f26dc5708cf::t_4bc1ea788d5ab6 14-19,23,26,31-37
+  s_492f26dc5708cf::t_39451b11f4a165 149-151
+  s_492f26dc5708cf::t_5ce53963efdbe6 156-174,177
+  s_492f26dc5708cf::t_d88c8c1fbaea24 2
+  s_492f26dc5708cf::t_ee76ac1e867865 20-22,24-25,27-30
+  s_492f26dc5708cf::t_356d807f976e34 38
+pnpm-lock.yaml
+  s_492f26dc5708cf::t_af952f9ecca896 5318-5323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8d0e460ae77faa6c591ce479bbec556888d67d90",
+  "prompts": {},
+  "sessions": {
+    "s_492f26dc5708cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "291e403c-d259-4b80-89ee-e6232060c496",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

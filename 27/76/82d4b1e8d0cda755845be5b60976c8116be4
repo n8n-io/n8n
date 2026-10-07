@@ -1,0 +1,83 @@
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_1389ed5ff32164::t_b47971644714b4 40-44,622-636,638-643,645-667
+  s_1389ed5ff32164::t_06b80a064d50d5 7,45,50,61,637
+  s_1389ed5ff32164::t_f95bf338be2d19 324-366,373-386,393-395
+  s_1389ed5ff32164::t_cf676b4542155b 392,396
+  s_1389ed5ff32164::t_e199012adcaad4 402-405,411,414-418,420-424
+  s_1389ed5ff32164::t_5f54cfd0cb208c 407
+  s_1389ed5ff32164::t_28e2710bc12bca 203,218-220,222-226,367-368,370-372,387-391,397-399
+  s_1389ed5ff32164::t_0d7b51754bc819 400,466,470,482-484,486-533,644,794,817-818
+  s_1389ed5ff32164::t_dd05127448aee3 401,668
+packages/@n8n/db/src/migrations/common/1789715109253-AddEmptyLogThroughMessageIdToAgentObservationCursors.ts
+  s_1389ed5ff32164::t_3db586523f7666 1-2,18-19,24-25
+  s_1389ed5ff32164::t_bd559862a7b124 6-9,15-17,20-23
+  s_1389ed5ff32164::t_f95bf338be2d19 3-5,10-14
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_1389ed5ff32164::t_f71a222bd6f827 28,32,35,38,41,43,47-48,51,67,76,83,87,90,93,96,98,102-103,106
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_1389ed5ff32164::t_23c8b25193a6ef 41,154,166,339,341
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_1389ed5ff32164::t_4c2a2b0e38b624 486
+  s_1389ed5ff32164::t_f95bf338be2d19 523-525,580-582,584-592,628-635,642-716
+  s_1389ed5ff32164::t_2f3f8f48b4878e 67,480-485,487-488,491-501,514,522,528,534-542,548,550,553-566,568-579,583,593-601,603-605,610-611,614-627,636-639
+  s_1389ed5ff32164::t_c01118627e5bf3 717
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_1389ed5ff32164::t_2f3f8f48b4878e 1010,1019,1022-1026,1029,1031-1034
+  s_1389ed5ff32164::t_acb2a7629bd0c3 1035-1048
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_1389ed5ff32164::t_9531e265cc392a 90
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_1389ed5ff32164::t_d4a15ade107d8d 506,518
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_1389ed5ff32164::t_2f3f8f48b4878e 6,75-76,78-79,82-85,87-98
+  s_1389ed5ff32164::t_f95bf338be2d19 43-65,73-74
+  s_1389ed5ff32164::t_1da5e127f0225d 66-72,126-132
+packages/@n8n/agents/src/types/sdk/observation.ts
+  s_1389ed5ff32164::t_d4a15ade107d8d 4-5
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_1389ed5ff32164::t_2603c09c52685b 441-443
+  s_1389ed5ff32164::t_a69c58d331a38a 364,380
+  s_1389ed5ff32164::t_fbaa2e399c7ba3 9,153-154,187-188,286-288,449,453,466,496,500,505,517,528,533,542,597,607,621,635-636,647,649-651,659-662,664-667
+packages/cli/src/modules/agents/entities/agent-observation-cursor.entity.ts
+  s_1389ed5ff32164::t_d4a15ade107d8d 16-18
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_1389ed5ff32164::t_d4a15ade107d8d 63-78,92,186,235-238,248-255,285-292,297
+  s_1389ed5ff32164::t_d3bb4606d75235 242-247
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_1389ed5ff32164::t_d4a15ade107d8d 26
+packages/cli/test/migration/1789715109253-add-empty-log-through-message-id.test.ts
+  s_1389ed5ff32164::t_f99fca409be4b3 1-114
+  s_1389ed5ff32164::t_9f1744a38156bf 115-124
+docs/generated/postgres-schema/README.md
+  s_1389ed5ff32164::t_091d15ec56f42b 36,694
+docs/generated/postgres-schema/public.agents.md
+  s_1389ed5ff32164::t_df4f146a7d3f81 292
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_1389ed5ff32164::t_c42e04e352bb9b 9,47
+docs/generated/postgres-schema/public.agents_threads.md
+  s_1389ed5ff32164::t_9c867ba4add838 92
+docs/generated/sqlite-schema/README.md
+  s_1389ed5ff32164::t_e5382cb310bab6 36,204,681
+docs/generated/sqlite-schema/agents.md
+  s_1389ed5ff32164::t_f6adf1ec70aefa 294
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_1389ed5ff32164::t_26b3310ae1994a 9,20,30-31,54
+docs/generated/sqlite-schema/agents_threads.md
+  s_1389ed5ff32164::t_18619ff326fecb 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "277682d4b1e8d0cda755845be5b60976c8116be4",
+  "prompts": {},
+  "sessions": {
+    "s_1389ed5ff32164": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0afb5-5cd8-7dd1-ab29-acad02c48f33",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,192 @@
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_5988cef02c9299::t_b10e8aef274c9f 16,107,448
+  s_5988cef02c9299::t_d8672cbf5a16e8 449-450
+packages/cli/src/modules/agents/runtime/agent-secure-runtime.ts
+  s_5988cef02c9299::t_50f068b92be1b6 372
+  s_5988cef02c9299::t_ae714a12e18444 1,342-371,373-396,410-415
+  s_5988cef02c9299::t_f07ff79edd8e75 416
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_5988cef02c9299::t_8ed59083e46268 56
+packages/cli/src/modules/agents/agent-knowledge-mirror.service.ts
+  s_5988cef02c9299::t_4e33db305bf4f4 1,46-50,54,118,124,267-285,292,295,308,327,330,359,401,517,524-529
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_5988cef02c9299::t_e465e4af5d93ae 1-55
+  s_5988cef02c9299::t_ff050f34da41a6 56-59
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_5988cef02c9299::t_2a4182c06c6401 22,24,52-53,78,94,115,140
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-execute-command-tool.json
+  s_5988cef02c9299::t_d264bda4020670 12,48-58,60-74,76-89,408,411,416,420-421,508,514-515,527,530-532,534,536,538-539,542,859,865,868,870,874
+  s_5988cef02c9299::t_dd47711f017442 59,75,533
+  s_5988cef02c9299::t_70849f4795d9a4 401,405,414,424,440,458,474,502-507,509-513,516-526,528-529,535,537,540-541,543,855,862,875,878
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_5988cef02c9299::t_856d8934ec57d1 89
+  s_5988cef02c9299::t_40da2581e43ce7 929,937-938,954-957
+  s_5988cef02c9299::t_6e4a8c85789c9c 11,70,88,102,289,354,768,936,953
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_5988cef02c9299::t_7ec162898aad19 371
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_5988cef02c9299::t_44ec513bd98665 1-319
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_5988cef02c9299::t_4da049ae11fcbd 26,28,139-140
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-list-files-for-a-pre-existing-directory.json
+  s_5988cef02c9299::t_dd47711f017442 59,76,535
+  s_5988cef02c9299::t_d264bda4020670 12,48-58,60-75,77-89,408,411,416,420-421,423,510,516-517,529,532-534,536,538,540-541,544,861,867,870,872,876
+  s_5988cef02c9299::t_3666f7c59568e4 401,405,414,425,441,459,476,504-509,511-515,518-528,530-531,537,539,542-543,545,857,864,877,880
+packages/@n8n/agents/src/workspace/index.ts
+  s_5988cef02c9299::t_0c54457e56b8b6 2-3
+  s_5988cef02c9299::t_ac2c4f814bf7fa 9
+packages/@n8n/instance-ai/evaluations/__tests__/workspace-tool-contract.test.ts
+  s_5988cef02c9299::t_302df65cc735cb 1,51,54,69
+packages/@n8n/agents/src/workspace/tool-result-storage.ts
+  s_5988cef02c9299::t_63aff5b4c68119 15-16,24-45
+  s_5988cef02c9299::t_798eae827e1e72 1-14,17-23,46-68
+packages/@n8n/agents/src/sdk/agent.ts
+  s_5988cef02c9299::t_c8a0393066faa6 1107-1109
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_5988cef02c9299::t_bd63ac559a49e5 109-111
+  s_5988cef02c9299::t_96bc441eb43bb0 6,98,115
+  s_5988cef02c9299::t_c1f4ab232adaa4 263-270,272-273,275-277,279-292,294,296-298,300-313,315-316,318-336,338-341,344-347,349-359
+  s_5988cef02c9299::t_b059db9e1024ae 38,40,99-100,130-131
+  s_5988cef02c9299::t_3ae584fa2760e9 271,274,278,293,295,299,314,317,337,342-343,348
+packages/cli/src/modules/agents/tools/knowledge/__tests__/search-knowledge.tool.test.ts
+  s_5988cef02c9299::t_30e7d5359f8110 4,11,17,37-38,44,51-55,59-60,67,74
+  s_5988cef02c9299::t_8928f2d117499a 78-79,86,93
+packages/@n8n/agents/src/workspace/tools/workspace-tools.ts
+  s_5988cef02c9299::t_d7876c15bf7797 24-25,27-32
+  s_5988cef02c9299::t_11fe7c34fc796a 14,26,38
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-handles-multi-step-workflow-mkdir-write-list-read.json
+  s_5988cef02c9299::t_d264bda4020670 12,48-54,56-71,73-76,78-89,408,411,416,420-421,490,524,530-531,548,551-555,557,559-560,563,880,886,889,891,895,938,949,1012,1046,1052-1053,1067-1068,1081,1401,1405,1418,1421
+  s_5988cef02c9299::t_41d42ee47fa89e 55,72,77,401,405,414,424,440,462,473,495,523,525-529,532-547,549-550,556,558,561-562,564,876,883,896,898,900,916,966,971,981,985,996,1017,1045,1047-1051,1054-1066,1069-1080,1082-1086,1398,1402,1408,1410-1411,1413,1417
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_5988cef02c9299::t_f31c95229fd8ae 1055
+  s_5988cef02c9299::t_992d9297dd85e6 13,188,865-869,1038-1043,1057,1075-1085
+  s_5988cef02c9299::t_7b8fcf7408ef12 31
+  s_5988cef02c9299::t_5cc7e6be1ae7ee 1086-1087
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/stream-agent-writes-a-file-and-streams-the-response.json
+  s_5988cef02c9299::t_dd47711f017442 60,77
+  s_5988cef02c9299::t_d264bda4020670 12,48-59,61-76,78-89,408,411,416-417,420,426,515,521-522,534,537-541,543,545-546,549,864,872,875,881,890
+  s_5988cef02c9299::t_8ad6163fbff081 403,407,414,425,429,446,464,481,509-514,516-520,523-533,535-536,542,544,547-548,550,869,878,886-887
+packages/cli/src/modules/agents/__tests__/agent-secure-runtime.test.ts
+  s_5988cef02c9299::t_0e98640d58daf6 40-53,351-359
+  s_5988cef02c9299::t_cccd7e519802e7 360-361
+packages/@n8n/agents/src/workspace/__tests__/scoped-workspace.test.ts
+  s_5988cef02c9299::t_d8fd168f756801 4-5,79,92,98,102,120,129
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_5988cef02c9299::t_e37615ae1ff923 443,456
+  s_5988cef02c9299::t_371e39d172fe9b 3,72,457-459
+  s_5988cef02c9299::t_8e2d4c12a44641 460
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_5988cef02c9299::t_42a4aa36320d5e 139-141
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_5988cef02c9299::t_1197e70fbb456e 1-72
+packages/@n8n/agents/src/index.ts
+  s_5988cef02c9299::t_8bcd71ffc6f6d7 421-426
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_5988cef02c9299::t_4e435d7805b717 3,599-601,603,606-622,624
+  s_5988cef02c9299::t_1aa3cb36e6c0e8 52-53,178-179,602,623
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_5988cef02c9299::t_2bb3b5eb956236 57,97
+  s_5988cef02c9299::t_205fe9cfd8cfdf 226
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_5988cef02c9299::t_2328b3d81b530d 4,20,42
+  s_5988cef02c9299::t_bc548730a50cc8 38
+  s_5988cef02c9299::t_6b8b7118fea2ac 43-44
+packages/@n8n/instance-ai/src/workspace/scoped-workspace.ts
+  s_5988cef02c9299::t_0e5635768cbb49 1
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_5988cef02c9299::t_69f8a4e5d99b8a 7823
+  s_5988cef02c9299::t_d023d37e5dc103 6-7
+  s_5988cef02c9299::t_57f31f0550ced2 7792-7798,7803-7804,7813-7819,7825-7868,7875-7884,7896-7923,7927-7929,7934-7947,7956-7975,7977-7978,7983-7988,7990-8016
+  s_5988cef02c9299::t_2bd15fbc49911a 7869
+  s_5988cef02c9299::t_331448410e5bc0 7889-7890
+  s_5988cef02c9299::t_716ab6b89caff3 7820-7822,7824
+  s_5988cef02c9299::t_9bf5b24152c22f 7989
+  s_5988cef02c9299::t_c3a6f7cf955f0c 7805-7812,7924-7926,7948-7955,7976
+  s_5988cef02c9299::t_ea99c623504129 18,7799-7802,7870-7874,7885-7888,7891-7895,7930-7933,7979-7982
+  s_5988cef02c9299::t_f962e14329e82e 8017-8018
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  s_5988cef02c9299::t_d464ed9c820a30 2,9
+  s_5988cef02c9299::t_f7ac828ea8bc35 92
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_5988cef02c9299::t_7decce98885e4c 1-322
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-edits-files-with-append-copy-move-delete-and-rmdir-tools.json
+  s_5988cef02c9299::t_d264bda4020670 12,48-57,59-74,76-89,408,411,416,420-421,509,515-516,528,531-532,534-535,537,539-540,543,860,866,869,871,875,895,913,940,991,999-1000,1010,1016-1017,1026-1027,1350,1363,1365,1367,1401,1418,1428,1432,1450,1460,1519,1521,1525,1533-1534,1544,1550-1551,1867,1882-1883,1902,1920,1937,1947,1983,2011,2084,2086,2090,2098-2099,2412,2416,2419,2427,2431,2435,2451,2486,2500,2528,2532,2560,2580,2612,2679,2681,2997,3000,3013,3016
+  s_5988cef02c9299::t_dd47711f017442 58,75,533,1863,2996
+  s_5988cef02c9299::t_74cf159be8be1c 401,405,414,424,440,458,475,503-508,510-514,517-527,529-530,536,538,541-542,544,856,863,876,879,930,944,962,990,992-998,1001-1009,1011-1015,1018-1025,1028-1031,1343,1347,1353,1356,1358,1362,1383,1464,1482,1510-1518,1520,1522-1524,1526-1532,1535-1543,1545-1549,1866,1870,1873,1875-1876,1878,1886,1951,1969,1979,2001,2015,2031,2059-2083,2085,2087-2089,2091-2097,2100,2415,2422,2424-2425,2432,2469,2496,2518,2550,2564,2590,2594,2640-2678,2680,2993,3003,3005-3006,3008,3012
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_5988cef02c9299::t_1c7dc4ee8495a7 4,64
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_5988cef02c9299::t_752008fa56d88a 3,242,246,256,269,282
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_5988cef02c9299::t_807f60791e677f 66,104,108
+  s_5988cef02c9299::t_df94239c795fc1 207
+  s_5988cef02c9299::t_9b7fe2b96150b6 126-206,208-250
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_5988cef02c9299::t_1be8b316c74aa8 1-18,20-196
+  s_5988cef02c9299::t_b391fd94441f1a 19
+packages/cli/src/modules/agents/__tests__/agent-knowledge-mirror.service.test.ts
+  s_5988cef02c9299::t_ff0d28f5f68b1a 12,14-18,28-29,48-61,67,72,74,78-81,83-88,92-96,99-131,136-137,148,153,200,222-241,253-255,265,322,344-345,348,360,370-374,377,396,412,432,439,446-448
+  s_5988cef02c9299::t_8e6addf50eb72f 97-98
+  s_5988cef02c9299::t_d7fb725bfa5abf 27
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_5988cef02c9299::t_820d2fdfb90be8 149
+  s_5988cef02c9299::t_25471eca40a550 5-10,25-29,37-43,48,54-55,61,66-76,80-85,91,93-94,100,113,115,129-143,148,150-154
+  s_5988cef02c9299::t_87a1cf286ca435 30-36,144-147
+  s_5988cef02c9299::t_90d1353c3030f5 107
+  s_5988cef02c9299::t_52128b2eda2505 155
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-write-file-and-workspace-read-file-tools.json
+  s_5988cef02c9299::t_dd47711f017442 56,72,401,405,408,411,414,416,420-421,424,440,458,462,471-548,552-553,555-556,569,571-576,599-600,602-603,628,630-631,669,671-672,696,698-699,717-718,720-721,735-736,738-739,757-758,760-761,783-784,786-787,807,809-810,834,836-837,861,863-864,886-887,889-890,906,913,915-916,925,941,943-946,950,963,996-1002,1005-1009,1011-1017,1019-1020,1022-1023,1026-1033,1036-1037,1369,1372
+  s_5988cef02c9299::t_d264bda4020670 12,48-55,57-71,73-89,549-551,554,557-568,570,577-594,596-598,601,604-605,608-612,614,616,618,620,622-624,629,632-633,636-640,642,664-666,670,673-674,677-681,683,685,687,691-693,697,700-701,704-708,710,714-716,719,722-723,726-730,732-734,737,740-741,744-748,750,754-756,759,762-763,766-770,772,776,780-782,785,788-789,792-796,798,800,802-804,808,811-812,815-817,819,821,823,825,829-831,835,838-839,842-844,846,848,850,852,856-858,862,865-866,869-873,875,879,883-885,888,891-892,895-897,899,901,903,905,909-911,914,917,921-922,924,938,942,1003-1004,1010,1018,1021,1024-1025,1034-1035,1356,1364
+  s_5988cef02c9299::t_ab5c81a7ba4ffb 595,606-607,613,615,617,619,621,625-627,634-635,641,643-663,667-668,675-676,682,684,686,688-690,694-695,702-703,709,711-713,724-725,731,742-743,749,751-753,764-765,771,773-775,777-779,790-791,797,799,801,805-806,813-814,818,820,822,824,826-828,832-833,840-841,845,847,849,851,853-855,859-860,867-868,874,876-878,880-882,893-894,898,900,902,904,907-908,912,940,947-948,951-962,964-965,968,1349,1353,1359,1362,1368
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_5988cef02c9299::t_77d3be38d61bc2 45,49,53-55
+  s_5988cef02c9299::t_fc6900dffb67f1 5,16,20,24,46-47,51
+  s_5988cef02c9299::t_61d0918eaa10bf 50,56-57
+packages/@n8n/agents/src/workspace/tools/read-tool-result.ts
+  s_5988cef02c9299::t_f3ba63fc38074e 390
+  s_5988cef02c9299::t_171a530ca032b2 116-119
+  s_5988cef02c9299::t_e525912c7e4a1b 1-115,120-153,155-165,167-168,170-171,173-274,278-387,389,391,393
+  s_5988cef02c9299::t_93a15010f288fa 154,166,169,172,275-277,388,392
+  s_5988cef02c9299::t_454f2e496e14d0 394-404
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_5988cef02c9299::t_bf95acc9e88d28 12,14,138-139,148-149,163-164,418,440,456
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5988cef02c9299::t_07e62b4ab63bf1 43,57,136-137,319
+  s_5988cef02c9299::t_be5667dc983ca3 316-318,320
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_5988cef02c9299::t_bc7faa279cb42e 267
+  s_5988cef02c9299::t_6185434eefec93 236-237,239-246,252,257-262,264-266,268-270
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_5988cef02c9299::t_cb49d61a769c06 439,450,468,495,499-500,520,524
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-applies-single-and-batch-string-replacements.json
+  s_5988cef02c9299::t_dd47711f017442 56,59,62,76,81,416,562,565,899
+  s_5988cef02c9299::t_d264bda4020670 12,48-55,57-58,60-61,63-75,77-80,82-89,408,411,420-421,535,541-542,559,563-564,566,568,570-571,574,890-891,897,900,902,906
+  s_5988cef02c9299::t_c2594b6b75ebe4 401,405,414,424,440,456-459,462,475,501,506,534,536-540,543-558,560-561,567,569,572-573,575,887,894,907,910
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-file-stat-to-get-file-metadata.json
+  s_5988cef02c9299::t_dd47711f017442 59,75,533
+  s_5988cef02c9299::t_d264bda4020670 12,48-58,60-74,76-89,408,411,416,420-421,508,514-515,527,530-532,534,536,538-539,542,859,865,868,870,874
+  s_5988cef02c9299::t_5e93cc3ee47d38 401,405,414,424,440,458,474,502-507,509-513,516-526,528-529,535,537,540-541,543,855,862,875,878
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_5988cef02c9299::t_9bc319097bfc10 101-102,115,144,334,337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "92f0ac08a938847c67a65a63e4e17d5e23f74737",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5988cef02c9299": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6dd538ef-ba53-4958-ad46-e7296b82845c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
