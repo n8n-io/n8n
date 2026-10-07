@@ -1,47 +1,56 @@
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
-import { invoiceNinjaApiRequestAllItems } from '../GenericFunctions';
-import * as GenericFunctions from '../GenericFunctions';
 import { InvoiceNinja } from '../InvoiceNinja.node';
 
-describe('InvoiceNinja Node - getCurrencies', () => {
-	const mockContext = {} as unknown as ILoadOptionsFunctions;
-	let invoiceNinjaNode: InvoiceNinja;
-	let mockExecutionContext: any;
+describe('InvoiceNinja Node', () => {
+	const node = new InvoiceNinja();
 
-	beforeEach(() => {
-		invoiceNinjaNode = new InvoiceNinja();
-		mockExecutionContext = {
-			getNode: jest.fn().mockReturnValue({ name: 'InvoiceNinja' }),
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			continueOnFail: jest.fn().mockReturnValue(false),
-			getCredentials: jest.fn().mockResolvedValue({
-				server: 'https://app.invoiceninja.com',
-			}),
-			helpers: {
-				returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
-				requestWithAuthentication: jest.fn().mockResolvedValue({}),
-				constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
-			},
-		};
-	});
+	it('should load currencies from the statics endpoint', async () => {
+		const context = mockDeep<ILoadOptionsFunctions>();
+		context.getCredentials.mockResolvedValue({ url: 'https://invoicing.co' });
+		context.getNodeParameter.mockReturnValue('v5');
+		context.helpers.requestWithAuthentication.mockResolvedValue({
+			currencies: [
+				{ id: 1, code: 'USD', name: 'US Dollar' },
+				{ id: 2, code: 'EUR', name: 'Euro' },
+			],
+		});
 
-	it('should return formatted currencies', async () => {
-		const spy = jest.spyOn(GenericFunctions, 'invoiceNinjaApiRequestAllItems').mockResolvedValue([
-			{ id: '1', code: 'USD' },
-			{ id: '2', code: 'EUR' },
-		]);
-
-		const result = await invoiceNinjaNode.methods.loadOptions.getCurrencies.call(mockContext);
+		const result = await node.methods.loadOptions.getCurrencies.call(context);
 
 		expect(result).toEqual([
-			{ name: '1 - USD', value: '1' },
-			{ name: '2 - EUR', value: '2' },
+			{ name: 'US Dollar (USD)', value: 1 },
+			{ name: 'Euro (EUR)', value: 2 },
 		]);
+		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'invoiceNinjaApi',
+			expect.objectContaining({ method: 'GET', uri: 'https://invoicing.co/api/v1/statics' }),
+		);
+	});
 
-		expect(invoiceNinjaApiRequestAllItems).toHaveBeenCalledWith('currencies', 'GET', '/statics');
+	it('should send date and description when creating a bank transaction', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getInputData.mockReturnValue([{ json: {} }]);
+		context.getCredentials.mockResolvedValue({ url: 'https://invoicing.co' });
+		context.getNodeParameter.mockImplementation((name: string) => {
+			const params: Record<string, unknown> = {
+				apiVersion: 'v5',
+				resource: 'bank_transaction',
+				operation: 'create',
+				additionalFields: { date: '2025-01-01', description: 'Coffee' },
+			};
+			return params[name] as never;
+		});
+		context.helpers.requestWithAuthentication.mockResolvedValue({ data: {} });
+		context.helpers.returnJsonArray.mockReturnValue([]);
+		context.helpers.constructExecutionMetaData.mockReturnValue([]);
 
-		spy.mockRestore();
+		await node.execute.call(context);
+
+		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'invoiceNinjaApi',
+			expect.objectContaining({ body: { date: '2025-01-01', description: 'Coffee' } }),
+		);
 	});
 });
