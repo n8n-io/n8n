@@ -1069,7 +1069,7 @@ patchedDependencies:
   '@types/ws@8.18.1': 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
   assert@2.1.0: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
   axios: 149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49
-  bull@4.16.4: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
+  bull@4.16.4: d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0
   element-plus@2.4.3: 95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
   imapflow@1.7.1: 9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025
@@ -1117,6 +1117,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@5.5.0)
+      jscpd:
+        specifier: 5.2.0
+        version: 5.2.0
       knip:
         specifier: 'catalog:'
         version: 6.35.1
@@ -4936,7 +4939,7 @@ importers:
         version: 2.4.3
       bull:
         specifier: 4.16.4
-        version: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)(supports-color@8.1.1)
+        version: 4.16.4(patch_hash=d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0)(supports-color@8.1.1)
       change-case:
         specifier: 'catalog:'
         version: 5.4.4
@@ -19682,6 +19685,55 @@ packages:
 
   jsbn@1.1.0:
     resolution: {integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==}
+
+  jscpd-darwin-arm64@5.2.0:
+    resolution: {integrity: sha512-QnEDfTH2MymizVHiEQpqfYEj63k1DW7QC0QBZoevh+o/iHQrHxKlgrakMysUIwIJlnmvqPB6iP/G3dBpFmnmeQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  jscpd-darwin-x64@5.2.0:
+    resolution: {integrity: sha512-P2lYEK0Yyn+0z7618+9A0NErywjaPrwSYcId3gRSt5l0cyKBwhMmyFLX/2t3G2HRi+GX+OT2A/YpWvvTzLJJ1A==}
+    cpu: [x64]
+    os: [darwin]
+
+  jscpd-linux-arm64-gnu@5.2.0:
+    resolution: {integrity: sha512-UhdX9vvCFwoG1cViNqFyvxfqNtJ+xWbGsgZ5PbcgUx2OLWnvjhkjihPw/fOUM9IoxHaT66AE5pipaV/oQE/76A==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  jscpd-linux-arm64-musl@5.2.0:
+    resolution: {integrity: sha512-13DsZCQ58fOMUX6mU8DZtiTdIk+9Gp2xLu6mtc6fmqqZRJoRHQSSDvMqRVedCqArquxc0I+tqQtZO4n7/8QJxA==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  jscpd-linux-x64-gnu@5.2.0:
+    resolution: {integrity: sha512-p88BpA5QzyZzyF8uYeVCz9ZBoZYg8s6AwcDc3NkIDNTbrrF0sKqgGjclGWAoJvYAiGExiFNqV768pVHsE//l0Q==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  jscpd-linux-x64-musl@5.2.0:
+    resolution: {integrity: sha512-6DgIxJpS7L4bb1DkYrqC0SflMY2/2/3Dl0kZJ1In6SeSENcTaZ12W1zX3kNf7wVUDFgPi94TuSxrw3N2TqRhRg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  jscpd-windows-arm64-msvc@5.2.0:
+    resolution: {integrity: sha512-DI84oCG+L5sYhmYanXjjydXlFzC194/NJA6F7W8cmOI1rKSnWrgIjUtvTmXumygwTK/eAXkK7rFBqFnyiLEzdw==}
+    cpu: [arm64]
+    os: [win32]
+
+  jscpd-windows-x64-msvc@5.2.0:
+    resolution: {integrity: sha512-EH4chck2EIehosfy7q6hxaKgzlaZv/dZhUHtjBmBf81d5/ZDfa6BsKw2gM8PSoNC0QXznWXv9uQcFWsV+P9v8A==}
+    cpu: [x64]
+    os: [win32]
+
+  jscpd@5.2.0:
+    resolution: {integrity: sha512-6f4qhJGIeR/ZvAkZByfpPw5H28SNEE4fgJ4GXxVuLMiEg7xWrAlUdm0crIJPY6dmykvgdM83ZRrWJXg11fQlYg==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   jsdom@23.0.1:
     resolution: {integrity: sha512-2i27vgvlUsGEBO9+/kJQRbtqtm+191b5zAZrU/UezVmnC2dlDAFLgDYJvAEi94T4kjsRKkezEtLQTgsNEsW2lQ==}
@@ -34958,7 +35010,7 @@ snapshots:
 
   builtin-modules@5.0.0: {}
 
-  bull@4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)(supports-color@8.1.1):
+  bull@4.16.4(patch_hash=d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0)(supports-color@8.1.1):
     dependencies:
       cron-parser: 4.9.0
       get-port: 5.1.1
@@ -38686,6 +38738,41 @@ snapshots:
 
   jsbn@1.1.0:
     optional: true
+
+  jscpd-darwin-arm64@5.2.0:
+    optional: true
+
+  jscpd-darwin-x64@5.2.0:
+    optional: true
+
+  jscpd-linux-arm64-gnu@5.2.0:
+    optional: true
+
+  jscpd-linux-arm64-musl@5.2.0:
+    optional: true
+
+  jscpd-linux-x64-gnu@5.2.0:
+    optional: true
+
+  jscpd-linux-x64-musl@5.2.0:
+    optional: true
+
+  jscpd-windows-arm64-msvc@5.2.0:
+    optional: true
+
+  jscpd-windows-x64-msvc@5.2.0:
+    optional: true
+
+  jscpd@5.2.0:
+    optionalDependencies:
+      jscpd-darwin-arm64: 5.2.0
+      jscpd-darwin-x64: 5.2.0
+      jscpd-linux-arm64-gnu: 5.2.0
+      jscpd-linux-arm64-musl: 5.2.0
+      jscpd-linux-x64-gnu: 5.2.0
+      jscpd-linux-x64-musl: 5.2.0
+      jscpd-windows-arm64-msvc: 5.2.0
+      jscpd-windows-x64-msvc: 5.2.0
 
   jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10):
     dependencies:

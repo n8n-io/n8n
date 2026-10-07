@@ -3,7 +3,14 @@ import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
+import type {
+	User,
+	ListQueryDb,
+	Project,
+	WorkflowFolderUnionFull,
+	WorkflowHistory,
+	OperationContext,
+} from '@n8n/db';
 import {
 	SharedWorkflow,
 	WorkflowEntity,
@@ -18,6 +25,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import type { PolicyCleared } from '@n8n/decorators';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
@@ -93,6 +101,43 @@ export type GetManyOptions = {
 	/** Attach the list publication badge; only the workflow list UI wants this. */
 	includePublicationStatus?: boolean;
 	requiredScopes?: Scope[];
+};
+
+type WorkflowUpdateOptions = {
+	tagIds?: string[];
+	parentFolderId?: string;
+	forceSave?: boolean;
+	publicApi?: boolean;
+	publishIfActive?: boolean;
+	/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
+	apiKeyScopes?: readonly string[];
+	aiBuilderAssisted?: boolean;
+	expectedChecksum?: string;
+	autosaved?: boolean;
+	source?: WorkflowActionSource;
+	versionName?: string;
+	versionDescription?: string;
+	/** Allows a package import to update archived content. */
+	allowArchivedUpdate?: boolean;
+	/** Skips the settings.errorWorkflow check for a package import. */
+	allowUnresolvedErrorWorkflow?: boolean;
+};
+
+type PreparedWorkflowUpdate = {
+	user: User;
+	previousWorkflow: WorkflowEntity;
+	workflow: WorkflowEntity;
+	changes: WorkflowEntity;
+	updatePayload: QueryDeepPartialEntity<WorkflowEntity>;
+	cleared: PolicyCleared<'workflowSave'>;
+	saveNewVersion: boolean;
+	tagsDisabled: boolean;
+	versionIdToPublish: string | null;
+	settingsChanged: boolean;
+	options: WorkflowUpdateOptions &
+		Required<
+			Pick<WorkflowUpdateOptions, 'autosaved' | 'source' | 'publicApi' | 'aiBuilderAssisted'>
+		>;
 };
 
 @Service()
@@ -454,34 +499,25 @@ export class WorkflowService {
 	 * For explicit activation or deactivation, use the activate/deactivate methods.
 	 */
 
-	// eslint-disable-next-line complexity
 	async update(
 		user: User,
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
-		options: {
-			tagIds?: string[];
-			parentFolderId?: string;
-			forceSave?: boolean;
-			publicApi?: boolean;
-			publishIfActive?: boolean;
-			/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
-			apiKeyScopes?: readonly string[];
-			aiBuilderAssisted?: boolean;
-			expectedChecksum?: string;
-			autosaved?: boolean;
-			source?: WorkflowActionSource;
-			versionName?: string;
-			versionDescription?: string;
-			/** Allows a package import to update archived content. */
-			allowArchivedUpdate?: boolean;
-			/**
-			 * Skips the `settings.errorWorkflow` write-time check for a package import.
-			 * See {@link assertErrorWorkflowChangeAllowed}.
-			 */
-			allowUnresolvedErrorWorkflow?: boolean;
-		} = {},
+		options: WorkflowUpdateOptions = {},
 	): Promise<WorkflowEntity> {
+		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
+		const saved = await this.savePreparedUpdate(prepared);
+		return await this.finishUpdate(prepared, saved);
+	}
+
+	/** Prepare before opening a transaction. Only save the returned data through savePreparedUpdate. */
+	// eslint-disable-next-line complexity
+	async prepareUpdate(
+		user: User,
+		workflowUpdateData: WorkflowEntity,
+		workflowId: string,
+		options: WorkflowUpdateOptions = {},
+	): Promise<PreparedWorkflowUpdate> {
 		const {
 			expectedChecksum,
 			tagIds,
@@ -723,21 +759,6 @@ export class WorkflowService {
 			fieldsToUpdate,
 		) as QueryDeepPartialEntity<WorkflowEntity>;
 
-		// Save the workflow to history first, so we can retrieve the complete version object for the update
-		if (saveNewVersion) {
-			await this.workflowHistoryService.saveVersion(
-				user,
-				workflowUpdateData,
-				workflowId,
-				autosaved,
-				source,
-				undefined,
-				versionName || versionDescription
-					? { name: versionName, description: versionDescription }
-					: undefined,
-			);
-		}
-
 		const versionIdToPublish =
 			workflow.activeVersionId && publishIfActive ? workflowUpdateData.versionId : null;
 
@@ -755,29 +776,80 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
+		return {
+			user,
+			previousWorkflow: workflow,
+			workflow: Object.assign(new WorkflowEntity(), workflow, updatePayload),
+			changes: workflowUpdateData,
+			updatePayload,
+			cleared,
+			saveNewVersion,
+			tagsDisabled: this.globalConfig.tags.disabled,
+			versionIdToPublish,
+			settingsChanged,
+			options: {
+				tagIds,
+				autosaved,
+				source,
+				publicApi,
+				apiKeyScopes,
+				aiBuilderAssisted,
+				versionName,
+				versionDescription,
+			},
+		};
+	}
+
+	/** Pass the caller's context to include the workflow and history in its transaction. */
+	async savePreparedUpdate(
+		prepared: PreparedWorkflowUpdate,
+		ctx: OperationContext = {},
+		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
+	) {
+		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
+		const workflowId = prepared.workflow.id;
+		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
+		if (saveNewVersion) {
+			const versionMetadata =
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined;
+			await this.workflowHistoryService.saveVersion(
+				user,
+				changes,
+				workflowId,
+				autosaved,
+				source,
+				undefined,
+				versionMetadata,
+				{ ctx, propagateErrors: propagateVersionHistoryErrors },
+			);
+		}
 		await this.workflowRepository.updateContent(workflowId, updatePayload, {
+			...ctx,
 			policyCleared: cleared,
 		});
-		const tagsDisabled = this.globalConfig.tags.disabled;
-
 		if (tagIds && !tagsDisabled) {
-			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
+			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, ctx);
 		}
-
-		const relations = tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'];
-
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations,
-		});
-
-		if (updatedWorkflow === null) {
+		const savedWorkflow = await this.workflowRepository.get(
+			{ id: workflowId },
+			{ relations: tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'] },
+			ctx,
+		);
+		if (!savedWorkflow) {
 			throw new BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);
 		}
+		return savedWorkflow;
+	}
+
+	/** Run once after the save transaction commits. */
+	async finishUpdate(prepared: PreparedWorkflowUpdate, updatedWorkflow: WorkflowEntity) {
+		const { user, previousWorkflow: workflow, versionIdToPublish, settingsChanged } = prepared;
+		const workflowId = workflow.id;
+		const { tagIds, source, publicApi, apiKeyScopes, aiBuilderAssisted } = prepared.options;
 
 		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {
@@ -1923,6 +1995,7 @@ export class WorkflowService {
 		const validation = await this.workflowValidationService.validatePublisherCredentialAccess(
 			user,
 			nodes,
+			workflowId,
 		);
 
 		if (!validation.isValid) {

@@ -10,6 +10,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
+	TransactionRunner,
 	SharedWorkflowRepository,
 	type WorkflowEntity,
 	WorkflowHistoryRepository,
@@ -18,9 +19,11 @@ import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -50,6 +53,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import { createTag } from '../shared/db/tags';
 
 /**
  * A node type that classifies as a trigger. `properties` must be a real array:
@@ -95,7 +99,7 @@ beforeAll(async () => {
 		loggerMock,
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
-		mock(),
+		Container.get(WorkflowTagMappingRepository),
 		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
@@ -155,6 +159,8 @@ beforeEach(() => {
 
 afterEach(async () => {
 	await testDb.truncate([
+		'WorkflowTagMapping',
+		'TagEntity',
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
@@ -171,6 +177,107 @@ afterEach(async () => {
 });
 
 describe('update()', () => {
+	function candidateNode(name: string): INode {
+		return {
+			id: name,
+			name,
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+	}
+
+	test('rolls back the workflow, history, and tags when the caller transaction fails', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ nodes: [], connections: {} }, owner);
+		const originalTag = await createTag({}, workflow);
+		const replacementTag = await createTag();
+		const history = Container.get(WorkflowHistoryRepository);
+		const original = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		const previousVersions = await history.findBy({ workflowId: workflow.id });
+		const prepared = await workflowService.prepareUpdate(
+			owner,
+			Object.assign(workflowRepository.create(), {
+				nodes: [candidateNode('Suggested')],
+				connections: {},
+			}),
+			workflow.id,
+			{ source: 'n8n-ai', tagIds: [replacementTag.id] },
+		);
+		externalHooks.run.mockClear();
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				const saved = await workflowService.savePreparedUpdate(prepared, ctx, {
+					propagateVersionHistoryErrors: true,
+				});
+				expect(saved.nodes).toEqual([candidateNode('Suggested')]);
+				expect(saved.tags?.map(({ id }) => id)).toEqual([replacementTag.id]);
+				throw new Error('Related state failed');
+			}),
+		).rejects.toThrow('Related state failed');
+		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toEqual(original);
+		expect(await history.findBy({ workflowId: workflow.id })).toEqual(previousVersions);
+		const restored = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['tags'],
+		});
+		expect(restored.tags?.map(({ id }) => id)).toEqual([originalTag.id]);
+		expect(externalHooks.run).not.toHaveBeenCalled();
+	});
+
+	test('completes an ordinary save that resumes after a transactional save', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ nodes: [], connections: {} }, owner);
+		const prepared = createDeferredPromise();
+		const resume = createDeferredPromise();
+		const updateContent = workflowRepository.updateContent.bind(workflowRepository);
+		vi.spyOn(workflowRepository, 'updateContent').mockImplementation(async (...args) => {
+			if (args[1].name === 'Ordinary edit') {
+				prepared.resolve();
+				await resume.promise;
+			}
+			return await updateContent(...args);
+		});
+		const ordinarySave = workflowService.update(
+			owner,
+			Object.assign(workflowRepository.create(), { name: 'Ordinary edit' }),
+			workflow.id,
+		);
+		try {
+			await Promise.race([
+				prepared.promise,
+				ordinarySave.then(() => {
+					throw new Error('The ordinary save did not pause before the write.');
+				}),
+			]);
+			const update = await workflowService.prepareUpdate(
+				owner,
+				Object.assign(workflowRepository.create(), {
+					nodes: [candidateNode('Suggested')],
+					connections: {},
+				}),
+				workflow.id,
+				{ source: 'n8n-ai' },
+			);
+			const saved = await Container.get(TransactionRunner).run(
+				{},
+				async (ctx) => await workflowService.savePreparedUpdate(update, ctx),
+			);
+			await workflowService.finishUpdate(update, saved);
+			resume.resolve();
+			await ordinarySave;
+			const current = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.nodes).toEqual([candidateNode('Suggested')]);
+			expect(current.versionId).toBe(workflow.versionId);
+			expect(current.nodes).toEqual([candidateNode('Suggested')]);
+			expect(current.name).toBe('Ordinary edit');
+		} finally {
+			resume.resolve();
+			await Promise.allSettled([ordinarySave]);
+		}
+	});
+
 	test('publishes the newly saved version when an active workflow is updated through the API', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);

@@ -9,26 +9,25 @@ import {
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { DbConnectionOptions, DbLockService, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { EntityManager, QueryRunner } from '@n8n/typeorm';
+import type { EntityManager, QueryRunner, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 
 import {
-	type InsightsAccessFilter,
-	InsightsByPeriod,
-	InsightsByPeriodRepository,
-	InsightsConfig,
-	InsightsRawRepository,
-	TypeToNumber,
-} from '@n8n/backend-module-insights';
-import {
 	createCompactedInsightsEvent,
 	createMetadata,
 	createRawInsightsEvent,
-} from '@n8n/backend-module-insights/testing';
-import { createMember } from '@test-integration/db/users';
-import { packagedModules } from '@/modules/modules.manifest';
+} from '../testing/db-utils';
+import { InsightsByPeriod } from '../insights-by-period.entity';
+import {
+	type InsightsAccessFilter,
+	InsightsByPeriodRepository,
+} from '../insights-by-period.repository';
+import { InsightsConfig } from '../insights.config';
+import { InsightsRawRepository } from '../insights-raw.repository';
+import { TypeToNumber } from '../insights-shared';
+import { createMember } from './test-users';
 
 const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 
@@ -64,7 +63,9 @@ function pauseFirstTransactionAfterRead(manager: EntityManager) {
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
-		await testModules.loadModules(['insights'], packagedModules);
+		await testModules.loadModules(['insights'], {
+			insights: async () => await import('../insights.module.js'),
+		});
 		await testDb.init();
 	});
 
@@ -100,7 +101,7 @@ describe('InsightsByPeriodRepository', () => {
 				};
 
 				vi.spyOn(insightsByPeriodRepository.manager, 'createQueryBuilder').mockReturnValueOnce(
-					queryBuilderMock as any,
+					queryBuilderMock as unknown as SelectQueryBuilder<InsightsByPeriod>,
 				);
 
 				const result = await insightsByPeriodRepository.getInsightsByTime({
