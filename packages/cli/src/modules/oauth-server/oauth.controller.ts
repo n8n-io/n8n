@@ -83,9 +83,15 @@ const registerRouter = clientRegistrationHandler({
 	clientsStore: oauthServerService.clientsStore,
 	rateLimit: false,
 }) as Router;
-const authorizeRouter = authorizationHandler({ provider: oauthServerService, rateLimit: false }) as Router;
+const authorizeRouter = authorizationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
 const tokenRouter = tokenHandler({ provider: oauthServerService, rateLimit: false }) as Router;
-const revokeRouter = revocationHandler({ provider: oauthServerService, rateLimit: false }) as Router;
+const revokeRouter = revocationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
 
 const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterMetadata[] => [
 	{
