@@ -56,7 +56,7 @@ n8n is [fair-code](https://faircode.io) distributed under the [Sustainable Use L
 
 [Enterprise Licenses](mailto:license@n8n.io) available for additional features and support.
 
-Additional information about the license model can be found in the [docs](https://docs.n8n.io/sustainable-use-license/).
+Additional information about the license model can be found in the [docs](https://docs.n8n.io/n8n-community-license).
 
 ## Contributing
 
