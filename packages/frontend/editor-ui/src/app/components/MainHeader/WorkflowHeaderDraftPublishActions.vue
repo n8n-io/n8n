@@ -189,7 +189,7 @@ const publishBlockedReason = computed(() => {
 	if (isWorkflowPublishable.value) return '';
 	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
 
-	for (const node of workflowDocumentStore.value.allNodes) {
+	for (const node of nodesWithValidationIssues.value) {
 		const restriction = getNodeTypeRestriction(node.type);
 		if (restriction) return describeNodeTypeRestriction(node.name, restriction.scope, 'replace');
 	}
