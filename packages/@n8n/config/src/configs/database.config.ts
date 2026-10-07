@@ -266,3 +266,10 @@ export class DatabaseConfig {
 	@Nested
 	sqlite: SqliteConfig;
 }
+
+/** How long one statement may run before the database stops it. 0 means no limit, as on SQLite. */
+export function statementTimeoutSeconds(config: DatabaseConfig): number {
+	return config.type === 'postgresdb'
+		? config.postgresdb.statementTimeoutMs / Time.seconds.toMilliseconds
+		: 0;
+}
