@@ -238,6 +238,27 @@ describe('WaitTracker', () => {
 			);
 		});
 
+		it('waits for the old local segment before registering a suspended resume', async () => {
+			const oldCompletion = createDeferredPromise<IRun | undefined>();
+			const suspended = {
+				...execution,
+				data: { ...execution.data, waitReason: 'suspended' as const },
+			};
+			executionPersistence.findSingleExecution
+				.calledWith(execution.id)
+				.mockResolvedValue(suspended);
+			activeExecutions.has.mockReturnValueOnce(true);
+			activeExecutions.getPostExecutePromise.mockReturnValueOnce(oldCompletion.promise);
+
+			const resuming = waitTracker.startExecution(execution.id);
+			await vi.waitFor(() => expect(activeExecutions.getPostExecutePromise).toHaveBeenCalled());
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+
+			oldCompletion.resolve(undefined);
+			await resuming;
+			expect(workflowRunner.run).toHaveBeenCalledOnce();
+		});
+
 		it('should reject when another process is already resuming the execution', async () => {
 			workflowRunner.run.mockRejectedValueOnce(new ExecutionAlreadyResumingError(execution.id));
 

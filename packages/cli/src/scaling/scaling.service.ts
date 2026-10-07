@@ -344,8 +344,8 @@ export class ScalingService {
 	// #region Jobs
 
 	/** Get and remove the result for a completed job. */
-	popJobResult(executionId: string): JobFinishedProps | undefined {
-		return this.jobOutcomeTracker.popResult(executionId);
+	popJobResult(job: Job): JobFinishedProps | undefined {
+		return this.jobOutcomeTracker.popResult(job);
 	}
 
 	/** Wait until the job ends. Rejects with the failure reason, like Bull's `job.finished()`. */
@@ -422,7 +422,7 @@ export class ScalingService {
 		const props = { jobId: job.id, executionId: job.data.executionId };
 
 		// A removed job emits no completion event, and the caller handles the cancellation
-		this.jobOutcomeTracker.drop(job.data.executionId);
+		this.jobOutcomeTracker.drop(job);
 
 		try {
 			if (await job.isActive()) {
@@ -561,6 +561,8 @@ export class ScalingService {
 					 * still ends the wait for the job.
 					 */
 					this.jobOutcomeTracker.recordFinished(
+						queue.name,
+						jobId,
 						msg.executionId,
 						msg.version === 2
 							? {
@@ -602,7 +604,12 @@ export class ScalingService {
 					);
 
 					// The worker already reported the underlying error, so this copy is only a handled signal
-					this.jobOutcomeTracker.recordFailed(msg.executionId, new OperationalError(msg.errorMsg));
+					this.jobOutcomeTracker.recordFailed(
+						queue.name,
+						jobId,
+						msg.executionId,
+						new OperationalError(msg.errorMsg),
+					);
 					break;
 				case 'abort-job':
 					break; // only for worker

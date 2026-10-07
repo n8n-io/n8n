@@ -752,7 +752,7 @@ export class WorkflowRunner {
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		let job: Job;
+		let job: Job | undefined;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
 			const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
@@ -792,7 +792,7 @@ export class WorkflowRunner {
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
 			// Nobody will wait for this job, so drop any outcome the worker already reported
-			this.scalingService.popJobResult(executionId);
+			if (job) this.scalingService.popJobResult(job);
 			throw error;
 		}
 
@@ -846,12 +846,12 @@ export class WorkflowRunner {
 						lifecycleHooks,
 					);
 
-					this.scalingService.popJobResult(executionId);
+					this.scalingService.popJobResult(job);
 
 					return reject(error);
 				}
 
-				const jobResult = this.scalingService.popJobResult(executionId);
+				const jobResult = this.scalingService.popJobResult(job);
 
 				let runData: IRun;
 
@@ -904,8 +904,9 @@ export class WorkflowRunner {
 						mode: fullExecutionData.mode,
 						startedAt: fullExecutionData.startedAt,
 						stoppedAt: fullExecutionData.stoppedAt,
-						status: fullExecutionData.status,
-						waitTill: fullExecutionData.waitTill,
+						// The row may already belong to a resumed segment on another main.
+						status: jobResult ? jobResult.status : fullExecutionData.status,
+						waitTill: jobResult ? jobResult.waitTill : fullExecutionData.waitTill,
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,

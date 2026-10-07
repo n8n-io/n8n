@@ -196,7 +196,9 @@ export class JobProcessor {
 
 		if (workflowTimeout > 0) {
 			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
-			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
+			const timeoutStart =
+				execution.data.waitReason === 'suspended' ? startedAt.getTime() : Date.now();
+			executionTimeoutTimestamp = timeoutStart + workflowTimeout * 1000;
 		}
 
 		const workflow = new Workflow({

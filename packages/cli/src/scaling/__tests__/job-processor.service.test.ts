@@ -2615,6 +2615,73 @@ describe('JobProcessor', () => {
 			vi.useRealTimers();
 		});
 
+		it.each([
+			{ elapsed: 4_000, waitReason: 'suspended' as const, remaining: 1_000 },
+			{ elapsed: 6_000, waitReason: 'suspended' as const, remaining: 0 },
+			{ elapsed: 4_000, waitReason: undefined, remaining: 5_000 },
+		])(
+			'uses $remaining ms of timeout after $elapsed ms with waitReason=$waitReason',
+			async ({ elapsed, waitReason, remaining }) => {
+				vi.useFakeTimers();
+				const now = Date.now();
+				const startedAt = new Date(now - elapsed);
+				const executionRepository = mock<ExecutionRepository>();
+				executionRepository.setRunning.mockResolvedValue(startedAt);
+				const executionPersistence = mock<ExecutionPersistence>();
+				executionPersistence.findSingleExecution.mockResolvedValue(
+					mock<IExecutionResponse>({
+						mode: 'trigger',
+						workflowData: { nodes: [], staticData: {}, settings: { executionTimeout: 5 } },
+						data: { ...createRunExecutionData(), waitReason },
+					}),
+				);
+				vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+					mock<IWorkflowExecuteAdditionalData>(),
+				);
+				let resolveRun!: (run: IRun) => void;
+				const run = Object.assign(
+					new Promise<IRun>((resolve) => {
+						resolveRun = resolve;
+					}),
+					{
+						cancel: vi.fn(() => resolveRun(mock<IRun>({ status: 'canceled' }))),
+					},
+				);
+				processRunExecutionDataMock.mockReturnValue(run);
+				const processor = new JobProcessor(
+					logger,
+					executionRepository,
+					executionPersistence,
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					executionsConfig,
+					mock(),
+					mock(),
+				);
+				const processing = processor.processJob(
+					mock<Job>({ id: 'job-1', data: { executionId: 'exec-1', loadStaticData: false } }),
+				);
+				const assertion = expect(processing).rejects.toThrow(TimeoutExecutionCancelledError);
+
+				await vi.advanceTimersByTimeAsync(0);
+				expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
+					expect.objectContaining({
+						executionTimeoutTimestamp:
+							(waitReason === 'suspended' ? startedAt.getTime() : now) + 5_000,
+					}),
+				);
+				if (remaining > 0) {
+					await vi.advanceTimersByTimeAsync(remaining - 1);
+					expect(run.cancel).not.toHaveBeenCalled();
+					await vi.advanceTimersByTimeAsync(1);
+				}
+				await assertion;
+				expect(run.cancel).toHaveBeenCalledOnce();
+			},
+		);
+
 		it('cancels the job once the workflow timeout elapses, independent of node boundaries', async () => {
 			vi.useFakeTimers();
 

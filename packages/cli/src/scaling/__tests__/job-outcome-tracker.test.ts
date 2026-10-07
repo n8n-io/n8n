@@ -40,43 +40,78 @@ describe('JobOutcomeTracker', () => {
 
 	describe('recordFinished', () => {
 		it('should keep the result for an execution this process enqueued', () => {
-			tracker.recordFinished('exec-1', result);
+			tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
 
-			expect(tracker.popResult('exec-1')).toBe(result);
-			expect(tracker.popResult('exec-1')).toBeUndefined();
+			expect(tracker.popResult(job)).toBe(result);
+			expect(tracker.popResult(job)).toBeUndefined();
 		});
 
 		it('should ignore the result for an execution this process did not enqueue', () => {
 			// Bull broadcasts progress messages to every main and webhook process
 			activeExecutions.has.mockReturnValue(false);
 
-			tracker.recordFinished('exec-other-main', result);
+			tracker.recordFinished('jobs', 'job-1', 'exec-other-main', result);
 
-			expect(tracker.popResult('exec-other-main')).toBeUndefined();
+			expect(tracker.popResult(job)).toBeUndefined();
 		});
 	});
 
 	describe('waitFor', () => {
+		it('keeps successive jobs for the same execution separate', async () => {
+			const resumedJob = mock<Job>({
+				id: 'job-2',
+				data: { executionId: 'exec-1' },
+				queue: { name: 'jobs' },
+			});
+			const oldWait = tracker.waitFor(job);
+			let resumedSettled = false;
+			const resumedWait = tracker.waitFor(resumedJob).then(() => (resumedSettled = true));
+
+			tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
+			await oldWait;
+			expect(resumedSettled).toBe(false);
+			expect(tracker.popResult(resumedJob)).toBeUndefined();
+			expect(tracker.popResult(job)).toBe(result);
+
+			tracker.recordFinished('jobs', 'job-2', 'exec-1', result);
+			await resumedWait;
+			expect(tracker.popResult(resumedJob)).toBe(result);
+		});
+
+		it("does not use another main's old result for a resumed job", async () => {
+			tracker.recordFinished('jobs', 'job-old', 'exec-1', result);
+			let settled = false;
+			const wait = tracker.waitFor(job).then(() => (settled = true));
+			await Promise.resolve();
+			expect(settled).toBe(false);
+			expect(tracker.getDiagnosticCounts().jobResults).toBe(0);
+			tracker.recordFinished('jobs', 'job-old', 'exec-1', result);
+			expect(tracker.getDiagnosticCounts().jobResults).toBe(0);
+
+			tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
+			await wait;
+		});
+
 		it('should resolve when the worker reports the job as finished', async () => {
 			const wait = tracker.waitFor(job);
 
-			tracker.recordFinished('exec-1', result);
+			tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
 
 			await expect(wait).resolves.toBeUndefined();
-			expect(tracker.popResult('exec-1')).toBe(result);
+			expect(tracker.popResult(job)).toBe(result);
 		});
 
 		it('should resolve when an older worker reports the job as finished without a result', async () => {
 			const wait = tracker.waitFor(job);
 
-			tracker.recordFinished('exec-1');
+			tracker.recordFinished('jobs', 'job-1', 'exec-1');
 
 			await expect(wait).resolves.toBeUndefined();
-			expect(tracker.popResult('exec-1')).toBeUndefined();
+			expect(tracker.popResult(job)).toBeUndefined();
 		});
 
 		it('should resolve at once when the result arrived before the wait started', async () => {
-			tracker.recordFinished('exec-1', result);
+			tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
 
 			await expect(tracker.waitFor(job)).resolves.toBeUndefined();
 		});
@@ -84,24 +119,24 @@ describe('JobOutcomeTracker', () => {
 		it('should reject when the worker reports the job as failed', async () => {
 			const wait = tracker.waitFor(job);
 
-			tracker.recordFailed('exec-1', new Error('boom'));
+			tracker.recordFailed('jobs', 'job-1', 'exec-1', new Error('boom'));
 
 			await expect(wait).rejects.toThrow('boom');
 		});
 
 		it('should reject at once when the worker reported the failure before the wait started', async () => {
-			tracker.recordFailed('exec-1', new Error('boom'));
+			tracker.recordFailed('jobs', 'job-1', 'exec-1', new Error('boom'));
 
 			await expect(tracker.waitFor(job)).rejects.toThrow('boom');
 		});
 
 		it('should not keep an early failure for an execution this process did not enqueue', async () => {
 			activeExecutions.has.mockReturnValue(false);
-			tracker.recordFailed('exec-1', new Error('boom'));
+			tracker.recordFailed('jobs', 'job-1', 'exec-1', new Error('boom'));
 			activeExecutions.has.mockReturnValue(true);
 
 			const wait = tracker.waitFor(job);
-			tracker.recordFinished('exec-1', result);
+			tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
 
 			await expect(wait).resolves.toBeUndefined();
 		});
@@ -145,7 +180,7 @@ describe('JobOutcomeTracker', () => {
 		it('should answer the request with an error when the job failed', async () => {
 			const wait = tracker.waitFor(job);
 
-			tracker.recordFailed('exec-1', new Error('boom'));
+			tracker.recordFailed('jobs', 'job-1', 'exec-1', new Error('boom'));
 			await expect(wait).rejects.toThrow();
 
 			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith(
@@ -249,7 +284,7 @@ describe('JobOutcomeTracker', () => {
 
 			const wait = tracker.waitFor(job);
 			const recheck = tracker.recheckAll();
-			tracker.recordFinished('exec-1', result);
+			tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
 			releaseRead(statusRows({ 'exec-1': 'success' }));
 			await recheck;
 
@@ -296,7 +331,7 @@ describe('JobOutcomeTracker', () => {
 			let settled = false;
 
 			void tracker.waitFor(job).finally(() => (settled = true));
-			tracker.drop('exec-1');
+			tracker.drop(job);
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
 
 			expect(executionRepository.findStatusesByIds).not.toHaveBeenCalled();
