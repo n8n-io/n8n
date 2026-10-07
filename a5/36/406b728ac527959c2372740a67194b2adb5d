@@ -1,0 +1,105 @@
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCredentialNavigationCommands.test.ts
+  s_b8eb3cc2dbf3f8::t_c7b0c547bdb8a4 3-5,7,12,14-18,21-24,27-28,30,37-38,42,44,51-62,64-66,68,70-71,74-75,77-78,80-86,88,91-93,95-98,100,103-104,106,108-111,115-120,122,124-125,128-132,134,136-137,140-141,143,145-151,153-155,159-164,166,168,171-174,176,178-181,183,185-186,188-189,191,195-197,199-202,206-207,209,212-213,215,218-223,226,229-236,238,240-245,247-248,250,252-254,259-261,263
+  s_b8eb3cc2dbf3f8::t_818f0b09252d0e 47-49
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCredentialNavigationCommands.ts
+  s_b8eb3cc2dbf3f8::t_4653af5e75d72c 1,5-6,8,12-17,28,30-31,46-47,53-59,63-64,71-72,79-88,90-94,101,105-108,110,118-138,145-153
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_b8eb3cc2dbf3f8::t_ab2e9cd1e14fbe 290-298
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.ts
+  s_b8eb3cc2dbf3f8::t_8b28636059f51d 1,3,5,16-21,27-28,33,46-52,54-55,71-75,77,80-86,90-97,99,104-105,107-153,155-160,167-168,170-189,191-194,200-208
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBarItem.vue
+  s_b8eb3cc2dbf3f8::t_70c536e05e8019 172
+  ai_agent 63,71-72
+  s_b8eb3cc2dbf3f8::t_a29039eaf543ab 2,4-7,11,13,17-18,21-42,46-51,53-58,60,66-70,73-101,103-106,113,115-118,120,123,140,143,146-148,152-154,160-164,166-171,173-187,193,198-213
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useInstanceAiCommands.ts
+  s_b8eb3cc2dbf3f8::t_3d34d8c6adda06 1,20,27
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useProjectNavigationCommands.ts
+  s_b8eb3cc2dbf3f8::t_f4080bb74e4054 1,3,22,30-31,36,41-46,48,69,72-74,76-77,91-92,97-99,102
+  s_b8eb3cc2dbf3f8::t_50db9d91f67539 5,9-15,24,32-33,35,53-63,65-68,100-101
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useRecentResources.ts
+  s_b8eb3cc2dbf3f8::t_6391cb04545b03 1,3,8,17,27-29,39,81,83-87,89-108,110-119,121-123,125-129,131-133,135-136,138,140-142,144-147,150,152,154-155,158-161,165
+  s_b8eb3cc2dbf3f8::t_bb318eff1d3496 124,156-157,162-164,166-169
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useProjectNavigationCommands.test.ts
+  s_b8eb3cc2dbf3f8::t_8f25de2afced62 4-7,9-13,16-17,21,41-44,46-52,54-55,57-62,64-69,71-72,74-75,78-79,81-83,86-91,95-98,100-102,104-105,107-110,113-116,120-121,123,125-127,131-140,142-146,148-151,153-154,156-160,162-164,168-169,171,176-179,181-183,187-190,192-194,198-199,201-202,204-206,215-219,221-224,228-231,233-235,237-238,240
+  s_b8eb3cc2dbf3f8::t_8304c26fae2f60 23
+  s_b8eb3cc2dbf3f8::t_99d49ce4e52680 170,173
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useNodeCommands.test.ts
+  s_b8eb3cc2dbf3f8::t_63b98c312176a3 17,27-29,32-33,63-65,85-113,131,162-179,181,184-185,187,189,192,197,199,202-203,205,207,210,219,221,224-225,227,229-231,233-235,237-239,242-245,247-256,258-272,274,276-277,279-300,304-305,307,309-312,314-321,324-326,329,332-336,338-344,347,350-353,355-356,359-360,362,364,366,368-374,376-391,393-394,397-399,401,405-416,420-428,430-464,468,470-473,477-478,480-481,484-485,487-488
+  s_b8eb3cc2dbf3f8::t_a1124ff750ff1d 404
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useDataTableNavigationCommands.ts
+  s_b8eb3cc2dbf3f8::t_029720e2dc51a3 1,4,6,9-14,26,28-29,49-50,56-63,67-71,73,78-90,92-96,103,106-126,132-137
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.test.ts
+  s_b8eb3cc2dbf3f8::t_1b9efaeb23e679 3-8,14-18,21-22,31-34,38,42-67,70-102,106,108-111,113-114,116-117,119-120,122-123,125-126,134-144,147-148,150,152,155-158,160,163-172,176-184,187-188,190-196,199-200,202-204,207-213,216-223,226-257,260-263,265,268-276,279-286,289-313,315-330,333-343,345-359,361-366
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.ts
+  s_b8eb3cc2dbf3f8::t_50db9d91f67539 41
+  s_b8eb3cc2dbf3f8::t_9ed32f2f6f0c09 4,341-346,464-466
+  s_b8eb3cc2dbf3f8::t_4fa2d391bbbd06 1,339,378-380,382-383
+  s_b8eb3cc2dbf3f8::t_43bed338f33845 43-47,126,198,415,443-444,446
+  s_b8eb3cc2dbf3f8::t_892253602f4847 3,5-7,10-17,30-34,36-40,42,48-65,69-89,109,112-114,116,119-125,127,129-139,142-174,176-177,179,182-197,199-200,216,218-220,222-224,227-241,243-245,247-248,250-266,268,271,280,283,287-291,293-311,313-315,317-327,329-334,336-337,340,349-370,372-377,387-395,399-401,403-414,416-428,430-439,442,445,449-450,452-453,463,467-468,470-471,473-485,488-492,494,496-499
+packages/frontend/editor-ui/src/features/shared/commandBar/commandBar.utils.ts
+  s_b8eb3cc2dbf3f8::t_e0716747989975 1-23
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_b8eb3cc2dbf3f8::t_a41a3abc0e4a81 82-95
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useChatHubCommands.ts
+  s_b8eb3cc2dbf3f8::t_7871e91e7214bd 1,27,77-81,83-94,97-99,124,149,157-158,168
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBar.vue
+  s_b8eb3cc2dbf3f8::t_767171caa58de5 105
+  s_b8eb3cc2dbf3f8::t_c2c4106f1322b1 232-236
+  s_b8eb3cc2dbf3f8::t_ca427e418ad77f 581
+  s_b8eb3cc2dbf3f8::t_2522e6734adf37 55,359-363,499-500,502,506
+  ai_agent 145-147,246-249
+  s_b8eb3cc2dbf3f8::t_ca0039b3dd4747 31,79,365-368,434,458,518,535,542,545-552,555-557,561-562,565-566,569-570,592
+  s_b8eb3cc2dbf3f8::t_997969e8dd22af 2,5-16,20-21,23,25,28-30,32-34,36,38-40,42,46-48,52-53,56,58-59,61-63,65-69,71-78,82,86-104,106-112,114,117-119,121,123-129,131-135,137,139-140,142-144,148,150,152,157,161-171,174-177,179,183-191,203,205-210,212-221,223-230,239-245,250-251,253,256-257,262-281,283-348,350-358,370-383,385-402,406-409,411-414,417-421,425-428,432,437,441-445,448-457,459,462-465,468,470-485,488,490-494,497-498,501,503-505,508-512,515-517,521-526,529,531-534,536,539,543-544,558,573-580,584-591,593-599
+  s_b8eb3cc2dbf3f8::t_4215d61d185e88 194,196-199
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowCommands.ts
+  s_b8eb3cc2dbf3f8::t_73a437c55cd95c 149-152,174-178,226-229
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useNodeCommands.ts
+  s_b8eb3cc2dbf3f8::t_f1a2be13e477ae 1,11,19,25,60-70,72-78,81,85-89,98,103-105,107-109,118-119,122-125,128-133,135-137,141,150-156
+  s_b8eb3cc2dbf3f8::t_738e4838b0db38 111-117
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBar.test.ts
+  s_b8eb3cc2dbf3f8::t_d2139bdcfd8d73 1,4,6-11,13,15-17,20-24,29-33,37-38,43,45-49,51-53,55,57-59,61,64,66-67,72-73,75-77,88-89,91,93,95,97-98,100-102,104-106,108,111,113-114,116,119,121-122,124,127,129-132,137-138,140,142-154,156-157,159,161,163,165-167,169-171,173,176-177,179,181-182,187,192,194
+  s_b8eb3cc2dbf3f8::t_86ba91c398423e 35-36,39-40,62,69-70,79,92,109,117,125,134-135,141,160,174,185,195,197,199
+  s_b8eb3cc2dbf3f8::t_9ed32f2f6f0c09 84-86
+  s_b8eb3cc2dbf3f8::t_2522e6734adf37 80-81,87,155,184,189,191
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBar.stories.ts
+  s_b8eb3cc2dbf3f8::t_832941477f9334 3,6,8-18,20-26,29-35,37,39-44,47-48,52-55,60-61,66-70,74-77,83-86,91-97,99-119,121-127,129-132,134,138,140-147,153-160,163-170,174-176,178-184
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_b8eb3cc2dbf3f8::t_9a3483b5cf1c71 212-218
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b8eb3cc2dbf3f8::t_99b14e9817bfbe 7058-7060,7077
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/types.ts
+  s_b8eb3cc2dbf3f8::t_289595ab51392d 3-9,12-15,18-20,22-40
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.vue
+  s_b8eb3cc2dbf3f8::t_17fc438430b0c1 15-19,21-26,35,39,45-49,51-56
+packages/frontend/editor-ui/src/features/shared/commandBar/types.ts
+  s_b8eb3cc2dbf3f8::t_4151c55bc369fc 2,6-9,12-16,18-20,30-31,34,37
+  s_b8eb3cc2dbf3f8::t_c580ba2d15ccd7 17,21-29,32-33
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.test.ts
+  s_b8eb3cc2dbf3f8::t_c035b5b0470398 1,3,5,7-14,18-26,30,43,51-52,54,57-75,77-78,80-82,85-118,121-131,135,137-139,141-146,149,152-155,157-158,160-161,163-164,167,170,174,176,180,187-197,203-224,226-233,236-237,239-246,248-253,256-259,265-281,284-309,314-323,329-396,399-411,414-425,432-450,452-456
+  s_b8eb3cc2dbf3f8::t_9ed32f2f6f0c09 198-199,260-264,310-313,324-328,426-429
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.test.ts
+  s_b8eb3cc2dbf3f8::t_6e51697855a293 20-24,26-31
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useDataTableNavigationCommands.test.ts
+  s_b8eb3cc2dbf3f8::t_1e0cf5fe553a8d 3-5,7,11,13-16,19-21,25,27,34-35,39,41,44-55,57-60,66-67,69,71-77,79,82-87,91-96,98-100,102-103,105,107-113,116-117,119,121-127,130-139,141,143-146,148-149,151,153-159,161-163,167-177,180,182,185-186,188-189,191-193,198-200,202-205,209-210,212-213,215-216,218,221-222,224-226,230-231,233,235-237,241-243,245,247
+packages/frontend/editor-ui/src/features/shared/commandBar/commandBar.utils.test.ts
+  s_b8eb3cc2dbf3f8::t_5dbe4f7d80d4cc 1-9,11,13-18,20-21,23-24,27-28,31-32,35-36,38,40-47,50-54,57-58
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useRecentResources.test.ts
+  s_b8eb3cc2dbf3f8::t_81ad881ff2737c 283,292,313,330,344,366,369,380
+  s_b8eb3cc2dbf3f8::t_b36b5bc46ff52f 3-9,18,43-46,51-57,66-83,85,88-99,102,105,108,110,112-114,116-117,119,121-124,128,132-133,136,138-141,144,147,149-154,157,160-162,164-167,170,173-175,177-183,186,189-190,192-193,196,199,201,204,207,209,213-214,217-239,242,245-246,248,251,254-255,260,263-264,266,269,272-273,275,277,279-281,285,288-290,294-299,303-311,315-319,322-328,332,335-342,346-357,360-365,368,371,374-379,382-393,396-397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a536406b728ac527959c2372740a67194b2adb5d",
+  "prompts": {},
+  "sessions": {
+    "s_b8eb3cc2dbf3f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ba76698-3554-4571-b883-3f647863c085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
