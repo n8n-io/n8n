@@ -1,6 +1,6 @@
 import { BaseRule } from '@n8n/rules-engine';
 import type { Violation } from '@n8n/rules-engine';
-import { Node, Project } from 'ts-morph';
+import { Node, Project, SyntaxKind } from 'ts-morph';
 import type { ImportDeclaration, SourceFile } from 'ts-morph';
 import * as path from 'node:path';
 
@@ -38,6 +38,10 @@ const DEFAULT_ALLOWED_FILES = [
 	'packages/@n8n/engine/src/database/typeorm-step-store.ts',
 	'packages/@n8n/engine/src/runtime/create-engine-runtime.ts',
 ];
+const DEFAULT_ALLOWED_DIRECTORIES = [
+	'packages/cli/src/databases/migrations',
+	'packages/@n8n/engine/src/database/migrations',
+];
 // This package exists only to build database-backed test fixtures.
 const DEFAULT_EXEMPT_PACKAGES = ['@n8n/backend-test-utils'];
 
@@ -46,7 +50,6 @@ const SOURCE_GLOBS = [
 	'!src/**/*.test.ts',
 	'!src/**/*.spec.ts',
 	'!src/**/__tests__/**',
-	'!src/**/migrations/**',
 ];
 
 function stringArrayOption(value: unknown, fallback: string[]): string[] {
@@ -117,6 +120,10 @@ export class TypeormPersistenceBoundaryRule extends BaseRule<CodeHealthContext> 
 		const allowedFiles = new Set(
 			stringArrayOption(this.getOptions().allowedFiles, DEFAULT_ALLOWED_FILES),
 		);
+		const allowedDirectories = stringArrayOption(
+			this.getOptions().allowedDirectories,
+			DEFAULT_ALLOWED_DIRECTORIES,
+		);
 		const exemptPackages = new Set(
 			stringArrayOption(this.getOptions().exemptPackages, DEFAULT_EXEMPT_PACKAGES),
 		);
@@ -150,7 +157,12 @@ export class TypeormPersistenceBoundaryRule extends BaseRule<CodeHealthContext> 
 			project.addSourceFilesAtPaths(patterns);
 			for (const file of project.getSourceFiles()) {
 				const relativeFile = normalizedRelativePath(context.rootDir, file.getFilePath());
-				if (allowedFiles.has(relativeFile)) continue;
+				if (
+					allowedFiles.has(relativeFile) ||
+					allowedDirectories.some((directory) => relativeFile.startsWith(`${directory}/`))
+				) {
+					continue;
+				}
 				violations.push(...this.analyzeFile(file, packagePath));
 			}
 		}
@@ -185,6 +197,21 @@ export class TypeormPersistenceBoundaryRule extends BaseRule<CodeHealthContext> 
 					this.importViolation(
 						specifier,
 						`${packagePath} imports the TypeORM re-export \`${importedName}\` from @n8n/db.`,
+						'Import TypeORM directly in a persistence adapter. Add a use-case repository method for business logic.',
+					),
+				);
+			}
+
+			const namespace = declaration.getNamespaceImport()?.getText();
+			if (!namespace) continue;
+			for (const access of file.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)) {
+				if (access.getExpression().getText() !== namespace) continue;
+				const importedName = access.getName();
+				if (!GUARDED_DB_REEXPORTS.has(importedName)) continue;
+				violations.push(
+					this.importViolation(
+						access,
+						`${packagePath} accesses the TypeORM re-export \`${importedName}\` through the @n8n/db namespace.`,
 						'Import TypeORM directly in a persistence adapter. Add a use-case repository method for business logic.',
 					),
 				);

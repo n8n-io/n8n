@@ -110,19 +110,44 @@ describe('TypeormPersistenceBoundaryRule', () => {
 		]);
 	});
 
-	it('skips tests and migrations but scans nested production test folders', async () => {
+	it('rejects guarded TypeORM re-exports accessed through an @n8n/db namespace', async () => {
+		writePackage();
+		write(
+			'packages/example/src/workflow.service.ts',
+			"import * as db from '@n8n/db';\nexport const ids = db.In(['1']);\n",
+		);
+
+		expect(await analyze()).toEqual([
+			expect.stringContaining('accesses the TypeORM re-export `In` through the @n8n/db namespace'),
+		]);
+	});
+
+	it('skips tests but scans nested production test and migration folders', async () => {
 		writePackage();
 		const typeormImport = "import { In } from '@n8n/typeorm';\n";
 		write('packages/example/src/audit.test.ts', typeormImport);
 		write('packages/example/src/__tests__/audit.ts', typeormImport);
-		write('packages/example/src/migrations/1-Init.ts', typeormImport);
 		write('packages/example/src/domain/test/query.ts', typeormImport);
+		write('packages/example/src/domain/migrations/query.ts', typeormImport);
 
-		expect(await analyze()).toEqual([
-			expect.stringContaining(
-				'src/domain/test/query.ts:1 Business logic imports TypeORM directly.',
-			),
-		]);
+		const violations = await analyze();
+		expect(violations).toHaveLength(2);
+		expect(
+			violations.every((violation) => violation.includes('Business logic imports TypeORM')),
+		).toBe(true);
+	});
+
+	it('supports explicit migration roots', async () => {
+		writePackage();
+		write(
+			'packages/example/src/database/migrations/1-Init.ts',
+			"import { QueryRunner } from '@n8n/typeorm';\n",
+		);
+		rule.configure({
+			options: { allowedDirectories: ['packages/example/src/database/migrations'] },
+		});
+
+		expect(await analyze()).toEqual([]);
 	});
 
 	it('supports exact exceptions for composition-based adapters', async () => {
