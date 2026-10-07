@@ -181,6 +181,7 @@ describe('GlobalConfig', () => {
 					'mcp-client-revoked': '',
 					'email-change-requested': '',
 					'email-change-completed': '',
+					'agent-budget-alert': '',
 				},
 			},
 		},
