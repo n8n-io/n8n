@@ -11,16 +11,18 @@ import { STORES } from '@n8n/stores';
 
 const renderModal = createComponentRenderer(ConfirmPasswordModal);
 
-const ModalStub = {
+const DialogStub = {
+	props: ['header', 'description'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog">
+			<h2 v-if="header">{{ header }}</h2>
+			<p v-if="description">{{ description }}</p>
+			<slot />
 		</div>
 	`,
 };
+
+const dialogPartStub = { template: '<div><slot /></div>' };
 
 const initialState = {
 	[STORES.UI]: {
@@ -35,7 +37,11 @@ const initialState = {
 
 const global = {
 	stubs: {
-		Modal: ModalStub,
+		Dialog: DialogStub,
+		DialogHeader: dialogPartStub,
+		DialogTitle: dialogPartStub,
+		DialogFooter: dialogPartStub,
+		DialogDescription: dialogPartStub,
 	},
 };
 
@@ -47,10 +53,11 @@ describe('ConfirmPasswordModal', () => {
 		pinia = createTestingPinia({ initialState });
 	});
 
-	it('should render correctly', () => {
-		const wrapper = renderModal({ pinia });
+	it('should render correctly', async () => {
+		const { getByTestId } = renderModal({ pinia });
 
-		expect(wrapper.html()).toMatchSnapshot();
+		expect(await waitFor(() => getByTestId('currentPassword'))).toBeInTheDocument();
+		expect(getByTestId('confirm-password-button')).toBeInTheDocument();
 	});
 
 	it('should emit password entered by the user when submitting form', async () => {
