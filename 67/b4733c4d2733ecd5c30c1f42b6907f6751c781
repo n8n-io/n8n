@@ -1,0 +1,24 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fb30b1b6ca962d::t_3fc536b612c776 1204-1206
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.vue
+  s_fb30b1b6ca962d::t_3fc536b612c776 29,212-216,218,227-243,338-354,357-372
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_fb30b1b6ca962d::t_cc7673e52d0f70 717-741
+  s_fb30b1b6ca962d::t_ea9ef5e3e69015 3,61-65,644-716,742-760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67b4733c4d2733ecd5c30c1f42b6907f6751c781",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
