@@ -1250,10 +1250,9 @@ export function getNodeInputs(
 		 * Swallowing suits rendering; a caller judging validity wants the error.
 		 *
 		 * Only a thrown error counts. An expression that evaluates but yields a
-		 * non-list is left alone: that is almost always an unconfigured node
-		 * (the LangChain Code node maps over an empty `Inputs` collection), and
-		 * the engine reads the same case as "no inputs" and runs. Failing here
-		 * would block publishing a workflow the runtime is happy with.
+		 * non-list is left alone. This result usually means that the node is not
+		 * configured. The engine reads the same case as "no inputs" and runs.
+		 * Failing here would block a workflow that the runtime can run.
 		 */
 		throwOnExpressionError?: boolean;
 	} = {},
@@ -1991,7 +1990,6 @@ export function makeDescription(
  */
 const TRIGGER_NODE_TYPES = new Set([
 	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.cron', // Legacy schedule trigger
 	'n8n-nodes-base.emailReadImap', // Email polling trigger
 	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
 	'n8n-nodes-base.start', // Legacy trigger

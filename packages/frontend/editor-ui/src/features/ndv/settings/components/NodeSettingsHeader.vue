@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton } from '@n8n/design-system';
-import type { IUpdateInformation } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
@@ -32,7 +31,6 @@ const { isExecuting, stopExecution } = useNodeExecution(node);
 const emit = defineEmits<{
 	execute: [];
 	'stop-execution': [];
-	'value-changed': [update: IUpdateInformation];
 	'tab-changed': [tab: NodeSettingsTab];
 }>();
 </script>
@@ -69,7 +67,6 @@ const emit = defineEmits<{
 			telemetry-source="parameters"
 			@execute="emit('execute')"
 			@stop-execution="emit('stop-execution')"
-			@value-changed="emit('value-changed', $event)"
 		/>
 	</div>
 </template>

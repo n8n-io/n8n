@@ -319,7 +319,7 @@ const makeNodeType = (outputs: NodeConnectionType[], name: string) =>
 		inputs: [],
 		outputs,
 		properties: [],
-		defaults: { color: '', name: '' },
+		defaults: { name: '' },
 		group: [],
 		description: '',
 	}) as INodeTypeDescription;

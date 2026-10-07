@@ -21,9 +21,9 @@ export class MergeV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 1,
+			iconColor: 'teal',
 			defaults: {
 				name: 'Merge',
-				color: '#00bbcc',
 			},
 
 			inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],

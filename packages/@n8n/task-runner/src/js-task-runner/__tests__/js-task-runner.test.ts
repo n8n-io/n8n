@@ -1820,13 +1820,27 @@ describe('JsTaskRunner', () => {
 	});
 
 	describe('expressions', () => {
-		it('should evaluate expressions with $evaluateExpression', async () => {
-			const outcome = await executeForAllItems({
-				code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
-				inputItems: [],
-			});
+		beforeEach(() => {
+			// $item marks all nodes as needed, which makes the runner request node types
+			vi.spyOn(defaultTaskRunner, 'requestNodeTypes').mockResolvedValue([]);
+		});
 
-			expect(outcome.result).toEqual({ val: 2 });
+		it('should throw for $evaluateExpression', async () => {
+			await expect(
+				executeForAllItems({
+					code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
+					inputItems: [],
+				}),
+			).rejects.toThrow('The function "$evaluateExpression" is not available in this context');
+		});
+
+		it('should throw for $evaluateExpression on $item()', async () => {
+			await expect(
+				executeForAllItems({
+					code: "return { val: $item(0).$item(0).$evaluateExpression('{{ 1 + 1 }}') }",
+					inputItems: [{ a: 1 }],
+				}),
+			).rejects.toThrow('The function "$evaluateExpression" is not available in this context');
 		});
 	});
 

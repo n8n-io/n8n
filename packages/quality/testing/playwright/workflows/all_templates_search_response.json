@@ -952,7 +952,7 @@
 		},
 		{
 			"id": 524,
-			"name": "Get today's date and day using the Function node",
+			"name": "Get today's date and day using the Code node",
 			"totalViews": 1354,
 			"recentViews": 0,
 			"user": {

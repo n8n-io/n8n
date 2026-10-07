@@ -76,11 +76,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "items = [\n  {\n    json:{\n      \"message\":`MQTT-item-message${Date.now()}`\n    }\n  }\n]\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = [\n  {\n    json:{\n      \"message\":`MQTT-item-message${Date.now()}`\n    }\n  }\n]\nreturn items;"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [450, 450],
 			"id": "37ef3107-c80c-4bad-a5d6-3d9a349ca76a"
 		}

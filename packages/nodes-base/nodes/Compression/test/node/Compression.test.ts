@@ -9,7 +9,7 @@ if (os.platform() !== 'win32') {
 		const workflowData = testHarness.readWorkflowJSON('workflow.compression.json');
 
 		const node = workflowData.nodes.find((n) => n.name === 'Read Binary File')!;
-		node.parameters.filePath = path.join(__dirname, 'lorem.txt');
+		node.parameters.fileSelector = path.join(__dirname, 'lorem.txt');
 
 		const tests: WorkflowTestData[] = [
 			{

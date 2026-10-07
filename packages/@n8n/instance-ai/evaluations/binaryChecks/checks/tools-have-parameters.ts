@@ -7,7 +7,6 @@ const TOOLS_WITHOUT_PARAMETERS = new Set([
 	'@n8n/n8n-nodes-langchain.vectorStoreInMemory',
 	'@n8n/n8n-nodes-langchain.mcpClientTool',
 	'@n8n/n8n-nodes-langchain.toolWikipedia',
-	'@n8n/n8n-nodes-langchain.toolSerpApi',
 ]);
 
 function isToolNode(type: string): boolean {

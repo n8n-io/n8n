@@ -1,4 +1,3 @@
-import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
@@ -21,9 +20,6 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
  * Runs `workflow.preExecute` before an execution row is created and writes
  * hook mutations back onto `workflowData`. A throw means the run never
  * started — no row, no Insights/license count.
- *
- * No-ops when `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION` is true; the lifecycle
- * hook then runs after persist (legacy).
  */
 @Service()
 export class WorkflowPreExecute {
@@ -31,7 +27,6 @@ export class WorkflowPreExecute {
 		private readonly externalHooks: ExternalHooks,
 		private readonly workflowContext: WorkflowHookContextService,
 		private readonly nodeTypes: NodeTypes,
-		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	async run(
@@ -40,10 +35,6 @@ export class WorkflowPreExecute {
 		source?: WorkflowExecutionSource,
 		pinData?: IPinData,
 	): Promise<Workflow | undefined> {
-		if (this.executionsConfig.preExecuteErrorCreatesExecution) {
-			return;
-		}
-
 		if (!this.externalHooks.hasHook('workflow.preExecute')) {
 			return;
 		}

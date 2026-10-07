@@ -747,7 +747,7 @@ export const routes: RouteRecordRaw[] = [
 						},
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
+							return settingsStore.isAiAssistantOrBuilderEnabled;
 						},
 					},
 					telemetry: {

@@ -275,7 +275,7 @@ Best Practice: Validate data schema before insert
 **IF/Switch (n8n-nodes-base.if, n8n-nodes-base.switch)**
 Purpose: Route based on file type, extraction quality, or classification
 
-**Function/Code (n8n-nodes-base.function, n8n-nodes-base.code)**
+**Code (n8n-nodes-base.code)**
 Purpose: Custom validation, data transformation, or regex extraction
 
 **HTTP Request (n8n-nodes-base.httpRequest)**

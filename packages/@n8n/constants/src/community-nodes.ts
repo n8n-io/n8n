@@ -13,4 +13,4 @@ export const NPM_COMMUNITY_NODE_SEARCH_API_URL = 'https://api.npms.io/v2/';
  * Lives here, not in `n8n-workflow`, so tooling that cannot depend on the
  * runtime packages (e.g. `@n8n/node-cli`) can read the same value.
  */
-export const N8N_NODES_API_VERSION = 1;
+export const N8N_NODES_API_VERSION = 3;

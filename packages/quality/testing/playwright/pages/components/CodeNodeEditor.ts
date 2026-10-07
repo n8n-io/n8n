@@ -26,6 +26,8 @@ export class CodeNodeEditor {
 		this.page = root.page();
 	}
 
+	// --- Code editor ---
+
 	/** In-NDV CodeMirror editor for the `jsCode` parameter. */
 	getCodeEditor(): Locator {
 		return this.getJsCodeParameter().locator('.cm-content');

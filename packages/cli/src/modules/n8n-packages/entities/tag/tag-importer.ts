@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
@@ -20,10 +19,7 @@ import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
 export class TagImporter {
-	constructor(
-		private readonly tagService: TagService,
-		private readonly globalConfig: GlobalConfig,
-	) {}
+	constructor(private readonly tagService: TagService) {}
 
 	/**
 	 * Resolves the tags referenced by the applied (non-skipped) workflows'
@@ -44,9 +40,6 @@ export class TagImporter {
 			dropped: [],
 			failures: [],
 		};
-		// Disabled tags are a silent no-op: nothing gates, nothing is written.
-		if (this.globalConfig.tags.disabled) return plan;
-
 		const referencedTagIds = [...new Set(appliedWorkflows.flatMap(({ tagIds }) => tagIds ?? []))];
 		if (referencedTagIds.length === 0) return plan;
 

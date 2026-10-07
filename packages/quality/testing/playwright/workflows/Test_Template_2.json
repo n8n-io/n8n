@@ -35,12 +35,13 @@
 				},
 				{
 					"name": "Map each attachment",
-					"type": "n8n-nodes-base.function",
+					"type": "n8n-nodes-base.code",
 					"position": [620, 420],
 					"parameters": {
-						"functionCode": "const _ = require('lodash')\n\nconst sanitize = str => _.chain(str)\n  .replace(/[^A-Za-z0-9&.-]/g, '-') // sanitise via whitelist of characters\n  .replace(/-(?=-)/g, '') // remove repeated dashes - https://regexr.com/6ag8h\n  .trim('-') // trim any leading/trailing dashes\n  .truncate({\n    length: 60,\n    omission: '-' // when the string ends with '-', you'll know it was truncated\n  })\n  .value()\n\nconst result = _.flatMap(items.map(item => {\n  //console.log({item})\n\n  // Maps each attachment to a separate item\n  return _.values(item.binary).map(file => {\n    console.log(\"Saving attachement:\", file.fileName, 'from:', ...item.json.from.value)\n    \n    // sanitize filename but exclude extension\n    const filename_parts = file.fileName.split('.')\n    const ext = _.slice(filename_parts, filename_parts.length-1)\n    const filename_main = _.join(_.dropRight(filename_parts), '.')\n    file.fileName = sanitize(filename_main) + '.' + ext\n    \n    return {\n      json: {\n        from: sanitize(item.json.from.value[0].name),\n        date: sanitize(new Date(item.json.date).toISOString().split(\"T\")[0]) // get date part \"2020-01-01\"\n      }, \n      binary: { file }\n    }\n  })\n}))\n\n//console.log(result)\nreturn result"
+						"mode": "runOnceForAllItems",
+						"jsCode": "const _ = require('lodash')\n\nconst sanitize = str => _.chain(str)\n  .replace(/[^A-Za-z0-9&.-]/g, '-') // sanitise via whitelist of characters\n  .replace(/-(?=-)/g, '') // remove repeated dashes - https://regexr.com/6ag8h\n  .trim('-') // trim any leading/trailing dashes\n  .truncate({\n    length: 60,\n    omission: '-' // when the string ends with '-', you'll know it was truncated\n  })\n  .value()\n\nconst result = _.flatMap($input.all().map(item => {\n  //console.log({item})\n\n  // Maps each attachment to a separate item\n  return _.values(item.binary).map(file => {\n    console.log(\"Saving attachement:\", file.fileName, 'from:', ...item.json.from.value)\n    \n    // sanitize filename but exclude extension\n    const filename_parts = file.fileName.split('.')\n    const ext = _.slice(filename_parts, filename_parts.length-1)\n    const filename_main = _.join(_.dropRight(filename_parts), '.')\n    file.fileName = sanitize(filename_main) + '.' + ext\n    \n    return {\n      json: {\n        from: sanitize(item.json.from.value[0].name),\n        date: sanitize(new Date(item.json.date).toISOString().split(\"T\")[0]) // get date part \"2020-01-01\"\n      }, \n      binary: { file }\n    }\n  })\n}))\n\n//console.log(result)\nreturn result"
 					},
-					"typeVersion": 1
+					"typeVersion": 2
 				}
 			],
 			"connections": {
@@ -72,13 +73,13 @@
 		"workflowInfo": {
 			"nodeCount": 3,
 			"nodeTypes": {
-				"n8n-nodes-base.function": {
-					"count": 1
-				},
 				"n8n-nodes-base.nextCloud": {
 					"count": 1
 				},
 				"n8n-nodes-base.emailReadImap": {
+					"count": 1
+				},
+				"n8n-nodes-base.code": {
 					"count": 1
 				}
 			}
@@ -114,15 +115,10 @@
 			},
 			{
 				"id": 14,
-				"icon": "fa:code",
-				"name": "n8n-nodes-base.function",
+				"icon": "node:code",
+				"name": "n8n-nodes-base.code",
 				"defaults": {
-					"name": "Function",
-					"color": "#FF9922"
-				},
-				"iconData": {
-					"icon": "code",
-					"type": "icon"
+					"name": "Code"
 				},
 				"categories": [
 					{
@@ -134,8 +130,8 @@
 						"name": "Core Nodes"
 					}
 				],
-				"displayName": "Function",
-				"typeVersion": 1
+				"displayName": "Code",
+				"typeVersion": 2
 			},
 			{
 				"id": 25,

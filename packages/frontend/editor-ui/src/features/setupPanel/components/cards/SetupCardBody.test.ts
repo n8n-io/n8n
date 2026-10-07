@@ -54,7 +54,7 @@ const NODE_PROPERTIES = [
 const createState = (overrides: Partial<NodeSetupState> = {}): NodeSetupState => ({
 	node: createTestNode({
 		name: 'TestNode',
-		type: 'n8n-nodes-base.openAi',
+		type: '@n8n/n8n-nodes-langchain.openAi',
 		parameters: {},
 	}) as INodeUi,
 	parameterIssues: { param1: ['Required'], param2: ['Required'] },

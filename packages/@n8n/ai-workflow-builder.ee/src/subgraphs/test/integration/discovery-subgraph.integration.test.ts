@@ -55,7 +55,7 @@ const testPrompts = [
 	{
 		name: 'Data transformation workflow',
 		prompt: 'Read CSV file, transform data with JavaScript, and upload to Google Sheets',
-		expectedNodes: ['n8n-nodes-base.readBinaryFile', 'n8n-nodes-base.code'],
+		expectedNodes: ['n8n-nodes-base.readWriteFile', 'n8n-nodes-base.code'],
 		minNodes: 3,
 	},
 	{

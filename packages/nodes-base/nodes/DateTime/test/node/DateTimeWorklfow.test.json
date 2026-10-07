@@ -153,11 +153,36 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "return [\n  {\n    \"Id\": \"18162\",\n    \"Start_time\": 1663801200000,\n    \"End_time\": 1663804800000,\n    \"Room\": \" The Stadium\"\n  },\n  {\n    \"Id\": \"18173\",\n    \"Start_time\": 1663797600000,\n    \"End_time\": 1663801200000,\n    \"Room\": \" The Stadium\"\n  },\n  {\n    \"Id\": \"18178\",\n    \"Start_time\": 1663804800000,\n    \"End_time\": 1663808400000,\n    \"Room\": \" The Stadium\"\n  },\n  {\n    \"Id\": \"18182\",\n    \"Start_time\": 1663801200000,\n    \"End_time\": 1663804800000,\n    \"Room\": \" The Garden\"\n  }\n]"
+				"data": [
+					{
+						"Id": "18162",
+						"Start_time": 1663801200000,
+						"End_time": 1663804800000,
+						"Room": " The Stadium"
+					},
+					{
+						"Id": "18173",
+						"Start_time": 1663797600000,
+						"End_time": 1663801200000,
+						"Room": " The Stadium"
+					},
+					{
+						"Id": "18178",
+						"Start_time": 1663804800000,
+						"End_time": 1663808400000,
+						"Room": " The Stadium"
+					},
+					{
+						"Id": "18182",
+						"Start_time": 1663801200000,
+						"End_time": 1663804800000,
+						"Room": " The Garden"
+					}
+				]
 			},
 			"id": "0933e36d-43f4-46b5-8c3f-8d397d93a24c",
 			"name": "Mock Data",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [-140, 1200]
 		},

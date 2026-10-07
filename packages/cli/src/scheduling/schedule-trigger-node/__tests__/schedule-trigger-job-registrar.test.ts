@@ -5,7 +5,6 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
-import { Cron as CronNode } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type {
 	Cron,
@@ -13,7 +12,6 @@ import type {
 	INode,
 	INodeParameters,
 	INodeTypes,
-	ITriggerFunctions,
 	TriggerTime,
 } from 'n8n-workflow';
 import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, Workflow } from 'n8n-workflow';
@@ -177,64 +175,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		});
 	});
 
-	describe('Cron node', () => {
-		const node = new CronNode();
-		const register = async (triggerTimes: TriggerTime[], targetWorkflow = workflow) => {
-			const session = makeRegistrar().createSession();
-			const collector = session.createCollector(targetWorkflow, cronNode);
-			const context = mock<ITriggerFunctions>({
-				getNodeParameter: vi.fn().mockReturnValue({ item: triggerTimes }),
-				helpers: mock<ITriggerFunctions['helpers']>(collector),
-			});
-			await node.trigger.call(context);
-			await session.commit(WORKFLOW_ID, NODE_ID);
-			return lastRequest();
-		};
-
-		it.each<{ triggerTime: TriggerTime; pattern: RegExp }>([
-			{ triggerTime: { mode: 'everyMinute' }, pattern: /^\d+ \* \* \* \* \*$/ },
-			{ triggerTime: { mode: 'everyHour', minute: 15 }, pattern: /^\d+ 15 \* \* \* \*$/ },
-			{
-				triggerTime: { mode: 'everyX', unit: 'minutes', value: 5 },
-				pattern: /^\d+ \*\/5 \* \* \* \*$/,
-			},
-			{
-				triggerTime: { mode: 'everyX', unit: 'hours', value: 2 },
-				pattern: /^\d+ \d+ \*\/2 \* \* \*$/,
-			},
-			{
-				triggerTime: { mode: 'everyDay', hour: 9, minute: 30 },
-				pattern: /^\d+ 30 9 \* \* \*$/,
-			},
-			{
-				triggerTime: { mode: 'everyWeek', hour: 9, minute: 30, weekday: 1 },
-				pattern: /^\d+ 30 9 \* \* 1$/,
-			},
-			{
-				triggerTime: { mode: 'everyMonth', hour: 9, minute: 30, dayOfMonth: 5 },
-				pattern: /^\d+ 30 9 5 \* \*$/,
-			},
-		])('registers $triggerTime as a durable cron', async ({ triggerTime, pattern }) => {
-			const request = await register([triggerTime]);
-
-			expect(request).toMatchObject({
-				owner: OWNER,
-				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
-				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-			});
-			expect(request.desired).toHaveLength(1);
-			expect(request.desired[0]).toEqual({
-				name: expect.stringMatching(jobNamePattern),
-				schedule: {
-					kind: 'cron',
-					cronExpression: expect.stringMatching(pattern),
-					timezone: null,
-				},
-				firstRunAt: expect.any(Date),
-			});
-		});
-
+	describe('cron registration', () => {
 		it('keeps job names and schedules stable when generated offsets change', async () => {
 			const triggerTime: TriggerTime = { mode: 'everyX', unit: 'hours', value: 2 };
 			const collect = async (expression: CronExpression) => {
@@ -254,84 +195,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			expect(second.schedule).toEqual(first.schedule);
 		});
 
-		it.each([
-			['*/5 * * * *', '0 */5 * * * *'],
-			['15 */5 * * * *', '15 */5 * * * *'],
-			['@daily', '0 0 0 * * *'],
-			['@weekdays', '0 0 0 * * 1,2,3,4,5'],
-		])('preserves custom cron timing for %s', async (expression, expected) => {
-			await register([{ mode: 'custom', cronExpression: expression as CronExpression }]);
-
-			expect(lastDesired()[0].schedule).toEqual({
-				kind: 'cron',
-				cronExpression: expected,
-				timezone: null,
-			});
-		});
-
-		it('uses the workflow timezone to plan the first occurrence', async () => {
-			await register(
-				[{ mode: 'custom', cronExpression: '0 0 9 * * *' }],
-				mock<Workflow>({ id: WORKFLOW_ID, settings: { timezone: 'Europe/Berlin' } }),
-			);
-
-			expect(lastDesired()[0]).toMatchObject({
-				schedule: { timezone: 'Europe/Berlin' },
-				firstRunAt: new Date('2026-01-05T08:00:00.000Z'),
-			});
-		});
-
-		it('retains duplicate rules and job names when rules are reordered', async () => {
-			const hourly: TriggerTime = { mode: 'everyHour', minute: 15 };
-			const daily: TriggerTime = { mode: 'everyDay', hour: 9, minute: 30 };
-			const first = await register([hourly, daily, hourly]);
-			const second = await register([daily, hourly, hourly]);
-
-			expect(new Set(first.desired.map(({ name }) => name)).size).toBe(3);
-			expect(second.desired.map(({ name }) => name).sort()).toEqual(
-				first.desired.map(({ name }) => name).sort(),
-			);
-		});
-
-		it.each([
-			['0 0 9 * * *', '0 0 9 * * *', '0 0 9 * * *'],
-			['0 9 * * *', '0 9 * * *', '0 0 9 * * *'],
-			['@daily', '@daily', '0 0 0 * * *'],
-			['0 0 9 * * *', ' 0 0 9 * * * ', '0 0 9 * * *'],
-		])(
-			'registers repeated custom expression %s only once',
-			async (expression, repeated, expected) => {
-				const request = await register([
-					{ mode: 'custom', cronExpression: expression as CronExpression },
-					{ mode: 'custom', cronExpression: repeated as CronExpression },
-				]);
-
-				expect(request.desired).toHaveLength(1);
-				expect(request.desired[0].schedule).toEqual({
-					kind: 'cron',
-					cronExpression: expected,
-					timezone: null,
-				});
-			},
-		);
-
-		it.each([
-			['0 9 * * *', '0 0 9 * * *'],
-			['@daily', '0 0 0 * * *'],
-			['@daily', '@DAILY'],
-		])('keeps distinct custom expressions %s and %s', async (first, second) => {
-			const rules: TriggerTime[] = [first, second].map((expression) => ({
-				mode: 'custom',
-				cronExpression: expression as CronExpression,
-			}));
-			const request = await register([...rules, ...rules]);
-
-			expect(request.desired).toHaveLength(2);
-			expect(request.desired[0].schedule).toEqual(request.desired[1].schedule);
-			expect(request.desired[0].name).not.toBe(request.desired[1].name);
-		});
-
-		it('registers the same custom expression independently for each Cron node', async () => {
+		it('registers the same custom expression independently for each node', async () => {
 			const session = makeRegistrar().createSession();
 			const otherNode = mock<INode>({ id: 'node-2', type: CRON_NODE_TYPE });
 			const cron: Cron = {
@@ -368,26 +232,6 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				await session.commit(WORKFLOW_ID, NODE_ID);
 				expect(lastDesired()).toHaveLength(1);
 			}
-		});
-
-		it('reconciles an empty rule list', async () => {
-			await register([]);
-
-			expect(lastDesired()).toEqual([]);
-		});
-
-		it('uses the existing node and workflow cleanup paths', async () => {
-			await register([{ mode: 'everyMinute' }]);
-			const registrar = makeRegistrar({ schedulerEnabled: false });
-
-			await registrar.remove(WORKFLOW_ID, cronNode.id);
-			await registrar.removeWorkflow(WORKFLOW_ID);
-
-			expect(jobProvisioner.deprovisionOwnerMember).toHaveBeenCalledWith(OWNER);
-			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
-				OWNER_REF,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-			);
 		});
 	});
 

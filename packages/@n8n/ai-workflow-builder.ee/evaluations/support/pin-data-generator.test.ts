@@ -117,7 +117,7 @@ describe('identifyPinDataNodes', () => {
 			nodes: [
 				makeNode({ name: 'Chat Trigger', type: '@n8n/n8n-nodes-langchain.chatTrigger' }),
 				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
-				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmOpenAi' }),
+				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
 				makeNode({ name: 'Tool', type: '@n8n/n8n-nodes-langchain.toolCalculator' }),
 			],
 			connections: {

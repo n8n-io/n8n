@@ -35,7 +35,7 @@
 			"id": "4de25807-a2ef-4453-900e-e00e0021ecdc",
 			"name": "AI Agent",
 			"type": "@n8n/n8n-nodes-langchain.agent",
-			"typeVersion": 1.1,
+			"typeVersion": 2.2,
 			"position": [620, 300]
 		},
 		{

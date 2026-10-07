@@ -5,7 +5,6 @@ import { test, expect } from '../../../fixtures/base';
 
 const AGENT = '@n8n/n8n-nodes-langchain.agent';
 const PARSER = '@n8n/n8n-nodes-langchain.outputParserAutofixing';
-const LANGCHAIN_CODE = '@n8n/n8n-nodes-langchain.code';
 const VECTOR_STORE_TOOL = '@n8n/n8n-nodes-langchain.toolVectorStore';
 const IN_MEMORY_VECTOR_STORE = '@n8n/n8n-nodes-langchain.vectorStoreInMemory';
 const STRUCTURED_PARSER = '@n8n/n8n-nodes-langchain.outputParserStructured';
@@ -117,55 +116,6 @@ test.describe(
 
 			// Activation lands through the publication outbox. Poll for it before the
 			// teardown deactivates, so cleanup cannot race the publish.
-			await expect
-				.poll(async () => (await api.workflows.getPublicationStatus(created.id)).status, {
-					timeout: 15_000,
-				})
-				.toBe('published');
-		});
-
-		test('publishes a node whose inputs expression cannot be evaluated', async ({ api }) => {
-			// The LangChain Code node builds its inputs by mapping over its `Inputs`
-			// collection, which is empty here, so the expression throws. The engine
-			// swallows that and runs the node with no inputs, so publishing must not
-			// be refused. Deleting the last `Inputs` entry after wiring the node up
-			// reaches this state from the editor.
-			const created = await api.workflows.createWorkflow({
-				name: `unresolvable inputs ${nanoid()}`,
-				nodes: [
-					{
-						id: nanoid(),
-						name: 'Schedule Trigger',
-						type: 'n8n-nodes-base.scheduleTrigger',
-						typeVersion: 1.2,
-						position: [0, 0],
-						parameters: { rule: { interval: [{ field: 'days' }] } },
-					},
-					{
-						id: nanoid(),
-						name: 'Custom Tool',
-						type: LANGCHAIN_CODE,
-						typeVersion: 1,
-						position: [220, 0],
-						parameters: { inputs: {}, outputs: { output: [{ type: 'main' }] } },
-					},
-				],
-				connections: {
-					'Schedule Trigger': {
-						main: [[{ node: 'Custom Tool', type: 'main', index: 0 }]],
-					},
-				},
-				settings: { executionOrder: 'v1' },
-			});
-			cleanupWorkflowIds.push(created.id);
-
-			const response = await api.workflows.activateRaw(created.id, created.versionId);
-
-			expect(
-				response.ok(),
-				`publish was refused over an inputs expression the engine ignores: ${await response.text()}`,
-			).toBe(true);
-
 			await expect
 				.poll(async () => (await api.workflows.getPublicationStatus(created.id)).status, {
 					timeout: 15_000,

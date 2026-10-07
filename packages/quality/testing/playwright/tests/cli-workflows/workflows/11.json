@@ -136,11 +136,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "items = [{\n  json:{\n    email: `test${Date.now().toString().substr(5)}@gmail.com`\n  }\n}\n]\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = [{\n  json:{\n    email: `test${Date.now().toString().substr(5)}@gmail.com`\n  }\n}\n]\nreturn items;"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [430, 450],
 			"notesInFlow": true,
 			"notes": "Generate fake email",

@@ -43,7 +43,8 @@ const getProxyFromFixture = (
 	activeNode: string,
 	mode?: WorkflowExecuteMode,
 	opts?: {
-		throwOnMissingExecutionData: boolean;
+		throwOnMissingExecutionData?: boolean;
+		throwOnEvaluateExpression?: boolean;
 		connectionType?: NodeConnectionType;
 		runIndex?: number;
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
@@ -1434,6 +1435,28 @@ describe('WorkflowDataProxy', () => {
 		test('should allow specifying run index', () => {
 			const itemProxy = proxy.$item(1, 0);
 			expect(itemProxy.$json.data).toBe(160);
+		});
+	});
+
+	describe('$evaluateExpression', () => {
+		const fixture = loadFixture('base');
+
+		test('should throw when disabled', () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End', undefined, {
+				throwOnEvaluateExpression: true,
+			});
+			expect(() => proxy.$evaluateExpression('{{ 1 + 1 }}')).toThrow(
+				'The function "$evaluateExpression" is not available in this context',
+			);
+		});
+
+		test('should stay disabled on proxies returned by $item()', () => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End', undefined, {
+				throwOnEvaluateExpression: true,
+			});
+			expect(() => proxy.$item(1).$item(1).$evaluateExpression('{{ 1 + 1 }}')).toThrow(
+				'The function "$evaluateExpression" is not available in this context',
+			);
 		});
 	});
 

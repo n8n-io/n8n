@@ -11,9 +11,6 @@ export interface NodeViewEventBusEvents {
 	/** Command to import a workflow from given data */
 	importWorkflowData: IDataObject;
 
-	/** Command to import a workflow from given URL */
-	importWorkflowUrl: IDataObject;
-
 	'runWorkflowButton:mouseenter': never;
 
 	'runWorkflowButton:mouseleave': never;

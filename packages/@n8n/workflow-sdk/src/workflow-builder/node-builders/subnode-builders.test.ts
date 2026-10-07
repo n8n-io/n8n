@@ -111,7 +111,7 @@ describe('subnode factories', () => {
 
 		it('should work for http request tool', () => {
 			const t = subnodeBuilders.tool({
-				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				type: 'n8n-nodes-base.httpRequestTool',
 				version: 1,
 				config: {
 					parameters: { url: 'https://api.example.com' },

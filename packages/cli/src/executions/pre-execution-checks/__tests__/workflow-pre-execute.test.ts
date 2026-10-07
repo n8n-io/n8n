@@ -1,4 +1,3 @@
-import type { ExecutionsConfig } from '@n8n/config';
 import type { IConnections, IWorkflowBase, Workflow } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -14,13 +13,7 @@ describe('WorkflowPreExecute', () => {
 	const externalHooks = mock<ExternalHooks>();
 	const workflowContext = mock<WorkflowHookContextService>();
 	const nodeTypes = mock<NodeTypes>();
-	const executionsConfig = mock<ExecutionsConfig>({ preExecuteErrorCreatesExecution: false });
-	const preExecute = new WorkflowPreExecute(
-		externalHooks,
-		workflowContext,
-		nodeTypes,
-		executionsConfig,
-	);
+	const preExecute = new WorkflowPreExecute(externalHooks, workflowContext, nodeTypes);
 
 	const workflowData = mock<IWorkflowBase>({
 		id: 'wf-1',
@@ -35,7 +28,6 @@ describe('WorkflowPreExecute', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		executionsConfig.preExecuteErrorCreatesExecution = false;
 		externalHooks.hasHook.mockReturnValue(true);
 		externalHooks.run.mockResolvedValue(undefined);
 	});
@@ -163,14 +155,5 @@ describe('WorkflowPreExecute', () => {
 		await preExecute.run(data, 'manual', undefined, pinData);
 
 		expect(data.pinData).toBeUndefined();
-	});
-
-	it('skips the hook when N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION is true', async () => {
-		executionsConfig.preExecuteErrorCreatesExecution = true;
-
-		await preExecute.run(workflowData, 'webhook');
-
-		expect(externalHooks.hasHook).not.toHaveBeenCalled();
-		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
 });

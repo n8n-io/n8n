@@ -1,7 +1,6 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -58,7 +57,6 @@ export class WorkflowCreationService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
@@ -177,7 +175,7 @@ export class WorkflowCreationService {
 
 		await validateEntity(newWorkflow);
 
-		if (tagIds?.length && !this.globalConfig.tags.disabled) {
+		if (tagIds?.length) {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
 		}
 
@@ -388,7 +386,7 @@ export class WorkflowCreationService {
 			throw new InternalServerError('Failed to save workflow');
 		}
 
-		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
+		if (tagIds && savedWorkflow.tags) {
 			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
