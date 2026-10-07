@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { ref, watch, onMounted, nextTick } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
 import { useToast } from '@n8n/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
-import Modal from '@/app/components/Modal.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
@@ -17,7 +17,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 
-import { N8nButton, N8nInput } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter, N8nInput } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	isActive: boolean;
@@ -41,6 +41,7 @@ const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 
@@ -48,19 +49,11 @@ const name = ref('');
 const currentTagIds = ref(props.data.tags);
 const isSaving = ref(false);
 const prevTagIds = ref(currentTagIds.value);
-const modalBus = createEventBus();
 const dropdownBus = createEventBus();
-
-const nameInputRef = ref<HTMLElement>();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const focusOnSelect = () => {
 	dropdownBus.emit('focus');
-};
-
-const focusOnNameInput = () => {
-	if (nameInputRef.value?.focus) {
-		nameInputRef.value.focus();
-	}
 };
 
 const onTagsBlur = () => {
@@ -72,8 +65,13 @@ const onTagsEsc = () => {
 };
 
 const closeDialog = () => {
-	modalBus.emit('close');
+	if (uiStore.modalsById[props.modalName]?.open !== true) return;
+	uiStore.closeModal(props.modalName);
 };
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const save = async (): Promise<void> => {
 	const workflowName = name.value.trim();
@@ -161,24 +159,19 @@ watch(
 
 onMounted(async () => {
 	name.value = await workflowsStore.getDuplicateCurrentWorkflowName(props.data.name);
-	await nextTick();
-	focusOnNameInput();
 });
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		:title="i18n.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
-		:center="true"
-		width="420px"
-		@enter="save"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="i18n.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="$style.content">
+		<N8nDialogBody>
+			<div :class="$style.content" :data-test-id="`${modalName}-modal`">
 				<N8nInput
-					ref="nameInputRef"
 					v-model="name"
 					:placeholder="i18n.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
@@ -194,14 +187,14 @@ onMounted(async () => {
 					@esc="onTagsEsc"
 				/>
 			</div>
-		</template>
-		<template #footer="{ close }">
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
 					:disabled="isSaving"
 					:label="i18n.baseText('duplicateWorkflowDialog.cancel')"
-					@click="close"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					:loading="isSaving"
@@ -209,8 +202,8 @@ onMounted(async () => {
 					@click="save"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
