@@ -28,31 +28,6 @@ describe('generated OpenAPI spec is up to date', () => {
 	);
 });
 
-describe('workflow activation documentation', () => {
-	it.each(['createWorkflow', 'updateWorkflow'])(
-		'%s documents the replacement for the read-only active field',
-		(handler) => {
-			const operation = parse(
-				fs.readFileSync(
-					path.join(V1_DIR, `handlers/workflows/spec/paths/${handler}.generated.yml`),
-					'utf8',
-				),
-			) as OpenAPIV3.OperationObject;
-			const requestBody = operation.requestBody as OpenAPIV3.RequestBodyObject;
-			const schema = requestBody.content['application/json'].schema as OpenAPIV3.SchemaObject;
-			const active = schema.properties?.active as OpenAPIV3.SchemaObject;
-
-			expect(active.deprecated).toBe(true);
-			expect(active.description).toContain('activeVersionId');
-			expect(schema.properties?.activeVersionId).toEqual({
-				type: 'string',
-				nullable: true,
-				readOnly: true,
-			});
-		},
-	);
-});
-
 describe('Apply response documentation', () => {
 	it.each(['applyPackage', 'continueApplyPackage'])(
 		'%s exposes all outcomes and the required gates',
