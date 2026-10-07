@@ -393,7 +393,7 @@ describe('stop execution — workflow:execute scope', () => {
 // ---------------------------------------------------------------------------
 
 describe('cleanupTestExecutions — scope and deletion pipeline', () => {
-	it('rejects when user lacks workflow:execute scope', async () => {
+	it('rejects when user lacks execution:delete scope', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
 		const ctx = service.createContext(user);
@@ -402,11 +402,11 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		);
 
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
-			'workflow:execute',
+			'execution:delete',
 		]);
 	});
 
-	it('calls hardDeleteBy instead of deleteByIds', async () => {
+	it('deletes only the counted manual executions by ID', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
 		executionRepository.find.mockResolvedValue([{ id: 'exec-1' }, { id: 'exec-2' }] as never);
 		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
@@ -416,9 +416,9 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 
 		expect(result.deletedCount).toBe(2);
 		expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith({
-			filters: { workflowId: 'wf-1', mode: 'manual' },
+			filters: undefined,
 			accessibleWorkflowIds: ['wf-1'],
-			deleteConditions: { deleteBefore: expect.any(Date) },
+			deleteConditions: { ids: ['exec-1', 'exec-2'] },
 		});
 		// Verify deleteByIds is NOT called
 		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();

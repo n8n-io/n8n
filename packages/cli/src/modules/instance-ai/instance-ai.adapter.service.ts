@@ -4253,9 +4253,9 @@ export class InstanceAiAdapterService {
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
 				assertNotReadOnly('executions');
-				// Access-check the workflow with execute scope (matches controller behavior)
+				// Deleting is its own permission (matches the executions controller)
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:execute',
+					'execution:delete',
 				]);
 				if (!workflow) {
 					throw new WorkflowNotFoundError(workflowId);
@@ -4280,11 +4280,12 @@ export class InstanceAiAdapterService {
 
 				const ids = executions.map((e) => e.id);
 
-				// Use the canonical deletion pipeline (handles binary data and fs blobs)
+				// Use the canonical deletion pipeline (handles binary data and fs blobs).
+				// Delete by ID so only the counted manual executions are removed.
 				await executionPersistence.hardDeleteBy({
-					filters: { workflowId, mode: 'manual' },
+					filters: undefined,
 					accessibleWorkflowIds: [workflowId],
-					deleteConditions: { deleteBefore: cutoff },
+					deleteConditions: { ids },
 				});
 
 				// Emit audit event (matches controller behavior)
