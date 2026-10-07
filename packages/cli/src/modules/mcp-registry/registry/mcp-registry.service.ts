@@ -54,21 +54,14 @@ export class McpRegistryService {
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
-		const stored = await this.getStoredServers(includeDeprecated);
-		// n8n Connect MCP servers are merged live and never persisted. When n8n
-		// Connect is off, `getN8nConnectMcpServers()` returns [], so none appear here.
-		const n8nConnectMcpServers = await this.aiGatewayService.getN8nConnectMcpServers();
-		return [...stored, ...n8nConnectMcpServers].filter(({ requiredCapabilities }) =>
-			this.capabilities.supports(requiredCapabilities),
-		);
+		// Merge before dropping deprecated rows: a deprecated row that the gateway
+		// still hosts stays active through its Gateway credits route.
+		const servers = await this.withGatewayOverlay(await this.getStoredServers());
+		return includeDeprecated ? servers : servers.filter(({ status }) => status !== 'deprecated');
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
-		const n8nConnectMcpServers = await this.aiGatewayService.getN8nConnectMcpServers();
-		const server =
-			n8nConnectMcpServers.find((s) => s.slug === slug) ?? (await this.getStoredServer(slug));
-		if (!server) return undefined;
-		if (!this.capabilities.supports(server.requiredCapabilities)) return undefined;
+		const [server] = await this.getBySlugs([slug]);
 		return server;
 	}
 
@@ -77,20 +70,11 @@ export class McpRegistryService {
 			return [];
 		}
 
-		const wanted = new Set(slugs);
-		const n8nConnectMcpServers = (await this.aiGatewayService.getN8nConnectMcpServers()).filter(
-			(server) => wanted.has(server.slug),
-		);
-		const n8nConnectMcpSlugs = new Set(n8nConnectMcpServers.map((server) => server.slug));
 		const stored = (await this.repository.findBy(slugs.map((slug) => ({ slug }))))
 			.map(fromEntity)
-			.filter(
-				(server) =>
-					server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE && !n8nConnectMcpSlugs.has(server.slug),
-			);
-		return [...n8nConnectMcpServers, ...stored].filter(({ requiredCapabilities }) =>
-			this.capabilities.supports(requiredCapabilities),
-		);
+			.filter((server) => server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE);
+		const wanted = new Set(slugs);
+		return await this.withGatewayOverlay(stored, (server) => wanted.has(server.slug));
 	}
 
 	/**
@@ -126,7 +110,7 @@ export class McpRegistryService {
 	 * signal aborts before the write starts. The signal cancels the API requests.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
-		const existingServers = await this.getStoredServers(true);
+		const existingServers = await this.getStoredServers();
 		const fetchedAt = await this.repository.readDbNow();
 		let updatedServers: McpRegistryServer[];
 		if (existingServers.length === 0) {
@@ -150,10 +134,8 @@ export class McpRegistryService {
 		this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
 	}
 
-	private async getStoredServers(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
-		const entities = includeDeprecated
-			? await this.repository.find()
-			: await this.repository.findBy({ status: 'active' });
+	private async getStoredServers(): Promise<McpRegistryServer[]> {
+		const entities = await this.repository.find();
 		// n8n Connect MCP servers come from the live overlay, never the DB. Drop any
 		// that somehow landed in a stored row so they can't duplicate the overlay.
 		return entities
@@ -161,12 +143,38 @@ export class McpRegistryService {
 			.filter((server) => server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE);
 	}
 
-	/** A single persisted (remote) server by slug, excluding any n8n Connect MCP row. */
-	private async getStoredServer(slug: string): Promise<McpRegistryServer | undefined> {
-		const entity = await this.repository.findOneBy({ slug });
-		if (!entity) return undefined;
-		const server = fromEntity(entity);
-		return server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE ? undefined : server;
+	/**
+	 * Adds the n8n Connect MCP servers to the stored ones. A gateway server whose
+	 * slug a stored server already has becomes a Gateway credits route on that
+	 * server, so each slug stays one node. The rest are added as they are. When
+	 * n8n Connect is off, `getN8nConnectMcpServers()` returns [] and this is a no-op.
+	 */
+	private async withGatewayOverlay(
+		stored: McpRegistryServer[],
+		include: (server: McpRegistryServer) => boolean = () => true,
+	): Promise<McpRegistryServer[]> {
+		const gatewayBySlug = new Map(
+			(await this.aiGatewayService.getN8nConnectMcpServers())
+				.filter(include)
+				.map((server) => [server.slug, server]),
+		);
+		const merged = stored.map((server) => {
+			const gatewayServer = gatewayBySlug.get(server.slug);
+			if (!gatewayServer) return server;
+			// Drop it from the leftovers either way, so the slug never yields a second node.
+			gatewayBySlug.delete(server.slug);
+			const gatewayEndpointUrl = gatewayServer.remotes[0]?.url;
+			if (!gatewayEndpointUrl) return server;
+			return {
+				...server,
+				// One active route keeps the merged node visible.
+				status: server.status === 'active' ? server.status : gatewayServer.status,
+				gatewayEndpointUrl,
+			};
+		});
+		return [...merged, ...gatewayBySlug.values()].filter(({ requiredCapabilities }) =>
+			this.capabilities.supports(requiredCapabilities),
+		);
 	}
 
 	private async refreshUpdatedServers(

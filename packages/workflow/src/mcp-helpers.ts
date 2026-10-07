@@ -25,17 +25,11 @@ export interface McpRegistryCredentialBinding {
 	credentialType: McpRegistryCredentialType;
 	selector: string;
 	/**
-	 * Per-binding overrides, set when one registry entry fronts more than one
-	 * remote (for example an official server and its Gateway credits twin). The
-	 * endpoint, transport, request headers, and attribution then all follow the
-	 * chosen credential. A normal one-remote entry leaves these unset, so the
-	 * consumer falls back to the connection's own values.
+	 * Set when this binding reaches a different remote than the connection, for
+	 * example the Gateway credits route of an official server. It then replaces
+	 * the connection endpoint and the remote's configured headers.
 	 */
-	endpointUrl?: string;
-	endpointHostname?: string;
-	transport?: 'httpStreamable' | 'sse';
-	headers?: Record<string, string>;
-	attribution?: string;
+	endpoint?: { url: string; hostname: string };
 }
 
 export interface ResolvedMcpRegistryConnection {
@@ -110,12 +104,6 @@ export interface McpRegistryRuntime {
 	resolveConnection(
 		nodeTypeName: string,
 		selector?: string,
-		/**
-		 * Credential types present on the node. Used as a fallback for a node saved
-		 * before its entry merged with a twin: it has no `authentication` selector
-		 * yet, so the binding is matched by the credential the node already carries.
-		 */
-		nodeCredentialTypes?: string[],
 	): ResolvedMcpRegistryConnection | undefined;
 	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
 }
@@ -195,6 +183,13 @@ export function getMcpAuthHeaders(
 		}),
 	);
 }
+
+/**
+ * Marks an MCP registry server, or its node's `authentication` choice, as served
+ * by the AI Gateway and billed to Gateway credits. Mirrors the `__aiGatewayManaged`
+ * credential marker.
+ */
+export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
 
 /** Covers `mcpGatewayApi` and registry-specific variants like `firecrawlMcpGatewayApi`. */
 export type McpGatewayCredentialType = 'mcpGatewayApi' | `${string}McpGatewayApi`;

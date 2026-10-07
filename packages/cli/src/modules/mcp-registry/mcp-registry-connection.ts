@@ -5,10 +5,10 @@ import {
 	type ICredentialTypes,
 	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
-	type LiteralMcpRegistryConnection,
 	type McpGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
+	type McpRegistryCredentialBinding,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
@@ -35,6 +35,36 @@ export function getMcpRegistryGatewayCredentialTypeName(
 	return `${camelCase(server.slug)}McpGatewayApi`;
 }
 
+export function getMcpRegistryGatewayCredentialOption(
+	server: McpRegistryServer,
+): McpRegistryUsesCredential {
+	return {
+		credentialType: getMcpRegistryGatewayCredentialTypeName(server),
+		name: 'Gateway credits',
+		value: AI_GATEWAY_MANAGED_AUTH_TYPE,
+	};
+}
+
+/**
+ * The Gateway credits route of a server the AI Gateway also hosts, next to the
+ * server's own credentials. Undefined when the server has no such route.
+ */
+export function getGatewayRouteBinding(
+	server: McpRegistryServer,
+): McpRegistryCredentialBinding | undefined {
+	const endpoint = server.gatewayEndpointUrl ? parseUrl(server.gatewayEndpointUrl) : undefined;
+	if (!endpoint) return undefined;
+	return {
+		credentialType: getMcpRegistryGatewayCredentialTypeName(server),
+		selector: AI_GATEWAY_MANAGED_AUTH_TYPE,
+		endpoint: { url: endpoint.toString(), hostname: endpoint.hostname },
+	};
+}
+
+/**
+ * The server's own credential options. A Gateway credits route is not one of
+ * them: callers that can only connect with a stored credential read this list.
+ */
 export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
 ): McpRegistryUsesCredential[] {
@@ -44,13 +74,7 @@ export function getMcpRegistryCredentialOptions(
 	// Otherwise it never matches the node's credential and the connection resolves
 	// to nothing.
 	if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) {
-		return [
-			{
-				credentialType: getMcpRegistryGatewayCredentialTypeName(server),
-				name: 'Gateway credits',
-				value: 'gateway',
-			},
-		];
+		return [getMcpRegistryGatewayCredentialOption(server)];
 	}
 	return [
 		{
@@ -94,6 +118,8 @@ export function resolveMcpRegistryConnection(
 				? [{ credentialType, selector: value }]
 				: [],
 	);
+	const gatewayRoute = getGatewayRouteBinding(server);
+	if (gatewayRoute) credentialBindings.push(gatewayRoute);
 
 	// A templated remote's url is an unresolved `$self`-expression, not a
 	// literal URL, resolves per-credential once `prepareMcpRegistryConnection`
@@ -127,48 +153,16 @@ export function resolveMcpRegistryConnection(
 	}
 }
 
-/**
- * Collapse the connections of several rows that share a node type into one, so
- * the picker shows a single entry. Each binding keeps its own row's endpoint, so
- * the runtime routes by the chosen credential. Pass the already-resolved
- * connections. Returns null when a row is templated (no literal endpoint to pin)
- * or fewer than two rows resolve.
- */
-export function mergeMcpRegistryConnections(
-	connections: McpRegistryConnection[],
-): McpRegistryConnection | null {
-	const literal = connections.filter(
-		(connection): connection is LiteralMcpRegistryConnection => !connection.isTemplated,
-	);
-	if (literal.length < 2 || literal.length !== connections.length) return null;
-	// Headers and attribution are carried per binding, so drop the connection-level
-	// ones: a binding without its own must not inherit the first row's.
-	const merged = { ...literal[0] };
-	delete merged.headers;
-	delete merged.attribution;
-	return {
-		...merged,
-		credentialBindings: literal.flatMap(
-			({ credentialBindings, endpointUrl, endpointHostname, transport, headers, attribution }) =>
-				credentialBindings.map((binding) => ({
-					...binding,
-					endpointUrl,
-					endpointHostname,
-					transport,
-					...(headers ? { headers } : {}),
-					...(attribution ? { attribution } : {}),
-				})),
-		),
-	};
-}
-
 export function prepareMcpRegistryConnection({
 	connection,
 	credentialType,
 	credentialData,
 	headers: preparedHeaders,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
-	if (!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)) {
+	const binding = connection.credentialBindings.find(
+		(candidate) => candidate.credentialType === credentialType,
+	);
+	if (!binding) {
 		return {
 			ok: false,
 			error: {
@@ -192,14 +186,25 @@ export function prepareMcpRegistryConnection({
 	}
 
 	const { nodeTypeName, transport } = connection;
-	// A merged entry (official + Gateway credits twin) carries one endpoint per
-	// binding, so the endpoint follows the chosen credential. A one-remote entry
-	// leaves these unset and falls back to the connection's own endpoint below.
-	const selectedBinding = connection.credentialBindings.find(
-		(candidate) => candidate.credentialType === credentialType,
-	);
+
+	// A binding with its own remote (the Gateway credits route) skips the
+	// connection's endpoint and its headers, which belong to the official remote.
+	if (binding.endpoint) {
+		return {
+			ok: true,
+			value: {
+				nodeTypeName,
+				credentialType,
+				transport: 'httpStreamable',
+				endpointUrl: binding.endpoint.url,
+				headers,
+				allowedDomains: binding.endpoint.hostname,
+			},
+		};
+	}
+
 	// Credential headers win over registry-configured ones on a name clash
-	const mergedHeaders = { ...(selectedBinding?.headers ?? connection.headers), ...headers };
+	const mergedHeaders = { ...connection.headers, ...headers };
 
 	if (connection.isTemplated) {
 		const serverUrl = credentialData.serverUrl;
@@ -236,10 +241,10 @@ export function prepareMcpRegistryConnection({
 		value: {
 			nodeTypeName,
 			credentialType,
-			transport: selectedBinding?.transport ?? transport,
-			endpointUrl: selectedBinding?.endpointUrl ?? connection.endpointUrl,
+			transport,
+			endpointUrl: connection.endpointUrl,
 			headers: mergedHeaders,
-			allowedDomains: selectedBinding?.endpointHostname ?? connection.endpointHostname,
+			allowedDomains: connection.endpointHostname,
 		},
 	};
 }

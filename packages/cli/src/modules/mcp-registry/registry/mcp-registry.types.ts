@@ -1,6 +1,9 @@
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
+
+export { AI_GATEWAY_MANAGED_AUTH_TYPE };
 
 export type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
@@ -8,12 +11,6 @@ export type McpRegistryServerUpsertRow = Pick<
 >;
 
 const serverStatuses = ['active', 'deprecated'] as const;
-
-/**
- * `authType` value for an MCP server the AI Gateway hosts and bills to Gateway
- * credits. The value mirrors the `__aiGatewayManaged` credential marker.
- */
-export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
 
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
@@ -149,7 +146,13 @@ const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
 
 export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
 
-export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema>;
+export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema> & {
+	/**
+	 * Endpoint of the Gateway credits route for this server, when the AI Gateway
+	 * also hosts it. Set in memory when the overlay is merged, never persisted.
+	 */
+	gatewayEndpointUrl?: string;
+};
 export type McpRegistryIcon = McpRegistryServer['icons'][number];
 export type McpRegistryRemote = McpRegistryServer['remotes'][number];
 export type McpRegistryRemoteType = McpRegistryRemote['type'];

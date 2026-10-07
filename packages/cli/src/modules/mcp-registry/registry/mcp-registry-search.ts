@@ -10,6 +10,7 @@ import type { McpRegistryServer } from './mcp-registry.types';
 import { AI_GATEWAY_MANAGED_AUTH_TYPE } from './mcp-registry.types';
 import {
 	getConfiguredEndpointUrl,
+	getGatewayRouteBinding,
 	resolveMcpRegistryConnection,
 	toAgentMcpTransport,
 } from '../mcp-registry-connection';
@@ -28,6 +29,9 @@ export interface McpRegistrySearchResult {
 	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
 	 *  that cannot resolve it against a credential have to skip the row. */
 	isTemplated: boolean;
+	/** Set when the server can also run on Gateway credits instead of `credentialType`.
+	 *  To use them, set `authentication` to this value and send no credential. */
+	gatewayCredits?: { authentication: 'none' };
 }
 
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
@@ -54,30 +58,15 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		})),
 		metadata: { nodeTypeName: connection.nodeTypeName },
 		isTemplated: connection.isTemplated === true,
+		...(getGatewayRouteBinding(server)
+			? { gatewayCredits: { authentication: 'none' as const } }
+			: {}),
 	};
-}
-
-/**
- * A service offered both ways (own credential and Gateway credits) has two rows
- * sharing a slug. Keep one so discovery shows it once, preferring the
- * own-credential row to match the merged node's default; a lone row stands as is.
- */
-function collapseBySlug(servers: McpRegistryServer[]): McpRegistryServer[] {
-	const bySlug = new Map<string, McpRegistryServer>();
-	for (const server of servers) {
-		const key = camelCase(server.slug);
-		const kept = bySlug.get(key);
-		const preferOwn =
-			kept?.authType === AI_GATEWAY_MANAGED_AUTH_TYPE &&
-			server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE;
-		if (!kept || preferOwn) bySlug.set(key, server);
-	}
-	return [...bySlug.values()];
 }
 
 /** Map registry servers to the config-ready shape, skipping entries without a usable remote. */
 export function listMcpRegistryServers(servers: McpRegistryServer[]): McpRegistrySearchResult[] {
-	return collapseBySlug(servers).flatMap((server) => {
+	return servers.flatMap((server) => {
 		const result = toSearchResult(server);
 		return result ? [result] : [];
 	});

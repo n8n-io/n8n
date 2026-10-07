@@ -1,7 +1,10 @@
-import type { McpOAuth2CredentialType, McpRegistryConnection } from 'n8n-workflow';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	type McpOAuth2CredentialType,
+	type McpRegistryConnection,
+} from 'n8n-workflow';
 
 import {
-	mergeMcpRegistryConnections,
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
 } from '../mcp-registry-connection';
@@ -210,143 +213,28 @@ describe('prepareMcpRegistryConnection', () => {
 		});
 	});
 
-	it('routes to the selected binding own endpoint, not the connection default', () => {
-		const mergedConnection: McpRegistryConnection = {
-			...connection,
-			credentialBindings: [
-				{ credentialType, selector: 'oAuth2' },
-				{
-					credentialType: 'exampleMcpGatewayApi',
-					selector: 'gateway',
-					endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/example',
-					endpointHostname: 'gateway.n8n.io',
-					transport: 'httpStreamable',
-					headers: { 'User-Agent': 'gateway' },
-				},
-			],
-		};
-
+	it('routes the Gateway binding to its own endpoint without the remote headers', () => {
 		const result = prepareMcpRegistryConnection({
-			connection: mergedConnection,
-			credentialType: 'exampleMcpGatewayApi',
-			credentialData: { token: 'gateway-token' },
-			headers: { Authorization: 'Bearer gateway-token' },
-		});
-
-		expect(result).toMatchObject({
-			ok: true,
-			value: {
-				endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/example',
-				allowedDomains: 'gateway.n8n.io',
-				headers: { 'User-Agent': 'gateway', Authorization: 'Bearer gateway-token' },
-			},
-		});
-	});
-});
-
-describe('mergeMcpRegistryConnections', () => {
-	it('concatenates bindings and pins each to its own endpoint', () => {
-		const other: McpRegistryConnection = {
-			nodeTypeName: '@n8n/mcp-registry.example',
-			endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/example',
-			endpointHostname: 'gateway.n8n.io',
-			transport: 'httpStreamable',
-			credentialBindings: [{ credentialType: 'exampleMcpGatewayApi', selector: 'gateway' }],
-			isTemplated: false,
-		};
-
-		const merged = mergeMcpRegistryConnections([connection, other]);
-
-		expect(merged?.credentialBindings).toEqual([
-			{
-				credentialType,
-				selector: 'oAuth2',
-				endpointUrl: 'https://example.com/mcp',
-				endpointHostname: 'example.com',
-				transport: 'httpStreamable',
-			},
-			{
-				credentialType: 'exampleMcpGatewayApi',
-				selector: 'gateway',
-				endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/example',
-				endpointHostname: 'gateway.n8n.io',
-				transport: 'httpStreamable',
-			},
-		]);
-	});
-
-	it('returns null when a row is templated or fewer than two resolve', () => {
-		expect(mergeMcpRegistryConnections([connection])).toBeNull();
-		expect(mergeMcpRegistryConnections([connection, templatedConnection])).toBeNull();
-	});
-
-	it('carries each row own headers and attribution onto its binding', () => {
-		const official: McpRegistryConnection = {
-			...connection,
-			headers: { 'User-Agent': 'official' },
-			attribution: 'Official credit',
-		};
-		const gateway: McpRegistryConnection = {
-			nodeTypeName: '@n8n/mcp-registry.example',
-			endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/example',
-			endpointHostname: 'gateway.n8n.io',
-			transport: 'httpStreamable',
-			credentialBindings: [{ credentialType: 'exampleMcpGatewayApi', selector: 'gateway' }],
-			isTemplated: false,
-			headers: { 'User-Agent': 'gateway' },
-			attribution: 'Gateway credit',
-		};
-
-		const merged = mergeMcpRegistryConnections([official, gateway]);
-
-		expect(merged?.credentialBindings).toEqual([
-			expect.objectContaining({
-				credentialType,
+			connection: {
+				...connection,
 				headers: { 'User-Agent': 'official' },
-				attribution: 'Official credit',
-			}),
-			expect.objectContaining({
-				credentialType: 'exampleMcpGatewayApi',
-				headers: { 'User-Agent': 'gateway' },
-				attribution: 'Gateway credit',
-			}),
-		]);
-	});
-
-	it('does not leak the first row headers or attribution onto a row that has none', () => {
-		const official: McpRegistryConnection = {
-			...connection,
-			headers: { 'User-Agent': 'official' },
-			attribution: 'Official credit',
-		};
-		const gateway: McpRegistryConnection = {
-			nodeTypeName: '@n8n/mcp-registry.example',
-			endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/example',
-			endpointHostname: 'gateway.n8n.io',
-			transport: 'httpStreamable',
-			credentialBindings: [{ credentialType: 'exampleMcpGatewayApi', selector: 'gateway' }],
-			isTemplated: false,
-		};
-
-		const merged = mergeMcpRegistryConnections([official, gateway]);
-
-		// Dropped at the connection level: no fallback source for a bare binding.
-		expect(merged?.headers).toBeUndefined();
-		expect(merged?.attribution).toBeUndefined();
-		const gatewayBinding = merged?.credentialBindings.find(
-			(binding) => binding.credentialType === 'exampleMcpGatewayApi',
-		);
-		expect(gatewayBinding?.headers).toBeUndefined();
-		expect(gatewayBinding?.attribution).toBeUndefined();
-
-		// Selecting the bare binding yields only the credential headers, exactly.
-		const prepared = prepareMcpRegistryConnection({
-			connection: merged as McpRegistryConnection,
+				credentialBindings: [
+					{ credentialType, selector: 'oAuth2' },
+					{
+						credentialType: 'exampleMcpGatewayApi',
+						selector: AI_GATEWAY_MANAGED_AUTH_TYPE,
+						endpoint: {
+							url: 'https://gateway.n8n.io/v1/gateway/mcp/example',
+							hostname: 'gateway.n8n.io',
+						},
+					},
+				],
+			},
 			credentialType: 'exampleMcpGatewayApi',
 			credentialData: { token: 'gateway-token' },
-			headers: { Authorization: 'Bearer gateway-token' },
 		});
-		expect(prepared).toEqual({
+
+		expect(result).toEqual({
 			ok: true,
 			value: {
 				nodeTypeName: '@n8n/mcp-registry.example',

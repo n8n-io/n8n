@@ -152,6 +152,41 @@ describe('McpRegistryService', () => {
 			expect(await service.getBySlugs([n8nConnectMockServer.slug])).toEqual([n8nConnectMockServer]);
 		});
 
+		it('attaches a gateway server to the stored server with the same slug, so it stays one entry', async () => {
+			const { service, aiGatewayService } = createService();
+			const gatewayUrl = 'https://gateway.n8n.io/v1/gateway/mcp/notion';
+			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([
+				{
+					...n8nConnectMockServer,
+					slug: notionMockServer.slug,
+					remotes: [{ type: 'streamable-http', url: gatewayUrl }],
+				},
+			]);
+			const merged = { ...notionMockServer, gatewayEndpointUrl: gatewayUrl };
+
+			expect(await service.getAll()).toEqual([merged, linearMockServer]);
+			expect(await service.get(notionMockServer.slug)).toEqual(merged);
+			expect(await service.getBySlugs([notionMockServer.slug])).toEqual([merged]);
+		});
+
+		it('keeps a deprecated stored server active while the gateway still hosts it', async () => {
+			const deprecated: McpRegistryServer = { ...notionMockServer, status: 'deprecated' };
+			const { service, aiGatewayService } = createService({ storedServers: [deprecated] });
+			const gatewayUrl = 'https://gateway.n8n.io/v1/gateway/mcp/notion';
+			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([
+				{
+					...n8nConnectMockServer,
+					slug: notionMockServer.slug,
+					remotes: [{ type: 'streamable-http', url: gatewayUrl }],
+				},
+			]);
+			const merged = { ...deprecated, status: 'active', gatewayEndpointUrl: gatewayUrl };
+
+			// Search and the loader (which reads deprecated rows too) see the same row.
+			expect(await service.getAll()).toEqual([merged]);
+			expect(await service.getAll({ includeDeprecated: true })).toEqual([merged]);
+		});
+
 		it('drops an n8n Connect MCP server that is stored in the DB, so it cannot duplicate the overlay', async () => {
 			const storedManaged: McpRegistryServer = {
 				...n8nConnectMockServer,

@@ -237,10 +237,11 @@ describe('buildMcpClientForServer — gateway-hosted registry server', () => {
 					{ credentialType: 'firecrawlMcpOAuth2Api', selector: 'oAuth2' },
 					{
 						credentialType: 'firecrawlMcpGatewayApi',
-						selector: 'gateway',
-						endpointUrl: 'http://localhost:3000/v1/gateway/mcp/firecrawl',
-						endpointHostname: 'localhost',
-						transport: 'httpStreamable',
+						selector: '__aiGatewayManaged',
+						endpoint: {
+							url: 'http://localhost:3000/v1/gateway/mcp/firecrawl',
+							hostname: 'localhost',
+						},
 					},
 				],
 			}),

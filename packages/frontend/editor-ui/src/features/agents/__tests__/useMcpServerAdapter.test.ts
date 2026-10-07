@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from 'n8n-workflow';
 import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -115,6 +116,31 @@ describe('useMcpServerAdapter', () => {
 				},
 			});
 		});
+
+		it('maps a registry node set to Gateway credits to the no-credential shape', () => {
+			// The own credential stays on the node, inactive, after the user switches.
+			const node: INode = {
+				id: 'firecrawl-mcp',
+				name: 'firecrawl-mcp',
+				type: '@n8n/mcp-registry.firecrawl',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					endpointUrl: 'https://mcp.firecrawl.dev/mcp',
+					serverTransport: 'httpStreamable',
+					authentication: AI_GATEWAY_MANAGED_AUTH_TYPE,
+				},
+				credentials: {
+					firecrawlMcpOAuth2Api: { id: 'own-credential', name: 'My Firecrawl' },
+					firecrawlMcpGatewayApi: { id: null, name: '', __aiGatewayManaged: true },
+				},
+			};
+
+			expect(nodeToMcpServer(node)).toMatchObject({
+				authentication: 'none',
+				credential: undefined,
+			});
+		});
 	});
 
 	describe('mcpServerToNode()', () => {
@@ -189,6 +215,44 @@ describe('useMcpServerAdapter', () => {
 					__aiGatewayManaged: true,
 				},
 			});
+		});
+		it('selects the Gateway credits route on a registry server that also has its own credential', () => {
+			const nodeType = {
+				...makeMcpNodeType(1),
+				name: '@n8n/mcp-registry.firecrawl',
+				credentials: [
+					{
+						name: 'firecrawlMcpOAuth2Api',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+					{
+						name: 'firecrawlMcpGatewayApi',
+						required: true,
+						displayOptions: { show: { authentication: [AI_GATEWAY_MANAGED_AUTH_TYPE] } },
+					},
+				],
+			} satisfies INodeTypeDescription;
+			const server = {
+				name: 'firecrawl-mcp',
+				url: 'https://mcp.firecrawl.dev/mcp',
+				transport: 'streamableHttp' as const,
+				metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+			};
+
+			const gatewayNode = mcpServerToNode({ ...server, authentication: 'none' }, nodeType);
+			expect(gatewayNode.parameters.authentication).toBe(AI_GATEWAY_MANAGED_AUTH_TYPE);
+			expect(gatewayNode.credentials).toEqual({
+				firecrawlMcpGatewayApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+
+			// An own credential type without a credential yet is not Gateway credits.
+			const ownNode = mcpServerToNode(
+				{ ...server, authentication: 'firecrawlMcpOAuth2Api' },
+				nodeType,
+			);
+			expect(ownNode.parameters.authentication).toBe('oAuth2');
+			expect(ownNode.credentials).toBeUndefined();
 		});
 	});
 });

@@ -1,5 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import { NodeHelpers, isMcpGatewayAuthentication } from 'n8n-workflow';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	NodeHelpers,
+	isMcpGatewayAuthentication,
+} from 'n8n-workflow';
 import type { INode, INodeCredentials, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -243,15 +247,20 @@ function resolveAuthenticationParameterFromCredentialType(
 
 /**
  * An n8n Connect MCP registry node declares its credential as a `*McpGatewayApi`
- * type. Such a credential is managed by the AI Gateway and has no stored id, so
- * the round-tripped config carries no `credential`. Return the type so we can
- * rebuild the managed slot on the node.
+ * type, alone or next to the server's own credentials. Such a credential is
+ * managed by the AI Gateway and has no stored id, so the round-tripped config
+ * carries no `credential`. Return the type so we can rebuild the managed slot.
  */
 function resolveGatewayCredentialType(nodeType: INodeTypeDescription): string | undefined {
-	const credentialType = nodeType.credentials?.[0]?.name;
-	return typeof credentialType === 'string' && isMcpGatewayAuthentication(credentialType)
-		? credentialType
-		: undefined;
+	return nodeType.credentials?.find(({ name }) => isMcpGatewayAuthentication(name))?.name;
+}
+
+/** The config shape of a Gateway credits server: no own credential selected. */
+function isGatewayCreditsConfig(server: AgentJsonMcpServerConfig): boolean {
+	return (
+		!server.credential &&
+		(server.authentication === 'none' || isMcpGatewayAuthentication(server.authentication))
+	);
 }
 
 export function mcpServerToNode(
@@ -259,9 +268,11 @@ export function mcpServerToNode(
 	nodeTypeDescription: INodeTypeDescription,
 ): INode {
 	const credentialType = authenticationToCredentialType(server.authentication);
-	const gatewayCredentialType = resolveGatewayCredentialType(nodeTypeDescription);
+	const gatewayCredentialType = isGatewayCreditsConfig(server)
+		? resolveGatewayCredentialType(nodeTypeDescription)
+		: undefined;
 	let credentials: INodeCredentials | undefined;
-	if (gatewayCredentialType && !server.credential) {
+	if (gatewayCredentialType) {
 		// Rebuild the managed slot so the config modal opens with the gateway
 		// credential already selected and does not auto-enable it (which would
 		// trigger a spurious workflow save).
@@ -276,7 +287,10 @@ export function mcpServerToNode(
 	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
 	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
-		? resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription)
+		? resolveAuthenticationParameterFromCredentialType(
+				gatewayCredentialType ?? server.authentication,
+				nodeTypeDescription,
+			)
 		: server.authentication;
 
 	return {
@@ -305,8 +319,13 @@ export function nodeToMcpServer(
 		toStringValue(node.parameters.sseEndpoint) ??
 		original?.url ??
 		'';
-	const credential = resolveCredentialId(node.credentials);
-	const authentication = resolveAuthenticationFromNode(node);
+	// The Gateway credits choice wins over an own credential left inactive on the
+	// node after the user switched auth.
+	const isGatewayCreditsSelected =
+		isMcpRegistryNodeType(node.type) &&
+		node.parameters.authentication === AI_GATEWAY_MANAGED_AUTH_TYPE;
+	const credential = isGatewayCreditsSelected ? undefined : resolveCredentialId(node.credentials);
+	const authentication = isGatewayCreditsSelected ? 'none' : resolveAuthenticationFromNode(node);
 	const timeout = toNumber((node.parameters.options as { timeout?: unknown } | undefined)?.timeout);
 
 	return {

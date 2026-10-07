@@ -10,7 +10,9 @@ import type {
 import {
 	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
+	getMcpRegistryGatewayCredentialOption,
 	getMcpRegistryGatewayCredentialTypeName,
+	getGatewayRouteBinding,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 	getConfiguredEndpointUrl,
@@ -135,13 +137,30 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 function serverToGatewayCredentialDescription(server: McpRegistryServer): ICredentialType | null {
 	const remote = resolveMcpRegistryConnection(server);
 	if (!remote || remote.isTemplated) return null;
+	return buildGatewayCredentialDescription(server, remote.endpointHostname);
+}
 
+/**
+ * The Gateway credits credential type for a server that also has its own
+ * credentials. Pinned to the gateway host, not to the server's own remote.
+ */
+export function serverToGatewayRouteCredentialDescription(
+	server: McpRegistryServer,
+): ICredentialType | null {
+	const hostname = getGatewayRouteBinding(server)?.endpoint?.hostname;
+	return hostname ? buildGatewayCredentialDescription(server, hostname) : null;
+}
+
+function buildGatewayCredentialDescription(
+	server: McpRegistryServer,
+	hostname: string,
+): ICredentialType {
 	return {
 		name: getMcpRegistryGatewayCredentialTypeName(server),
 		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
 		displayName: `${server.title} MCP Gateway Credits`,
 		extends: [MCP_BASE_GATEWAY_CREDENTIAL_NAME],
-		properties: buildDomainRestrictionProperties(remote.endpointHostname),
+		properties: buildDomainRestrictionProperties(hostname),
 	};
 }
 
@@ -240,53 +259,68 @@ function serverToExtendedCredentialDescription(
 }
 
 /**
+ * The credentials a user can pick for the server's node. A Gateway credits
+ * route comes last, so the default stays the server's own credential and a
+ * node saved before the route existed keeps working.
+ */
+function getCredentialChoices(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): McpRegistryUsesCredential[] {
+	let own: McpRegistryUsesCredential[];
+	switch (server.authType) {
+		case 'oauth2':
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
+			own = getMcpRegistryCredentialOptions(server);
+			break;
+		case 'extendsCredential':
+			own = getValidatedExtendsCredential(server, isKnownCredentialType)
+				? getMcpRegistryCredentialOptions(server)
+				: [];
+			break;
+		case 'usesCredentials':
+			own = getValidatedUsesCredentials(server, isKnownCredentialType) ?? [];
+			break;
+		default:
+			own = [];
+	}
+	return own.length > 0 && getGatewayRouteBinding(server)
+		? [...own, getMcpRegistryGatewayCredentialOption(server)]
+		: own;
+}
+
+/**
  * Get the `credentials` property for node description based on the server's auth type
  */
 function getNodeDescriptionCredentials(
 	server: McpRegistryServer,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeCredentialDescription[] {
-	switch (server.authType) {
-		case 'oauth2':
-			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
-		case AI_GATEWAY_MANAGED_AUTH_TYPE:
-			return [{ name: getMcpRegistryGatewayCredentialTypeName(server), required: true }];
-		case 'extendsCredential': {
-			const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
-			if (!validated) return [];
-			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
-		}
-		case 'usesCredentials': {
-			const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
-			if (!credentials) return [];
-			if (credentials.length === 1) {
-				return [{ name: credentials[0].credentialType, required: true }];
-			}
-			return credentials.map(({ credentialType, value }) => ({
-				name: credentialType,
-				required: true,
-				displayOptions: { show: { authentication: [value] } },
-			}));
-		}
-		default:
-			return [];
+	const choices = getCredentialChoices(server, isKnownCredentialType);
+	if (choices.length === 1) {
+		return [{ name: choices[0].credentialType, required: true }];
 	}
+	return choices.map(({ credentialType, value }) => ({
+		name: credentialType,
+		required: true,
+		displayOptions: { show: { authentication: [value] } },
+	}));
 }
 
 function getAuthenticationProperty(
 	server: McpRegistryServer,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeProperties | null {
-	const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
-	if (!credentials || credentials.length < 2) return null;
+	const choices = getCredentialChoices(server, isKnownCredentialType);
+	if (choices.length < 2) return null;
 
 	return {
 		displayName: 'Authentication',
 		name: 'authentication',
 		type: 'options',
 		noDataExpression: true,
-		options: credentials.map(({ name, value }) => ({ name, value })),
-		default: credentials[0].value,
+		options: choices.map(({ name, value }) => ({ name, value })),
+		default: choices[0].value,
 	};
 }
 const ICON_MIME_PREFERENCE: Array<McpRegistryIcon['mimeType']> = [
@@ -408,58 +442,6 @@ export function serverToNodeDescription(
 		...description.builderHint,
 		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,
 	};
-
-	return description;
-}
-
-/**
- * Collapse several rows that share a node type (same slug) into one description
- * whose single `authentication` selector lists each row's credential choice.
- * Display fields come from the first row. Returns null when the rows yield fewer
- * than two distinct choices, so there is nothing to pick between.
- */
-export function serversToNodeDescription(
-	servers: McpRegistryServer[],
-	baseDescription: INodeTypeDescription,
-	isKnownCredentialType: IsKnownCredentialType,
-): INodeTypeDescription | null {
-	const options = servers.flatMap((server) => {
-		const credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
-		return getMcpRegistryCredentialOptions(server).filter((option) =>
-			credentials.some((credential) => credential.name === option.credentialType),
-		);
-	});
-	const selectors = new Set(options.map((option) => option.value));
-	if (options.length < 2 || selectors.size !== options.length) {
-		return null;
-	}
-
-	// Display fields (and the deprecated/hidden flag) come from an active row, so
-	// a deprecated variant sharing the slug does not hide the merged node.
-	const displayServer = servers.find((server) => server.status !== 'deprecated') ?? servers[0];
-	const description = serverToNodeDescription(
-		displayServer,
-		baseDescription,
-		isKnownCredentialType,
-	);
-	if (!description) return null;
-
-	description.credentials = options.map((option) => ({
-		name: option.credentialType,
-		required: true,
-		displayOptions: { show: { authentication: [option.value] } },
-	}));
-	description.properties = [
-		{
-			displayName: 'Authentication',
-			name: 'authentication',
-			type: 'options',
-			noDataExpression: true,
-			options: options.map((option) => ({ name: option.name, value: option.value })),
-			default: options[0].value,
-		},
-		...description.properties.filter((property) => property.name !== 'authentication'),
-	];
 
 	return description;
 }

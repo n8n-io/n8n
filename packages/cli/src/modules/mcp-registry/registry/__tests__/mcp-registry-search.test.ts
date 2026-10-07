@@ -127,36 +127,39 @@ describe('searchMcpRegistryServers', () => {
 	});
 });
 
-describe('collapsing rows that share a slug', () => {
-	const official = server({ slug: 'firecrawl', title: 'Firecrawl' });
-	const gateway = server({
-		slug: 'firecrawl',
-		title: 'Firecrawl',
-		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
-		remotes: [{ type: 'streamable-http', url: 'https://gateway.n8n.io/v1/gateway/mcp/firecrawl' }],
-	});
+describe('Gateway credits in search results', () => {
+	it('marks a server the gateway also hosts, keeping its own credential as the default', () => {
+		const [result] = listMcpRegistryServers([
+			server({
+				slug: 'firecrawl',
+				gatewayEndpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/firecrawl',
+			}),
+		]);
 
-	it('returns one result for a service offered both ways, keeping the own-credential row', () => {
-		const results = listMcpRegistryServers([official, gateway]);
-
-		expect(results).toHaveLength(1);
-		expect(results[0]).toMatchObject({
-			slug: 'firecrawl',
+		expect(result).toMatchObject({
 			authentication: 'firecrawlMcpOAuth2Api',
+			gatewayCredits: { authentication: 'none' },
 		});
 	});
 
-	it('prefers the own-credential row regardless of order', () => {
-		const results = listMcpRegistryServers([gateway, official]);
+	it('leaves the marker off a server without a Gateway credits route', () => {
+		const [result] = listMcpRegistryServers([server({ slug: 'firecrawl' })]);
 
-		expect(results).toHaveLength(1);
-		expect(results[0].authentication).toBe('firecrawlMcpOAuth2Api');
+		expect(result.gatewayCredits).toBeUndefined();
 	});
 
-	it('keeps a lone Gateway credits row', () => {
-		const results = listMcpRegistryServers([gateway]);
+	it('surfaces a gateway-only server as needing no credential', () => {
+		const [result] = listMcpRegistryServers([
+			server({
+				slug: 'firecrawl',
+				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+				remotes: [
+					{ type: 'streamable-http', url: 'https://gateway.n8n.io/v1/gateway/mcp/firecrawl' },
+				],
+			}),
+		]);
 
-		expect(results).toHaveLength(1);
-		expect(results[0]).toMatchObject({ slug: 'firecrawl', authentication: 'none' });
+		expect(result).toMatchObject({ authentication: 'none', credentialType: '' });
+		expect(result.gatewayCredits).toBeUndefined();
 	});
 });
