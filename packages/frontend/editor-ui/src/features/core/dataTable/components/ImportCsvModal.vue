@@ -8,8 +8,15 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import { N8nButton, N8nIcon, N8nText, N8nCallout } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 import { ElUpload } from 'element-plus';
 import type { UploadFile } from 'element-plus';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
@@ -155,9 +162,17 @@ const reset = () => {
 	clearUploadMetadata();
 };
 
-const isModalOpen = computed(() => uiStore.modalsById[props.modalName]?.open);
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
-watch(isModalOpen, (open) => {
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+watch(modalOpen, (open) => {
 	if (!open) {
 		reset();
 	}
@@ -174,14 +189,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
-		:title="i18n.baseText('dataTable.importCsv.title')"
-		:center="true"
-		width="540px"
-		:event-bus="undefined"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="i18n.baseText('dataTable.importCsv.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<div :class="$style.content">
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('dataTable.importCsv.description') }}
@@ -279,8 +293,8 @@ onBeforeUnmount(() => {
 					</N8nText>
 				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
@@ -298,8 +312,8 @@ onBeforeUnmount(() => {
 					@click="onImport"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
