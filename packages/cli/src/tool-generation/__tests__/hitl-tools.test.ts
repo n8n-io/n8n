@@ -1,3 +1,4 @@
+import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	EngineResponse,
 	IExecuteFunctions,
@@ -231,6 +232,68 @@ describe('hitl-tools', () => {
 			fullNodeWrapper.description.builderHint = { searchHint: 'Use for Slack' };
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			expect(result.description.builderHint?.searchHint).toBe('Use for Slack');
+		});
+
+		describe('workflow validation', () => {
+			const validate = (connections: WorkflowJSON['connections']) => {
+				const hitlTool = convertNodeToHitlTool(fullNodeWrapper);
+				const nodeTypesProvider = {
+					getByNameAndVersion: (type: string) =>
+						type === 'n8n-nodes-base.slackHitlTool' ? hitlTool : { description: { inputs: [] } },
+				};
+				const workflow: WorkflowJSON = {
+					name: 'Approval',
+					nodes: [
+						{
+							id: 'agent',
+							name: 'Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3.1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'slack',
+							name: 'Slack',
+							type: 'n8n-nodes-base.slackHitlTool',
+							typeVersion: 1,
+							position: [0, 200],
+							parameters: {},
+						},
+						{
+							id: 'http-request',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequestTool',
+							typeVersion: 4.2,
+							position: [0, 400],
+							parameters: {},
+						},
+					],
+					connections,
+				};
+				return validateWorkflow(workflow, {
+					nodeTypesProvider: nodeTypesProvider as never,
+					allowDisconnectedNodes: true,
+				}).errors.filter((error) => error.code === 'MISSING_REQUIRED_INPUT');
+			};
+
+			it('should report an approval tool with no tool connected', () => {
+				const errors = validate({
+					Slack: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				});
+
+				expect(errors).toHaveLength(1);
+				expect(errors[0].nodeName).toBe('Slack');
+			});
+
+			it('should accept an approval tool with a tool connected', () => {
+				const errors = validate({
+					Slack: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					'HTTP Request': { ai_tool: [[{ node: 'Slack', type: 'ai_tool', index: 0 }]] },
+				});
+
+				expect(errors).toEqual([]);
+			});
 		});
 
 		it('should keep webhooks in description', () => {
