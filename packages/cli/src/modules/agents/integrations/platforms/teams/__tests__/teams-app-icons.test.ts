@@ -2,20 +2,37 @@ import type { AgentPersonalisation } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { icons as lucide } from '@iconify-json/lucide';
+import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
 import { readRgbaPixels, type Rgba } from './png-pixels';
-import { renderTeamsAppIcons } from '../teams-app-icons';
+import { buildTeamsIconSvgs, renderTeamsAppIcons } from '../teams-app-icons';
 
-vi.mock('node:fs/promises', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('node:fs/promises')>();
-	return { ...actual, readFile: vi.fn(actual.readFile) };
+const workers = vi.hoisted(() => ({ live: 0, mostAtOnce: 0 }));
+
+// Counts workers alive at once. A worker counts until `terminate()` settles,
+// which the renderer awaits before it hands the next render a turn.
+vi.mock('node:worker_threads', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:worker_threads')>();
+	class CountedWorker extends actual.Worker {
+		constructor(...args: ConstructorParameters<typeof actual.Worker>) {
+			super(...args);
+			workers.live++;
+			workers.mostAtOnce = Math.max(workers.mostAtOnce, workers.live);
+		}
+
+		async terminate() {
+			const code = await super.terminate();
+			workers.live--;
+			return code;
+		}
+	}
+	return { ...actual, Worker: CountedWorker };
 });
 
-const logger = mockInstance(Logger);
+mockInstance(Logger);
 
 const personalisation = (
 	icon: string,
@@ -125,48 +142,31 @@ describe('renderTeamsAppIcons', () => {
 		).resolves.toBeUndefined();
 	});
 
-	describe('when the icon cannot be drawn', () => {
-		const readFileMock = vi.mocked(readFile);
+	it('renders downloads that arrive together one at a time', async () => {
+		workers.mostAtOnce = 0;
 
-		it('keeps the bundled icons when the icon set cannot be read', async () => {
-			readFileMock.mockRejectedValueOnce(new Error('EACCES'));
+		const results = await Promise.all(
+			['bot', 'heart', 'mail'].map(
+				async (icon) => await renderTeamsAppIcons(personalisation(icon)),
+			),
+		);
 
-			await expect(renderTeamsAppIcons(personalisation('bot'))).resolves.toBeUndefined();
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not draw the agent icon for the Teams app',
-				expect.objectContaining({ icon: 'bot' }),
-			);
-		});
-
-		it('keeps the bundled icons when a path uses syntax the renderer does not know', async () => {
-			const body = '<path fill="none" stroke="currentColor" d="M0 0X1 1"/>';
-			readFileMock.mockResolvedValueOnce(JSON.stringify({ icons: { bot: { body } } }));
-
-			await expect(renderTeamsAppIcons(personalisation('bot'))).resolves.toBeUndefined();
-			expect(logger.warn).toHaveBeenCalled();
-		});
-
-		it('does not log an icon name Lucide does not have', async () => {
-			logger.warn.mockClear();
-
-			await renderTeamsAppIcons(personalisation('not-a-lucide-icon'));
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
+		expect(results.every((icons) => icons?.color.length)).toBe(true);
+		expect(workers.mostAtOnce).toBe(1);
 	});
 
-	it('draws every stroked Lucide icon', async () => {
+	it('draws every Lucide icon', async () => {
+		// Rendered here rather than through workers, which would take minutes for 1,803 icons.
+		await initWasm(readFileSync(require.resolve('@resvg/resvg-wasm/index_bg.wasm')));
 		const missing: string[] = [];
 		for (const name of Object.keys(lucide.icons)) {
-			const icons = await renderTeamsAppIcons(personalisation(name));
-			const drawn = icons && readRgbaPixels(icons.outline).some(({ a }) => a === 255);
-			if (!drawn) missing.push(name);
+			const svgs = await buildTeamsIconSvgs(name, personalisation(name).gradient);
+			const outline = svgs && Buffer.from(new Resvg(svgs.outline).render().asPng());
+			if (!outline || !readRgbaPixels(outline).some(({ a }) => a === 255)) missing.push(name);
 		}
 
-		// The one fill-only icon keeps the bundled icons.
-		expect(missing).toEqual(['search-large']);
-		// Draws all 1,803 icons, which takes a few seconds.
-	}, 30_000);
+		expect(missing).toEqual([]);
+	}, 60_000);
 
 	it('reads the same Lucide release the editor picker offers', () => {
 		// The picker reads Lucide from `@iconify/json`, a separately versioned
