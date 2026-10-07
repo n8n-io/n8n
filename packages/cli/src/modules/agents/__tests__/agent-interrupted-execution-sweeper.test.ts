@@ -78,7 +78,9 @@ describe('AgentInterruptedExecutionSweeper', () => {
 				id: 'execution-1',
 				threadId: 'thread-1',
 				status: 'running',
-				startedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS * 2),
+				startedAt: new Date(
+					Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS * 2 * 1000,
+				),
 				updatedAt: new Date(),
 			} as AgentExecution,
 		]);

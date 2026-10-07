@@ -1,4 +1,4 @@
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { AgentInterruptedExecutionSweeper } from './agent-interrupted-execution-sweeper';
@@ -11,8 +11,8 @@ import { AgentInterruptedExecutionSweeper } from './agent-interrupted-execution-
 export class AgentInterruptedExecutionSweepTask implements SystemTask {
 	readonly name = 'agent-interrupted-execution-sweep';
 
-	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
-		AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS,
 	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';

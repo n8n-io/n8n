@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
@@ -9,7 +10,7 @@ import { AgentExecutionRepository } from './repositories/agent-execution.reposit
 
 @Service()
 export class AgentInterruptedExecutionSweeper {
-	static readonly LIVENESS_GRACE_MS = 2 * 60 * 1000;
+	static readonly LIVENESS_GRACE_SECONDS = 2 * Time.minutes.toSeconds;
 
 	constructor(
 		private readonly logger: Logger,
@@ -31,19 +32,18 @@ export class AgentInterruptedExecutionSweeper {
 			return;
 		}
 
+		const graceMs =
+			AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS * Time.seconds.toMilliseconds;
 		for (const execution of running) {
 			if (this.stopped(signal, 'finalize')) return;
 			try {
-				if (
-					execution.updatedAt.getTime() >
-					Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS
-				) {
+				if (execution.updatedAt.getTime() > Date.now() - graceMs) {
 					continue;
 				}
 				if (
 					await this.executionService.finalizeInterruptedExecution(
 						execution,
-						new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS),
+						new Date(Date.now() - graceMs),
 					)
 				) {
 					this.logger.info('Marked abandoned agent execution as interrupted', {
