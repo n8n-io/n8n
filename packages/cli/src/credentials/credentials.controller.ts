@@ -43,9 +43,8 @@ import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { CredentialRequest } from '@/requests';
+import { CredentialRequest, listQueryOptionsFromQuery } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
@@ -84,15 +83,14 @@ export class CredentialsController {
 		}
 	}
 
-	// oxlint-disable-next-line typescript/no-deprecated
-	@Get('/', { middlewares: listQueryMiddleware })
+	@Get('/')
 	async getMany(
 		req: CredentialRequest.GetMany,
 		_res: unknown,
 		@Query query: CredentialsGetManyRequestQuery,
 	) {
 		const credentials = await this.credentialsService.getMany(req.user, {
-			listQueryOptions: req.listQueryOptions,
+			listQueryOptions: listQueryOptionsFromQuery(query),
 			includeScopes: query.includeScopes,
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,

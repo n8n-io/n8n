@@ -1,7 +1,5 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 
-import type { ListQuery } from '@/requests';
-
 export declare namespace TestRunsRequest {
 	namespace RouteParams {
 		type WorkflowId = {
@@ -15,9 +13,7 @@ export declare namespace TestRunsRequest {
 
 	type Create = AuthenticatedRequest<RouteParams.WorkflowId>;
 
-	type GetMany = AuthenticatedRequest<RouteParams.WorkflowId, {}, {}, ListQuery.Params> & {
-		listQueryOptions: ListQuery.Options;
-	};
+	type GetMany = AuthenticatedRequest<RouteParams.WorkflowId>;
 
 	type GetOne = AuthenticatedRequest<RouteParams.WorkflowId & RouteParams.TestRunId>;
 

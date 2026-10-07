@@ -208,6 +208,11 @@ export {
 } from './variables/variable-write-public.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
+export {
+	WorkflowListQueryDto,
+	McpWorkflowsListQueryDto,
+	TestRunsListQueryDto,
+} from './list-query.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 export type { CredentialConnectionStatus } from './credentials/credential-connection-status';
 

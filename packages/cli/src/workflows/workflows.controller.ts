@@ -6,6 +6,7 @@ import {
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
 	ManualRunDto,
+	WorkflowListQueryDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 	type WorkflowPublicationStatus,
@@ -46,7 +47,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
-import { listQueryMiddleware } from '@/middlewares';
+import { listQueryOptionsFromQuery } from '@/requests';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
@@ -124,27 +125,29 @@ export class WorkflowsController {
 		return { ...savedWorkflowWithMetaData, scopes, checksum };
 	}
 
-	// oxlint-disable-next-line typescript/no-deprecated
-	@Get('/', { middlewares: listQueryMiddleware })
-	async getAll(req: WorkflowRequest.GetMany, res: express.Response) {
+	@Get('/')
+	async getAll(
+		req: AuthenticatedRequest,
+		res: express.Response,
+		@Query query: WorkflowListQueryDto,
+	) {
 		try {
-			const userCanListProjectFolders = req.listQueryOptions?.filter?.projectId
-				? await userHasScopes(req.user, ['folder:list'], false, {
-						projectId: req.listQueryOptions?.filter?.projectId as string,
-					})
-				: true;
+			const options = listQueryOptionsFromQuery(query);
+			const projectId = options.filter?.projectId;
+			const userCanListProjectFolders =
+				typeof projectId === 'string' && projectId
+					? await userHasScopes(req.user, ['folder:list'], false, {
+							projectId,
+						})
+					: true;
 
-			const { workflows: data, count } = await this.workflowService.getMany(
-				req.user,
-				req.listQueryOptions,
-				{
-					includeScopes: !!req.query.includeScopes,
-					includeFolders: userCanListProjectFolders && !!req.query.includeFolders,
-					onlySharedWithMe: !!req.query.onlySharedWithMe,
-					// The list UI renders the publication badge
-					includePublicationStatus: true,
-				},
-			);
+			const { workflows: data, count } = await this.workflowService.getMany(req.user, options, {
+				includeScopes: !!query.includeScopes,
+				includeFolders: userCanListProjectFolders && !!query.includeFolders,
+				onlySharedWithMe: !!query.onlySharedWithMe,
+				// The list UI renders the publication badge
+				includePublicationStatus: true,
+			});
 
 			res.json({ count, data });
 		} catch (maybeError) {

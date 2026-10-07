@@ -1,5 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { CredentialSharingRelation, ListQuery } from '@n8n/db';
+import type { CredentialSharingRelation } from '@n8n/db';
 import { CredentialsRepository, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -584,14 +584,14 @@ describe('CredentialsRepository', () => {
 
 			// Both approaches need an explicit order: without one, Postgres is free to
 			// return the rows in any order, and the two queries use different plans.
-			const oldOptions: ListQuery.Options = {
+			const oldOptions = {
 				filter: { projectId: teamProject.id, name: 'Test' },
 				take: 2,
 				skip: 0,
 				sortBy: 'id:asc',
 			};
 
-			const newOptions: ListQuery.Options = {
+			const newOptions = {
 				filter: { name: 'Test' },
 				take: 2,
 				skip: 0,

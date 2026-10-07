@@ -1,11 +1,11 @@
-import { StartTestRunRequestDto, type MetricScale } from '@n8n/api-types';
+import { StartTestRunRequestDto, TestRunsListQueryDto, type MetricScale } from '@n8n/api-types';
 import {
 	EvaluationConfigRepository,
 	TestCaseExecutionRepository,
 	TestRunRepository,
 } from '@n8n/db';
 import type { TestRun, User } from '@n8n/db';
-import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, Query, RestController } from '@n8n/decorators';
 import { type Scope } from '@n8n/permissions';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
@@ -15,7 +15,7 @@ import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
-import { listQueryMiddleware } from '@/middlewares';
+import { listQueryOptionsFromQuery } from '@/requests';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -106,16 +106,20 @@ export class TestRunsController {
 		});
 	}
 
-	// oxlint-disable-next-line typescript/no-deprecated
-	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
-	async getMany(req: TestRunsRequest.GetMany) {
+	@Get('/:workflowId/test-runs')
+	async getMany(
+		req: TestRunsRequest.GetMany,
+		_res: express.Response,
+		@Query query: TestRunsListQueryDto,
+	) {
 		const { workflowId } = req.params;
 
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
+		const options = listQueryOptionsFromQuery(query);
 		const testRuns = await this.testRunRepository.getMany(workflowId, {
-			offset: req.listQueryOptions?.skip,
-			limit: req.listQueryOptions?.take,
+			offset: options.skip,
+			limit: options.take,
 		});
 		return await this.attachMetricScales(testRuns, workflowId);
 	}
