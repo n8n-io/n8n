@@ -1,4 +1,3 @@
-import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -12,7 +11,7 @@ import {
 import type { DatabricksOAuth2Credential } from '@utils/databricks/token-provider';
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
-import { commonOptions } from '../../agents/Agent/agents/ToolsAgent/options';
+import { getToolsAgentProperties } from '../../agents/Agent/agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../../agents/Agent/agents/ToolsAgent/V2/execute';
 import { getInputs } from '../../agents/Agent/utils';
 import { MlflowSpanCollector } from './mlflow/span-collector';
@@ -121,10 +120,9 @@ export class DatabricksAiAgent implements INodeType {
 		name: 'databricksAiAgent',
 		icon: { light: 'file:databricks.svg', dark: 'file:databricks.dark.svg' },
 		group: ['transform'],
-		// The shared ToolsAgent executor only takes the streaming branch at
-		// typeVersion >= 2.1 (see execute.ts); this node exposes "Enable
-		// Streaming" default-on, so it must declare at least that version.
-		version: [2.1],
+		// 2.2: the minimum version where the shared executor streams (execute.ts)
+		// and `getToolsAgentProperties` shows the streaming toggle (description.ts).
+		version: [2.2],
 		hidden: true,
 		description: 'An AI agent that exports its runs to MLflow Tracing in Databricks',
 		defaults: {
@@ -179,24 +177,7 @@ export class DatabricksAiAgent implements INodeType {
 			},
 			exportTracesField,
 			experimentField,
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				default: {},
-				placeholder: 'Add Option',
-				options: [
-					...commonOptions,
-					getBatchingOptionFields(undefined, 1),
-					{
-						displayName: 'Enable Streaming',
-						name: 'enableStreaming',
-						type: 'boolean',
-						default: true,
-						description: 'Whether to stream the response as the model generates it',
-					},
-				],
-			},
+			...getToolsAgentProperties({ withStreaming: true }),
 		],
 	};
 

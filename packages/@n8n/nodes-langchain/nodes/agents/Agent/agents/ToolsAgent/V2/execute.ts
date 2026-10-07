@@ -319,9 +319,8 @@ export async function toolsAgentExecute(
 
 		for (let i = 0; i < items.length; i += batchSize) {
 			const batch = items.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (_item, batchItemIndex) => {
-				const itemIndex = i + batchItemIndex;
 
+			const runItem = async (itemIndex: number) => {
 				const input = getPromptInputByType({
 					ctx: this,
 					i: itemIndex,
@@ -423,16 +422,30 @@ export async function toolsAgentExecute(
 					const response = await executorWithTracing.invoke(invokeParams, executeOptions);
 					return { response, toolCallsCounted: toolCounter.count };
 				}
+			};
+
+			const batchPromises = batch.map(async (_item, batchItemIndex) => {
+				const itemIndex = i + batchItemIndex;
+				try {
+					return await runItem(itemIndex);
+				} finally {
+					// Per item, not after the batch settles, so a rejection can't skip a
+					// later item's hook call. Guarded so a hook error can't mask the result.
+					try {
+						await hooks.onItemFinished?.(itemIndex);
+					} catch (hookError) {
+						this.logger.warn('Agent execution observer hook failed', {
+							itemIndex,
+							error: hookError instanceof Error ? hookError.message : String(hookError),
+						});
+					}
+				}
 			});
 
 			const batchResults = await Promise.allSettled(batchPromises);
 			// This is only used to check if the output parser is connected
 			// so we can parse the output if needed. Actual output parsing is done in the loop above
 			const outputParser = await getOptionalOutputParser(this, 0);
-			// Deferred until every settled result in the batch has run onItemFinished,
-			// so a rejection early in the batch does not skip the observer callback
-			// for items that follow it.
-			let batchError: NodeOperationError | undefined;
 			for (const [index, result] of batchResults.entries()) {
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
@@ -440,8 +453,6 @@ export async function toolsAgentExecute(
 						enrichNonParserErrors: true,
 					});
 					failedItems++;
-					// A failed run is still worth reporting to an observer.
-					await hooks.onItemFinished?.(itemIndex);
 					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: error.message },
@@ -449,8 +460,7 @@ export async function toolsAgentExecute(
 						});
 						continue;
 					} else {
-						batchError ??= new NodeOperationError(this.getNode(), error);
-						continue;
+						throw new NodeOperationError(this.getNode(), error);
 					}
 				}
 				const { response, toolCallsCounted } = result.value;
@@ -477,9 +487,7 @@ export async function toolsAgentExecute(
 				};
 
 				returnData.push(itemResult);
-				await hooks.onItemFinished?.(itemIndex);
 			}
-			if (batchError) throw batchError;
 
 			if (i + batchSize < items.length && delayBetweenBatches > 0) {
 				await sleep(delayBetweenBatches);
