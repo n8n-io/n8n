@@ -17,15 +17,17 @@ import type { AgentTurnFinalizeOutcome, AgentTurnStatus } from '../types/agent-t
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
 
-interface SystemAgentTurnBase {
+interface SystemAgentTurnBase<TLease> {
 	user: User;
 	thread: AgentExecutionThread;
 	resourceId: string;
 	/** Aborts when the turn stops: a user cancel, the queue, or `runOptions.abortSignal`. */
 	abortSignal: AbortSignal;
+	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
+	workspace?: TLease;
 }
 
-export interface SystemAgentStartTurn extends SystemAgentTurnBase {
+export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {
 	type: 'start';
 	/** Execution id when the queue admitted the turn. */
 	executionId?: string;
@@ -35,8 +37,8 @@ export interface SystemAgentStartTurn extends SystemAgentTurnBase {
 	options: SystemAgentTurnOptions;
 }
 
-export interface SystemAgentResumeTurn
-	extends SystemAgentTurnBase,
+export interface SystemAgentResumeTurn<TLease = unknown>
+	extends SystemAgentTurnBase<TLease>,
 		Pick<ResumeOptions, 'runId' | 'toolCallId'> {
 	type: 'resume';
 	/** Host metadata the suspended run stored in its checkpoint. */
@@ -44,7 +46,9 @@ export interface SystemAgentResumeTurn
 	resumeData: unknown;
 }
 
-export type SystemAgentTurn = SystemAgentStartTurn | SystemAgentResumeTurn;
+export type SystemAgentTurn<TLease = unknown> =
+	| SystemAgentStartTurn<TLease>
+	| SystemAgentResumeTurn<TLease>;
 
 export type SystemAgentTurnStatus = AgentTurnStatus;
 
@@ -77,21 +81,65 @@ export interface SystemAgentTurnHandle {
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
 }
 
+/** The sandbox scope of one thread of a system agent. */
+export interface SystemAgentWorkspaceScope {
+	agentId: string;
+	threadId: string;
+	/** The working project of the thread. */
+	projectId: string;
+	user: User;
+}
+
+/** The scope of a deleted thread. A host that deletes threads on its own path may not know the user. */
+export interface SystemAgentWorkspaceDestroyScope {
+	agentId: string;
+	threadId: string;
+	userId?: string;
+}
+
+/**
+ * Supplies the sandbox workspace of a system agent. The provider keeps its own
+ * sandbox identity, images and lifecycle. The runtime only reports when a turn
+ * starts and settles, and when a thread is deleted. The lease is opaque to the
+ * runtime: it passes the lease to `prepareTurn` and back to `release`.
+ */
+export interface SystemAgentWorkspaceSource<TLease = unknown> {
+	/**
+	 * Give the lease for one turn (start or resume). Return `undefined` when the
+	 * turn has no workspace. Do not start a sandbox here. Start it on first use,
+	 * so that a turn that does not use the sandbox stays cheap.
+	 */
+	acquire(scope: SystemAgentWorkspaceScope): Promise<TLease | undefined>;
+	/**
+	 * The turn settled. The source can let the sandbox sleep or drop cached
+	 * handles. A failure is logged and does not change the turn result.
+	 */
+	release?(
+		scope: SystemAgentWorkspaceScope,
+		lease: TLease,
+		outcome: SystemAgentTurnOutcome,
+	): Promise<void>;
+	/** The thread was deleted. Delete its sandbox. A failure is logged. */
+	destroy?(scope: SystemAgentWorkspaceDestroyScope): Promise<void>;
+}
+
 /**
  * A code-defined, instance-level agent. The Agents runtime owns the queue,
  * steering, checkpoints, HITL resume and recording. The provider builds a
  * fresh runtime for each turn and adds its own access checks on top of the
  * runtime floor (see `canUseSystemAgent`).
  */
-export interface SystemAgentProvider {
+export interface SystemAgentProvider<TLease = unknown> {
 	readonly agentId: string;
 	readonly name: string;
+	/** The sandbox workspace source. Without a source, the turns of the agent have no sandbox. */
+	readonly workspace?: SystemAgentWorkspaceSource<TLease>;
 	/**
 	 * Agent-specific access checks for the user in the working project. The
 	 * runtime calls this only after its own floor check passed.
 	 */
 	authorize(user: User, projectId: string): Promise<boolean>;
-	prepareTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle>;
+	prepareTurn(turn: SystemAgentTurn<TLease>): Promise<SystemAgentTurnHandle>;
 	/** Turn options for a message sent through the system-agent chat route. */
 	chatTurnOptions?(
 		user: User,
