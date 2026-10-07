@@ -3,7 +3,7 @@
 import { DEFAULT_AGENT_PERSONALISATION, type ListAgentsQueryDto } from '@n8n/api-types';
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ProjectRelationRepository, User } from '@n8n/db';
+import type { Project, ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -576,27 +576,6 @@ describe('AgentsService', () => {
 		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 
-	it('loads project metadata when listing agents across user projects', async () => {
-		const { service, agentRepository, projectRelationRepository } = makeService();
-		const user = mock<User>({ id: 'user-1' });
-		const options: ListAgentsQueryDto = { skip: 0, take: 10 };
-		const response = { count: 0, data: [] };
-		projectRelationRepository.findAllByUser.mockResolvedValue([
-			{ projectId: 'project-1' },
-			{ projectId: 'project-2' },
-		] as never);
-		agentRepository.findByProjectIdsPaginated.mockResolvedValue(response);
-
-		await expect(service.findByUserMembershipPaginated(user, options)).resolves.toBe(response);
-
-		expect(projectRelationRepository.findAllByUser).toHaveBeenCalledWith(user.id);
-		expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
-			['project-1', 'project-2'],
-			options,
-			{ withProject: true },
-		);
-	});
-
 	describe('findByIdForUser', () => {
 		const makeUser = (scopeSlugs: string[]): User =>
 			({ id: 'user-9', role: { scopes: scopeSlugs.map((slug) => ({ slug })) } }) as unknown as User;
@@ -1008,21 +987,24 @@ describe('AgentsService', () => {
 	});
 
 	describe('findByUserMembershipPaginated', () => {
-		const user = { id: 'user-1' } as unknown as User;
-
-		it('uses bare project membership and does not consult the scope service', async () => {
+		it('loads project metadata for the user’s projects without consulting the scope service', async () => {
 			const { service, agentRepository, projectRelationRepository, projectScopeService } =
 				makeService();
+			const user = mock<User>({ id: 'user-1' });
+			const options: ListAgentsQueryDto = { skip: 0, take: 10 };
+			const response = {
+				count: 1,
+				data: [makeAgent({ project: mock<Project>({ id: projectId, name: 'Support Team' }) })],
+			};
 			projectRelationRepository.findAllByUser.mockResolvedValue([
 				{ projectId: 'project-1' },
 				{ projectId: 'project-2' },
 			] as never);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10 } as never;
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue(response);
 
-			await service.findByUserMembershipPaginated(user, options);
+			await expect(service.findByUserMembershipPaginated(user, options)).resolves.toBe(response);
 
-			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledWith('user-1');
+			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledWith(user.id);
 			expect(projectScopeService.getProjectIds).not.toHaveBeenCalled();
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1', 'project-2'],
