@@ -1,9 +1,4 @@
-import {
-	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
-	ImportBlockedErrorDto,
-	ImportPackageRequestDto,
-	ImportResultDto,
-} from '@n8n/api-types';
+import { ImportBlockedErrorDto, ImportPackageRequestDto, ImportResultDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -24,11 +19,12 @@ import type { Response } from 'express';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import type { ImportResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
+import {
+	IMPORT_PACKAGE_FIELD_SIZE_BYTES,
+	IMPORT_PACKAGE_MAX_PARTS,
+} from '@/modules/n8n-packages/utils/import-package-upload';
 
 const tags = ['N8nPackage'];
-
-const IMPORT_PACKAGE_MAX_PARTS = IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 2;
-const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 64 * 1024;
 
 function uploadLimits(maxParts: number) {
 	const maxFileSizeBytes = Container.get(GlobalConfig).endpoints.payloadSizeMax * 1024 * 1024;
