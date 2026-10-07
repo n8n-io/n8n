@@ -229,7 +229,9 @@ export class EngineV2Dispatcher {
 	private startsAtPinnedNode(data: IWorkflowExecutionDataProcess): boolean {
 		if (data.runData !== undefined || data.triggerToStartFrom?.data !== undefined) return false;
 		const [only, ...rest] = data.startNodes ?? [];
-		return only !== undefined && rest.length === 0 && data.pinData?.[only.name] !== undefined;
+		return (
+			only !== undefined && rest.length === 0 && Object.keys(data.pinData ?? {}).includes(only.name)
+		);
 	}
 
 	/**
