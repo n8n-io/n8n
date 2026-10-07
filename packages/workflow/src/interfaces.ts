@@ -1758,6 +1758,11 @@ export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWor
  * save when node contracts are enabled.
  */
 export interface INodeContractPin {
+	/**
+	 * The semver range that the user sets, inside the major of the node. A save locks `version` and
+	 * `digest` to a version in it. A pin without it reads as `^<version>`.
+	 */
+	range?: string;
 	/** `major.minor.patch` of the action version. The major is the `typeVersion` of the node. */
 	version: string;
 	/** `sha256:<hex>` of the manifest bytes of the version. It identifies the version in a store. */

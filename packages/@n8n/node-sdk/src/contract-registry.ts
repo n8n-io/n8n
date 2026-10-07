@@ -6,6 +6,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { rcompare, satisfies, subset, validRange } from 'semver';
 import {
 	LoggerProxy,
 	UserError,
@@ -243,11 +244,13 @@ export interface ContractStore {
 	 */
 	locked(actionId: string, pin: INodeContractPin): Promise<PackedVersion>;
 	/**
-	 * The pin that the host saves on a node of an action major. `current` stays when it pins
-	 * that major and a bundled or stored version has its digest and version. With `keepUnknown`,
-	 * it also stays when no bundled or stored version has its digest or its version, so that a
-	 * sync can fetch it. Else the newest bundled or stored version of the major that is not
-	 * yanked or revoked. `undefined` when the major has no such version.
+	 * The pin that the host saves on a node of an action major. The range is `current.range`, else
+	 * `^<version>` of a pin of that major, else `^<newest>`. `current` stays when the range has its
+	 * version and a bundled or stored version has its digest and version. With `keepUnknown`, it
+	 * also stays when no bundled or stored version has its digest or its version, so that a sync
+	 * can fetch it. Else the newest bundled or stored version in the range that is not yanked or
+	 * revoked. `undefined` when the major has no such version and `current` has no range. It
+	 * throws when the range is not inside the major or has no such version.
 	 */
 	pinOf(
 		actionId: string,
@@ -559,9 +562,13 @@ const isPolicy = (value: unknown): value is NodeContractsPolicy =>
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-/** Whether a value is a node pin with a `major.minor.patch` version and a sha256 digest. */
+/**
+ * Whether a value is a node pin with a `major.minor.patch` version, a sha256 digest, and an
+ * optional range.
+ */
 export const isNodeContractPin = (value: unknown): value is INodeContractPin =>
 	isRecord(value) &&
+	(value.range === undefined || typeof value.range === 'string') &&
 	typeof value.version === 'string' &&
 	/^\d+\.\d+\.\d+$/.test(value.version) &&
 	typeof value.digest === 'string' &&
@@ -958,19 +965,35 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				!known.some(
 					({ manifest, digest }) => manifest.semver === pin.version || digest === pin.digest,
 				);
+			const candidates = (await notWithdrawn(known)).sort((a, b) =>
+				rcompare(a.manifest.semver, b.manifest.semver),
+			);
+			const [newest] = candidates;
+			const range =
+				typeof current?.range === 'string'
+					? current.range
+					: isNodeContractPin(current) && satisfies(current.version, `${major}.x`)
+						? `^${current.version}`
+						: newest && `^${newest.manifest.semver}`;
+			if (range === undefined) return undefined;
+			if (validRange(range) === null || !subset(range, `${major}.x`)) {
+				throw new UserError(
+					`The range ${range} of ${actionId} is not a semver range inside major ${major}`,
+				);
+			}
 			const keeps =
 				isNodeContractPin(current) &&
-				parseSemver(current.version).major === major &&
+				satisfies(current.version, range) &&
 				(isKnown(current) || (keepUnknown && isUnknown(current)));
-			if (keeps) return current;
-			const newest = (await notWithdrawn(known)).reduce<PinnableVersion | undefined>(
-				(best, version) =>
-					best && compareSemver(best.manifest.semver, version.manifest.semver) >= 0
-						? best
-						: version,
-				undefined,
-			);
-			return newest && { version: newest.manifest.semver, digest: newest.digest };
+			if (keeps) return current.range === range ? current : { ...current, range };
+			const lock = candidates.find(({ manifest }) => satisfies(manifest.semver, range));
+			if (!lock) {
+				const versions = candidates.map(({ manifest }) => manifest.semver).join(', ') || 'none';
+				throw new UserError(
+					`No version of ${actionId} satisfies the range ${range}. Versions known: ${versions}`,
+				);
+			}
+			return { range, version: lock.manifest.semver, digest: lock.digest };
 		},
 
 		async versions() {

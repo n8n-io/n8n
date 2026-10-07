@@ -261,6 +261,11 @@ const pinOf = (version: string): INodeContractPin => {
 	return { version: manifest.semver, digest: `sha256:${digest}` };
 };
 
+const rangedPinOf = (range: string, version: string): INodeContractPin => ({
+	range,
+	...pinOf(version),
+});
+
 /** The pin on the node and the `meta` of its workflow. */
 interface Target {
 	readonly contract?: INodeContractPin;
@@ -460,25 +465,60 @@ describe('contractStore', () => {
 		const store = storeOf();
 		for (const version of ['1.0.0', '1.0.1', '1.1.0'])
 			await store.locked('demo.echo', pinOf(version));
-		expect(await storeOf().pinOf('demo.echo', 1)).toEqual(pinOf('1.1.0'));
-		expect(await storeOf().pinOf('demo.echo', 1, pinOf('1.0.0'))).toEqual(pinOf('1.0.0'));
+		expect(await storeOf().pinOf('demo.echo', 1)).toEqual(rangedPinOf('^1.1.0', '1.1.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, pinOf('1.0.0'))).toEqual(
+			rangedPinOf('^1.0.0', '1.0.0'),
+		);
 		const unknown = { version: '1.0.7', digest: `sha256:${'b'.repeat(64)}` };
 		const keepUnknown = { keepUnknown: true };
-		expect(await storeOf().pinOf('demo.echo', 1, unknown)).toEqual(pinOf('1.1.0'));
-		expect(await storeOf().pinOf('demo.echo', 1, unknown, keepUnknown)).toEqual(unknown);
+		expect(await storeOf().pinOf('demo.echo', 1, unknown)).toEqual(rangedPinOf('^1.0.7', '1.1.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, unknown, keepUnknown)).toEqual({
+			...unknown,
+			range: '^1.0.7',
+		});
 		const otherBytes = { ...pinOf('1.0.1'), version: '1.0.0' };
-		expect(await storeOf().pinOf('demo.echo', 1, otherBytes, keepUnknown)).toEqual(pinOf('1.1.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, otherBytes, keepUnknown)).toEqual(
+			rangedPinOf('^1.0.0', '1.1.0'),
+		);
 		const sameVersion = { ...unknown, version: '1.0.1' };
-		expect(await storeOf().pinOf('demo.echo', 1, sameVersion, keepUnknown)).toEqual(pinOf('1.1.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, sameVersion, keepUnknown)).toEqual(
+			rangedPinOf('^1.0.1', '1.1.0'),
+		);
 		expect(await storeOf().pinOf('demo.echo', 1, { version: '1.0', digest: 'x' })).toEqual(
-			pinOf('1.1.0'),
+			rangedPinOf('^1.1.0', '1.1.0'),
 		);
 		expect(await storeOf().pinOf('demo.echo', 2, pinOf('1.0.0'))).toBeUndefined();
 		const yank = { id: 'demo.echo', yank: '1.1.0', reason: 'wrong output', at: '2026-10-02' };
 		await instance.current.store.insertStatuses([
 			{ ...yank, signatures: [signStoreStatus(yank, privateKey)] },
 		]);
-		expect(await storeOf().pinOf('demo.echo', 1)).toEqual(pinOf('1.0.1'));
+		expect(await storeOf().pinOf('demo.echo', 1)).toEqual(rangedPinOf('^1.0.1', '1.0.1'));
+	});
+
+	it('locks the range of a pin to the newest version in it that is not yanked', async () => {
+		const store = storeOf();
+		for (const version of ['1.0.0', '1.0.1', '1.1.0'])
+			await store.locked('demo.echo', pinOf(version));
+		const lockOfRange = async (range: string, version = '1.1.0') =>
+			await storeOf().pinOf('demo.echo', 1, { ...pinOf(version), range });
+
+		expect(await lockOfRange('1.0.0')).toEqual(rangedPinOf('1.0.0', '1.0.0'));
+		expect(await lockOfRange('~1.0.0')).toEqual(rangedPinOf('~1.0.0', '1.0.1'));
+		expect(await lockOfRange('^1.0.0')).toEqual(rangedPinOf('^1.0.0', '1.1.0'));
+		expect(await lockOfRange('>=1.0.0 <1.1.0')).toEqual(rangedPinOf('>=1.0.0 <1.1.0', '1.0.1'));
+		expect(await lockOfRange('^1.0.0', '1.0.0')).toEqual(rangedPinOf('^1.0.0', '1.0.0'));
+		await expect(lockOfRange('^2.0.0')).rejects.toThrow(
+			'The range ^2.0.0 of demo.echo is not a semver range inside major 1',
+		);
+		await expect(lockOfRange('>=1.0.0')).rejects.toThrow('inside major 1');
+		await expect(lockOfRange('~1.3.0')).rejects.toThrow(
+			'No version of demo.echo satisfies the range ~1.3.0. Versions known: 1.1.0, 1.0.1, 1.0.0',
+		);
+		const yank = { id: 'demo.echo', yank: '1.0.1', reason: 'wrong output', at: '2026-10-02' };
+		await instance.current.store.insertStatuses([
+			{ ...yank, signatures: [signStoreStatus(yank, privateKey)] },
+		]);
+		expect(await lockOfRange('~1.0.0')).toEqual(rangedPinOf('~1.0.0', '1.0.0'));
 	});
 
 	it('pins and resolves a bundled version without a registry', async () => {
@@ -486,7 +526,11 @@ describe('contractStore', () => {
 		if (!head) throw new Error('no bundled version');
 		const store = storeOf({ registryUrl: '' });
 		const pin = await store.pinOf('httpRequest.send', head.manifest.contract.version);
-		expect(pin).toEqual({ version: head.manifest.semver, digest: head.digest });
+		expect(pin).toEqual({
+			range: `^${head.manifest.semver}`,
+			version: head.manifest.semver,
+			digest: head.digest,
+		});
 		if (!pin) throw new Error('no pin');
 		expect((await store.locked('httpRequest.send', pin)).manifest).toEqual(head.manifest);
 		await expect(store.locked('httpRequest.send', { ...pin, version: '9.9.9' })).rejects.toThrow(

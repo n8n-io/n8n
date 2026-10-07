@@ -2,9 +2,16 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { hostRuntime } from '@n8n/node-sdk/host';
-import { contractStore, embeddedContractsOf, type InstanceStore } from '@n8n/node-sdk/registry';
+import {
+	contractStore,
+	embeddedContractsOf,
+	manifestTextOf,
+	type InstanceStore,
+	type StoredManifest,
+} from '@n8n/node-sdk/registry';
 import { FIRST_PARTY_PACKAGES, versionsOf } from '@test/first-party-contracts';
 import type { INode } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -76,7 +83,11 @@ describe('pinNodeContracts', () => {
 	const headOf = (id: string) => {
 		const [head] = versionsOf(id);
 		if (!head) throw new Error(`${id} has no bundled version`);
-		return { version: head.manifest.semver, digest: head.digest };
+		return {
+			range: `^${head.manifest.semver}`,
+			version: head.manifest.semver,
+			digest: head.digest,
+		};
 	};
 	const nodeOf = (name: string, type: string, typeVersion: number, extra: Partial<INode> = {}) => ({
 		id: name,
@@ -149,10 +160,10 @@ describe('pinNodeContracts', () => {
 
 	it('keeps a pin of the same major and re-pins a pin of another major or of other bytes', async () => {
 		const head = headOf('httpRequest.get');
-		const unknown = { version: '3.9.9', digest: `sha256:${'b'.repeat(64)}` };
+		const unknown = { range: '^3.9.9', version: '3.9.9', digest: `sha256:${'b'.repeat(64)}` };
 		const pinned = await pinNodeContracts([
 			{ ...get, contract: unknown },
-			{ ...get, name: 'Old', contract: { ...unknown, version: '2.0.0' } },
+			{ ...get, name: 'Old', contract: { version: '2.0.0', digest: unknown.digest } },
 			{ ...get, name: 'Bytes', contract: { ...head, digest: unknown.digest } },
 		]);
 
@@ -181,10 +192,42 @@ describe('pinNodeContracts', () => {
 		const changed = await pinNodeContracts([{ ...get, contract: other }], stored);
 
 		expect([resaved, dropped, changed].map(([node]) => node?.contract)).toEqual([
-			head,
-			head,
-			other,
+			{ ...head, range: '^3.0.1' },
+			{ ...head, range: '^3.0.1' },
+			{ ...other, range: '^3.0.1' },
 		]);
+	});
+
+	it('locks the range of a node to the newest version in it', async () => {
+		const [head] = versionsOf('httpRequest.get');
+		if (!head) throw new Error('httpRequest.get has no bundled version');
+		const manifestText = manifestTextOf({ ...head.manifest, semver: '3.1.0' });
+		const digest = `sha256:${createHash('sha256').update(manifestText).digest('hex')}`;
+		const older: StoredManifest = {
+			id: head.manifest.id,
+			version: '3.1.0',
+			kind: 'action',
+			manifest: digest,
+			manifestText,
+			signatures: [],
+			origin: 'community',
+		};
+		nodesStore.open.mockResolvedValueOnce(
+			contractStore({
+				registryUrl: '',
+				keys: { firstParty: undefined, vetting: undefined },
+				store: { ...emptyStore, manifests: async () => [older] },
+				fetch: async () => new Response(null, { status: 404 }),
+				runsNodeContract: hostRuntime().runsNodeContract,
+			}),
+		);
+
+		const [pinned] = await pinNodeContracts([
+			{ ...get, contract: { ...headOf('httpRequest.get'), range: '~3.1.0' } },
+		]);
+
+		expect(head.manifest.semver).toBe('3.2.0');
+		expect(pinned?.contract).toEqual({ range: '~3.1.0', version: '3.1.0', digest });
 	});
 
 	it('writes no pin and opens no store with node contracts off', async () => {

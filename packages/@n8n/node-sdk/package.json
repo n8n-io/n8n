@@ -87,6 +87,7 @@
     "esbuild": "catalog:",
     "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
+    "semver": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript"
   },
@@ -94,6 +95,7 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/semver": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
