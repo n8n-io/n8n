@@ -24,7 +24,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -1711,28 +1711,35 @@ export class McpAgentToolsService {
 			await this.requireAccessibleCredential(credentialProvider, input.credential);
 		}
 
-		const tools = await listMcpServerTools(
-			{
-				name: input.name,
-				url: input.url,
-				transport: input.transport,
-				authentication: input.authentication,
-				credential: input.credential,
-				metadata: input.metadata,
-				...(input.connectionTimeoutMs !== undefined
-					? { connectionTimeoutMs: input.connectionTimeoutMs }
-					: {}),
-			},
-			{
-				credentialProvider,
-				oauthService: this.oauthService,
-				projectId: input.projectId,
-				proxyFetch: createAiMcpFetch(this.outboundHttp),
-				resolveRegistryConnection: async (nodeTypeName) =>
-					await this.mcpRegistryService.getConnection(nodeTypeName),
-			},
-		);
-		return { ok: true, tools };
+		try {
+			const tools = await listMcpServerTools(
+				{
+					name: input.name,
+					url: input.url,
+					transport: input.transport,
+					authentication: input.authentication,
+					credential: input.credential,
+					metadata: input.metadata,
+					...(input.connectionTimeoutMs !== undefined
+						? { connectionTimeoutMs: input.connectionTimeoutMs }
+						: {}),
+				},
+				{
+					credentialProvider,
+					oauthService: this.oauthService,
+					projectId: input.projectId,
+					proxyFetch: createAiMcpFetch(this.outboundHttp),
+					resolveRegistryConnection: async (nodeTypeName) =>
+						await this.mcpRegistryService.getConnection(nodeTypeName),
+				},
+			);
+			return { ok: true, tools };
+		} catch (error) {
+			if (error instanceof OperationalError) {
+				return { ok: false, error: error.message };
+			}
+			throw error;
+		}
 	}
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
