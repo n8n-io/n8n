@@ -2087,6 +2087,104 @@ describe('web-search provider selection', () => {
 });
 
 describe('createNodeAdapter', () => {
+	describe('module-gated node types', () => {
+		const gatedNodes = [
+			{
+				name: 'n8n-nodes-base.messageAnAgent',
+				displayName: 'Message an Agent',
+				description: 'Send a message to a n8n agent',
+				group: ['transform'],
+				version: 3.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			},
+			{
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				description: 'Set values',
+				group: ['input'],
+				version: 3,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			},
+		];
+
+		let activeModules: string[];
+
+		// Create the adapter before turning modules on: an active agents module also makes
+		// `createContext` wire the Agent Builder delegate, which these tests do not need.
+		const createAdapter = (modules: string[]) => {
+			const adapter = createNodeAdapterForTests(gatedNodes);
+			activeModules = modules;
+			return adapter;
+		};
+
+		beforeEach(() => {
+			activeModules = [];
+			const moduleRegistry = Container.get(ModuleRegistry);
+			vi.spyOn(moduleRegistry, 'isActive').mockImplementation((moduleName) =>
+				activeModules.includes(moduleName),
+			);
+			moduleRegistry.settings.delete('agents');
+		});
+
+		afterEach(() => {
+			Container.get(ModuleRegistry).settings.delete('agents');
+			vi.restoreAllMocks();
+		});
+
+		it('offers Message an Agent while agents are enabled', async () => {
+			const adapter = createAdapter(['agents']);
+
+			const searchable = await adapter.listSearchable();
+			const available = await adapter.listAvailable();
+
+			expect(searchable.map((n) => n.name)).toContain('n8n-nodes-base.messageAnAgent');
+			expect(available.map((n) => n.name)).toContain('n8n-nodes-base.messageAnAgent');
+			expect((await adapter.getDescription('n8n-nodes-base.messageAnAgent')).unavailable).toBe(
+				undefined,
+			);
+		});
+
+		it('leaves Message an Agent out of discovery while the agents module is inactive', async () => {
+			const adapter = createAdapter([]);
+
+			const searchable = await adapter.listSearchable();
+			const available = await adapter.listAvailable();
+
+			expect(searchable.map((n) => n.name)).toEqual(['n8n-nodes-base.set']);
+			expect(available.map((n) => n.name)).toEqual(['n8n-nodes-base.set']);
+		});
+
+		it('names the module to enable when the agents module is inactive', async () => {
+			const adapter = createAdapter([]);
+
+			const description = await adapter.getDescription('n8n-nodes-base.messageAnAgent');
+
+			expect(description.unavailable).toMatch(/The "agents" module is disabled on this instance\./);
+		});
+
+		it('says why Message an Agent is unavailable when an admin has turned agents off', async () => {
+			Container.get(ModuleRegistry).settings.set('agents', { enabled: false });
+			const adapter = createAdapter(['agents']);
+
+			const description = await adapter.getDescription('n8n-nodes-base.messageAnAgent');
+			const definition = await adapter.getNodeTypeDefinition?.('n8n-nodes-base.messageAnAgent');
+
+			expect(description.unavailable).toMatch(
+				/An admin turned "agents" off in the instance settings\./,
+			);
+			expect(definition).toEqual(
+				expect.objectContaining({
+					content: 'node-def',
+					unavailable: expect.stringMatching(/An admin turned "agents" off/),
+				}),
+			);
+		});
+	});
+
 	it('preserves credential displayOptions in getDescription()', async () => {
 		const adapter = createNodeAdapterForTests([
 			{
@@ -7419,6 +7517,37 @@ describe('MCP registry discovery', () => {
 			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			expect(await context.mcpService!.getServers(['databricks-genie'])).toEqual([]);
+		});
+
+		// This path connects with a stored credential only, and an n8n Connect
+		// server has none, so `createConnection` refuses it like a templated row.
+		it('drops an n8n Connect server from search results', async () => {
+			stubContainer({
+				registrySearch: vi
+					.fn()
+					.mockResolvedValue([
+						registryHit,
+						{ ...registryHit, slug: 'n8n-connect-firecrawl', authentication: 'none' },
+					]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
+
+			const results = await context.mcpService!.search(['drive', 'firecrawl']);
+
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+		});
+
+		it('drops an n8n Connect server from an exact slug lookup', async () => {
+			stubContainer({
+				registryGetBySlugs: vi
+					.fn()
+					.mockResolvedValue([
+						{ ...registryServer, slug: 'n8n-connect-firecrawl', authType: '__aiGatewayManaged' },
+					]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
+
+			expect(await context.mcpService!.getServers(['n8n-connect-firecrawl'])).toEqual([]);
 		});
 
 		it('drops a server without a usable connection from an exact slug lookup', async () => {

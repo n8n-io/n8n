@@ -30,6 +30,7 @@ import type { AgentHistoryRepository } from '../repositories/agent-history.repos
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentPolicyService } from '../agent-policy.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -109,6 +110,7 @@ function makeService() {
 	taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
+	const agentPolicyService = mock<AgentPolicyService>();
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
@@ -157,10 +159,12 @@ function makeService() {
 			agentRepository,
 			transactionRunner,
 		),
+		agentPolicyService,
 	);
 
 	return {
 		service,
+		agentPolicyService,
 		agentUpdateBroadcaster,
 		agentRepository,
 		agentHistoryRepository,
@@ -175,6 +179,7 @@ function makeService() {
 		telemetry,
 		eventService,
 		ctx,
+		transactionRunner,
 	};
 }
 
@@ -251,6 +256,107 @@ describe('AgentPublishService', () => {
 		);
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
+	});
+
+	describe('policy', () => {
+		it('polices the draft it publishes before validating it', async () => {
+			const { service, agentRepository, agentPolicyService, agentValidationService } =
+				makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPolicyService.enforcePublish.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+				'Blocked by policy',
+			);
+
+			expect(agentPolicyService.enforcePublish).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				agent.schema,
+				{ kind: 'user', user },
+			);
+			expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
+			expect(agent.activeVersionId).toBeNull();
+		});
+
+		it('polices the snapshot, not the draft, when republishing a version', async () => {
+			const { service, agentRepository, agentHistoryRepository, agentPolicyService } =
+				makeService();
+			const agent = makeAgent({ versionId: 'draft-v2', activeVersionId: 'v0' });
+			const target = makeHistory({ versionId: 'v1', schema: { ...schema, name: 'Older' } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+			agentPolicyService.enforcePublish.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser, 'v1')).rejects.toThrow(
+				'Blocked by policy',
+			);
+
+			expect(agentPolicyService.enforcePublish).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				target.schema,
+				{ kind: 'user', user },
+			);
+			expect(agent.activeVersionId).toBe('v0');
+		});
+
+		it('polices a revert as a save of the restored schema over the current draft', async () => {
+			const {
+				service,
+				agentRepository,
+				agentHistoryRepository,
+				agentPolicyService,
+				transactionRunner,
+			} = makeService();
+			const draft = { ...schema, name: 'Draft Agent' };
+			const agent = makeAgent({ schema: draft });
+			const target = makeHistory({ versionId: 'older', schema: { ...schema, name: 'Older' } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.revertToVersion(agentId, projectId, 'older', user, 'user'),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				target.schema,
+				draft,
+				{ kind: 'user', user },
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(agent.schema).toBe(draft);
+		});
+
+		it('polices a revert to the published version the same way', async () => {
+			const { service, agentRepository, agentPolicyService, transactionRunner } = makeService();
+			const draft = { ...schema, name: 'Draft Agent' };
+			const activeVersion = makeHistory({ versionId: 'published-v1', schema });
+			const agent = makeAgent({
+				schema: draft,
+				activeVersionId: 'published-v1',
+				activeVersion,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.revertToPublishedAgent(agentId, projectId, user, 'user'),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				schema,
+				draft,
+				{ kind: 'user', user },
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('channel startup preflight', () => {
@@ -682,7 +788,17 @@ describe('AgentPublishService', () => {
 			versionId: 'published-v1',
 			schema: {
 				...schema,
-				tools: [{ type: 'custom', id: 'tool', enabled: false, requireApproval: true }],
+				tools: [
+					{ type: 'custom', id: 'tool', enabled: false, requireApproval: true },
+					{
+						type: 'workflow',
+						workflow: 'Test workflow',
+						inputs: {
+							constructor: { mode: 'ai' as const, description: 'Use the label.' },
+							hasOwnProperty: { mode: 'fixed' as const, value: '=literal' },
+						},
+					},
+				],
 				skills: [{ type: 'skill', id: 'skill', enabled: false }],
 				subAgents: { agents: [{ agentId: 'agent-2', enabled: false, useWhen: 'Review notes' }] },
 				tasks: [{ type: 'task', id: 'task-1', enabled: false }],

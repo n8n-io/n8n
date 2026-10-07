@@ -275,11 +275,15 @@ properties:
     required:
       - matched
       - created
+      - updated
     properties:
       matched:
         type: integer
         minimum: 0
       created:
+        type: integer
+        minimum: 0
+      updated:
         type: integer
         minimum: 0
   variables:

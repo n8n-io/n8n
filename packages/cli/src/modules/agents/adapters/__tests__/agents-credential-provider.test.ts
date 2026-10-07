@@ -54,4 +54,35 @@ describe('AgentsCredentialProvider', () => {
 			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('resolveAiGatewayMcpCredential', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('mints the gateway credential with the agent attribution', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({ token: 'jwt' });
+			Container.set(AiGatewayService, aiGatewayService);
+
+			const provider = new AgentsCredentialProvider(
+				mock<CredentialsService>(),
+				'proj-1',
+				{ id: 'user-1' } as User,
+				'agent-1',
+			);
+			const result = await provider.resolveAiGatewayMcpCredential(
+				'n8nConnectFirecrawlMcpGatewayApi',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'n8nConnectFirecrawlMcpGatewayApi',
+				userId: 'user-1',
+				projectId: 'proj-1',
+				agentId: 'agent-1',
+			});
+			// `toResolvedCredential` fills the `apiKey` that `ResolvedCredential` requires.
+			expect(result).toEqual({ token: 'jwt', apiKey: '' });
+		});
+	});
 });
