@@ -18,7 +18,7 @@ import {
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -1764,6 +1764,7 @@ describe('AgentsBuilderToolsService', () => {
 				updates,
 				{ user, modifiedBy: 'builder' },
 				'skill-hash-0',
+				undefined,
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -1771,6 +1772,113 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'Create tickets',
 				configMutated: true,
 				agentId,
+			});
+		});
+
+		describe('instructionEdits', () => {
+			const existingSkill = {
+				name: 'Create tickets',
+				description: 'Use when creating or updating tickets',
+				instructions: '## Steps\n1. Ask for the title.\n2. Set priority P3.\n',
+			};
+
+			function getUpdateSkillTool(service: AgentsBuilderToolsService) {
+				const tool = service
+					.getTools(agentId, projectId, credentialProvider, credentialService, user)
+					.shared.find((candidate) => candidate.name === 'update_skill');
+				if (!tool) throw new Error('Expected update_skill tool');
+				return tool;
+			}
+
+			it('passes the edits to the skills service with the base hash', async () => {
+				const { service, agentsService } = makeService();
+				agentsService.updateSkill.mockResolvedValue({
+					id: 'skill_create_tickets',
+					skill: existingSkill,
+					skillHash: 'skill-hash-1',
+					versionId: 'v2',
+				});
+				const instructionEdits = [{ oldText: 'Set priority P3.', newText: 'Set priority P2.' }];
+
+				const result = await getUpdateSkillTool(service).handler!(
+					{
+						skillId: 'skill_create_tickets',
+						baseSkillHash: 'skill-hash-0',
+						updates: { instructionEdits },
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateSkill).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					'skill_create_tickets',
+					{},
+					{ user, modifiedBy: 'builder' },
+					'skill-hash-0',
+					instructionEdits,
+				);
+				expect(result).toMatchObject({ ok: true, id: 'skill_create_tickets' });
+			});
+
+			it('returns the edit error message from the skills service', async () => {
+				const { service, agentsService } = makeService();
+				agentsService.updateSkill.mockRejectedValue(
+					new UserError(
+						'instructionEdits[0]: oldText matches 0 places; it must match exactly one.',
+					),
+				);
+
+				const result = await getUpdateSkillTool(service).handler!(
+					{
+						skillId: 'skill_create_tickets',
+						baseSkillHash: 'skill-hash-0',
+						updates: { instructionEdits: [{ oldText: 'Set priority P1.', newText: 'x' }] },
+					},
+					ctx,
+				);
+
+				expect(result).toEqual({
+					ok: false,
+					errors: [{ message: expect.stringContaining('matches 0 places') }],
+				});
+			});
+
+			it('returns the stale skill error when the base hash is out of date', async () => {
+				const { service, agentsService } = makeService();
+				agentsService.updateSkill.mockRejectedValue(new ConflictError('Skill was changed'));
+
+				const result = await getUpdateSkillTool(service).handler!(
+					{
+						skillId: 'skill_create_tickets',
+						baseSkillHash: 'old-hash',
+						updates: { instructionEdits: [{ oldText: 'Set priority P3.', newText: 'x' }] },
+					},
+					ctx,
+				);
+
+				expect(result).toEqual({
+					ok: false,
+					errors: [{ message: expect.stringContaining('Skill changed') }],
+				});
+			});
+
+			it('rejects instructions and instructionEdits together', () => {
+				const { service } = makeService();
+				const inputSchema = getUpdateSkillTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				};
+
+				expect(
+					inputSchema.safeParse({
+						skillId: 'skill_create_tickets',
+						baseSkillHash: 'hash',
+						updates: {
+							instructions: 'New body',
+							instructionEdits: [{ oldText: 'a', newText: 'b' }],
+						},
+					}).success,
+				).toBe(false);
 			});
 		});
 
@@ -1809,6 +1917,7 @@ describe('AgentsBuilderToolsService', () => {
 				{ allowedTools: undefined, references: undefined },
 				{ user, modifiedBy: 'builder' },
 				'skill-hash-0',
+				undefined,
 			);
 
 			const inputSchema = tool.inputSchema as unknown as {
