@@ -333,17 +333,6 @@ describe('GET /workflows', () => {
 		expect(response.body.data[0].id).not.toEqual(response2.body.data[0].id);
 	});
 
-	test('should reject a zero limit', async () => {
-		await createWorkflowWithHistory({}, member);
-
-		const response = await authMemberAgent.get('/workflows?limit=0');
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe(
-			'request/query/limit Param `limit` must be a positive integer',
-		);
-	});
-
 	test('should reject a cursor that does not decode to JSON', async () => {
 		await createWorkflowWithHistory({}, member);
 

@@ -1,4 +1,4 @@
-import { publicApiUploadedFileSchema, Z } from '@n8n/api-types';
+import { ListTagsQueryDto, publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -14,6 +14,7 @@ import {
 	Param,
 	Post,
 	ProjectScope,
+	Query,
 	RequiresUserQuota,
 } from '@n8n/decorators';
 import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
@@ -191,6 +192,24 @@ describe('PublicApiControllerRegistry', () => {
 				.expect(400);
 
 			expect(response.body.message).toBe('request/body/active is read-only');
+		});
+
+		it.each(['0', '-1'])('rejects a query limit of %s with a 400', async (limit) => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				list(_req: express.Request, _res: express.Response, @Query _query: ListTagsQueryDto) {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get(`/api/v1/widgets?limit=${limit}`).expect(400);
+
+			expect(response.body.message).toBe(
+				'request/query/limit Param `limit` must be a positive integer',
+			);
 		});
 	});
 
