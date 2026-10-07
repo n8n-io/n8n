@@ -75,7 +75,7 @@ function toStepResult(
 		wait: {
 			resumeAt: waitTill.toISOString(),
 			outputsAtDeadline: toStepOutputs([context.getInputData()]),
-			acceptsResumeRequest: context.acceptsResumeRequest,
+			...(context.acceptsResumeRequest ? { resumeBinding: 'execution' as const } : {}),
 		},
 	};
 }

@@ -137,15 +137,18 @@ export type WaitDeclaration =
 			resumeAt: string;
 			/** The slots the step emits when the deadline fires. */
 			outputsAtDeadline: StepSlots;
-			/** Whether a resume request may end the wait early. */
-			acceptsResumeRequest: boolean;
+			/** Which resume request may end the wait early. If absent, none can. */
+			resumeBinding?: ResumeBinding;
 	  }
 	| {
 			/** No deadline, so only a resume request ends this wait. */
 			resumeAt?: never;
 			outputsAtDeadline?: never;
-			acceptsResumeRequest: true;
+			resumeBinding: ResumeBinding;
 	  };
+
+/** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
+export type ResumeBinding = 'execution' | 'step';
 
 /**
  * What ended a step's wait, recorded on the row when it resumed. No node code
@@ -162,7 +165,11 @@ export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: Ste
  * system, as `assertCreatableRecord` does for step creation.
  */
 export function hasResumeCondition(wait: WaitDeclaration): boolean {
-	return wait.acceptsResumeRequest || wait.resumeAt !== undefined;
+	return (
+		wait.resumeBinding === 'execution' ||
+		wait.resumeBinding === 'step' ||
+		wait.resumeAt !== undefined
+	);
 }
 
 /**
