@@ -275,7 +275,10 @@ erDiagram
   varchar updatedById FK
 }
 "workflow_suggestion" {
-  TEXT appliedVersion
+  varchar_32_ appliedAction
+  varchar appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   varchar backgroundUserId FK
   datetime_3_ closedAt
   varchar_16_ closedReason

@@ -55,8 +55,17 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	resultKind: 'fix_ready' | 'needs_you';
 
-	@JsonColumn({ nullable: true })
-	appliedVersion: WorkflowSuggestionAppliedVersion | null;
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	appliedVersionId: string | null;
+
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	appliedChecksum: string | null;
+
+	@Column({ type: 'varchar', length: 32, nullable: true })
+	appliedAction: WorkflowSuggestionAppliedVersion['action'] | null;
+
+	@Column({ type: 'uuid', nullable: true })
+	appliedActorId: string | null;
 
 	@JsonColumn()
 	payload: WorkflowSuggestionContent;

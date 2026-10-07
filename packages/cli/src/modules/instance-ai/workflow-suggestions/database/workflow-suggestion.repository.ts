@@ -54,7 +54,10 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			closedReason: null,
 			closedAt: null,
 			resultKind,
-			appliedVersion: null,
+			appliedVersionId: null,
+			appliedChecksum: null,
+			appliedAction: null,
+			appliedActorId: null,
 			payload,
 		});
 		try {
@@ -110,7 +113,15 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		const result = await this.managerFor(ctx).update(
 			WorkflowSuggestion,
 			{ id: suggestion.id, state: 'pending' },
-			{ state: 'closed', closedReason: reason, closedAt: new Date(), appliedVersion },
+			{
+				state: 'closed',
+				closedReason: reason,
+				closedAt: new Date(),
+				appliedVersionId: appliedVersion?.versionId ?? null,
+				appliedChecksum: appliedVersion?.checksum ?? null,
+				appliedAction: appliedVersion?.action ?? null,
+				appliedActorId: appliedVersion?.actorId ?? null,
+			},
 		);
 		if (result.affected !== 1) return false;
 		await this.appendActivity(suggestion.id, reason, actor, ctx);

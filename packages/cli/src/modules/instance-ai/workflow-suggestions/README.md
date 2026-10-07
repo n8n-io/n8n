@@ -24,36 +24,36 @@ The detail includes the original and proposed snapshots. Stored proposal content
 
 ## Review actions
 
-Call the matching method on `WorkflowSuggestionActionsService` with the acting user, project, workflow, and suggestion. Supply the editor client ID (`push-ref`) for Apply actions. The calling review service coordinates its result record with the suggestion. The frontend should not send a second request to synchronize result state.
+Call the matching method on `WorkflowSuggestionActionsService` with the acting user, project, workflow, and suggestion. Supply the editor client ID (`push-ref`) for Apply actions. The caller owns editor navigation and the review UI state.
 
-| Method | Behavior |
-| --- | --- |
-| `approveAndPublish()` | Save the reviewed fix once. Request normal publication of that saved version. |
-| `apply()` | Save the reviewed fix once without publication. The caller decides whether to open the editor. |
-| `discard()` | Close a pending suggestion without changing the workflow. |
+| Method                | Behavior                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| `approveAndPublish()` | Save the reviewed fix once. Request normal publication of that saved version.                  |
+| `apply()`             | Save the reviewed fix once without publication. The caller decides whether to open the editor. |
+| `discard()`           | Close a pending suggestion without changing the workflow.                                      |
 
-Use **Approve and publish** as the action label. Only `fix_ready` permits Apply. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication keeps the normal credential checks and enterprise review guards.
+Use **Approve and publish** as the action label. Only `fix_ready` permits Apply. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
 
 Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
 
-Apply passes `propagateVersionHistoryErrors: true` to `savePreparedUpdate()`. A history error then fails the transaction. Ordinary saves keep their existing history error handling.
+Apply passes `propagateVersionHistoryErrors: true` to `savePreparedUpdate()`. A history error then fails the transaction. By default, history write errors are logged and do not stop the save.
 
-A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the original save error without reading the suggestion again. A save error does not close the suggestion as outdated. Workflow events and later actions update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
+A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the save error to the caller. A save error does not close the suggestion as outdated. Workflow events and later actions update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
 
 Approve and publish calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The editor owns publication status, errors, and retries.
 
 After either Apply action, the caller must check `closedReason` before opening the editor or showing success. Open the editor only when it is `applied`. If it is `outdated`, keep the review open and explain that the workflow has changed. If the save fails, keep the review open and show the error.
 
-Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. A closed page or lost response can leave a saved fix unpublished. The service does not store publication status or reconstruct an outcome on reads.
+Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
 
 `discard()` commits the suggestion closure and activity in its own transaction.
 
 ## Storage and limits
 
-The review migration assumes empty suggestion tables before a producer starts writing. Baseline metadata and the outcome are required. There is no legacy-row backfill. The baseline includes the saved and published versions, checksum, content counter, and `latestPublishHistoryEventId`. A save that only changes the update timestamp does not invalidate a suggestion. Restoring version pointers does not revive an old suggestion.
+The review migration requires empty suggestion tables. Run it before any service creates suggestions. Baseline metadata and the outcome are required. The baseline includes the saved and published versions, checksum, content counter, and `latestPublishHistoryEventId`. A save that only changes the update timestamp does not invalidate a suggestion. Restoring version pointers does not revive an old suggestion.
 
-A workflow transfer does not transfer its suggestions. Apply checks the current owner without locking the ownership row. A project transfer after this check can overlap with Apply. Ordinary saves keep their existing conflict checks; a save started before Apply can finish after it.
+A workflow transfer does not transfer its suggestions. Apply checks the current owner without locking the ownership row. A project transfer after this check can overlap with Apply. A normal workflow save that starts before Apply can finish after Apply.
 
-Deleting the workflow, original project, or background user deletes its suggestions and activity. Deleting a human actor clears the activity's actor reference. Pending and closed suggestions have no time-based expiry. Workflow history, Assistant threads, reports, and execution evidence have separate lifetimes.
+Deleting the workflow, original project, or background user deletes its suggestions and activity. For suggestions that remain, deleting the actor clears the activity's actor reference. The applied result keeps the actor ID. It also keeps the version ID if the history entry is deleted. Pending and closed suggestions have no time-based expiry. Workflow history, Assistant threads, reports, and execution evidence have separate lifetimes.
 
 Tests under `__tests__` seed suggestions against published workflows. They require no model calls.

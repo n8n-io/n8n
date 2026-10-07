@@ -34,7 +34,7 @@ import { WorkflowValidationService } from '@/workflows/workflow-validation.servi
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
-import { createUser } from '@test-integration/db/users';
+import { createAdmin, createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
@@ -130,8 +130,17 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 }
 
 it('saves the applied version without changing the published version', async () => {
-	const { original, graph, suggestion, act } = await fixture();
+	const { user, original, project, graph, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+		appliedVersionId: null,
+		appliedChecksum: null,
+		appliedAction: null,
+		appliedActorId: null,
+	});
+	expect(
+		await suggestionService.getProposal(user, project.id, original.id, suggestion.id),
+	).toMatchObject({ appliedVersion: null });
 
 	const detail = await act('apply');
 
@@ -142,8 +151,18 @@ it('saves the applied version without changing the published version', async () 
 	expect(saved.activeVersionId).toBe(original.activeVersionId);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'applied' });
+	const checksum = await calculateWorkflowChecksum(saved);
+	expect(detail.appliedVersion).toEqual({
+		versionId: saved.versionId,
+		checksum,
+		action: 'apply',
+		actorId: user.id,
+	});
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
-		appliedVersion: { versionId: saved.versionId },
+		appliedVersionId: saved.versionId,
+		appliedChecksum: checksum,
+		appliedAction: 'apply',
+		appliedActorId: user.id,
 		payload: suggestion.payload,
 	});
 });
@@ -151,12 +170,12 @@ it('saves the applied version without changing the published version', async () 
 it('returns the applied version when the same action is repeated', async () => {
 	const { original, suggestion, act } = await fixture();
 	const notify = vi.spyOn(Container.get(CollaborationService), 'broadcastWorkflowUpdate');
-	await act('apply');
+	const first = await act('apply');
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 	const beforeActivity = await suggestions.getActivity(suggestion.id);
 
-	await act('apply');
+	expect((await act('apply')).appliedVersion).toEqual(first.appliedVersion);
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -187,11 +206,11 @@ it('publishes the committed application once when an after-update hook fails', a
 	const { original, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 	const publish = vi.spyOn(workflowService, 'activateWorkflow');
-	let appliedVersionAtHook: string | undefined;
+	let appliedVersionAtHook: string | null | undefined;
 	vi.spyOn(Container.get(ExternalHooks), 'run').mockImplementation(async (name) => {
 		if (name === 'workflow.afterUpdate') {
 			const committed = await suggestions.findOneByOrFail({ id: suggestion.id });
-			appliedVersionAtHook = committed.appliedVersion?.versionId;
+			appliedVersionAtHook = committed.appliedVersionId;
 			throw new Error('After-update hook failed.');
 		}
 	});
@@ -228,7 +247,7 @@ it('discards a proposal without saving its graph or changing its stored content'
 	const { user, original, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 
-	await act('discard');
+	expect((await act('discard')).appliedVersion).toBeNull();
 	const activity = await suggestions.getActivity(suggestion.id);
 	await act('discard');
 
@@ -237,6 +256,10 @@ it('discards a proposal without saving its graph or changing its stored content'
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		state: 'closed',
 		closedReason: 'discarded',
+		appliedVersionId: null,
+		appliedChecksum: null,
+		appliedAction: null,
+		appliedActorId: null,
 		payload: suggestion.payload,
 	});
 	expect(await suggestions.getActivity(suggestion.id)).toEqual(activity);
@@ -275,7 +298,7 @@ it('keeps a moved proposal outdated when discard rejects the old project', async
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		state: 'closed',
 		closedReason: 'outdated',
-		appliedVersion: null,
+		appliedVersionId: null,
 	});
 	expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
 		'submitted',
@@ -381,7 +404,7 @@ it.each(['nodes', 'staticData'] as const)(
 		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
 		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 			state: 'pending',
-			appliedVersion: null,
+			appliedVersionId: null,
 		});
 	},
 );
@@ -456,7 +479,10 @@ it('rolls back the graph and history when the action activity cannot be saved', 
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		state: 'pending',
-		appliedVersion: null,
+		appliedVersionId: null,
+		appliedChecksum: null,
+		appliedAction: null,
+		appliedActorId: null,
 	});
 	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
 });
@@ -525,7 +551,7 @@ it.skipIf(process.env.DB_TYPE !== 'postgresdb')(
 			await expect(act('apply')).rejects.toThrow('The suggestion has already closed.');
 			expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 				closedReason: 'discarded',
-				appliedVersion: null,
+				appliedVersionId: null,
 			});
 			expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 			expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -578,7 +604,7 @@ it('rejects an intervening edit and closes the suggestion on the next action', a
 		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
 		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 			state: 'pending',
-			appliedVersion: null,
+			appliedVersionId: null,
 		});
 		expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
 			'submitted',
@@ -610,7 +636,13 @@ it('requests normal publication of the applied version and does not repeat it', 
 
 	expect(detail).toMatchObject({
 		closedReason: 'applied',
-		appliedVersion: { versionId: saved.versionId },
+		appliedVersion: { versionId: saved.versionId, action: 'approve-and-publish', actorId: user.id },
+	});
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+		appliedVersionId: saved.versionId,
+		appliedChecksum: detail.appliedVersion?.checksum,
+		appliedAction: 'approve-and-publish',
+		appliedActorId: user.id,
 	});
 	expect(detail.publishError).toBeUndefined();
 	expect(publish).toHaveBeenCalledExactlyOnceWith(
@@ -733,13 +765,26 @@ it('reverts and reapplies the review schema before suggestions are created', asy
 	);
 	if (!migration) throw new Error('The workflow suggestion review migration is not registered.');
 	const runner = db.createQueryRunner();
+	const columns = [
+		'resultKind',
+		'appliedVersionId',
+		'appliedChecksum',
+		'appliedAction',
+		'appliedActorId',
+	];
 	try {
 		await migration.down(runner);
 		try {
-			expect(await runner.hasColumn(suggestions.metadata.tablePath, 'resultKind')).toBe(false);
+			for (const column of columns) {
+				expect(await runner.hasColumn(suggestions.metadata.tablePath, column)).toBe(false);
+			}
 		} finally {
 			await migration.up(runner);
 		}
+		for (const column of columns) {
+			expect(await runner.hasColumn(suggestions.metadata.tablePath, column)).toBe(true);
+		}
+		expect(await runner.hasColumn(suggestions.metadata.tablePath, 'appliedVersion')).toBe(false);
 	} finally {
 		await runner.release();
 	}
@@ -747,12 +792,46 @@ it('reverts and reapplies the review schema before suggestions are created', asy
 	const { suggestion } = await fixture();
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		resultKind: 'fix_ready',
-		appliedVersion: null,
+		appliedVersionId: null,
+		appliedChecksum: null,
+		appliedAction: null,
+		appliedActorId: null,
 	});
 	await expect(
 		suggestions.update(suggestion.id, { resultKind: 'invalid' as never }),
 	).rejects.toThrow();
 	await expect(suggestions.update(suggestion.id, { resultKind: null as never })).rejects.toThrow();
+	await expect(
+		suggestions.update(suggestion.id, { appliedAction: 'invalid' as never }),
+	).rejects.toThrow();
+});
+
+it('keeps the applied receipt after its actor and workflow history are deleted', async () => {
+	const { user, original, project, suggestion, act } = await fixture();
+	const actor = await createAdmin();
+	const detail = await act('apply', actor);
+	const saved = await workflows.findOneByOrFail({ id: original.id });
+	await workflowService.update(
+		user,
+		Object.assign(new WorkflowEntity(), { nodes: original.nodes }),
+		original.id,
+		{ expectedChecksum: await calculateWorkflowChecksum(saved) },
+	);
+
+	await Container.get(UserRepository).delete(actor.id);
+	await history.delete({ versionId: saved.versionId });
+
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+		appliedVersionId: saved.versionId,
+		appliedActorId: actor.id,
+	});
+	expect(
+		(await suggestionService.getProposal(user, project.id, original.id, suggestion.id))
+			.appliedVersion,
+	).toEqual(detail.appliedVersion);
+	expect(await suggestions.getActivity(suggestion.id)).toContainEqual(
+		expect.objectContaining({ action: 'applied', author: 'human', actorId: null }),
+	);
 });
 
 it('keeps human activity when its actor is deleted', async () => {
