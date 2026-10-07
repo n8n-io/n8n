@@ -1,9 +1,6 @@
-import { AI_GATEWAY_MANAGED_AUTH_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
-
-export { AI_GATEWAY_MANAGED_AUTH_TYPE };
 
 export type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
@@ -11,6 +8,27 @@ export type McpRegistryServerUpsertRow = Pick<
 >;
 
 const serverStatuses = ['active', 'deprecated'] as const;
+
+/**
+ * `authType` value for an MCP server the AI Gateway hosts and bills to Gateway
+ * credits. The value mirrors the `__aiGatewayManaged` credential marker.
+ */
+export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
+
+/**
+ * Slug prefix of an n8n Connect MCP server row. Both sources store their rows in
+ * one table keyed by slug, so the prefix stops a gateway server from replacing
+ * a registry server with the same slug. The prefix is reserved: the registry
+ * refresh drops any registry server whose slug starts with it.
+ */
+export const N8N_CONNECT_MCP_SLUG_PREFIX = 'n8n-connect-';
+
+/**
+ * Registry capability every n8n Connect MCP server requires. The instance
+ * supports it while n8n Connect is on, so these servers are hidden like any
+ * server that needs a capability the instance lacks.
+ */
+export const N8N_CONNECT_MCP_CAPABILITY = 'n8n-connect';
 
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
@@ -148,8 +166,8 @@ export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegist
 
 export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema> & {
 	/**
-	 * Endpoint of the Gateway credits route for this server, when the AI Gateway
-	 * also hosts it. Set in memory when the overlay is merged, never persisted.
+	 * Endpoint of the Gateway credits route for a registry server that the AI
+	 * Gateway also hosts. Set in memory from its n8n Connect row, never persisted.
 	 */
 	gatewayEndpointUrl?: string;
 };

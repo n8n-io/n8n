@@ -242,29 +242,6 @@ describe('McpRegistryNodeLoader', () => {
 			});
 		});
 
-		it('resolves the default binding when no selector is given', async () => {
-			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
-			loader.setServers([firecrawlServer]);
-
-			await loader.loadAll();
-
-			const runtime = (baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> })
-				.setRegistryRuntime.mock.calls[0][0] as {
-				resolveConnection: (
-					nodeTypeName: string,
-					selector?: string,
-				) => { binding: { credentialType: string } } | undefined;
-			};
-			expect(
-				runtime.resolveConnection('@n8n/mcp-registry.firecrawl', '')?.binding.credentialType,
-			).toBe('firecrawlMcpOAuth2Api');
-			expect(
-				runtime.resolveConnection('@n8n/mcp-registry.firecrawl', AI_GATEWAY_MANAGED_AUTH_TYPE)
-					?.binding.credentialType,
-			).toBe('firecrawlMcpGatewayApi');
-		});
-
 		it('inherits prototype methods from the base node class on synthetic nodes', async () => {
 			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
 			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);

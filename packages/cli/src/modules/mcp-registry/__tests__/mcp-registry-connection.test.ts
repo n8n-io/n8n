@@ -1,14 +1,11 @@
-import {
-	AI_GATEWAY_MANAGED_AUTH_TYPE,
-	type McpOAuth2CredentialType,
-	type McpRegistryConnection,
-} from 'n8n-workflow';
+import type { McpOAuth2CredentialType, McpRegistryConnection } from 'n8n-workflow';
 
 import {
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
 } from '../mcp-registry-connection';
 import { databricksGenieTemplatedMockServer, notionMockServer } from '../registry/mock-servers';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '../registry/mcp-registry.types';
 
 const credentialType: McpOAuth2CredentialType = 'exampleMcpOAuth2Api';
 
@@ -114,6 +111,25 @@ describe('prepareMcpRegistryConnection', () => {
 		});
 	});
 
+	it('names the Gateway credits token when a Gateway credential has none', () => {
+		const result = prepareMcpRegistryConnection({
+			connection: {
+				...connection,
+				credentialBindings: [{ credentialType: 'exampleMcpGatewayApi', selector: 'gateway' }],
+			},
+			credentialType: 'exampleMcpGatewayApi',
+			credentialData: { token: '' },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'missing_access_token',
+				message: 'Credential type "exampleMcpGatewayApi" does not contain a Gateway credits token',
+			},
+		});
+	});
+
 	it('rejects a credential type the server does not bind', () => {
 		const result = prepareMcpRegistryConnection({
 			connection,
@@ -212,6 +228,26 @@ describe('prepareMcpRegistryConnection', () => {
 			},
 		});
 	});
+});
+
+describe('Gateway credits route', () => {
+	const gatewayUrl = 'https://gateway.n8n.io/v1/gateway/mcp/notion';
+
+	it('adds a Gateway credits binding with its own endpoint after the own credential', () => {
+		const result = resolveMcpRegistryConnection({
+			...notionMockServer,
+			gatewayEndpointUrl: gatewayUrl,
+		});
+
+		expect(result?.credentialBindings).toEqual([
+			{ credentialType: 'notionMcpOAuth2Api', selector: 'oAuth2' },
+			{
+				credentialType: 'notionMcpGatewayApi',
+				selector: AI_GATEWAY_MANAGED_AUTH_TYPE,
+				endpoint: { url: gatewayUrl, hostname: 'gateway.n8n.io' },
+			},
+		]);
+	});
 
 	it('routes the Gateway binding to its own endpoint without the remote headers', () => {
 		const result = prepareMcpRegistryConnection({
@@ -223,10 +259,7 @@ describe('prepareMcpRegistryConnection', () => {
 					{
 						credentialType: 'exampleMcpGatewayApi',
 						selector: AI_GATEWAY_MANAGED_AUTH_TYPE,
-						endpoint: {
-							url: 'https://gateway.n8n.io/v1/gateway/mcp/example',
-							hostname: 'gateway.n8n.io',
-						},
+						endpoint: { url: gatewayUrl, hostname: 'gateway.n8n.io' },
 					},
 				],
 			},
@@ -240,7 +273,7 @@ describe('prepareMcpRegistryConnection', () => {
 				nodeTypeName: '@n8n/mcp-registry.example',
 				credentialType: 'exampleMcpGatewayApi',
 				transport: 'httpStreamable',
-				endpointUrl: 'https://gateway.n8n.io/v1/gateway/mcp/example',
+				endpointUrl: gatewayUrl,
 				headers: { Authorization: 'Bearer gateway-token' },
 				allowedDomains: 'gateway.n8n.io',
 			},

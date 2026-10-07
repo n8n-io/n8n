@@ -8,11 +8,12 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	getMcpRegistryCredentialOptions,
-	getMcpRegistryCredentialTypeName,
-	getMcpRegistryGatewayCredentialOption,
-	getMcpRegistryGatewayCredentialTypeName,
 	getGatewayRouteBinding,
+	getMcpRegistryCredentialOptions,
+	getMcpRegistryGatewayCredentialOption,
+	getMcpRegistryCredentialTypeName,
+	getMcpRegistryGatewayCredentialTypeName,
+	MCP_BASE_GATEWAY_CREDENTIAL_NAME,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 	getConfiguredEndpointUrl,
@@ -38,11 +39,6 @@ export {
 	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
 } from './mcp-registry-connection';
-
-// Base credential an n8n Connect MCP server's synthetic type extends. The suffix
-// is load-bearing: the MCP runtime picks the gateway auth strategy from the
-// credential type name (`isMcpGatewayAuthentication`).
-const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
 
 /**
  * Predicate that tells whether a credential type name is registered in the runtime.
@@ -141,8 +137,8 @@ function serverToGatewayCredentialDescription(server: McpRegistryServer): ICrede
 }
 
 /**
- * The Gateway credits credential type for a server that also has its own
- * credentials. Pinned to the gateway host, not to the server's own remote.
+ * The Gateway credits credential type for a registry server that the AI Gateway
+ * also hosts. Pinned to the gateway host, not to the server's own remote.
  */
 export function serverToGatewayRouteCredentialDescription(
 	server: McpRegistryServer,
@@ -260,8 +256,7 @@ function serverToExtendedCredentialDescription(
 
 /**
  * The credentials a user can pick for the server's node. A Gateway credits
- * route comes last, so the default stays the server's own credential and a
- * node saved before the route existed keeps working.
+ * route comes last, so the default stays the server's own credential.
  */
 function getCredentialChoices(
 	server: McpRegistryServer,

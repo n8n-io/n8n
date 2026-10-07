@@ -151,12 +151,10 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				resolveConnection: (nodeTypeName, selector) => {
 					const connection = this.connections.get(nodeTypeName);
 					if (!connection) return undefined;
-					const bindings = connection.credentialBindings;
-					// No selector means the node type's default, which is the first binding.
 					const binding =
-						bindings.length === 1 || !selector
-							? bindings[0]
-							: bindings.find((candidate) => candidate.selector === selector);
+						connection.credentialBindings.length === 1
+							? connection.credentialBindings[0]
+							: connection.credentialBindings.find((candidate) => candidate.selector === selector);
 					return binding ? { connection, binding } : undefined;
 				},
 				prepareConnection: prepareMcpRegistryConnection,

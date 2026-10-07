@@ -42,15 +42,8 @@ export class McpRegistryClientTool implements INodeType {
 		selector?: string,
 	): ResolvedMcpRegistryConnection {
 		const resolved = this.registryRuntime?.resolveConnection(node.type, selector);
-		if (!resolved) throw new NodeOperationError(node, 'MCP registry connection is not registered');
-		// A node saved before its server gained a second route has no selector, so
-		// it gets the default one. Follow the credential the node carries instead.
-		const credentials = node.credentials ?? {};
-		if (Object.hasOwn(credentials, resolved.binding.credentialType)) return resolved;
-		const binding = resolved.connection.credentialBindings.find(({ credentialType }) =>
-			Object.hasOwn(credentials, credentialType),
-		);
-		return binding ? { ...resolved, binding } : resolved;
+		if (resolved) return resolved;
+		throw new NodeOperationError(node, 'MCP registry connection is not registered');
 	}
 
 	static prepareConnection(

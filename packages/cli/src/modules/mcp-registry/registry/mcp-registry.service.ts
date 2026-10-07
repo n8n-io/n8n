@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import isEqual from 'lodash/isEqual';
+import partition from 'lodash/partition';
 import { InstanceSettings } from 'n8n-core';
 import type { McpRegistryConnection } from 'n8n-workflow';
 
@@ -20,8 +22,31 @@ import {
 	type McpRegistrySearchResult,
 } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
-import { AI_GATEWAY_MANAGED_AUTH_TYPE, toEntity, fromEntity } from './mcp-registry.types';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	N8N_CONNECT_MCP_SLUG_PREFIX,
+	toEntity,
+	fromEntity,
+} from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+
+/** A row the AI Gateway serves, not the remote registry. */
+function isN8nConnectServer(server: McpRegistryServer): boolean {
+	return server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE;
+}
+
+/**
+ * Whether a fetched n8n Connect server matches its stored row in every field.
+ * The gateway keeps a fixed version, so a version check alone misses a changed
+ * URL or tool list. The JSON round trip drops `undefined` fields, as storing does;
+ * `deepCopy` keeps them, so every refresh would see a change.
+ */
+function isSameStoredServer(stored: McpRegistryServer, fetched: McpRegistryServer): boolean {
+	const toStoredShape = (server: McpRegistryServer): unknown =>
+		// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
+		JSON.parse(JSON.stringify(toEntity(server)));
+	return isEqual(toStoredShape(stored), toStoredShape(fetched));
+}
 
 @Service()
 export class McpRegistryService {
@@ -54,15 +79,18 @@ export class McpRegistryService {
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
-		// Merge before dropping deprecated rows: a deprecated row that the gateway
-		// still hosts stays active through its Gateway credits route.
-		const servers = await this.withGatewayOverlay(await this.getStoredServers());
-		return includeDeprecated ? servers : servers.filter(({ status }) => status !== 'deprecated');
+		const servers = await this.getStoredServers(includeDeprecated);
+		return servers.filter(({ requiredCapabilities }) =>
+			this.capabilities.supports(requiredCapabilities),
+		);
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
-		const [server] = await this.getBySlugs([slug]);
-		return server;
+		const entity = await this.repository.findOneBy({ slug });
+		if (!entity) return undefined;
+
+		const server = fromEntity(entity);
+		return this.capabilities.supports(server.requiredCapabilities) ? server : undefined;
 	}
 
 	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
@@ -70,11 +98,10 @@ export class McpRegistryService {
 			return [];
 		}
 
-		const stored = (await this.repository.findBy(slugs.map((slug) => ({ slug }))))
+		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
+		return entities
 			.map(fromEntity)
-			.filter((server) => server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE);
-		const wanted = new Set(slugs);
-		return await this.withGatewayOverlay(stored, (server) => wanted.has(server.slug));
+			.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities));
 	}
 
 	/**
@@ -83,11 +110,19 @@ export class McpRegistryService {
 	 * matching + mapping that used to be re-implemented per call site.
 	 */
 	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
-		return searchMcpRegistryServers(await this.getAll(), queries);
+		const servers = this.withGatewayRoutes(await this.getAll());
+		return searchMcpRegistryServers(
+			servers.filter(({ status }) => status === 'active'),
+			queries,
+		);
 	}
 
 	async list(limit: number): Promise<McpRegistrySearchResult[]> {
-		return listMcpRegistryServers(await this.getAll()).slice(0, limit);
+		const servers = this.withGatewayRoutes(await this.getAll());
+		return listMcpRegistryServers(servers.filter(({ status }) => status === 'active')).slice(
+			0,
+			limit,
+		);
 	}
 
 	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
@@ -102,79 +137,94 @@ export class McpRegistryService {
 	}
 
 	/**
-	 * Refreshes the registry from the remote API and reloads the generated node
+	 * Refreshes the registry from the remote API and, while n8n Connect is on, the
+	 * n8n Connect MCP servers from the AI Gateway. Then reloads the generated node
 	 * types. Skips the write and the reload when nothing changed.
 	 * Overlapping runs are safe: each row keeps the newest fetch, whichever run
 	 * writes last, and the loader rebuild is republished as a whole.
 	 * @throws when the remote API or the database write fails, or when the
 	 * signal aborts before the write starts. The signal cancels the API requests.
+	 * Also throws when the gateway request fails, after the registry updates are saved.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
-		const existingServers = await this.getStoredServers();
+		const storedServers = await this.getStoredServers(true);
+		const registryServers = storedServers.filter((server) => !isN8nConnectServer(server));
+		const n8nConnectServers = storedServers.filter(isN8nConnectServer);
 		const fetchedAt = await this.repository.readDbNow();
-		let updatedServers: McpRegistryServer[];
-		if (existingServers.length === 0) {
-			updatedServers = await this.apiClient.fetchAllServers(signal);
-		} else {
-			const result = await this.refreshUpdatedServers(existingServers, signal);
-			if (result === null) {
-				this.logger.debug('MCP registry is up to date');
-				return;
-			}
-
-			updatedServers = result;
+		const fetchedRegistryUpdates =
+			registryServers.length === 0
+				? await this.apiClient.fetchAllServers(signal)
+				: ((await this.refreshUpdatedServers(registryServers, signal)) ?? []);
+		// The prefix is reserved for n8n Connect rows, so no registry row replaces one.
+		const [reservedSlugUpdates, registryUpdates] = partition(fetchedRegistryUpdates, (server) =>
+			server.slug.startsWith(N8N_CONNECT_MCP_SLUG_PREFIX),
+		);
+		if (reservedSlugUpdates.length > 0) {
+			this.logger.warn(
+				'Ignored MCP registry servers that use the reserved n8n Connect slug prefix',
+				{
+					slugs: reservedSlugUpdates.map(({ slug }) => slug),
+				},
+			);
 		}
 
-		signal?.throwIfAborted();
-		await this.saveServers(updatedServers, fetchedAt);
-		await this.refreshRegistryNodeTypes(true);
-		this.notifyNodeDescriptionsUpdated();
-		await this.publishReloadCommand();
+		// A gateway failure must not discard the registry updates, so it is rethrown
+		// only after they are saved. The task then retries the gateway part.
+		let n8nConnectUpdates: McpRegistryServer[] = [];
+		let n8nConnectError: unknown;
+		try {
+			n8nConnectUpdates = await this.getN8nConnectUpdates(n8nConnectServers);
+		} catch (error) {
+			n8nConnectError = error;
+		}
 
-		this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
+		const updatedServers = [...registryUpdates, ...n8nConnectUpdates];
+		if (updatedServers.length === 0) {
+			this.logger.debug('MCP registry is up to date');
+		} else {
+			signal?.throwIfAborted();
+			await this.saveServers(updatedServers, fetchedAt);
+			await this.refreshRegistryNodeTypes(true);
+			this.notifyNodeDescriptionsUpdated();
+			await this.publishReloadCommand();
+
+			this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
+		}
+
+		if (n8nConnectError) throw n8nConnectError;
 	}
 
-	private async getStoredServers(): Promise<McpRegistryServer[]> {
-		const entities = await this.repository.find();
-		// n8n Connect MCP servers come from the live overlay, never the DB. Drop any
-		// that somehow landed in a stored row so they can't duplicate the overlay.
-		return entities
-			.map(fromEntity)
-			.filter((server) => server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE);
+	private async getStoredServers(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
+		const entities = includeDeprecated
+			? await this.repository.find()
+			: await this.repository.findBy({ status: 'active' });
+		return entities.map(fromEntity);
 	}
 
 	/**
-	 * Adds the n8n Connect MCP servers to the stored ones. A gateway server whose
-	 * slug a stored server already has becomes a Gateway credits route on that
-	 * server, so each slug stays one node. The rest are added as they are. When
-	 * n8n Connect is off, `getN8nConnectMcpServers()` returns [] and this is a no-op.
+	 * Diffs the n8n Connect MCP servers against their stored rows: a new server,
+	 * or one that differs from its stored row, is returned to upsert, and a stored
+	 * one the gateway no longer lists is deprecated. While n8n Connect is off this
+	 * returns nothing, so the stored rows stay as they are.
+	 * @throws when the gateway request fails.
 	 */
-	private async withGatewayOverlay(
-		stored: McpRegistryServer[],
-		include: (server: McpRegistryServer) => boolean = () => true,
+	private async getN8nConnectUpdates(
+		storedServers: McpRegistryServer[],
 	): Promise<McpRegistryServer[]> {
-		const gatewayBySlug = new Map(
-			(await this.aiGatewayService.getN8nConnectMcpServers())
-				.filter(include)
-				.map((server) => [server.slug, server]),
-		);
-		const merged = stored.map((server) => {
-			const gatewayServer = gatewayBySlug.get(server.slug);
-			if (!gatewayServer) return server;
-			// Drop it from the leftovers either way, so the slug never yields a second node.
-			gatewayBySlug.delete(server.slug);
-			const gatewayEndpointUrl = gatewayServer.remotes[0]?.url;
-			if (!gatewayEndpointUrl) return server;
-			return {
-				...server,
-				// One active route keeps the merged node visible.
-				status: server.status === 'active' ? server.status : gatewayServer.status,
-				gatewayEndpointUrl,
-			};
+		if (!this.aiGatewayService.isEnabled()) return [];
+
+		const now = new Date().toISOString();
+		const fetchedServers = await this.aiGatewayService.fetchN8nConnectMcpServers();
+		const storedBySlug = new Map(storedServers.map((server) => [server.slug, server]));
+		const fetchedSlugs = new Set(fetchedServers.map(({ slug }) => slug));
+		const changedServers = fetchedServers.filter((server) => {
+			const stored = storedBySlug.get(server.slug);
+			return !stored || !isSameStoredServer(stored, server);
 		});
-		return [...merged, ...gatewayBySlug.values()].filter(({ requiredCapabilities }) =>
-			this.capabilities.supports(requiredCapabilities),
-		);
+		const serversToDeprecate = storedServers
+			.filter((server) => !fetchedSlugs.has(server.slug) && server.status !== 'deprecated')
+			.map((server) => ({ ...server, status: 'deprecated' as const, updatedAt: now }));
+		return [...changedServers, ...serversToDeprecate];
 	}
 
 	private async refreshUpdatedServers(
@@ -240,7 +290,7 @@ export class McpRegistryService {
 			return;
 		}
 
-		const servers = await this.getAll({ includeDeprecated: true });
+		const servers = this.withGatewayRoutes(await this.getAll({ includeDeprecated: true }));
 		loader.setServers(servers);
 		await loader.loadAll();
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -249,6 +299,42 @@ export class McpRegistryService {
 		}
 
 		this.logger.debug('MCP registry loader done', { serverCount: servers.length });
+	}
+
+	/**
+	 * Attaches each n8n Connect server to the active registry server it serves a
+	 * Gateway credits route for: the one whose slug is its slug without the
+	 * prefix. That registry server gains the route, and the n8n Connect row is
+	 * marked deprecated in memory, so its node stays registered for saved
+	 * workflows but is hidden and left out of search. Without a registry match,
+	 * the n8n Connect server stays as it is.
+	 */
+	private withGatewayRoutes(servers: McpRegistryServer[]): McpRegistryServer[] {
+		const toRegistrySlug = (server: McpRegistryServer) =>
+			server.slug.slice(N8N_CONNECT_MCP_SLUG_PREFIX.length);
+		const activeRegistrySlugs = new Set(
+			servers
+				.filter((server) => !isN8nConnectServer(server) && server.status === 'active')
+				.map(({ slug }) => slug),
+		);
+		const routeUrls = new Map<string, string>();
+		for (const server of servers) {
+			const url = server.remotes[0]?.url;
+			if (!isN8nConnectServer(server) || server.status !== 'active' || !url) continue;
+			if (activeRegistrySlugs.has(toRegistrySlug(server))) {
+				routeUrls.set(toRegistrySlug(server), url);
+			}
+		}
+
+		return servers.map((server) => {
+			if (isN8nConnectServer(server)) {
+				return routeUrls.has(toRegistrySlug(server))
+					? { ...server, status: 'deprecated' as const }
+					: server;
+			}
+			const gatewayEndpointUrl = routeUrls.get(server.slug);
+			return gatewayEndpointUrl ? { ...server, gatewayEndpointUrl } : server;
+		});
 	}
 
 	private async publishReloadCommand(): Promise<void> {

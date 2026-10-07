@@ -168,27 +168,6 @@ describe('McpRegistryClientTool', () => {
 			);
 		});
 
-		it('follows the node credential when the default selector points at a credential it lacks', async () => {
-			// A node saved before its server gained a Gateway credits route has no
-			// selector, so it gets the own-credential default.
-			const ctx = createLoadOptionsCtx(
-				{ authentication: 'oAuth2', endpointUrl: 'https://gw.example.com/mcp' },
-				{ credentials: { firecrawlMcpGatewayApi: {} } },
-			);
-			loadMcpToolOptionsMock.mockResolvedValue([]);
-
-			const node = createRegisteredNode('https://gw.example.com/mcp', 'httpStreamable', [
-				{ credentialType: 'firecrawlMcpOAuth2Api', selector: 'oAuth2' },
-				{ credentialType: 'firecrawlMcpGatewayApi', selector: '__aiGatewayManaged' },
-			]);
-			await node.methods.loadOptions.getTools.call(ctx);
-
-			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
-				ctx,
-				expect.objectContaining({ authentication: 'firecrawlMcpGatewayApi' }),
-			);
-		});
-
 		it('throws an error when no OAuth2 credentials are defined on the node', async () => {
 			const ctx = createLoadOptionsCtx(
 				{

@@ -22,6 +22,10 @@ export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
+// Base credential an n8n Connect MCP server's synthetic type extends. The suffix
+// is load-bearing: the MCP runtime picks the gateway auth strategy from the
+// credential type name (`isMcpGatewayAuthentication`).
+export const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
 
 export function getMcpRegistryCredentialTypeName(
 	server: McpRegistryServer,
@@ -46,8 +50,8 @@ export function getMcpRegistryGatewayCredentialOption(
 }
 
 /**
- * The Gateway credits route of a server the AI Gateway also hosts, next to the
- * server's own credentials. Undefined when the server has no such route.
+ * The Gateway credits route of a registry server that the AI Gateway also
+ * hosts, next to the server's own credentials. Undefined when it has none.
  */
 export function getGatewayRouteBinding(
 	server: McpRegistryServer,
@@ -61,10 +65,6 @@ export function getGatewayRouteBinding(
 	};
 }
 
-/**
- * The server's own credential options. A Gateway credits route is not one of
- * them: callers that can only connect with a stored credential read this list.
- */
 export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
 ): McpRegistryUsesCredential[] {
@@ -180,15 +180,17 @@ export function prepareMcpRegistryConnection({
 			ok: false,
 			error: {
 				code: 'missing_access_token',
-				message: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
+				message: isMcpGatewayAuthentication(credentialType)
+					? `Credential type "${credentialType}" does not contain a Gateway credits token`
+					: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
 			},
 		};
 	}
 
 	const { nodeTypeName, transport } = connection;
 
-	// A binding with its own remote (the Gateway credits route) skips the
-	// connection's endpoint and its headers, which belong to the official remote.
+	// The Gateway credits route has its own remote: it skips the connection's
+	// endpoint and headers, which belong to the server's own remote.
 	if (binding.endpoint) {
 		return {
 			ok: true,
