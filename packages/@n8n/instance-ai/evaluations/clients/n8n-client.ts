@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	AgentChatMessagesResponse,
 	InstanceAiHandoffContext,
 	InstanceAiSendMessageRequest,
 	AgentConfigResponse,
@@ -40,6 +41,9 @@ setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 /** Floor for calls that pass no budget: the dispatcher above leaves those
  *  unbounded, so a silent lane would hang rather than fail. Sized for a plain
  *  REST call — slower callers pass their own. */
+/** System-agent routes of the n8n Assistant (Assistant v2 PoC). */
+const ASSISTANT_V2_BASE = '/rest/agents/system/n8n-assistant';
+
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
 /** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
@@ -351,6 +355,15 @@ export class N8nClient {
 		handoffContext?: InstanceAiHandoffContext,
 		observerThresholdTokens?: number,
 	): Promise<{ runId: string }> {
+		if (this.assistantV2) {
+			await this.sendAssistantMessage(threadId, message, {
+				...(attachments?.length ? { attachments } : {}),
+				mode,
+				...(promptVersion ? { promptVersion } : {}),
+				...(handoffContext ? { context: handoffContext } : {}),
+			});
+			return { runId: '' };
+		}
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
 			body: {
@@ -383,6 +396,14 @@ export class N8nClient {
 	 * POST /rest/instance-ai/chat/:threadId/cancel
 	 */
 	async cancelRun(threadId: string): Promise<void> {
+		if (this.assistantV2) {
+			const { activeExecutionId } = await this.getAssistantHistory(threadId);
+			if (!activeExecutionId) return;
+			await this.fetch(`${ASSISTANT_V2_BASE}/chat/${threadId}/executions/${activeExecutionId}`, {
+				method: 'DELETE',
+			});
+			return;
+		}
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
@@ -406,6 +427,9 @@ export class N8nClient {
 	 * GET /rest/instance-ai/threads/:threadId/messages
 	 */
 	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
+		// v2 builds the outcome from the rebuilt events (see harness/assistant-v2.ts).
+		if (this.assistantV2)
+			return { threadId, messages: [] } as unknown as InstanceAiRichMessagesResponse;
 		const result = (await this.fetch(`/rest/instance-ai/threads/${threadId}/messages`)) as {
 			data: InstanceAiRichMessagesResponse;
 		};
@@ -1365,6 +1389,97 @@ export class N8nClient {
 		await this.fetch(`/rest/projects/${projectId}/agents/v2/${agentId}`, {
 			method: 'DELETE',
 		});
+	}
+
+	// -- Assistant v2 (Agents runtime, ASS-1573 PoC) ------------------------
+
+	/** Drive the Assistant through the Agents system-agent routes. */
+	readonly assistantV2 = process.env.N8N_EVAL_ASSISTANT_V2 === 'true';
+
+	/** Queue a message. Resolves once the server accepted it; the turn runs on. */
+	async sendAssistantMessage(
+		threadId: string,
+		message: string,
+		hostContext: Record<string, unknown>,
+	): Promise<void> {
+		const first = await this.postSseUntil(
+			`${ASSISTANT_V2_BASE}/chat`,
+			{ message, sessionId: threadId, hostContext },
+			(event) => ['message-queued', 'error', 'done'].includes(String(event.type)),
+		);
+		if (first?.type === 'error') {
+			throw new N8nApiError(`Assistant chat failed: ${String(first.message)}`, 400);
+		}
+	}
+
+	/** Resume a suspended tool call. Resolves once the server answered; the turn runs on. */
+	async resumeAssistantRun(runId: string, toolCallId: string, resumeData: unknown): Promise<void> {
+		const first = await this.postSseUntil(
+			`${ASSISTANT_V2_BASE}/chat/resume`,
+			{ runId, toolCallId, resumeData },
+			() => true,
+		);
+		if (first?.type === 'error') {
+			throw new N8nApiError(`Assistant resume failed: ${String(first.message)}`, 400);
+		}
+	}
+
+	async getAssistantHistory(threadId: string): Promise<AgentChatMessagesResponse> {
+		return this.unwrapRestData<AgentChatMessagesResponse>(
+			await this.fetch(`${ASSISTANT_V2_BASE}/chat/${threadId}/messages`),
+		);
+	}
+
+	/** POST and read the SSE response until `stop` matches an event, then close it. */
+	private async postSseUntil(
+		path: string,
+		body: unknown,
+		stop: (event: Record<string, unknown>) => boolean,
+	): Promise<Record<string, unknown> | undefined> {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
+		try {
+			const res = await fetch(`${this.baseUrl}${path}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/event-stream',
+					cookie: this.cookie,
+				},
+				body: JSON.stringify(body),
+				signal: controller.signal,
+			});
+			if (!res.ok || !res.body) {
+				throw new N8nApiError(`n8n API POST ${path} failed (${res.status})`, res.status);
+			}
+			const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+			let buffer = '';
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) return undefined;
+				buffer += value;
+				let end: number;
+				while ((end = buffer.indexOf('\n\n')) !== -1) {
+					const block = buffer.slice(0, end);
+					buffer = buffer.slice(end + 2);
+					const data = block
+						.split('\n')
+						.filter((line) => line.startsWith('data:'))
+						.map((line) => line.slice(5).trim())
+						.join('\n');
+					if (!data) continue;
+					try {
+						const event = JSON.parse(data) as Record<string, unknown>;
+						if (stop(event)) return event;
+					} catch {
+						// Ignore malformed events
+					}
+				}
+			}
+		} finally {
+			clearTimeout(timer);
+			controller.abort();
+		}
 	}
 
 	// -- SSE helpers ---------------------------------------------------------

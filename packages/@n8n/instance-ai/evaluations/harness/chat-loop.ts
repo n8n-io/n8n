@@ -21,6 +21,7 @@ import { MIN_TURN_BUDGET_MS, RunTimeoutError } from './timeouts';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import { lastSavedWorkflowIdFromEvents, savedWorkflowsFromEvents } from '../outcome/event-parser';
+import { waitForAssistantV2Activity } from './assistant-v2';
 import type { BuildTimeout, CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -65,6 +66,10 @@ export async function startSseConnection(
 	events: CapturedEvent[],
 	signal: AbortSignal,
 ): Promise<void> {
+	// Assistant v2 has no event log. The wait loop rebuilds events from history.
+	if (client.assistantV2) {
+		return await new Promise((resolve) => signal.addEventListener('abort', () => resolve()));
+	}
 	const url = client.getEventsUrl(threadId);
 	const cookie = client.cookie;
 
@@ -122,6 +127,23 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 	// Allocate the retries map once per conversation if the caller didn't
 	// pass one; per-call allocation would reset attempt counts every poll.
 	config.confirmationRetries ??= new Map<string, number>();
+
+	if (config.client.assistantV2) {
+		await waitForAssistantV2Activity({
+			client: config.client,
+			threadId: config.threadId,
+			events: config.events,
+			approvedRequests: config.approvedRequests,
+			sentAt: config.turnStartedAt ?? config.startTime,
+			confirmationStrategy: config.confirmationStrategy ?? buildAutoApprovePayload,
+			proxyResponses: config.proxyResponses,
+			timeoutBreach: () => timeoutBreach(config),
+			onTimeout: async (breach) => await cancelAndThrow(config, breach),
+			log: (message) => config.logger.verbose(message),
+		});
+		await waitForMemoryTasks(config);
+		return;
+	}
 
 	let runFinishCount = 0;
 
