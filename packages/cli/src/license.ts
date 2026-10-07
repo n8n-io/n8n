@@ -173,6 +173,9 @@ export class License implements LicenseProvider {
 	}
 
 	private async onFeatureChange() {
+		// The entitlement timer fires on every main at once, so without this check each main publishes the same reload.
+		// `onLicenseRenewed` has no check, because the renewal runs on any main and only that main stored the new cert.
+		// TODO(leaderless): Remove this publish. Each process already updates its own features on this timer.
 		if (this.instanceSettings.isLeader) {
 			void this.broadcastReloadLicenseCommand();
 		}
