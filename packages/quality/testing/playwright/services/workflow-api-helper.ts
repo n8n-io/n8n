@@ -4,6 +4,7 @@ import { readFileSync } from 'fs';
 import {
 	isTerminalExecutionStatus,
 	type IRunData,
+	type StartNodeData,
 	type IWorkflowBase,
 	type ExecutionSummary,
 } from 'n8n-workflow';
@@ -176,7 +177,7 @@ export class WorkflowApiHelper {
 	async runToNode(
 		workflowId: string,
 		destinationNodeName: string,
-		options: { runData?: IRunData; dirtyNodeNames?: string[] } = {},
+		options: { runData?: IRunData; dirtyNodeNames?: string[]; startNodes?: StartNodeData[] } = {},
 	): Promise<{ executionId: string }> {
 		const response = await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
 			data: {
