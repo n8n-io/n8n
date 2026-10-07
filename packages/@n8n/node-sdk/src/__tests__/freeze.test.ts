@@ -1,12 +1,22 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { Action } from '../define';
 import type { PermissionRefusal } from '../egress';
 import { defineCredential, field } from '../entry/credentials';
-import { credentialTypesOf, freezeAction, GUEST_LACKS, type FrozenAction } from '../freeze';
+import {
+	credentialTypesOf,
+	freezeAction,
+	freezePackage,
+	GUEST_LACKS,
+	type FrozenAction,
+} from '../freeze';
+import { npmDigestOf, npmPackageOf } from '../npm';
 import {
 	executorOf,
 	hostRuntime,
@@ -16,6 +26,7 @@ import {
 	type ExecutorHost,
 	type FrozenVersion,
 } from '../runtime';
+import { storeFilesOfDir, storeReader } from '../store';
 import { loadTriggerExecutor, toVersionedTriggerType } from '../triggers';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
@@ -427,4 +438,113 @@ describe('the manifest of a trigger as the permission source', () => {
 			expect.objectContaining({ action: 'api.hooked', version: '1.0.0', permission: 'manifest' }),
 		]);
 	});
+});
+
+describe('freezePackage with a registry', () => {
+	const passSource = (run: string, input = '{}') => `
+import { defineNode, t } from '@n8n/node-sdk';
+
+export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass', {
+	action: 'Pass',
+	summary: 'Pass the item on.',
+	flow: { effect: 'transform', cardinality: 'batch' },
+	input: ${input},
+	output: t.passedItem(),
+	run: ${run},
+});
+`;
+	const registry = 'http://registry.test/';
+	const { privateKey } = generateKeyPairSync('ed25519');
+	const dirs = { pkg: '', entry: '' };
+
+	beforeEach(async () => {
+		// Inside this package, so the action file resolves @n8n/node-sdk.
+		dirs.pkg = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		dirs.entry = path.join(dirs.pkg, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
+		await mkdir(path.dirname(dirs.entry), { recursive: true });
+	});
+
+	afterEach(async () => {
+		vi.unstubAllEnvs();
+		vi.unstubAllGlobals();
+		await rm(dirs.pkg, { recursive: true, force: true });
+	});
+
+	/** Packs the npm package of the action in `dirs.entry` with `npm pack`, and serves it at `registry`. */
+	async function publish() {
+		const frozen = await freezeAction(dirs.entry, 'pass');
+		const files = npmPackageOf(
+			{ ...frozen, fixtures: { executions: [] } },
+			{ privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() },
+		);
+		const packDir = path.join(dirs.pkg, 'pack');
+		await mkdir(packDir);
+		await Promise.all(
+			Object.entries(files).map(
+				async ([file, text]) => await writeFile(path.join(packDir, file), text),
+			),
+		);
+		const { stdout } = await promisify(execFile)('npm', ['pack', '--json'], { cwd: packDir });
+		const [{ filename }] = JSON.parse(stdout) as Array<{ filename: string }>;
+		const tgz = await readFile(path.join(packDir, filename));
+		const tarball = `${registry}-/pass.tgz`;
+		const packument = {
+			versions: {
+				'1.0.0': {
+					n8n: { id: 'demo.pass', digest: npmDigestOf(frozen.manifest) },
+					dist: { tarball },
+				},
+			},
+		};
+		vi.stubGlobal('fetch', async (url: string) =>
+			url === tarball
+				? new Response(tgz)
+				: url === `${registry}@n8n-nodes%2fdemo.pass`
+					? Response.json(packument)
+					: new Response('{}', { status: 404 }),
+		);
+		return frozen;
+	}
+
+	const headOf = async () => {
+		const reader = storeReader(storeFilesOfDir(path.join(dirs.pkg, 'dist', 'store')));
+		return (await reader.records('demo.pass'))[0];
+	};
+
+	it('ships the published bytes of a version, and freezes locally without a registry', async () => {
+		await writeFile(dirs.entry, passSource('({ items }) => items.map((item) => ({ item }))'));
+		const published = await publish();
+		const pkg = { name: '@acme/nodes', dir: dirs.pkg };
+		const log: string[] = [];
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry);
+		await freezePackage(pkg, undefined, (line) => log.push(line));
+		expect(log).toEqual([]);
+
+		// Other bundle bytes, same contract.
+		await writeFile(dirs.entry, passSource('({ items }) => items.map((one) => ({ item: one }))'));
+		const { manifests } = await freezePackage(pkg, undefined, (line) => log.push(line));
+		expect(manifests).toEqual([published.manifest]);
+		expect(await headOf()).toMatchObject({
+			manifest: npmDigestOf(published.manifest),
+			fixtures: expect.any(String),
+		});
+		expect(log).toEqual(['demo.pass@1.0.0 has unpublished changes; bump the version to ship them']);
+
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', '');
+		const local = await freezePackage(pkg);
+		expect(local.manifests[0]?.bundleHash).not.toBe(published.manifest.bundleHash);
+		expect((await headOf())?.manifest).toBe(npmDigestOf(local.manifests[0] ?? published.manifest));
+
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry);
+		await writeFile(
+			dirs.entry,
+			passSource(
+				'({ items }) => items.map((item) => ({ item }))',
+				"{ note: t.str().title('Note') }",
+			),
+		);
+		await expect(freezePackage(pkg)).rejects.toThrow(
+			'demo.pass@1.0.0 is published with another contract; bump the version in source',
+		);
+	}, 60_000);
 });

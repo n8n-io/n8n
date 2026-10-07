@@ -21,8 +21,24 @@ import {
 	type CredentialManifest,
 	type NativeManifest,
 } from './manifest';
+import {
+	DEFAULT_NPM_SCOPE,
+	npmDigestOf,
+	npmManifestTextOf,
+	npmNameOf,
+	npmRegistryOf,
+	npmTarballFile,
+	npmVersionsOf,
+} from './npm';
 import { evaluateBundle, isHostModule, VALIDATOR_MODULE } from './runtime';
-import { addToStore, embeddedStoreDirOf, manifestTextOf, type SourcePackage } from './store';
+import {
+	addToStore,
+	embeddedStoreDirOf,
+	manifestTextOf,
+	type SourcePackage,
+	type StoreManifest,
+	type StoreVersion,
+} from './store';
 import { matches } from './validate';
 import {
 	compareSemver,
@@ -30,6 +46,7 @@ import {
 	HTTP_GUEST_NODE_CONTRACT,
 	manifestKindOf,
 	NODE_CONTRACT_VERSION,
+	parseManifest,
 	parseSemver,
 	requiredNodeContractOf,
 	sha256,
@@ -591,16 +608,64 @@ export interface FrozenPackage {
 	readonly natives: readonly NativeManifest[];
 }
 
+/** The version of a HEAD that the registry has, or `undefined` when it has none. */
+async function publishedOf(registry: string, scope: string, { id, semver }: StoreManifest) {
+	const name = npmNameOf(id, scope);
+	const published = (await npmVersionsOf(registry, name)).find(
+		(entry) => entry.version === semver && entry.id === id,
+	);
+	return published && { name, published };
+}
+
+/**
+ * The version to ship of a HEAD with a bundle. A bundle inlines the SDK, so a rebuild can give
+ * other bytes for a published version: then the published manifest, bundle and fixtures ship.
+ */
+async function shippedOf(
+	registry: string,
+	scope: string,
+	manifest: VersionManifest,
+	bundle: string,
+	log: (line: string) => void,
+): Promise<{ readonly manifest: VersionManifest } & StoreVersion> {
+	const local = { manifest, manifestText: manifestTextOf(manifest), bundle };
+	const found = await publishedOf(registry, scope, manifest);
+	if (!found || found.published.digest === npmDigestOf(manifest)) return local;
+	const at = `${manifest.id}@${manifest.semver}`;
+	const manifestText = await npmManifestTextOf(found.published, found.name);
+	const published = parseManifest(manifestText);
+	if (published.contractHash !== manifest.contractHash) {
+		throw new UserError(`${at} is published with another contract; bump the version in source`);
+	}
+	const response = await fetch(found.published.tarball ?? '', {
+		headers: process.env.NPM_TOKEN ? { authorization: `Bearer ${process.env.NPM_TOKEN}` } : {},
+	});
+	const tgz = new Uint8Array(await response.arrayBuffer());
+	log(`${at} has unpublished changes; bump the version to ship them`);
+	return {
+		manifest: published,
+		manifestText,
+		bundle: npmTarballFile(tgz, 'bundle.cjs'),
+		fixtures: npmTarballFile(tgz, 'fixtures.json'),
+	};
+}
+
 /**
  * Freezes the HEAD of each action, trigger, credential type and native contract of a package
  * into the store in `outDir`, by default the embedded store of the package. It replaces the
  * store in `outDir`: n8n loads every version there, so a removed contract must not stay from an
  * older build. Each version comes from the source. It finds the contracts in the action files
  * (`contractsOfPackage`).
+ *
+ * With `N8N_NODE_CONTRACTS_NPM_REGISTRY` (scope: `N8N_NODE_CONTRACTS_NPM_SCOPE`), a release ships
+ * the published bytes of each HEAD that the registry has. A HEAD with a bundle and the published
+ * contract hash ships the published version and gives a line to `log`. Any other change of a
+ * published version is an error.
  */
 export async function freezePackage(
 	pkg: Pick<SourcePackage, 'name' | 'dir'>,
 	outDir = embeddedStoreDirOf(pkg),
+	log: (line: string) => void = () => {},
 ): Promise<FrozenPackage> {
 	const { entries, natives: sources } = await contractsOfPackage(pkg);
 	const types = credentialTypesOf([...entries.map(({ action }) => action), ...sources]);
@@ -609,15 +674,38 @@ export async function freezePackage(
 	);
 	const credentialManifests = types.flatMap((type) => freezeCredential(type) ?? []);
 	const natives = sources.map(freezeNative);
+	const url = process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY;
+	const registry = url ? npmRegistryOf(url) : undefined;
+	const scope = process.env.N8N_NODE_CONTRACTS_NPM_SCOPE ?? DEFAULT_NPM_SCOPE;
+	const shipped = await Promise.all(
+		frozen.map(async ({ manifest, bundle }) =>
+			registry
+				? await shippedOf(registry, scope, manifest, bundle, log)
+				: { manifest, manifestText: manifestTextOf(manifest), bundle },
+		),
+	);
+	if (registry) {
+		// A version without a bundle holds only data, so other bytes are a real change.
+		await Promise.all(
+			[...credentialManifests, ...natives].map(async (manifest) => {
+				const found = await publishedOf(registry, scope, manifest);
+				if (found && found.published.digest !== npmDigestOf(manifest)) {
+					throw new UserError(
+						`${manifest.id}@${manifest.semver} is published with other bytes; bump the version in source`,
+					);
+				}
+			}),
+		);
+	}
 	rmSync(outDir, { recursive: true, force: true });
 	await addToStore(outDir, [
-		...frozen.map(({ manifest, bundle }) => ({ manifestText: manifestTextOf(manifest), bundle })),
+		...shipped,
 		...[...credentialManifests, ...natives].map((manifest) => ({
 			manifestText: manifestTextOf(manifest),
 		})),
 	]);
 	return {
-		manifests: frozen.map(({ manifest }) => manifest),
+		manifests: shipped.map(({ manifest }) => manifest),
 		credentials: credentialManifests,
 		natives,
 	};
