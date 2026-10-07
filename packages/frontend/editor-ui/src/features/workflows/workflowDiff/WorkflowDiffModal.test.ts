@@ -118,13 +118,8 @@ const mockWorkflow = createTestWorkflow({
 const renderModal = createComponentRenderer(WorkflowDiffModal, {
 	global: {
 		stubs: {
-			Modal: {
-				template: `
-					<div>
-						<slot name="header" v-bind="{ closeDialog: () => {} }" />
-						<slot name="content" />
-					</div>
-				`,
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
 		},
 	},
@@ -198,11 +193,9 @@ describe('WorkflowDiffModal', () => {
 			},
 		});
 
-		// Component should render with correct modal name and structure
-		const modal = container.querySelector('[name="workflowDiff"]');
+		const modal = container.querySelector('[role="dialog"]');
 		expect(modal).toBeInTheDocument();
-		expect(modal?.getAttribute('width')).toBe('100%');
-		expect(modal?.getAttribute('height')).toBe('100%');
+		expect(modal?.getAttribute('size')).toBe('cover');
 	});
 
 	it('should display changes button', async () => {
