@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
 	VIEWS,
 } from '@/app/constants';
 import { MFA_SETUP_MODAL_KEY } from '../auth.constants';
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { mfaEventBus } from '../auth.eventBus';
 import { useToast } from '@n8n/composables/useToast';
 import QrcodeVue from 'qrcode.vue';
@@ -17,7 +17,17 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import router from '@/app/router';
 import { I18nT } from 'vue-i18n';
 
-import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInfoTip,
+	N8nInput,
+	N8nInputLabel,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
 
 // DynamicModalLoader's modal-state props must not reach the dialog root.
 defineOptions({ inheritAttrs: false });
@@ -25,8 +35,6 @@ defineOptions({ inheritAttrs: false });
 // #region Reactive properties
 // ---------------------------------------------------------------------------
 
-const MFA_SETUP_MODAL_KEY_NAME = ref(MFA_SETUP_MODAL_KEY);
-const modalBus = ref(mfaEventBus);
 const secret = ref('');
 const qrCode = ref('');
 const readyToSubmit = ref(false);
@@ -46,7 +54,9 @@ const loadingQrCode = ref(true);
 
 const clipboard = useClipboard();
 const userStore = useUsersStore();
+const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
+const modalOpen = computed(() => uiStore.modalsById[MFA_SETUP_MODAL_KEY]?.open === true);
 const i18n = useI18n();
 const toast = useToast();
 
@@ -57,8 +67,12 @@ const toast = useToast();
 // ---------------------------------------------------------------------------
 
 const closeDialog = () => {
-	modalBus.value.emit('close');
+	uiStore.closeModal(MFA_SETUP_MODAL_KEY);
 };
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const onInput = (value: string) => {
 	if (value.length !== MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) {
@@ -159,135 +173,136 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		width="460px"
-		height="80%"
-		max-height="640px"
-		:title="
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="
 			!showRecoveryCodes
 				? i18n.baseText('mfa.setup.step1.title')
 				: i18n.baseText('mfa.setup.step2.title')
 		"
-		:event-bus="modalBus"
-		:name="MFA_SETUP_MODAL_KEY_NAME"
-		:center="true"
-		:loading="loadingQrCode"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
-				<div :class="$style.textContainer">
-					<N8nText size="large" color="text-dark" :bold="true">{{
-						i18n.baseText('mfa.setup.step1.instruction1.title')
-					}}</N8nText>
+		<N8nDialogBody v-if="loadingQrCode">
+			<N8nSpinner />
+		</N8nDialogBody>
+		<template v-else>
+			<N8nDialogBody>
+				<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
+					<div :class="$style.textContainer">
+						<N8nText size="large" color="text-dark" :bold="true">{{
+							i18n.baseText('mfa.setup.step1.instruction1.title')
+						}}</N8nText>
+					</div>
+					<div>
+						<N8nText size="medium" :bold="false">
+							<I18nT keypath="mfa.setup.step1.instruction1.subtitle" tag="span" scope="global">
+								<template #part1>
+									{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
+								</template>
+								<template #part2>
+									<a
+										:class="$style.secret"
+										data-test-id="mfa-secret-button"
+										@click="onCopySecretToClipboard"
+										>{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
+									>
+								</template>
+							</I18nT>
+						</N8nText>
+					</div>
+					<div :class="$style.qrContainer">
+						<QrcodeVue :value="qrCode" :size="150" level="H" />
+					</div>
+					<div :class="$style.textContainer">
+						<N8nText size="large" color="text-dark" :bold="true">{{
+							i18n.baseText('mfa.setup.step1.instruction2.title')
+						}}</N8nText>
+					</div>
+					<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
+						<N8nInputLabel
+							size="medium"
+							:bold="false"
+							:class="$style.labelTooltip"
+							:label="i18n.baseText('mfa.setup.step1.input.label')"
+						>
+							<N8nInput
+								v-model="authenticatorCode"
+								type="text"
+								:maxlength="6"
+								:placeholder="i18n.baseText('mfa.code.input.placeholder')"
+								:required="true"
+								data-test-id="mfa-token-input"
+								@input="onInput"
+							/>
+						</N8nInputLabel>
+						<div :class="[$style.infoText, 'mt-4xs']">
+							<span size="small" v-text="infoTextErrorMessage"></span>
+						</div>
+					</div>
 				</div>
-				<div>
-					<N8nText size="medium" :bold="false">
-						<I18nT keypath="mfa.setup.step1.instruction1.subtitle" tag="span" scope="global">
+				<div v-else :class="$style.container">
+					<div>
+						<N8nText size="medium" :bold="false">{{
+							i18n.baseText('mfa.setup.step2.description')
+						}}</N8nText>
+					</div>
+					<div :class="$style.recoveryCodesContainer">
+						<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
+							<N8nText size="medium">{{ recoveryCode }}</N8nText>
+						</div>
+					</div>
+					<N8nInfoTip :bold="false" :class="$style['edit-mode-footer-infotip']">
+						<I18nT keypath="mfa.setup.step2.infobox.description" tag="span" scope="global">
 							<template #part1>
-								{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
+								{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
 							</template>
 							<template #part2>
-								<a
-									:class="$style.secret"
-									data-test-id="mfa-secret-button"
-									@click="onCopySecretToClipboard"
-									>{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
-								>
+								<N8nText size="small" :bold="true" :class="$style.loseAccessText">
+									{{ i18n.baseText('mfa.setup.step2.infobox.description.part2') }}
+								</N8nText>
 							</template>
 						</I18nT>
-					</N8nText>
-				</div>
-				<div :class="$style.qrContainer">
-					<QrcodeVue :value="qrCode" :size="150" level="H" />
-				</div>
-				<div :class="$style.textContainer">
-					<N8nText size="large" color="text-dark" :bold="true">{{
-						i18n.baseText('mfa.setup.step1.instruction2.title')
-					}}</N8nText>
-				</div>
-				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
-					<N8nInputLabel
-						size="medium"
-						:bold="false"
-						:class="$style.labelTooltip"
-						:label="i18n.baseText('mfa.setup.step1.input.label')"
-					>
-						<N8nInput
-							v-model="authenticatorCode"
-							type="text"
-							:maxlength="6"
-							:placeholder="i18n.baseText('mfa.code.input.placeholder')"
-							:required="true"
-							data-test-id="mfa-token-input"
-							@input="onInput"
+					</N8nInfoTip>
+					<div>
+						<N8nButton
+							variant="solid"
+							icon="hard-drive-download"
+							float="right"
+							:label="i18n.baseText('mfa.setup.step2.button.download')"
+							data-test-id="mfa-recovery-codes-button"
+							@click="onDownloadClick"
 						/>
-					</N8nInputLabel>
-					<div :class="[$style.infoText, 'mt-4xs']">
-						<span size="small" v-text="infoTextErrorMessage"></span>
 					</div>
 				</div>
-			</div>
-			<div v-else :class="$style.container">
-				<div>
-					<N8nText size="medium" :bold="false">{{
-						i18n.baseText('mfa.setup.step2.description')
-					}}</N8nText>
-				</div>
-				<div :class="$style.recoveryCodesContainer">
-					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
-						<N8nText size="medium">{{ recoveryCode }}</N8nText>
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<div v-if="showRecoveryCodes">
+					<div>
+						<N8nButton
+							float="right"
+							:disabled="!recoveryCodesDownloaded"
+							:label="i18n.baseText('mfa.setup.step2.button.save')"
+							size="large"
+							data-test-id="mfa-save-button"
+							@click="onSetupClick"
+						/>
 					</div>
 				</div>
-				<N8nInfoTip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					<I18nT keypath="mfa.setup.step2.infobox.description" tag="span" scope="global">
-						<template #part1>
-							{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
-						</template>
-						<template #part2>
-							<N8nText size="small" :bold="true" :class="$style.loseAccessText">
-								{{ i18n.baseText('mfa.setup.step2.infobox.description.part2') }}
-							</N8nText>
-						</template>
-					</I18nT>
-				</N8nInfoTip>
-				<div>
-					<N8nButton
-						variant="solid"
-						icon="hard-drive-download"
-						float="right"
-						:label="i18n.baseText('mfa.setup.step2.button.download')"
-						data-test-id="mfa-recovery-codes-button"
-						@click="onDownloadClick"
-					/>
+				<div v-else>
+					<div>
+						<N8nButton
+							float="right"
+							:label="i18n.baseText('mfa.setup.step1.button.continue')"
+							size="large"
+							:disabled="!readyToSubmit"
+							@click="onSaveClick"
+						/>
+					</div>
 				</div>
-			</div>
+			</N8nDialogFooter>
 		</template>
-		<template #footer>
-			<div v-if="showRecoveryCodes">
-				<div>
-					<N8nButton
-						float="right"
-						:disabled="!recoveryCodesDownloaded"
-						:label="i18n.baseText('mfa.setup.step2.button.save')"
-						size="large"
-						data-test-id="mfa-save-button"
-						@click="onSetupClick"
-					/>
-				</div>
-			</div>
-			<div v-else>
-				<div>
-					<N8nButton
-						float="right"
-						:label="i18n.baseText('mfa.setup.step1.button.continue')"
-						size="large"
-						:disabled="!readyToSubmit"
-						@click="onSaveClick"
-					/>
-				</div>
-			</div>
-		</template>
-	</Modal>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
