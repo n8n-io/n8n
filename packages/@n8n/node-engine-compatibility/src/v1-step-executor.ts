@@ -193,6 +193,13 @@ export class V1StepExecutor implements IStepExecutor {
 		}
 
 		if (!result.ok) {
+			const description = this.describeNodeError(result.error);
+			try {
+				await context.sendChunk('error', 0, description);
+			} catch {
+				// The node's own error is the one to report. The response channel
+				// already tells the caller when it cannot carry the error chunk.
+			}
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}
@@ -202,5 +209,26 @@ export class V1StepExecutor implements IStepExecutor {
 		if (Array.isArray(result.value)) return result.value as INodeExecutionData[][];
 
 		throw new EngineRequestNotSupportedError(context.getNode().type);
+	}
+
+	/**
+	 * The text of the error chunk for a failed node. Only a node error's
+	 * `description` goes to the caller, as in v1. The `message` can hold
+	 * request details, so it stays in the logs and the execution data.
+	 * Without a description, the caller gets a generic text, so the chunk
+	 * always has content.
+	 */
+	private describeNodeError(error: unknown): string {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			'description' in error &&
+			typeof error.description === 'string' &&
+			error.description !== ''
+		) {
+			return error.description;
+		}
+
+		return 'Node execution failed';
 	}
 }

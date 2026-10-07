@@ -68,8 +68,8 @@ describe('ImportService', () => {
 		// The repository verifies the token, so it has to be a real one. With no backend
 		// registered the real service clears everything, which is what a default import does.
 		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
-			async (context) =>
-				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+			async (context, actor) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 		);
 
 		importService = new ImportService(
@@ -495,7 +495,10 @@ describe('ImportService', () => {
 
 	describe('content-import policy', () => {
 		const clearance = async (context: ContentImportContext) =>
-			await Container.get(PolicyEnforcementService).enforceContentImport(context);
+			await Container.get(PolicyEnforcementService).enforceContentImport(context, {
+				kind: 'system',
+				reason: 'cli-import',
+			});
 
 		beforeEach(() => {
 			mockPolicyEnforcementService.enforceContentImport.mockClear();
@@ -510,16 +513,22 @@ describe('ImportService', () => {
 			await importService.importWorkflows([first, second], ownerPersonalProject.id, owner.id, {});
 
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(2);
-			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-				workflow: { id: first.id, name: first.name, nodes: first.nodes },
-				projectId: ownerPersonalProject.id,
-				transport: 'cli',
-			});
-			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-				workflow: { id: second.id, name: second.name, nodes: second.nodes },
-				projectId: ownerPersonalProject.id,
-				transport: 'cli',
-			});
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+				{
+					workflow: { id: first.id, name: first.name, nodes: first.nodes },
+					projectId: ownerPersonalProject.id,
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'cli-import' },
+			);
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+				{
+					workflow: { id: second.id, name: second.name, nodes: second.nodes },
+					projectId: ownerPersonalProject.id,
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'cli-import' },
+			);
 		});
 
 		test('skips a blocked workflow, reports it, and still imports the rest of the batch', async () => {
@@ -531,7 +540,9 @@ describe('ImportService', () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
 			const flagged = newWorkflow({ id: uuid(), name: 'Flagged' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Flagged') throw new PolicyViolationError([violation]);
+				if ('workflow' in context && context.workflow.name === 'Flagged') {
+					throw new PolicyViolationError([violation]);
+				}
 				return await clearance(context);
 			});
 
@@ -589,15 +600,18 @@ describe('ImportService', () => {
 				{},
 			);
 
-			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-				workflow: {
-					id: workflowToReimport.id,
-					name: workflowToReimport.name,
-					nodes: workflowToReimport.nodes,
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+				{
+					workflow: {
+						id: workflowToReimport.id,
+						name: workflowToReimport.name,
+						nodes: workflowToReimport.nodes,
+					},
+					projectId: memberPersonalProject.id,
+					transport: 'cli',
 				},
-				projectId: memberPersonalProject.id,
-				transport: 'cli',
-			});
+				{ kind: 'system', reason: 'cli-import' },
+			);
 		});
 
 		// A check that cannot answer is an infrastructure fault, not a property of one workflow.
@@ -606,7 +620,9 @@ describe('ImportService', () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
 			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				if ('workflow' in context && context.workflow.name === 'Broken') {
+					throw new Error('backend unavailable');
+				}
 				return await clearance(context);
 			});
 
@@ -624,7 +640,9 @@ describe('ImportService', () => {
 			const active = await createActiveWorkflow({ name: 'Active' });
 			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				if ('workflow' in context && context.workflow.name === 'Broken') {
+					throw new Error('backend unavailable');
+				}
 				return await clearance(context);
 			});
 

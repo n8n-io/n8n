@@ -6,8 +6,10 @@ import type {
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
-/** Tool calls that are internal bookkeeping and should not be shown to the user. */
-export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+/** Tool calls that are internal bookkeeping and should not be shown to the user.
+ *  `leave-onboarding` ends the turn right after the model's reply: hiding it keeps
+ *  that reply a user-facing final message instead of narration before a tool call. */
+export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave-onboarding']);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */
@@ -316,6 +318,46 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
+/** The workflow a build-workflow / submit-workflow call wrote, if it wrote one. */
+function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+	if (tc.toolName !== 'build-workflow' && tc.toolName !== 'submit-workflow') return undefined;
+	if (!tc.result || typeof tc.result !== 'object') return undefined;
+	const result = tc.result as Record<string, unknown>;
+	if (typeof result.workflowId !== 'string') return undefined;
+
+	const name =
+		firstNonBlank(
+			typeof result.workflowName === 'string' ? result.workflowName : undefined,
+			typeof (tc.args as Record<string, unknown>)?.name === 'string'
+				? ((tc.args as Record<string, unknown>).name as string)
+				: undefined,
+		) ?? 'Untitled';
+	return {
+		type: 'workflow',
+		resourceId: result.workflowId,
+		name,
+		completedAt: tc.completedAt,
+	};
+}
+
+/**
+ * Workflows the agent built with its own tool calls, not through a sub-agent.
+ * Only successful builds count, each workflow once.
+ */
+export function extractBuiltWorkflowArtifacts(
+	toolCalls: InstanceAiToolCallState[],
+): ArtifactInfo[] {
+	const artifacts = new Map<string, ArtifactInfo>();
+	for (const tc of toolCalls) {
+		if ((tc.result as { success?: unknown } | undefined)?.success === false) continue;
+		const workflow = workflowArtifactFromToolCall(tc);
+		if (workflow && !artifacts.has(workflow.resourceId)) {
+			artifacts.set(workflow.resourceId, workflow);
+		}
+	}
+	return [...artifacts.values()];
+}
+
 /** Extract all artifacts (workflows, data tables, and agents) from a node's tool calls. */
 export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	if (node.status !== 'completed') return [];
@@ -351,26 +393,12 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 		if (!tc.result || typeof tc.result !== 'object') continue;
 		const result = tc.result as Record<string, unknown>;
 
-		// Workflow artifacts from build-workflow / submit-workflow
-		if (
-			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
-			typeof result.workflowId === 'string' &&
-			!seenIds.has(result.workflowId)
-		) {
-			seenIds.add(result.workflowId);
-			const name =
-				firstNonBlank(
-					typeof result.workflowName === 'string' ? result.workflowName : undefined,
-					typeof (tc.args as Record<string, unknown>)?.name === 'string'
-						? ((tc.args as Record<string, unknown>).name as string)
-						: undefined,
-				) ?? 'Untitled';
-			artifacts.push({
-				type: 'workflow',
-				resourceId: result.workflowId,
-				name,
-				completedAt: tc.completedAt,
-			});
+		const workflow = workflowArtifactFromToolCall(tc);
+		if (workflow) {
+			if (!seenIds.has(workflow.resourceId)) {
+				seenIds.add(workflow.resourceId);
+				artifacts.push(workflow);
+			}
 			continue;
 		}
 

@@ -11,6 +11,7 @@ import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
@@ -21,13 +22,12 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError, LockedError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
@@ -466,6 +466,70 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
+		it('patch_config saves a removed top-level field as removed', async () => {
+			const { service, agentsService } = makeService();
+			const telegram: AgentIntegrationConfig = {
+				type: 'telegram',
+				credentialId: 'telegram-cred',
+				settings: { accessMode: 'private', allowedUsers: ['@someone'] },
+			};
+			const agent = { ...makeAgent(baseConfig), integrations: [telegram] } as unknown as Agent;
+			const currentConfig = { ...baseConfig, integrations: [telegram] };
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: baseConfig,
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'remove', path: '/integrations' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
+			const [, , savedConfig, , options] = agentsService.updateConfig.mock.calls[0];
+			expect(savedConfig).not.toHaveProperty('integrations');
+			expect(savedConfig).toEqual(
+				expect.objectContaining({ instructions: 'Updated instructions' }),
+			);
+			expect(options).toEqual(expect.objectContaining({ clearOmittedOptionalFields: true }));
+		});
+
+		it('write_config keeps omitted fields', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: baseConfig,
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
+					json: JSON.stringify({ ...baseConfig, instructions: 'Changed.' }),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				expect.anything(),
+				user,
+				expect.objectContaining({ clearOmittedOptionalFields: false }),
+			);
+		});
+
 		it('patch_config reports a stale result when the config changes during the write', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
@@ -558,7 +622,10 @@ describe('AgentsBuilderToolsService', () => {
 					integrations: [currentIntegrations[0], currentIntegrations[2]],
 				}),
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -603,7 +670,10 @@ describe('AgentsBuilderToolsService', () => {
 					instructions: 'Updated instructions',
 				}),
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 		});
 
@@ -675,7 +745,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ integrations: [] }),
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 		});
 
@@ -809,7 +882,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -859,7 +935,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -903,7 +982,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -949,7 +1031,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -1054,7 +1139,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ model: '', instructions: 'Help the user.' }),
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentDraftConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentDraftConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 		});
 
@@ -1153,7 +1241,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ model: '', instructions: 'Triage Slack messages.' }),
 				user,
-				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 		});
 
@@ -1235,7 +1326,10 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+					expect.objectContaining({
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						modifiedBy: 'builder',
+					}),
 				);
 			});
 
@@ -1274,7 +1368,10 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+					expect.objectContaining({
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						modifiedBy: 'builder',
+					}),
 				);
 			});
 
@@ -1321,7 +1418,10 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+					expect.objectContaining({
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						modifiedBy: 'builder',
+					}),
 				);
 			});
 
@@ -1370,7 +1470,10 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
+					expect.objectContaining({
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						modifiedBy: 'builder',
+					}),
 				);
 			});
 		});
@@ -2154,6 +2257,31 @@ describe('AgentsBuilderToolsService', () => {
 				suspended: true,
 				continuation: secondContinuation,
 			});
+		});
+
+		it('reports a run that stopped on the iteration cap as an error', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'The agent has reached the maximum number of iterations and has stopped.',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+				maxIterations: true,
+			});
+
+			const result = await getCallAgentTool(service).handler!({ message: 'Find my events' }, ctx);
+
+			expect(result).toMatchObject({
+				status: 'error',
+				code: 'max_iterations',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+			});
+			// The guidance is the fix: without it the builder retries the same test.
+			const { message } = result as { message: string };
+			expect(message).toContain('A repeat of the same test gives the same result.');
+			expect(message).toContain('ask before you change the agent');
 		});
 
 		it('cancels approval-shaped custom suspensions and directs the user to Preview', async () => {

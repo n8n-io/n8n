@@ -12,15 +12,17 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn, useElementSize } from '@vueuse/core';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { DEBOUNCE_TIME } from '@/app/constants';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 
+import AssistantMentionBreadcrumbs from './AssistantMentionBreadcrumbs.vue';
 import type {
 	AssistantMentionItem,
+	AssistantMentionPickerOpenMetrics,
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from './assistantAtMentions.types';
@@ -72,6 +74,11 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:modelValue': [open: boolean];
 	select: [selection: AssistantMentionSelection];
+	/**
+	 * The "No results" state stayed on screen for this search query until it
+	 * settled, or the picker closed on it. Once per distinct query per open.
+	 */
+	'empty-search': [query: string];
 }>();
 
 const i18n = useI18n();
@@ -100,6 +107,7 @@ const workflowProvider = createWorkflowMentionSourceProvider({
 const sources = useAssistantMentionSources([artifactProvider, workflowProvider], { excludedKeys });
 const searchPending = ref(false);
 let highlightedForCurrentOpen = false;
+let submenuOpenCount = 0;
 
 function isMenuItem(item: MentionMenuItem | undefined): item is MentionMenuItem {
 	return item !== undefined;
@@ -164,28 +172,13 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 	if (!hasItems && sources.providerErrors.value.size > 0) return [];
 
 	return sections.flatMap((section) => {
-		if (section.id === 'workflows' && section.items.length === 0) {
-			if (section.hadItems) return [];
-			if (sources.isBrowsing.value) return [];
-			if (sources.providerErrors.value.has('workflows')) {
-				return [
-					{
-						id: 'section:workflows',
-						label: i18n.baseText('instanceAi.mentions.workflowsSection'),
-						header: true,
-					},
-					{
-						id: 'state:workflows-error',
-						label: i18n.baseText('instanceAi.mentions.loadError'),
-						disabled: true,
-					},
-					{
-						id: RETRY_SOURCES_ITEM_ID,
-						label: i18n.baseText('generic.retry'),
-						keepOpen: true,
-					},
-				];
-			}
+		if (section.items.length === 0) {
+			const failedToLoadWorkflows =
+				section.id === 'workflows' &&
+				!section.hadItems &&
+				!sources.isBrowsing.value &&
+				sources.providerErrors.value.has('workflows');
+			if (!failedToLoadWorkflows) return [];
 			return [
 				{
 					id: 'section:workflows',
@@ -193,13 +186,17 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 					header: true,
 				},
 				{
-					id: 'state:no-recent-workflows',
-					label: i18n.baseText('instanceAi.mentions.noRecentWorkflows'),
+					id: 'state:workflows-error',
+					label: i18n.baseText('instanceAi.mentions.loadError'),
 					disabled: true,
+				},
+				{
+					id: RETRY_SOURCES_ITEM_ID,
+					label: i18n.baseText('generic.retry'),
+					keepOpen: true,
 				},
 			];
 		}
-		if (section.items.length === 0) return [];
 		return [
 			{
 				id: `section:${section.id}`,
@@ -221,6 +218,12 @@ const isLoading = computed(
 			? sources.searchResults.value.length === 0
 			: !sources.browseSections.value.some((section) => section.items.length > 0)) &&
 		(searchPending.value || sources.isBrowsing.value || sources.isSearching.value),
+);
+
+const emptyText = computed(() =>
+	i18n.baseText(
+		props.query.trim() ? 'instanceAi.mentions.noResults' : 'instanceAi.mentions.noRecentWorkflows',
+	),
 );
 
 function getResultPosition(itemId: string): number | undefined {
@@ -289,6 +292,7 @@ watch(
 		} else {
 			searchPending.value = false;
 			void sources.browse();
+			void artifactIndex.loadAll();
 		}
 	},
 	{ immediate: true },
@@ -298,12 +302,68 @@ watch(
 	() => props.modelValue,
 	(open) => {
 		highlightedForCurrentOpen = false;
+		if (open) submenuOpenCount = 0;
 		if (open && menuItems.value.length > 0) {
 			highlightedForCurrentOpen = true;
 			void nextTick(() => dropdownRef.value?.highlightFirstItem());
 		}
 	},
 );
+
+// "No results" is on screen: a finished search with nothing to pick. A source
+// error shows its own state instead and is not the resource being missing.
+const isEmptySearchShown = computed(
+	() =>
+		props.modelValue &&
+		props.query.trim().length > 0 &&
+		!isLoading.value &&
+		menuItems.value.length === 0 &&
+		sources.providerErrors.value.size === 0,
+);
+const reportedEmptyQueries = new Set<string>();
+let pendingEmptyQuery: string | undefined;
+let emptySearchTimer: ReturnType<typeof setTimeout> | undefined;
+
+function reportEmptySearch(query: string): void {
+	if (reportedEmptyQueries.has(query)) return;
+	reportedEmptyQueries.add(query);
+	emit('empty-search', query);
+}
+
+function clearPendingEmptySearch(): void {
+	if (emptySearchTimer !== undefined) clearTimeout(emptySearchTimer);
+	emptySearchTimer = undefined;
+	pendingEmptyQuery = undefined;
+}
+
+/** Report an empty state the user is leaving before it settled: they still saw it. */
+function flushEmptySearch(): void {
+	if (pendingEmptyQuery !== undefined) reportEmptySearch(pendingEmptyQuery);
+	clearPendingEmptySearch();
+}
+
+// Every keystroke re-runs the search, so the empty state flickers through the
+// prefixes of what the user types. Only a query that stays empty for the settle
+// time counts, and a distinct query counts once per open.
+watch(
+	[() => props.modelValue, isEmptySearchShown, () => props.query.trim()],
+	([open, shown, query]) => {
+		if (!open) {
+			flushEmptySearch();
+			reportedEmptyQueries.clear();
+			return;
+		}
+		clearPendingEmptySearch();
+		if (!shown) return;
+		pendingEmptyQuery = query;
+		emptySearchTimer = setTimeout(() => {
+			emptySearchTimer = undefined;
+			pendingEmptyQuery = undefined;
+			reportEmptySearch(query);
+		}, getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK));
+	},
+);
+onBeforeUnmount(flushEmptySearch);
 watch(menuItems, (items) => {
 	if (!props.modelValue || highlightedForCurrentOpen || items.length === 0) return;
 	highlightedForCurrentOpen = true;
@@ -349,6 +409,7 @@ function retrySources(): void {
 
 function handleSubmenuToggle(itemId: string, open: boolean): void {
 	if (!open) return;
+	submenuOpenCount++;
 	const item = itemsById.value.get(itemId);
 	if (!item || item.kind !== 'workflow') return;
 	if (artifactIndex.getEntry(item.workflowId)?.status === 'error') {
@@ -362,7 +423,26 @@ function handleExternalKeydown(event: KeyboardEvent): boolean {
 	return dropdownRef.value?.handleExternalKeydown(event) ?? false;
 }
 
-defineExpose({ handleExternalKeydown });
+/**
+ * Snapshot of the list for the dismissal telemetry. Read synchronously while the
+ * host closes the menu, so it still sees the query and rows the user looked at.
+ * Rows sharing a visible label are what the user could not tell apart.
+ */
+function getOpenMetrics(): AssistantMentionPickerOpenMetrics {
+	const rows = menuItems.value.filter((item) => item.data !== undefined);
+	const labelCounts = new Map<string, number>();
+	for (const row of rows) labelCounts.set(row.label, (labelCounts.get(row.label) ?? 0) + 1);
+	const query = props.query.trim();
+	return {
+		mode: query ? 'search' : 'browse',
+		queryLength: query.length,
+		resultCount: rows.length,
+		ambiguousResultCount: rows.filter((row) => (labelCounts.get(row.label) ?? 0) > 1).length,
+		submenuOpenCount,
+	};
+}
+
+defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 </script>
 
 <template>
@@ -377,7 +457,7 @@ defineExpose({ handleExternalKeydown });
 		:disabled="disabled"
 		:loading="isLoading"
 		:loading-item-count="10"
-		:empty-text="i18n.baseText('instanceAi.mentions.noResults')"
+		:empty-text="emptyText"
 		:search-placeholder="i18n.baseText('instanceAi.mentions.searchPlaceholder')"
 		placement="top-start"
 		searchable
@@ -422,7 +502,7 @@ defineExpose({ handleExternalKeydown });
 			/>
 			<N8nIcon
 				v-else-if="item.data?.item.kind === 'group'"
-				icon="layers"
+				icon="group"
 				size="large"
 				:class="ui.class"
 			/>
@@ -440,26 +520,10 @@ defineExpose({ handleExternalKeydown });
 				size="medium"
 				:color="item.disabled ? 'text-xlight' : 'text-dark'"
 			>
-				<template v-if="query.trim() && item.data?.item">
-					<template
-						v-for="(breadcrumb, index) in item.data.item.breadcrumbs"
-						:key="`${item.id}:${index}`"
-					>
-						<span
-							:class="{
-								[$style.breadcrumbAncestor]: index < item.data.item.breadcrumbs.length - 1,
-							}"
-						>
-							{{ breadcrumb }}
-						</span>
-						<span
-							v-if="index < item.data.item.breadcrumbs.length - 1"
-							:class="$style.breadcrumbAncestor"
-						>
-							&gt;
-						</span>
-					</template>
-				</template>
+				<AssistantMentionBreadcrumbs
+					v-if="query.trim() && item.data?.item"
+					:segments="item.data.item.breadcrumbs"
+				/>
 				<template v-else>{{ item.label }}</template>
 			</N8nText>
 		</template>
@@ -490,10 +554,6 @@ defineExpose({ handleExternalKeydown });
 <style module lang="scss">
 .menuContent {
 	width: var(--n8n--dropdown-menu-width);
-}
-
-.breadcrumbAncestor {
-	color: var(--color--text--tint-1);
 }
 
 .errorState {

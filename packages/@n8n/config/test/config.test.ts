@@ -341,6 +341,7 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
+			workflowSuggestionsEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
@@ -364,6 +365,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			evalInstance: false,
 			sandboxAutoStopMinutes: 15,
 			sandboxAutoArchiveMinutes: 60,
 			sandboxAutoDeleteMinutes: 10_080,
@@ -380,6 +382,7 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			canvasNodeContextEnabled: false,
+			promptVersion: '',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			activationCapped: false,
@@ -688,6 +691,7 @@ describe('GlobalConfig', () => {
 			allowWebhookIsolateSkip: true,
 			lazyAcquire: false,
 			compileCache: false,
+			nativeEvaluation: false,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -720,6 +724,7 @@ describe('GlobalConfig', () => {
 			communityPackages: '',
 		},
 		agents: {
+			planToolsEnabled: false,
 			checkpointTtlSeconds: 345600,
 			tracingEnabled: true,
 			tracingRecordInputs: true,
@@ -788,6 +793,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
+	});
+
+	it.each([
+		['true', true],
+		['false', false],
+	])('should parse workflow suggestions enabled=%s', (value, expected) => {
+		process.env = { N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED: value };
+
+		expect(Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled).toBe(expected);
 	});
 
 	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {
@@ -991,6 +1005,26 @@ describe('GlobalConfig', () => {
 			expect(config.database.maxRecoveryBackoffMs).toBe(60000);
 			expect(config.database.connectionAcquisitionTimeoutMs).toBe(10000);
 		});
+	});
+
+	describe('data table cleanup interval config validation', () => {
+		it('should accept a positive N8N_DATA_TABLES_CLEANUP_INTERVAL_MS', () => {
+			process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: '30000' };
+			const config = Container.get(GlobalConfig);
+			expect(config.dataTable.cleanupIntervalMs).toBe(30000);
+		});
+
+		it.each(['0', '-5', '1500.5'])(
+			'should reject a data table cleanup interval of %s and fall back to the default',
+			(value) => {
+				process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: value };
+				const config = Container.get(GlobalConfig);
+				expect(config.dataTable.cleanupIntervalMs).toBe(60000);
+				expect(consoleWarnMock).toHaveBeenCalledWith(
+					expect.stringContaining('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS'),
+				);
+			},
+		);
 	});
 
 	describe('workflow publication outbox cleanup config validation', () => {

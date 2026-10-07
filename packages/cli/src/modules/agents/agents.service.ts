@@ -5,13 +5,18 @@ import {
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
+	type AgentChatListItem,
+	type AgentChatListResponse,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentModelCredentialConfig,
+	type AgentN8nChatThreadSummary,
+	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -22,8 +27,7 @@ import { v4 as uuid } from 'uuid';
 // in this area (see `agents-credential-provider.ts`). Resolved lazily by DI.
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError } from '@n8n/errors';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -31,10 +35,12 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { toAgentRef } from './utils/agent-ref';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
@@ -81,6 +87,8 @@ export class AgentsService {
 		private readonly eventService: EventService,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly credentialsService: CredentialsService,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	/**
@@ -126,6 +134,7 @@ export class AgentsService {
 			user,
 		}: CreateAgentOptions = {},
 	): Promise<{ agent: Agent; adopted: boolean }> {
+		await this.settingsService.assertEnabled();
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(projectId, name, {
 			schema,
 			user,
@@ -146,7 +155,10 @@ export class AgentsService {
 
 		let saved: Agent;
 		try {
-			saved = await this.agentRepository.save(agent);
+			// `insertNew`, not `save`: `save` would update the row a reused
+			// client-minted id names instead of letting the primary key reject it.
+			await this.agentRepository.insertNew(agent);
+			saved = agent;
 		} catch (error) {
 			return {
 				agent: await this.adoptExistingAgent(id, projectId, adoptOnCollision, error),
@@ -310,8 +322,108 @@ export class AgentsService {
 		return await this.agentRepository.findByIdInProjects(agentId, projectIds);
 	}
 
-	async findByUserPaginated(userId: string, options: ListAgentsQueryDto): Promise<AgentListResult> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+	/**
+	 * Agents the user can reach over the n8n Chat channel, meaning their
+	 * **published** config carries it.
+	 *
+	 * Scoped to `agent:execute`, the scope the production chat route itself
+	 * requires, so a `project:chatUser` sees exactly the agents they may talk
+	 * to. That is only safe because the response is {@link AgentChatListItem}:
+	 * the published instructions, tools and skills stay on the server. Widen
+	 * the shape and this scope has to narrow again.
+	 *
+	 * Carries the project relation, because the chat page labels each agent
+	 * with its project.
+	 */
+	async findChatReachableByUserPaginated(
+		user: User,
+		options: ListAgentsQueryDto,
+	): Promise<AgentChatListResponse> {
+		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		// Usage counts are only meaningful (and only needed) for the usage sort.
+		const usageCounts =
+			options.sortBy === 'usage:desc'
+				? await this.agentExecutionService.countN8nChatThreadsByAgent(user.id, projectIds)
+				: undefined;
+		const { count, data } = await this.agentRepository.findByProjectIdsPaginated(
+			projectIds,
+			options,
+			{ withProject: true, usageCounts },
+		);
+		return { count, data: data.map(toChatListItem) };
+	}
+
+	/**
+	 * One agent over n8n Chat (see the controller route's doc for the audience
+	 * this serves). Scoped like {@link findChatReachableByUserPaginated}.
+	 * Returns `null` when missing, unreachable, or unpublished to n8n Chat —
+	 * the controller turns all three into the same 404.
+	 */
+	async findChatReachableAgentForUser(
+		agentId: string,
+		user: User,
+	): Promise<AgentChatListItem | null> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
+		return agent ? toChatListItem(agent) : null;
+	}
+
+	/**
+	 * The user's own n8n Chat threads across every agent they can currently
+	 * reach over n8n Chat: a project where they hold `agent:execute`, with a
+	 * published config that carries the channel. Scoping by agent id (not just
+	 * project) keeps a thread out of the list the moment its agent's channel is
+	 * unpublished, even if the user still belongs to the project.
+	 */
+	async findN8nChatThreadsForUser(
+		user: User,
+		options: { limit: number; cursor?: string; agentId?: string },
+	): Promise<AgentN8nChatThreadsResponse> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agentIds = options.agentId
+			? await this.reachableAgentIds(options.agentId, projectIds)
+			: await this.agentRepository.findChatReachableIds(projectIds);
+		return await this.agentExecutionService.findN8nChatThreadsForAgents(
+			user.id,
+			agentIds,
+			options.limit,
+			options.cursor,
+		);
+	}
+
+	/**
+	 * Checks reachability for one agent directly, instead of loading every
+	 * reachable id and filtering in memory. An unreachable `agentId` resolves
+	 * to no agent ids, not an error — the caller already can't see that
+	 * agent's threads either way.
+	 */
+	private async reachableAgentIds(agentId: string, projectIds: string[] | null): Promise<string[]> {
+		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
+		return agent ? [agent.id] : [];
+	}
+
+	/**
+	 * One of the user's own n8n Chat threads, scoped like
+	 * {@link findN8nChatThreadsForUser}. Returns `null` when the thread doesn't
+	 * exist, isn't owned by this user, or its agent isn't reachable over n8n
+	 * Chat anymore — the controller turns all three into the same 404.
+	 */
+	async findN8nChatThreadForUser(
+		user: User,
+		threadId: string,
+	): Promise<AgentN8nChatThreadSummary | null> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agentIds = await this.agentRepository.findChatReachableIds(projectIds);
+		return await this.agentExecutionService.findN8nChatThreadForAgents(user.id, agentIds, threadId);
+	}
+
+	/** The agents overview list: every project the user belongs to, no scope check. */
+	async findByUserMembershipPaginated(
+		user: User,
+		options: ListAgentsQueryDto,
+	): Promise<AgentListResult> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
@@ -498,4 +610,14 @@ export class AgentsService {
 			});
 		}
 	}
+}
+
+/** Keeps the chat list to what the page renders: icon and blurb from the published snapshot. */
+function toChatListItem(agent: Agent): AgentChatListItem {
+	const description = agent.activeVersion?.schema?.description;
+	return {
+		...toAgentRef(agent),
+		...(description ? { description } : {}),
+		project: { id: agent.projectId, name: agent.project.name },
+	};
 }

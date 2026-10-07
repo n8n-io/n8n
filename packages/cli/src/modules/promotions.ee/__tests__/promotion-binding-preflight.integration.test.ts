@@ -123,6 +123,126 @@ async function snapshot() {
 }
 
 describe('PromotionBindingPreflightService (directory + database)', () => {
+	it.each([
+		{ scope: 'selected workflow', withSelection: true },
+		{ scope: 'whole package without a selection', withSelection: false },
+	])('reports missing bindings for the $scope', async ({ withSelection }) => {
+		const project = projectFile(await createTeamProject('Alpha', owner));
+		await writePackage({
+			'projects/alpha/project.json': project,
+			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
+				credentialNode('Selected', 'githubApi', 'cred-selected'),
+				regionNode(),
+			]),
+			'projects/alpha/workflows/w2/workflow.json': workflowFile('w2', [
+				credentialNode('Unselected', 'githubApi', 'cred-unselected'),
+				{ ...regionNode(), parameters: { note: '={{ $vars.OTHER_REGION }}' } },
+			]),
+			'projects/alpha/credentials/selected/credential.json': {
+				id: 'cred-selected',
+				name: 'Selected',
+				type: 'githubApi',
+			},
+			'projects/alpha/credentials/unselected/credential.json': {
+				id: 'cred-unselected',
+				name: 'Unselected',
+				type: 'githubApi',
+			},
+			'projects/alpha/variables/region/variable.json': { name: 'REGION', type: 'string' },
+			'projects/alpha/variables/other-region/variable.json': {
+				name: 'OTHER_REGION',
+				type: 'string',
+			},
+		});
+
+		const result = await service.checkDirectory({
+			sourceDir,
+			...(withSelection
+				? { selection: { selectedProjectId: project.id, selectedWorkflowIds: ['w1'] } }
+				: {}),
+		});
+
+		const selectedConsumer = { project, workflows: [{ id: 'w1', name: 'Workflow w1' }] };
+		const unselectedConsumer = { project, workflows: [{ id: 'w2', name: 'Workflow w2' }] };
+		const selectedCredential = {
+			kind: 'credential',
+			sourceId: 'cred-selected',
+			name: 'Selected',
+			credentialType: 'githubApi',
+			ownerProject: project,
+			consumers: [selectedConsumer],
+		};
+		const unselectedCredential = {
+			kind: 'credential',
+			sourceId: 'cred-unselected',
+			name: 'Unselected',
+			credentialType: 'githubApi',
+			ownerProject: project,
+			consumers: [unselectedConsumer],
+		};
+		const selectedVariable = {
+			kind: 'variable',
+			name: 'REGION',
+			variableType: 'string',
+			scope: { kind: 'project', project },
+			consumers: [selectedConsumer],
+		};
+		const unselectedVariable = {
+			kind: 'variable',
+			name: 'OTHER_REGION',
+			variableType: 'string',
+			scope: { kind: 'project', project },
+			consumers: [unselectedConsumer],
+		};
+		expect(result).toEqual({
+			missingProjects: [],
+			missingBindings: withSelection
+				? [selectedCredential, selectedVariable]
+				: [selectedCredential, unselectedCredential, unselectedVariable, selectedVariable],
+			accessRequirements: [],
+			conflicts: [],
+			warnings: [],
+		});
+	});
+
+	it('reports a missing binding when a selected workflow needs a credential owned by another package project', async () => {
+		const projectA = projectFile(await createTeamProject('Alpha', owner));
+		const beta = { id: 'proj-beta', name: 'Beta' };
+		await writePackage({
+			'projects/alpha/project.json': projectA,
+			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
+				credentialNode('Cross', 'githubApi', 'cred-cross'),
+			]),
+			'projects/beta/project.json': beta,
+			'projects/beta/credentials/cross/credential.json': {
+				id: 'cred-cross',
+				name: 'Cross',
+				type: 'githubApi',
+			},
+		});
+		const before = await snapshot();
+
+		const result = await service.checkDirectory({
+			sourceDir,
+			selection: { selectedProjectId: projectA.id, selectedWorkflowIds: ['w1'] },
+		});
+
+		expect(result.missingProjects).toEqual([]);
+		expect(result.missingBindings).toEqual([
+			{
+				kind: 'credential',
+				sourceId: 'cred-cross',
+				name: 'Cross',
+				credentialType: 'githubApi',
+				ownerProject: beta,
+				consumers: [{ project: projectA, workflows: [{ id: 'w1', name: 'Workflow w1' }] }],
+			},
+		]);
+		expect(result.conflicts).toEqual([]);
+		expect(promotionBindingPreflightResultSchema.parse(result)).toEqual(result);
+		expect(await snapshot()).toEqual(before);
+	});
+
 	it('matches credentials by id in the consuming project and variables by name in the project', async () => {
 		// `REGION` exists only in Beta, so Alpha's requirement stays unresolved.
 		const projectA = await createTeamProject('Alpha', owner);

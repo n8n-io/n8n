@@ -116,9 +116,13 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_messages" {
+  json author
   json content
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json modelContent
+  timestamp_3__with_time_zone modelContextAt
+  json origin
   varchar_255_ resourceId
   varchar_36_ role
   varchar_255_ threadId FK

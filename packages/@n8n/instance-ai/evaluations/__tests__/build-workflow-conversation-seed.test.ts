@@ -5,6 +5,7 @@ import { buildWorkflow, buildFailedOnInfra } from '../harness/build-workflow';
 import { recordUserTurn, runMultiTurnConversation } from '../harness/chat-loop';
 import type { ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
+import { buildAgentOutcome } from '../outcome/workflow-discovery';
 
 // Stubbed as in build-workflow-seed-cleanup: only the restore call matters here.
 vi.mock('../harness/chat-loop', () => ({
@@ -682,6 +683,89 @@ describe('buildWorkflow with scenario seed data tables', () => {
 		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'dt-real-1' });
 		// Tracked for cleanup by id, so the rename can't orphan it.
 		expect(build.createdDataTableIds).toContain('dt-real-1');
+	});
+
+	it('keeps the table map when the build saved no workflow', async () => {
+		// An Agent-only build saves no workflow, and its scenarios still reseed these tables.
+		vi.mocked(buildAgentOutcome).mockResolvedValueOnce({
+			workflowsCreated: [],
+			executionsRun: [],
+			dataTablesCreated: [],
+			finalText: 'done',
+			workflowJsons: [],
+		});
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 0, workflowIds: [], dataTableIds: ['dt-real-1'] });
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			executionScenarios: [
+				{
+					name: 's1',
+					description: 'd',
+					dataSetup: 'setup',
+					successCriteria: 'ok',
+					seedDataTables: [jobApplications],
+				},
+			],
+		});
+
+		expect(build.success).toBe(false);
+		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'dt-real-1' });
+	});
+
+	it('reseeds the seed table of the same name instead of creating a second one', async () => {
+		const stock = {
+			id: 'stock-table-1234',
+			name: 'Stock',
+			columns: [{ name: 'sku', type: 'string' as const }],
+		};
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValueOnce({
+				restored: 1,
+				workflowIds: [SEED_WF_ID],
+				dataTableIds: ['dt-seed-stock'],
+				agentIds: [],
+				folderIds: [],
+			})
+			.mockResolvedValueOnce({ restored: 0, workflowIds: [], dataTableIds: ['dt-real-1'] });
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineSeed(), dataTables: [stock] },
+			executionScenarios: [
+				{
+					name: 's1',
+					description: 'd',
+					dataSetup: 'setup',
+					successCriteria: 'ok',
+					seedDataTables: [{ ...stock, rows: [{ sku: 'A-1' }] }, jobApplications],
+				},
+			],
+		});
+
+		type RestoreCall = [string, unknown, unknown, Array<{ name: string }>, unknown, unknown];
+		const [, , , seedTables, , seedOptions] = restoreThread.mock.calls[0] as RestoreCall;
+		const [, , , createdTables] = restoreThread.mock.calls[1] as RestoreCall;
+		expect(restoreThread).toHaveBeenCalledTimes(2);
+		// The harness names the seed table, so the note can point the agent at it.
+		expect(seedTables[0].name).toMatch(/^Stock \[seed [0-9a-f]{8}\]$/);
+		expect(seedOptions).toMatchObject({ uniquifyNames: false });
+		expect(createdTables.map((table) => table.name)).toEqual([
+			expect.stringMatching(/^Job Applications \[seed [0-9a-f]{8}\]$/),
+		]);
+		expect(build.seededScenarioTableIdsByName).toEqual({
+			Stock: 'dt-seed-stock',
+			'Job Applications': 'dt-real-1',
+		});
+		const [, sentText] = sendMessage.mock.calls[0] as [string, string];
+		expect(sentText).toContain(seedTables[0].name);
+		expect(sentText).toContain(createdTables[0].name);
 	});
 });
 

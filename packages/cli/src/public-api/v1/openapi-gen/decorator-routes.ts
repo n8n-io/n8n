@@ -20,6 +20,8 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
+import { stripUntypedNullable } from './untyped-nullable';
+
 const REQUEST_BODY_COMPONENT = 'RequestBody';
 
 // Query fields backed by shared hand-written parameter files instead of being generated
@@ -37,8 +39,10 @@ export const ERROR_RESPONSE_REFS = {
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	413: { $ref: '../../../../shared/spec/responses/contentTooLarge.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
 
@@ -59,8 +63,10 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	403: 'Forbidden',
 	404: 'The specified resource was not found.',
 	409: 'Conflict',
+	413: 'Content too large.',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
+	500: 'Internal server error.',
 	503: 'The requested service is temporarily unavailable.',
 };
 
@@ -152,18 +158,20 @@ function buildPathParams(route: ResolvedPublicApiRoute): z.AnyZodObject | undefi
 	return Object.keys(shape).length ? z.object(shape) : undefined;
 }
 
-/** A route's request body, straight from its `@Body` DTO - no field-splitting needed like query has. */
 function buildRequestBody(
 	route: ResolvedPublicApiRoute,
 ): NonNullable<RouteConfig['request']>['body'] {
-	if (!route.requestBodyDto) return undefined;
+	if (!route.requestBodyDto || !route.requestBodyHandler) {
+		return undefined;
+	}
 
 	const required = route.requestBodyRequired ?? isRequestBodyRequired(route.requestBodyDto);
+	const handler = route.requestBodyHandler;
 
 	return {
 		...(required ? { required: true } : {}),
 		content: {
-			'application/json': {
+			[handler.mediaType]: {
 				schema: route.requestBodyDto.schema,
 			},
 		},
@@ -185,6 +193,10 @@ export function buildRequestBodyJsonSchema(
 
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
 	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
+
+	// Keep in sync with `buildArtifactsFromRegistry`, both convert the same DTOs to OpenAPI
+	// and `/discover` serves this schema straight from a route at runtime.
+	stripUntypedNullable(schema);
 
 	return isRecord(schema) ? schema : undefined;
 }
@@ -221,8 +233,17 @@ function buildResponses(
 	if (route.requestBodyDto ?? route.requestQueryDto) {
 		responses[400] = ERROR_RESPONSE_REFS[400];
 	}
-	if (route.requestBodyDto) {
-		responses[415] = ERROR_RESPONSE_REFS[415];
+	if (route.requestBodyDto && route.requestBodyHandler) {
+		const handler = route.requestBodyHandler;
+		for (const status of handler.errorStatuses) {
+			if (!isDocumentedErrorStatus(status)) {
+				throw new UnexpectedError(
+					`Request-body media type ${handler.mediaType} declares undocumented error status ` +
+						`${status} - add a shared response file and register it in ERROR_RESPONSE_REFS.`,
+				);
+			}
+			responses[status] = ERROR_RESPONSE_REFS[status];
+		}
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
 	if (route.apiKeyScope) {

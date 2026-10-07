@@ -1,5 +1,6 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -16,7 +17,6 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
@@ -81,18 +81,21 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const includePublishHistory = settings?.includePublishHistory ?? true;
-		const relations = includePublishHistory ? ['workflowPublishHistory'] : [];
-
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId,
 			},
-			relations,
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
+		}
+
+		if (settings?.includePublishHistory ?? true) {
+			hist.workflowPublishHistory = await this.workflowPublishHistoryRepository.findByVersion(
+				workflow.id,
+				versionId,
+			);
 		}
 		return hist;
 	}

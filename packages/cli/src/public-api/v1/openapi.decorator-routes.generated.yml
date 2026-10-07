@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /audit:
+    post:
+      $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml
   /community-packages:
     get:
       $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
@@ -71,6 +74,33 @@ paths:
       $ref: ./handlers/data-tables/spec/paths/updateDataTable.generated.yml
     delete:
       $ref: ./handlers/data-tables/spec/paths/deleteDataTable.generated.yml
+  /data-tables/{dataTableId}/columns:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/listDataTableColumns.generated.yml
+    post:
+      $ref: ./handlers/data-tables/spec/paths/createDataTableColumn.generated.yml
+  /data-tables/{dataTableId}/columns/{columnId}:
+    patch:
+      $ref: ./handlers/data-tables/spec/paths/updateDataTableColumn.generated.yml
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/deleteDataTableColumn.generated.yml
+  /data-tables/{dataTableId}/rows:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/listDataTableRows.generated.yml
+    post:
+      $ref: ./handlers/data-tables/spec/paths/createDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/upsert:
+    post:
+      $ref: ./handlers/data-tables/spec/paths/upsertDataTableRow.generated.yml
+  /data-tables/{dataTableId}/rows/update:
+    patch:
+      $ref: ./handlers/data-tables/spec/paths/updateDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/clear:
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/clearDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/delete:
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/deleteDataTableRows.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
@@ -125,6 +155,25 @@ paths:
   /insights/summary:
     get:
       $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
+  /settings/ldap:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  /settings/ldap/sync:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLdapSync.generated.yml
+    post:
+      $ref: ./handlers/settings/spec/paths/runLdapSync.generated.yml
+  /settings/log-streaming/event-types:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingEventTypes.generated.yml
+  /settings/log-streaming/destinations:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingDestinations.generated.yml
+  /settings/log-streaming/destinations/{id}:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingDestination.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml
@@ -150,6 +199,14 @@ paths:
   /node-type-policies/scopes/{scopeId}/attachments:
     put:
       $ref: ./handlers/node-type-policies/spec/paths/replaceNodeTypePolicyAttachments.generated.yml
+  /settings/otel:
+    get:
+      $ref: ./handlers/settings/spec/paths/getOtelSettings.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateOtelSettings.generated.yml
+  /settings/otel/test-trace:
+    post:
+      $ref: ./handlers/settings/spec/paths/testOtelTrace.generated.yml
   /projects:
     get:
       $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
@@ -232,6 +289,12 @@ paths:
   /promotions/projects/{projectId}/promote:
     post:
       $ref: ./handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  /promotions/projects/{projectId}/apply:
+    post:
+      $ref: ./handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  /promotions/projects/{projectId}/apply/continue:
+    post:
+      $ref: ./handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
@@ -262,6 +325,11 @@ paths:
       $ref: ./handlers/settings/spec/paths/getSecurityPolicy.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateSecurityPolicy.generated.yml
+  /settings/sso/oidc:
+    get:
+      $ref: ./handlers/settings/spec/paths/getOidcConfiguration.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/setOidcConfiguration.generated.yml
   /source-control/status:
     get:
       $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
@@ -271,6 +339,11 @@ paths:
   /source-control/pull:
     post:
       $ref: ./handlers/source-control/spec/paths/pullSourceControl.generated.yml
+  /settings/sso/saml:
+    get:
+      $ref: ./handlers/settings/spec/paths/getSamlConfiguration.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateSamlConfiguration.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
@@ -350,3 +423,6 @@ paths:
       $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml
     put:
       $ref: ./handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
+  /workflows/{workflowId}/{workflowVersionId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml

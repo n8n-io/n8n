@@ -203,10 +203,12 @@ export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
-export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
-export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
-export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
-export { FolderResolutionError } from './errors/folder-resolution.error';
+export {
+	WorkflowSaveConflictError,
+	WorkflowNotFoundError,
+	WorkflowEditorLockedError,
+	FolderResolutionError,
+} from './errors';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,
@@ -333,6 +335,7 @@ export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiP
 export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
 	() => loadPromptProfiles().resolvePromptProfile,
 );
+export declare const CONCISE_PROMPT_VERSION: typeof PromptProfilesMod.CONCISE_PROMPT_VERSION;
 export const assertInstanceAiPromptVersion: typeof PromptProfilesMod.assertInstanceAiPromptVersion =
 	lazyFunction(() => loadPromptProfiles().assertInstanceAiPromptVersion);
 export const describePromptProfile: typeof PromptProfilesMod.describePromptProfile = lazyFunction(
@@ -457,6 +460,7 @@ defineLazyExport(
 	'suspendedInstanceContextSchema',
 	() => loadInstanceContextState().suspendedInstanceContextSchema,
 );
+defineLazyExport('CONCISE_PROMPT_VERSION', () => loadPromptProfiles().CONCISE_PROMPT_VERSION);
 defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
 defineLazyExport(
 	'SANDBOX_RUNTIME_SKILLS_DIR',
@@ -666,6 +670,7 @@ export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoo
 	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
 export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
+	InstanceAiChangedArtifact,
 	InstanceAiContext,
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,

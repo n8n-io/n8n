@@ -1363,10 +1363,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1381,10 +1378,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1463,10 +1457,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
-					mention_count: 0,
-					workflow_mention_count: 0,
-					node_mention_count: 0,
-					group_mention_count: 0,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
 				},
 			);
@@ -1512,24 +1503,42 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				},
 			],
 			mentionCounts: {
-				mentionCount: 3,
-				workflowMentionCount: 1,
-				nodeMentionCount: 1,
-				groupMentionCount: 1,
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
 			},
 		});
 
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			expect.objectContaining({
-				mention_count: 3,
-				workflow_mention_count: 1,
-				node_mention_count: 1,
-				group_mention_count: 1,
+				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
 				attachment_count: 2,
 			}),
 		);
 		warnSpy.mockRestore();
+	});
+
+	test('sendMessage records a mentioned workflow as a mentioned tab on a fresh thread', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+
+		// A new thread's first message is the only trace of the mention: on the wire
+		// it is a plain workflow attachment, like a hand-off would be.
+		await runtime.sendMessage('Look at this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' },
+				{ type: 'workflow', id: 'workflow-handoff', name: 'Canvas' },
+			],
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionedWorkflowIds: ['workflow-mentioned'],
+		});
+		await nextTick();
+
+		expect(runtime.producedArtifactOrigins.get('workflow-mentioned')).toBe('mentioned');
+		expect(runtime.producedArtifactOrigins.get('workflow-handoff')).toBe('attached');
 	});
 
 	test('sendMessage includes action_source from thread metadata', async () => {
@@ -1554,10 +1563,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1587,10 +1593,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1625,10 +1628,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1744,6 +1744,33 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(Array),
 			undefined,
 		);
+	});
+
+	test('sendMessage sends no tabs while the stored tabs of the view load', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Maybe closed' });
+		runtime.setOpenTabs(null);
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toBeUndefined();
+	});
+
+	test('sendMessage forwards the open tabs instead of every produced artifact', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Closed' });
+		runtime.producedArtifacts.set('wf-2', { type: 'workflow', id: 'wf-2', name: 'Open' });
+		runtime.setOpenTabs([{ type: 'workflow', id: 'wf-2', name: 'Open' }]);
+		runtime.setActiveArtifactId('wf-2');
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open' }],
+			activeId: 'wf-2',
+		});
 	});
 
 	test('sendMessage forwards the thread artifact index to postMessage', async () => {
@@ -1893,6 +1920,8 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
 				},
 			],
 			[
@@ -1906,9 +1935,41 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
 				},
 			],
 		]);
+	});
+
+	test("repeats the message's mention and attachment counts on the response event", async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-with-context' });
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+			],
+			mentionCounts: {
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
+			},
+		});
+		finishRun('run-with-context', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		expect(responseMetricCalls()[0][1]).toMatchObject({
+			run_id: 'run-with-context',
+			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+			attachment_count: 2,
+		});
 	});
 
 	test('waits for the visible response render frame before tracking', async () => {
@@ -3672,5 +3733,55 @@ describe('createThreadRuntime - requestPlanChanges', () => {
 		expect(ok).toBe(false);
 		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
 		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
+	});
+});
+
+describe('createThreadRuntime - onboarding exit', () => {
+	const hooks = {
+		onTitleUpdated: vi.fn(),
+		onRunFinish: vi.fn(),
+		onOnboardingLeft: vi.fn(),
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+	let runtime: ThreadRuntime;
+
+	const sse = (event: Record<string, unknown>) =>
+		capturedOnMessage!(makeSSEEvent({ runId: 'run-1', agentId: 'agent-root', ...event }));
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		vi.clearAllMocks();
+		capturedOnMessage = null;
+		runtime = createThreadRuntime('thread-onboarding', hooks);
+		runtime.connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+		sse(validRunStartEvent('run-1', 'agent-root'));
+	});
+
+	afterEach(() => {
+		runtime.closeSSE();
+	});
+
+	test('a leave-onboarding call ends the onboarding with the reason the agent gave', () => {
+		sse({ type: 'tool-call', payload: { toolCallId: 'tc-1', toolName: 'search', args: {} } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse({
+			type: 'tool-call',
+			payload: { toolCallId: 'tc-2', toolName: 'leave-onboarding', args: { reason: 'stop' } },
+		});
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'left', 'stop');
+	});
+
+	test('a failed run ends the onboarding; a completed one does not', () => {
+		sse({ type: 'run-finish', payload: { status: 'completed' } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse(validRunStartEvent('run-2', 'agent-root'));
+		sse({ type: 'run-finish', runId: 'run-2', payload: { status: 'error' } });
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'run_failed');
 	});
 });

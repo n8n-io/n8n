@@ -11,6 +11,7 @@ import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import {
 	DOMAIN_RESTRICTION_FIELDS,
 	type ICredentialDataDecryptedObject,
+	type ICredentialType,
 	type INodeProperties,
 } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -24,6 +25,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '../../../constants';
 import InstanceAiSetupCredential from '../InstanceAiSetupCredential.vue';
 
 const mocks = vi.hoisted(() => ({
+	useRealForm: false,
 	formOptions: vi.fn(),
 	isOAuth: vi.fn(),
 	canQuickConnect: vi.fn(),
@@ -39,12 +41,16 @@ const mocks = vi.hoisted(() => ({
 	openTopUp: vi.fn(),
 }));
 vi.mock('../../../composables/useSetupPanelDocument', () => ({ useSetupPanelDocument: vi.fn() }));
-vi.mock('@/features/credentials/composables/useCredentialForm', () => ({
-	useCredentialForm: (options: unknown) => {
-		mocks.formOptions(options);
-		return form;
-	},
-}));
+vi.mock('@/features/credentials/composables/useCredentialForm', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/features/credentials/composables/useCredentialForm')>();
+	return {
+		useCredentialForm: (options: Parameters<typeof actual.useCredentialForm>[0]) => {
+			mocks.formOptions(options);
+			return mocks.useRealForm ? actual.useCredentialForm(options) : form;
+		},
+	};
+});
 vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => ({
 		isOAuthCredentialType: mocks.isOAuth,
@@ -87,8 +93,6 @@ function createForm() {
 		}),
 		credentialProperties: ref<INodeProperties[]>([
 			{ name: 'apiKey', displayName: 'API key', type: 'string', default: '', required: true },
-			{ name: 'optional', displayName: 'Optional', type: 'string', default: '' },
-			{ name: 'hidden', displayName: 'Hidden', type: 'hidden', default: '', required: true },
 		]),
 		parentTypes: ref<string[]>([]),
 		isOAuthType: computed(
@@ -173,6 +177,7 @@ const savedCredential = mock<ICredentialsResponse>({
 	id: 'new-credential',
 	name: 'Service account',
 	type: 'serviceApi',
+	scopes: ['credential:read', 'credential:update'],
 });
 const renderComponent = createComponentRenderer(InstanceAiSetupCredential, {
 	props: {
@@ -194,6 +199,7 @@ const renderComponent = createComponentRenderer(InstanceAiSetupCredential, {
 describe('InstanceAiSetupCredential', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.useRealForm = false;
 		setActivePinia(createTestingPinia());
 		form = createForm();
 		gateway = {
@@ -215,6 +221,16 @@ describe('InstanceAiSetupCredential', () => {
 	async function openMenu(rendered: ReturnType<typeof renderComponent>, label: string) {
 		await userEvent.click(rendered.getByRole('button', { name: /More options|Change connection/ }));
 		await userEvent.click(await rendered.findByRole('menuitem', { name: label }));
+	}
+
+	function renderRealForm(credentialType: string, types: ICredentialType[]) {
+		mocks.useRealForm = true;
+		const store = mockedStore(useCredentialsStore);
+		store.getCredentialTypeByName = vi.fn((name) => types.find((type) => type.name === name));
+		return renderComponent({
+			props: { item: { ...item, credentialType, nodeBindings: [] }, node: undefined, nodes: [] },
+			global: { stubs: { CredentialInputs: false } },
+		});
 	}
 
 	it('offers per-node accounts only after a shared credential has been selected', async () => {
@@ -247,32 +263,37 @@ describe('InstanceAiSetupCredential', () => {
 		await flushPromises();
 	});
 
-	it('keeps the default GitHub server and saves its two empty fields inline', async () => {
-		form.credentialProperties.value = [
-			{
-				name: 'server',
-				displayName: 'GitHub Server',
-				type: 'string',
-				default: 'https://api.github.com',
-			},
-			{ name: 'user', displayName: 'User', type: 'string', default: '' },
-			{
-				name: 'accessToken',
-				displayName: 'Access Token',
-				type: 'string',
-				default: '',
-				typeOptions: { password: true },
-			},
-		];
-		form.credentialData.value = {
-			server: 'https://api.github.com',
-			apiKey: 'fixture-required-value',
+	it('keeps the default GitHub server out of inline setup and preserves it when saving', async () => {
+		const github: ICredentialType = {
+			name: 'githubApi',
+			displayName: 'GitHub API',
+			properties: [
+				{
+					name: 'server',
+					displayName: 'GitHub Server',
+					type: 'string',
+					default: 'https://api.github.com',
+				},
+				{ name: 'user', displayName: 'User', type: 'string', default: '' },
+				{
+					name: 'accessToken',
+					displayName: 'Access Token',
+					type: 'string',
+					default: '',
+					typeOptions: { password: true },
+				},
+			],
 		};
 		const store = mockedStore(useCredentialsStore);
+		store.getNewCredentialName.mockResolvedValue('GitHub account');
+		store.isCredentialTypeTestable = vi.fn().mockReturnValue(false);
 		store.createNewCredential.mockResolvedValue(savedCredential);
-		const view = renderComponent({ global: { stubs: { CredentialInputs: false } } });
+		const view = renderRealForm('githubApi', [github]);
 		await flushPromises();
-		expect(view.queryByLabelText('GitHub Server')).not.toBeInTheDocument();
+		expect(view.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument();
+		expect(view.queryByRole('textbox', { name: 'GitHub Server' })).not.toBeInTheDocument();
+		expect(view.getByLabelText('User')).toBeVisible();
+		expect(view.getByLabelText('Access Token')).toBeVisible();
 		await fireEvent.update(view.getByLabelText('User'), 'example-user');
 		await fireEvent.update(view.getByLabelText('Access Token'), 'example-token');
 		await fireEvent.click(view.getByRole('button', { name: 'Save' }));
@@ -290,6 +311,76 @@ describe('InstanceAiSetupCredential', () => {
 			{ skipStoreUpdate: true },
 		);
 		expect(mockedStore(useUIStore).openNewCredential).not.toHaveBeenCalled();
+	});
+
+	it('keeps OpenAI options in the Advanced setup menu and preserves their defaults on inline save', async () => {
+		const openAi: ICredentialType = {
+			name: 'openAiApi',
+			displayName: 'OpenAI',
+			properties: [
+				{ name: 'apiKey', displayName: 'API key', type: 'string', default: '', required: true },
+				{ name: 'organizationId', displayName: 'Organization ID', type: 'string', default: '' },
+				{
+					name: 'url',
+					displayName: 'Base URL',
+					type: 'string',
+					default: 'https://api.openai.com/v1',
+				},
+				{ name: 'header', displayName: 'Add Custom Header', type: 'boolean', default: false },
+				{
+					name: 'headerName',
+					displayName: 'Header Name',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { header: [true] } },
+				},
+				{
+					name: 'headerValue',
+					displayName: 'Header Value',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+					displayOptions: { show: { header: [true] } },
+				},
+				...DOMAIN_RESTRICTION_FIELDS,
+			],
+		};
+		const store = mockedStore(useCredentialsStore);
+		store.getNewCredentialName.mockResolvedValue('OpenAI account');
+		store.isCredentialTypeTestable = vi.fn().mockReturnValue(false);
+		store.createNewCredential.mockResolvedValue(savedCredential);
+		const view = renderRealForm('openAiApi', [openAi]);
+		await flushPromises();
+		expect(view.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument();
+		expect(view.getByLabelText('API key')).toBeVisible();
+		expect(view.getAllByRole('textbox')).toHaveLength(1);
+		expect(view.queryByRole('switch')).not.toBeInTheDocument();
+		expect(view.queryByRole('combobox')).not.toBeInTheDocument();
+		await userEvent.click(view.getByRole('button', { name: 'Save' }));
+		expect(view.getByLabelText('API key')).toHaveAttribute('aria-invalid', 'true');
+		expect(view.getByRole('alert')).toHaveTextContent('This field is required');
+		expect(store.createNewCredential).not.toHaveBeenCalled();
+		await fireEvent.update(view.getByLabelText('API key'), 'example-key');
+		await openMenu(view, 'Advanced setup');
+		expect(mockedStore(useUIStore).openNewCredential.mock.calls[0][0]).toBe('openAiApi');
+		await userEvent.click(view.getByRole('button', { name: 'Save' }));
+		expect(store.createNewCredential).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: {
+					apiKey: 'example-key',
+					organizationId: '',
+					url: 'https://api.openai.com/v1',
+					header: false,
+					headerName: '',
+					headerValue: '',
+					allowedHttpRequestDomains: 'all',
+					allowedDomains: '',
+				},
+			}),
+			'workflow-project',
+			undefined,
+			{ skipStoreUpdate: true },
+		);
 	});
 
 	it('includes visible OAuth fields and instance availability in its help request', async () => {
@@ -312,6 +403,151 @@ describe('InstanceAiSetupCredential', () => {
 		});
 	});
 
+	it('renders inherited OAuth fields and prefilled endpoint selectors inline', async () => {
+		mocks.isOAuth.mockReturnValue(true);
+		const types: ICredentialType[] = [
+			{
+				name: 'oAuth2Api',
+				displayName: 'OAuth2 API',
+				properties: [
+					{
+						name: 'grantType',
+						displayName: 'Grant Type',
+						type: 'hidden',
+						default: 'authorizationCode',
+					},
+					{
+						name: 'clientId',
+						displayName: 'Client ID',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+					{
+						name: 'clientSecret',
+						displayName: 'Client Secret',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+			},
+			{
+				name: 'zohoOAuth2Api',
+				displayName: 'Zoho OAuth2 API',
+				extends: ['oAuth2Api'],
+				properties: [
+					{
+						name: 'authUrl',
+						displayName: 'Authorization URL',
+						type: 'options',
+						required: true,
+						default: 'https://accounts.zoho.com/oauth/v2/auth',
+						options: [
+							{
+								name: 'Global authorization endpoint',
+								value: 'https://accounts.zoho.com/oauth/v2/auth',
+							},
+						],
+					},
+					{
+						name: 'accessTokenUrl',
+						displayName: 'Access Token URL',
+						type: 'options',
+						required: true,
+						default: 'https://accounts.zoho.com/oauth/v2/token',
+						options: [
+							{ name: 'US token endpoint', value: 'https://accounts.zoho.com/oauth/v2/token' },
+						],
+					},
+				],
+			},
+		];
+		const store = mockedStore(useCredentialsStore);
+		store.getNewCredentialName.mockResolvedValue('Zoho account');
+		const view = renderRealForm('zohoOAuth2Api', types);
+		await flushPromises();
+		const selectors = view.getAllByRole('combobox');
+		expect(selectors).toHaveLength(2);
+		expect(selectors[0]).toHaveValue('Global authorization endpoint');
+		expect(selectors[1]).toHaveValue('US token endpoint');
+		expect(view.queryByText('Grant Type')).not.toBeInTheDocument();
+		await fireEvent.update(view.getByLabelText('Client ID'), 'example-client');
+		await fireEvent.update(view.getByLabelText('Client Secret'), 'example-secret');
+		await userEvent.click(view.getByRole('button', { name: 'Save and sign in' }));
+		expect(mocks.authorize).toHaveBeenCalledWith(
+			'zohoOAuth2Api',
+			undefined,
+			expect.objectContaining({
+				data: {
+					grantType: 'authorizationCode',
+					clientId: 'example-client',
+					clientSecret: 'example-secret',
+					authUrl: 'https://accounts.zoho.com/oauth/v2/auth',
+					accessTokenUrl: 'https://accounts.zoho.com/oauth/v2/token',
+				},
+			}),
+		);
+		expect(mockedStore(useUIStore).openNewCredential).not.toHaveBeenCalled();
+	});
+
+	it('shows default database fields and updates conditional controls through the shared form', async () => {
+		const postgres: ICredentialType = {
+			name: 'postgres',
+			displayName: 'Postgres',
+			properties: [
+				{ name: 'host', displayName: 'Host', type: 'string', default: 'localhost' },
+				{ name: 'database', displayName: 'Database', type: 'string', default: 'postgres' },
+				{ name: 'user', displayName: 'User', type: 'string', default: 'postgres' },
+				{
+					name: 'password',
+					displayName: 'Password',
+					type: 'string',
+					default: '',
+					typeOptions: { password: true },
+				},
+				{ name: 'sshTunnel', displayName: 'SSH Tunnel', type: 'boolean', default: false },
+				{
+					name: 'sshHost',
+					displayName: 'SSH Host',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { sshTunnel: [true] } },
+				},
+			],
+		};
+		const store = mockedStore(useCredentialsStore);
+		store.getNewCredentialName.mockResolvedValue('Postgres account');
+		store.isCredentialTypeTestable = vi.fn().mockReturnValue(false);
+		store.createNewCredential.mockResolvedValue(savedCredential);
+		const view = renderRealForm('postgres', [postgres]);
+		await flushPromises();
+		expect(view.getByLabelText('Host')).toHaveValue('localhost');
+		expect(view.getByLabelText('Database')).toHaveValue('postgres');
+		expect(view.getByLabelText('User')).toHaveValue('postgres');
+		expect(view.queryByLabelText('SSH Host')).not.toBeInTheDocument();
+		await userEvent.click(view.getByRole('switch'));
+		await fireEvent.update(view.getByLabelText('SSH Host'), 'ssh.example.test');
+		await fireEvent.update(view.getByLabelText('Password'), 'example-password');
+		await userEvent.click(view.getByRole('button', { name: 'Save' }));
+		expect(store.createNewCredential).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: {
+					host: 'localhost',
+					database: 'postgres',
+					user: 'postgres',
+					password: 'example-password',
+					sshTunnel: true,
+					sshHost: 'ssh.example.test',
+				},
+			}),
+			'workflow-project',
+			undefined,
+			{ skipStoreUpdate: true },
+		);
+		expect(mockedStore(useUIStore).openNewCredential).not.toHaveBeenCalled();
+	});
+
 	it.each([1, 2])(
 		'saves %s inline inputs when legacy metadata omits required flags',
 		async (count) => {
@@ -321,7 +557,6 @@ describe('InstanceAiSetupCredential', () => {
 					{ name: 'apiUrl', displayName: 'API URL', type: 'string' as const, default: '' },
 				].slice(0, count),
 				...DOMAIN_RESTRICTION_FIELDS,
-				{ name: 'hidden', displayName: 'Hidden', type: 'hidden', default: '' },
 				{ name: 'notice', displayName: 'Help text', type: 'notice', default: '' },
 				{
 					name: 'callback',
@@ -338,6 +573,9 @@ describe('InstanceAiSetupCredential', () => {
 			const rendered = renderComponent({ global: { stubs: { CredentialInputs: false } } });
 			await flushPromises();
 			expect(rendered.getAllByRole('textbox')).toHaveLength(count);
+			expect(rendered.queryByLabelText('Allowed Domains')).not.toBeInTheDocument();
+			expect(rendered.getByText('Help text')).toBeVisible();
+			expect(rendered.getByText('Callback URL')).toBeVisible();
 			await fireEvent.update(rendered.getByLabelText('API key'), 'submitted-key');
 			if (count === 2)
 				await fireEvent.update(rendered.getByLabelText('API URL'), 'https://example.test');
@@ -363,12 +601,8 @@ describe('InstanceAiSetupCredential', () => {
 		},
 	);
 
-	it.each([0, 3])('uses the modal when legacy metadata has %s editable inputs', async (count) => {
-		form.credentialProperties.value = [
-			{ name: 'apiKey', displayName: 'API key', type: 'string' as const, default: '' },
-			{ name: 'apiUrl', displayName: 'API URL', type: 'string' as const, default: '' },
-			{ name: 'region', displayName: 'Region', type: 'string' as const, default: '' },
-		].slice(0, count);
+	it('uses the modal when the shared form has no visible fields', async () => {
+		form.credentialProperties.value = [];
 		const rendered = renderComponent({ global: { stubs: { CredentialInputs: false } } });
 		await flushPromises();
 		expect(rendered.queryAllByRole('textbox')).toHaveLength(0);
@@ -395,7 +629,7 @@ describe('InstanceAiSetupCredential', () => {
 	);
 
 	it.each(['https://generativelanguage.googleapis.com', 'https://gemini.example.test'])(
-		'preserves Gemini Host while hiding only its default: %s',
+		'keeps Gemini Host out of inline setup and preserves it: %s',
 		async (host) => {
 			const defaultHost = 'https://generativelanguage.googleapis.com';
 			form.credentialData.value = { apiKey: 'test-key', host };
@@ -408,10 +642,11 @@ describe('InstanceAiSetupCredential', () => {
 				props: {
 					item: { ...item, nodeBindings: [...item.nodeBindings], credentialType: 'googlePalmApi' },
 				},
+				global: { stubs: { CredentialInputs: false } },
 			});
 			await flushPromises();
-			if (host === defaultHost) expect(view.getByTestId('fields')).not.toHaveTextContent('Host');
-			else expect(view.getByTestId('fields')).toHaveTextContent('Host');
+			expect(view.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument();
+			expect(view.queryByRole('textbox', { name: 'Host' })).not.toBeInTheDocument();
 			await fireEvent.click(view.getByRole('button', { name: 'Save' }));
 			await flushPromises();
 			expect(mockedStore(useCredentialsStore).createNewCredential).toHaveBeenCalledWith(
@@ -420,6 +655,37 @@ describe('InstanceAiSetupCredential', () => {
 				undefined,
 				{ skipStoreUpdate: true },
 			);
+		},
+	);
+
+	it.each([
+		{ readOnly: true, readFails: false },
+		{ readOnly: true, readFails: true },
+		{ readOnly: false, readFails: false },
+		{ readOnly: false, readFails: true },
+	])(
+		'keeps unavailable OAuth data complete only for read-only credentials: $readOnly, failure: $readFails',
+		async ({ readOnly, readFails }) => {
+			mocks.isOAuth.mockReturnValue(true);
+			const credential: ICredentialsResponse = {
+				...savedCredential,
+				scopes: readOnly ? ['credential:read'] : ['credential:read', 'credential:update'],
+			};
+			const store = mockedStore(useCredentialsStore);
+			store.getCredentialById = vi.fn().mockReturnValue(credential);
+			if (readFails) store.getCredentialData.mockRejectedValue(new Error('Request failed'));
+			else store.getCredentialData.mockResolvedValue({ ...credential, data: undefined });
+			const view = renderComponent({
+				props: {
+					node: {
+						...node,
+						credentials: { serviceApi: { id: credential.id, name: credential.name } },
+					},
+				},
+			});
+			await flushPromises();
+			expect(view.queryByRole('button', { name: 'Connect my account' }) !== null).toBe(!readOnly);
+			expect(view.queryByText('Credential selected') !== null).toBe(readOnly);
 		},
 	);
 
@@ -513,7 +779,13 @@ describe('InstanceAiSetupCredential', () => {
 		);
 	});
 
-	it('shows required fields and tests the key before publishing and binding it in the workflow project', async () => {
+	it('shows required and optional fields and tests the key before binding it in the workflow project', async () => {
+		form.credentialProperties.value.push({
+			name: 'optional',
+			displayName: 'Optional',
+			type: 'string',
+			default: '',
+		});
 		const rendered = renderComponent();
 		const store = mockedStore(useCredentialsStore);
 		store.createNewCredential.mockResolvedValue(savedCredential);
@@ -521,8 +793,7 @@ describe('InstanceAiSetupCredential', () => {
 		form.testCredential.mockReturnValue(test.promise);
 		await flushPromises();
 		expect(rendered.getByTestId('fields')).toHaveTextContent('apiKey');
-		expect(rendered.getByTestId('fields')).not.toHaveTextContent('optional');
-		expect(rendered.getByTestId('fields')).not.toHaveTextContent('hidden');
+		expect(rendered.getByTestId('fields')).toHaveTextContent('optional');
 		expect(rendered.getByRole('button', { name: 'Save' })).toBeEnabled();
 		await fireEvent.update(rendered.getByLabelText('API key'), 'submitted-key');
 		await fireEvent.click(rendered.getByRole('button', { name: 'Save' }));
@@ -629,6 +900,10 @@ describe('InstanceAiSetupCredential', () => {
 	it('reuses managed OAuth and leaves the current account unchanged on cancellation', async () => {
 		mocks.isOAuth.mockReturnValue(true);
 		mocks.canQuickConnect.mockReturnValue(true);
+		mockedStore(useCredentialsStore).getCredentialData.mockResolvedValue({
+			...savedCredential,
+			data: { oauthTokenData: true },
+		});
 		const authorization = Promise.withResolvers<ICredentialsResponse | null>();
 		const reopen = vi.fn();
 		mocks.authorize.mockImplementationOnce((_type, _node, options) => {
@@ -889,6 +1164,18 @@ describe('InstanceAiSetupCredential', () => {
 		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toBeDisabled();
 	});
 
+	it('explains why Help is unavailable while the assistant is building', async () => {
+		const view = renderComponent({ props: { helpDisabled: true } });
+		const button = view.getByRole('button', { name: 'Help me find my API key' });
+		expect(button).toBeDisabled();
+		await userEvent.hover(button.parentElement!);
+		expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
+			'The assistant is still working. Help will be available when it finishes.',
+		);
+		await userEvent.click(button);
+		expect(view.emitted('askForHelp')).toBeUndefined();
+	});
+
 	it.each([false, true])(
 		'lets users return to their existing credential through the menu, credits: %s',
 		async (useCredits) => {
@@ -970,6 +1257,17 @@ describe('InstanceAiSetupCredential', () => {
 		await flushPromises();
 		expect(rendered.getByLabelText('API key')).toBeVisible();
 		expect(rendered.getByRole('button', { name: 'Save' })).toBeEnabled();
+	});
+
+	it('starts a requested new account on the own-key form', async () => {
+		gateway.isEnabled.value = true;
+		const rendered = renderComponent({
+			props: { item: { ...item, nodeBindings: [], preferNew: true } },
+		});
+		await flushPromises();
+		expect(rendered.getByLabelText('API key')).toBeVisible();
+		expect(rendered.queryByRole('button', { name: 'Use credits' })).toBeNull();
+		expect(mockedStore(useCredentialsStore).createNewCredential).not.toHaveBeenCalled();
 	});
 
 	it.each([

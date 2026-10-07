@@ -17,7 +17,7 @@ import type { RedisResponsePublisher } from '@/modules/engine-v2/response-channe
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
 import { PostHogClient } from '@/posthog';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 

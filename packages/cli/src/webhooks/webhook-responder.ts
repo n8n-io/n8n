@@ -1,5 +1,9 @@
-import type { WebhookResponse } from './webhook-response';
+import type { WebhookNoResponse, WebhookResponse } from './webhook-response';
 import type { IWebhookResponseCallbackData } from './webhook.types';
+
+export type WebhookCallbackResponseData = IWebhookResponseCallbackData & {
+	noWebhookResponse?: false;
+};
 
 export type WebhookResponseCallback = (
 	error: Error | null,
@@ -21,8 +25,16 @@ export class WebhookResponder {
 	}
 
 	/** Sends the response data and records that the request has a response. */
-	respondWith(data: IWebhookResponseCallbackData | WebhookResponse): void {
+	respondWith(
+		data: WebhookCallbackResponseData | Exclude<WebhookResponse, WebhookNoResponse>,
+	): void {
 		this.sendResponse(null, data);
+		this.responded = true;
+	}
+
+	/** Reports that another party answered the request. */
+	respondWithNoResponse(): void {
+		this.sendResponse(null, { noWebhookResponse: true });
 		this.responded = true;
 	}
 

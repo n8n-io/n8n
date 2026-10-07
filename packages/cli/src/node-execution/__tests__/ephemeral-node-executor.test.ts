@@ -947,7 +947,7 @@ describe('EphemeralNodeExecutor', () => {
 		});
 	});
 
-	it('resolves expressions when invoking a supplyData tool with the VM engine', async () => {
+	it('resolves expressions in standalone tool contexts with the VM engine', async () => {
 		await Expression.initExpressionEngine({
 			engine: 'vm',
 			bridgeTimeout: 1000,
@@ -993,6 +993,38 @@ describe('EphemeralNodeExecutor', () => {
 				status: 'success',
 				data: [{ json: { response: 2 } }],
 			});
+
+			mockGetBase.mockResolvedValue({ variables: { increment: '3' } });
+			const tool = {
+				nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				nodeTypeVersion: 2.2,
+				nodeParameters: {},
+				projectId: 'p-1',
+			};
+			await expect(
+				executor.evaluateExpressions(
+					tool,
+					{
+						count: '={{ $json.count + Number($vars.increment) }}',
+						options: '={{ { enabled: true, items: [1, 2] } }}',
+						date: '={{ $now.toISODate() }}',
+					},
+					[{ json: { count: 4 } }],
+				),
+			).resolves.toEqual({
+				count: 7,
+				options: { enabled: true, items: [1, 2] },
+				date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			});
+			await expect(
+				executor.evaluateExpressions(tool, { broken: '={{ 1 + }}' }, []),
+			).rejects.toThrow('Cannot resolve input "broken"');
+			// A failed expression must release the single isolate for the next call.
+			await expect(
+				executor.evaluateExpressions(tool, { count: '={{ $json.count }}' }, [
+					{ json: { count: 9 } },
+				]),
+			).resolves.toEqual({ count: 9 });
 		} finally {
 			await Expression.disposeExpressionEngine();
 		}

@@ -25,6 +25,7 @@ vi.mock('@n8n/design-system', () => ({
 					<span> · </span>
 					<span data-testid="tool-step-summary">{{ part }}</span>
 				</template>
+				<span v-if="error" data-testid="tool-step-warning" :title="error">⚠</span>
 				<div v-if="error && !hideErrorCallout" data-test-id="tool-step-error">{{ error }}</div>
 				<div v-if="isOpen"><slot /></div>
 			</div>
@@ -59,6 +60,8 @@ vi.mock('@n8n/design-system', () => ({
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
+			'agents.chat.plan.error.rejected':
+				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
 			'agents.chat.toolNames.flagMemory': 'Memory noted',
 			'instanceAi.tools.search_nodes': 'Search nodes',
@@ -100,7 +103,11 @@ vi.mock('../composables/useSubAgentNames', () => ({
 
 function mountSteps(
 	toolCalls: ToolCall[],
-	extra: { canFixWithAssistant?: boolean; executionId?: string } = {},
+	extra: {
+		canFixWithAssistant?: boolean;
+		executionId?: string;
+		dismissedToolCallIds?: string[];
+	} = {},
 ) {
 	return mount(AgentChatToolSteps, {
 		props: { toolCalls, projectId: 'project-1', ...extra },
@@ -108,6 +115,125 @@ function mountSteps(
 }
 
 describe('AgentChatToolSteps', () => {
+	it.each([
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: {
+				error:
+					'AI_InvalidToolInputError: Invalid input for tool update_plan: Invalid uuid in dependsOn',
+			},
+		},
+		{
+			tool: 'create_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Error: AI_InvalidToolInputError: Invalid input for tool create_plan: Invalid uuid',
+		},
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.DONE,
+			output: { error: 'invalid_plan', message: 'New items must be Pending' },
+		},
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: { error: 'invalid_plan', message: 'Missing dependency' },
+		},
+		{
+			tool: 'close_plan',
+			state: TOOL_CALL_STATE.DONE,
+			output: { error: 'conflict', message: 'Read the current plan before another write' },
+		},
+		{
+			tool: 'update_plan',
+			state: TOOL_CALL_STATE.ERROR,
+			output: { error: 'conflict', message: 'Read the current plan before another write' },
+		},
+	])('keeps a recoverable $tool error compact in state $state', async (call) => {
+		for (const canFixWithAssistant of [false, true]) {
+			const toolCall = { ...call, toolCallId: 'tc-plan', input: { expectedRevision: 4 } };
+			const wrapper = mountSteps([toolCall], { canFixWithAssistant, executionId: 'exec-1' });
+			expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(
+				'The plan change was rejected. Expand this step for details.',
+			);
+			expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+				false,
+			);
+			expect(wrapper.find('pre').exists()).toBe(false);
+			await wrapper.get('button').trigger('click');
+			const details = wrapper.findAll('pre');
+			expect(details[0].text()).toBe(JSON.stringify(toolCall.input, null, 2));
+			expect(details[1].text()).toBe(
+				typeof call.output === 'string' ? call.output : JSON.stringify(call.output, null, 2),
+			);
+			expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+			wrapper.unmount();
+		}
+	});
+
+	it.each([
+		['update_plan', { error: 'Database connection failed' }],
+		['update_plan', { error: 'unavailable', message: 'Missing thread context' }],
+		['update_plan', 'Unexpected failure containing AI_InvalidToolInputError'],
+		['update_plan', 'AI_InvalidToolInputError: Invalid input for tool another_tool: Invalid uuid'],
+		['search_nodes', 'AI_InvalidToolInputError: Invalid input for tool search_nodes: Invalid name'],
+		['search_nodes', { error: 'conflict' }],
+	])('keeps existing failure handling for %s with %j', (tool, output) => {
+		const call: ToolCall = { tool, output, state: TOOL_CALL_STATE.ERROR, toolCallId: 'tc-error' };
+		const withoutFix = mountSteps([call]);
+		expect(withoutFix.find('[data-test-id="tool-step-error"]').exists()).toBe(true);
+		const withFix = mountSteps([call], { canFixWithAssistant: true, executionId: 'exec-1' });
+		expect(withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+	});
+
+	it('keeps a rejected call visible after a successful retry without adding it to fixable errors', async () => {
+		const rejected: ToolCall = {
+			tool: 'update_plan',
+			toolCallId: 'tc-rejected',
+			state: TOOL_CALL_STATE.ERROR,
+			output: { error: 'invalid_plan', message: 'Missing dependency' },
+		};
+		const wrapper = mountSteps([rejected], {
+			canFixWithAssistant: true,
+			executionId: 'exec-1',
+		});
+		await wrapper.setProps({
+			toolCalls: [
+				rejected,
+				{
+					tool: 'update_plan',
+					toolCallId: 'tc-retry',
+					state: TOOL_CALL_STATE.DONE,
+					output: { revision: 5 },
+				},
+			],
+		});
+		expect(wrapper.findAll('[data-testid="tool-step-warning"]')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+		await wrapper.setProps({
+			toolCalls: [
+				rejected,
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-failed',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Connection failed',
+				},
+			],
+		});
+		const callout = wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.text()).toContain('Connection failed');
+		expect(callout.text()).not.toContain('Missing dependency');
+		await wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(wrapper.emitted('fixWithAssistant')).toEqual([
+			[[expect.objectContaining({ toolCallId: 'tc-failed' })]],
+		]);
+	});
+
 	it.each([
 		[TOOL_CALL_STATE.PENDING, 'true'],
 		[TOOL_CALL_STATE.RUNNING, 'true'],
@@ -302,6 +428,68 @@ describe('AgentChatToolSteps', () => {
 				],
 			],
 		]);
+	});
+
+	it('hides dismissed tool errors and emits only the ones still shown', async () => {
+		const stillShown = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+				{
+					tool: 'http_request',
+					toolCallId: 'tc-stay',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Still broken',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+
+		const callout = stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Still broken');
+		expect(callout.text()).not.toContain('Old failure');
+
+		await stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(stillShown.emitted('fixWithAssistant')).toEqual([
+			[
+				[
+					{
+						toolCallId: 'tc-stay',
+						toolName: 'http_request',
+						toolDisplayName: 'Http request',
+						error: 'Still broken',
+					},
+				],
+			],
+		]);
+
+		const allDismissed = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+		expect(
+			allDismissed.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(false);
 	});
 
 	it('shows a generic error when the failed tool output is empty', () => {

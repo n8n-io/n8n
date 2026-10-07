@@ -344,8 +344,26 @@ persisted snapshots at run start and drops a snapshot whose content did not
 change, so a recomputed, unchanged list publishes nothing. Snapshot reads wait for
 pending events to drain. The final workflow setup handoff confirms the stored
 snapshot before it saves the setup routing marker. A failed handoff returns an
-error instead of `announced: true`. Credential replacement requests and existing
-setup cards keep their selection and resume flows.
+error instead of `announced: true`. Requests to replace a bound account and
+existing setup cards keep their selection and resume flows. A new-account request
+for an unconnected service stays in the panel. Choices saved during the current
+build satisfy repeated new-account flags at the final handoff.
+
+Before generating source, the agent can call `credentials(action="setup")`
+with `filePath`, `workflowName`, and known service credential types. This creates
+a temporary workflow in the bound project and persists its source-file binding.
+The tool confirms the stored checklist and returns `preBuild: true` without
+suspending. Later calls replace the planned requirements until the first build.
+New-account preferences keep those rows unselected. A saved user choice satisfies
+the preference for the rest of that run, including later build repairs.
+The build saves into the same workflow and replaces the checklist with its
+actual requirements.
+
+The panel saves pending credential references through the existing thread
+metadata endpoint. Each choice has its own completion marker. The builder
+validates choices against project-scoped credentials before automatic selection.
+The panel applies choices made later when the build ends. Refresh and artifact
+switches retain pending choices. Removing a requirement never deletes a credential.
 
 The agent observes saved workflows at the start of a user turn. This read updates
 its private open-item memo. It does not publish a snapshot or select a workflow.

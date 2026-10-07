@@ -128,6 +128,26 @@ async function getAgentExecutionOrchestratorService() {
 }
 
 /**
+ * Teams renders a reply progressively by editing a posted message, not through
+ * the platform's own streaming protocol.
+ *
+ * That protocol needs a handle the adapter holds only for the life of the
+ * inbound request, and a turn runs later, from the queue. Giving the SDK a
+ * placeholder makes the Teams adapter decline to stream and hand back to the
+ * SDK's post-and-edit path, which uses ordinary proactive calls.
+ *
+ * The interval trades smoothness against Teams' edit throttling. The SDK waits
+ * for each edit to land before scheduling the next, so a throttled tenant paces
+ * itself, and a skipped interval edit is invisible — but the SDK's final edit is
+ * not guarded, so a rejection there would surface instead of the last chunk.
+ * Hence a little above the SDK's 500ms default rather than at it.
+ */
+function streamingOptionsFor(type: AgentIntegrationConfig['type']) {
+	if (type !== 'teams') return {};
+	return { fallbackStreamingPlaceholderText: '…', streamingUpdateIntervalMs: 750 };
+}
+
+/**
  * Manages per-agent Chat SDK instances and their lifecycle.
  *
  * Each integration (e.g. Slack workspace) gets its own `Chat` instance keyed
@@ -185,6 +205,8 @@ export class ChatIntegrationService {
 		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
+		// n8n Chat has no runtime connection for peers to reconcile.
+		if (!isCredentialAgentIntegration(integration)) return;
 		await this.changePublisher.publish({
 			command: 'agent-chat-integration-changed',
 			payload: { agentId, integration, action },
@@ -1192,6 +1214,7 @@ export class ChatIntegrationService {
 				// bot.webhooks.slack maps correctly to the handler.
 				adapters: { [integration.type]: adapter } as Record<string, never>,
 				state,
+				...streamingOptionsFor(integration.type),
 			});
 
 			if (ingressEnabled) bridge = await this.createChatBridge(chat, ctx);

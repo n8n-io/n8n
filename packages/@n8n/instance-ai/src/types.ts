@@ -24,7 +24,9 @@ import type {
 	ComputerUseChannel,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
+	InstanceAiThreadArtifact,
 	McpTool,
+	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
@@ -168,6 +170,8 @@ export interface ExecutionResult {
 	 * so the run is not a live test of it.
 	 */
 	workflowPinnedNodeNames?: string[];
+	/** Nodes whose output items carry file data, which `data` omits. */
+	binaryOutputNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -405,6 +409,7 @@ export interface NodeDescription extends NodeSummary {
 	polling?: boolean;
 	triggerPanel?: unknown;
 	aiGateway?: AiGatewayNodeMeta;
+	unavailable?: string;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -957,6 +962,8 @@ export interface InstanceAiNodeService {
 		builderHint?: string;
 		/** The node type is retired. It still works, but it shouldn't be used anymore at anything new. */
 		deprecated?: boolean;
+		/** Set when the node cannot run on this instance, because the feature it needs is off. */
+		unavailable?: string;
 	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
@@ -1557,6 +1564,12 @@ export interface InstanceAiAgentContextReader {
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
+/** An artifact that a tool created or changed. Tools pass the name when they know it. */
+export type InstanceAiChangedArtifact = Pick<
+	InstanceAiThreadArtifact,
+	'type' | 'id' | 'name' | 'projectId'
+>;
+
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
 	credentialDescriptionsEnabled?: boolean;
@@ -1576,6 +1589,8 @@ export interface InstanceAiContext {
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
+	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
+	onboardingThread?: boolean;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
 	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
@@ -1697,6 +1712,13 @@ export interface InstanceAiContext {
 	 * Wired by the host only while the setup panel flag is on.
 	 */
 	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
+	 * Called after a tool creates or changes a workflow, data table, or agent,
+	 * and after it reads a data table, as the frontend previews those too.
+	 * The host shows the artifact's tab also when no browser shows the run.
+	 * Never throws.
+	 */
+	onArtifactChanged?: (artifact: InstanceAiChangedArtifact) => Promise<void>;
 	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
@@ -1966,7 +1988,7 @@ export interface McpServerConfig {
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
-	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
+	toolPermissions?: McpToolPermissions;
 	fetch?: typeof fetch;
 	/**
 	 * Optional cache discriminator used by `McpClientManager` when a server's
@@ -2134,6 +2156,11 @@ export interface InstanceAiTraceContext {
 	 * for any agent (main or sub-agent) whose spans should join this trace.
 	 */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Keep the trace open until a background operation settles, so its spans
+	 * finish normally when it outlives the root run.
+	 */
+	keepOpenUntilSettled?: (operation: Promise<unknown>) => void;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
@@ -2236,10 +2263,6 @@ export interface OrchestrationContext {
 	runtimeSkillCatalog?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
-	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
-	webhookBaseUrl?: string;
-	/** Form base URL for the n8n instance (e.g. http://localhost:5678/form) — distinct from webhookBaseUrl since Form Triggers serve at /form/, not /webhook/ */
-	formBaseUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */

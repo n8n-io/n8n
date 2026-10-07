@@ -80,9 +80,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import type { ToggleWorkflowsMcpAccessResponse } from '@/features/ai/mcpAccess/mcp.api';
+import {
+	MCP_SETTINGS_VIEW,
+	useMCPStore,
+	type ToggleWorkflowsMcpAccessResponse,
+} from '@n8n/frontend-module-mcp';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -1290,6 +1292,19 @@ const onWorkflowUnpublished = async (data: { id: string }) => {
 	workflow.publicationStatus = undefined;
 };
 
+const onWorkflowPublished = async (data: { id: string }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+
+	// Refresh the item so activeVersionId reflects the newly published version.
+	// Publication status updates separately via the publication-status push.
+	const updated = await workflowsListStore.fetchWorkflow(data.id).catch(() => null);
+	if (!updated) return;
+	workflow.activeVersionId = updated.activeVersionId ?? null;
+};
+
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
 	return workflowsAndFolders.value.find(
 		(resource): resource is FolderListItem =>
@@ -2456,6 +2471,7 @@ const onNameSubmit = async (name: string) => {
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:unpublished="onWorkflowUnpublished"
+					@workflow:published="onWorkflowPublished"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"

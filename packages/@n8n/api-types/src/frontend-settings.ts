@@ -372,6 +372,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for SCIM user-provisioning module.
+	 */
+	scim?: {
+		/** Whether SCIM provisioning is enabled in the instance. */
+		scimEnabled: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {
@@ -435,6 +443,7 @@ export type FrontendModuleSettings = {
 	 * Client settings for the agents module.
 	 */
 	agents?: {
+		enabled?: boolean;
 		/**
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's

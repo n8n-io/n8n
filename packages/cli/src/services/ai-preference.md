@@ -224,3 +224,9 @@ scopes.
 `CONTEXT_PREFERENCES_FLAG` gates the surfaces that read preferences, not the writes. The
 settings area writes rows whatever the flag says, and a row that no surface reads is
 inert.
+
+The MCP consent screen is one of those surfaces. `McpProtectedResource.getGrantableScopes`
+offers `aiPreference:read` and `aiPreference:write` only to a user in the `variant` arm,
+through the same `arePreferenceToolsEnabled` predicate that registers the tools. A control
+user never sees the scopes, so the experiment does not expose the feature to the arm it
+keeps unaware of it, and no grant records a scope the server would refuse to honour.

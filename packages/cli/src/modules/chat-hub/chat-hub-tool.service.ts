@@ -9,8 +9,7 @@ import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import type { ChatHubTool } from './chat-hub-tool.entity';
@@ -107,6 +106,7 @@ export class ChatHubToolService {
 		updates: ChatHubUpdateToolRequest,
 		trx?: EntityManager,
 	): Promise<ChatHubTool> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		const tool = await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
 			const existingTool = await this.chatToolRepository.getOneById(id, user.id, em);
 			if (!existingTool) {
@@ -134,6 +134,7 @@ export class ChatHubToolService {
 	}
 
 	async deleteTool(id: string, userId: string, trx?: EntityManager): Promise<void> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
 			const existingTool = await this.chatToolRepository.getOneById(id, userId, em);
 			if (!existingTool) {

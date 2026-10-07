@@ -9,6 +9,8 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
+	InstanceAiThreadTabsResponse,
+	InstanceAiThreadTabsState,
 } from '@n8n/api-types';
 import type { AgentResource } from '@/features/agents/types';
 
@@ -54,6 +56,21 @@ export async function updateThreadMetadata(
 	return await makeRestApiRequest(context, 'PATCH', `/instance-ai/threads/${threadId}`, {
 		metadata,
 	});
+}
+
+export async function fetchThreadTabs(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<InstanceAiThreadTabsResponse> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/tabs`);
+}
+
+export async function saveThreadTabs(
+	context: IRestApiContext,
+	threadId: string,
+	state: InstanceAiThreadTabsState,
+): Promise<InstanceAiThreadTabsResponse> {
+	return await makeRestApiRequest(context, 'PUT', `/instance-ai/threads/${threadId}/tabs`, state);
 }
 
 /**

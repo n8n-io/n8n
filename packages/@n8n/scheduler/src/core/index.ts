@@ -71,7 +71,12 @@ export type {
 } from './materializer';
 export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
-export type { ReaperOptions, ReapResult } from './reaper';
+export type {
+	ReaperOptions,
+	ReapResult,
+	RetireMissedResult,
+	RetiredTask,
+} from './reaper';
 export {
 	reconcile,
 	DEFAULT_RECONCILIATION_OPTIONS,
@@ -92,6 +97,7 @@ export {
 	UnregisteredOwnerTypeError,
 	InvalidOwnerIdError,
 	InvalidOwnerMemberIdError,
+	LeaseLostError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 

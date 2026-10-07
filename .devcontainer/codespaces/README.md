@@ -2,7 +2,7 @@
 
 Run long-lived, human-steered agent sessions (Claude Code / OpenCode) on a
 GitHub Codespace instead of your laptop: start a task, close the lid, steer it
-from anywhere with a terminal, resume tomorrow.
+from anywhere, resume tomorrow.
 
 This is a separate devcontainer config from the laptop one in
 `.devcontainer/` — it ships both agent CLIs, `tmux` for session persistence,
@@ -11,17 +11,61 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 
 ## One-time setup (~5 min)
 
-1. Add provider keys at [github.com/settings/codespaces](https://github.com/settings/codespaces).
-   Add `ANTHROPIC_API_KEY` for Claude Code. Add `OPENROUTER_API_KEY` for OpenCode.
-   Give both secrets access to `n8n-io/n8n`.
-   (Alternative for Max subscriptions: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`.)
-2. Give the GitHub CLI the codespace scope:
+1. Give the GitHub CLI the codespace scope:
 
    ```bash
    gh auth refresh -h github.com -s codespace
    ```
 
-## Daily flow
+2. Add provider keys at [github.com/settings/codespaces](https://github.com/settings/codespaces)
+   if your client needs them. Give each secret access to `n8n-io/n8n`.
+   - `ANTHROPIC_API_KEY` for Claude Code in the terminal (`pnpm session`).
+     Alternative for Max subscriptions: `CLAUDE_CODE_OAUTH_TOKEN` from
+     `claude setup-token`. The desktop app does not need either secret.
+   - `OPENROUTER_API_KEY` for OpenCode.
+
+## Choose a client
+
+All clients run the agent, its tools, and builds in the Codespace. Your laptop
+shows the conversation only.
+
+| Client | Command | Use it when |
+|---|---|---|
+| Claude Code desktop app | `pnpm session ssh-config` once | You want the full desktop experience. |
+| Claude Code in VS Code | Open the codespace in VS Code or the browser | You already work in VS Code. |
+| Claude Code in a terminal | `pnpm session` | You want a plain terminal, or you are on a remote machine. |
+| OpenCode | `pnpm session:opencode` | You use OpenCode. See [Local OpenCode clients](#local-opencode-clients). |
+
+### Claude Code desktop app
+
+1. From a local checkout, add an SSH host for your codespace:
+
+   ```bash
+   pnpm session ssh-config
+   ```
+
+   The command creates or starts the codespace. It writes the host
+   `n8n-codespace` to `~/.ssh/n8n-codespace.conf` and includes that file from
+   `~/.ssh/config`.
+2. In the desktop app, add an SSH connection to the host `n8n-codespace`.
+3. Open the folder `/workspaces/n8n`, or a worktree under `/workspaces`.
+
+The desktop app installs its own Claude Code on the codespace and signs in
+with your desktop account. Sessions continue when you close the app. They stop
+when the codespace stops.
+
+- **Run `pnpm session ssh-config` again after you recreate the codespace.**
+- **If the connection times out**, the codespace is probably starting. Run
+  `pnpm session ssh-config`, then connect again.
+- **Test the connection** with `ssh n8n-codespace`.
+
+### Claude Code in VS Code
+
+The dev container installs the Claude Code extension. Open the codespace in
+VS Code or the browser, then open the Claude Code panel. Sign in from the
+extension if you did not add `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`.
+
+### Claude Code in a terminal
 
 ```bash
 pnpm session                       # attach Claude Code (creates everything on first run)
@@ -33,6 +77,7 @@ pnpm session:opencode --legacy     # use the remote TUI in tmux
 pnpm session fix-flaky             # Claude Code in a separate worktree
 pnpm session ls                    # what's running
 pnpm session tunnel                # forward n8n ports (default 5678, 8080); Ctrl-C to stop
+pnpm session ssh-config            # add the n8n-codespace SSH host for the desktop app
 pnpm session stop                  # end of day: billing stops, disk survives
 pnpm session rm                    # delete the codespace
 ```
@@ -332,10 +377,14 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 Claude sessions and the headless OpenCode worker get the `flaky` MCP server automatically: Currents
 flaky/quarantine data, the `qa_*` BigQuery dataset, Sentry RCA, live Linear,
 and repo investigation. The worker keeps the token in its environment and puts
-only an environment reference in the OpenCode config. Claude login registers
-the same server without writing the token to disk. Forks have no secrets and
+only an environment reference in the OpenCode config. Forks have no secrets and
 skip it. Tell the agent to call `get_flaky_context` first — it returns the rules
 the tools assume.
+
+`post-start.mjs` registers the server for Claude Code on each container start.
+Its `headersHelper` reads the token from the secrets file on each connect, so
+the server works in every client. The token is not copied into the Claude Code
+MCP configuration.
 
 ## Quality and security skills (Claude plugins)
 
@@ -398,7 +447,8 @@ to pull the skills into context.
 
 ## Viewing the dev UI locally
 
-Two terminal windows:
+`pnpm session tunnel` works with every client. With the terminal client, use
+two terminal windows:
 
 ```bash
 pnpm session          # window 1: attach the agent session
@@ -448,10 +498,10 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   agent injects them into VS Code sessions only; they're delivered
   base64-encoded to `/workspaces/.codespaces/shared/.env-secrets`. The image
   sources `/usr/local/lib/codespaces-env.sh` in login shells (profile.d), in
-  interactive shells (bashrc), and in the `pnpm session` prelude. If Claude
-  Code shows `Missing environment variables: FLAKY_MCP_TOKEN`, the shell that
-  started Claude did not source the file. Run
-  `. /usr/local/lib/codespaces-env.sh` and start Claude again.
+  interactive shells (bashrc), and in the `pnpm session` prelude. Desktop app
+  sessions do not source it. `git`, `gh`, `scripts/codespace-env.mjs`, and the
+  `flaky` MCP entry read the file when they run, so they work everywhere. New
+  code that needs a secret must do the same.
 - **Do not read `CODESPACE_NAME` or `GITHUB_USER` from the process env** — use
   `scripts/codespace-env.mjs`. Codespaces gives these variables to VS Code
   sessions only. Other processes read them from `codespaces-env.sh`, and a
@@ -460,7 +510,7 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   polled correctly as its owner while `dev:up` in the same session saw an empty
   box name, printed the localhost URL, and did not share the port. The helper
   reads `/workspaces/.codespaces/shared`, which is always correct.
-- **You cannot paste images into a remote Claude session.** Image paste reads
+- **You cannot paste images into a terminal Claude session.** Image paste reads
   the clipboard of the machine where `claude` runs — the codespace, not your
   laptop. Drag the file into the VS Code explorer (or
   `gh codespace cp shot.png remote:/workspaces/n8n/`) and give Claude the

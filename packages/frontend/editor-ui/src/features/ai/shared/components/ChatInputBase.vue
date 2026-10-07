@@ -243,6 +243,7 @@ defineExpose({
 		@paste="fileDrop.handlePaste"
 		@keydown.capture="handleKeydown"
 	>
+		<slot name="above" />
 		<div
 			v-if="fileDrop.isDragging.value"
 			:class="$style.dropOverlay"
@@ -306,7 +307,13 @@ defineExpose({
 				</N8nTooltip>
 				<N8nTooltip
 					v-if="showVoice && speechInput.isSupported"
-					:content="i18n.baseText('chatInputBase.button.dictate')"
+					:content="
+						i18n.baseText(
+							isStreaming
+								? 'chatInputBase.button.dictate.stopResponse'
+								: 'chatInputBase.button.dictate',
+						)
+					"
 					placement="top"
 				>
 					<N8nIconButton

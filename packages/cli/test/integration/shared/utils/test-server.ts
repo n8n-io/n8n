@@ -17,6 +17,7 @@ import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
+import { packagedModules } from '@/modules/modules.manifest';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
@@ -148,7 +149,7 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.loadModules(modules);
+		if (modules) await testModules.loadModules(modules, packagedModules);
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
@@ -246,7 +247,7 @@ export const setupTestServer = ({
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service.js');
+						const { CacheService } = await import('@n8n/backend-services');
 						await Container.get(CacheService).init();
 						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);
@@ -267,6 +268,10 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'jwks':
+						await import('@/jwks/jwks.controller.js');
 						break;
 
 					case 'mfa':
@@ -392,7 +397,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'insights':
-						await import('@/modules/insights/insights.module.js');
+						await import('@n8n/backend-module-insights/module');
 						break;
 
 					case 'data-table':

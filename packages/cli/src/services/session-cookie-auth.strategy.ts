@@ -5,7 +5,7 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthError } from '@n8n/errors';
 
 import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
 

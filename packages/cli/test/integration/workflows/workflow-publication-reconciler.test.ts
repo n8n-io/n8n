@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createWorkflowHistory,
 	createWorkflowWithHistory,
@@ -21,7 +22,6 @@ import type { INode, INodeTypeData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';

@@ -24,9 +24,19 @@ vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	})),
 }));
 
+let mockIsCloudUbbActive = false;
+vi.mock('@n8n/stores/composables/useCloudUbbActive', () => ({
+	useCloudUbbActive: vi.fn(() => ({
+		get isActive() {
+			return { value: mockIsCloudUbbActive };
+		},
+	})),
+}));
+
 describe('CreditWarningBanner', () => {
 	beforeEach(() => {
 		mockUserIsTrialing = false;
+		mockIsCloudUbbActive = false;
 	});
 
 	// Most call sites sit above a detached, fully rounded chat input, so the
@@ -80,6 +90,33 @@ describe('CreditWarningBanner', () => {
 
 		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
 		expect(text).toContain('aiAssistant.builder.creditBanner.trialText');
+	});
+
+	// Under Cloud UBB the wallet's `creditsQuota` shrinks as top-ups deplete, so the
+	// legacy fraction would show a moving denominator and mislabel top-ups as monthly.
+	it('shows the UBB text (no fraction) for non-trialing users when Cloud UBB is active', () => {
+		mockIsCloudUbbActive = true;
+		const wrapper = mount(CreditWarningBanner, {
+			props: { creditsRemaining: 169, creditsQuota: 1769 },
+		});
+
+		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
+		expect(text).toContain('aiAssistant.builder.creditBanner.textUbb');
+		expect(text).toContain('"remaining":"169"');
+		expect(text).not.toContain('"total"');
+	});
+
+	it('keeps the trial fraction even when Cloud UBB is active (trials hold no top-ups)', () => {
+		mockUserIsTrialing = true;
+		mockIsCloudUbbActive = true;
+		const wrapper = mount(CreditWarningBanner, {
+			props: { creditsRemaining: 100, creditsQuota: 500 },
+		});
+
+		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
+		expect(text).toContain('aiAssistant.builder.creditBanner.trialText');
+		expect(text).toContain('"remaining":"100"');
+		expect(text).toContain('"total":"500"');
 	});
 
 	// The activation-capped trial cohort is never shown a balance,

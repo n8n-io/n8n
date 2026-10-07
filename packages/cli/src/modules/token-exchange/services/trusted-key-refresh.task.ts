@@ -4,7 +4,7 @@ import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from 
 import { TrustedKeyService } from './trusted-key.service';
 
 /** How often to poll sources to check if any are due for refresh. */
-const REFRESH_POLL_INTERVAL_SECONDS = 30;
+const REFRESH_POLL_INTERVAL_SECONDS = 60;
 
 /**
  * Re-fetches trusted public keys whose refresh interval has lapsed, so JWT
@@ -18,7 +18,7 @@ export class TrustedKeyRefreshTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
 	constructor(private readonly trustedKeyService: TrustedKeyService) {}
 

@@ -17,8 +17,7 @@ import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -26,6 +25,7 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
 	agent: AgentResource;
@@ -55,6 +55,12 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
+// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
+const hasUnpublishedChanges = computed(
+	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
+);
+const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
+
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
@@ -77,27 +83,32 @@ const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
 const actions = computed(() => {
-	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
-
-	if (isPublished.value && canUnpublish.value) {
-		items.push({
-			value: 'unpublish',
-			label: locale.baseText('agents.list.actions.unpublish'),
-			divided: true,
-		});
-	} else if (!isPublished.value && canPublish.value) {
-		items.push({
-			value: 'publish',
-			label: locale.baseText('agents.list.actions.publish'),
-			divided: true,
-		});
-	}
+	const items: ActionToggleItem[] = [];
 
 	items.push({
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
 		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
+
+	if (canCreate.value) {
+		items.push({
+			value: 'duplicate',
+			label: locale.baseText('agents.list.actions.duplicate'),
+		});
+	}
+
+	if (isPublished.value && canUnpublish.value) {
+		items.push({
+			value: 'unpublish',
+			label: locale.baseText('agents.list.actions.unpublish'),
+		});
+	} else if (!isPublished.value && canPublish.value) {
+		items.push({
+			value: 'publish',
+			label: locale.baseText('agents.list.actions.publish'),
+		});
+	}
 
 	if (isMcpEnabled.value && canUpdate.value) {
 		items.push({
@@ -107,6 +118,7 @@ const actions = computed(() => {
 					? 'agents.list.actions.disableMCPAccess'
 					: 'agents.list.actions.enableMCPAccess',
 			),
+			divided: true,
 		});
 	}
 
@@ -114,14 +126,8 @@ const actions = computed(() => {
 		items.push({
 			value: 'delete',
 			label: locale.baseText('agents.list.actions.delete'),
-			divided: items.length > 0,
-		});
-	}
-
-	if (canCreate.value) {
-		items.push({
-			value: 'duplicate',
-			label: locale.baseText('agents.list.actions.duplicate'),
+			divided: true,
+			destructive: true,
 		});
 	}
 
@@ -187,7 +193,13 @@ async function toggleMCPAccess(enabled: boolean) {
 <template>
 	<N8nCard :class="$style.cardLink" data-test-id="agent-card" @click="emit('select', agent.id)">
 		<template #header>
-			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
+			<N8nText
+				tag="h2"
+				:bold="!isUntitled"
+				:color="isUntitled ? 'text-light' : undefined"
+				:class="[$style.cardHeading, { [$style.untitledName]: isUntitled }]"
+				data-test-id="agent-card-name"
+			>
 				{{ agent.name }}
 				<N8nBadge
 					v-if="!canUpdate"
@@ -216,7 +228,13 @@ async function toggleMCPAccess(enabled: boolean) {
 			<div :class="$style.cardActions" @click.stop>
 				<PublicationIndicator
 					v-if="isPublished"
-					:label="locale.baseText('agents.list.published')"
+					:label="
+						locale.baseText(
+							hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+						)
+					"
+					:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
 					data-test-id="agent-card-publish-indicator"
 				/>
 				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
@@ -261,6 +279,10 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.untitledName {
+	font-style: italic;
 }
 
 .readonlyBadge {

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
 import type {
 	INode,
 	INodeExecutionData,
@@ -11,11 +11,20 @@ import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workf
 import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
-import { createExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	type ExecutionIdV2,
+	isExecutionIdV2,
+} from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
-import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineDataPlaneProxyService,
+	isStartRefusedBeforeSave,
+} from '@/services/engine-data-plane-proxy.service';
+import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
 
 type ToStepOutputs = (outputs: INodeExecutionData[][]) => StepSlots;
 
@@ -25,6 +34,9 @@ type FiredTrigger = {
 	name?: string;
 	outputs: INodeExecutionData[][];
 };
+
+/** A run that is ready to send to the data plane. */
+type PreparedStart = { executionId: ExecutionIdV2; request: StartExecutionRequest };
 
 /** Execution modes the v2 path serves today. */
 const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook', 'trigger']);
@@ -58,6 +70,7 @@ export class EngineV2Dispatcher {
 		private readonly proxy: EngineDataPlaneProxyService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly pushRegistry: EngineV2PushRegistry,
+		private readonly payloadFiles: EngineV2PayloadFiles,
 	) {}
 
 	/**
@@ -88,15 +101,46 @@ export class EngineV2Dispatcher {
 	 *
 	 * A caller that has to wait for the run's answer mints the id itself, so it
 	 * can subscribe before the run can produce one.
+	 *
+	 * The files the trigger stored belong to the control plane until the data
+	 * plane accepts the run. A run that does not start leaves them to no one, so
+	 * a failure deletes them, but only when no run can exist: a run that uses
+	 * deleted files fails, while a kept file is deleted with its execution.
 	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
 		const trigger = this.resolveFiredTrigger(data);
 
+		let prepared: PreparedStart;
+		try {
+			prepared = await this.prepare(data, trigger);
+		} catch (error) {
+			await this.payloadFiles.discard(trigger.outputs);
+			throw error;
+		}
+
+		const { executionId, request } = prepared;
+		try {
+			await this.proxy.startExecution(request);
+		} catch (error) {
+			// Assumes rejection: a dropped success response also releases a still-live session.
+			this.pushRegistry.release(executionId);
+			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(trigger.outputs);
+			throw error;
+		}
+
+		return executionId;
+	}
+
+	/** Everything before the data plane is called, so no run exists if this fails. */
+	private async prepare(
+		data: IWorkflowExecutionDataProcess,
+		trigger: FiredTrigger,
+	): Promise<PreparedStart> {
 		this.assertSupported(data, trigger);
 
 		const { workflowData } = data;
 
-		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes);
+		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
 
 		// Lazily imported: a top-level import would pull the v1 step executor and
 		// its dependencies into every n8n process, including ones with the module off.
@@ -104,14 +148,18 @@ export class EngineV2Dispatcher {
 
 		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
-		const executionId = data.engineExecutionId ?? createExecutionIdV2();
+		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
 		assert(isExecutionIdV2(executionId), 'Engine v2 was given an id it cannot run');
+		// A trigger node stored its files before the id existed. They move under the
+		// run here, so the data plane reads them where every other file of the run is.
+		await this.payloadFiles.claimForExecution(trigger.outputs, executionId);
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
 		this.registerPushSession(executionId, data, trigger);
 
-		try {
-			await this.proxy.startExecution({
+		return {
+			executionId,
+			request: {
 				executionId,
 				workflowId: workflowData.id,
 				graph,
@@ -128,14 +176,9 @@ export class EngineV2Dispatcher {
 					userId: data.userId,
 					projectId: data.projectId,
 				},
-			});
-		} catch (error) {
-			// Assumes rejection: a dropped success response also releases a still-live session.
-			this.pushRegistry.release(executionId);
-			throw error;
-		}
-
-		return executionId;
+				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
+			},
+		};
 	}
 
 	/**

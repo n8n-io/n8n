@@ -3,6 +3,7 @@ export type * from './datetime';
 export * from './dto';
 export type * from './push';
 export type * from './scaling';
+export type * from './process-internals';
 export * from './frontend-settings';
 export type * from './user';
 export type * from './consent';
@@ -10,6 +11,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
+export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
@@ -152,6 +154,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
@@ -162,6 +165,7 @@ export {
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
 	folderIdParamSchema,
+	logStreamingDestinationIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
@@ -198,6 +202,7 @@ export {
 	credentialDescriptionSchema,
 } from './schemas/credential-description.schema';
 export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
+export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -227,6 +232,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {
 	policyCheckFailureSchema,
@@ -319,7 +325,7 @@ export {
 export type { UsageState } from './schemas/usage.schema';
 
 export type {
-	BreakingChangeRuleSeverity,
+	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeInstanceIssue,
@@ -329,10 +335,14 @@ export type {
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	MigrationFindingStatus,
 	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
-export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
+export {
+	MIGRATION_REPORT_TARGET_VERSION,
+	migrationFindingStatusSchema,
+} from './schemas/breaking-changes.schema';
 
 export type {
 	SecretsProviderType,
@@ -361,6 +371,7 @@ export {
 } from './schemas/credential-response.schema';
 
 export {
+	instanceAiQuestionSchema,
 	buildRunWorkflowSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
@@ -401,6 +412,7 @@ export {
 	channelConfigSchema,
 	mcpConnectServerSchema,
 	mcpConnectRequestSchema,
+	testListenerCardSchema,
 	mcpConnectResumeSchema,
 	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
@@ -433,6 +445,8 @@ export {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
@@ -493,6 +507,8 @@ export {
 	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
+	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	MAX_INSTANCE_AI_NODES_PER_SET,
@@ -569,6 +585,7 @@ export type {
 	InstanceAiApprovalResumeData,
 	InstanceAiCredentialPlaceholderDef,
 	InstanceAiTargetApproval,
+	InstanceAiQuestion,
 	InstanceAiCredentialRequest,
 	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
@@ -647,7 +664,6 @@ export type {
 	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionFailureReason,
-	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiPermissionMode,
@@ -699,6 +715,13 @@ export type {
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
 
+export {
+	instanceAiSetupCredentialSelectionKey,
+	instanceAiSetupCredentialAppliedKey,
+	readPendingInstanceAiSetupCredentialSelections,
+	type InstanceAiSetupCredentialSelection,
+} from './schemas/instance-ai-setup-credential-selection';
+
 export type {
 	McpRegistryServerStatus,
 	McpRegistryServerIconResponse,
@@ -726,12 +749,24 @@ export {
 	parseMessageBlocks,
 	parseUsageSummary,
 	parseInputExtras,
+	parseStepConfig,
 	parseOutputDisplayBlocks,
 	parseOutputExtras,
 	parseStepSummary,
+	parseStepCacheBreaks,
 } from './schemas/llm-step-display';
 
-export type { ReadableContentBlock, ReadableSegment } from './schemas/llm-step-display';
+export type {
+	CacheBreakCause,
+	StepCacheBreak,
+	ReadableContentBlock,
+	ReadableSegment,
+	ReadableStepConfig,
+	ReadableStepSetting,
+	ReadableStepTool,
+	ReadableUsageRow,
+	ReadableUsageSummary,
+} from './schemas/llm-step-display';
 
 export {
 	startTestRunPayloadSchema,
@@ -890,3 +925,5 @@ export type {
 	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
+
+export type * from './workflow-suggestions';

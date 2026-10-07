@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type { CredentialMatcher } from './credential-matcher';
 import { IdBasedCredentialMatcher } from './id-based-credential-matcher';

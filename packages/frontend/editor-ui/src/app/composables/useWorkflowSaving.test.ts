@@ -451,6 +451,34 @@ describe('useWorkflowSaving', () => {
 	});
 
 	describe('saveAsNewWorkflow', () => {
+		it('strips empty groups when creating a duplicate with the feature disabled', async () => {
+			const workflow = getDuplicateTestWorkflow();
+			workflow.nodes = [
+				createTestNode({
+					id: 'anchor',
+					name: 'Empty group anchor',
+					type: 'n8n-nodes-base.noOp',
+					parameters: { emptyGroupAnchor: true },
+				}),
+			];
+			workflow.nodeGroups = [{ id: 'group', name: 'Group 2', nodeIds: ['anchor'] }];
+			const created = createTestWorkflow({ id: 'new-wf-id' });
+			const createNewWorkflowSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(created);
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				data: workflow,
+				stripEmptyCanvasGroups: true,
+			});
+
+			expect(createNewWorkflowSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ nodes: [], nodeGroups: undefined }),
+			);
+		});
+
 		it('syncs backend-seeded settings (e.g. availableInMCP) into the document after create', async () => {
 			const workflow = getDuplicateTestWorkflow();
 			const created = createTestWorkflow({
@@ -2018,9 +2046,8 @@ describe('useWorkflowSaving', () => {
 
 	describe('autosave on a read-only preview canvas', () => {
 		// Preview hosts (template, workflow history, execution) mount the real
-		// NodeView and supersede the editor context with `readOnly: true`. Opening a
-		// node there auto-selects a credential, which marks the document dirty and
-		// reaches this composable — so the read-only signal has to stop the write.
+		// NodeView and supersede the editor context with `readOnly: true`. The
+		// read-only signal must stop writes if another path marks the document dirty.
 		// Regression cover for ADO-5764.
 		const PREVIEW_FEATURES: EditorEnabledFeatures = {
 			readOnly: true,

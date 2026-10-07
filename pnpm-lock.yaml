@@ -242,6 +242,9 @@ catalogs:
     '@chat-adapter/telegram':
       specifier: 4.37.0
       version: 4.37.0
+    '@chat-adapter/whatsapp':
+      specifier: 4.37.0
+      version: 4.37.0
     '@codemirror/autocomplete':
       specifier: 6.20.0
       version: 6.20.0
@@ -1057,6 +1060,7 @@ overrides:
 
 patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
+  '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
   '@langchain/openai@1.4.4': e16bcc93cf9037198faacf494fb81afba6e9abba749dc9a09c3abfb33e68d5c2
@@ -1117,8 +1121,8 @@ importers:
         specifier: 'catalog:'
         version: 6.35.1
       lefthook:
-        specifier: ^1.7.15
-        version: 1.7.15
+        specifier: ^1.13.6
+        version: 1.13.6
       nodemon:
         specifier: ^3.0.1
         version: 3.0.1
@@ -1141,8 +1145,8 @@ importers:
         specifier: ^6.2.0
         version: 6.2.0(typescript@6.0.2)
       turbo:
-        specifier: 2.9.15
-        version: 2.9.15
+        specifier: 2.11.4
+        version: 2.11.4
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -1255,6 +1259,9 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.76)
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1294,6 +1301,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       pg:
         specifier: 8.21.0
         version: 8.21.0(pg-native@3.8.0)
@@ -1404,6 +1417,9 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.76)
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -1428,6 +1444,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -1528,6 +1550,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1549,6 +1574,12 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(supports-color@8.1.1)(typescript@7.0.2)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -1586,6 +1617,9 @@ importers:
         specifier: 'catalog:'
         version: 1.0.15
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1601,6 +1635,12 @@ importers:
       minifaker:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1744,6 +1784,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1762,40 +1805,6 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
-      typescript:
-        specifier: catalog:typescript
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vitest-mock-extended:
-        specifier: 'catalog:'
-        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
-
-  packages/@n8n/backend-services:
-    dependencies:
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../config
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../di
-    devDependencies:
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@n8n/oxlint-config':
-        specifier: workspace:*
-        version: link:../oxlint-config
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@n8n/vitest-config':
-        specifier: workspace:*
-        version: link:../vitest-config
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -1811,6 +1820,103 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/@n8n/backend-services:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../backend-common
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../db
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
+      cache-manager:
+        specifier: 'catalog:'
+        version: 5.2.3
+      express-openapi-validator:
+        specifier: 5.5.3
+        version: 5.5.3(express@5.2.1(supports-color@8.1.1))
+      ioredis:
+        specifier: 5.3.2
+        version: 5.3.2(supports-color@8.1.1)
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../backend-test-utils
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      ioredis-mock:
+        specifier: ^8.8.1
+        version: 8.8.1(@types/ioredis-mock@8.2.2(supports-color@8.1.1))(ioredis@5.3.2(supports-color@8.1.1))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/@n8n/backend-test-utils:
     dependencies:
@@ -1851,34 +1957,18 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      typescript:
-        specifier: catalog:typescript
-        version: 7.0.2
-
-  packages/@n8n/benchmark:
-    dependencies:
-      '@oclif/core':
-        specifier: 4.0.7
-        version: 4.0.7
-      axios:
-        specifier: 1.18.0
-        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
-      nanoid:
+      oxlint:
         specifier: 'catalog:'
-        version: 3.3.18
-      zx:
-        specifier: ^8.8.5
-        version: 8.8.5
-    devDependencies:
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/k6':
-        specifier: ^0.52.0
-        version: 0.52.0
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1919,9 +2009,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../eslint-config
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1934,9 +2024,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      eslint:
+      oxlint:
         specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1956,6 +2049,9 @@ importers:
         specifier: workspace:*
         version: link:../api-types
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1965,6 +2061,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1978,6 +2080,9 @@ importers:
         specifier: ^4.5.2
         version: 4.5.2
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1987,6 +2092,12 @@ importers:
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2055,12 +2166,21 @@ importers:
         specifier: 'catalog:'
         version: 1.4.5
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2156,12 +2276,21 @@ importers:
       '@lezer/generator':
         specifier: 'catalog:'
         version: 1.8.0
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2299,9 +2428,18 @@ importers:
 
   packages/@n8n/constants:
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2413,6 +2551,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2439,7 +2580,13 @@ importers:
         version: 5.1.0(supports-color@8.1.1)
       n8n-containers:
         specifier: workspace:*
-        version: link:../../testing/containers
+        version: link:../../quality/environments/containers
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)
@@ -2575,6 +2722,12 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2598,7 +2751,13 @@ importers:
         version: 6.0.3
       n8n-containers:
         specifier: workspace:*
-        version: link:../../testing/containers
+        version: link:../../quality/environments/containers
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       supertest:
         specifier: ^7.1.1
         version: 7.1.1(supports-color@8.1.1)
@@ -2776,6 +2935,9 @@ importers:
       '@n8n/tournament':
         specifier: workspace:*
         version: link:../tournament
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       isolated-vm:
         specifier: 'catalog:'
         version: 7.0.1
@@ -2844,6 +3006,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2853,6 +3018,12 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(@typescript/typescript6@6.0.2)(vue@3.5.26(@typescript/typescript6@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       prettier:
         specifier: 'catalog:'
         version: 3.6.2
@@ -2920,6 +3091,49 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+  packages/@n8n/inbound-auth:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/@n8n/instance-ai:
     dependencies:
@@ -3002,6 +3216,9 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3023,6 +3240,12 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       p-limit:
         specifier: catalog:p-limit-v7
         version: 7.3.1
@@ -3050,6 +3273,9 @@ importers:
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3062,6 +3288,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3236,6 +3468,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3257,6 +3492,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -3279,6 +3520,9 @@ importers:
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.114
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3297,6 +3541,12 @@ importers:
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript-tooling
         version: '@typescript/typescript6@6.0.2'
@@ -3383,6 +3633,9 @@ importers:
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3392,6 +3645,12 @@ importers:
       '@typescript/native':
         specifier: catalog:typescript-tooling
         version: typescript@7.0.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript-tooling
         version: '@typescript/typescript6@6.0.2'
@@ -3417,6 +3676,12 @@ importers:
         specifier: workspace:*
         version: link:../../workflow
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3432,6 +3697,12 @@ importers:
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       supertest:
         specifier: ^7.1.1
         version: 7.1.1(supports-color@8.1.1)
@@ -3822,6 +4093,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3831,6 +4105,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4049,6 +4329,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4067,6 +4350,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4092,9 +4381,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../eslint-config
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4107,9 +4396,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      eslint:
+      oxlint:
         specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4132,6 +4424,9 @@ importers:
         specifier: ^0.22.0
         version: 0.22.0
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -4141,6 +4436,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4280,9 +4581,9 @@ importers:
         specifier: 'catalog:'
         version: 3.3.18
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../eslint-config
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4295,6 +4596,12 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsdown:
         specifier: catalog:typescript
         version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
@@ -4309,6 +4616,10 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/vitest-config:
+    dependencies:
+      typescript:
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -4318,10 +4629,10 @@ importers:
         version: 6.9.1
       '@testing-library/vue':
         specifier: catalog:frontend
-        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@7.0.2))
-      typescript:
-        specifier: catalog:typescript
-        version: 7.0.2
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(@typescript/typescript6@6.0.2))
+      '@typescript/native':
+        specifier: catalog:typescript-tooling
+        version: typescript@7.0.2
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -4359,6 +4670,9 @@ importers:
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../eslint-plugin-community-nodes
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4377,6 +4691,12 @@ importers:
       adm-zip:
         specifier: 0.6.0
         version: 0.6.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4428,6 +4748,9 @@ importers:
       '@chat-adapter/telegram':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/whatsapp':
+        specifier: 'catalog:'
+        version: 4.37.0(patch_hash=950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4)(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)(supports-color@8.1.1)
@@ -4470,6 +4793,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../@n8n/backend-common
+      '@n8n/backend-module-insights':
+        specifier: workspace:*
+        version: link:../modules/insights/backend
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../@n8n/backend-network
@@ -4509,6 +4835,9 @@ importers:
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../@n8n/expression-runtime
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../@n8n/inbound-auth
       '@n8n/instance-ai':
         specifier: workspace:*
         version: link:../@n8n/instance-ai
@@ -4557,6 +4886,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
+      '@opentelemetry/context-async-hooks':
+        specifier: ^2.7.1
+        version: 2.10.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
@@ -4605,9 +4937,6 @@ importers:
       bull:
         specifier: 4.16.4
         version: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)(supports-color@8.1.1)
-      cache-manager:
-        specifier: 'catalog:'
-        version: 5.2.3
       change-case:
         specifier: 'catalog:'
         version: 5.4.4
@@ -4872,7 +5201,7 @@ importers:
         version: link:../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../testing/janitor
+        version: link:../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -4993,9 +5322,6 @@ importers:
       form-data:
         specifier: 4.0.6
         version: 4.0.6
-      ioredis-mock:
-        specifier: ^8.8.1
-        version: 8.8.1(@types/ioredis-mock@8.2.2(supports-color@8.1.1))(ioredis@5.3.2(supports-color@8.1.1))
       minifaker:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
@@ -5004,7 +5330,7 @@ importers:
         version: 4.15.3(encoding@0.1.13)
       n8n-containers:
         specifier: workspace:*
-        version: link:../testing/containers
+        version: link:../quality/environments/containers
       nock:
         specifier: 'catalog:'
         version: 14.0.14
@@ -5147,9 +5473,15 @@ importers:
         specifier: 'catalog:'
         version: 11.1.1
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../testing/janitor
+        version: link:../quality/testing/janitor
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../@n8n/typeorm
@@ -5195,6 +5527,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -5213,58 +5551,6 @@ importers:
       zod:
         specifier: 3.25.76
         version: 3.25.76
-
-  packages/extensions/insights:
-    dependencies:
-      '@n8n/extension-sdk':
-        specifier: workspace:*
-        version: link:../../@n8n/extension-sdk
-      '@vue/language-core':
-        specifier: catalog:frontend
-        version: 3.3.11
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
-      vue-router:
-        specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
-    devDependencies:
-      '@n8n/stylelint-config':
-        specifier: workspace:*
-        version: link:../../@n8n/stylelint-config
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../../@n8n/typescript-config
-      '@vitejs/plugin-vue':
-        specifier: catalog:frontend
-        version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
-      '@vue/tsconfig':
-        specifier: catalog:frontend
-        version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      rimraf:
-        specifier: 'catalog:'
-        version: 6.0.1
-      stylelint:
-        specifier: 'catalog:'
-        version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
-      unplugin-dts:
-        specifier: 'catalog:'
-        version: 1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(rollup@4.52.4)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vite:
-        specifier: 'catalog:'
-        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vue-tsc:
-        specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
   packages/frontend/@n8n/chat:
     dependencies:
@@ -5307,7 +5593,7 @@ importers:
         version: link:../../../@n8n/eslint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -5398,7 +5684,7 @@ importers:
         version: link:../../../@n8n/eslint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/telemetry':
         specifier: workspace:*
         version: link:../../../@n8n/telemetry
@@ -5567,7 +5853,7 @@ importers:
         version: link:../../../@n8n/eslint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -5935,7 +6221,7 @@ importers:
         version: link:../../../@n8n/eslint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -5993,7 +6279,7 @@ importers:
         version: link:../i18n
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -6063,7 +6349,7 @@ importers:
         version: link:../../../@n8n/eslint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -6315,6 +6601,9 @@ importers:
       '@n8n/frontend-module-instance-registry':
         specifier: workspace:*
         version: link:../../modules/instance-registry/frontend
+      '@n8n/frontend-module-mcp':
+        specifier: workspace:*
+        version: link:../../modules/mcp/frontend
       '@n8n/frontend-module-otel':
         specifier: workspace:*
         version: link:../../modules/otel/frontend
@@ -6341,7 +6630,7 @@ importers:
         version: link:../../@n8n/permissions
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../testing/janitor
+        version: link:../../quality/testing/janitor
       '@n8n/rest-api-client':
         specifier: workspace:*
         version: link:../@n8n/rest-api-client
@@ -6706,6 +6995,94 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
 
+  packages/modules/insights/backend:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-services
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../../@n8n/constants
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../../../@n8n/db
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+    devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-test-utils
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../../quality/environments/containers
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+
   packages/modules/insights/frontend:
     dependencies:
       '@internationalized/date':
@@ -6786,7 +7163,7 @@ importers:
         version: link:../../../frontend/@n8n/frontend-vite-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -6874,7 +7251,7 @@ importers:
         version: link:../../../frontend/@n8n/frontend-vite-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -6905,6 +7282,142 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+
+  packages/modules/mcp/frontend:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/composables
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/design-system
+      '@n8n/frontend-constants':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-constants
+      '@n8n/frontend-module-sdk':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-module-sdk
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/i18n
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../../@n8n/permissions
+      '@n8n/rest-api-client':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/rest-api-client
+      '@n8n/stores':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/stores
+      '@n8n/telemetry':
+        specifier: workspace:*
+        version: link:../../../@n8n/telemetry
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      element-plus:
+        specifier: catalog:frontend
+        version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      reka-ui:
+        specifier: ^2.5.0
+        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-i18n:
+        specifier: catalog:frontend
+        version: 11.4.5(vue@3.5.26(typescript@6.0.2))
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
+    devDependencies:
+      '@iconify/json':
+        specifier: 'catalog:'
+        version: 2.2.488
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/frontend-test-utils':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-test-utils
+      '@n8n/frontend-vite-config':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-vite-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../quality/testing/janitor
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/stylelint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@pinia/testing':
+        specifier: ^0.1.6
+        version: 0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.9.1
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.1(@testing-library/dom@10.4.1)
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      jsdom:
+        specifier: 'catalog:'
+        version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
+      stylelint:
+        specifier: 'catalog:'
+        version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-svg-loader:
+        specifier: catalog:frontend
+        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@6.0.2)(vitest@5.0.1)
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -6959,7 +7472,7 @@ importers:
         version: link:../../../@n8n/permissions
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../../@n8n/stylelint-config
@@ -7056,7 +7569,7 @@ importers:
         version: link:../../../frontend/@n8n/frontend-vite-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../../../testing/janitor
+        version: link:../../../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
@@ -7230,8 +7743,8 @@ importers:
         specifier: 2.1.0
         version: 2.1.0
       eventsource:
-        specifier: 2.0.2
-        version: 2.0.2
+        specifier: 3.0.6
+        version: 3.0.6
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -7418,7 +7931,7 @@ importers:
         version: link:../@n8n/eslint-plugin-community-nodes
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../testing/janitor
+        version: link:../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -7434,9 +7947,6 @@ importers:
       '@types/basic-auth':
         specifier: 'catalog:'
         version: 1.1.3
-      '@types/eventsource':
-        specifier: ^1.1.2
-        version: 1.1.9
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -7523,7 +8033,7 @@ importers:
         version: 3.23.2
       n8n-containers:
         specifier: workspace:*
-        version: link:../testing/containers
+        version: link:../quality/environments/containers
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -7546,50 +8056,59 @@ importers:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
-  packages/testing/code-health:
-    dependencies:
-      '@n8n/rules-engine':
+  packages/quality/efficiency/microbenchmarks:
+    devDependencies:
+      '@n8n/expression-runtime':
         specifier: workspace:*
-        version: link:../rules-engine
-      '@n8n/vitest-config':
+        version: link:../../../@n8n/expression-runtime
+      n8n-workflow:
         specifier: workspace:*
-        version: link:../../@n8n/vitest-config
-      change-case:
-        specifier: 'catalog:'
-        version: 5.4.4
-      fast-glob:
-        specifier: 'catalog:'
-        version: 3.3.3
-      markdown-it:
-        specifier: 'catalog:'
-        version: 13.0.2
-      ts-morph:
-        specifier: 'catalog:'
-        version: 27.0.2
-      tsx:
-        specifier: 'catalog:'
-        version: 4.19.3
+        version: link:../../../workflow
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
-      yaml:
+      vite:
         specifier: 'catalog:'
-        version: 2.8.3
-    devDependencies:
-      '@types/markdown-it':
-        specifier: 'catalog:'
-        version: 13.0.9
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      fast-check:
-        specifier: 'catalog:'
-        version: 3.23.2
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  packages/testing/containers:
+  packages/quality/efficiency/scale/benchmark:
+    dependencies:
+      '@oclif/core':
+        specifier: 4.0.7
+        version: 4.0.7
+      axios:
+        specifier: 1.18.0
+        version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.18
+      zx:
+        specifier: ^8.8.5
+        version: 8.8.5
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../../@n8n/typescript-config
+      '@types/k6':
+        specifier: ^0.52.0
+        version: 0.52.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+
+  packages/quality/environments/containers:
     dependencies:
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
@@ -7625,6 +8144,18 @@ importers:
         specifier: catalog:undici-v7
         version: 7.29.1
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -7635,17 +8166,103 @@ importers:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  packages/testing/janitor:
+  packages/quality/policy/code-health:
     dependencies:
       '@n8n/rules-engine':
         specifier: workspace:*
         version: link:../rules-engine
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      change-case:
+        specifier: 'catalog:'
+        version: 5.4.4
+      fast-glob:
+        specifier: 'catalog:'
+        version: 3.3.3
+      markdown-it:
+        specifier: 'catalog:'
+        version: 13.0.2
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@types/markdown-it':
+        specifier: 'catalog:'
+        version: 13.0.9
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+  packages/quality/policy/rules-engine:
+    dependencies:
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+  packages/quality/testing/janitor:
+    dependencies:
+      '@n8n/rules-engine':
+        specifier: workspace:*
+        version: link:../../policy/rules-engine
       '@n8n/test-impact':
         specifier: workspace:*
         version: link:../test-impact
       '@n8n/vitest-config':
         specifier: workspace:*
-        version: link:../../@n8n/vitest-config
+        version: link:../../../@n8n/vitest-config
       glob:
         specifier: 10.5.0
         version: 10.5.0
@@ -7656,38 +8273,32 @@ importers:
         specifier: 'catalog:'
         version: 2.8.3
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  packages/testing/performance:
-    devDependencies:
-      '@n8n/expression-runtime':
-        specifier: workspace:*
-        version: link:../../@n8n/expression-runtime
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
-      typescript:
-        specifier: catalog:typescript
-        version: 7.0.2
-      vite:
-        specifier: 'catalog:'
-        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-
-  packages/testing/playwright:
+  packages/quality/testing/playwright:
     devDependencies:
       '@anthropic-ai/sdk':
         specifier: 0.91.1
@@ -7706,19 +8317,22 @@ importers:
         version: 2.0.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       '@n8n/api-types':
         specifier: workspace:*
-        version: link:../../@n8n/api-types
+        version: link:../../../@n8n/api-types
       '@n8n/constants':
         specifier: workspace:*
-        version: link:../../@n8n/constants
+        version: link:../../../@n8n/constants
       '@n8n/db':
         specifier: workspace:*
-        version: link:../../@n8n/db
+        version: link:../../../@n8n/db
       '@n8n/eslint-config':
         specifier: workspace:*
-        version: link:../../@n8n/eslint-config
+        version: link:../../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
       '@n8n/permissions':
         specifier: workspace:*
-        version: link:../../@n8n/permissions
+        version: link:../../../@n8n/permissions
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../janitor
@@ -7727,10 +8341,10 @@ importers:
         version: link:../test-impact
       '@n8n/utils':
         specifier: workspace:*
-        version: link:../../@n8n/utils
+        version: link:../../../@n8n/utils
       '@n8n/workflow-sdk':
         specifier: workspace:*
-        version: link:../../@n8n/workflow-sdk
+        version: link:../../../@n8n/workflow-sdk
       '@playwright/cli':
         specifier: catalog:e2e
         version: 0.1.0
@@ -7787,22 +8401,28 @@ importers:
         version: 2.12.12
       n8n:
         specifier: workspace:*
-        version: link:../../cli
+        version: link:../../../cli
       n8n-containers:
         specifier: workspace:*
-        version: link:../containers
+        version: link:../../environments/containers
       n8n-core:
         specifier: workspace:*
-        version: link:../../core
+        version: link:../../../core
       n8n-workflow:
         specifier: workspace:*
-        version: link:../../workflow
+        version: link:../../../workflow
       nanoid:
         specifier: 'catalog:'
         version: 3.3.18
       otplib:
         specifier: ^12.0.1
         version: 12.0.1
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       ts-morph:
         specifier: 'catalog:'
         version: 27.0.2
@@ -7819,31 +8439,15 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
 
-  packages/testing/rules-engine:
-    dependencies:
-      ts-morph:
-        specifier: 'catalog:'
-        version: 27.0.2
-    devDependencies:
-      '@n8n/vitest-config':
-        specifier: workspace:*
-        version: link:../../@n8n/vitest-config
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      typescript:
-        specifier: catalog:typescript
-        version: 7.0.2
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-
-  packages/testing/test-impact:
+  packages/quality/testing/test-impact:
     dependencies:
       monocart-coverage-reports:
         specifier: ^2.12.0
         version: 2.12.12
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
@@ -7853,12 +8457,18 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/workflow:
     dependencies:
@@ -7880,18 +8490,12 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils
-      '@sentry/node':
-        specifier: catalog:sentry
-        version: 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.221.0(@opentelemetry/api@1.9.1))(supports-color@8.1.1)
       ast-types:
         specifier: 0.16.1
         version: 0.16.1
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
-      callsites:
-        specifier: 'catalog:'
-        version: 3.1.0
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
@@ -7947,9 +8551,12 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
-        version: link:../testing/janitor
+        version: link:../quality/testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -7995,6 +8602,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -9202,6 +9815,10 @@ packages:
 
   '@chat-adapter/telegram@4.37.0':
     resolution: {integrity: sha512-A/lBDH7QUdGzxn+aBUyfg0Dp3uO9AW04Q2iXd4SwAz1t14wVb/gQ+KeI1QB287thgx+uLfr13f0/5Ss58ET11w==}
+    engines: {node: '>=20'}
+
+  '@chat-adapter/whatsapp@4.37.0':
+    resolution: {integrity: sha512-+PjjwUmz5I/FL7U7zEnf48DiElw6tyvdvLUdMC81YoUBHkbirLBI9prcOYgXoO0H6hodJRuXTACXqMemzJRNng==}
     engines: {node: '>=20'}
 
   '@chromatic-com/storybook@4.1.3':
@@ -14060,33 +14677,33 @@ packages:
   '@tsconfig/node16@16.1.8':
     resolution: {integrity: sha512-T/CfdwFry660WjZor56z0F3pxeCllt8KOxWcHFW6ZEuULKUObTDEMdgtctyuJPxwqyWDsvHRfxHaJ4FIICyoqQ==}
 
-  '@turbo/darwin-64@2.9.18':
-    resolution: {integrity: sha512-9f27peFu16ur8c0v9nUFUEyBnbKuuFsUTjHFWfmwGfzySBXbHwzU44QhZon6Mznz0cHsIr3984NQj/bVrnGSRw==}
+  '@turbo/darwin-64@2.11.4':
+    resolution: {integrity: sha512-fEmcQVa95k79tZjcay5b2A4cpR/VrlNUki4AN7EbA+32vj5C5rBUE1q3i2yOFxsB2n01sOlzIZ+s2p2zADCTig==}
     cpu: [x64]
     os: [darwin]
 
-  '@turbo/darwin-arm64@2.9.15':
-    resolution: {integrity: sha512-fDSx56oqoFuS+yUQw7hqjQTkjrSLdMcplhuLC8HcSkWC6YrpwEmUUYsPYHPxy4ALvLxnmPQuk6XoSD8tdkjP+g==}
+  '@turbo/darwin-arm64@2.11.4':
+    resolution: {integrity: sha512-SgXCVgBC1v+bdE6+KQGV6Kob7nBYo75zxzNFFuA4jLdM0J8lYamdTUoZSHLR0dy+kXVEYZqSC98CKqC17NG3Og==}
     cpu: [arm64]
     os: [darwin]
 
-  '@turbo/linux-64@2.9.18':
-    resolution: {integrity: sha512-zCdIDtz69AnbYh913elJRRoF3QY5aa2HNnf+4rAkc7bQ+tWujiDkCNV7stazOUPggaDvhKIf2Z87qHftTeXSkw==}
+  '@turbo/linux-64@2.11.4':
+    resolution: {integrity: sha512-MWM7Au6NPJMBmHJAzFzQ/PACYNRpBOqnBkj+7csdR+YhJ+0XBg4Z64wFwLnGFDac0gc+YlasWOZ5t05bGs54aQ==}
     cpu: [x64]
-    os: [linux]
+    os: [android, linux]
 
-  '@turbo/linux-arm64@2.9.15':
-    resolution: {integrity: sha512-cbOaDe1ijz5As+mimOOHgmRMolZZZO7miNBHHp5xdiYMm2Q/Dwu1JVLx/Kw4s7xjocG/oEoHrpHrxpEAIEfNiw==}
+  '@turbo/linux-arm64@2.11.4':
+    resolution: {integrity: sha512-rRVOh0UNlLbKPuf70FokqjahO/hCGgBmgvZcNXUPayn8Wk0zXIsVoNKpr0UQUhhR+KMiibvBKkVAGDViDFQHKA==}
     cpu: [arm64]
-    os: [linux]
+    os: [android, linux]
 
-  '@turbo/windows-64@2.9.18':
-    resolution: {integrity: sha512-m0kDhZANxSNz9ck1ybogFscHabriAsp4eDFNrN/1H5WrgTF7b3VlcPZnhuO3v2+E2KnCbeAc+UUT10BZZHdDKw==}
+  '@turbo/windows-64@2.11.4':
+    resolution: {integrity: sha512-COr+++1GwDg09XbJdm3sP1gEQApeV43UknYP9h82qet1tAGJrGQAxKVTMrf2JMsMw8MkJRnQj3gAVuQmV1kIyQ==}
     cpu: [x64]
     os: [win32]
 
-  '@turbo/windows-arm64@2.9.15':
-    resolution: {integrity: sha512-fOHEsLcqVdFXLw2ApWv4gxwfHzkUnpo9rHGml+9+dyHj148m/Bc+556kEvb5+4u6prI1LMd8zEZE2HcO6Jn2VQ==}
+  '@turbo/windows-arm64@2.11.4':
+    resolution: {integrity: sha512-gh5lwDA2d4aBdLvTANhFsFEgxbBqKZ4m4dCyChw9GoX8b+Esk8H3p25Q+rlWCUVJ2o6Hne10ZTL0QSFfWD4gIA==}
     cpu: [arm64]
     os: [win32]
 
@@ -14190,9 +14807,6 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
-
-  '@types/eventsource@1.1.9':
-    resolution: {integrity: sha512-F3K4oyM12o8W9jxuJmW+1sc8kdw0Hj0t+26urwkcolPJTgkfppEfIdftdcXmUU2QPBIwcrYO6diqgIqgCDf1FA==}
 
   '@types/express-serve-static-core@5.0.6':
     resolution: {integrity: sha512-3xhRnjJPkULekpSzgtoNYYcTWgEZkp4myc+Saevii5JPnHNvHMRlBSHDbs7Bh1iPPoVTERHEZXyhyLbMEsExsA==}
@@ -17694,10 +18308,6 @@ packages:
     resolution: {integrity: sha512-70QWGkr4snxr0OXLRWsFLeRBIRPuQOvt4s8QYjmUlmlkyTZkRqS7EDVRZtzU3TiyDbXSzaOeF0XUKy8PchzukQ==}
     engines: {node: '>=18.0.0'}
 
-  eventsource@2.0.2:
-    resolution: {integrity: sha512-IzUmBGPR3+oUG9dUeXynyNmf91/3zUSJg1lCktzKw47OXuhco54U3r9B7O4XX+Rb1Itm9OZ2b0RkTs10bICOxA==}
-    engines: {node: '>=12.0.0'}
-
   eventsource@3.0.6:
     resolution: {integrity: sha512-l19WpE2m9hSuyP06+FbuUUf1G+R0SFLrtQfbRb9PRr+oimOfxQhgGCbVaXg5IvZyyTThJsxh6L/srkMiCeBPDA==}
     engines: {node: '>=18.0.0'}
@@ -19299,58 +19909,58 @@ packages:
   leac@0.6.0:
     resolution: {integrity: sha512-y+SqErxb8h7nE/fiEX07jsbuhrpO9lL8eca7/Y1nuWV2moNlXhyd59iDGcRf6moVyDMbmTNzL40SUyrFU/yDpg==}
 
-  lefthook-darwin-arm64@1.7.15:
-    resolution: {integrity: sha512-o8JgCnLM7UgF9g0MwarHJFoj6aVSSkUInHpsQZegV1c7CVQY/LIXgSeAWRb9XBvuUjByJ/HiHFMp9/hAALTwxQ==}
+  lefthook-darwin-arm64@1.13.6:
+    resolution: {integrity: sha512-m6Lb77VGc84/Qo21Lhq576pEvcgFCnvloEiP02HbAHcIXD0RTLy9u2yAInrixqZeaz13HYtdDaI7OBYAAdVt8A==}
     cpu: [arm64]
     os: [darwin]
 
-  lefthook-darwin-x64@1.7.15:
-    resolution: {integrity: sha512-nrdoex0icmXYl7AAvG7WtfEzjQtX/kWvM88jPu/gijH6VhAjp110Y8VScB7rWOcApb5kNNeqd1nKMAFgZ8KhAg==}
+  lefthook-darwin-x64@1.13.6:
+    resolution: {integrity: sha512-CoRpdzanu9RK3oXR1vbEJA5LN7iB+c7hP+sONeQJzoOXuq4PNKVtEaN84Gl1BrVtCNLHWFAvCQaZPPiiXSy8qg==}
     cpu: [x64]
     os: [darwin]
 
-  lefthook-freebsd-arm64@1.7.15:
-    resolution: {integrity: sha512-zl1TPynklJZZ/YsWb2H0gfErQbey318i2W85wIKGEk8kC2UzOgYTuPffnfi7kANei9ntZnhvGgilc6tqYOPuGQ==}
+  lefthook-freebsd-arm64@1.13.6:
+    resolution: {integrity: sha512-X4A7yfvAJ68CoHTqP+XvQzdKbyd935sYy0bQT6Ajz7FL1g7hFiro8dqHSdPdkwei9hs8hXeV7feyTXbYmfjKQQ==}
     cpu: [arm64]
     os: [freebsd]
 
-  lefthook-freebsd-x64@1.7.15:
-    resolution: {integrity: sha512-/gKPwhWhZ3Q/efGs73/qw6nyR4WCT74oSTgn8wabAJO5+T/2FXTKzo7IiKkQmScmY5OcnD/0teJbJZ17VWSSOg==}
+  lefthook-freebsd-x64@1.13.6:
+    resolution: {integrity: sha512-ai2m+Sj2kGdY46USfBrCqLKe9GYhzeq01nuyDYCrdGISePeZ6udOlD1k3lQKJGQCHb0bRz4St0r5nKDSh1x/2A==}
     cpu: [x64]
     os: [freebsd]
 
-  lefthook-linux-arm64@1.7.15:
-    resolution: {integrity: sha512-re2f8WmYw19n8ojit0rnKbERAzD1/iCpU/Y8anXOjD/ROw/cpSfO88uKQrUCNY9Rp4XLtkkp9oDJs3Eg7JS7vA==}
+  lefthook-linux-arm64@1.13.6:
+    resolution: {integrity: sha512-cbo4Wtdq81GTABvikLORJsAWPKAJXE8Q5RXsICFUVznh5PHigS9dFW/4NXywo0+jfFPCT6SYds2zz4tCx6DA0Q==}
     cpu: [arm64]
     os: [linux]
 
-  lefthook-linux-x64@1.7.15:
-    resolution: {integrity: sha512-Kj6ieTlhFGlbPDyVFeOb296MS9x/Jj5y/xTPLBM+EKbdsTJSvUYu5FdtEWfhpLyWmPfkZtULHcTQE1hoo9Q4Cg==}
+  lefthook-linux-x64@1.13.6:
+    resolution: {integrity: sha512-uJl9vjCIIBTBvMZkemxCE+3zrZHlRO7Oc+nZJ+o9Oea3fu+W82jwX7a7clw8jqNfaeBS+8+ZEQgiMHWCloTsGw==}
     cpu: [x64]
     os: [linux]
 
-  lefthook-openbsd-arm64@1.7.15:
-    resolution: {integrity: sha512-85amE23mJ4BC9OThLkt+QCeVwue2Cr0ezN9LSwP0h8+royyj7YRcSu0VM/Et3B9LO50T2bpdI9norOqTcPZ9yA==}
+  lefthook-openbsd-arm64@1.13.6:
+    resolution: {integrity: sha512-7r153dxrNRQ9ytRs2PmGKKkYdvZYFPre7My7XToSTiRu5jNCq++++eAKVkoyWPduk97dGIA+YWiEr5Noe0TK2A==}
     cpu: [arm64]
     os: [openbsd]
 
-  lefthook-openbsd-x64@1.7.15:
-    resolution: {integrity: sha512-vXx/PpcalFgdvqkoHLI4KTGZp0ti+VCCL7RqDTA6n+GZpxPTWEXSOz3GuwNALX93Dn6MOYQYktKtXADwy24fcA==}
+  lefthook-openbsd-x64@1.13.6:
+    resolution: {integrity: sha512-Z+UhLlcg1xrXOidK3aLLpgH7KrwNyWYE3yb7ITYnzJSEV8qXnePtVu8lvMBHs/myzemjBzeIr/U/+ipjclR06g==}
     cpu: [x64]
     os: [openbsd]
 
-  lefthook-windows-arm64@1.7.15:
-    resolution: {integrity: sha512-jPKdQOLWQLRPO3VfI3ptpmdQBBsXTwaCLKXMo/gcSyU0xE/ltPD4QqvHzTAFJo00VcKRHjv9QeH69qhENjJtjw==}
+  lefthook-windows-arm64@1.13.6:
+    resolution: {integrity: sha512-Uxef6qoDxCmUNQwk8eBvddYJKSBFglfwAY9Y9+NnnmiHpWTjjYiObE9gT2mvGVpEgZRJVAatBXc+Ha5oDD/OgQ==}
     cpu: [arm64]
     os: [win32]
 
-  lefthook-windows-x64@1.7.15:
-    resolution: {integrity: sha512-tlkSU669+b64AsqytGy1W3au7h8kFjt5ejLhTkErJpylTqThZIHm/GI0wUmpX+ud8kekM+9j407dweAHYOQ1XA==}
+  lefthook-windows-x64@1.13.6:
+    resolution: {integrity: sha512-mOZoM3FQh3o08M8PQ/b3IYuL5oo36D9ehczIw1dAgp1Ly+Tr4fJ96A+4SEJrQuYeRD4mex9bR7Ps56I73sBSZA==}
     cpu: [x64]
     os: [win32]
 
-  lefthook@1.7.15:
-    resolution: {integrity: sha512-HW2mYkhg0a3RH2t57+ZJwacJiSIuDEhsXQAaCw6iGeN7zowdUV7g5QtnRdFdPkaK2eaNFpG6Rp0GsTrl/v0gNg==}
+  lefthook@1.13.6:
+    resolution: {integrity: sha512-ojj4/4IJ29Xn4drd5emqVgilegAPN3Kf0FQM2p/9+lwSTpU+SZ1v4Ig++NF+9MOa99UKY8bElmVrLhnUUNFh5g==}
     hasBin: true
 
   levn@0.4.1:
@@ -23347,8 +23957,8 @@ packages:
     resolution: {integrity: sha512-1h/Lnq9yajKY2PEbBadPXj3VxsDDu844OnaAo52UVmIzIvwwtBPIuNvkjuzBlTWpfJyUbG3ez0KSBibQkj4ojg==}
     engines: {node: '>=0.6.11 <=0.7.0 || >=0.7.3'}
 
-  turbo@2.9.15:
-    resolution: {integrity: sha512-VpKvD9Z0Hu/xrGUAYX1wnhfpqv835wIwGqeKfulvBPTOcDap0E3nFwyzCAVV85fB1sBcBDEfTP+7FSW7GzwWSQ==}
+  turbo@2.11.4:
+    resolution: {integrity: sha512-nedZtJ2hjWpU/JBFq7Aj1GQBxQ56si+kIUmNZBUX35O35TIuhSBR6/u3yHHmk81U+RBdBcVjvLQ3/iOFzMwKsA==}
     hasBin: true
 
   turndown@7.2.4:
@@ -26937,6 +27547,16 @@ snapshots:
       - workflow
       - zod
 
+  '@chat-adapter/whatsapp@4.37.0(patch_hash=950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4)(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
+    dependencies:
+      '@chat-adapter/shared': 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+    transitivePeerDependencies:
+      - ai
+      - supports-color
+      - workflow
+      - zod
+
   '@chromatic-com/storybook@4.1.3(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))':
     dependencies:
       '@neoconfetti/react': 1.0.0
@@ -28305,7 +28925,7 @@ snapshots:
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
-      pg: 8.21.0(pg-native@3.8.0)
+      pg: 8.21.0
       playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       redis: 4.6.14
@@ -31844,21 +32464,21 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.1
 
+  '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(@typescript/typescript6@6.0.2))':
+    dependencies:
+      '@babel/runtime': 7.29.7
+      '@testing-library/dom': 9.3.4
+      '@vue/test-utils': 2.4.6
+      vue: 3.5.26(@typescript/typescript6@6.0.2)
+    optionalDependencies:
+      '@vue/compiler-sfc': 3.5.26
+
   '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))':
     dependencies:
       '@babel/runtime': 7.29.7
       '@testing-library/dom': 9.3.4
       '@vue/test-utils': 2.4.6
       vue: 3.5.26(typescript@6.0.2)
-    optionalDependencies:
-      '@vue/compiler-sfc': 3.5.26
-
-  '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@7.0.2))':
-    dependencies:
-      '@babel/runtime': 7.29.7
-      '@testing-library/dom': 9.3.4
-      '@vue/test-utils': 2.4.6
-      vue: 3.5.26(typescript@7.0.2)
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.26
 
@@ -32115,22 +32735,22 @@ snapshots:
 
   '@tsconfig/node16@16.1.8': {}
 
-  '@turbo/darwin-64@2.9.18':
+  '@turbo/darwin-64@2.11.4':
     optional: true
 
-  '@turbo/darwin-arm64@2.9.15':
+  '@turbo/darwin-arm64@2.11.4':
     optional: true
 
-  '@turbo/linux-64@2.9.18':
+  '@turbo/linux-64@2.11.4':
     optional: true
 
-  '@turbo/linux-arm64@2.9.15':
+  '@turbo/linux-arm64@2.11.4':
     optional: true
 
-  '@turbo/windows-64@2.9.18':
+  '@turbo/windows-64@2.11.4':
     optional: true
 
-  '@turbo/windows-arm64@2.9.15':
+  '@turbo/windows-arm64@2.11.4':
     optional: true
 
   '@tybys/wasm-util@0.10.1':
@@ -32252,8 +32872,6 @@ snapshots:
   '@types/estree@0.0.39': {}
 
   '@types/estree@1.0.8': {}
-
-  '@types/eventsource@1.1.9': {}
 
   '@types/express-serve-static-core@5.0.6(patch_hash=d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb)':
     dependencies:
@@ -33450,11 +34068,6 @@ snapshots:
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
       vue: 3.5.26(@typescript/typescript6@6.0.2)
-
-  '@vue/tsconfig@0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))':
-    optionalDependencies:
-      typescript: 6.0.2
-      vue: 3.5.26(typescript@6.0.2)
 
   '@vueuse/components@10.11.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:
@@ -36443,8 +37056,6 @@ snapshots:
 
   eventsource-parser@3.0.8: {}
 
-  eventsource@2.0.2: {}
-
   eventsource@3.0.6:
     dependencies:
       eventsource-parser: 3.0.8
@@ -36511,6 +37122,24 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
       express: 5.1.0(supports-color@8.1.1)
+      json-schema-traverse: 1.0.0
+      lodash.clonedeep: 4.5.0
+      lodash.get: 4.4.2
+      media-typer: 1.1.0
+      multer: 2.3.0
+      ono: 7.1.3
+      path-to-regexp: 8.4.0
+      qs: 6.15.2
+
+  express-openapi-validator@5.5.3(express@5.2.1(supports-color@8.1.1)):
+    dependencies:
+      '@apidevtools/json-schema-ref-parser': 12.0.2
+      '@types/multer': 1.4.12
+      ajv: 8.20.0
+      ajv-draft-04: 1.0.0(ajv@8.20.0)
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      content-type: 1.0.5
+      express: 5.2.1(supports-color@8.1.1)
       json-schema-traverse: 1.0.0
       lodash.clonedeep: 4.5.0
       lodash.get: 4.4.2
@@ -37721,6 +38350,7 @@ snapshots:
     dependencies:
       jsbn: 1.1.0
       sprintf-js: 1.1.3
+    optional: true
 
   ipaddr.js@1.9.1: {}
 
@@ -38054,7 +38684,8 @@ snapshots:
 
   jsbn@0.1.1: {}
 
-  jsbn@1.1.0: {}
+  jsbn@1.1.0:
+    optional: true
 
   jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10):
     dependencies:
@@ -38378,48 +39009,48 @@ snapshots:
 
   leac@0.6.0: {}
 
-  lefthook-darwin-arm64@1.7.15:
+  lefthook-darwin-arm64@1.13.6:
     optional: true
 
-  lefthook-darwin-x64@1.7.15:
+  lefthook-darwin-x64@1.13.6:
     optional: true
 
-  lefthook-freebsd-arm64@1.7.15:
+  lefthook-freebsd-arm64@1.13.6:
     optional: true
 
-  lefthook-freebsd-x64@1.7.15:
+  lefthook-freebsd-x64@1.13.6:
     optional: true
 
-  lefthook-linux-arm64@1.7.15:
+  lefthook-linux-arm64@1.13.6:
     optional: true
 
-  lefthook-linux-x64@1.7.15:
+  lefthook-linux-x64@1.13.6:
     optional: true
 
-  lefthook-openbsd-arm64@1.7.15:
+  lefthook-openbsd-arm64@1.13.6:
     optional: true
 
-  lefthook-openbsd-x64@1.7.15:
+  lefthook-openbsd-x64@1.13.6:
     optional: true
 
-  lefthook-windows-arm64@1.7.15:
+  lefthook-windows-arm64@1.13.6:
     optional: true
 
-  lefthook-windows-x64@1.7.15:
+  lefthook-windows-x64@1.13.6:
     optional: true
 
-  lefthook@1.7.15:
+  lefthook@1.13.6:
     optionalDependencies:
-      lefthook-darwin-arm64: 1.7.15
-      lefthook-darwin-x64: 1.7.15
-      lefthook-freebsd-arm64: 1.7.15
-      lefthook-freebsd-x64: 1.7.15
-      lefthook-linux-arm64: 1.7.15
-      lefthook-linux-x64: 1.7.15
-      lefthook-openbsd-arm64: 1.7.15
-      lefthook-openbsd-x64: 1.7.15
-      lefthook-windows-arm64: 1.7.15
-      lefthook-windows-x64: 1.7.15
+      lefthook-darwin-arm64: 1.13.6
+      lefthook-darwin-x64: 1.13.6
+      lefthook-freebsd-arm64: 1.13.6
+      lefthook-freebsd-x64: 1.13.6
+      lefthook-linux-arm64: 1.13.6
+      lefthook-linux-x64: 1.13.6
+      lefthook-openbsd-arm64: 1.13.6
+      lefthook-openbsd-x64: 1.13.6
+      lefthook-windows-arm64: 1.13.6
+      lefthook-windows-x64: 1.13.6
 
   levn@0.4.1:
     dependencies:
@@ -40712,9 +41343,14 @@ snapshots:
       libpq: 1.11.0
       pg-types: 2.2.0
 
-  pg-pool@3.14.0(pg@8.21.0):
+  pg-pool@3.14.0(pg@8.21.0(pg-native@3.8.0)):
     dependencies:
       pg: 8.21.0(pg-native@3.8.0)
+
+  pg-pool@3.14.0(pg@8.21.0):
+    dependencies:
+      pg: 8.21.0
+    optional: true
 
   pg-promise@11.9.1(pg-native@3.8.0):
     dependencies:
@@ -40740,10 +41376,21 @@ snapshots:
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.21.0(pg-native@3.8.0):
+  pg@8.21.0:
     dependencies:
       pg-connection-string: 2.14.0
       pg-pool: 3.14.0(pg@8.21.0)
+      pg-protocol: 1.15.0
+      pg-types: 2.2.0
+      pgpass: 1.0.5
+    optionalDependencies:
+      pg-cloudflare: 1.4.0
+    optional: true
+
+  pg@8.21.0(pg-native@3.8.0):
+    dependencies:
+      pg-connection-string: 2.14.0
+      pg-pool: 3.14.0(pg@8.21.0(pg-native@3.8.0))
       pg-protocol: 1.15.0
       pg-types: 2.2.0
       pgpass: 1.0.5
@@ -42484,7 +43131,7 @@ snapshots:
     dependencies:
       agent-base: 7.1.3
       debug: 4.4.3(supports-color@8.1.1)
-      socks: 2.8.3
+      socks: 2.8.9
     transitivePeerDependencies:
       - supports-color
 
@@ -42492,6 +43139,7 @@ snapshots:
     dependencies:
       ip-address: 9.0.5
       smart-buffer: 4.2.0
+    optional: true
 
   socks@2.8.9:
     dependencies:
@@ -43527,14 +44175,14 @@ snapshots:
 
   tunnel@0.0.6: {}
 
-  turbo@2.9.15:
+  turbo@2.11.4:
     optionalDependencies:
-      '@turbo/darwin-64': 2.9.18
-      '@turbo/darwin-arm64': 2.9.15
-      '@turbo/linux-64': 2.9.18
-      '@turbo/linux-arm64': 2.9.15
-      '@turbo/windows-64': 2.9.18
-      '@turbo/windows-arm64': 2.9.15
+      '@turbo/darwin-64': 2.11.4
+      '@turbo/darwin-arm64': 2.11.4
+      '@turbo/linux-64': 2.11.4
+      '@turbo/linux-arm64': 2.11.4
+      '@turbo/windows-64': 2.11.4
+      '@turbo/windows-arm64': 2.11.4
 
   turndown@7.2.4:
     dependencies:
@@ -44262,6 +44910,7 @@ snapshots:
       '@vue/shared': 3.5.40
     optionalDependencies:
       typescript: 7.0.2
+    optional: true
 
   vuedraggable@4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2)):
     dependencies:

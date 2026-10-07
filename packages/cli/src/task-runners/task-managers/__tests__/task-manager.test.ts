@@ -1,10 +1,10 @@
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';
 import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import type { Task } from '@/task-runners/task-managers/task-requester';

@@ -389,7 +389,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 	// with nothing attached — recording the turn is what puts it in the transcript.
 	it('drives the resume headlessly against the draft version', async () => {
 		const { service, userRepository, agentTestRunService, chatIntegrationService } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
 
 		await service.resume(previewRun, 'success');
@@ -415,7 +415,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		['another draft surface', previewRun, undefined],
 	])('carries the preview flag of %s into the resume', async (_label, run, expected) => {
 		const { service, userRepository, agentTestRunService } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
 
 		await service.resume(run, 'success');
@@ -433,7 +433,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		],
 	])('pushes the recorded execution after %s', async (_label, result) => {
 		const { service, userRepository, agentTestRunService, broadcaster } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		const execution = createDeferredPromise<typeof result>();
 		agentTestRunService.resumeDraftRun.mockReturnValue(execution.promise);
 
@@ -453,7 +453,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 
 	it('does not push when the session could not be resumed', async () => {
 		const { service, logger, userRepository, agentTestRunService, broadcaster } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue({ status: 'session_not_found' });
 
 		await service.resume(previewRun, 'success');
@@ -472,7 +472,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		['the user no longer exists', 'user-1', null],
 	])('warns and stops when %s', async (_label, userId, found) => {
 		const { service, logger, userRepository, agentTestRunService } = setup();
-		userRepository.findOneBy.mockResolvedValue(found);
+		userRepository.findByIdWithRole.mockResolvedValue(found);
 
 		await service.resume({ ...previewRun, userId }, 'success');
 
@@ -497,14 +497,15 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 
 	it('settles the job with only the last node’s output serialized', async () => {
 		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('success');
 
-		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
+		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'completed',
-			result: '{"Set":[{"ok":true}]}',
-			error: null,
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
+			ctx.runData.data.resultData.runData,
+		);
 	});
 
 	it('does not settle a success callback for a run that has not finished', async () => {
@@ -524,11 +525,11 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 
 		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'failed',
-			result: null,
-			error: 'boom',
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'failed', result: null, error: 'boom' },
+			ctx.runData.data.resultData.runData,
+		);
 	});
 
 	it('does not settle while the execution is still waiting', async () => {

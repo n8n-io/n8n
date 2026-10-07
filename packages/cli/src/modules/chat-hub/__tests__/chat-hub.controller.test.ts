@@ -3,7 +3,7 @@ import type { ModuleSettings } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ChatHubController } from '../chat-hub.controller';
