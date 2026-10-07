@@ -522,6 +522,7 @@ onBeforeUnmount(() => {
 	flex: 1;
 	min-height: 0;
 	padding: var(--spacing--2xs) var(--spacing--xs);
+	scroll-padding-block: var(--spacing--2xs);
 	overflow-y: auto;
 	scrollbar-width: thin;
 }
