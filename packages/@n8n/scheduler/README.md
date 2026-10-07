@@ -411,8 +411,12 @@ The design leans on a few ideas working together.
   matches, the executor counts the failed attempt. It retries only while
   attempts remain. If the claim no longer matches, the write changes nothing.
   A clean return completes an occurrence that the executor still owns.
-  A run still running after sixty leases, or after about 24 days if that comes
-  first, logs a warning, since it may be stuck.
+  Each job stores a timeout, and each occurrence copies it. A run that reaches
+  it gets its signal aborted with a `TaskTimeoutError`, and its lease is no
+  longer renewed, so the recovery pass takes back a handler that ignores the
+  signal. A run that did not dispatch counts a failed attempt. A run that
+  dispatched completes. A run still running after sixty leases, with a timeout
+  further away, logs a warning, since it may be stuck.
 - **Fencing.** Each claim carries a version number (an *epoch*) that increases every
   time a run is claimed. Every final write ("mark succeeded", "mark failed") is
   guarded by that number. So if a slow server comes back from the dead after its
