@@ -524,38 +524,53 @@ describe('AgentSubAgentsPanel', () => {
 		expect(last.subAgents).not.toHaveProperty('maxChildren');
 	});
 
-	it('emits modelsByDifficulty when a difficulty model is selected', async () => {
-		const wrapper = await mountPanel({
-			...defaultConfig,
-			subAgents: {
-				maxChildren: 5,
-				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+	it.each([
+		{
+			selection: { provider: 'openai', model: 'gpt-4o-mini' },
+			mapping: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
+		},
+		{
+			selection: {
+				provider: 'google-vertex',
+				model: 'gemini-3-flash-preview',
+				modelProjectId: 'cloud-project',
 			},
-		});
-		await enableCustomModelRouting(wrapper);
-		await flushPromises();
-
-		emitDifficultyModelChange('agent-sub-agents-difficulty-high-model', {
-			provider: 'openai',
-			model: 'gpt-4o-mini',
-		});
-		await flushPromises();
-
-		expect(wrapper.emitted('update:config')?.[0]).toEqual([
-			{
+			mapping: {
+				model: 'google-vertex/gemini-3-flash-preview',
+				credential: 'google-cred',
+				modelProjectId: 'cloud-project',
+			},
+		},
+	] as const)(
+		'saves the $selection.provider configuration for the selected difficulty',
+		async ({ selection, mapping }) => {
+			credentialsByProviderRef.value['google-vertex'] = 'google-cred';
+			const wrapper = await mountPanel({
+				...defaultConfig,
 				subAgents: {
 					maxChildren: 5,
 					agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
-					modelsByDifficulty: {
-						high: {
-							model: 'openai/gpt-4o-mini',
-							credential: 'openai-cred',
+				},
+			});
+			await enableCustomModelRouting(wrapper);
+			await flushPromises();
+
+			emitDifficultyModelChange('agent-sub-agents-difficulty-high-model', selection);
+			await flushPromises();
+
+			expect(wrapper.emitted('update:config')?.[0]).toEqual([
+				{
+					subAgents: {
+						maxChildren: 5,
+						agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+						modelsByDifficulty: {
+							high: mapping,
 						},
 					},
 				},
-			},
-		]);
-	});
+			]);
+		},
+	);
 
 	it('turns custom model routing off and clears difficulty mappings', async () => {
 		const wrapper = await mountPanel({

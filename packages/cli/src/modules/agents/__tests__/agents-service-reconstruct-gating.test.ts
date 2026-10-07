@@ -658,7 +658,13 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
 		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.list.mockResolvedValue([
+			{ id: 'vertex-cred', name: 'Service account', type: 'googleApi' },
+		]);
 		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
+			if (credentialId === 'vertex-cred') {
+				return { email: 'agent@example.test', privateKey: 'private-key', region: 'europe-west1' };
+			}
 			if (credentialId === 'low-cred') {
 				return { apiKey: 'low-key', url: 'https://low.example/v1' };
 			}
@@ -672,6 +678,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+					medium: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'vertex-cred',
+						modelProjectId: 'child-project',
+					},
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
 				},
 			},
@@ -684,6 +695,13 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				id: 'openai/gpt-4o-mini',
 				apiKey: 'low-key',
 				baseURL: 'https://low.example/v1',
+			},
+			medium: {
+				id: 'google-vertex/gemini-3-flash-preview',
+				project: 'child-project',
+				location: 'europe-west1',
+				clientEmail: 'agent@example.test',
+				privateKey: 'private-key',
 			},
 			high: {
 				id: 'anthropic/claude-sonnet-4-5',

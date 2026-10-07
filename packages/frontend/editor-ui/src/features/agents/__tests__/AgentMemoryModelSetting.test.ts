@@ -9,6 +9,7 @@ const credentialMocks = vi.hoisted(() => ({
 		value: {
 			anthropic: 'local-anthropic-credential',
 			openai: 'local-openai-credential',
+			'google-vertex': 'local-google-credential',
 		},
 	},
 	selectCredential: vi.fn(),
@@ -150,35 +151,46 @@ describe('AgentMemoryModelSetting', () => {
 		]);
 	});
 
-	it('uses the local credential when changing to a different provider', async () => {
-		const wrapper = mountSetting();
-		const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
-
-		selector.vm.$emit('change', { provider: 'openai', model: 'gpt-5-mini' });
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
-			memory: {
-				observationalMemory: {
-					observerModel: {
-						model: 'openai/gpt-5-mini',
-						credential: 'local-openai-credential',
-					},
-					reflectorModel: {
-						model: 'openai/gpt-5-mini',
-						credential: 'local-openai-credential',
-					},
-				},
-				episodicMemory: {
-					credential: 'embedding-credential',
-					reflectorModel: {
-						model: 'openai/gpt-5-mini',
-						credential: 'local-openai-credential',
-					},
-				},
+	it.each([
+		{
+			selection: { provider: 'openai', model: 'gpt-5-mini' },
+			worker: { model: 'openai/gpt-5-mini', credential: 'local-openai-credential' },
+		},
+		{
+			selection: {
+				provider: 'google-vertex',
+				model: 'gemini-3-flash-preview',
+				modelProjectId: 'cloud-project',
 			},
-		});
-	});
+			worker: {
+				model: 'google-vertex/gemini-3-flash-preview',
+				credential: 'local-google-credential',
+				modelProjectId: 'cloud-project',
+			},
+		},
+	])(
+		'saves the model configuration when switching to $selection.provider',
+		async ({ selection, worker }) => {
+			const wrapper = mountSetting();
+			const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
+
+			selector.vm.$emit('change', selection);
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
+				memory: {
+					observationalMemory: {
+						observerModel: worker,
+						reflectorModel: worker,
+					},
+					episodicMemory: {
+						credential: 'embedding-credential',
+						reflectorModel: worker,
+					},
+				},
+			});
+		},
+	);
 
 	it('uses an explicitly selected credential for the next model update', async () => {
 		const wrapper = mountSetting();

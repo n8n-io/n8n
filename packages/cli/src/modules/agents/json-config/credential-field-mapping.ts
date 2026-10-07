@@ -20,6 +20,11 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	anthropic: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// GooglePalmApi.credentials.ts    → apiKey, host (base URL)
 	google: (c) => ({ apiKey: c.apiKey, baseURL: c.host }),
+	'google-vertex': (c) => ({
+		clientEmail: c.email,
+		privateKey: c.privateKey,
+		location: c.region,
+	}),
 	// XAiApi.credentials.ts           → apiKey, url (hidden, base URL)
 	xai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// GroqApi.credentials.ts          → apiKey only

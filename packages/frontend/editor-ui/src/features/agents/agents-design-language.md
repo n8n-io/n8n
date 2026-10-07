@@ -33,6 +33,12 @@ column.
 
 Reduce the editor column side padding when the column is narrow.
 
+## Model selection
+
+For Vertex AI, put `Projects` between the credential and model sections.
+Show project names and mark the selected project with a check. Keep the menu
+open after project selection so the user can select a model next.
+
 ## Preview history
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.

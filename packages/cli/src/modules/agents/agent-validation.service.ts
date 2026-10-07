@@ -10,6 +10,7 @@ import {
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
 	isDraftIntegration,
+	isVertexGeminiModel,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
@@ -290,6 +291,7 @@ export class AgentValidationService {
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
+		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
@@ -409,6 +411,55 @@ export class AgentValidationService {
 		}
 
 		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
+	}
+
+	private async collectVertexModelIssues(
+		config: AgentJsonConfig,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		type ModelSlot = Pick<AgentJsonConfig, 'model' | 'credential' | 'modelProjectId'>;
+		const slots: Array<[string, ModelSlot | undefined]> = [
+			['', config],
+			...Object.entries(config.subAgents?.modelsByDifficulty ?? {}).map(
+				([difficulty, model]): [string, ModelSlot] => [
+					`subAgents.modelsByDifficulty.${difficulty}.`,
+					model,
+				],
+			),
+		];
+		if (config.memory?.enabled) {
+			const observational = config.memory.observationalMemory;
+			if (observational?.enabled !== false) {
+				slots.push(
+					['memory.observationalMemory.observerModel.', observational?.observerModel],
+					['memory.observationalMemory.reflectorModel.', observational?.reflectorModel],
+				);
+			}
+			const episodic = config.memory.episodicMemory;
+			if (episodic?.enabled) {
+				slots.push(['memory.episodicMemory.reflectorModel.', episodic.reflectorModel]);
+			}
+		}
+		for (const [path, model] of slots) {
+			if (!model || getProviderPrefix(model.model) !== 'google-vertex') continue;
+			if (!isVertexGeminiModel(model.model)) {
+				issues.push(agentIssue('invalid_value', `${path}model`));
+			}
+			if (!model.modelProjectId?.trim()) {
+				issues.push(agentIssue('missing_required', `${path}modelProjectId`));
+			}
+			if (!model.credential?.trim()) {
+				issues.push(agentIssue('missing_credential', `${path}credential`));
+				continue;
+			}
+			const credential = await this.findCredentialSafe(findCredential, model.credential.trim());
+			if (!credential) {
+				issues.push(agentIssue('invalid_credential', `${path}credential`));
+			} else if (credential.type !== 'googleApi') {
+				issues.push(agentIssue('incompatible_credential', `${path}credential`));
+			}
+		}
 	}
 
 	private collectSubAgentRefIssues(

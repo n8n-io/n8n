@@ -2,6 +2,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'openai',
 	'anthropic',
 	'google',
+	'google-vertex',
 	'azure-openai',
 	'aws-bedrock',
 	'xai',
@@ -39,6 +40,7 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	openai: ['openAiApi'],
 	anthropic: ['anthropicApi'],
 	google: ['googlePalmApi'],
+	'google-vertex': ['googleApi'],
 	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
 	'aws-bedrock': ['aws'],
 	xai: ['xAiApi'],
@@ -57,6 +59,12 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 /** Credential types for a provider prefix, or `[]` when it is not a model provider. */
 export function getAgentModelProviderCredentialTypes(provider: string): readonly string[] {
 	return isAgentModelProvider(provider) ? AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES[provider] : [];
+}
+
+/** Vertex Agents require a versioned Gemini 3 or newer model. */
+export function isVertexGeminiModel(model: string): boolean {
+	const version = /^google-vertex\/gemini-(\d+)(?:\.\d+)?-/.exec(model)?.[1];
+	return version !== undefined && Number(version) >= 3;
 }
 
 /** A model offered in the agent model picker. Mirrors the catalog's `ModelInfo` shape. */
