@@ -368,14 +368,14 @@ describe('MigrationFindingQueryService', () => {
 		});
 
 		it('adds the owner of each workflow that has one, with the user details and the source', async () => {
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'rule-a', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
 					id: 'wf-1',
 					name: 'First',
 					activeVersionId: null,
 					updatedAt: UPDATED_AT,
 				}),
-				openFinding(2, 'rule-a', {
+				triageableFinding(2, 'rule-a', {
 					id: 'wf-2',
 					name: 'Second',
 					activeVersionId: null,
@@ -407,8 +407,8 @@ describe('MigrationFindingQueryService', () => {
 		});
 
 		it('lists a workflow without an owner when its owner row has no user any more', async () => {
-			findingRepository.listOpenForRule.mockResolvedValue([
-				openFinding(1, 'rule-a', {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
 					id: 'wf-1',
 					name: 'First',
 					activeVersionId: null,
