@@ -433,7 +433,7 @@ overrides:
   picomatch@2: 2.3.2
   picomatch@4: 4.0.4
   avsc: 5.7.9
-  brace-expansion@<2.1.4: 2.1.4
+  brace-expansion@<2.1.7: 2.1.7
   '@xmldom/xmldom': 0.8.14
   yaml@<=2.8.3: 2.8.3
   axios: 'catalog:'
@@ -448,7 +448,7 @@ overrides:
   shell-quote: 1.9.0
   adm-zip: 0.6.0
   ip-address@10: 10.3.1
-  brace-expansion@5: 5.0.9
+  brace-expansion@5: 5.0.12
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.40
   '@vue/shared@3.5.26': 3.5.40
