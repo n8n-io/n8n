@@ -10,24 +10,22 @@ TypeORM belongs in the **persistence layer**, not in business logic.
 **Allowed to import `@n8n/typeorm`** — files that declare an `@Entity` class or a
 repository class that extends TypeORM `Repository` or n8n `BaseRepository`.
 Their folder and filename do not affect the rule. Tests and migration tooling use
-explicit patterns in the package lint config. Helper-only persistence adapters
-and legacy files need a narrow, auditable entry there.
+Code Health exceptions. Helper-only persistence adapters need a narrow,
+auditable entry in the `typeorm-persistence-boundary` rule.
 
 **Not allowed** — business logic (services, controllers, public-api handlers,
 commands, factories) must not import `@n8n/typeorm` or `@n8n/typeorm/...`
-subpaths. The `misplaced-n8n-typeorm-import` lint rule enforces this; a new
-import — or an inline `eslint-disable` of the rule — fails CI. The same rule also
+subpaths. The `typeorm-persistence-boundary` Code Health rule enforces this. A
+new import fails CI. The same rule also
 catches the **relabel dodge**: importing a TypeORM operator/driver type (`In`,
 `Not`, `FindOptionsWhere`, `EntityManager`, …) from `@n8n/db`, which
 re-exports them from `@n8n/typeorm` — that silences the direct-import check
-without decoupling anything. Existing leaks of both kinds are tracked in two
-`files`-scoped allowlists in `eslint.config.mjs` (direct `@n8n/typeorm` imports,
-and `@n8n/db` relabels) that only ever shrink: never add to them, and never
-suppress the rule inline.
+without decoupling anything. Existing leaks of both kinds are tracked in the
+shrink-only Code Health baseline. Do not add new baseline entries.
 
-Distinct from that shrink-only ratchet, `src/commands/db/revert.ts` is an
-explicit exception for CLI migration tooling. `PackagesRepository` needs no
-exception because the rule recognizes its repository declaration.
+Distinct from that shrink-only ratchet, `src/commands/db/revert.ts` is an exact
+exception for CLI migration tooling. Composition-based repositories use exact
+exceptions. Repository subclasses need no exception.
 
 Need an operator query (`In`, `IsNull`, `FindOptionsWhere`, …)? Add a
 use-case-named repository method (plain parameters, domain-shaped return) rather

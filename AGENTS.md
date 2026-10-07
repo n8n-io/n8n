@@ -220,11 +220,11 @@ TypeORM (`@n8n/typeorm`) must stay in the **persistence layer**. The shared
 colocate or group its entities and repositories according to its domain.
 Business logic — services, controllers, handlers, commands, factories — must not
 import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). The
-`misplaced-n8n-typeorm-import` lint rule recognizes entity and repository
-declarations. Package lint configs list tests, migrations, helper-only adapters,
-and legacy filenames as explicit exceptions. A new business-logic import or an
-inline `eslint-disable` of the rule in `packages/cli` or
-`@n8n/backend-services` fails CI.
+`typeorm-persistence-boundary` Code Health rule recognizes entity and repository
+declarations. It scans backend packages that depend on `@n8n/db` or
+`@n8n/typeorm`. Tests, migrations, and explicit helper-only adapters are
+exceptions. Existing business-logic imports stay in the shrink-only Code Health
+baseline. A new business-logic import fails CI.
 
 - **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
   `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
