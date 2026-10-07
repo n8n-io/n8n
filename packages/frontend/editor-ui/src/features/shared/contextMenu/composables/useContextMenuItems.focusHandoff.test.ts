@@ -9,6 +9,8 @@ describe('isFocusHandoffAction', () => {
 		// (the latter on the freshly created group).
 		expect(isFocusHandoffAction('rename_group')).toBe(true);
 		expect(isFocusHandoffAction('group_nodes')).toBe(true);
+		// `extract_sub_workflow` opens the name dialog, which focuses its field.
+		expect(isFocusHandoffAction('extract_sub_workflow')).toBe(true);
 	});
 
 	it('returns false for regular actions that do not hand off focus', () => {
