@@ -55,7 +55,7 @@ describe('ImportResultDto', () => {
 				credentials: { 'cred-1': 'cred-1' },
 			},
 			credentials: { matched: ['cred-1'], stubbed: [] },
-			dataTables: { matched: 1, created: 0 },
+			dataTables: { matched: 1, created: 0, updated: 0 },
 			variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
 			tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
 		});
@@ -92,7 +92,7 @@ describe('ImportResultDto', () => {
 			projects: [],
 			bindings: { workflows: {}, credentials: {} },
 			credentials: { matched: [], stubbed: [] },
-			dataTables: { matched: 0, created: 0 },
+			dataTables: { matched: 0, created: 0, updated: 0 },
 			variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
 			tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
 		});

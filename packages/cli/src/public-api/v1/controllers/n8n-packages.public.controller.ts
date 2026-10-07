@@ -52,9 +52,10 @@ const IMPORT_DESCRIPTION =
 
 const IMPORT_409_DESCRIPTION =
 	'Import blocked by at least one conflict among the issues — a workflow source-id conflict, ' +
-	'a folder conflict, a tag conflict (rename drift or name collision), a variable whose ' +
-	'bundled value differs from the resolved target, or a selected destination also named for ' +
-	'deletion.';
+	'a folder conflict, a tag conflict (rename drift or name collision), a data table conflict ' +
+	'(id owned by another project, or a name that another table in the project has), a variable ' +
+	'whose bundled value differs from the resolved target, or a selected destination also named ' +
+	'for deletion.';
 const IMPORT_422_DESCRIPTION =
 	'Import blocked by non-conflict issues only — for example unresolved credentials or ' +
 	'variables, node types this instance does not have, a delete the caller may not perform, or ' +

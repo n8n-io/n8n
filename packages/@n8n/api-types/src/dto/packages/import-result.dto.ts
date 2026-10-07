@@ -154,6 +154,7 @@ const importCredentialSummarySchema = z
 const importDataTableSummarySchema = z.object({
 	matched: z.number().int().nonnegative(),
 	created: z.number().int().nonnegative(),
+	updated: z.number().int().nonnegative(),
 });
 
 const importVariableSummarySchema = z

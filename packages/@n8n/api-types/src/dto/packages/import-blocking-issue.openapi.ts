@@ -156,7 +156,26 @@ export const dataTableUnresolvedFieldDocs = {
 			'For `schema-incompatible` under the `fail` policy: target columns not in the package ' +
 			'schema.',
 	},
+	overwriteChanges: {
+		description:
+			'For `schema-incompatible`: the changes `overwrite` would make to the target table.',
+	},
+	missingScope: {
+		description: 'For `permission-denied`: the project scope the user lacks.',
+	},
+	conflictingTableId: {
+		description: 'For `name-conflict`: the other table that holds or claims the name.',
+	},
+	currentName: {
+		description: "For a rename `name-conflict`: the matched table's current name.",
+	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const dataTableSchemaOperationOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a ' +
+		"matched target table's schema. `destructive` operations delete the data in a column.",
+};
 
 export const dataTableUnresolvedIssueOpenApi: ZodOpenAPIMetadata = {
 	description:

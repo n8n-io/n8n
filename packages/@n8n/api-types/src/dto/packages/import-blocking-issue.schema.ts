@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
 	credentialUnresolvedFieldDocs,
 	credentialUnresolvedIssueOpenApi,
+	dataTableSchemaOperationOpenApi,
 	dataTableUnresolvedFieldDocs,
 	dataTableUnresolvedIssueOpenApi,
 	folderConflictFieldDocs,
@@ -38,6 +39,7 @@ import {
 	workflowRemovalForbiddenFieldDocs,
 	workflowRemovalForbiddenIssueOpenApi,
 } from './import-blocking-issue.openapi';
+import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { policyViolationSchema } from '../../schemas/policy-violation.schema';
 
 /**
@@ -183,6 +185,41 @@ const folderRemovalForbiddenIssueSchema = z
 	})
 	.openapi(folderRemovalForbiddenIssueOpenApi);
 
+/** `destructive` operations delete the data in a column. */
+const dataTableSchemaOperationSchema = z
+	.discriminatedUnion('kind', [
+		z.object({
+			kind: z.literal('add-column'),
+			column: z.string(),
+			type: dataTableColumnTypeSchema,
+			destructive: z.literal(false),
+		}),
+		z.object({
+			kind: z.literal('remove-column'),
+			column: z.string(),
+			type: dataTableColumnTypeSchema,
+			destructive: z.literal(true),
+		}),
+		z.object({
+			kind: z.literal('change-column-type'),
+			column: z.string(),
+			from: dataTableColumnTypeSchema,
+			to: dataTableColumnTypeSchema,
+			destructive: z.literal(true),
+		}),
+		z.object({
+			kind: z.literal('reorder-columns'),
+			destructive: z.literal(false),
+		}),
+		z.object({
+			kind: z.literal('rename-table'),
+			from: z.string(),
+			to: z.string(),
+			destructive: z.literal(false),
+		}),
+	])
+	.openapi(dataTableSchemaOperationOpenApi);
+
 const dataTableUnresolvedIssueSchema = z
 	.object({
 		type: z.literal('data-table-unresolved'),
@@ -215,6 +252,19 @@ const dataTableUnresolvedIssueSchema = z
 			.optional()
 			.openapi(dataTableUnresolvedFieldDocs.typeMismatches),
 		extraColumns: z.array(z.string()).optional().openapi(dataTableUnresolvedFieldDocs.extraColumns),
+		overwriteChanges: z
+			.array(dataTableSchemaOperationSchema)
+			.optional()
+			.openapi(dataTableUnresolvedFieldDocs.overwriteChanges),
+		missingScope: z
+			.enum(['dataTable:create', 'dataTable:update'])
+			.optional()
+			.openapi(dataTableUnresolvedFieldDocs.missingScope),
+		conflictingTableId: z
+			.string()
+			.optional()
+			.openapi(dataTableUnresolvedFieldDocs.conflictingTableId),
+		currentName: z.string().optional().openapi(dataTableUnresolvedFieldDocs.currentName),
 		usedByWorkflows: z.array(z.string()),
 	})
 	.openapi(dataTableUnresolvedIssueOpenApi);
