@@ -161,8 +161,21 @@ describe('renderTeamsAppIcons', () => {
 		const missing: string[] = [];
 		for (const name of Object.keys(lucide.icons)) {
 			const svgs = await buildTeamsIconSvgs(name, personalisation(name).gradient);
-			const outline = svgs && Buffer.from(new Resvg(svgs.outline).render().asPng());
-			if (!outline || !readRgbaPixels(outline).some(({ a }) => a === 255)) missing.push(name);
+			if (!svgs) {
+				missing.push(name);
+				continue;
+			}
+			// One wasm instance serves the whole loop, so each render is freed by hand.
+			const resvg = new Resvg(svgs.outline);
+			const image = resvg.render();
+			try {
+				if (!readRgbaPixels(Buffer.from(image.asPng())).some(({ a }) => a === 255)) {
+					missing.push(name);
+				}
+			} finally {
+				image.free();
+				resvg.free();
+			}
 		}
 
 		expect(missing).toEqual([]);
