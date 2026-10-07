@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import {
 	N8nAiActivityStepChevron,
@@ -16,13 +15,12 @@ import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
 import { aiPreferenceTargetOf } from '@n8n/api-types';
 
-import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useContextStore } from '@/features/settings/context/context.store';
 
 import { useThread } from '../instanceAi.store';
 import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
-import { preferenceScopeLabel } from '../preferenceScope.utils';
+import { preferenceSavedLabel } from '../preferenceScope.utils';
 import PreferenceEditModal from './PreferenceEditModal.vue';
 
 const props = defineProps<{
@@ -80,17 +78,6 @@ const target = computed(() => {
 	};
 });
 
-const scopeLabel = computed(() =>
-	target.value
-		? preferenceScopeLabel(
-				i18n,
-				target.value.scope,
-				target.value.projectId,
-				projectsStore.myProjects,
-				thread.projectId,
-			)
-		: '',
-);
 const isRemoved = computed(() => card.value?.state === 'undone');
 // Only the latest turn may correct a preference, and a removed one has nothing to correct.
 const isEditable = computed(() => card.value !== null && !props.readOnly && !isRemoved.value);
@@ -98,9 +85,18 @@ const isEditable = computed(() => card.value !== null && !props.readOnly && !isR
 const rowLabel = computed(() => {
 	if (isUnconfirmed.value) return i18n.baseText('instanceAi.preferenceCard.notConfirmed');
 	if (rejection.value) return i18n.baseText('instanceAi.preferenceCard.notSaved');
-	return isRemoved.value
-		? i18n.baseText('instanceAi.preferenceCard.removed')
-		: i18n.baseText('instanceAi.preferenceCard.saved');
+	if (isRemoved.value) return i18n.baseText('instanceAi.preferenceCard.removed');
+	// The header names where the preference applies, so it follows the row, not the fact.
+	const fact = card.value;
+	const live = target.value;
+	if (!fact) return '';
+	return preferenceSavedLabel(
+		i18n,
+		live?.scope ?? fact.scope,
+		live?.projectId ?? null,
+		projectsStore.myProjects,
+		thread.projectId,
+	);
 });
 
 /** The saved text, or the text the assistant tried to save. */
@@ -112,10 +108,10 @@ const rejectionMessage = computed(() => {
 	return rejection.value?.message ?? i18n.baseText('instanceAi.preferenceCard.notSavedFallback');
 });
 
-// The active turn shows the card; an earlier turn collapses to the row. The chevron
-// overrides either default.
+// The card starts collapsed on every turn: the assistant already said what it saved.
+// The chevron overrides the default, turn by turn.
 const userToggled = ref<boolean | null>(null);
-const expanded = computed(() => userToggled.value ?? !props.readOnly);
+const expanded = computed(() => userToggled.value ?? false);
 // A later turn moves the card into history, and history collapses whatever the
 // chevron did on the active turn.
 watch(
@@ -173,10 +169,13 @@ watch(
 					v-if="text"
 					tag="p"
 					size="small"
-					:class="{ [$style.removedText]: isRemoved, [$style.attemptedText]: rejection }"
+					:class="[
+						$style.text,
+						{ [$style.removedText]: isRemoved, [$style.attemptedText]: rejection },
+					]"
 					data-test-id="instance-ai-preference-card-text"
 				>
-					{{ text }}
+					&ldquo;{{ text }}&rdquo;
 				</N8nText>
 
 				<N8nCallout
@@ -187,39 +186,15 @@ watch(
 					{{ rejectionMessage }}
 				</N8nCallout>
 
-				<div v-else :class="$style.scope">
-					<N8nIcon icon="layers" size="small" />
-					<N8nText size="small" color="text-light" data-test-id="instance-ai-preference-card-scope">
-						{{
-							i18n.baseText('instanceAi.preferenceCard.appliesTo', {
-								interpolate: { scope: scopeLabel },
-							})
-						}}
-					</N8nText>
-				</div>
-
-				<template v-if="rejection || !isRemoved">
-					<div :class="$style.separator" />
-					<div :class="$style.links">
-						<button
-							v-if="isEditable"
-							type="button"
-							:class="$style.link"
-							data-test-id="instance-ai-preference-card-edit"
-							@click="modalOpen = true"
-						>
-							{{ i18n.baseText('instanceAi.preferenceCard.edit') }}
-						</button>
-						<RouterLink
-							:to="{ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }"
-							target="_blank"
-							:class="$style.link"
-							data-test-id="instance-ai-preference-card-manage"
-						>
-							{{ i18n.baseText('instanceAi.preferenceCard.manage') }}
-						</RouterLink>
-					</div>
-				</template>
+				<button
+					v-if="isEditable"
+					type="button"
+					:class="$style.link"
+					data-test-id="instance-ai-preference-card-edit"
+					@click="modalOpen = true"
+				>
+					{{ i18n.baseText('instanceAi.preferenceCard.edit') }}
+				</button>
 			</div>
 		</N8nAnimatedCollapsibleContent>
 
@@ -268,32 +243,20 @@ watch(
 	white-space: nowrap;
 }
 
+/* Same content rule as the thinking traces (AiThinkingBlock.vue): inline text with
+   a left rule, and no surface of its own. */
 .card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background-color: var(--background--surface);
+	padding: var(--spacing--3xs) 0 var(--spacing--3xs) var(--spacing--2xs);
+	border-left: var(--border);
+	margin-left: var(--spacing--xs);
 }
 
-.scope {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	color: var(--text-color--subtler);
-}
-
-.separator {
-	border-top: var(--border-width) dashed var(--color--foreground);
-}
-
-.links {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
+/* The same color the thinking trace above it uses for its text (ThinkingBlock.vue). */
+.text {
+	color: var(--color--text--tint-1);
 }
 
 .link {
@@ -301,6 +264,9 @@ watch(
 	background: transparent;
 	padding: 0;
 	cursor: pointer;
+	/* A button stretches to the row width and centers its label: keep it at the text's edge. */
+	align-self: flex-start;
+	text-align: left;
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--lg);
@@ -312,7 +278,6 @@ watch(
 
 .removedText {
 	text-decoration: line-through;
-	color: var(--color--text--tint-1);
 }
 
 /* A refused text can be far over the cap, so clamp it. */
@@ -321,6 +286,5 @@ watch(
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 3;
 	overflow: hidden;
-	color: var(--text-color--subtle);
 }
 </style>
