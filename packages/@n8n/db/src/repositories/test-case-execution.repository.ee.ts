@@ -1,11 +1,14 @@
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
-import { DataSource, In, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, Not } from '@n8n/typeorm';
 import type { DeepPartial } from '@n8n/typeorm/common/DeepPartial';
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 import { TestCaseExecution } from '../entities';
 import type { TestCaseExecutionErrorCode } from '../entities/types-db';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
+import { BaseRepository } from './base-repository';
 
 type StatusUpdateOptions = {
 	testRunId: string;
@@ -27,9 +30,9 @@ type MarkAsCompletedOptions = StatusUpdateOptions & {
 };
 
 @Service()
-export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
-	constructor(dataSource: DataSource) {
-		super(TestCaseExecution, dataSource.manager);
+export class TestCaseExecutionRepository extends BaseRepository<TestCaseExecution> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(TestCaseExecution, dataSource.manager, transactionRunner);
 	}
 
 	async createTestCaseExecution(testCaseExecutionProps: DeepPartial<TestCaseExecution>) {
@@ -158,10 +161,8 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 		);
 	}
 
-	async markAllPendingAsCancelled(testRunId: string, trx?: EntityManager) {
-		trx = trx ?? this.manager;
-
-		return await trx.update(
+	async markAllPendingAsCancelled(testRunId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).update(
 			TestCaseExecution,
 			{ testRun: { id: testRunId }, status: Not(In(['success', 'error', 'cancelled'])) },
 			{

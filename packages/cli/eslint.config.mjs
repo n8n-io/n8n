@@ -322,7 +322,6 @@ export default defineConfig(
 			'./src/services/public-api-key.service.ts',
 			// commands / controllers / eventbus / evaluation / public-api
 			'./src/commands/import/credentials.ts',
-			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
 			// modules/** non-persistence services surfaced by narrowing the exemption
 			'./src/modules/agents/agent-knowledge.service.ts',
 			'./src/modules/agents/agent-publish.service.ts',
