@@ -5147,9 +5147,10 @@ describe('POST /workflows/:workflowId/run', () => {
 			startExecution.mockResolvedValue({ executionId: 'a3c1e0f2-0000-4000-8000-000000000001' });
 		});
 
-		const createV2Workflow = async () =>
+		const createV2Workflow = async (pinData?: IPinData) =>
 			await createWorkflow(
 				{
+					pinData,
 					nodes: [
 						{
 							id: uuid(),
@@ -5202,8 +5203,9 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
 		});
 
-		test('should return 400 for a partial execution', async () => {
-			const dbWorkflow = await createV2Workflow();
+		test('should seed a pinned node and reuse the trigger run data for a partial execution', async () => {
+			const dbWorkflow = await createV2Workflow({ [SET_NAME]: [{ json: { pinned: true } }] });
+			const setNode = dbWorkflow.nodes.find((node) => node.name === SET_NAME);
 
 			const response = await authOwnerAgent.post(`/workflows/${dbWorkflow.id}/run`).send({
 				destinationNode: { nodeName: SET_NAME, mode: 'inclusive' },
@@ -5214,17 +5216,24 @@ describe('POST /workflows/:workflowId/run', () => {
 							executionTime: 0,
 							executionIndex: 0,
 							source: [],
-							data: { main: [[{ json: {} }]] },
+							data: { main: [[{ json: { from: 'earlier' } }]] },
 						},
 					],
 				},
 			});
 
-			expect(response.statusCode).toBe(400);
-			expect(response.body.message).toBe(
-				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+			expect(response.statusCode).toBe(200);
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({
+					triggerOutputs: [[{ json: { from: 'earlier' } }]],
+					seededSteps: [
+						{
+							nodeId: setNode?.id,
+							outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]],
+						},
+					],
+				}),
 			);
-			expect(startExecution).not.toHaveBeenCalled();
 		});
 	});
 });
