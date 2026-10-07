@@ -236,16 +236,26 @@ export class WorkflowDependencyQueryService {
 				});
 			}
 		}
+		// Same usability rule as the node credential field, so a user with only
+		// see-rights sees the credential as unavailable in both places.
+		const listUnavailable =
+			options.listUnavailableCredentials === true &&
+			resourceType === 'workflow' &&
+			isCredSharingEnabled();
+		const unusableCredIds = new Set(
+			listUnavailable
+				? (
+						await this.credentialsFinderService.findUnusableCredentialsForUser(
+							user,
+							credentials.map((c) => c.id),
+						)
+					).map((c) => c.id)
+				: [],
+		);
 		for (const c of credentials) {
 			existingCredIds.add(c.id);
-			if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
-			else if (
-				options.listUnavailableCredentials &&
-				resourceType === 'workflow' &&
-				isCredSharingEnabled()
-			) {
-				unavailableCredNames.set(c.id, c.name ?? c.id);
-			}
+			if (unusableCredIds.has(c.id)) unavailableCredNames.set(c.id, c.name ?? c.id);
+			else if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
 		}
 		for (const w of workflows) {
 			existingWfIds.add(w.id);
