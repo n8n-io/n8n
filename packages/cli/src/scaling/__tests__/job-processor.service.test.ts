@@ -308,6 +308,7 @@ describe('JobProcessor', () => {
 		const pinData: IPinData = { pinned: [] };
 		const execution = mock<IExecutionResponse>({
 			mode: 'manual',
+			storedAt: 's3',
 			workflowData: { id: 'workflow-id', nodes: [], pinData, staticData: {} },
 			data: mock<IRunExecutionData>({
 				resultData: {
@@ -357,6 +358,7 @@ describe('JobProcessor', () => {
 			additionalData,
 			executionId,
 			pinData,
+			's3',
 		);
 	});
 
@@ -461,6 +463,7 @@ describe('JobProcessor', () => {
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
 					mode,
+					storedAt: 's3',
 					workflowData: { nodes: [], staticData: {} },
 					data: executionData,
 				}),
@@ -486,7 +489,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(mock<Job>());
 
 			// Assert the constructor and method were called
-			expect(MockedWorkflowExecute).toHaveBeenCalledWith(additionalData, mode, executionData);
+			expect(MockedWorkflowExecute).toHaveBeenCalledWith(additionalData, mode, executionData, 's3');
 			expect(processRunExecutionDataMock).toHaveBeenCalled();
 		},
 	);

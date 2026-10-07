@@ -654,6 +654,7 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
+					this.storageConfig.modeTag,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
