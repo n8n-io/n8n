@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/pages/components/LogsPanel.ts
+  s_6f5f33682decfb::t_5e7e2f60bfeaeb 1,127-128,130-137
+packages/quality/testing/playwright/tests/e2e/ai/chat-session.spec.ts
+  s_6f5f33682decfb::t_5e7e2f60bfeaeb 19-21,36-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b2e8872e3d24bce0d13bb46f4b0bd1647ed23612",
+  "prompts": {},
+  "sessions": {
+    "s_6f5f33682decfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a116b8-ee36-7f52-bd76-f33f40b73eba",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
