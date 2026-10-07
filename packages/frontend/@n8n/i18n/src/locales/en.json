@@ -9319,7 +9319,7 @@
 	"promotions.bindings.destructive.title": "Destructive changes",
 	"promotions.bindings.destructive.description": "This data table loses data when you apply. | These data tables lose data when you apply.",
 	"promotions.bindings.destructive.confirmDescription": "This data table loses data when you apply. Apply only if you no longer need this data. | These data tables lose data when you apply. Apply only if you no longer need this data.",
-	"promotions.bindings.applyAndDelete": "Apply and delete data",
+	"promotions.bindings.applyDataTableChanges": "Apply data table changes",
 	"promotions.bindings.bindingsSection.title": "Credentials and variables",
 	"promotions.bindings.warnings.title": "Warnings",
 	"promotions.bindings.warnings.variableShadowed": "A project variable overrides the global variable {name} for these workflows. You can continue.",

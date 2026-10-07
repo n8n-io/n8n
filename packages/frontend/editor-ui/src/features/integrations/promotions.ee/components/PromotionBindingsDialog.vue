@@ -400,7 +400,7 @@ async function continueApply() {
 						{{
 							i18n.baseText(
 								destructiveChanges.length
-									? 'promotions.bindings.applyAndDelete'
+									? 'promotions.bindings.applyDataTableChanges'
 									: 'promotions.bindings.continue',
 							)
 						}}
