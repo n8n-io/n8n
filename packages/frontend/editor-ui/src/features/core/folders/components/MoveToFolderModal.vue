@@ -10,7 +10,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
+import { type EventBus } from '@n8n/utils/event-bus';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type {
 	ProjectListItem,
@@ -24,7 +24,6 @@ import type {
 import type { ResolvedDependency } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
-import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import ProjectMoveResourceModalCredentialsList from '@/features/collaboration/projects/components/ProjectMoveResourceModalCredentialsList.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
@@ -38,7 +37,16 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useToast } from '@n8n/composables/useToast';
 import { I18nT } from 'vue-i18n';
 
-import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
  */
@@ -67,11 +75,19 @@ export interface SimpleFolder {
 const props = defineProps<Props>();
 
 const i18n = useI18n();
-const modalBus = createEventBus();
 
 const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 const credentialsStore = useCredentialsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
@@ -444,14 +460,14 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:title="title"
-		width="500"
-		:class="$style.container"
-		:event-bus="modalBus"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="title"
+		:container-class="$style.container"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<p
 				v-if="props.data.resourceType === 'folder' && (workflowCount > 0 || subFolderCount > 0)"
 				:class="$style.description"
@@ -476,12 +492,12 @@ onMounted(async () => {
 				<div v-if="isTransferringOwnership" :class="$style.block">
 					<N8nText>
 						<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
-							<template #note
-								><strong>{{
+							<template #note>
+								<strong>{{
 									i18n.baseText('projects.move.resource.modal.message.note')
 								}}</strong></template
 							>
-							<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
+							<template #resourceTypeLabel> {{ resourceTypeLabel }}</template>
 						</I18nT>
 						<div
 							v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
@@ -499,7 +515,9 @@ onMounted(async () => {
 					</N8nText>
 				</div>
 			</EnterpriseEdition>
-			<template v-if="selectedProject && isFolderSelectable">
+		</N8nDialogBody>
+		<template v-if="selectedProject && isFolderSelectable">
+			<N8nDialogBody>
 				<div :class="$style.block">
 					<N8nText color="text-dark">
 						{{ i18n.baseText('folders.move.modal.folder.label') }}
@@ -514,7 +532,9 @@ onMounted(async () => {
 						@location:selected="onFolderSelected"
 					/>
 				</div>
-			</template>
+			</N8nDialogBody>
+		</template>
+		<N8nDialogBody>
 			<N8nCheckbox
 				v-if="shareableCredentials.length"
 				v-model="shareUsedCredentials"
@@ -612,8 +632,8 @@ onMounted(async () => {
 					</template>
 				</I18nT>
 			</N8nCallout>
-		</template>
-		<template #footer="{ close }">
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
@@ -621,7 +641,7 @@ onMounted(async () => {
 					:disabled="loading"
 					float="right"
 					data-test-id="cancel-move-folder-button"
-					@click="close"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					:disabled="(!selectedFolder && isFolderSelectable) || loading"
@@ -638,13 +658,14 @@ onMounted(async () => {
 					@click="onSubmit"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 .container {
-	h1 {
+	h1,
+	h2 {
 		max-width: 90%;
 	}
 }
