@@ -1012,6 +1012,22 @@ describe('AgentsService', () => {
 				{ withProject: true },
 			);
 		});
+
+		it('passes an empty project list when the user has no project memberships', async () => {
+			const { service, agentRepository, projectRelationRepository } = makeService();
+			const user = mock<User>({ id: 'user-1' });
+			const options: ListAgentsQueryDto = { skip: 0, take: 10 };
+			projectRelationRepository.findAllByUser.mockResolvedValue([]);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+
+			await expect(service.findByUserMembershipPaginated(user, options)).resolves.toEqual({
+				count: 0,
+				data: [],
+			});
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith([], options, {
+				withProject: true,
+			});
+		});
 	});
 
 	describe('getCapabilitySummary', () => {
