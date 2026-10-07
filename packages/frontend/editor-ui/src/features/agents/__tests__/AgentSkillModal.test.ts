@@ -145,6 +145,7 @@ describe('AgentSkillModal', () => {
 			skillId: 'ghost',
 			skill: { name: 'ghost', description: '', instructions: '' },
 		});
+		await waitForEditLock(container);
 
 		expect(
 			container.querySelector('[data-testid="agent-skill-missing-content-callout"]'),
@@ -206,6 +207,7 @@ describe('AgentSkillModal', () => {
 			skill: { name: 'Research', description: 'Use for research', instructions: 'Research' },
 			existingSkillNames: ['Other skill'],
 		});
+		await waitForEditLock(container);
 
 		await fireEvent.update(getTitleInput(container), ' other SKILL ');
 		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
@@ -434,11 +436,9 @@ describe('AgentSkillModal edit lock', () => {
 			skillId: 'skill_a',
 		});
 
-		await waitFor(() =>
-			expect(acquireSkillEditLock).toHaveBeenCalledWith(expect.anything(), 'skill_a'),
-		);
+		await waitFor(() => expect(getByTestId('agent-skill-create-save')).not.toBeDisabled());
+		expect(acquireSkillEditLock).toHaveBeenCalledWith(expect.anything(), 'skill_a');
 		expect(queryByTestId('agent-skill-locked-callout')).not.toBeInTheDocument();
-		expect(getByTestId('agent-skill-create-save')).not.toBeDisabled();
 	});
 
 	it('turns read-only and names the user who holds the lock', async () => {
@@ -459,9 +459,39 @@ describe('AgentSkillModal edit lock', () => {
 		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
 	});
 
+	it('stays read-only when the lock request fails', async () => {
+		acquireSkillEditLock.mockRejectedValue(new Error('Forbidden'));
+		const { findByTestId, getByTestId } = renderModal({ skill: existingSkill, skillId: 'skill_a' });
+
+		expect(await findByTestId('agent-skill-locked-callout')).toHaveTextContent(
+			'agents.builder.skills.lockFailed',
+		);
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+	});
+
+	it('stops asking for the lock once another user holds it', async () => {
+		vi.useFakeTimers();
+		try {
+			acquireSkillEditLock.mockResolvedValue({ acquired: false });
+			renderModal({ skill: existingSkill, skillId: 'skill_a' });
+			await vi.advanceTimersByTimeAsync(120_000);
+
+			expect(acquireSkillEditLock).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not take a lock for a new skill', () => {
 		renderModal();
 
 		expect(acquireSkillEditLock).not.toHaveBeenCalled();
 	});
 });
+
+/** An existing skill is read-only until its edit lock answers. */
+async function waitForEditLock(container: Element) {
+	await waitFor(() =>
+		expect(container.querySelector('[data-testid="agent-skill-create-save"]')).not.toBeDisabled(),
+	);
+}

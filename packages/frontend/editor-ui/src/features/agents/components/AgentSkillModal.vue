@@ -91,8 +91,10 @@ const editLock = useSkillEditLock();
 onMounted(() => {
 	if (props.data.skillId) void editLock.start(props.data.skillId);
 });
-const isLocked = computed(() => editLock.lockedBy.value !== null);
+const isLocked = computed(() => isEditing.value && editLock.status.value !== 'held');
 const lockedMessage = computed(() => {
+	if (editLock.status.value === 'failed') return i18n.baseText('agents.builder.skills.lockFailed');
+	if (editLock.status.value !== 'locked') return '';
 	const holder = editLock.lockedBy.value;
 	const name = [holder?.firstName, holder?.lastName].filter(Boolean).join(' ');
 	return name
@@ -290,7 +292,7 @@ function onRemove() {
 		@back="onBack"
 	>
 		<N8nCallout
-			v-if="isLocked"
+			v-if="lockedMessage"
 			theme="warning"
 			:class="$style.missingContentCallout"
 			data-testid="agent-skill-locked-callout"

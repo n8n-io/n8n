@@ -7,34 +7,55 @@ import { acquireSkillEditLock, releaseSkillEditLock } from '@/features/settings/
 const RENEW_INTERVAL_MS = 30_000;
 
 /**
- * Holds a skill's edit lock while the editor is open. `lockedBy` is set when
- * another user holds it, so the editor can turn read-only and say who.
+ * `pending` until the first lock request answers, `held` while this tab may edit,
+ * `locked` when another user holds the lock, `failed` when the first request failed.
+ */
+export type SkillEditLockStatus = 'idle' | 'pending' | 'held' | 'locked' | 'failed';
+
+/**
+ * Holds a skill's edit lock while the editor is open. Only `held` allows edits:
+ * the editor's copy may be older than another user's save, so a tab that did not
+ * get the lock stays read-only until it is reopened.
  */
 export function useSkillEditLock() {
 	const rootStore = useRootStore();
+	const status = ref<SkillEditLockStatus>('idle');
 	const lockedBy = ref<{ firstName: string; lastName: string } | null>(null);
 	let skillId: string | null = null;
 	let timer: ReturnType<typeof setInterval> | undefined;
 
-	async function acquire() {
+	// A function, so the check reads the status `acquire` set, not the narrowed one.
+	function isHeld() {
+		return status.value === 'held';
+	}
+
+	function stopRenewing() {
+		if (timer) clearInterval(timer);
+		timer = undefined;
+	}
+
+	async function acquire(): Promise<void> {
 		if (!skillId) return;
 		try {
 			const result = await acquireSkillEditLock(rootStore.restApiContext, skillId);
-			if (result.acquired) return;
-			lockedBy.value = result.holder ?? { firstName: '', lastName: '' };
-			// The editor's copy may be older than the holder's save, so it stays
-			// read-only until it is reopened, even after the lock frees up.
-			clearInterval(timer);
+			if (result.acquired) {
+				status.value = 'held';
+				return;
+			}
+			lockedBy.value = result.holder ?? null;
+			status.value = 'locked';
+			stopRenewing();
 		} catch {
-			// The server still rejects writes under someone else's lock; a failed
-			// lock request must not block editing on its own.
+			// A failed renewal keeps the lock until its TTL; only a failed first request blocks editing.
+			if (status.value === 'pending') status.value = 'failed';
 		}
 	}
 
 	async function start(id: string) {
 		skillId = id;
+		status.value = 'pending';
 		await acquire();
-		timer = setInterval(() => void acquire(), RENEW_INTERVAL_MS);
+		if (isHeld()) timer = setInterval(() => void acquire(), RENEW_INTERVAL_MS);
 	}
 
 	async function release(id: string) {
@@ -46,13 +67,12 @@ export function useSkillEditLock() {
 	}
 
 	function stop() {
-		if (timer) clearInterval(timer);
-		timer = undefined;
-		if (skillId && !lockedBy.value) void release(skillId);
+		stopRenewing();
+		if (skillId && isHeld()) void release(skillId);
 		skillId = null;
 	}
 
 	onBeforeUnmount(stop);
 
-	return { lockedBy, start, stop };
+	return { status, lockedBy, start, stop };
 }

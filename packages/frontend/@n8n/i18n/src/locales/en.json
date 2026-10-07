@@ -8648,6 +8648,7 @@
 	"agents.builder.skills.validation.instructionsMaxLength": "Instructions must be {max} characters or fewer.",
 	"agents.builder.skills.lockedBy": "Read-only. {name} is editing this skill.",
 	"agents.builder.skills.lockedByFallback": "Read-only. Another user is editing this skill.",
+	"agents.builder.skills.lockFailed": "Read-only. This skill could not be opened for editing. Close it and open it again.",
 	"agents.builder.skills.missingContent.callout": "This skill's content is missing. Fill it in and save to recreate it.",
 	"agents.builder.skills.remove": "Remove skill",
 	"agents.builder.skills.back": "Back to skills",
