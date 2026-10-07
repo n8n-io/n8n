@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AllowGitLabPromotionProvider1791290214755 implements ReversibleMigration {
+export class AllowGitLabPromotionProvider1791377741439 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.setProviderTypes(context, ['git', 'gitlab']);
 	}

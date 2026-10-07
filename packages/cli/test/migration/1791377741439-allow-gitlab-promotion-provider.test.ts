@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AllowGitLabPromotionProvider1791290214755';
+const migrationName = 'AllowGitLabPromotionProvider1791377741439';
 
 describe('AllowGitLabPromotionProvider migration', () => {
 	let dataSource: DataSource;
