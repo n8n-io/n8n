@@ -17,9 +17,6 @@ export type LakebaseColumn = {
 /** PostgREST flags the primary key in the column description */
 const PRIMARY_KEY_MARKER = /<pk\/>/;
 
-/** PostgREST exposes every function of the schema under this path prefix */
-const RPC_PATH = /^\/rpc\//;
-
 async function fetchOpenApiDocument(
 	context: DatabricksContext,
 	schemaUrl: string,
@@ -83,21 +80,22 @@ export async function fetchLakebaseFunctions(
 	const document = await fetchOpenApiDocument(context, schemaUrl);
 
 	if (!isRecord(document) || !isRecord(document.paths)) return [];
+	// PostgREST exposes every function of the schema under this path prefix
 	return Object.keys(document.paths)
-		.filter((path) => RPC_PATH.test(path))
-		.map((path) => path.replace(RPC_PATH, ''));
+		.filter((path) => path.startsWith('/rpc/'))
+		.map((path) => path.slice('/rpc/'.length));
 }
 
 /** A function's named arguments, read from the POST request body schema */
 export async function fetchLakebaseFunctionArguments(
 	context: DatabricksContext,
 	schemaUrl: string,
-	fn: string,
+	functionName: string,
 ): Promise<LakebaseColumn[]> {
 	const document = await fetchOpenApiDocument(context, schemaUrl);
 
 	if (!isRecord(document) || !isRecord(document.paths)) return [];
-	const path = document.paths[`/rpc/${fn}`];
+	const path = document.paths[`/rpc/${functionName}`];
 	const post = isRecord(path) && isRecord(path.post) ? path.post : undefined;
 	const requestBody = post && isRecord(post.requestBody) ? post.requestBody : undefined;
 	const content = requestBody && isRecord(requestBody.content) ? requestBody.content : undefined;
