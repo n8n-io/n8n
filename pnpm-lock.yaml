@@ -3233,6 +3233,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -5309,6 +5312,9 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       form-data:
         specifier: 4.0.6
         version: 4.0.6
@@ -6865,6 +6871,9 @@ importers:
       fake-indexeddb:
         specifier: ^6.0.0
         version: 6.0.0
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       fast-json-stable-stringify:
         specifier: ^2.1.0
         version: 2.1.0

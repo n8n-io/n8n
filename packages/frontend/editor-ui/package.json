@@ -127,6 +127,7 @@
     "eslint-plugin-oxlint": "catalog:",
     "esprima-next": "5.8.4",
     "fake-indexeddb": "^6.0.0",
+    "fast-check": "catalog:",
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.2",
     "flatted": "catalog:",

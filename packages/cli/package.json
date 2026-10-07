@@ -110,6 +110,7 @@
     "axios": "catalog:",
     "concurrently": "^8.2.0",
     "esbuild": "catalog:",
+    "fast-check": "catalog:",
     "form-data": "catalog:",
     "minifaker": "1.34.1",
     "mjml": "^4.15.3",
