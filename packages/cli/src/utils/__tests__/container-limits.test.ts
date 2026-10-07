@@ -1,4 +1,8 @@
-import { getMemoryLimit, parseCfs, parseCpuMax } from '../container-limits';
+import { readFileSync } from 'node:fs';
+
+import { getCpuLimit, getMemoryLimit, parseCfs, parseCpuMax } from '../container-limits';
+
+vi.mock('node:fs', () => ({ readFileSync: vi.fn() }));
 
 describe('parseCpuMax', () => {
 	it.each([
@@ -40,5 +44,41 @@ describe('getMemoryLimit', () => {
 	])('returns the right value for %s', (_, constrained, expected) => {
 		vi.spyOn(process, 'constrainedMemory').mockReturnValue(constrained);
 		expect(getMemoryLimit()).toBe(expected);
+	});
+});
+
+describe('getCpuLimit', () => {
+	const mockFiles = (files: Record<string, string>) =>
+		vi.mocked(readFileSync).mockImplementation((path) => {
+			const content = files[String(path)];
+			if (content === undefined) throw new Error('ENOENT');
+			return content;
+		});
+
+	it('reads the cgroup v2 quota', () => {
+		mockFiles({ '/sys/fs/cgroup/cpu.max': '50000 100000\n' });
+		expect(getCpuLimit()).toBe(0.5);
+	});
+
+	it('returns null for a cgroup v2 file without a quota', () => {
+		mockFiles({
+			'/sys/fs/cgroup/cpu.max': 'max 100000\n',
+			'/sys/fs/cgroup/cpu/cpu.cfs_quota_us': '50000\n',
+			'/sys/fs/cgroup/cpu/cpu.cfs_period_us': '100000\n',
+		});
+		expect(getCpuLimit()).toBeNull();
+	});
+
+	it('falls back to the cgroup v1 quota and period', () => {
+		mockFiles({
+			'/sys/fs/cgroup/cpu/cpu.cfs_quota_us': '200000\n',
+			'/sys/fs/cgroup/cpu/cpu.cfs_period_us': '100000\n',
+		});
+		expect(getCpuLimit()).toBe(2);
+	});
+
+	it('returns null when no cgroup files exist', () => {
+		mockFiles({});
+		expect(getCpuLimit()).toBeNull();
 	});
 });
