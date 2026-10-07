@@ -69,6 +69,14 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		defaultName: '[eval] Facebook Graph',
 		buildData: (token) => ({ accessToken: token }),
 	},
+	linkedInOAuth2Api: {
+		defaultName: '[eval] LinkedIn',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	highLevelOAuth2Api: {
+		defaultName: '[eval] HighLevel',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
 	// MCP-registry-synthesized credential types (agent MCP servers). Creating
 	// them requires the backend to run with the `mcp-registry` module enabled;
 	// placeholder tokens are fine — agent eval runs mock the MCP wire.
