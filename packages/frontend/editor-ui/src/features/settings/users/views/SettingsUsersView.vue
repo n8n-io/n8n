@@ -92,11 +92,9 @@ onMounted(async () => {
 		void rolesStore.fetchRoles();
 	}
 
-	const hasSsoLicense = [
-		EnterpriseEditionFeature.Saml,
-		EnterpriseEditionFeature.Oidc,
-		EnterpriseEditionFeature.Ldap,
-	].some((feature) => settingsStore.isEnterpriseFeatureEnabled[feature]);
+	const hasSsoLicense = [EnterpriseEditionFeature.Saml, EnterpriseEditionFeature.Oidc].some(
+		(feature) => settingsStore.isEnterpriseFeatureEnabled[feature],
+	);
 	if (hasSsoLicense) {
 		await userRoleProvisioningStore.getProvisioningConfig();
 	}

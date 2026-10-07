@@ -219,18 +219,25 @@ describe('SettingsUsersView', () => {
 		expect(provisioningStore.getProvisioningConfig).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		EnterpriseEditionFeature.Saml,
-		EnterpriseEditionFeature.Oidc,
-		EnterpriseEditionFeature.Ldap,
-	])('requests provisioning config with a %s license', async (feature) => {
-		settingsStore.isEnterpriseFeatureEnabled[feature] = true;
+	it('does not request provisioning config with only an LDAP license', async () => {
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap] = true;
 		renderComponent();
+		await flushPromises();
 
-		await waitFor(() => {
-			expect(provisioningStore.getProvisioningConfig).toHaveBeenCalledOnce();
-		});
+		expect(provisioningStore.getProvisioningConfig).not.toHaveBeenCalled();
 	});
+
+	it.each([EnterpriseEditionFeature.Saml, EnterpriseEditionFeature.Oidc])(
+		'requests provisioning config with a %s license',
+		async (feature) => {
+			settingsStore.isEnterpriseFeatureEnabled[feature] = true;
+			renderComponent();
+
+			await waitFor(() => {
+				expect(provisioningStore.getProvisioningConfig).toHaveBeenCalledOnce();
+			});
+		},
+	);
 
 	it('should open invite modal when invite button is clicked', async () => {
 		renderComponent();
