@@ -1,0 +1,24 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_cb44df0efad7de::t_e141cea84421a0 1656-1658,1698-1699
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_cb44df0efad7de::t_ff4ce8cfea6808 236
+  s_cb44df0efad7de::t_e141cea84421a0 132,229,237
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_cb44df0efad7de::t_ff4ce8cfea6808 160-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f002cfe906d5dcc501382676a43992657e317f5e",
+  "prompts": {},
+  "sessions": {
+    "s_cb44df0efad7de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a4b6f70-b6af-4932-b51a-1514843c5fe1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
