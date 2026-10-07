@@ -7163,6 +7163,8 @@
 	"commandBar.workflows.unnamed": "(unnamed workflow)",
 	"commandBar.credentials.create": "Create credential in {projectName}",
 	"commandBar.dataTables.create": "Create data table in {projectName}",
+	"commandBar.sections.agents": "Agents",
+	"commandBar.agents.create": "Create agent in {projectName}",
 	"commandBar.executions.open": "Open executions",
 	"commandBar.demo.availableEverywhere": "This is available everywhere",
 	"commandBar.sections.projects": "Projects",

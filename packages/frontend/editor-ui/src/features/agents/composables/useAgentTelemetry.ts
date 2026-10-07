@@ -7,7 +7,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useAgentsN8nChatFlag } from './useAgentsN8nChatFlag';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
-export type AgentCreateSource = 'button' | 'dropdown' | 'card';
+export type AgentCreateSource = 'button' | 'dropdown' | 'card' | 'command_bar';
 export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
 
 export function useAgentTelemetry() {
