@@ -325,9 +325,9 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 				scope: 'instance',
 				matchedRuleId: 'rule-9',
 			});
-			expect(store.isCredentialTypeAvailable(RESTRICTED_CREDENTIAL)).toBe(false);
-			expect(store.isCredentialTypeAvailable(ALLOWED_CREDENTIAL)).toBe(true);
-			expect(store.isCredentialTypeAvailable('doesNotExistApi')).toBe(true);
+			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(false);
+			expect(store.getCredentialTypeAvailability(ALLOWED_CREDENTIAL).available).toBe(true);
+			expect(store.getCredentialTypeAvailability('doesNotExistApi').available).toBe(true);
 		});
 
 		it('reports every credential type as available while a project switch is in flight', async () => {
@@ -340,13 +340,13 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 			const pendingB = store.fetchForProject('project-b');
 
-			expect(store.isCredentialTypeAvailable(RESTRICTED_CREDENTIAL)).toBe(true);
+			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
 
 			deferredB.resolve([]);
 			await pendingB;
 
 			expect(store.loadedProjectId).toBe('project-b');
-			expect(store.isCredentialTypeAvailable(RESTRICTED_CREDENTIAL)).toBe(true);
+			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
 		});
 
 		it('reloads both kinds for the requested project', async () => {
@@ -356,12 +356,12 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			const store = useTypeAvailabilityPoliciesStore();
 
 			await store.fetchForProject('project-a');
-			expect(store.isCredentialTypeAvailable(RESTRICTED_CREDENTIAL)).toBe(false);
+			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(false);
 
 			await store.reload();
 
 			expect(mocks.fetchAvailableCredentialTypes).toHaveBeenCalledTimes(2);
-			expect(store.isCredentialTypeAvailable(RESTRICTED_CREDENTIAL)).toBe(true);
+			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
 		});
 
 		it('degrades both kinds to available when only the credential request fails', async () => {
@@ -373,7 +373,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(errorSpy).toHaveBeenCalledTimes(1);
 			expect(store.loadedProjectId).toBeNull();
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
-			expect(store.isCredentialTypeAvailable(RESTRICTED_CREDENTIAL)).toBe(true);
+			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
 		});
 
 		it('clears credential types on reset', async () => {
@@ -382,7 +382,7 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			await store.fetchForProject('project-a');
 			store.reset();
 
-			expect(store.isCredentialTypeAvailable(RESTRICTED_CREDENTIAL)).toBe(true);
+			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
 		});
 	});
 });

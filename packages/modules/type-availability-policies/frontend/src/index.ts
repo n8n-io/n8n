@@ -2,7 +2,6 @@ export { TypeAvailabilityPoliciesModule } from './type-availability-policies.mod
 export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.store';
 export {
 	describeNodeTypeRestriction,
-	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,
 	useNodeTypeRestriction,

@@ -34,9 +34,8 @@ Use turbo and not `pnpm --filter`: this package reads its platform dependencies 
 and on a cold tree turbo builds them first.
 
 `useNodeTypeRestriction(type)` turns the store answer into `isRestricted` and `restrictionScope`
-for one node type. `isNodeTypeRestricted(type)` is the plain predicate for a list of nodes, and
-`getCredentialTypeRestriction(type)` is the credential-kind verdict on its own. The shell reads
-restriction through these and never through the store directly.
+for one node type. `isNodeTypeRestricted(type)` is the plain predicate for a list of nodes. The
+shell reads restriction through these and never through the store directly.
 
 Tests stub the store through `mockRestrictedNodeTypes` and `mockRestrictedCredentialTypes` from the module's `__tests__/mocks`.
 

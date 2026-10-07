@@ -105,10 +105,6 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			return restrictedCredentialTypes.value.get(name) ?? { name, available: true };
 		}
 
-		function isCredentialTypeAvailable(name: string): boolean {
-			return getCredentialTypeAvailability(name).available;
-		}
-
 		function reset(): void {
 			latestRequest++;
 			restrictedNodeTypes.value = new Map();
@@ -127,7 +123,6 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			getNodeTypeAvailability,
 			isNodeTypeAvailable,
 			getCredentialTypeAvailability,
-			isCredentialTypeAvailable,
 			reset,
 		};
 	},
