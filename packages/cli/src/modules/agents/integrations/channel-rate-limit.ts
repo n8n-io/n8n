@@ -76,6 +76,16 @@ export function channelRateLimitMessage(platform: string): string {
 	return `The ${label} integration has exceeded its rate limit. Please wait a few minutes before trying again.`;
 }
 
+/** A 429 for one recipient only. Don't block the whole connection for it. */
+export interface RecipientScopedRateLimitError {
+	response: { status: 429 };
+	rateLimitScope: 'recipient';
+}
+
+function isRecipientScopedRateLimit(error: unknown): boolean {
+	return isRecord(error) && error.rateLimitScope === 'recipient';
+}
+
 export function caughtIntegrationError(
 	error: unknown,
 	params: {
@@ -88,6 +98,9 @@ export function caughtIntegrationError(
 	},
 ): IntegrationErrorResponse {
 	if (isHttp429(error)) {
+		if (isRecipientScopedRateLimit(error) && error instanceof Error) {
+			return rateLimitExceeded(error.message);
+		}
 		params.guard?.record(params.connectionId);
 		return rateLimitExceeded(channelRateLimitMessage(params.platform));
 	}

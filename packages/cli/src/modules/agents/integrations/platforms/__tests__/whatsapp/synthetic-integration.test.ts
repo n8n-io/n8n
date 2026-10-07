@@ -428,6 +428,62 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
+		it('keeps a pair rate-limit scoped to the recipient when it comes through the action executor', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 4, code: 131056 },
+			});
+			try {
+				const threadA = whatsAppThreadId(fixtures);
+				const threadB = whatsAppThreadId({
+					phoneNumberId: fixtures.phoneNumberId,
+					contact: whatsAppContact({ wa_id: 'other-recipient-wa-id' }),
+				});
+				const respondIn = async (threadId: string) =>
+					await ctx.actionExecutor.execute({
+						descriptor: ctx.descriptor,
+						action: 'respond',
+						input: { message: { text: 'Hi' } },
+						awaitResponse: false,
+						currentMessageContext: {
+							integrationConnectionId: 'whatsapp:cred-whatsapp',
+							platform: 'whatsapp',
+							target: { type: 'thread' as const, threadId, channelId: threadId },
+							messageId: 'wamid.SYNTHETIC',
+							updatedAt: new Date().toISOString(),
+						},
+					});
+
+				const firstResultPromise = respondIn(threadA);
+				await vi.runAllTimersAsync();
+				expect(await firstResultPromise).toEqual({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED', message: expect.stringContaining('recipient') },
+				});
+				expect(ctx.channelRateLimitGuard.isBlocked(ctx.descriptor.integrationConnectionId)).toBe(
+					false,
+				);
+				const callsAfterA = ctx.apiCalls.length;
+
+				// A different recipient still reaches the API.
+				expect(await respondIn(threadB)).toMatchObject({ ok: true });
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+
+				// A stays blocked, and that fast fail doesn't block the connection.
+				expect(await respondIn(threadA)).toMatchObject({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED' },
+				});
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+				expect(ctx.channelRateLimitGuard.isBlocked(ctx.descriptor.integrationConnectionId)).toBe(
+					false,
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
 		it('retries a reaction send too, since addReaction shares graphApiRequest with postMessage', async () => {
 			vi.useFakeTimers();
 			const fixtures = whatsAppReplayFixtures();

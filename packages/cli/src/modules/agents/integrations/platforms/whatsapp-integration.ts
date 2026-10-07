@@ -18,7 +18,7 @@ import {
 	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
-import { channelRateLimitMessage } from '../channel-rate-limit';
+import { channelRateLimitMessage, type RecipientScopedRateLimitError } from '../channel-rate-limit';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import {
 	componentTextToString,
@@ -495,6 +495,24 @@ interface HttpStatusCarryingError {
 }
 
 /**
+ * Still a 429 to callers, so the agent sees a rate-limit result. The scope
+ * marker stops `caughtIntegrationError` from also blocking the whole
+ * connection, because only this one recipient is limited.
+ */
+function recipientRateLimitError(cause?: unknown): OperationalError {
+	return Object.assign(
+		new OperationalError(
+			'WhatsApp is rate-limiting messages to this recipient. Wait before sending them more messages.',
+			{ cause },
+		),
+		{
+			response: { status: 429 },
+			rateLimitScope: 'recipient',
+		} satisfies RecipientScopedRateLimitError,
+	);
+}
+
+/**
  * Retries a send after one of Meta's transient rate-limit errors, waiting
  * longer each time instead of retrying immediately — see module doc for why
  * hammering a rate-limited number is exactly the behaviour that got it
@@ -513,6 +531,8 @@ interface HttpStatusCarryingError {
  *
  * {@link WHATSAPP_PAIR_RATE_LIMIT_CODE} records its cooldown per recipient
  * instead, so it doesn't cool down every other conversation on the number.
+ * Its error carries a scope marker (see {@link recipientRateLimitError}) so
+ * the action executor doesn't block the whole connection either.
  */
 async function withWhatsAppRateLimitBackoff<T>(
 	send: () => Promise<T>,
@@ -522,13 +542,13 @@ async function withWhatsAppRateLimitBackoff<T>(
 	const pairKey = rateLimit.recipient
 		? `${rateLimit.connectionId}:${rateLimit.recipient}`
 		: undefined;
-	if (
-		rateLimit.guard.isBlocked(rateLimit.connectionId) ||
-		(pairKey && rateLimit.guard.isBlocked(pairKey))
-	) {
+	if (rateLimit.guard.isBlocked(rateLimit.connectionId)) {
 		throw Object.assign(new OperationalError(channelRateLimitMessage('whatsapp')), {
 			response: { status: 429 },
 		} satisfies HttpStatusCarryingError);
+	}
+	if (pairKey && rateLimit.guard.isBlocked(pairKey)) {
+		throw recipientRateLimitError();
 	}
 	for (let attempt = 1; ; attempt++) {
 		try {
@@ -537,11 +557,11 @@ async function withWhatsAppRateLimitBackoff<T>(
 			const details = whatsAppRateLimitDetails(error);
 			if (!details) throw error;
 			if (attempt >= WHATSAPP_RATE_LIMIT_MAX_ATTEMPTS) {
-				const cooldownKey =
-					details.code === WHATSAPP_PAIR_RATE_LIMIT_CODE && pairKey
-						? pairKey
-						: rateLimit.connectionId;
-				rateLimit.guard.record(cooldownKey);
+				if (details.code === WHATSAPP_PAIR_RATE_LIMIT_CODE && pairKey) {
+					rateLimit.guard.record(pairKey);
+					throw recipientRateLimitError(error);
+				}
+				rateLimit.guard.record(rateLimit.connectionId);
 				throw Object.assign(
 					new OperationalError(
 						'WhatsApp is rate-limiting messages to this number, likely because of its Meta ' +
