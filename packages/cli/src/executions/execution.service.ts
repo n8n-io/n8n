@@ -204,6 +204,24 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
+		// A workflow runs on one engine, and only that engine holds its executions.
+		const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+		const execution =
+			workflow?.settings?.engineType === 'v2'
+				? await this.lastSuccessfulEngineV2Execution(workflowId)
+				: await this.lastSuccessfulV1Execution(workflowId);
+		if (!execution) return undefined;
+
+		await this.executionRedactionServiceProxy.processExecution(execution, {
+			user,
+			redactExecutionData,
+		});
+		return execution;
+	}
+
+	private async lastSuccessfulV1Execution(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
@@ -221,14 +239,21 @@ export class ExecutionService {
 			},
 		);
 
-		const execution = executions[0];
-		if (!execution) return undefined;
+		return executions[0];
+	}
 
-		await this.executionRedactionServiceProxy.processExecution(execution, {
-			user,
-			redactExecutionData,
-		});
-		return execution;
+	/** The data plane lists newest first, and only the full read carries the run data. */
+	private async lastSuccessfulEngineV2Execution(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
+		const { items } = await this.engineV2ExecutionReader.findMany(
+			{ status: ['success'], limit: 1 },
+			[workflowId],
+		);
+		const latest = items[0];
+		if (!latest || !isExecutionIdV2(latest.id)) return undefined;
+
+		return await this.engineV2ExecutionReader.findOne(latest.id, [workflowId]);
 	}
 
 	async retry({
