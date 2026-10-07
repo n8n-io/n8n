@@ -2131,7 +2131,23 @@ export interface InstanceAiMessage {
 	context?: InstanceAiHandoffContext;
 }
 
-export interface InstanceAiThreadSummary {
+/**
+ * What a thread needs from its owner, as the server sees it. The server does not know
+ * what each viewer has seen, so the editor turns `idle` into "Ready to review" or "Done".
+ */
+export const INSTANCE_AI_THREAD_SERVER_STATES = ['needs-you', 'working', 'failed', 'idle'] as const;
+export type InstanceAiThreadServerState = (typeof INSTANCE_AI_THREAD_SERVER_STATES)[number];
+
+/** Thread list fields. `GET /instance-ai/threads` sets them only for the first 50 threads of a page. */
+export interface InstanceAiThreadOverview {
+	state?: InstanceAiThreadServerState;
+	/** The thread waits for an approval or an answer from its owner. */
+	needsInput?: boolean;
+	/** ISO time of the last turn, or of the last session change when the thread has no turn. */
+	lastActivityAt?: string;
+}
+
+export interface InstanceAiThreadSummary extends InstanceAiThreadOverview {
 	id: string;
 	title: string;
 	createdAt: string;
@@ -2149,7 +2165,7 @@ export type InstanceAiSSEConnectionState =
 // Thread Inspector types (debug panel — raw agent memory inspection)
 // ---------------------------------------------------------------------------
 
-export interface InstanceAiThreadInfo {
+export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	id: string;
 	title?: string;
 	resourceId: string;

@@ -246,6 +246,25 @@ export class N8NCheckpointStorage {
 		return null;
 	}
 
+	/** Batch form of `findSuspendedForThread`: the given threads that wait for the user, in one query. */
+	async findSuspendedThreadIds(
+		agentId: string,
+		threadIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Set<string>> {
+		const rows = await this.agentCheckpointRepository.findActiveForThreads(
+			agentId,
+			threadIds,
+			this.expiryCutoff(),
+			ctx,
+		);
+		const suspended = new Set<string>();
+		for (const { threadId, state } of rows) {
+			if (threadId && this.parseSuspendedState(state, threadId)) suspended.add(threadId);
+		}
+		return suspended;
+	}
+
 	async hasNoConflictingThreadResource(
 		agentId: string,
 		threadId: string,

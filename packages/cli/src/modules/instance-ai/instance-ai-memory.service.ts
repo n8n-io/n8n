@@ -26,6 +26,7 @@ import { AgentExecutionThreadRepository } from '../agents/repositories/agent-exe
 import { SystemAgentExecutionService } from '../agents/system-agents/system-agent-execution.service';
 import { draftChatMemoryResourceId } from '../agents/utils/agent-memory-scope';
 import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
+import { ThreadFactsService } from './thread-overview/thread-facts.service';
 
 /** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
 export interface InstanceAiThreadLaunchMetadata {
@@ -104,6 +105,7 @@ export class InstanceAiMemoryService {
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
+		private readonly threadFacts: ThreadFactsService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -217,8 +219,12 @@ export class InstanceAiMemoryService {
 	): Promise<InstanceAiThreadListResponse> {
 		const all = await this.threads.findOwnedByAgent(ASSISTANT_AGENT_ID, userId);
 		const slice = all.slice(page * perPage, (page + 1) * perPage);
+		const [threads, overviews] = await Promise.all([
+			this.toThreadInfos(slice),
+			this.threadFacts.getOverviews(slice),
+		]);
 		return {
-			threads: await this.toThreadInfos(slice),
+			threads: threads.map((thread) => ({ ...thread, ...overviews.get(thread.id) })),
 			total: all.length,
 			page,
 			hasMore: (page + 1) * perPage < all.length,

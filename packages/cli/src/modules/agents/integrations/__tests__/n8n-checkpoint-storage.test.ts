@@ -368,4 +368,102 @@ describe('N8NCheckpointStorage', () => {
 			await expect(service.findSuspendedForThread('agent-1', 'thread-target')).resolves.toBeNull();
 		});
 	});
+
+	describe('findSuspendedThreadIds', () => {
+		const suspendedFor = (threadId: string, overrides: Record<string, unknown> = {}) =>
+			({
+				...suspendedState,
+				persistence: { threadId, resourceId: 'resource-1', ...overrides },
+			}) as SerializableAgentState;
+
+		const row = (threadId: string | null, state: SerializableAgentState | string | null) => ({
+			runId: `run-${threadId}`,
+			threadId,
+			state: typeof state === 'object' && state !== null ? JSON.stringify(state) : state,
+		});
+
+		it('returns the threads with a parked parent run, from one repository read', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForThreads.mockResolvedValue([
+				row('thread-a', suspendedFor('thread-a')),
+				row('thread-b', { ...suspendedFor('thread-b'), status: 'running' }),
+				row('thread-c', suspendedFor('thread-c')),
+			]);
+
+			const result = await service.findSuspendedThreadIds('agent-1', [
+				'thread-a',
+				'thread-b',
+				'thread-c',
+				'thread-d',
+			]);
+
+			expect([...result].sort()).toEqual(['thread-a', 'thread-c']);
+			expect(repository.findActiveForThreads).toHaveBeenCalledTimes(1);
+			expect(repository.findActiveForThreads).toHaveBeenCalledWith(
+				'agent-1',
+				['thread-a', 'thread-b', 'thread-c', 'thread-d'],
+				expect.any(Date),
+				{},
+			);
+		});
+
+		it('reads only checkpoints that are newer than the checkpoint TTL', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForThreads.mockResolvedValue([]);
+			const before = Date.now();
+
+			await service.findSuspendedThreadIds('agent-1', ['thread-a']);
+
+			const cutoff = repository.findActiveForThreads.mock.calls[0][2];
+			// The test config sets a TTL of 60 seconds.
+			expect(cutoff.getTime()).toBeGreaterThanOrEqual(before - 60_000);
+			expect(cutoff.getTime()).toBeLessThanOrEqual(Date.now() - 60_000);
+		});
+
+		it('keeps a thread when any of its checkpoints is a parked parent run', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForThreads.mockResolvedValue([
+				row('thread-a', suspendedFor('thread-a', { delegated: true })),
+				row('thread-a', suspendedFor('thread-a')),
+			]);
+
+			await expect(service.findSuspendedThreadIds('agent-1', ['thread-a'])).resolves.toEqual(
+				new Set(['thread-a']),
+			);
+		});
+
+		it('ignores delegated, finished, foreign and malformed checkpoints', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForThreads.mockResolvedValue([
+				row('thread-a', suspendedFor('thread-a', { delegated: true })),
+				row('thread-b', { ...suspendedFor('thread-b'), status: 'cancelled' }),
+				row('thread-c', suspendedFor('thread-other')),
+				row('thread-d', '{'),
+				row('thread-e', 'null'),
+				row('thread-f', ''),
+				row('thread-g', null),
+				row(null, suspendedFor('thread-h')),
+			]);
+
+			const result = await service.findSuspendedThreadIds('agent-1', [
+				'thread-a',
+				'thread-b',
+				'thread-c',
+				'thread-d',
+				'thread-e',
+				'thread-f',
+				'thread-g',
+				'thread-h',
+			]);
+
+			expect(result.size).toBe(0);
+		});
+
+		it('returns an empty set when no thread has an active checkpoint', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForThreads.mockResolvedValue([]);
+
+			await expect(service.findSuspendedThreadIds('agent-1', [])).resolves.toEqual(new Set());
+		});
+	});
 });

@@ -4,7 +4,9 @@ import { Container } from '@n8n/di';
 import { N8nMemory } from '../../agents/integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
 import { SystemAgentExecutionService } from '../../agents/system-agents/system-agent-execution.service';
+import type { ThreadRunSummary } from '../../agents/repositories/agent-execution.repository';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import { ThreadFactsService } from '../thread-overview/thread-facts.service';
 
 /** Page source for the message double. Tests set `{ messages }`; the service
  *  reads the whole thread through `getMessages` and pages it itself. */
@@ -35,6 +37,21 @@ const mockThreads = {
 };
 const mockSystemAgentExecution = { createThread: vi.fn() };
 const mockUserRepository = { findByIdWithRole: vi.fn() };
+/** The two batch reads behind the thread states. The facts service itself is real. */
+const mockExecutions = {
+	findRunSummariesByThreadIds: vi.fn<(ids: string[]) => Promise<Map<string, ThreadRunSummary>>>(),
+};
+const mockCheckpointStorage = {
+	findSuspendedThreadIds: vi.fn<(agentId: string, ids: string[]) => Promise<Set<string>>>(),
+};
+const mockLogger = {
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
+	scoped: vi.fn(),
+};
+mockLogger.scoped.mockReturnValue(mockLogger);
 
 Container.set(N8nMemory, { getImplementation: () => mockAgentMemory } as never);
 Container.set(AgentExecutionThreadRepository, mockThreads as never);
@@ -43,8 +60,12 @@ Container.set(UserRepository, mockUserRepository as never);
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = { instanceAi: { threadTtlDays: options.threadTtlDays ?? 0 } };
-	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-	return new InstanceAiMemoryService(mockLogger as never, mockConfig as never);
+	const threadFacts = new ThreadFactsService(
+		mockLogger as never,
+		mockExecutions as never,
+		mockCheckpointStorage as never,
+	);
+	return new InstanceAiMemoryService(mockLogger as never, mockConfig as never, threadFacts);
 }
 
 /** An Assistant session row as `AgentExecutionThreadRepository` returns it. */
@@ -115,6 +136,156 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 			createService().listThreadHistory('user-1', { limit: 30, cursor: 'invalid' }),
 		).rejects.toThrow('Invalid thread history cursor');
 		expect(mockThreads.findOwnedHistoryPage).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiMemoryService.listThreads', () => {
+	const STOPPED = new Date('2026-10-01T09:05:00.000Z');
+	const STARTED = new Date('2026-10-01T09:00:00.000Z');
+	const run = (status: ThreadRunSummary['latest']['status']): ThreadRunSummary => ({
+		latest: {
+			status,
+			createdAt: STARTED,
+			startedAt: STARTED,
+			stoppedAt: status === 'running' ? null : STOPPED,
+		},
+		running: status === 'running',
+	});
+
+	/** Newest first, as `findOwnedByAgent` returns the sessions. */
+	const storedSessions = (count: number) =>
+		Array.from({ length: count }, (_, i) =>
+			makeSession(`thread-${i}`, new Date(Date.UTC(2026, 9, 5) - i * 60_000).toISOString()),
+		);
+	const indexOf = (threadId: string) => Number(threadId.split('-')[1]);
+
+	/** Cycles through the four server states, so each row of a long list has a known state. */
+	const expected = (index: number, updatedAt: Date) =>
+		[
+			{ state: 'needs-you', needsInput: true, lastActivityAt: STOPPED.toISOString() },
+			{ state: 'working', needsInput: false, lastActivityAt: STARTED.toISOString() },
+			{ state: 'failed', needsInput: false, lastActivityAt: STOPPED.toISOString() },
+			{ state: 'idle', needsInput: false, lastActivityAt: updatedAt.toISOString() },
+		][index % 4];
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGetThread.mockResolvedValue(null);
+		mockCheckpointStorage.findSuspendedThreadIds.mockImplementation(
+			async (_agentId, ids) => new Set(ids.filter((id) => indexOf(id) % 4 === 0)),
+		);
+		mockExecutions.findRunSummariesByThreadIds.mockImplementation(async (ids) => {
+			const runs = new Map<string, ThreadRunSummary>();
+			for (const id of ids) {
+				const index = indexOf(id) % 4;
+				if (index === 0) runs.set(id, run('success'));
+				if (index === 1) runs.set(id, run('running'));
+				if (index === 2) runs.set(id, run('error'));
+			}
+			return runs;
+		});
+	});
+
+	it('adds the state fields to the first 50 threads only and keeps the stored order', async () => {
+		const sessions = storedSessions(60);
+		mockThreads.findOwnedByAgent.mockResolvedValueOnce(sessions);
+
+		const result = await createService().listThreads('user-1');
+
+		expect(result.threads.map((thread) => thread.id)).toEqual(sessions.map(({ id }) => id));
+		expect(result).toMatchObject({ total: 60, page: 0, hasMore: false });
+		result.threads.slice(0, 50).forEach((thread, index) => {
+			expect(thread).toMatchObject(expected(index, sessions[index].updatedAt));
+		});
+		for (const thread of result.threads.slice(50)) {
+			expect(thread).not.toHaveProperty('state');
+			expect(thread).not.toHaveProperty('needsInput');
+			expect(thread).not.toHaveProperty('lastActivityAt');
+		}
+	});
+
+	it('reads the states of a page with exactly one checkpoint read and one execution read', async () => {
+		const sessions = storedSessions(60);
+		mockThreads.findOwnedByAgent.mockResolvedValueOnce(sessions);
+
+		await createService().listThreads('user-1');
+
+		const firstIds = sessions.slice(0, 50).map(({ id }) => id);
+		expect(mockCheckpointStorage.findSuspendedThreadIds).toHaveBeenCalledTimes(1);
+		expect(mockCheckpointStorage.findSuspendedThreadIds).toHaveBeenCalledWith(
+			'n8n-assistant',
+			firstIds,
+		);
+		expect(mockExecutions.findRunSummariesByThreadIds).toHaveBeenCalledTimes(1);
+		expect(mockExecutions.findRunSummariesByThreadIds).toHaveBeenCalledWith(firstIds);
+	});
+
+	it('keeps the existing thread fields next to the new ones', async () => {
+		const [session] = storedSessions(1);
+		mockThreads.findOwnedByAgent.mockResolvedValueOnce([session]);
+		mockGetThread.mockResolvedValueOnce({ id: session.id, title: 'Invoices', metadata: { a: 1 } });
+
+		const result = await createService().listThreads('user-1');
+
+		expect(result.threads).toEqual([
+			{
+				id: session.id,
+				title: 'Invoices',
+				resourceId: 'user-1',
+				projectId: 'project-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: session.updatedAt.toISOString(),
+				metadata: { a: 1 },
+				state: 'needs-you',
+				needsInput: true,
+				lastActivityAt: STOPPED.toISOString(),
+			},
+		]);
+	});
+
+	it('reads the states of the requested page, not of the first page', async () => {
+		const sessions = storedSessions(5);
+		mockThreads.findOwnedByAgent.mockResolvedValueOnce(sessions);
+
+		const result = await createService().listThreads('user-1', 1, 2);
+
+		expect(result.threads.map((thread) => [thread.id, thread.state])).toEqual([
+			['thread-2', 'failed'],
+			['thread-3', 'idle'],
+		]);
+		expect(result).toMatchObject({ total: 5, page: 1, hasMore: true });
+		expect(mockExecutions.findRunSummariesByThreadIds).toHaveBeenCalledWith([
+			'thread-2',
+			'thread-3',
+		]);
+	});
+
+	it('returns the list without the state fields when a state read fails', async () => {
+		mockThreads.findOwnedByAgent.mockResolvedValueOnce(storedSessions(3));
+		mockExecutions.findRunSummariesByThreadIds.mockRejectedValueOnce(
+			new Error('database is locked'),
+		);
+
+		const result = await createService().listThreads('user-1');
+
+		expect(result.threads.map((thread) => thread.id)).toEqual(['thread-0', 'thread-1', 'thread-2']);
+		for (const thread of result.threads) expect(thread).not.toHaveProperty('state');
+		expect(mockLogger.warn).toHaveBeenCalledWith('Failed to read the states of Assistant threads', {
+			error: 'database is locked',
+		});
+	});
+
+	it('returns an empty list and reads no states for a user without threads', async () => {
+		mockThreads.findOwnedByAgent.mockResolvedValueOnce([]);
+
+		await expect(createService().listThreads('user-1')).resolves.toEqual({
+			threads: [],
+			total: 0,
+			page: 0,
+			hasMore: false,
+		});
+		expect(mockExecutions.findRunSummariesByThreadIds).not.toHaveBeenCalled();
+		expect(mockCheckpointStorage.findSuspendedThreadIds).not.toHaveBeenCalled();
 	});
 });
 

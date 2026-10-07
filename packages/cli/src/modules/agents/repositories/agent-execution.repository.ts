@@ -14,6 +14,13 @@ export type RunningAgentExecution = Pick<
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
 >;
 
+/** The newest execution of a thread, and whether the thread has a running execution. */
+export type ThreadRunSummary = {
+	latest: Pick<AgentExecution, 'status' | 'startedAt' | 'stoppedAt' | 'createdAt'>;
+	/** Same rule as `existsRunningByThread`: any running execution counts, not only the newest. */
+	running: boolean;
+};
+
 type AgentExecutionFinalizationValues = Pick<
 	AgentExecution,
 	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error' | 'failureSummary'
@@ -274,6 +281,40 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.getRawMany<{ threadId: string; status: AgentExecutionStatus }>();
 
 		return new Map(rows.map((row) => [row.threadId, row.status]));
+	}
+
+	/**
+	 * One query for a thread list: the newest execution of each thread, plus each
+	 * execution that still runs. Rows come newest first, so a thread's first row is its newest.
+	 */
+	async findRunSummariesByThreadIds(threadIds: string[]): Promise<Map<string, ThreadRunSummary>> {
+		if (threadIds.length === 0) return new Map();
+
+		const tableName = this.metadata.tablePath;
+		const rows = await this.createQueryBuilder('e')
+			.select(['e.id', 'e.threadId', 'e.status', 'e.startedAt', 'e.stoppedAt', 'e.createdAt'])
+			.where('e."threadId" IN (:...threadIds)', { threadIds })
+			.andWhere(
+				`(e."status" = :runningStatus OR e.id = (SELECT e2.id FROM ${tableName} e2 ` +
+					'WHERE e2."threadId" = e."threadId" ' +
+					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1))',
+				{ runningStatus: 'running' },
+			)
+			.orderBy('e.createdAt', 'DESC')
+			.addOrderBy('e.id', 'DESC')
+			.getMany();
+
+		const summaries = new Map<string, ThreadRunSummary>();
+		for (const { threadId, status, startedAt, stoppedAt, createdAt } of rows) {
+			const running = status === 'running';
+			const summary = summaries.get(threadId);
+			if (summary) {
+				summary.running ||= running;
+				continue;
+			}
+			summaries.set(threadId, { latest: { status, startedAt, stoppedAt, createdAt }, running });
+		}
+		return summaries;
 	}
 
 	async findFailureSummariesByThreadIds(

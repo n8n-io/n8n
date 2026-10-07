@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, MoreThan } from '@n8n/typeorm';
+import { DataSource, In, MoreThan } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 
@@ -31,6 +31,25 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 		return await this.managerFor(ctx).find(AgentCheckpoint, {
 			where: { agentId, threadId, expired: false, updatedAt: MoreThan(updatedAfter) },
 			order: { updatedAt: 'DESC' },
+		});
+	}
+
+	/** Batch form of `findActiveForThread`: one query for all the given threads. */
+	async findActiveForThreads(
+		agentId: string,
+		threadIds: string[],
+		updatedAfter: Date,
+		ctx: OperationContext = {},
+	): Promise<Pick<AgentCheckpoint, 'runId' | 'threadId' | 'state'>[]> {
+		if (threadIds.length === 0) return [];
+		return await this.managerFor(ctx).find(AgentCheckpoint, {
+			select: ['runId', 'threadId', 'state'],
+			where: {
+				agentId,
+				threadId: In(threadIds),
+				expired: false,
+				updatedAt: MoreThan(updatedAfter),
+			},
 		});
 	}
 

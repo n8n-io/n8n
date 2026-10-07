@@ -544,6 +544,7 @@ export {
 	instanceAiBuildModeSchema,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
+	INSTANCE_AI_THREAD_SERVER_STATES,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -635,6 +636,8 @@ export type {
 	InstanceContextInjection,
 	InstanceAiMessage,
 	InstanceAiThreadSummary,
+	InstanceAiThreadOverview,
+	InstanceAiThreadServerState,
 	InstanceAiSSEConnectionState,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
