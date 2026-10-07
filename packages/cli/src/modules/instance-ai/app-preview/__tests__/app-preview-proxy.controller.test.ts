@@ -184,6 +184,7 @@ describe('AppPreviewProxyController', () => {
 		expect(response.headers.get('x-frame-options')).toBeNull();
 		expect(response.headers.get('set-cookie')).toBeNull();
 		expect(response.headers.get('referrer-policy')).toBeNull();
+		expect(response.headers.get('access-control-allow-origin')).toBe('null');
 	});
 
 	it('sets Referrer-Policy on HTML and re-checks project access for the document', async () => {
@@ -191,6 +192,7 @@ describe('AppPreviewProxyController', () => {
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+		expect(response.headers.get('access-control-allow-origin')).toBeNull();
 		expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
 		expect(userHasScopes).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
@@ -355,6 +357,7 @@ describe('AppPreviewProxyController', () => {
 			expect(response.headers.get('content-security-policy')).toMatch(/^sandbox /);
 			expect(response.headers.get('cache-control')).toBe('no-cache');
 			expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+			expect(response.headers.get('access-control-allow-origin')).toBeNull();
 			expect(response.headers.get('set-cookie')).toBeNull();
 			expect(readFile).toHaveBeenCalledWith('apps/greeter/.n8n-preview-dist/index.html');
 			expect(upstreamRequests).toHaveLength(0);
@@ -372,6 +375,7 @@ describe('AppPreviewProxyController', () => {
 			expect(response.headers.get('cache-control')).toBe('public, max-age=0, must-revalidate');
 			expect(response.headers.get('content-security-policy')).toMatch(/^sandbox /);
 			expect(response.headers.get('referrer-policy')).toBeNull();
+			expect(response.headers.get('access-control-allow-origin')).toBe('null');
 		});
 
 		it('falls back to index.html for an app route', async () => {

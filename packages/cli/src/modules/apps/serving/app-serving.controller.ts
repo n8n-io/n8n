@@ -99,6 +99,10 @@ export class AppServingController {
 			return;
 		}
 
+		// The opaque-origin document fetches module scripts and `crossorigin` styles with
+		// CORS and `Origin: null`. Sent unconditionally so a CDN copy fits every visitor.
+		res.setHeader('Access-Control-Allow-Origin', 'null');
+
 		// `dotfiles: 'allow'` because the cache lives under `.n8n`, which `send`
 		// would otherwise treat as a hidden path and refuse.
 		res.sendFile(filePath, { cacheControl: false, dotfiles: 'allow' }, (error) => {

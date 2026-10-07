@@ -52,6 +52,22 @@ describe('AppServingController', () => {
 		expect(appServingService.resolve).toHaveBeenCalledWith('acme', [], undefined);
 		expect(authService.authenticateUserByCookie).not.toHaveBeenCalled();
 		expect(res.send).toHaveBeenCalledWith(expect.stringContaining('apps-inspector.js'));
+		expect(res.setHeader).not.toHaveBeenCalledWith(
+			'Access-Control-Allow-Origin',
+			expect.anything(),
+		);
+	});
+
+	it('lets the sandboxed document load an asset as a module', async () => {
+		appServingService.resolve.mockResolvedValue({
+			...resolved('v1'),
+			filePath: '/cache/apps/v1/assets/index-abc.js',
+		});
+
+		await controller.serve(request(), res);
+
+		expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'null');
+		expect(res.sendFile).toHaveBeenCalled();
 	});
 
 	it('answers 404 for an unpublished build without a session', async () => {

@@ -112,6 +112,10 @@ export class AppPreviewProxyController {
 				if (proxyRes.headers['content-type']?.includes('text/html')) {
 					// The URL is the credential; keep it out of third-party referrers.
 					proxyRes.headers['referrer-policy'] = 'no-referrer';
+				} else {
+					// The opaque-origin document fetches its modules with CORS. Vite only
+					// allows localhost origins, and no cookies are sent, so the URL stays the credential.
+					proxyRes.headers['access-control-allow-origin'] = 'null';
 				}
 				const restarted =
 					proxyRes.statusCode === 409 && proxyRes.headers[SANDBOX_RESTARTED_HEADER] !== undefined;
@@ -218,6 +222,7 @@ export class AppPreviewProxyController {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 		res.setHeader('Cache-Control', isHtml ? 'no-cache' : 'public, max-age=0, must-revalidate');
 		if (isHtml) res.setHeader('Referrer-Policy', 'no-referrer');
+		else res.setHeader('Access-Control-Allow-Origin', 'null');
 		res.type(path.posix.extname(file.path) || 'bin').send(file.content);
 	}
 
