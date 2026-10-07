@@ -6,6 +6,7 @@ import type { LLMResult } from '@langchain/core/outputs';
 import type { ChainValues } from '@langchain/core/utils/types';
 import { isRecord } from '@n8n/utils/is-record';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { randomBytes } from 'node:crypto';
 
 import type { MlflowSpan, MlflowSpanType, CollectedTrace, TokenUsage } from './types';
@@ -110,10 +111,10 @@ function capStrings(value: unknown, seen: Set<object>): unknown {
  * by a note rather than a broken fragment.
  */
 function toAttributeJson(value: unknown): string {
-	const full = stringifySafely(value);
+	const full = scrubSecretsInText(stringifySafely(value));
 	if (full.length <= MAX_ATTRIBUTE_CHARS) return full;
 
-	const capped = stringifySafely(capStrings(value, new Set()));
+	const capped = scrubSecretsInText(stringifySafely(capStrings(value, new Set())));
 	if (capped.length <= MAX_ATTRIBUTE_CHARS) return capped;
 
 	return JSON.stringify({ truncated: true, original_size_chars: full.length });
@@ -387,8 +388,11 @@ export class MlflowSpanCollector extends BaseCallbackHandler {
 	 * manager passes `parentRunId` fourth, where the `.d.ts` names `runType`. Both
 	 * are `string | undefined`, so the compiler cannot catch it.
 	 *
-	 * Only the parentless run becomes a span - that is the agent. Every inner
-	 * chain is LangChain plumbing, so it is recorded as a parent link and dropped.
+	 * Only the first chain this collector observes becomes a span - the agent.
+	 * Every chain after it is LangChain plumbing, recorded as a parent link and
+	 * dropped. This can't key on "parentless chain" instead: a sub-workflow's
+	 * agent run is nested under its caller's runId, so its own root chain already
+	 * has a parentRunId.
 	 */
 	handleChainStart(
 		_chain: Serialized,
@@ -403,7 +407,7 @@ export class MlflowSpanCollector extends BaseCallbackHandler {
 		this.parentOf.set(runId, parentRunId);
 		this.captureRunMetadata(metadata);
 
-		if (parentRunId !== undefined || this.rootRunId !== undefined) return;
+		if (this.rootRunId !== undefined) return;
 
 		this.rootRunId = runId;
 		this.startSpan({

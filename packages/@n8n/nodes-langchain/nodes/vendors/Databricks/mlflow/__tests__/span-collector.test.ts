@@ -123,6 +123,20 @@ describe('MlflowSpanCollector', () => {
 
 			expect(collector.finish()!.spans).toHaveLength(1);
 		});
+
+		it('still roots the trace when the first chain carries a foreign parentRunId', () => {
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, { input: 'hi' }, 'root', 'outerToolRun');
+			collector.handleChatModelStart(CHAT_MODEL, [[new HumanMessage('hi')]], 'model', 'root');
+			collector.handleLLMEnd(llmResult(), 'model');
+			collector.handleChainEnd({ output: 'done' }, 'root');
+
+			const trace = collector.finish();
+
+			expect(trace).toBeDefined();
+			expect(trace!.spans.map((span) => typeOf(span))).toEqual(['AGENT', 'CHAT_MODEL']);
+			expect(trace!.spans[0].parent_span_id).toBeUndefined();
+		});
 	});
 
 	describe('MLflow shape', () => {
