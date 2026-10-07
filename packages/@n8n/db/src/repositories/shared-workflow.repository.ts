@@ -349,15 +349,15 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			em?: EntityManager;
-		} = {},
+		} & ({ em?: EntityManager; ctx?: never } | { ctx?: OperationContext; em?: never }) = {},
 	) {
 		const {
 			where = {},
 			includeTags = false,
 			includeParentFolder = false,
 			includeActiveVersion = false,
-			em = this.manager,
+			ctx = {},
+			em = this.managerFor(ctx),
 		} = options;
 
 		const sharedWorkflow = await em.findOne(SharedWorkflow, {
