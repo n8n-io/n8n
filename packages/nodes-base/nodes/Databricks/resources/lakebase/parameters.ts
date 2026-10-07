@@ -2,6 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 const showForLakebase = { resource: ['lakebase'] };
 const showForGetAll = { resource: ['lakebase'], operation: ['getAll'] };
+const showForFilter = { resource: ['lakebase'], operation: ['getAll', 'deleteRows'] };
 
 export const lakebaseParameters: INodeProperties[] = [
 	{
@@ -200,9 +201,9 @@ export const lakebaseParameters: INodeProperties[] = [
 		},
 		placeholder: 'Add Condition',
 		default: {},
-		description: 'If not set, the node returns all rows',
+		description: 'Which rows to act on',
 		displayOptions: {
-			show: showForGetAll,
+			show: showForFilter,
 		},
 		options: [
 			{
@@ -280,7 +281,7 @@ export const lakebaseParameters: INodeProperties[] = [
 		],
 		default: 'AND',
 		displayOptions: {
-			show: showForGetAll,
+			show: showForFilter,
 		},
 	},
 	{

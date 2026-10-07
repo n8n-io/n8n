@@ -12,6 +12,12 @@ export const lakebaseOperations: INodeProperties = {
 	},
 	options: [
 		{
+			name: 'Delete',
+			value: 'deleteRows',
+			description: 'Delete the rows that match the conditions',
+			action: 'Delete rows',
+		},
+		{
 			name: 'Get Many',
 			value: 'getAll',
 			description: 'Get many rows from a table',

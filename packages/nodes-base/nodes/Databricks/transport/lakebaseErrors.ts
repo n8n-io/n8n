@@ -36,6 +36,10 @@ export const LAKEBASE_ERROR_HINTS = new Map<string, string>([
 		'42501',
 		'The Postgres role is not granted to the Data API. Run `GRANT "your-role" TO authenticator` as the role\'s creator. A project owner cannot use the Data API at all, so use a non-owner identity.',
 	],
+	[
+		'23503',
+		'Another table still has rows that point at this row. Delete those first, or set the foreign key to cascade.',
+	],
 	['23505', 'A row with the same key already exists.'],
 	['23502', 'A column that cannot be null has no value.'],
 ]);
