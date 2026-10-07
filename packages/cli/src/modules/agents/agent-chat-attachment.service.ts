@@ -110,6 +110,14 @@ export class AgentChatAttachmentService {
 		}
 	}
 
+	/** An attachment of a system agent. The caller checks access to its thread. */
+	async getForSystemAgent(
+		attachmentId: string,
+		agentId: string,
+	): Promise<AgentChatAttachment | null> {
+		return await this.repository.findByIdForSystemAgent(attachmentId, agentId);
+	}
+
 	/** Return metadata only when the caller can read the session. */
 	async getForAgent(
 		attachmentId: string,

@@ -24,6 +24,7 @@ import {
 	AgentMessageRepository,
 } from './repositories/agent-message.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import {
 	acceptsSteering,
 	isInteractiveChatKind,
@@ -77,6 +78,7 @@ export class AgentMessageQueueService {
 		private readonly messages: AgentMessageRepository,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -91,15 +93,22 @@ export class AgentMessageQueueService {
 		},
 		onInserted?: (queueId: string) => void,
 	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
-		await this.settingsService.assertEnabled();
-		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
-		if (!agent) throw new UserError('Agent not found');
 		const { payload } = input;
+		// Only the system kind reaches a system agent. Project lookups never return instance agents.
+		const systemAgent =
+			payload.kind === 'system' ? this.systemAgents.get(input.agentId) : undefined;
+		// System agents run even when the admin turns off custom agents.
+		if (!systemAgent) await this.settingsService.assertEnabled();
+		const agent =
+			payload.kind === 'system'
+				? systemAgent
+				: await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
+		if (!agent) throw new UserError('Agent not found');
 		const messageId = queuedMessageId(input.agentId, input.threadId, payload);
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
-				await this.settingsService.assertEnabled(ctx);
+				if (!systemAgent) await this.settingsService.assertEnabled(ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
@@ -184,6 +193,11 @@ export class AgentMessageQueueService {
 			ctx,
 		);
 		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);
+	}
+
+	/** Whether a message waits in the thread queue, hidden machine turns included. */
+	async hasQueuedMessages(threadId: string): Promise<boolean> {
+		return await this.repository.hasItems(threadId);
 	}
 
 	async listPending(input: PendingMessageScope): Promise<AgentChatQueueResponse> {
@@ -354,9 +368,11 @@ export class AgentMessageQueueService {
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
-			if (!(await this.settingsService.getEnabled(ctx))) return null;
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
+			// The admin setting for custom agents does not apply to system agents.
+			if (!this.systemAgents.has(thread.agentId) && !(await this.settingsService.getEnabled(ctx)))
+				return null;
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;
 			const active = await this.repository.findActive(threadId, ctx);

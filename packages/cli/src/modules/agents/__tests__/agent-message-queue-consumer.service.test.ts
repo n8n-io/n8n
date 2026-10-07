@@ -21,6 +21,9 @@ import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import type { SystemAgentExecutionService } from '../system-agents/system-agent-execution.service';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -36,6 +39,8 @@ describe('AgentMessageQueueConsumer', () => {
 	const integrations = mock<ChatIntegrationService>();
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
+	const systemAgentExecution = mock<SystemAgentExecutionService>();
+	let systemAgents: SystemAgentRegistry;
 	let consumer: AgentMessageQueueConsumer;
 
 	function claim(threadId: string, integration = false): ClaimedAgentMessage {
@@ -90,6 +95,7 @@ describe('AgentMessageQueueConsumer', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		vi.mocked(userHasScopes).mockResolvedValue(true);
+		systemAgents = new SystemAgentRegistry();
 		users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user', disabled: false }));
 		repository.findThreadIds.mockResolvedValue([]);
 		executions.getAbortSignal.mockImplementation(() => new AbortController().signal);
@@ -117,6 +123,8 @@ describe('AgentMessageQueueConsumer', () => {
 			integrations,
 			orchestrator,
 			mockLogger(),
+			systemAgents,
+			systemAgentExecution,
 		);
 	});
 
@@ -439,5 +447,128 @@ describe('AgentMessageQueueConsumer', () => {
 			expect.objectContaining({ message: 'The message integration is no longer configured' }),
 			expect.any(AbortSignal),
 		);
+	});
+	describe('system agents', () => {
+		function registerSystemAgent(authorized = true) {
+			const provider = {
+				agentId: 'agent',
+				name: 'System Agent',
+				authorize: vi.fn(async () => authorized),
+				prepareTurn: vi.fn(),
+			} satisfies SystemAgentProvider;
+			systemAgents.register(provider);
+			return provider;
+		}
+
+		function systemClaim(threadId: string): ClaimedAgentMessage {
+			const item = claim(threadId);
+			return {
+				...item,
+				payload: { kind: 'system', message: 'input', resourceId: 'draft-chat:user' },
+				item: mock<AgentMessageQueue>({ ...item.item, payload: { kind: 'system' } }),
+			};
+		}
+
+		async function consumeOne(item: ClaimedAgentMessage) {
+			repository.findThreadIds.mockResolvedValue([item.thread.id]);
+			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+			consumer.start();
+			await vi.waitFor(() =>
+				expect(queue.settle).toHaveBeenCalledWith(item.thread.id, item.admission.executionId),
+			);
+		}
+
+		it('routes a system message to the system-agent runtime after the floor check', async () => {
+			const provider = registerSystemAgent();
+			const item = systemClaim('session');
+			systemAgentExecution.consume.mockImplementation(async (_claim, _user, _signal, send) => {
+				send({ type: 'done', sessionId: 'session', executionId: item.admission.executionId });
+			});
+
+			await consumeOne(item);
+
+			expect(systemAgentExecution.consume).toHaveBeenCalledWith(
+				item,
+				expect.objectContaining({ id: 'user' }),
+				expect.any(AbortSignal),
+				sender.send,
+			);
+			// The runtime floor (`project:read`) and the provider decide access,
+			// not the project `agent:execute` scope.
+			expect(userHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				['project:read'],
+				false,
+				{ projectId: 'project' },
+			);
+			expect(userHasScopes).not.toHaveBeenCalledWith(
+				expect.anything(),
+				['agent:execute'],
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(provider.authorize).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				'project',
+			);
+			expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+			expect(chatExecutions.register).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'user', threadId: 'session' }),
+				expect.any(AbortController),
+			);
+			expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+			expect(queue.recordFailure).not.toHaveBeenCalled();
+		});
+
+		it('records a failure when the provider no longer authorizes the owner', async () => {
+			registerSystemAgent(false);
+			const item = systemClaim('session');
+
+			await consumeOne(item);
+
+			expect(queue.recordFailure).toHaveBeenCalledWith(
+				item,
+				expect.objectContaining({ message: 'You can no longer execute this agent' }),
+				expect.any(AbortSignal),
+			);
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+		});
+
+		it('records a failure when the owner can no longer read the working project', async () => {
+			const provider = registerSystemAgent();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			const item = systemClaim('session');
+
+			await consumeOne(item);
+
+			expect(queue.recordFailure).toHaveBeenCalled();
+			expect(provider.authorize).not.toHaveBeenCalled();
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+		});
+
+		it('records a failure for a system message without a registered provider', async () => {
+			const item = systemClaim('session');
+
+			await consumeOne(item);
+
+			expect(queue.recordFailure).toHaveBeenCalled();
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+		});
+
+		it('keeps the agent:execute check for Preview messages of a system agent id', async () => {
+			registerSystemAgent();
+			const item = claim('session');
+
+			await consumeOne(item);
+
+			expect(userHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				['agent:execute'],
+				false,
+				{ projectId: 'project' },
+			);
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+			expect(testRuns.prepareDraftRun).toHaveBeenCalled();
+		});
 	});
 });

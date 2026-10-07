@@ -94,6 +94,7 @@ import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/age
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent-registry';
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
@@ -163,6 +164,7 @@ describe('AgentExecutionRepository', () => {
 	function recordingServices(
 		memoryBackend: ReturnType<N8nMemory['getImplementation']> = mock(),
 		connection?: DataSource,
+		systemAgents = new SystemAgentRegistry(),
 	) {
 		const txRunner = new TypeOrmTransactionRunner(
 			connection ?? repository.manager.connection,
@@ -243,6 +245,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			steering,
 			settingsService,
+			systemAgents,
 		);
 		const chatExecutionService = mock<AgentChatExecutionService>();
 		chatExecutionService.settle.mockImplementation(async (_executionId, finalize) => {
@@ -2598,6 +2601,87 @@ describe('AgentExecutionRepository', () => {
 			);
 		});
 
+		describe('system agents', () => {
+			const systemAgentId = 'test-system-agent';
+
+			async function systemServices() {
+				const registry = new SystemAgentRegistry();
+				registry.register({
+					agentId: systemAgentId,
+					name: 'Test System Agent',
+					authorize: async () => true,
+					prepareTurn: vi.fn(),
+				});
+				await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+				return recordingServices(undefined, undefined, registry);
+			}
+
+			function systemInput(
+				threadId: string,
+				message: string,
+				sessionMode: 'new' | 'existing' = 'existing',
+				kind: 'system' | 'preview' = 'system',
+			): Parameters<AgentMessageQueueService['enqueue']>[0] {
+				return {
+					agentId: systemAgentId,
+					projectId,
+					threadId,
+					sessionMode,
+					source: 'chat',
+					payload: { kind, message, userId: owner.id, resourceId: `draft-chat:${owner.id}` },
+				};
+			}
+
+			it('queues and claims system messages while custom agents are turned off', async () => {
+				const services = await systemServices();
+				await services.settingsService.setEnabled(false);
+				const threadId = uuid();
+
+				const item = await enqueue(services, systemInput(threadId, 'Hello', 'new'));
+				expect(await services.queue.hasQueuedMessages(threadId)).toBe(true);
+				expect(await threadRepo.findOneByOrFail({ id: threadId })).toMatchObject({
+					agentId: systemAgentId,
+					projectId,
+					accessScope: 'user',
+					ownerId: owner.id,
+				});
+
+				const claimed = await claim(services, threadId);
+				expect(claimed.item.id).toBe(item.id);
+				expect(claimed.payload).toMatchObject({ kind: 'system', message: 'Hello' });
+				expect(claimed.recording.previewChat).toBe(true);
+				await finish(services, claimed);
+				expect(await services.queue.hasQueuedMessages(threadId)).toBe(false);
+			});
+
+			it('refuses a system message for an agent without a registered provider', async () => {
+				const services = recordingServices();
+				await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+
+				await expect(services.queue.enqueue(systemInput(uuid(), 'Hello', 'new'))).rejects.toThrow(
+					'Agent not found',
+				);
+			});
+
+			it('refuses a Preview message for a system agent', async () => {
+				const services = await systemServices();
+
+				await expect(
+					services.queue.enqueue(systemInput(uuid(), 'Hello', 'new', 'preview')),
+				).rejects.toThrow('Agent not found');
+			});
+
+			it('refuses a system message for a project agent', async () => {
+				const services = await systemServices();
+				await expect(
+					services.queue.enqueue({
+						...systemInput(uuid(), 'Hello', 'new'),
+						agentId,
+					}),
+				).rejects.toThrow('Agent not found');
+			});
+		});
+
 		it('consumes a hidden turn without listing it and passes turn options through unchanged', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
@@ -2681,11 +2765,28 @@ describe('AgentExecutionRepository', () => {
 		});
 
 		it('lets a user steer and reorder system agent input like Preview input', async () => {
-			const services = recordingServices();
+			// The system kind needs a registered provider and its instance agent row.
+			const systemAgentId = 'test-system-agent';
+			const registry = new SystemAgentRegistry();
+			registry.register({
+				agentId: systemAgentId,
+				name: 'Test System Agent',
+				authorize: async () => true,
+				prepareTurn: vi.fn(),
+			});
+			await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+			const services = recordingServices(undefined, undefined, registry);
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'system' as const };
+			const target = {
+				projectId,
+				agentId: systemAgentId,
+				threadId,
+				userId: owner.id,
+				kind: 'system' as const,
+			};
 			const systemInput = (message: string, sessionMode: 'new' | 'existing' = 'existing') => ({
 				...input(threadId, message, sessionMode),
+				agentId: systemAgentId,
 				payload: {
 					kind: 'system' as const,
 					message,
