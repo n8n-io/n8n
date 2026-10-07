@@ -14,7 +14,7 @@ import { AgentExecutionRepository } from './repositories/agent-execution.reposit
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentMessageRepository } from './repositories/agent-message.repository';
-import { checkpointExecutionId } from './types/agent-queued-message';
+import { checkpointExecutionId, isInteractiveChatKind } from './types/agent-queued-message';
 import type { SteeringConsumption } from './types/agent-steering';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
@@ -176,8 +176,8 @@ export class AgentMessageSteeringService {
 		const messages: AgentDbMessage[] = [];
 		const events: SteeringConsumption['events'] = [];
 		for (const item of items) {
-			if (item.payload.kind !== 'preview')
-				throw new UnexpectedError('Only Preview input can be steered');
+			if (!isInteractiveChatKind(item.payload.kind))
+				throw new UnexpectedError('Only Preview and system agent input can be steered');
 			const message: AgentDbMessage = {
 				...(item.message.modelContent ?? item.message.content),
 				id: item.messageId,

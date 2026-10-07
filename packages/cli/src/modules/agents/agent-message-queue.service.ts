@@ -32,6 +32,7 @@ import type {
 	QueuedIntegrationMessage,
 	QueuedUserChatMessage,
 } from './types/agent-queued-message';
+import { isInteractiveChatKind } from './types/agent-queued-message';
 import {
 	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
@@ -197,8 +198,8 @@ export class AgentMessageQueueService {
 		if (!thread) return { items: [], steerableExecutionId: null };
 		await this.assertUserChatAccess(thread, input);
 		const items = await this.repository.listPending(thread.id);
-		// Only Preview executions accept steering.
-		const steerable = kind === 'preview' ? await this.steering.findEligible(thread) : null;
+		// Only Preview and system agent executions accept steering.
+		const steerable = isInteractiveChatKind(kind) ? await this.steering.findEligible(thread) : null;
 		return {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
@@ -275,11 +276,12 @@ export class AgentMessageQueueService {
 		queueId: string;
 		targetQueueId: string;
 		expectedQueueIds: string[];
+		kind?: 'preview' | 'system';
 	}): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertUserChatAccess(thread, { ...input, kind: 'preview' }, ctx);
+			await this.assertUserChatAccess(thread, { ...input, kind: input.kind ?? 'preview' }, ctx);
 			const moved = await this.repository.movePending(
 				thread.id,
 				input.queueId,
@@ -301,13 +303,15 @@ export class AgentMessageQueueService {
 		userId: string;
 		queueId: string;
 		executionId: string;
+		kind?: 'preview' | 'system';
 	}): Promise<void> {
+		const kind = input.kind ?? 'preview';
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
-			await this.assertUserChatAccess(thread, { ...input, kind: 'preview' }, ctx);
+			await this.assertUserChatAccess(thread, { ...input, kind }, ctx);
 			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
-			if (!item || item.payload.kind !== 'preview')
+			if (!item || item.payload.kind !== kind)
 				throw new ConflictError('This message is no longer available');
 			const execution = await this.steering.findEligible(thread, ctx);
 			if (
@@ -456,7 +460,7 @@ export class AgentMessageQueueService {
 			access: { accessScope: thread.accessScope, ownerId: thread.ownerId },
 			sessionMode: 'existing',
 			queueItemId: item.id,
-			previewChat: item.payload.kind === 'preview',
+			previewChat: isInteractiveChatKind(item.payload.kind),
 			userMessage: payload.message,
 			resourceId: payload.resourceId,
 			source: item.message.origin?.source ?? undefined,

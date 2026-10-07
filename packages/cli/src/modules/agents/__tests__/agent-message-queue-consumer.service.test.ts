@@ -457,12 +457,24 @@ describe('AgentMessageQueueConsumer', () => {
 				expect.any(AbortSignal),
 				sender.send,
 			);
-			// The provider decides access instead of the project `agent:execute` scope.
+			// The runtime floor (`project:read`) and the provider decide access,
+			// not the project `agent:execute` scope.
+			expect(userHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				['project:read'],
+				false,
+				{ projectId: 'project' },
+			);
+			expect(userHasScopes).not.toHaveBeenCalledWith(
+				expect.anything(),
+				['agent:execute'],
+				expect.anything(),
+				expect.anything(),
+			);
 			expect(provider.authorize).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'user' }),
 				'project',
 			);
-			expect(userHasScopes).not.toHaveBeenCalled();
 			expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
 			expect(chatExecutions.register).toHaveBeenCalledWith(
 				expect.objectContaining({ userId: 'user', threadId: 'session' }),
@@ -489,7 +501,23 @@ describe('AgentMessageQueueConsumer', () => {
 				expect.any(AbortSignal),
 			);
 			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
-			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('records a failure when the owner can no longer read the working project', async () => {
+			const provider = registerSystemAgent();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			const item = claim('session');
+			repository.findThreadIds.mockResolvedValue(['session']);
+			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+
+			consumer.start();
+			await vi.waitFor(() =>
+				expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+			);
+
+			expect(queue.recordFailure).toHaveBeenCalled();
+			expect(provider.authorize).not.toHaveBeenCalled();
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
 		});
 	});
 });

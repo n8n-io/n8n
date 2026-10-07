@@ -130,6 +130,14 @@ export class AgentChatAttachmentService {
 			: null;
 	}
 
+	/** An attachment of a system agent. The caller checks access to its thread. */
+	async getForSystemAgent(
+		attachmentId: string,
+		agentId: string,
+	): Promise<AgentChatAttachment | null> {
+		return await this.repository.findByIdForSystemAgent(attachmentId, agentId);
+	}
+
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
 		return await this.binaryDataService.getAsStream(attachment.binaryDataId);
 	}

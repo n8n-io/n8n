@@ -15,9 +15,12 @@ interface QueuedMessageInput {
 	attachments?: StoredAttachmentRef[];
 }
 
-/** A message from an n8n user. Preview runs the draft agent. n8n Chat runs the published agent. */
+/**
+ * A message from an n8n user. Preview runs the draft agent. n8n Chat runs the
+ * published agent. System runs a code-defined system agent (the n8n Assistant).
+ */
 export interface QueuedUserChatMessage extends QueuedMessageInput {
-	kind: 'preview' | 'n8n_chat';
+	kind: 'preview' | 'n8n_chat' | 'system';
 	userId: string;
 	messageId?: string;
 	/** Turn options for a code-defined instance agent. The provider defines their shape. */
@@ -67,4 +70,11 @@ export function checkpointExecutionId(state: SerializableAgentState): string | u
 	if (state.persistence?.delegated) return undefined;
 	const id = state.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
 	return typeof id === 'string' ? id : undefined;
+}
+
+/** Chat kinds whose queued messages a user can steer, reorder, edit and remove. */
+export function isInteractiveChatKind(
+	kind: AgentQueuedMessage['kind'],
+): kind is 'preview' | 'system' {
+	return kind === 'preview' || kind === 'system';
 }

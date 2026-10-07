@@ -3,6 +3,8 @@ import type { TransactionRunner, User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import type {
 	AgentMessageQueueService,
@@ -26,6 +28,8 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentWorkspaceSource,
 } from '../system-agent.types';
+
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const AGENT_ID = 'test-assistant';
 const user = mock<User>({ id: 'user-1' });
@@ -61,10 +65,7 @@ function suspendedCheckpoint(resourceId = 'draft-chat:user-1') {
 	};
 }
 
-function setup(
-	chunks: AgentExecutionStreamChunk[] = [],
-	workspace?: SystemAgentWorkspaceSource,
-) {
+function setup(chunks: AgentExecutionStreamChunk[] = [], workspace?: SystemAgentWorkspaceSource) {
 	const registry = new SystemAgentRegistry();
 	const threadRepository = mock<AgentExecutionThreadRepository>();
 	const executionRepository = mock<AgentExecutionRepository>();
@@ -157,7 +158,7 @@ function claimFor(options: Record<string, unknown> = {}): ClaimedAgentMessage {
 		item: { id: 'queue-1' },
 		thread,
 		payload: {
-			kind: 'preview',
+			kind: 'system',
 			message: 'Build me a workflow',
 			resourceId: 'draft-chat:user-1',
 			options,
@@ -170,8 +171,12 @@ function claimFor(options: Record<string, unknown> = {}): ClaimedAgentMessage {
 const textChunk = { type: 'text-delta', id: 't-1', delta: 'Hello' } as AgentExecutionStreamChunk;
 
 describe('SystemAgentExecutionService', () => {
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockReset().mockResolvedValue(true);
+	});
+
 	describe('sendMessage', () => {
-		it('enqueues a preview message with the provider turn options', async () => {
+		it('enqueues a system message with the provider turn options', async () => {
 			const { service, messageQueue, provider } = setup();
 
 			await service.sendMessage({
@@ -191,7 +196,7 @@ describe('SystemAgentExecutionService', () => {
 				sessionMode: 'existing',
 				source: 'chat',
 				payload: {
-					kind: 'preview',
+					kind: 'system',
 					userId: 'user-1',
 					message: 'hello',
 					resourceId: 'draft-chat:user-1',
@@ -559,6 +564,84 @@ describe('SystemAgentExecutionService', () => {
 				'Stop the current turn',
 			);
 			expect(source.destroy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('access floor', () => {
+		it('refuses a user who cannot read the working project, before the provider checks', async () => {
+			const { service, provider } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(service.assertCanUse(AGENT_ID, user, 'project-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['project:read'], false, {
+				projectId: 'project-1',
+			});
+			expect(provider.authorize).not.toHaveBeenCalled();
+		});
+
+		it('loads a usable thread with the floor on its working project', async () => {
+			const { service, provider } = setup();
+
+			expect(await service.getUsableThread(AGENT_ID, user, 'thread-1')).toBe(thread);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['project:read'], false, {
+				projectId: 'project-1',
+			});
+			expect(provider.authorize).toHaveBeenCalledWith(user, 'project-1');
+		});
+
+		it('refuses a thread the user does not own', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(null);
+
+			await expect(service.getUsableThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('prepareChatMessage', () => {
+		it('keeps the working project of an existing session', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(thread);
+
+			const input = await service.prepareChatMessage({
+				agentId: AGENT_ID,
+				user,
+				sessionId: 'thread-1',
+				message: 'hi',
+			});
+
+			expect(input).toMatchObject({
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				payload: { kind: 'system' },
+			});
+		});
+
+		it('refuses a new session without a working project', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(null);
+
+			await expect(
+				service.prepareChatMessage({ agentId: AGENT_ID, user, message: 'hi' }),
+			).rejects.toThrow('A new session needs a working project');
+		});
+
+		it('refuses a project that does not match the existing session', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(thread);
+
+			await expect(
+				service.prepareChatMessage({
+					agentId: AGENT_ID,
+					user,
+					projectId: 'other-project',
+					sessionId: 'thread-1',
+					message: 'hi',
+				}),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 

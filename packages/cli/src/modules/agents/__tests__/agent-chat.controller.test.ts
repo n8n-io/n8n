@@ -34,7 +34,7 @@ import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import { AgentChatRelayService } from '../agent-chat-relay.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -101,9 +101,8 @@ function makeController() {
 		backgroundJobService,
 		chatExecutionService,
 		messageQueue,
-		previewStreams,
 		agentsConfig,
-		new SystemAgentRegistry(),
+		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
 	);
 
 	return {

@@ -10,8 +10,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import type { AgentExecutionThread } from '../agents/entities/agent-execution-thread.entity';
 import type {
 	SystemAgentProvider,
@@ -52,10 +50,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly attachments: AgentChatAttachmentService,
 	) {}
 
-	async authorize(user: User, projectId: string): Promise<boolean> {
-		if (!hasGlobalScope(user, 'instanceAi:message')) return false;
-		// The working project must be one the user can read.
-		return await userHasScopes(user, ['project:read'], false, { projectId });
+	/** The runtime already requires `project:read` on the working project. */
+	async authorize(user: User, _projectId: string): Promise<boolean> {
+		return hasGlobalScope(user, 'instanceAi:message');
 	}
 
 	async prepareTurn(turn: SystemAgentTurn<AssistantSandboxLease>): Promise<SystemAgentTurnHandle> {

@@ -5,9 +5,6 @@ import { mock } from 'vitest-mock-extended';
 // The provider only delegates turn building to the service; keep its heavy
 // runtime out of this test.
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: class {} }));
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
 import type { N8nMemory } from '../../agents/integrations/n8n-memory';
@@ -31,10 +28,6 @@ function userWithScopes(scopes: Scope[]): User {
 }
 
 describe('AssistantAgentProvider', () => {
-	beforeEach(() => {
-		vi.mocked(userHasScopes).mockReset();
-	});
-
 	describe('normalizeResumeData', () => {
 		it('converts a questions confirmation into the tool resume data', () => {
 			const { provider } = createProvider();
@@ -71,22 +64,15 @@ describe('AssistantAgentProvider', () => {
 			const { provider } = createProvider();
 
 			expect(await provider.authorize(userWithScopes([]), 'project-1')).toBe(false);
-			expect(userHasScopes).not.toHaveBeenCalled();
 		});
 
-		it.each([true, false])(
-			'requires read access to the working project (access %s)',
-			async (canRead) => {
-				const { provider } = createProvider();
-				vi.mocked(userHasScopes).mockResolvedValue(canRead);
-				const user = userWithScopes(['instanceAi:message']);
+		it('allows a user with the instanceAi:message scope', async () => {
+			const { provider } = createProvider();
 
-				expect(await provider.authorize(user, 'project-1')).toBe(canRead);
-				expect(userHasScopes).toHaveBeenCalledWith(user, ['project:read'], false, {
-					projectId: 'project-1',
-				});
-			},
-		);
+			expect(await provider.authorize(userWithScopes(['instanceAi:message']), 'project-1')).toBe(
+				true,
+			);
+		});
 	});
 
 	describe('prepareTurn', () => {

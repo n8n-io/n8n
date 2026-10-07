@@ -5,7 +5,7 @@ import { isDraftIntegration } from '@n8n/api-types';
 
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import { Agent } from '../entities/agent.entity';
-import type { AgentQueueDispatch } from '../types/agent-queued-message';
+import { isInteractiveChatKind, type AgentQueueDispatch } from '../types/agent-queued-message';
 
 @Service()
 export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueue> {
@@ -73,7 +73,12 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		if (!item || to < 0 || from === to) return false;
 		const start = Math.min(from, to);
 		const end = Math.max(from, to);
-		if (items.slice(start, end + 1).some((entry) => entry.payload.kind !== 'preview')) return false;
+		// Only one interactive chat kind shares a session, so compare with the moved item.
+		if (
+			!isInteractiveChatKind(item.payload.kind) ||
+			items.slice(start, end + 1).some((entry) => entry.payload.kind !== item.payload.kind)
+		)
+			return false;
 
 		const reordered = [...items];
 		reordered.splice(from, 1);

@@ -20,6 +20,7 @@ import type { AgentExecutionThread } from './entities/agent-execution-thread.ent
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import { canUseSystemAgent } from './system-agents/system-agent-access';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 
 @Service()
@@ -193,7 +194,7 @@ export class AgentMessageQueueConsumer {
 			!user ||
 			user.disabled ||
 			!(systemAgent
-				? await systemAgent.authorize(user, thread.projectId)
+				? await canUseSystemAgent(systemAgent, user, thread.projectId)
 				: await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId }))
 		) {
 			throw new UserError('You can no longer execute this agent');

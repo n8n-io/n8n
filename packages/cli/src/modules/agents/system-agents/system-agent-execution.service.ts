@@ -23,6 +23,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import { draftChatMemoryResourceId } from '../utils/agent-memory-scope';
+import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentProvider,
@@ -78,12 +79,28 @@ export class SystemAgentExecutionService {
 		return provider;
 	}
 
+	/** Throws NotFoundError when no provider is registered for the id. */
+	assertRegistered(agentId: string): void {
+		this.getProvider(agentId);
+	}
+
 	async assertCanUse(agentId: string, user: User, projectId: string): Promise<SystemAgentProvider> {
 		const provider = this.getProvider(agentId);
-		if (!(await provider.authorize(user, projectId))) {
+		if (!(await canUseSystemAgent(provider, user, projectId))) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 		return provider;
+	}
+
+	/** Load a thread the user owns and can still use: the runtime floor plus the provider checks. */
+	async getUsableThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread> {
+		const thread = await this.getThread(agentId, user, threadId);
+		await this.assertCanUse(agentId, user, thread.projectId);
+		return thread;
 	}
 
 	// ── Threads ──────────────────────────────────────────────────────────────
@@ -238,7 +255,7 @@ export class SystemAgentExecutionService {
 			sessionMode: 'existing',
 			source: SYSTEM_AGENT_SOURCE,
 			payload: {
-				kind: 'preview',
+				kind: 'system',
 				userId: params.user.id,
 				message: params.message,
 				resourceId: this.resourceIdFor(params.user),
@@ -281,7 +298,7 @@ export class SystemAgentExecutionService {
 		send: (event: AgentSseEvent) => void,
 	): Promise<void> {
 		const { thread, admission, payload } = claim;
-		if (payload.kind !== 'preview') return;
+		if (payload.kind !== 'system') return;
 		const provider = this.getProvider(thread.agentId);
 		signal.throwIfAborted();
 		const resourceId = payload.resourceId;
@@ -419,29 +436,37 @@ export class SystemAgentExecutionService {
 	async prepareChatMessage(params: {
 		agentId: string;
 		user: User;
-		projectId: string;
+		/** The working project of a new session. An existing session keeps its own. */
+		projectId?: string;
 		sessionId?: string;
 		message: string;
 		messageId?: string;
 		hostContext?: Record<string, unknown>;
-		storeAttachments?: (threadId: string) => Promise<StoredAttachmentRef[] | undefined>;
+		storeAttachments?: (
+			threadId: string,
+			projectId: string,
+		) => Promise<StoredAttachmentRef[] | undefined>;
 	}): Promise<Parameters<AgentMessageQueueService['enqueue']>[0]> {
-		const provider = await this.assertCanUse(params.agentId, params.user, params.projectId);
 		const existing = params.sessionId
 			? await this.threadRepository.findOwnedById(params.agentId, params.user.id, params.sessionId)
 			: null;
+		if (existing && params.projectId && existing.projectId !== params.projectId) {
+			throw new NotFoundError('Session not found');
+		}
+		const projectId = existing?.projectId ?? params.projectId;
+		if (!projectId) throw new UserError('A new session needs a working project');
+		const provider = await this.assertCanUse(params.agentId, params.user, projectId);
 		const thread =
 			existing ??
 			(await this.createThread({
 				agentId: params.agentId,
 				user: params.user,
-				projectId: params.projectId,
+				projectId,
 				...(params.sessionId ? { threadId: params.sessionId } : {}),
 			}));
-		if (thread.projectId !== params.projectId) throw new NotFoundError('Session not found');
 		const options =
 			(await provider.chatTurnOptions?.(params.user, thread, params.hostContext)) ?? {};
-		const attachments = await params.storeAttachments?.(thread.id);
+		const attachments = await params.storeAttachments?.(thread.id, thread.projectId);
 		return {
 			agentId: params.agentId,
 			projectId: thread.projectId,
@@ -449,7 +474,7 @@ export class SystemAgentExecutionService {
 			sessionMode: 'existing',
 			source: SYSTEM_AGENT_SOURCE,
 			payload: {
-				kind: 'preview',
+				kind: 'system',
 				userId: params.user.id,
 				message: params.message,
 				resourceId: this.resourceIdFor(params.user),
