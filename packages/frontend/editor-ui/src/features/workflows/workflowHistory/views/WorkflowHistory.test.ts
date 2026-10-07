@@ -51,8 +51,8 @@ const versionId = faker.string.nanoid();
 const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 	global: {
 		stubs: {
-			Modal: defineComponent({
-				template: '<div><slot name="content" /></div>',
+			Dialog: defineComponent({
+				template: '<div role="dialog"><slot /></div>',
 			}),
 			WorkflowHistoryDiff: defineComponent({
 				emits: ['versionsChange', 'close'],
