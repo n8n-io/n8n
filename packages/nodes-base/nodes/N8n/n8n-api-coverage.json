@@ -322,16 +322,16 @@
 		"POST /settings/log-streaming/destinations": {
 			"status": "gap"
 		},
-		"GET /settings/log-streaming/destinations/{id}": {
+		"GET /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"PUT /settings/log-streaming/destinations/{id}": {
+		"PUT /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"DELETE /settings/log-streaming/destinations/{id}": {
+		"DELETE /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"POST /settings/log-streaming/destinations/{id}/test": {
+		"POST /settings/log-streaming/destinations/{destinationId}/test": {
 			"status": "gap"
 		},
 		"GET /settings/sso/oidc": {
