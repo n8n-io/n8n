@@ -85,9 +85,8 @@ let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflow
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 const workflowSettingsStubs = {
-	Modal: {
-		template:
-			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+	Dialog: {
+		template: '<div role="dialog"><slot /></div>',
 	},
 	// Stub ElSwitch to prevent spurious update:model-value emissions in jsdom.
 	// userEvent.click simulates pointer movement that can trigger the switch
