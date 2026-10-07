@@ -13,7 +13,7 @@ const REDIS_PORT = Number(process.env.N8N_TEST_REDIS_PORT);
 const PREFIX = `job-return-${process.pid}-${Date.now()}`;
 const QUEUE_NAME = 'jobs';
 
-describe.skipIf(!REDIS_HOST || !REDIS_PORT)('throwJobBackToQueue (real Redis)', () => {
+describe.skipIf(!REDIS_HOST || !REDIS_PORT)('job return on shutdown (real Redis)', () => {
 	let control: Redis;
 	let queues: JobQueue[];
 
