@@ -10,7 +10,23 @@ describe('ExternalSecretsConfig', () => {
 	afterEach(() => {
 		delete process.env.N8N_EXTERNAL_SECRETS_CONNECT_TIMEOUT;
 		delete process.env.N8N_EXTERNAL_SECRETS_REFRESH_TIMEOUT;
+		delete process.env.N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL;
 	});
+
+	it('reads the update interval from its environment variable', () => {
+		process.env.N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL = '600';
+
+		expect(Container.get(ExternalSecretsConfig).updateInterval).toBe(600);
+	});
+
+	it.each(['0', '-1', '1.5', '2147484', 'abc'])(
+		'falls back to the default update interval when given %s',
+		(value) => {
+			process.env.N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL = value;
+
+			expect(Container.get(ExternalSecretsConfig).updateInterval).toBe(300);
+		},
+	);
 
 	it('reads the timeouts from their environment variables', () => {
 		process.env.N8N_EXTERNAL_SECRETS_CONNECT_TIMEOUT = '5';

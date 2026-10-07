@@ -48,6 +48,7 @@ describe('WaitTracker', () => {
 	const execution = mock<IExecutionResponse>({
 		id: '123',
 		finished: false,
+		storedAt: 'fs',
 		waitTill: new Date(Date.now() + 1000),
 		mode: 'manual',
 		data: mock({
@@ -217,7 +218,7 @@ describe('WaitTracker', () => {
 				},
 				false,
 				false,
-				{ executionId: execution.id, expectedStatus: 'waiting' },
+				{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 			);
 		});
 
@@ -264,7 +265,7 @@ describe('WaitTracker', () => {
 				}),
 				false,
 				false,
-				{ executionId: execution.id, expectedStatus: 'waiting' },
+				{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 			);
 		});
 
@@ -288,6 +289,7 @@ describe('WaitTracker', () => {
 				const parentExecution = mock<IExecutionResponse>({
 					id: 'parent_execution_id',
 					finished: false,
+					storedAt: 'fs',
 					status: 'waiting',
 					data: createRunExecutionData({
 						executionData: { nodeExecutionStack: parentStack() },
@@ -376,7 +378,7 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					{ executionId: execution.id, expectedStatus: 'waiting' },
+					{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 
 				// ACT 1
@@ -397,7 +399,7 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
+					{ executionId: parentExecution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 			});
 
@@ -446,7 +448,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
+					{ executionId: parentExecution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 			});
 
@@ -521,6 +523,7 @@ describe('WaitTracker', () => {
 				expect(workflowRunner.run).toHaveBeenNthCalledWith(1, expect.any(Object), false, false, {
 					executionId: execution.id,
 					expectedStatus: 'waiting',
+					storedAt: 'fs',
 				});
 
 				// ACT 2
@@ -561,6 +564,7 @@ describe('WaitTracker', () => {
 				expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
 					executionId: parentExecution.id,
 					expectedStatus: 'waiting',
+					storedAt: 'db',
 				});
 			});
 
@@ -632,7 +636,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: childExecution.id, expectedStatus: 'waiting' },
+					{ executionId: childExecution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 			});
 
@@ -659,7 +663,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: execution.id, expectedStatus: 'waiting' },
+					{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 
 				// ACT 2 - Child execution goes into waiting state
@@ -765,6 +769,7 @@ describe('WaitTracker', () => {
 					expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
 						executionId: parentExecution.id,
 						expectedStatus: 'waiting',
+						storedAt: 'fs',
 					});
 					expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 					expect(logger.error).toHaveBeenCalled();
@@ -793,6 +798,7 @@ describe('WaitTracker', () => {
 					expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
 						executionId: parentExecution.id,
 						expectedStatus: 'waiting',
+						storedAt: 'fs',
 					});
 					expect(logger.error).not.toHaveBeenCalled();
 				});
@@ -817,6 +823,7 @@ describe('WaitTracker', () => {
 					expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
 						executionId: parentExecution.id,
 						expectedStatus: 'waiting',
+						storedAt: 'fs',
 					});
 					expect(logger.error).toHaveBeenCalled();
 				});
@@ -1021,6 +1028,7 @@ describe('WaitTracker', () => {
 				expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
 					executionId: parentId,
 					expectedStatus: 'waiting',
+					storedAt: 'db',
 				});
 				expect(logger.error).not.toHaveBeenCalled();
 			},
@@ -1130,6 +1138,7 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
 				executionId: parentId,
 				expectedStatus: 'waiting',
+				storedAt: 'db',
 			});
 			expect(logger.error).not.toHaveBeenCalled();
 		});
@@ -1182,6 +1191,7 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
 				executionId: parentId,
 				expectedStatus: 'waiting',
+				storedAt: 'db',
 			});
 		});
 	});

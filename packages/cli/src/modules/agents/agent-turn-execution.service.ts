@@ -59,6 +59,8 @@ interface ExecuteTurnConfig {
 	previewChat?: boolean;
 	productionN8nChat?: boolean;
 	automaticPreviewContinuation?: boolean;
+	/** The abort signal is a wake lease, not a chat request. */
+	isWakeRun?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
@@ -486,7 +488,9 @@ export class AgentTurnExecutionService {
 				},
 				previewControl.controller,
 			);
-			previewControl.detachRequest();
+			// A closed chat request must not stop an admitted turn. A lost wake lease must,
+			// because the wake leaves its job results unconsumed and another wake retries them.
+			if (!config.isWakeRun) previewControl.detachRequest();
 		}
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();

@@ -39,6 +39,10 @@ export const logStreamingDestinationCommonFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
+export const logStreamingDestinationRequestReadOnlyFieldDocs = {
+	id: { type: 'string', readOnly: true, ...logStreamingDestinationCommonFieldDocs.id },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
 export const logStreamingCircuitBreakerFieldDocs = {
 	maxFailures: {
 		description: 'Maximum failures within the sliding window before the breaker opens.',

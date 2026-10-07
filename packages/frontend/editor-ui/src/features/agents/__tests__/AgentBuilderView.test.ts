@@ -606,11 +606,13 @@ const commonStubs = {
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
+			'tasks',
 		],
 		emits: [
 			'header-action',
 			'open-preview',
 			'close-preview',
+			'publish-ready',
 			'published',
 			'unpublished',
 			'reverted',
@@ -2805,6 +2807,73 @@ describe('AgentBuilderView — configuration validation', () => {
 		);
 		const header = wrapper.find('[data-testid="stub-agent-builder-header"]');
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
+	});
+
+	it.each(['tool', 'MCP server', 'both'])(
+		'completes the add-tool setup task when adding %s',
+		async (kind) => {
+			const wrapper = await renderView();
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const vm = wrapper.vm as unknown as {
+				onConfigFieldUpdate: (updates: Partial<AgentJsonConfig>) => void;
+			};
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+			);
+
+			vm.onConfigFieldUpdate({
+				tools: kind === 'MCP server' ? [] : [{ type: 'custom', id: 'custom_tool' }],
+				mcpServers:
+					kind === 'tool'
+						? []
+						: [
+								{
+									name: 'Example MCP',
+									url: 'https://mcp.example.com',
+									authentication: 'none',
+									transport: 'streamableHttp',
+								},
+							],
+			});
+			await nextTick();
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'complete' })]),
+			);
+
+			vm.onConfigFieldUpdate({ tools: [], mcpServers: [] });
+			await nextTick();
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+			);
+		},
+	);
+
+	it('shows the publish setup task for a tested agent only when the publish button is ready', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
+
+		header.vm.$emit('publish-ready', true);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: true })]),
+		);
+
+		header.vm.$emit('publish-ready', false);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
 	});
 
 	it('flushes a pending config edit when the builder unmounts', async () => {

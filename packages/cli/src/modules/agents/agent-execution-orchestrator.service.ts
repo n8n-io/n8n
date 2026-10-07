@@ -446,7 +446,6 @@ export class AgentExecutionOrchestratorService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<AgentExecutionStreamChunk> {
-		if (await this.resumeBackgroundForChat(config)) return;
 		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
 		if (
 			resume.source === N8N_CHAT_PRODUCTION_SOURCE &&
@@ -454,6 +453,7 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw new UserError('This agent is not available in n8n Chat');
 		}
+		if (await this.resumeBackgroundForChat(resume)) return;
 		const checkpoint = await this.loadResumeCheckpoint(resume);
 		yield* this.withRuntimeLease(
 			async () => await this.getResumeRuntime(resume, checkpoint),
@@ -470,6 +470,7 @@ export class AgentExecutionOrchestratorService {
 			throw new UserError('This background approval is no longer available');
 		}
 		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
+		const isProductionChat = resume.source === N8N_CHAT_PRODUCTION_SOURCE;
 		const approval = await this.backgroundJobService.getApproval(job);
 		if (
 			!approval ||
@@ -497,7 +498,9 @@ export class AgentExecutionOrchestratorService {
 		}
 		await this.resolveResumeAccess(resume, memoryScope);
 		this.validateResumeSandbox(resume, memoryScope);
-		if (resume.usePublishedVersion) {
+		// n8n Chat is a direct conversation, not an external platform integration,
+		// so it has no inbound message context to match against.
+		if (resume.usePublishedVersion && !isProductionChat) {
 			const expected = approval.metadata.messageContext;
 			const actual = config.messageContext;
 			const destination = expected?.replyTarget ?? expected?.target;
@@ -517,6 +520,8 @@ export class AgentExecutionOrchestratorService {
 		);
 		const { AgentsCredentialProvider } = await import('./adapters/agents-credential-provider.js');
 		const { CredentialsService } = await import('@/credentials/credentials.service.js');
+		// Published n8n Chat runs resolve credentials project-wide, with no interactive user.
+		const runnerUser = isProductionChat ? undefined : config.user;
 		await Container.get(SubAgentBackgroundRunner).resume(
 			job,
 			{ token: config.toolCallId, resumeData: config.resumeData },
@@ -526,12 +531,12 @@ export class AgentExecutionOrchestratorService {
 				credentialProvider: new AgentsCredentialProvider(
 					Container.get(CredentialsService),
 					config.projectId,
-					config.user,
+					runnerUser,
 					job.subAgentId ?? undefined,
 				),
 				runType: resume.usePublishedVersion ? 'production' : 'test',
 				workflowToolExecutionMode: resume.usePublishedVersion ? 'integrated' : 'manual',
-				user: config.user,
+				user: runnerUser,
 			},
 		);
 		return true;
@@ -548,6 +553,17 @@ export class AgentExecutionOrchestratorService {
 				user: config.identity.user,
 				sessionMode: 'existing',
 			});
+			return;
+		}
+		const productionUserId = userIdFromProductionChatMemoryResourceId(config.memory.resourceId);
+		if (productionUserId) {
+			// The n8n Chat UI reads approvals from the background-tasks list route, so delivery needs only an access check.
+			await this.assertProductionChatAccess(
+				config.agentId,
+				config.projectId,
+				config.memory.threadId,
+				productionUserId,
+			);
 			return;
 		}
 		const delivery = await this.getWakeDelivery(
@@ -725,7 +741,6 @@ export class AgentExecutionOrchestratorService {
 						integrationType: N8N_CHAT_INTEGRATION_TYPE,
 						usePublishedVersion: true,
 						sandboxPrincipalHash,
-						allowBackgroundTasks: false,
 						attributionUserId: user.id,
 					},
 					{
@@ -895,22 +910,26 @@ export class AgentExecutionOrchestratorService {
 		const productionUserId = isDraft
 			? undefined
 			: userIdFromProductionChatMemoryResourceId(memory.resourceId);
-		if (
-			productionUserId &&
-			(isDraft ||
+		if (productionUserId && !isDraft) {
+			if (
 				identity.integrationType !== N8N_CHAT_INTEGRATION_TYPE ||
 				identity.principalHash !==
-					hashAgentSandboxPrincipal({ type: 'n8n-user', userId: productionUserId }) ||
-				!(await this.agentRepository.isN8nChatPublished(agentId, config.projectId)) ||
-				!(await this.agentExecutionService.canUseProductionChatThread(
-					memory.threadId,
-					config.projectId,
+					hashAgentSandboxPrincipal({ type: 'n8n-user', userId: productionUserId })
+			) {
+				throw new OperationalError('Production n8n Chat wake identity is no longer valid');
+			}
+			try {
+				await this.assertProductionChatAccess(
 					agentId,
+					config.projectId,
+					memory.threadId,
 					productionUserId,
-					'existing',
-				)))
-		)
-			return;
+				);
+			} catch {
+				// A silent return would mark these job results consumed and lose them.
+				throw new OperationalError('Production n8n Chat wake identity is no longer valid');
+			}
+		}
 		const access: AgentThreadAccess = isDraft
 			? { accessScope: 'user', ownerId: identity.user.id }
 			: productionUserId
@@ -1028,6 +1047,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded: config.onExecutionRecorded,
 			previewChat: config.previewChat,
 			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
+			isWakeRun: config.isWakeRun,
 			onExecutionStarted: config.onExecutionStarted,
 			onSettled: config.isWakeRun
 				? undefined
@@ -1162,7 +1182,6 @@ export class AgentExecutionOrchestratorService {
 				integrationType,
 				user: usePublishedVersion ? undefined : user,
 				attributionUserId: source === N8N_CHAT_PRODUCTION_SOURCE ? user?.id : undefined,
-				allowBackgroundTasks: source === N8N_CHAT_PRODUCTION_SOURCE ? false : undefined,
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 				previewChat,
 			},
@@ -1360,6 +1379,27 @@ export class AgentExecutionOrchestratorService {
 		}
 	}
 
+	/** Production n8n Chat equivalent of `assertDraftChatAccess`: the agent must still be published, and the thread must still belong to this user. */
+	private async assertProductionChatAccess(
+		agentId: string,
+		projectId: string,
+		threadId: string,
+		userId: string,
+	): Promise<void> {
+		if (
+			!(await this.agentRepository.isN8nChatPublished(agentId, projectId)) ||
+			!(await this.agentExecutionService.canUseProductionChatThread(
+				threadId,
+				projectId,
+				agentId,
+				userId,
+				'existing',
+			))
+		) {
+			throw new UserError('Session not found');
+		}
+	}
+
 	private async getDraftChatRuntime(
 		config: DraftChatConfig,
 		access: AgentThreadAccess,
@@ -1503,7 +1543,9 @@ export class AgentExecutionOrchestratorService {
 				principalHash: sandboxPrincipalHash,
 			}),
 			...encodeIntegrationMessageContext(messageContext),
-			...(config.previewChat && !config.isWakeRun && !config.hideUserMessageFromTranscript
+			...((config.previewChat || config.source === N8N_CHAT_PRODUCTION_SOURCE) &&
+			!config.isWakeRun &&
+			!config.hideUserMessageFromTranscript
 				? { [BACKGROUND_PAUSE_USER_TURN_KEY]: true }
 				: {}),
 		};
@@ -1608,9 +1650,7 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				integrationType,
 				usePublishedVersion: !isDraft,
-				...(productionUserId
-					? { attributionUserId: productionUserId, allowBackgroundTasks: false }
-					: {}),
+				...(productionUserId ? { attributionUserId: productionUserId } : {}),
 				...(isDraft ? { user: identity.user } : {}),
 				sandboxPrincipalHash: identity.principalHash,
 			},
