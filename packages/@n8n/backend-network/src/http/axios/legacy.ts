@@ -1,4 +1,3 @@
-// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -31,8 +30,8 @@ import type { SsrfBridge } from '../../ssrf';
  * including the relaxed TLS settings the legacy path applies when `rejectUnauthorized` is `false`.
  * Shared with the manual redirect follower so both derive agents the same way.
  *
- * @deprecated Backs the deprecated `request` helpers.
  */
+// oxlint-disable-next-line typescript/no-deprecated
 export function buildLegacyAgentOptions(requestObject: IRequestOptions): AgentOptions {
 	const servername = sniFor(getHostFromRequestObject(requestObject));
 	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
@@ -51,9 +50,9 @@ export function buildLegacyAgentOptions(requestObject: IRequestOptions): AgentOp
  * done via the request library to axios directly.
  * We are not using n8n's interface as it would an unnecessary step,
  * considering the `request` helper has been be deprecated and should be removed.
- * @deprecated This is only used by legacy request helpers, that are also deprecated
  */
 export async function buildAxiosConfigFromLegacyRequest(
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestObject: IRequestOptions,
 	ssrfBridge?: SsrfBridge,
 ): Promise<AxiosRequestConfig> {
@@ -186,7 +185,9 @@ export async function buildAxiosConfigFromLegacyRequest(
 	}
 
 	function hasArrayFormatOptions(
+		// oxlint-disable-next-line typescript/no-deprecated
 		arg: IRequestOptions,
+		// oxlint-disable-next-line typescript/no-deprecated
 	): arg is Required<Pick<IRequestOptions, 'qsStringifyOptions'>> {
 		if (
 			typeof arg.qsStringifyOptions === 'object' &&

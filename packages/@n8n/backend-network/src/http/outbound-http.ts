@@ -211,7 +211,6 @@ export class OutboundHttp {
 			request,
 			requestLegacy: async (requestOptions, callbacks) => {
 				try {
-					// oxlint-disable-next-line typescript/no-deprecated
 					return await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks);
 				} catch (error) {
 					throw markHttpRequestError(error);

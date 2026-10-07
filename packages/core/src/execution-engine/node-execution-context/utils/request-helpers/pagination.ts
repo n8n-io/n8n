@@ -1,4 +1,3 @@
-// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -39,9 +38,12 @@ export type ResolveValueFn = (
 ) => NodeParameterValueType;
 
 export function applyPaginationRequestData(
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
+	// oxlint-disable-next-line typescript/no-deprecated
 ): IRequestOptions {
+	// oxlint-disable-next-line typescript/no-deprecated
 	const preparedPaginationData: Partial<IRequestOptions> = {
 		...paginationRequestData,
 		uri: paginationRequestData.url,
@@ -71,6 +73,7 @@ export function applyPaginationRequestData(
 // eslint-disable-next-line complexity
 export async function requestWithAuthenticationPaginated(
 	this: IExecuteFunctions,
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestOptions: IRequestOptions,
 	itemIndex: number,
 	paginationOptions: PaginationOptions,
@@ -132,6 +135,7 @@ export async function requestWithAuthenticationPaginated(
 		}
 
 		if (credentialsType) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			tempResponseData = await this.helpers.requestWithAuthentication.call(
 				this,
 				credentialsType,
@@ -139,6 +143,7 @@ export async function requestWithAuthenticationPaginated(
 				additionalCredentialOptions,
 			);
 		} else {
+			// oxlint-disable-next-line typescript/no-deprecated
 			tempResponseData = await this.helpers.request(tempRequestOptions);
 		}
 

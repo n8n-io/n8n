@@ -18,10 +18,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
+import { callEvalMockHandler } from '@/execution-engine/eval-mock-helpers';
 
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
-import { proxyRequestToAxios } from './legacy-request-adapter';
+import { normalizeLegacyRequest, proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
 
@@ -163,7 +163,6 @@ export const getRequestHelperFunctions = (
 					target.headers as Record<string, string>,
 				);
 			}
-			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},
 
@@ -205,7 +204,6 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
@@ -227,7 +225,6 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,

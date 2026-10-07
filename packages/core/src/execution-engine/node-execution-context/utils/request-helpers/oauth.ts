@@ -1,4 +1,3 @@
-// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -391,10 +390,11 @@ export function hasSingleUseBody(requestOptions: {
 	return hasMultipartContentType(headers) && descriptorContainsSingleUseValue(body);
 }
 
-/** @deprecated make these requests using httpRequestWithAuthentication */
+/** Serves OAuth2 calls from the current HTTP helper and shipped node request helpers. */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestOptions: IHttpRequestOptions | IRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -476,6 +476,7 @@ export async function requestOAuth2(
 
 	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	(requestOptions as IRequestOptions).rejectUnauthorized = !credentials.ignoreSSLIssues;
 
 	// Signs the request by adding authorization headers or query parameters depending
@@ -558,6 +559,7 @@ export async function requestOAuth2(
 	}
 
 	return await this.helpers
+		// oxlint-disable-next-line typescript/no-deprecated
 		.request(newRequestOptions as IRequestOptions)
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
@@ -573,6 +575,7 @@ export async function requestOAuth2(
 		.catch(async (error: IResponseError) => {
 			if (shouldRefreshToken(error.statusCode)) {
 				return await retryWithNewToken(
+					// oxlint-disable-next-line typescript/no-deprecated
 					async (opts) => await this.helpers.request(opts),
 					() => {
 						// Under simple:false the "error" is the full 401 response thrown above;
@@ -592,10 +595,11 @@ export async function requestOAuth2(
 		});
 }
 
-/** @deprecated make these requests using httpRequestWithAuthentication */
+/** Serves OAuth1 calls from the current HTTP helper and shipped node request helpers. */
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestOptions: IHttpRequestOptions | IRequestOptions,
 	isN8nRequest = false,
 ) {
@@ -658,6 +662,7 @@ export async function requestOAuth1(
 	}
 
 	return await this.helpers
+		// oxlint-disable-next-line typescript/no-deprecated
 		.request(requestOptions as IRequestOptions)
 		.catch(async (error: IResponseError) => {
 			// Unknown error so simply throw it

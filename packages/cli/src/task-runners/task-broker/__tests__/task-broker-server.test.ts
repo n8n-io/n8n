@@ -53,6 +53,23 @@ describe('TaskBrokerServer', () => {
 			return socket;
 		};
 
+		it('rejects duplicate runner IDs on a relative upgrade URL', async () => {
+			const { server, authController } = createServer();
+			const socket = createSocket();
+			// @ts-expect-error Private property
+			server.wsServer = mock<WSServer>();
+
+			// @ts-expect-error Private method
+			await server.handleUpgradeRequest(
+				mock<TaskBrokerServerInitRequest>({ url: '/runners/_ws?id=first&id=second' }),
+				socket,
+				Buffer.alloc(0),
+			);
+
+			expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 400 Bad Request\r\n\r\n');
+			expect(authController.validateUpgradeRequest).not.toHaveBeenCalled();
+		});
+
 		it('should return 404 when path does not match', async () => {
 			const { server } = createServer();
 			const socket = createSocket();

@@ -92,6 +92,21 @@ describe('Push', () => {
 				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
 			});
 
+			test('should upgrade a relative push url with a query string', () => {
+				const request = mock<WebSocketPushRequest>({ url: '/rest/push?pushRef=123' });
+
+				onUpgrade(request, socket, upgradeHead);
+
+				expect(wsServer.handleUpgrade).toHaveBeenCalledOnce();
+			});
+
+			test('should ignore an invalid upgrade url', () => {
+				const request = mock<WebSocketPushRequest>({ url: 'http://[' });
+
+				expect(() => onUpgrade(request, socket, upgradeHead)).not.toThrow();
+				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
+			});
+
 			test('should upgrade push url, and route it to express', () => {
 				const request = mock<WebSocketPushRequest>({ url: '/rest/push' });
 

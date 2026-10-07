@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { isAxiosError } from '@n8n/backend-network';
+import { isAxiosError } from 'axios';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
@@ -108,9 +108,8 @@ interface RunWorkflowOptions {
 }
 
 function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
-	// oxlint-disable-next-line typescript/no-deprecated
 	if (isAxiosError(error)) {
-		return new NodeApiError(node, error as JsonObject);
+		return new NodeApiError(node, error as unknown as JsonObject);
 	}
 
 	return error as ExecutionBaseError;
@@ -1936,7 +1935,6 @@ export class WorkflowExecute {
 			return error;
 		}
 
-		// oxlint-disable-next-line typescript/no-deprecated
 		if (!(error instanceof Error) || isAxiosError(error)) {
 			// Axios errors are suppressed in ErrorReporter's beforeSend via the
 			// `isAxiosError` brand, which sanitizing below would strip - so skip them here
