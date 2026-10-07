@@ -1188,9 +1188,42 @@ describe('TriggerExecutionContextFactory', () => {
 				{ lastItemId: 'a' },
 				responsePromise,
 				undefined,
+				'response',
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
+
+		test.each([
+			{ hasResponse: false, hasDone: false, callerAwaitsOutcome: 'none' },
+			{ hasResponse: false, hasDone: true, callerAwaitsOutcome: 'completion' },
+			{ hasResponse: true, hasDone: true, callerAwaitsOutcome: 'completion' },
+		])(
+			'passes $callerAwaitsOutcome for a cursor-backed poll with response=$hasResponse and done=$hasDone',
+			async ({ hasResponse, hasDone, callerAwaitsOutcome }) => {
+				const responsePromise = hasResponse
+					? createDeferredPromise<IExecuteResponsePromiseData>()
+					: undefined;
+				const donePromise = hasDone ? createDeferredPromise<IRun>() : undefined;
+
+				await context.__runPoll(async () => {
+					context.getWorkflowStaticData('node').lastItemId = 'a';
+					context.__emit(pollData, responsePromise, donePromise);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+					expect.anything(),
+					node,
+					pollData,
+					expect.anything(),
+					mode,
+					{ lastItemId: 'a' },
+					responsePromise,
+					undefined,
+					callerAwaitsOutcome,
+				);
+			},
+		);
 
 		test('routes to runPolledWorkflowV2, not the transactional runPolledWorkflow, on engine v2', async () => {
 			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
@@ -1427,6 +1460,7 @@ describe('TriggerExecutionContextFactory', () => {
 				{ lastItemId: 'first-only' },
 				undefined,
 				undefined,
+				'none',
 			);
 		});
 
@@ -1658,6 +1692,7 @@ describe('TriggerExecutionContextFactory', () => {
 				{ lastItemId: 'a' },
 				undefined,
 				fence,
+				'none',
 			);
 
 			await fencedContext.__runPoll(async () => {

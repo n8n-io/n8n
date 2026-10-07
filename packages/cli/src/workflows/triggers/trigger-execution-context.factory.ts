@@ -431,6 +431,7 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
+								awaitedByTrigger(responsePromise, donePromise),
 							);
 				});
 

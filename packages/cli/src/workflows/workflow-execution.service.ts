@@ -140,6 +140,7 @@ export class WorkflowExecutionService {
 		cursor: PollCursor,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		fence?: PollLeaseFence,
+		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -169,6 +170,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			projectId,
 			projectName,
+			callerAwaitsOutcome,
 		};
 
 		// Mask the trigger items before the payload is committed, so the persisted row
