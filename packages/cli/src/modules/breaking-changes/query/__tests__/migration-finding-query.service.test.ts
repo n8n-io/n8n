@@ -153,6 +153,7 @@ describe('MigrationFindingQueryService', () => {
 		workflowRepository.findByIds.mockResolvedValue([]);
 		workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
 		findingRepository.countOpenByRule.mockResolvedValue([]);
+		findingRepository.listRuleIdsWithWontFix.mockResolvedValue([]);
 		findingRepository.countDistinctOpenWorkflows.mockResolvedValue(0);
 		findingRepository.listTriageableForRule.mockResolvedValue([]);
 		syncRepository.getForVersion.mockResolvedValue(null);
@@ -198,6 +199,27 @@ describe('MigrationFindingQueryService', () => {
 			expect(result.report.targetVersion).toBe(TARGET_VERSION);
 			expect(result.totalWorkflows).toBe(10);
 			expect(result.shouldCache).toBe(false);
+		});
+
+		it('lists a rule with only wont_fix findings with a count of zero', async () => {
+			findingRepository.countOpenByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
+			findingRepository.listRuleIdsWithWontFix.mockResolvedValue(['rule-a', 'rule-b']);
+
+			const result = await service.getLightReport(TARGET_VERSION);
+
+			expect(findingRepository.listRuleIdsWithWontFix).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				expect.anything(),
+			);
+			expect(
+				result.report.workflowResults.map(({ ruleId, nbAffectedWorkflows }) => ({
+					ruleId,
+					nbAffectedWorkflows,
+				})),
+			).toEqual([
+				{ ruleId: 'rule-a', nbAffectedWorkflows: 3 },
+				{ ruleId: 'rule-b', nbAffectedWorkflows: 0 },
+			]);
 		});
 
 		it('counts each affected workflow once across rules', async () => {

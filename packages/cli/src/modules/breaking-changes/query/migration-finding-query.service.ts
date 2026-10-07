@@ -71,9 +71,10 @@ export class MigrationFindingQueryService {
 		const workflowRules = rules.filter(isWorkflowLevelRule);
 		const instanceRules = rules.filter(isInstanceRule);
 
-		const [counts, totalAffectedWorkflows, sync, totalWorkflows, instanceResults] =
+		const [counts, wontFixRuleIds, totalAffectedWorkflows, sync, totalWorkflows, instanceResults] =
 			await Promise.all([
 				this.findingRepository.countOpenByRule(targetVersion, {}),
+				this.findingRepository.listRuleIdsWithWontFix(targetVersion, {}),
 				this.findingRepository.countDistinctOpenWorkflows(targetVersion, {}),
 				this.syncRepository.getForVersion(targetVersion, {}),
 				this.workflowRepository.count(),
@@ -81,13 +82,16 @@ export class MigrationFindingQueryService {
 				this.breakingChangeService.getAllInstanceRulesResults(instanceRules),
 			]);
 		const countByRule = new Map(counts.map((row) => [row.ruleId, row.count]));
+		const hasWontFix = new Set(wontFixRuleIds);
 
 		// Today's scan lists only rules that affect at least one workflow. Keep
 		// that shape so the overview does not change when it reads from the table.
+		// A rule with only won't fix findings stays listed with a count of zero:
+		// its detail page is the only place to set them back to open.
 		const workflowResults: LightWorkflowResult[] = [];
 		for (const rule of workflowRules) {
 			const nbAffectedWorkflows = countByRule.get(rule.id) ?? 0;
-			if (nbAffectedWorkflows === 0) continue;
+			if (nbAffectedWorkflows === 0 && !hasWontFix.has(rule.id)) continue;
 			workflowResults.push({ ...(await this.describeRule(rule)), nbAffectedWorkflows });
 		}
 

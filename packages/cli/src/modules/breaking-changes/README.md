@@ -145,10 +145,11 @@ Body:
 Sets the status of the finding of one workflow rule on one workflow. A user can set `open` or `wont_fix`. The rule's metadata gives the target version. The route needs the `breakingChanges:migrate` scope and returns no data.
 
 - A `wont_fix` finding counts as resolved. The overview counts only `open` findings.
+- The overview keeps a rule with only `wont_fix` findings, with a count of zero. Its detail page is the only place to set them back to `open`.
 - The rule detail lists `open` and `wont_fix` findings, each with its `status`.
 - When a scan no longer detects a `wont_fix` finding, the sync marks it `fixed`.
 - The route returns 404 when the rule is unknown or is not a workflow rule.
-- The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`.
+- The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`. This is also true when a sync marks the finding `fixed` during the request.
 
 ## Rule Impact
 

@@ -94,6 +94,21 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		return Number(row?.count ?? 0);
 	}
 
+	/** Rules with at least one won't fix finding for the version. */
+	async listRuleIdsWithWontFix(
+		targetVersion: BreakingChangeVersion,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		const rows = await this.managerFor(ctx)
+			.createQueryBuilder(MigrationFinding, 'finding')
+			.select('DISTINCT finding.ruleId', 'ruleId')
+			.where('finding.targetVersion = :targetVersion', { targetVersion })
+			.andWhere('finding.status = :status', { status: 'wont_fix' })
+			.getRawMany<{ ruleId: string }>();
+
+		return rows.map((row) => row.ruleId);
+	}
+
 	/**
 	 * Findings of one rule for the version in a status a user can set (open and
 	 * won't fix), each with its workflow's report columns.
@@ -139,14 +154,15 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		if (!finding) return false;
 		if (finding.status === status) return true;
 
-		// The update matches the status read above, so a sync that marks the
-		// finding fixed in the meantime is not overwritten.
-		await manager.update(
+		// The update matches only the statuses a user can set, so a sync that marks
+		// the finding fixed in the meantime is not overwritten. Then no row changes
+		// and the caller gets `false`.
+		const result = await manager.update(
 			MigrationFinding,
-			{ id: finding.id, status: finding.status },
+			{ id: finding.id, status: In(TRIAGE_STATUSES) },
 			{ status, statusChangedAt: new Date() },
 		);
-		return true;
+		return (result.affected ?? 0) > 0;
 	}
 
 	async insertMany(findings: NewMigrationFinding[], ctx: OperationContext): Promise<void> {

@@ -311,6 +311,35 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
+	describe('listRuleIdsWithWontFix', () => {
+		test('returns each rule with a wont_fix finding for the requested version once', async () => {
+			const [first, second, third] = await Promise.all([
+				createWorkflow(),
+				createWorkflow(),
+				createWorkflow(),
+			]);
+			await findingRepository.insertMany(
+				[
+					finding(first.id, 'rule-a'),
+					finding(second.id, 'rule-a'),
+					finding(third.id, 'rule-b'),
+					finding(first.id, 'rule-c'),
+					finding(first.id, 'rule-d', 'v2'),
+				],
+				ctx,
+			);
+			await setStatus(first.id, 'rule-a', 'wont_fix');
+			await setStatus(second.id, 'rule-a', 'wont_fix');
+			await setStatus(third.id, 'rule-b', 'fixed');
+			await findingRepository.update(
+				{ targetVersion: 'v2', ruleId: 'rule-d', workflowId: first.id },
+				{ status: 'wont_fix' },
+			);
+
+			expect(await findingRepository.listRuleIdsWithWontFix('v3', ctx)).toEqual(['rule-a']);
+		});
+	});
+
 	describe('countDistinctOpenWorkflows', () => {
 		test('counts a workflow once even when several rules hit it, and ignores fixed and other versions', async () => {
 			const [first, second, third] = await Promise.all([
@@ -461,6 +490,30 @@ describe('MigrationFindingRepository', () => {
 			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
 			expect(after.status).toBe('open');
 			expect(after.statusChangedAt.getTime()).toBe(PAST.getTime());
+		});
+
+		test('returns false and keeps the finding fixed when a sync marks it fixed after the read', async () => {
+			const workflow = await createWorkflow();
+			const id = await insertWithStatusChangedAt(workflow.id, PAST);
+			const { manager } = findingRepository;
+			const findOne = manager.findOne.bind(manager);
+			vi.spyOn(manager, 'findOne').mockImplementationOnce(async (...args) => {
+				const row = await findOne(...args);
+				await findingRepository.markFixedForIds([id], ctx);
+				return row;
+			});
+
+			const updated = await findingRepository.setTriageStatus(
+				'v3',
+				RULE_ID,
+				workflow.id,
+				'wont_fix',
+				ctx,
+			);
+
+			expect(updated).toBe(false);
+			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(after.status).toBe('fixed');
 		});
 
 		test('returns false and keeps a fixed finding fixed', async () => {
