@@ -1202,6 +1202,66 @@ describe('McpAgentToolsService', () => {
 	});
 
 	describe('call_agent', () => {
+		it('starts a new session when the sessionId is not found', async () => {
+			userHasScopesMock.mockImplementation(async (_user, scopes) =>
+				scopes.includes('agent:execute'),
+			);
+			agentTestRunService.executeDraftRun
+				.mockResolvedValueOnce({ status: 'session_not_found' })
+				.mockResolvedValueOnce({
+					status: 'completed',
+					response: 'Hello',
+					sessionId: 'session-new',
+					executionId: 'execution-1',
+				});
+
+			const result = await callTool('call_agent', {
+				agentId: 'agent-1',
+				request: { type: 'message', message: 'Hi', sessionId: 'new' },
+			});
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(2);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ sessionId: 'new' }),
+			);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ sessionId: undefined }),
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				status: 'completed',
+				response: 'Hello',
+				sessionId: 'session-new',
+				executionId: 'execution-1',
+				sessionNote: expect.stringContaining('started a new conversation'),
+			});
+		});
+
+		it('treats a blank sessionId as a new session', async () => {
+			userHasScopesMock.mockImplementation(async (_user, scopes) =>
+				scopes.includes('agent:execute'),
+			);
+			agentTestRunService.executeDraftRun.mockResolvedValueOnce({
+				status: 'completed',
+				response: 'Hello',
+				sessionId: 'session-new',
+				executionId: 'execution-1',
+			});
+
+			const result = await callTool('call_agent', {
+				agentId: 'agent-1',
+				request: { type: 'message', message: 'Hi', sessionId: ' ' },
+			});
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(1);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({ sessionId: undefined }),
+			);
+			expect(result.structuredContent).not.toHaveProperty('sessionNote');
+		});
+
 		it('starts and continues a draft session with MCP execution context', async () => {
 			userHasScopesMock.mockImplementation(async (_user, scopes) =>
 				scopes.includes('agent:execute'),

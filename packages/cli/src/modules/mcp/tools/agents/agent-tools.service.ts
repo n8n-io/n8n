@@ -378,7 +378,13 @@ const callAgentRequestSchema = z.discriminatedUnion('type', [
 		.object({
 			type: z.literal('message'),
 			message: z.string().trim().min(1),
-			sessionId: z.string().trim().min(1).optional(),
+			sessionId: z
+				.string()
+				.trim()
+				.optional()
+				.describe(
+					'Exact sessionId from an earlier call_agent result. Omit it to start a new conversation. An unknown sessionId starts a new conversation and the result has a sessionNote.',
+				),
 		})
 		.strict(),
 	z
@@ -1223,17 +1229,30 @@ export class McpAgentToolsService {
 
 		try {
 			let result: AgentTestRunResult;
+			let note: { sessionNote?: string } = {};
 			if (request.type === 'message') {
-				result = await this.agentTestRunService.executeDraftRun({
-					agentId,
-					projectId,
-					message: request.message,
-					sessionId: request.sessionId,
-					credentialProvider: this.credentialProvider(user, projectId),
-					user,
-					source: 'mcp',
-					abortSignal,
-				});
+				const execute = async (sessionId: string | undefined) =>
+					await this.agentTestRunService.executeDraftRun({
+						agentId,
+						projectId,
+						message: request.message,
+						sessionId,
+						credentialProvider: this.credentialProvider(user, projectId),
+						user,
+						source: 'mcp',
+						abortSignal,
+					});
+				const sessionId = request.sessionId?.trim() || undefined;
+				result = await execute(sessionId);
+				// The session check runs before the agent, so a retry has no side effects.
+				if (result.status === 'session_not_found' && sessionId !== undefined) {
+					result = await execute(undefined);
+					note = {
+						sessionNote:
+							'The sessionId you passed was not found, so this test started a new conversation. ' +
+							'To continue this conversation, pass the sessionId from this result.',
+					};
+				}
 			} else {
 				result = await this.agentTestRunService.resumeDraftApproval({
 					agentId,
@@ -1251,7 +1270,8 @@ export class McpAgentToolsService {
 					ok: false,
 					status: 'error',
 					code: 'session_not_found',
-					message: 'Session not found.',
+					message:
+						'This test session is no longer available. Send a message request without sessionId to start a new test.',
 				};
 			}
 			if (result.status === 'agent_misconfigured') {
@@ -1263,7 +1283,7 @@ export class McpAgentToolsService {
 					missing: result.missing,
 				};
 			}
-			if (result.status === 'completed') return { ok: true, ...result };
+			if (result.status === 'completed') return { ok: true, ...result, ...note };
 
 			const approvals = collectStandardApprovals(result);
 			if (approvals) {
@@ -1275,6 +1295,7 @@ export class McpAgentToolsService {
 					sessionId: result.sessionId,
 					...(result.executionId ? { executionId: result.executionId } : {}),
 					approvals,
+					...note,
 				};
 			}
 
@@ -1299,6 +1320,7 @@ export class McpAgentToolsService {
 					sessionId: result.sessionId,
 					previewUrl,
 					...(previewAccessNote ? { previewAccessNote } : {}),
+					...note,
 				};
 			}
 
@@ -1315,6 +1337,7 @@ export class McpAgentToolsService {
 				})),
 				previewUrl,
 				...(previewAccessNote ? { previewAccessNote } : {}),
+				...note,
 			};
 		} catch (error) {
 			if (error instanceof InvalidAgentTestRunCheckpointError) {

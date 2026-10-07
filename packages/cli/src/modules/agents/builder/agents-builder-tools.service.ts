@@ -221,6 +221,9 @@ const updateTaskInputSchema = z
 
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 
+/** A call_agent continuation that carries a sessionNote across an approval. */
+const notedContinuationSchema = z.object({ run: z.unknown(), sessionNote: z.string() }).strict();
+
 type BuilderConfigFailure = {
 	ok: false;
 	stage?: 'parse' | 'stale' | 'patch' | 'schema';
@@ -591,7 +594,8 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.description(
 				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
-					'Pass the returned sessionId on later calls to continue the same conversation; omit it to start a new one. ' +
+					'Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier call_agent result; never make one up. ' +
+					'If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. ' +
 					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
 					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
 					'Unsupported interactive requests return approval_required with a Preview path.',
@@ -602,9 +606,10 @@ export class AgentsBuilderToolsService {
 					sessionId: z
 						.string()
 						.trim()
-						.min(1)
 						.optional()
-						.describe('Session ID from a previous call_agent result'),
+						.describe(
+							'Exact sessionId from an earlier call_agent result. Omit it to start a new conversation.',
+						),
 				}),
 			)
 			.suspend(APPROVAL_SUSPEND_SCHEMA)
@@ -624,17 +629,24 @@ export class AgentsBuilderToolsService {
 
 					const previewPath = buildAgentPreviewPath(projectId, agentId);
 					try {
-						const result = await this.runDraftTest(
+						const { result, sessionNote } = await this.runDraftTest(
 							ctx,
 							agentId,
 							projectId,
 							message,
-							sessionId,
+							sessionId || undefined,
 							credentialProvider,
 							user,
 						);
 
-						return await this.formatDraftTestResult(result, ctx, agentId, user, previewPath);
+						return await this.formatDraftTestResult(
+							result,
+							ctx,
+							agentId,
+							user,
+							previewPath,
+							sessionNote,
+						);
 					} catch (error) {
 						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
 						if (error instanceof InvalidAgentTestRunCheckpointError) {
@@ -662,31 +674,43 @@ export class AgentsBuilderToolsService {
 		sessionId: string | undefined,
 		credentialProvider: CredentialProvider,
 		user: User,
-	): Promise<AgentTestRunResult> {
-		let result: AgentTestRunResult;
+	): Promise<{ result: AgentTestRunResult; sessionNote?: string }> {
 		if (ctx.resumeData === undefined) {
-			result = await this.agentTestRunService.executeDraftRun({
+			const execute = async (id: string | undefined) =>
+				await this.agentTestRunService.executeDraftRun({
+					agentId,
+					projectId,
+					message,
+					sessionId: id,
+					credentialProvider,
+					user,
+					source: 'instance-ai',
+					...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+				});
+			const result = await execute(sessionId);
+			// The session check runs before the agent, so a retry has no side effects.
+			if (result.status !== 'session_not_found' || sessionId === undefined) return { result };
+			return {
+				result: await execute(undefined),
+				sessionNote:
+					'The sessionId you passed was not found, so this test started a new conversation. ' +
+					'To continue this conversation, pass the sessionId from this result.',
+			};
+		}
+		// A continuation without a note is the raw test-run continuation.
+		const noted = notedContinuationSchema.safeParse(ctx.continuation);
+		return {
+			result: await this.agentTestRunService.resumeDraftApproval({
 				agentId,
 				projectId,
-				message,
-				sessionId,
-				credentialProvider,
-				user,
-				source: 'instance-ai',
-				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-			});
-		} else {
-			result = await this.agentTestRunService.resumeDraftApproval({
-				agentId,
-				projectId,
-				continuation: ctx.continuation,
+				continuation: noted.success ? noted.data.run : ctx.continuation,
 				approved: ctx.resumeData.approved,
 				user,
 				source: 'instance-ai',
 				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-			});
-		}
-		return result;
+			}),
+			...(noted.success ? { sessionNote: noted.data.sessionNote } : {}),
+		};
 	}
 
 	private buildUnpublishAgentTool(user: User, projectId: string, agentId: string) {
@@ -1374,14 +1398,17 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		user: User,
 		previewPath: string,
+		sessionNote?: string,
 	) {
 		if (result.status === 'session_not_found') {
 			return {
 				status: 'error',
 				code: 'session_not_found',
-				message: 'Session not found.',
+				message:
+					'This test session is no longer available. Call call_agent again without sessionId to start a new test.',
 			};
 		}
+		const note = sessionNote ? { sessionNote } : {};
 		if (result.status === 'agent_misconfigured') {
 			return {
 				status: 'error',
@@ -1404,18 +1431,25 @@ export class AgentsBuilderToolsService {
 				sessionId: result.sessionId,
 				response: result.response,
 				...(result.executionId ? { executionId: result.executionId } : {}),
+				...note,
 			};
 		}
-		if (result.status === 'completed') return result;
+		if (result.status === 'completed') return { ...result, ...note };
 
 		const approvals = collectStandardApprovals(result);
 		const firstApproval = approvals?.[0];
 		if (firstApproval) {
 			const { continuation, ...approval } = firstApproval;
-			return await ctx.suspend(approval, { continuation });
+			// Keep the note across the approval, so the resumed result still has it.
+			return await ctx.suspend(approval, {
+				continuation: sessionNote ? { run: continuation, sessionNote } : continuation,
+			});
 		}
 
-		return await this.cancelUnsupportedDraftTest(result, agentId, user, previewPath);
+		return {
+			...(await this.cancelUnsupportedDraftTest(result, agentId, user, previewPath)),
+			...note,
+		};
 	}
 
 	private async cancelUnsupportedDraftTest(
