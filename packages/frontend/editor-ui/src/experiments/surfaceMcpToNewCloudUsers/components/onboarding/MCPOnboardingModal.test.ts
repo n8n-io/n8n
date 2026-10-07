@@ -1,8 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+import { STORES } from '@n8n/stores';
+import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { defineComponent, reactive } from 'vue';
+import { reactive } from 'vue';
 import MCPOnboardingModal from './MCPOnboardingModal.vue';
 
 const mockClipboardCopy = vi.fn();
@@ -55,26 +57,23 @@ vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
 	useMCPStore: () => mockMcpStore,
 }));
 
-const ModalStub = defineComponent({
-	props: ['name', 'eventBus'],
-	template: `
-		<div :data-test-id="name">
-			<slot name="content" />
-			<slot name="footer" />
-			<button data-test-id="mcp-onboarding-generic-close" @click="eventBus.emit('closed')" />
-		</div>
-	`,
-});
-
-const renderComponent = createComponentRenderer(MCPOnboardingModal, {
+const renderMcpOnboardingModal = createComponentRenderer(MCPOnboardingModal, {
 	props: {
 		data: {
 			surface: 'tile',
 		},
 	},
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.UI]: {
+				modalStateById: {
+					[SURFACE_MCP_ONBOARDING_MODAL_KEY]: { open: true },
+				},
+			},
+		},
+	}),
 	global: {
 		stubs: {
-			Modal: ModalStub,
 			// Stub ElSwitch to avoid jsdom-triggered spurious model updates.
 			ElSwitch: {
 				props: ['modelValue', 'disabled', 'loading'],
@@ -84,6 +83,12 @@ const renderComponent = createComponentRenderer(MCPOnboardingModal, {
 		},
 	},
 });
+
+async function renderComponent(options?: Parameters<typeof renderMcpOnboardingModal>[0]) {
+	const rendered = renderMcpOnboardingModal(options);
+	await rendered.findByTestId('mcp-onboarding-modal-content');
+	return rendered;
+}
 
 describe('MCPOnboardingModal', () => {
 	beforeEach(() => {
@@ -104,9 +109,9 @@ describe('MCPOnboardingModal', () => {
 
 	it('enables MCP, loads the prompt, and tracks enable telemetry when toggled on', async () => {
 		const user = userEvent.setup();
-		const { getByRole, findByText, getByTestId } = renderComponent();
+		const { getByRole, findByText, getByTestId } = await renderComponent();
 
-		expect(getByTestId(SURFACE_MCP_ONBOARDING_MODAL_KEY)).toBeInTheDocument();
+		expect(getByTestId('mcp-onboarding-modal-content')).toBeInTheDocument();
 		await user.click(getByRole('switch'));
 
 		expect(mockMcpStore.setMcpAccessEnabled).toHaveBeenCalledWith(true);
@@ -123,7 +128,7 @@ describe('MCPOnboardingModal', () => {
 			return false;
 		});
 
-		const { getByRole, findByText, queryByTestId } = renderComponent();
+		const { getByRole, findByText, queryByTestId } = await renderComponent();
 
 		await findByText(/Show me the n8n MCP connector/);
 		await user.click(getByRole('switch'));
@@ -138,7 +143,7 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpManagedByEnv = true;
 
-		const { getByRole } = renderComponent();
+		const { getByRole } = await renderComponent();
 
 		const toggle = getByRole('switch');
 		expect(toggle).toBeDisabled();
@@ -151,7 +156,7 @@ describe('MCPOnboardingModal', () => {
 	it('renders the prompt immediately when MCP is already enabled on mount', async () => {
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { findByTestId, findByText, getByTestId } = renderComponent();
+		const { findByTestId, findByText, getByTestId } = await renderComponent();
 
 		expect(await findByText(/Show me the n8n MCP connector/)).toBeInTheDocument();
 		expect(await findByText('https://example.n8n.cloud/mcp-server/http')).toBeInTheDocument();
@@ -166,7 +171,7 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId } = await renderComponent();
 
 		await user.click(getByTestId('mcp-onboarding-copy-server-url-button'));
 
@@ -184,7 +189,7 @@ describe('MCPOnboardingModal', () => {
 		mockMcpStore.mcpAccessEnabled = true;
 		mockMcpStore.setMcpAccessEnabled = vi.fn().mockRejectedValue(error);
 
-		const { getByRole, findByText, getByTestId } = renderComponent();
+		const { getByRole, findByText, getByTestId } = await renderComponent();
 
 		await findByText(/Show me the n8n MCP connector/);
 		await user.click(getByRole('switch'));
@@ -200,7 +205,7 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByText, getByTestId, container } = renderComponent();
+		const { getByText, getByTestId } = await renderComponent();
 
 		await user.click(getByText('Claude Code'));
 
@@ -210,7 +215,7 @@ describe('MCPOnboardingModal', () => {
 			'claude_code',
 			'prompt',
 		);
-		expect(container.textContent).toContain('claude mcp add --scope user --transport http n8n');
+		expect(document.body.textContent).toContain('claude mcp add --scope user --transport http n8n');
 		expect(getByTestId('mcp-onboarding-restart-step')).toHaveTextContent(
 			'Restart Claude Code and connect to n8n',
 		);
@@ -220,13 +225,13 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByText, getByTestId, queryByTestId, container } = renderComponent();
+		const { getByText, getByTestId, queryByTestId } = await renderComponent();
 
 		await user.click(getByText('Codex'));
 
 		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('tile', 'codex');
-		expect(container.textContent).toContain('Paste the prompt in Codex');
-		expect(container.textContent).toContain('[mcp_servers.n8n]');
+		expect(document.body.textContent).toContain('Paste the prompt in Codex');
+		expect(document.body.textContent).toContain('[mcp_servers.n8n]');
 		expect(queryByTestId('mcp-onboarding-claude-server-url')).not.toBeInTheDocument();
 		expect(getByTestId('mcp-onboarding-restart-step')).toHaveTextContent(
 			'Restart Codex and connect to n8n',
@@ -237,15 +242,17 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByText, queryByTestId, container } = renderComponent();
+		const { getByText, queryByTestId } = await renderComponent();
 
 		await user.click(getByText('Claude'));
 
 		expect(mockExperimentStore.trackClientSelected).not.toHaveBeenCalled();
-		expect(container.textContent).toContain('Show me the n8n MCP connector');
-		expect(container.textContent).toContain('Paste the prompt in Claude');
-		expect(container.textContent).toContain('Paste Server URL');
-		expect(container.textContent).not.toContain('claude mcp add --scope user --transport http n8n');
+		expect(document.body.textContent).toContain('Show me the n8n MCP connector');
+		expect(document.body.textContent).toContain('Paste the prompt in Claude');
+		expect(document.body.textContent).toContain('Paste Server URL');
+		expect(document.body.textContent).not.toContain(
+			'claude mcp add --scope user --transport http n8n',
+		);
 		expect(queryByTestId('mcp-onboarding-restart-step')).not.toBeInTheDocument();
 	});
 
@@ -253,7 +260,7 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByText, getByTestId, queryByTestId, container } = renderComponent();
+		const { getByText, getByTestId, queryByTestId } = await renderComponent();
 
 		await user.click(getByText('ChatGPT'));
 
@@ -265,19 +272,19 @@ describe('MCPOnboardingModal', () => {
 		);
 		expect(getByTestId('mcp-onboarding-chatgpt-developer-mode-step')).toBeInTheDocument();
 		expect(getByTestId('mcp-onboarding-chatgpt-custom-app-step')).toBeInTheDocument();
-		expect(container.textContent).toContain('Enable developer mode in ChatGPT');
-		expect(container.textContent).toContain('Turn on developer mode.');
-		expect(container.textContent).toContain('App name');
-		expect(container.textContent).toContain('n8n');
-		expect(container.textContent).toContain('https://example.n8n.cloud/mcp-server/http');
-		expect(container.textContent).not.toContain('After you turn it on');
-		expect(container.textContent).not.toContain('Click Create, then use these values:');
-		expect(container.textContent).not.toContain('Description');
-		expect(container.textContent).not.toContain(
+		expect(document.body.textContent).toContain('Enable developer mode in ChatGPT');
+		expect(document.body.textContent).toContain('Turn on developer mode.');
+		expect(document.body.textContent).toContain('App name');
+		expect(document.body.textContent).toContain('n8n');
+		expect(document.body.textContent).toContain('https://example.n8n.cloud/mcp-server/http');
+		expect(document.body.textContent).not.toContain('After you turn it on');
+		expect(document.body.textContent).not.toContain('Click Create, then use these values:');
+		expect(document.body.textContent).not.toContain('Description');
+		expect(document.body.textContent).not.toContain(
 			'Connect ChatGPT to this n8n instance through MCP.',
 		);
-		expect(container.textContent).not.toContain('complete the n8n OAuth flow');
-		expect(container.textContent).not.toContain('[mcp_servers.n8n]');
+		expect(document.body.textContent).not.toContain('complete the n8n OAuth flow');
+		expect(document.body.textContent).not.toContain('[mcp_servers.n8n]');
 		expect(queryByTestId('mcp-onboarding-client-setup')).not.toBeInTheDocument();
 		expect(queryByTestId('mcp-onboarding-claude-server-url')).not.toBeInTheDocument();
 		expect(queryByTestId('mcp-onboarding-copy-prompt-button')).not.toBeInTheDocument();
@@ -306,14 +313,14 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByText, getByTestId, container } = renderComponent();
+		const { getByText, getByTestId } = await renderComponent();
 
 		await user.click(getByText('Cursor'));
 
 		expect(mockExperimentStore.trackClientSelected).toHaveBeenCalledWith('tile', 'cursor');
-		expect(container.textContent).toContain('~/.cursor/mcp.json');
-		expect(container.textContent).toContain('complete the n8n OAuth flow');
-		expect(container.textContent).not.toContain('Authorization');
+		expect(document.body.textContent).toContain('~/.cursor/mcp.json');
+		expect(document.body.textContent).toContain('complete the n8n OAuth flow');
+		expect(document.body.textContent).not.toContain('Authorization');
 		expect(getByTestId('mcp-onboarding-restart-step')).toHaveTextContent(
 			'Restart Cursor and connect to n8n',
 		);
@@ -323,7 +330,7 @@ describe('MCPOnboardingModal', () => {
 		const user = userEvent.setup();
 		mockMcpStore.mcpAccessEnabled = true;
 
-		const { getByText, getByTestId } = renderComponent();
+		const { getByText, getByTestId } = await renderComponent();
 
 		await user.click(getByText('Cursor'));
 		await user.click(getByTestId('mcp-onboarding-copy-prompt-button'));
@@ -337,9 +344,9 @@ describe('MCPOnboardingModal', () => {
 
 	it('tracks tile modal close as a dismissal when MCP remains disabled', async () => {
 		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ props: { data: { surface: 'tile' } } });
+		const { getByTestId } = await renderComponent({ props: { data: { surface: 'tile' } } });
 
-		await user.click(getByTestId('mcp-onboarding-generic-close'));
+		await user.click(getByTestId('dialog-close-button'));
 
 		expect(mockExperimentStore.trackDismissed).toHaveBeenCalledWith('tile', {
 			activeClient: 'claude',
