@@ -1,0 +1,16 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  h_5d40c27a8fdfd1 111,117,119-122,409-411,415,507
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  h_5d40c27a8fdfd1 151,329-458,467
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ea2d711a4787882a8d968c468e0fc2e9238f8b4",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
