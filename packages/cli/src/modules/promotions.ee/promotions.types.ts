@@ -71,7 +71,6 @@ export type PromotionOperationInput = Readonly<{
  * repository path, so the listing and the contents never describe two commits.
  */
 export type BranchPackage = Readonly<{
-	// The config and branch the project resolved to, so a preview can name its source.
 	configId: string;
 	branchName: string;
 	commitSha: string | null;

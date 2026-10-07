@@ -13,8 +13,6 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 
 	const changes = ref<PromotableResource[]>([]);
 	const commitSha = ref<string | null>(null);
-	// The config and branch the backend resolved for this project. An apply pins this
-	// source, so it has to be the one the preview used.
 	const source = ref<PromotionChanges['source'] | null>(null);
 	const isLoading = ref(false);
 	const isSubmitting = ref(false);

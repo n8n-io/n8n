@@ -39,8 +39,6 @@ export type PromotableResource = z.infer<typeof promotableResourceSchema>;
 
 export const promotionChangesSchema = z.object({
 	commitSha: z.string().nullable(),
-	// The config and branch the project resolved to. An apply pins this source, not the
-	// instance connection, because a project may use a connection of its own.
 	source: z.object({ configId: n8nIdSchema, branchName: z.string() }),
 	changes: promotableResourceSchema.array(),
 });
