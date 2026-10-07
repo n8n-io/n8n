@@ -25,6 +25,9 @@ export type PolicySubject = {
 	readonly id: string;
 };
 
+const policySubjectType = (workflow: Pick<PolicedWorkflow, 'artifactKind'>): PolicySubjectType =>
+	workflow.artifactKind ?? 'workflow';
+
 /**
  * A workflow being created binds to its content, not an id.
  *
@@ -39,7 +42,7 @@ export function workflowContentSubject(
 	// Same object within one request, so key order is stable.
 	const hash = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
 
-	return { type: workflow.artifactKind ?? 'workflow', id: hash };
+	return { type: policySubjectType(workflow), id: hash };
 }
 
 /**
@@ -52,7 +55,7 @@ export function workflowContentSubject(
 export function workflowSubject(
 	workflow: Pick<PolicedWorkflow, 'id' | 'nodes' | 'artifactKind'>,
 ): PolicySubject {
-	if (workflow.id) return { type: workflow.artifactKind ?? 'workflow', id: workflow.id };
+	if (workflow.id) return { type: policySubjectType(workflow), id: workflow.id };
 
 	return workflowContentSubject(workflow);
 }

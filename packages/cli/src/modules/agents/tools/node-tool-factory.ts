@@ -13,8 +13,7 @@ import type {
 import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import { resolveToolNodeType } from '@/node-execution/resolve-tool-node-type';
+import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
