@@ -2,18 +2,20 @@
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { RELEASE_NOTES_URL, VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useVersionsStore } from '@n8n/stores/versions.store';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import Modal from '@/app/components/Modal.vue';
 
 import {
 	N8nButton,
 	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nHeading,
 	N8nIcon,
 	N8nLink,
@@ -32,11 +34,11 @@ const articleRefs = ref<Record<number, HTMLElement>>({});
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const i18n = useI18n();
-const modalBus = createEventBus();
 const versionsStore = useVersionsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const modalOpen = computed(() => uiStore.modalsById[WHATS_NEW_MODAL_KEY]?.open === true);
 
 const nextVersions = computed(() => versionsStore.nextVersions);
 
@@ -65,7 +67,7 @@ const scrollToItem = async (articleId: number) => {
 	});
 };
 
-modalBus.on('opened', () => {
+function onModalOpened() {
 	versionsStore.closeWhatsNewCallout();
 
 	// Mark all items as read when the modal is opened.
@@ -78,113 +80,149 @@ modalBus.on('opened', () => {
 	}
 
 	void scrollToItem(props.data.articleId);
-});
+}
+
+watch(
+	modalOpen,
+	(open) => {
+		if (open) onModalOpened();
+	},
+	{ immediate: true },
+);
+
+async function closeDialog() {
+	uiStore.closeModal(WHATS_NEW_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		max-width="860px"
-		max-height="85vh"
-		:event-bus="modalBus"
-		:name="WHATS_NEW_MODAL_KEY"
-		:center="true"
-	>
-		<template #header>
-			<div :class="$style.header">
-				<div :class="$style.column">
-					<div :class="$style.row">
-						<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
-						<N8nHeading size="xlarge">
-							{{ versionsStore.whatsNew.title }}
-						</N8nHeading>
-					</div>
-
-					<div :class="$style.row">
-						<N8nHeading size="medium" color="text-light">{{
-							dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
-						}}</N8nHeading>
-						<template v-if="versionsStore.hasVersionUpdates">
-							<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
-							<N8nLink
-								size="medium"
-								theme="primary"
-								data-test-id="whats-new-modal-next-versions-link"
-								@click="openUpdatesPanel"
-							>
-								{{
-									i18n.baseText('whatsNew.versionsBehind', {
-										interpolate: {
-											count: nextVersions.length > 99 ? '99+' : nextVersions.length,
-										},
-									})
-								}}
-							</N8nLink>
-						</template>
-					</div>
+	<N8nDialog :open="modalOpen" size="2xlarge" @update:open="onDialogOpenUpdate">
+		<N8nDialogHeader>
+			<div :class="$style.column">
+				<div :class="$style.row">
+					<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
+					<N8nDialogTitle>
+						{{ versionsStore.whatsNew.title }}
+					</N8nDialogTitle>
 				</div>
 
-				<N8nTooltip
-					v-if="versionsStore.hasVersionUpdates"
-					:disabled="usersStore.canUserUpdateVersion"
-					:content="i18n.baseText('whatsNew.updateNudgeTooltip')"
-					placement="bottom"
-				>
-					<N8nButton
-						:size="'large'"
-						:label="i18n.baseText('whatsNew.update')"
-						:disabled="!usersStore.canUserUpdateVersion"
-						data-test-id="whats-new-modal-update-button"
-						@click="onUpdateClick"
-					/>
-				</N8nTooltip>
-			</div>
-		</template>
-		<template #content>
-			<div :class="$style.container">
-				<N8nCallout
-					v-if="versionsStore.hasSignificantUpdates"
-					:class="$style.callout"
-					theme="warning"
-				>
-					<slot name="callout-message">
-						<N8nText size="small">
+				<div :class="$style.row">
+					<N8nHeading size="medium" color="text-light">{{
+						dateformat(versionsStore.latestVersion.createdAt, `d mmmm, yyyy`)
+					}}</N8nHeading>
+					<template v-if="versionsStore.hasVersionUpdates">
+						<N8nText :size="'medium'" :class="$style.text" :color="'text-base'">•</N8nText>
+						<N8nLink
+							size="medium"
+							theme="primary"
+							data-test-id="whats-new-modal-next-versions-link"
+							@click="openUpdatesPanel"
+						>
 							{{
-								i18n.baseText('whatsNew.updateAvailable', {
+								i18n.baseText('whatsNew.versionsBehind', {
 									interpolate: {
-										currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
-										latestVersion: versionsStore.latestVersion?.name,
-										count: nextVersions.length,
+										count: nextVersions.length > 99 ? '99+' : nextVersions.length,
 									},
 								})
 							}}
-							<N8nLink
-								:size="'small'"
-								:underline="true"
-								theme="primary"
-								:to="RELEASE_NOTES_URL"
-								target="_blank"
-							>
-								{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
-							</N8nLink>
-						</N8nText>
-					</slot>
-				</N8nCallout>
-				<div
-					v-for="item in versionsStore.whatsNewArticles"
-					:ref="
-						(el: any) => {
-							if (el) articleRefs[item.id] = el as HTMLElement;
-						}
-					"
-					:key="item.id"
-					:class="$style.article"
-					:data-test-id="`whats-new-item-${item.id}`"
-				>
-					<N8nHeading bold tag="h2" size="xlarge">
-						{{ item.title }}
-					</N8nHeading>
+						</N8nLink>
+					</template>
+				</div>
+			</div>
+
+			<N8nTooltip
+				v-if="versionsStore.hasVersionUpdates"
+				:disabled="usersStore.canUserUpdateVersion"
+				:content="i18n.baseText('whatsNew.updateNudgeTooltip')"
+				placement="bottom"
+			>
+				<N8nButton
+					:size="'large'"
+					:label="i18n.baseText('whatsNew.update')"
+					:disabled="!usersStore.canUserUpdateVersion"
+					data-test-id="whats-new-modal-update-button"
+					@click="onUpdateClick"
+				/>
+			</N8nTooltip>
+		</N8nDialogHeader>
+		<N8nDialogBody>
+			<div :class="$style.scrollBody">
+				<div :class="$style.container">
+					<N8nCallout
+						v-if="versionsStore.hasSignificantUpdates"
+						:class="$style.callout"
+						theme="warning"
+					>
+						<slot name="callout-message">
+							<N8nText size="small">
+								{{
+									i18n.baseText('whatsNew.updateAvailable', {
+										interpolate: {
+											currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
+											latestVersion: versionsStore.latestVersion?.name,
+											count: nextVersions.length,
+										},
+									})
+								}}
+								<N8nLink
+									:size="'small'"
+									:underline="true"
+									theme="primary"
+									:to="RELEASE_NOTES_URL"
+									target="_blank"
+								>
+									{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
+								</N8nLink>
+							</N8nText>
+						</slot>
+					</N8nCallout>
+					<div
+						v-for="item in versionsStore.whatsNewArticles"
+						:ref="
+							(el: any) => {
+								if (el) articleRefs[item.id] = el as HTMLElement;
+							}
+						"
+						:key="item.id"
+						:class="$style.article"
+						:data-test-id="`whats-new-item-${item.id}`"
+					>
+						<N8nHeading bold tag="h2" size="xlarge">
+							{{ item.title }}
+						</N8nHeading>
+						<N8nMarkdown
+							:content="item.content"
+							:class="$style.markdown"
+							:options="{
+								markdown: {
+									html: true,
+									linkify: true,
+									typographer: true,
+									breaks: true,
+								},
+								tasklists: {
+									enabled: false,
+								},
+								linkAttributes: {
+									attrs: {
+										target: '_blank',
+										rel: 'noopener',
+									},
+								},
+								youtube: {
+									width: '100%',
+									height: '315',
+								},
+							}"
+						/>
+					</div>
 					<N8nMarkdown
-						:content="item.content"
+						v-if="versionsStore.whatsNew.footer"
+						:content="versionsStore.whatsNew.footer"
 						:class="$style.markdown"
 						:options="{
 							markdown: {
@@ -209,49 +247,15 @@ modalBus.on('opened', () => {
 						}"
 					/>
 				</div>
-				<N8nMarkdown
-					v-if="versionsStore.whatsNew.footer"
-					:content="versionsStore.whatsNew.footer"
-					:class="$style.markdown"
-					:options="{
-						markdown: {
-							html: true,
-							linkify: true,
-							typographer: true,
-							breaks: true,
-						},
-						tasklists: {
-							enabled: false,
-						},
-						linkAttributes: {
-							attrs: {
-								target: '_blank',
-								rel: 'noopener',
-							},
-						},
-						youtube: {
-							width: '100%',
-							height: '315',
-						},
-					}"
-				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	border-bottom: var(--border);
-	padding-bottom: var(--spacing--sm);
-	padding-right: var(--spacing--xl);
-}
-
-:global(.el-dialog__header) {
-	padding-bottom: var(--spacing--sm);
+.scrollBody {
+	overflow: auto;
+	max-height: calc(85vh - var(--spacing--3xl));
 }
 
 .column {
