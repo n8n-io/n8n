@@ -23,6 +23,10 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 
 	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
+	// A run takes 7 to 13 minutes on a large instance, and the workflows it does not
+	// reach get only one more run.
+	readonly timeoutSeconds = 30 * Time.minutes.toSeconds;
+
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
 		private readonly compactionService: WorkflowHistoryCompactionService,
