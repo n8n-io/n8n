@@ -21,18 +21,17 @@ import {
 	egressIssuesOf,
 	exampleOf,
 	fieldRefOf,
+	fixedInputIssues,
 	parameterPathOf,
 	storedParametersOf,
 	toolUiOf,
 	type FieldRef,
 } from '@n8n/node-sdk/host';
 import { isRecord } from '@n8n/utils/is-record';
-import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import { toEngineConnections, type IDataObject, type WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	getChildNodes,
-	isFromAIOnlyExpression,
 	NodeConnectionTypes,
 	NodeVersionNotFoundError,
 	safeRegex,
@@ -964,17 +963,9 @@ export function staticInputIssues(workflow: WorkflowJSON): string[] {
 		const action = actionOfNode(node) ?? tool;
 		if (!action || !node.name || node.disabled) return [];
 		const fields = action.inputSchema.properties ?? {};
-		// The model fills a tool field that is one `$fromAI()` call, and the tool checks it.
-		const fromModel = (value: unknown) =>
-			tool !== undefined && typeof value === 'string' && isFromAIOnlyExpression(value);
-		const input = Object.fromEntries(
-			Object.entries(nodeInputOf(node, action)).filter(
-				([, value]) => !hasPlaceholderDeep(value) && !fromModel(value),
-			),
-		);
-		return validate(input, action.inputSchema, { allowExpressions: true })
-			.filter((issue) => !issue.endsWith(': is required'))
-			.map((issue) => `Node "${node.name}": ${withRefHint(issue, fields)}`);
+		return fixedInputIssues(nodeInputOf(node, action), action.inputSchema, {
+			tool: tool !== undefined,
+		}).map((issue) => `Node "${node.name}": ${withRefHint(issue, fields)}`);
 	});
 }
 

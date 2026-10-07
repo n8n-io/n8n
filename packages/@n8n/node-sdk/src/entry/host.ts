@@ -66,6 +66,7 @@ export type {
 } from '../profile';
 export { toTriggerNodeType, toVersionedTriggerType } from '../triggers';
 export { exampleOf } from '../validate';
+export { fixedInputIssues } from '../validator';
 export {
 	nodeContractRangeOf,
 	runsNodeContract,

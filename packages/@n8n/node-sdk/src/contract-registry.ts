@@ -248,6 +248,11 @@ export interface ContractStore {
 			keepUnknown?: boolean;
 		},
 	): Promise<INodeContractPin | undefined>;
+	/**
+	 * The manifest of a bundled or stored version of an action, or `undefined`. It fetches nothing,
+	 * so a save can read it.
+	 */
+	manifestOf(actionId: string, digest: string): Promise<VersionManifest | undefined>;
 	/** The newest stored version of each major, by action id. A bad version is skipped. */
 	versions(): Promise<ReadonlyMap<string, readonly PackedVersion[]>>;
 	/**
@@ -974,6 +979,12 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				);
 			}
 			return { range, version: lock.semver, digest: lock.digest };
+		},
+
+		async manifestOf(actionId, digest) {
+			return [...store.embedded.versionsOf(actionId), ...(await storedOf(actionId))].find(
+				(version) => version.digest === digest,
+			)?.manifest;
 		},
 
 		async versions() {

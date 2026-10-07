@@ -369,7 +369,11 @@ describe('update()', () => {
 describe('update() with node contracts', () => {
 	const { instanceAi } = Container.get(GlobalConfig);
 	const [head] = versionsOf('httpRequest.get');
-	const headPin = head && { version: head.manifest.semver, digest: head.digest };
+	const headPin = head && {
+		range: `^${head.manifest.semver}`,
+		version: head.manifest.semver,
+		digest: head.digest,
+	};
 	const nodeOf = (name: string, type: string, contract?: INode['contract']): INode => ({
 		id: name,
 		name,
@@ -443,8 +447,14 @@ describe('update() with node contracts', () => {
 		);
 		const second = await save([get(unknown), tool], workflow.id, owner);
 
-		expect(first.saved.map((node) => node.contract)).toEqual([unknown, headPin]);
-		expect(second.saved.map((node) => node.contract)).toEqual([headPin, headPin]);
+		expect(first.saved.map((node) => node.contract)).toEqual([
+			{ ...unknown, range: '^3.0.1' },
+			headPin,
+		]);
+		expect(second.saved.map((node) => node.contract)).toEqual([
+			{ ...headPin, range: '^3.0.1' },
+			headPin,
+		]);
 	});
 
 	test('writes no pin with node contracts off', async () => {

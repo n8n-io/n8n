@@ -13,7 +13,9 @@ import { createHash } from 'crypto';
 import { execFile } from 'child_process';
 import { readFile } from 'fs/promises';
 import {
+	contractInputOf,
 	credentialTypeOfManifest,
+	fixedInputIssues,
 	hostRuntime,
 	nodeContractRangeOf,
 	nodeNameOf,
@@ -21,6 +23,7 @@ import {
 	runsNodeContract,
 	toVersionedNodeType,
 	toVersionedToolType,
+	toolUiOf,
 	toVersionedTriggerType,
 	verifiedBundleOf,
 	type PackedVersion,
@@ -43,6 +46,7 @@ import {
 	type InstanceStore,
 	type SourcePackage,
 	type StoreStatusRecord,
+	type VersionManifest,
 } from '@n8n/node-sdk/registry';
 import type { RuntimeAvailability, RuntimeName } from '@n8n/node-sdk/runtimes';
 import type { GuestRuntime } from '@n8n/node-sdk/sandbox';
@@ -61,6 +65,7 @@ import {
 	deepCopy,
 	isToolType,
 	jsonParse,
+	UserError,
 	type VersionedNodeType,
 	type ICredentialType,
 	type ICredentialTypeData,
@@ -1003,11 +1008,27 @@ export async function pinnedNodesOf(
 			const current = node.contract ?? saved;
 			const keepUnknown = current?.digest !== saved?.digest;
 			const pin = action && (await store.pinOf(action.id, action.major, current, { keepUnknown }));
+			const manifest = action && pin && (await store.manifestOf(action.id, pin.digest));
+			if (manifest) assertFitsLock(node, manifest);
 			if (pin === node.contract) return node;
 			const { contract: _, ...rest } = node;
 			return pin ? { ...rest, contract: pin } : rest;
 		}),
 	);
+}
+
+/** Refuses a node whose fixed parameters the locked version does not accept, see `fixedInputIssues`. */
+function assertFitsLock(node: INode, { id, semver, contract, ui }: VersionManifest) {
+	const tool = toolIdOf(node.type) !== undefined;
+	const input = contractInputOf(
+		node.parameters,
+		contract.input,
+		tool ? toolUiOf(contract.input, ui) : ui,
+	);
+	const [issue] = fixedInputIssues(input, contract.input, { tool });
+	if (issue !== undefined) {
+		throw new UserError(`Node "${node.name}": ${id}@${semver} does not accept ${issue}`);
+	}
 }
 
 /**

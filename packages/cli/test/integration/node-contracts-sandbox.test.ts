@@ -148,7 +148,10 @@ describe('node contracts in their runtimes', () => {
 
 	const bundles = async () => {
 		const [{ manifest }] = versionsOf('httpRequest.send');
-		return { written: await readdir(path.join(cacheDir(), 'bundles')), manifest };
+		const sdk =
+			typeof manifest.sdk === 'object' ? [manifest.sdk.digest.replace('sha256:', '')] : [];
+		const expected = [manifest.bundleHash, ...sdk].map((hash) => `${hash}.cjs`).sort();
+		return { written: (await readdir(path.join(cacheDir(), 'bundles'))).sort(), expected };
 	};
 
 	it('runs a bundled version in the n8n process when in-process comes first', async () => {
@@ -168,8 +171,8 @@ describe('node contracts in their runtimes', () => {
 		});
 		expect(made).toHaveBeenCalledWith('worker', expect.any(Function));
 		// Only a runtime outside this process reads the verified bundle from the cache.
-		const { written, manifest } = await bundles();
-		expect(written).toEqual([`${manifest.bundleHash}.cjs`]);
+		const { written, expected } = await bundles();
+		expect(written).toEqual(expected);
 	}, 60_000);
 
 	it('does not run a version whose permission class is denied, whatever the runtime lists', async () => {
@@ -194,8 +197,8 @@ describe('node contracts in their runtimes', () => {
 				items: [{ received: { name: 'Ada' } }],
 			});
 			expect(made).toHaveBeenCalledWith('wasm', expect.any(Function));
-			const { written, manifest } = await bundles();
-			expect(written).toEqual([`${manifest.bundleHash}.cjs`]);
+			const { written, expected } = await bundles();
+			expect(written).toEqual(expected);
 		},
 		60_000,
 	);

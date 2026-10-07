@@ -2,11 +2,13 @@
 // keeps it external as `@n8n/node-sdk/validator`, the host process gives it to the bundle, and
 // a sandbox guest calls it through the `schema` import. A bundle gets only `validate`.
 import { isRecord } from '@n8n/utils/is-record';
+import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { AnySchemaObject, ErrorObject, KeywordDefinition, ValidateFunction } from 'ajv';
 import Ajv2020 from 'ajv/dist/2020';
 import type { RegExpEngine } from 'ajv/dist/types';
+import { isFromAIOnlyExpression } from 'n8n-workflow';
 
 import { stepsPerCharOf, testPattern } from './pattern';
 import {
@@ -503,6 +505,29 @@ export function validate(
 	if (value === undefined) return [];
 	const mode = options.allowExpressions ? 'expressions' : 'plain';
 	return run(compiledOf(schema, mode), value, options.path ?? 'input');
+}
+
+/**
+ * The issues of the fixed values of a contract node, as a build or a save checks them. A missing
+ * field and a placeholder are no issue, so an unfinished node saves. On a tool node, a field that
+ * is one `$fromAI()` call is no issue: the model fills it and the tool checks it. Expressions wait
+ * for the run.
+ */
+export function fixedInputIssues(
+	input: Readonly<Record<string, unknown>>,
+	schema: JsonSchema,
+	{ tool = false }: { readonly tool?: boolean } = {},
+): string[] {
+	const fixed = Object.fromEntries(
+		Object.entries(input).filter(
+			([, value]) =>
+				!hasPlaceholderDeep(value) &&
+				!(tool && typeof value === 'string' && isFromAIOnlyExpression(value)),
+		),
+	);
+	return validate(fixed, schema, { allowExpressions: true }).filter(
+		(issue) => !issue.endsWith(': is required'),
+	);
 }
 
 /** The largest schema that a guest may send, about 5 times the largest shipped contract schema. */

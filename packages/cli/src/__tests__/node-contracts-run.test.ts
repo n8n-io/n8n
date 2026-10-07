@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { hostRuntime } from '@n8n/node-sdk/host';
 import {
+	contractHash,
 	contractStore,
 	embeddedContractsOf,
 	manifestTextOf,
@@ -228,6 +229,55 @@ describe('pinNodeContracts', () => {
 
 		expect(head.manifest.semver).toBe('3.2.0');
 		expect(pinned?.contract).toEqual({ range: '~3.1.0', version: '3.1.0', digest });
+	});
+
+	it('refuses a node whose parameters the locked version does not accept', async () => {
+		const [head] = versionsOf('httpRequest.get');
+		if (!head) throw new Error('httpRequest.get has no bundled version');
+		const contract = {
+			...head.manifest.contract,
+			input: {
+				...head.manifest.contract.input,
+				properties: {
+					...head.manifest.contract.input.properties,
+					url: { type: 'string' as const, pattern: '^https://' },
+				},
+			},
+		};
+		const manifestText = manifestTextOf({
+			...head.manifest,
+			semver: '3.1.0',
+			contract,
+			contractHash: contractHash(contract),
+		});
+		const older: StoredManifest = {
+			id: head.manifest.id,
+			version: '3.1.0',
+			kind: 'action',
+			manifest: `sha256:${createHash('sha256').update(manifestText).digest('hex')}`,
+			manifestText,
+			signatures: [],
+			origin: 'community',
+		};
+		const store = contractStore({
+			registryUrl: '',
+			keys: { firstParty: undefined, vetting: undefined },
+			store: { ...emptyStore, manifests: async () => [older] },
+			fetch: async () => new Response(null, { status: 404 }),
+			runsNodeContract: hostRuntime().runsNodeContract,
+		});
+		nodesStore.open.mockResolvedValueOnce(store).mockResolvedValueOnce(store);
+		const http = { ...get, parameters: { url: 'http://example.com' } };
+
+		await expect(
+			pinNodeContracts([{ ...http, contract: { ...headOf('httpRequest.get'), range: '~3.1.0' } }]),
+		).rejects.toThrow(
+			'Node "Get": httpRequest.get@3.1.0 does not accept input.url: "http://example.com"',
+		);
+		const [pinned] = await pinNodeContracts([
+			{ ...http, contract: { ...headOf('httpRequest.get'), range: '^3.2.0' } },
+		]);
+		expect(pinned?.contract).toEqual({ ...headOf('httpRequest.get'), range: '^3.2.0' });
 	});
 
 	it('writes no pin and opens no store with node contracts off', async () => {
