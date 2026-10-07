@@ -1,7 +1,7 @@
 # glibc variant of ./Dockerfile, for vendor libraries that need glibc (for
 # example Oracle Instant Client in Thick mode, or the IBM DB2 clidriver).
-# This image does not ship vendor libraries. It keeps apt so that users can
-# build on top of it. That is the reason this variant exists.
+# This image does not ship vendor libraries. Users add them in a derived image.
+# Like the Alpine base, this image has no package manager.
 #
 # CI passes the DHI reference (see build-base-image.yml). The default keeps
 # plain `docker build` working.
@@ -29,7 +29,16 @@ RUN apt-get update && \
         tini \
         tzdata \
         librdkafka1 && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /root/.npm /root/.cache
+    rm -rf /var/lib/apt/lists/* /var/cache/apt /tmp/* /root/.npm /root/.cache && \
+    # Remove the package manager, as the Alpine base removes apk-tools. dpkg
+    # cannot remove apt and itself in one call. The dpkg status files stay, so
+    # scanners still see the installed packages. DHI also lists its packages
+    # in status.d, so remove the entries of the packages that are now gone.
+    dpkg --purge --force-remove-essential --force-depends \
+        apt $(dpkg-query -W -f='${Package}\n' 'libapt-pkg*') && \
+    dpkg --purge --force-remove-essential --force-depends dpkg && \
+    rm -rf /var/lib/apt /var/lib/dpkg/status.d/apt /var/lib/dpkg/status.d/dpkg \
+        /var/lib/dpkg/status.d/libapt-pkg*
 
 # DHI Debian ships node at /usr/bin. Symlink it to /usr/local/bin so the path
 # matches what the cloud launch and AppArmor profile expect.
