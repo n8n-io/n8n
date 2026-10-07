@@ -8,6 +8,7 @@ export interface WorkflowNode {
 	position: [number, number];
 	parameters: Record<string, unknown>;
 	webhookId?: string;
+	credentials?: Record<string, { id: string; name: string }>;
 }
 
 const node = (
@@ -43,6 +44,19 @@ export const nodes = {
 			mode: 'once',
 			options: { waitForSubWorkflow },
 		}),
+	postgresQuery: (
+		name: string,
+		query: string,
+		queryReplacement: string,
+		credential: { id: string; name: string },
+	) => ({
+		...node(name, 'n8n-nodes-base.postgres', 2.5, {
+			operation: 'executeQuery',
+			query,
+			options: { queryReplacement },
+		}),
+		credentials: { postgres: credential },
+	}),
 };
 
 /** A workflow whose nodes run one after the other in the given order. */
