@@ -1,4 +1,9 @@
-import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	isAttachmentValidationError,
+	type AgentMessage,
+	type StreamChunk,
+} from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -543,12 +548,14 @@ export class AgentChatBridge {
 			toolCall.toolCallId,
 			toolCall.resumeSchema,
 			async (_actionId, value) => {
-				const response: unknown = JSON.parse(value);
-				if (!isRecord(response) || typeof response.approved !== 'boolean') {
+				const response = APPROVAL_RESUME_SCHEMA.safeParse(JSON.parse(value));
+				if (!response.success) {
 					throw new UserError('Invalid background approval response');
 				}
+				let decision = response.data.approved ? '1' : '0';
+				if (response.data.approved && response.data.scope === 'session') decision = 's';
 				// The durable checkpoint resolves this 64-byte callback after a restart.
-				return { id: `bg:${jobId}:${token}:${response.approved ? '1' : '0'}`, value: '' };
+				return { id: `bg:${jobId}:${token}:${decision}`, value: '' };
 			},
 			this.integration.type,
 		);
@@ -575,10 +582,19 @@ export class AgentChatBridge {
 	 */
 	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
 		const baseId = this.baseThreadId(thread);
-		const idleTimeoutMinutes =
+		// `null` is a documented, explicit opt-out distinct from `undefined`
+		// (unset) — only fall back to the integration's default when the setting
+		// was never configured at all, not when it was deliberately disabled.
+		// Some integration types (see `AgentIntegrationConfig`) carry no
+		// `settings` field at all, hence the `in` check before reading it.
+		const configuredIdleTimeoutMinutes =
 			'settings' in this.integration
-				? (this.integration.settings?.sessionIdleTimeoutMinutes ?? null)
-				: null;
+				? this.integration.settings?.sessionIdleTimeoutMinutes
+				: undefined;
+		const idleTimeoutMinutes =
+			configuredIdleTimeoutMinutes !== undefined
+				? configuredIdleTimeoutMinutes
+				: (this.integrationImpl?.defaultSessionIdleTimeoutMinutes ?? null);
 		const id = await this.withSessionLock(
 			baseId,
 			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),

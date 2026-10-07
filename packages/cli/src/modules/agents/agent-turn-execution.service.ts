@@ -9,7 +9,6 @@ import type {
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentSessionMode } from './utils/agent-thread-access';
@@ -19,13 +18,14 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
+import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
 	type StartExecutionParams,
 } from './agent-execution.service';
-import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
+import { ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from './utils/fatal-session-outcome';
@@ -55,11 +55,12 @@ interface ExecuteTurnConfig {
 	mcpServerAttributions: Map<string, string>;
 	context: RecordingContext;
 	prepare: () => Promise<AgentTurnRequest>;
-	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
 	productionN8nChat?: boolean;
 	automaticPreviewContinuation?: boolean;
+	/** The abort signal is a wake lease, not a chat request. */
+	isWakeRun?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
@@ -78,22 +79,6 @@ interface PreviewExecutionControl {
 	controller: AbortController;
 	detachRequest: () => void;
 	userId: string;
-}
-
-function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
-	if (chunk.type !== 'tool-call-suspended' || !isRecord(chunk.suspendPayload)) return chunk;
-	if (chunk.suspendPayload.type !== 'approval') return chunk;
-
-	const toolName = chunk.suspendPayload.toolName;
-	if (typeof toolName !== 'string' || toolName.length === 0) return chunk;
-
-	return {
-		...chunk,
-		suspendPayload: {
-			...chunk.suspendPayload,
-			details: buildToolCallDetails(toolRegistry, toolName, chunk.suspendPayload.args),
-		},
-	};
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -117,6 +102,7 @@ export class AgentTurnExecutionService {
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly steering: AgentMessageSteeringService,
+		private readonly toolApprovalService: AgentToolApprovalService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -190,6 +176,11 @@ export class AgentTurnExecutionService {
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
 	): Promise<ReadableStream<StreamChunk>> {
+		turn.options.approvalContext = await this.toolApprovalService.createContext(
+			turn.recording,
+			config.toolRegistry,
+		);
+		turn.options.abortSignal?.throwIfAborted();
 		if (turn.type === 'start') {
 			state.executionStarted = true;
 			return (await config.agentInstance.stream(turn.input, turn.options)).stream;
@@ -217,22 +208,19 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		for await (const value of streamAgentChunks(stream)) {
-			if (value.type === 'input-boundary') {
-				value.acknowledge();
+		for await (const chunk of streamAgentChunks(stream)) {
+			if (chunk.type === 'input-boundary') {
+				chunk.acknowledge();
 				continue;
 			}
-			if (value.type === 'input') {
-				const event = state.steeredMessages.get(value.message.id);
+			if (chunk.type === 'input') {
+				const event = state.steeredMessages.get(chunk.message.id);
 				if (event) {
-					state.steeredMessages.delete(value.message.id);
+					state.steeredMessages.delete(chunk.message.id);
 					yield event;
 				}
 				continue;
 			}
-			const chunk = config.includeHitlToolDetails
-				? withApprovalToolDetails(value, config.toolRegistry)
-				: value;
 			recorder.record(chunk);
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
@@ -356,6 +344,29 @@ export class AgentTurnExecutionService {
 		onExecutionRecorded?.(recordedId);
 	}
 
+	/** Finalize an admitted execution whose runtime could not start. */
+	async recordFailedAdmission(
+		admission: AgentExecutionAdmission,
+		params: StartExecutionParams,
+		executionError: unknown,
+	): Promise<void> {
+		const recorder = this.createRecorder(
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			admission.startedAt,
+		);
+		recorder.record({ type: 'error', error: executionError });
+		recorder.record({ type: 'finish', finishReason: 'error' });
+		await this.finalizeExecution({
+			executionId: admission.executionId,
+			executionStarted: false,
+			executionError,
+			params: { ...params, record: recorder.getMessageRecord() },
+		});
+	}
+
 	async recordFailedStart(
 		params: StartExecutionParams,
 		executionError: unknown,
@@ -477,7 +488,9 @@ export class AgentTurnExecutionService {
 				},
 				previewControl.controller,
 			);
-			previewControl.detachRequest();
+			// A closed chat request must not stop an admitted turn. A lost wake lease must,
+			// because the wake leaves its job results unconsumed and another wake retries them.
+			if (!config.isWakeRun) previewControl.detachRequest();
 		}
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();

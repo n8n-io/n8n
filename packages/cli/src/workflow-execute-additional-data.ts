@@ -9,7 +9,7 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	AiEvent,
 	EnvProviderState,
@@ -41,6 +41,7 @@ import type {
 import {
 	OperationalError,
 	UnexpectedError,
+	UserError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -156,9 +157,9 @@ async function fetchWorkflowData(
 	} else {
 		const workflowData = workflowInfo.code;
 		if (workflowData) {
-			if (!workflowData.id) {
-				workflowData.id = parentWorkflowId;
-			}
+			// An inline sub-workflow is part of the parent that embeds it, not a
+			// workflow of its own, so it runs under the parent workflow's id.
+			workflowData.id = parentWorkflowId;
 			workflowData.settings ??= parentWorkflowSettings;
 		}
 		return workflowData;
@@ -212,6 +213,7 @@ export async function getPublishedWorkflowData(
 		}
 		return {
 			...publishedData.workflow,
+			versionId: publishedData.publishedVersion.versionId,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
 		};
@@ -232,6 +234,7 @@ export async function getPublishedWorkflowData(
 	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
 		return {
 			...workflowData,
+			versionId: workflowData.activeVersion.versionId,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
 		};
@@ -380,6 +383,15 @@ export async function executeWorkflow(
 	return await executionPromise;
 }
 
+/** Workflows that already use agent nodes still load, so fail clearly when the module is off. */
+function assertAgentsModuleActive() {
+	if (!Container.get(ModuleRegistry).isActive('agents')) {
+		throw new UserError(
+			'Agents are disabled on this instance. Ask an instance admin to enable the agents module.',
+		);
+	}
+}
+
 /**
  * Executes an agent — a saved one by ID, or an inline definition embedded in
  * the calling node's parameters.
@@ -395,6 +407,8 @@ export async function executeAgent(
 	workflowContext?: ExecuteAgentWorkflowContext,
 	invocationContext?: ExecuteAgentInvocationContext,
 ): Promise<ExecuteAgentData> {
+	assertAgentsModuleActive();
+
 	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
 
@@ -493,6 +507,12 @@ export async function executeAgent(
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
+	assertAgentsModuleActive();
+
+	// Executions check the Settings > Agents switch in the agents services. The listing must too.
+	const { AgentsSettingsService } = await import('@/modules/agents/agents-settings.service.js');
+	await Container.get(AgentsSettingsService).assertEnabled();
+
 	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
@@ -676,6 +696,7 @@ async function startExecution(
 			additionalDataIntegrated,
 			runData.executionMode,
 			runExecutionData,
+			Container.get(StorageConfig).modeTag,
 		);
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
@@ -696,6 +717,7 @@ async function startExecution(
 		const fullExecutionData: UpdateExecutionPayload = {
 			data: fullRunData.data,
 			mode: fullRunData.mode,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: fullRunData.finished ? fullRunData.finished : false,
 			startedAt: fullRunData.startedAt,
 			stoppedAt: fullRunData.stoppedAt,
@@ -732,6 +754,7 @@ async function startExecution(
 	}
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 

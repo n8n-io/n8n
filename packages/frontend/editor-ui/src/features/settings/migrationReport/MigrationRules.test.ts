@@ -64,6 +64,7 @@ const mockReport: BreakingChangeLightReportResult = {
 		instanceResults: [mockInstanceIssue],
 	},
 	totalWorkflows: 10,
+	totalAffectedWorkflows: 5,
 	shouldCache: true,
 };
 
@@ -81,6 +82,7 @@ const createMockReport = (
 			...overrides.report,
 		},
 		totalWorkflows: 10,
+		totalAffectedWorkflows: 0,
 		shouldCache: true,
 		...overrides,
 	};
@@ -289,6 +291,66 @@ describe('MigrationRules', () => {
 		});
 	});
 
+	describe('resolved workflow rules', () => {
+		const resolvedRule = {
+			...mockWorkflowIssue,
+			ruleId: 'rule-resolved',
+			ruleTitle: 'Resolved Rule',
+			ruleImpact: 'upgradeBlocked' as const,
+			nbAffectedWorkflows: 0,
+		};
+
+		it('lists a rule without open findings last, as resolved, with a link to its detail page', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [resolvedRule, mockWorkflowIssue],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('Resolved')).toBeInTheDocument();
+			});
+			expect(screen.getByText('Resolved').closest('a')).toBeInTheDocument();
+			expect(screen.queryByText('0 Workflows')).not.toBeInTheDocument();
+			const titles = screen
+				.getAllByRole('heading', { level: 3 })
+				.map((heading) => heading.textContent?.trim());
+			expect(titles).toEqual(['Test Rule 1', 'Resolved Rule']);
+			// The tab counts only the rule with open findings.
+			expect(screen.getByText('Workflow issues').parentElement).toHaveTextContent('1');
+		});
+
+		it('shows the empty state and keeps the resolved rules listed when no rule has open findings', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [resolvedRule],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('No workflow issues detected')).toBeInTheDocument();
+			});
+			expect(screen.getByText('Resolved Rule')).toBeInTheDocument();
+			expect(screen.getByText('Workflow issues').parentElement).not.toHaveTextContent(/\d/);
+		});
+	});
+
 	describe('instance issues tab', () => {
 		it('should display instance issues with all elements', async () => {
 			renderComponent();
@@ -394,27 +456,67 @@ describe('MigrationRules', () => {
 	});
 
 	describe('refresh functionality', () => {
-		it('should show refresh button when shouldCache is true', async () => {
+		it.each([true, false])(
+			'should always show the Refresh button (shouldCache: %s)',
+			async (shouldCache) => {
+				vi.mocked(breakingChangesApi.getReport).mockResolvedValue({ ...mockReport, shouldCache });
+
+				renderComponent();
+
+				await waitFor(() => {
+					expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+				});
+
+				expect(screen.getByText('Refresh')).toBeInTheDocument();
+			},
+		);
+
+		it('should show when the report was last synced, from generatedAt', async () => {
+			// One year in the past, so the relative label is stable whatever the test date.
+			const generatedAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt,
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [mockWorkflowIssue],
+						instanceResults: [],
+					},
+				}),
+			);
+
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByText('Refresh')).toBeInTheDocument();
+				const lastSynced = screen.getByTestId('migration-report-last-synced');
+				expect(lastSynced).toHaveTextContent(/Last synced\s+1 year ago/);
 			});
 		});
 
-		it('should hide refresh button when shouldCache is false', async () => {
-			vi.mocked(breakingChangesApi.getReport).mockResolvedValue({
-				...mockReport,
-				shouldCache: false,
-			});
+		it('should update the last synced time after Refresh', async () => {
+			const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+			const newDate = new Date(Date.now() - 60 * 1000);
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: oldDate } }),
+			);
+			vi.mocked(breakingChangesApi.refreshReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: newDate } }),
+			);
 
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(/1 year ago/);
 			});
 
-			expect(screen.queryByText('Refresh')).not.toBeInTheDocument();
+			await userEvent.click(screen.getByText('Refresh'));
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(
+					/1 minute ago/,
+				);
+			});
 		});
 
 		it('should refresh and reload data when clicked', async () => {
@@ -429,6 +531,7 @@ describe('MigrationRules', () => {
 					instanceResults: [],
 				},
 				totalWorkflows: 15,
+				totalAffectedWorkflows: 10,
 			});
 
 			vi.mocked(breakingChangesApi.refreshReport).mockResolvedValue(updatedReport);
@@ -493,33 +596,89 @@ describe('MigrationRules', () => {
 
 	describe('compatible workflows count', () => {
 		it.each([
-			{ affected: [5], compatible: 5, description: 'single issue' },
-			{ affected: [3, 2], compatible: 5, description: 'multiple issues' },
-			{ affected: [10], compatible: 0, description: 'all affected' },
-			{ affected: [], compatible: 10, description: 'no issues' },
-		])('should calculate correctly with $description', async ({ affected, compatible }) => {
-			const report = createMockReport({
-				report: {
-					generatedAt: new Date('2024-01-01'),
-					targetVersion: '2.0.0',
-					currentVersion: '1.0.0',
-					workflowResults: affected.map((count, idx) => ({
-						...mockWorkflowIssue,
-						ruleId: `rule-${idx}`,
-						nbAffectedWorkflows: count,
-					})),
-					instanceResults: [],
-				},
-			});
+			{ affected: [5], totalAffected: 5, compatible: 5, description: 'single issue' },
+			{ affected: [3, 2], totalAffected: 5, compatible: 5, description: 'multiple issues' },
+			{
+				affected: [5, 5, 5],
+				totalAffected: 5,
+				compatible: 5,
+				description: 'workflows that break several rules',
+			},
+			{ affected: [10], totalAffected: 10, compatible: 0, description: 'all affected' },
+			{ affected: [], totalAffected: 0, compatible: 10, description: 'no issues' },
+		])(
+			'should calculate correctly with $description',
+			async ({ affected, totalAffected, compatible }) => {
+				const report = createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: affected.map((count, idx) => ({
+							...mockWorkflowIssue,
+							ruleId: `rule-${idx}`,
+							nbAffectedWorkflows: count,
+						})),
+						instanceResults: [],
+					},
+					totalAffectedWorkflows: totalAffected,
+				});
 
-			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(report);
+				vi.mocked(breakingChangesApi.getReport).mockResolvedValue(report);
+
+				renderComponent();
+
+				await waitFor(() => {
+					expect(
+						screen.getByText(
+							new RegExp(`${compatible} of your 10 workflows are already compatible`),
+						),
+					).toBeInTheDocument();
+				});
+			},
+		);
+	});
+
+	describe('migration progress', () => {
+		it('should render the progress bar with the compatible share', async () => {
+			renderComponent();
+
+			await waitFor(() => {
+				const progressBar = screen.getByTestId('migration-report-progress');
+				expect(progressBar).toHaveAttribute('aria-valuenow', '50');
+				expect(progressBar).toHaveAttribute('aria-label', '5 of 10 compatible');
+			});
+			expect(screen.getByText('5 of 10 compatible')).toBeInTheDocument();
+		});
+
+		it('should show 0% when there are no workflows', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ totalWorkflows: 0 }),
+			);
 
 			renderComponent();
 
 			await waitFor(() => {
-				expect(
-					screen.getByText(new RegExp(`${compatible} of your 10 workflows are already compatible`)),
-				).toBeInTheDocument();
+				expect(screen.getByTestId('migration-report-progress')).toHaveAttribute(
+					'aria-valuenow',
+					'0',
+				);
+			});
+			expect(screen.getByText('0 of 0 compatible')).toBeInTheDocument();
+		});
+
+		it('should not show 100% while some workflows are incompatible', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ totalWorkflows: 1000, totalAffectedWorkflows: 5 }),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-progress')).toHaveAttribute(
+					'aria-valuenow',
+					'99',
+				);
 			});
 		});
 	});
@@ -617,6 +776,7 @@ describe('MigrationRules', () => {
 						instanceResults: [],
 					},
 					totalWorkflows: 0,
+					totalAffectedWorkflows: 0,
 					shouldCache: false,
 				}),
 			);

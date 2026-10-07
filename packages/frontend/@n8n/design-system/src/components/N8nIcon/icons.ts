@@ -1,9 +1,11 @@
 import Anthropic from './custom/anthropic.svg';
+import Azure from './custom/azure.svg';
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
+import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
@@ -41,6 +43,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
+import WhatsApp from './custom/whatsapp.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
@@ -191,6 +194,8 @@ import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMinus from '~icons/lucide/minus';
+import IconLucideMonitor from '~icons/lucide/monitor';
+import IconLucideMoon from '~icons/lucide/moon';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
@@ -316,6 +321,7 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
 	teams: Teams,
 	spinner: Spinner,
 	xmark: IconLucideX,
@@ -538,7 +544,10 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
 	teams: Teams,
+	azure: Azure,
+	entra: Entra,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -699,6 +708,8 @@ export const updatedIconSet = {
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
 	minus: IconLucideMinus,
+	monitor: IconLucideMonitor,
+	moon: IconLucideMoon,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,
@@ -760,6 +771,7 @@ export const updatedIconSet = {
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
+	timer: IconLucideTimer,
 	'trash-2': IconLucideTrash2,
 	'tree-pine': IconLucideTreePine,
 	'trending-down': IconLucideTrendingDown,

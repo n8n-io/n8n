@@ -248,6 +248,17 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		{ immediate: true },
 	);
 
+	// A thread from before the server stored the tabs has none. Store the default
+	// tabs once its messages load, so the artifacts the agent changes next join
+	// them at the end.
+	watch(
+		[tabs.isLoaded, () => thread.isHydratingThread, () => artifactTabs.value.length],
+		([isLoaded, isHydrating, artifactCount]) => {
+			if (isLoaded && !isHydrating && artifactCount > 0) tabs.storeDefaultTabs();
+		},
+		{ immediate: true },
+	);
+
 	// Show the tab that was active, and the preview state, from when the user last
 	// changed the tabs. A tab the user picks while the stored tabs load wins,
 	// because the stored tabs are then ignored.
@@ -582,6 +593,8 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	return {
 		activeTabId,
 		openTabs,
+		/** False until the stored tabs of the thread load. */
+		tabsLoaded: tabs.isLoaded,
 		activeWorkflowId,
 		activeDataTableId,
 		activeDataTableProjectId,

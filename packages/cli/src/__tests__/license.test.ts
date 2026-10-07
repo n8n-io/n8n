@@ -103,6 +103,34 @@ describe('License', () => {
 		);
 	});
 
+	test('passes detachFloatingOnShutdown from config in single-main', async () => {
+		license = new License(
+			mockLogger(),
+			mock<InstanceSettings>({ instanceType: 'main', isLeader: true, isMultiMain: false }),
+			mock(),
+			mock(),
+			mock<GlobalConfig>({ license: licenseConfig }),
+		);
+		await license.init();
+
+		const calls = (LicenseManager as MockedClass<typeof LicenseManager>).mock.calls;
+		expect(calls[calls.length - 1][0].detachFloatingOnShutdown).toBe(true);
+	});
+
+	test('does not detach floating entitlements on shutdown in multi-main', async () => {
+		license = new License(
+			mockLogger(),
+			mock<InstanceSettings>({ instanceType: 'main', isLeader: true, isMultiMain: true }),
+			mock(),
+			mock(),
+			mock<GlobalConfig>({ license: licenseConfig }),
+		);
+		await license.init();
+
+		const calls = (LicenseManager as MockedClass<typeof LicenseManager>).mock.calls;
+		expect(calls[calls.length - 1][0].detachFloatingOnShutdown).toBe(false);
+	});
+
 	test('attempts to activate license with provided key (initial activation)', async () => {
 		await license.activate(MOCK_ACTIVATION_KEY);
 

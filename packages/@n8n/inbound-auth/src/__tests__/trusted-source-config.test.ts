@@ -2,10 +2,10 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	configMigrations,
+	JwtAlgorithmSchema,
 	migrateToLatest,
 	TrustedSourceConfigSchema,
 	trustedSourceConfigSchemaFor,
-	TrustedSourceSecretsSchema,
 	type TrustedSourceConfig,
 } from '../trusted-source-config';
 import { trustedSourceConfigV1Fixture } from './fixtures/trusted-source-config.v1';
@@ -23,18 +23,8 @@ const fullyDefaultedDocument = {
 		discovery: { mode: 'auto' },
 		keys: { kind: 'jwks-uri' },
 		verification: { mode: 'jwt' },
-		algorithms: [
-			'RS256',
-			'RS384',
-			'RS512',
-			'ES256',
-			'ES384',
-			'ES512',
-			'PS256',
-			'PS384',
-			'PS512',
-			'EdDSA',
-		],
+		algorithms: [...JwtAlgorithmSchema.options],
+		allowedTokenTypes: ['at+jwt', 'application/at+jwt'],
 		maxTokenLifetimeSeconds: 86400,
 		clockSkewSeconds: 60,
 	},
@@ -127,14 +117,18 @@ describe('TrustedSourceConfigSchema shape', () => {
 		expect(issuesOf(result)).toContainEqual(expect.objectContaining({ path }));
 	});
 
-	test('a registered client carries no secret in the document', () => {
+	test('a registered client keeps its client secret in the document', () => {
 		const document = withAuthentication({
-			client: { kind: 'registered', clientId: 'n8n', clientSecret: 'leaked' },
+			client: { kind: 'registered', clientId: 'n8n', clientSecret: 's3cret' },
 		});
 
 		const parsed = TrustedSourceConfigSchema.parse(document);
 
-		expect(parsed.authentication.client).toEqual({ kind: 'registered', clientId: 'n8n' });
+		expect(parsed.authentication.client).toEqual({
+			kind: 'registered',
+			clientId: 'n8n',
+			clientSecret: 's3cret',
+		});
 	});
 });
 
@@ -320,17 +314,6 @@ describe('manual discovery endpoints must be https', () => {
 			);
 		},
 	);
-});
-
-describe('TrustedSourceSecretsSchema', () => {
-	test('accepts a client secret and refuses unknown keys', () => {
-		expect(
-			TrustedSourceSecretsSchema.safeParse({ version: 1, clientSecret: 's3cret' }).success,
-		).toBe(true);
-		expect(TrustedSourceSecretsSchema.safeParse({ version: 1, clientId: 'n8n' }).success).toBe(
-			false,
-		);
-	});
 });
 
 describe('migrateToLatest', () => {

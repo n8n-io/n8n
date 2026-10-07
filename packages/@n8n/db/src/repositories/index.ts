@@ -21,6 +21,10 @@ export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export {
+	CredentialAccessRepository,
+	type CredentialAccessRoles,
+} from './credential-access.repository';
+export {
 	CredentialsRepository,
 	CredentialIdConflictError,
 	type CredentialSharingRelation,
@@ -48,6 +52,7 @@ export {
 	type UpdateExecutionConditions,
 } from './execution.repository';
 export { FolderRepository } from './folder.repository';
+export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
@@ -73,6 +78,8 @@ export type {
 	ClaimedRef,
 	HostedClaimedRef,
 	DeleteFinishedTasksOptions,
+	RetireMissedResult,
+	RetiredTask,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
 export {
@@ -93,7 +100,11 @@ export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
-export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
+export {
+	WorkflowRepository,
+	agentToolReferenceWhere,
+	type WorkflowIdsQuery,
+} from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
 export { WorkflowPublicationRetryStateRepository } from './workflow-publication-retry-state.repository';
 export {

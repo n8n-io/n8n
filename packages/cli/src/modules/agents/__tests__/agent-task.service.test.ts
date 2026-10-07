@@ -1,7 +1,8 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
+import type { EventService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
@@ -11,8 +12,10 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
+import type { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -24,6 +27,8 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentTaskJobRegistrar } from '../scheduling/agent-task-job-registrar';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
 
 const AGENT_ID = 'agent-1';
 const PROJECT_ID = 'project-1';
@@ -132,7 +137,9 @@ describe('AgentTaskService', () => {
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let modificationTelemetry: ReturnType<typeof mock<AgentModificationTelemetryService>>;
 	let durableJobRegistrar: ReturnType<typeof mock<AgentTaskJobRegistrar>>;
-	let txManager: { save: Mock; remove: Mock };
+	let settingsService: ReturnType<typeof mock<AgentsSettingsService>>;
+	let transactionRunner: ReturnType<typeof mock<TransactionRunner>>;
+	const ctx: OperationContext = { trx: mock<Transaction>() };
 	let service: AgentTaskService;
 
 	function setMultiMain(enabled: boolean): void {
@@ -152,14 +159,21 @@ describe('AgentTaskService', () => {
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
 			new AgentChangePublisher(publisher, globalConfig, logger),
-			modificationTelemetry,
 			durableJobRegistrar,
-			mock<AgentUpdateBroadcaster>(),
+			new AgentSaveCompletionService(
+				mock<EventService>(),
+				mock<AgentUpdateBroadcaster>(),
+				modificationTelemetry,
+			),
+			settingsService,
+			transactionRunner,
 		);
 	}
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		settingsService = mock<AgentsSettingsService>();
+		settingsService.getEnabled.mockResolvedValue(true);
 		setMultiMain(false);
 		taskRepository = mock<AgentTaskRepository>();
 		taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
@@ -173,17 +187,9 @@ describe('AgentTaskService', () => {
 		);
 		agentRepository = mock<AgentRepository>();
 		agentRepository.saveDraftFenced.mockResolvedValue(true);
-		// `manager` is a TypeORM getter, not auto-mocked; run transaction callbacks
-		// against a manager that records save/remove.
-		txManager = {
-			save: vi.fn(async (e: unknown) => e),
-			remove: vi.fn(async (e: unknown) => e),
-		};
-		(agentRepository as unknown as { manager: unknown }).manager = {
-			transaction: vi.fn(
-				async (cb: (m: typeof txManager) => Promise<unknown>) => await cb(txManager),
-			),
-		};
+		transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+		taskRepository.saveDefinitions.mockImplementation(async (tasks) => tasks);
 		agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 		agentTaskScheduler = mock<ScheduledTaskManager>();
 		agentTaskScheduler.register.mockReturnValue(true);
@@ -234,8 +240,8 @@ describe('AgentTaskService', () => {
 			expect(agent.schema?.tasks).toEqual([
 				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
 			]);
-			expect(txManager.save).toHaveBeenCalledTimes(1);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, txManager);
+			expect(taskRepository.saveDefinitions).toHaveBeenCalledTimes(1);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);
 		});
 
 		it('rejects an invalid cron without creating', async () => {
@@ -342,7 +348,7 @@ describe('AgentTaskService', () => {
 			} as Partial<Agent>);
 			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
 
-			const dtos = await service.createTasks(
+			const { tasks: dtos, configHash } = await service.createTasks(
 				AGENT_ID,
 				PROJECT_ID,
 				[taskOneDto, taskTwoDto],
@@ -359,10 +365,17 @@ describe('AgentTaskService', () => {
 				{ type: 'task', id: dtos[0].id, enabled: true },
 				{ type: 'task', id: dtos[1].id, enabled: true },
 			]);
-			// 2 task saves + 1 fenced agent save, all inside the same transaction call.
-			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
-			expect(txManager.save).toHaveBeenCalledTimes(2);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, txManager);
+			// Save task bodies and config refs in the same transaction.
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(taskRepository.saveDefinitions).toHaveBeenCalledWith(
+				[
+					expect.objectContaining({ name: taskOneDto.name }),
+					expect.objectContaining({ name: taskTwoDto.name }),
+				],
+				ctx,
+			);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);
+			expect(configHash).toBe(getAgentConfigHash(composeJsonConfig(agent)));
 		});
 
 		it('rejects an empty batch before loading or writing anything', async () => {
@@ -372,7 +385,7 @@ describe('AgentTaskService', () => {
 
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			expect(taskRepository.create).not.toHaveBeenCalled();
-			expect(txManager.save).not.toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).not.toHaveBeenCalled();
 		});
 
 		it('rejects the whole batch without writing when any cron is invalid', async () => {
@@ -387,7 +400,7 @@ describe('AgentTaskService', () => {
 
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			expect(taskRepository.create).not.toHaveBeenCalled();
-			expect(txManager.save).not.toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).not.toHaveBeenCalled();
 		});
 
 		it('rejects when the agent is not found in the project', async () => {
@@ -398,7 +411,7 @@ describe('AgentTaskService', () => {
 			).rejects.toThrow(NotFoundError);
 
 			expect(taskRepository.create).not.toHaveBeenCalled();
-			expect(txManager.save).not.toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).not.toHaveBeenCalled();
 		});
 
 		it('rejects when the agent has no config yet', async () => {
@@ -411,7 +424,7 @@ describe('AgentTaskService', () => {
 			).rejects.toThrow(BadRequestError);
 
 			expect(taskRepository.create).not.toHaveBeenCalled();
-			expect(txManager.save).not.toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).not.toHaveBeenCalled();
 		});
 	});
 
@@ -461,7 +474,7 @@ describe('AgentTaskService', () => {
 			expect(task.cronExpression).toBe('0 10 * * *');
 			// An omitted timezone keeps the current one, so old clients stay safe.
 			expect(task.timezone).toBe('Asia/Tokyo');
-			expect(txManager.save).toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).toHaveBeenCalled();
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
@@ -500,7 +513,7 @@ describe('AgentTaskService', () => {
 
 			expect(dto.timezone).toBe('Asia/Tokyo');
 			expect(task.timezone).toBe('Asia/Tokyo');
-			expect(txManager.save).toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).toHaveBeenCalled();
 		});
 
 		it('resets to the instance timezone when passed null', async () => {
@@ -531,12 +544,11 @@ describe('AgentTaskService', () => {
 				),
 			).rejects.toThrow(BadRequestError);
 			expect(task.timezone).toBe('Asia/Tokyo');
-			expect(txManager.save).not.toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).not.toHaveBeenCalled();
 		});
 
 		it('is a no-op when no field changes (skips the agent write)', async () => {
-			const task = makeTask();
-			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+			const task = arrangeUpdate();
 
 			const dto = await service.update(
 				AGENT_ID,
@@ -551,11 +563,12 @@ describe('AgentTaskService', () => {
 			);
 
 			expect(dto.cronExpression).toBe(task.cronExpression);
-			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
-			expect(txManager.save).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			expect(taskRepository.saveDefinitions).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when updating a missing task', async () => {
+			arrangeUpdate();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
 			await expect(
 				service.update(AGENT_ID, PROJECT_ID, 'missing', { name: 'x' }, telemetryContext),
@@ -569,7 +582,7 @@ describe('AgentTaskService', () => {
 			await expect(
 				service.delete(AGENT_ID, PROJECT_ID, 'missing', telemetryContext),
 			).rejects.toThrow(NotFoundError);
-			expect(txManager.remove).not.toHaveBeenCalled();
+			expect(taskRepository.deleteForAgent).not.toHaveBeenCalled();
 		});
 
 		it('removes the body and drops its config ref', async () => {
@@ -587,7 +600,7 @@ describe('AgentTaskService', () => {
 
 			await service.delete(AGENT_ID, PROJECT_ID, 'task-1', telemetryContext);
 
-			expect(txManager.remove).toHaveBeenCalledWith(task);
+			expect(taskRepository.deleteForAgent).toHaveBeenCalledWith(AGENT_ID, [task.id], ctx);
 			expect(agent.schema?.tasks).toEqual([]);
 		});
 
@@ -921,11 +934,21 @@ describe('AgentTaskService', () => {
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(snapshot);
 		};
 
-		it('runs the published agent with the objective', async () => {
+		it('skips disabled ticks and runs the next enabled tick with the published objective', async () => {
 			arrangePublishedTask();
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
+			settingsService.getEnabled.mockResolvedValue(false);
+
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('skipped-disabled');
+			expect(taskRunLockRepository.acquire).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.deregisterTarget).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+
+			settingsService.getEnabled.mockResolvedValue(true);
 
 			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('started');
 			await flushAsyncWork();

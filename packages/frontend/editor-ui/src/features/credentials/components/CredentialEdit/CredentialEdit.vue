@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
+import { useAgentAssistantCredentialHelp } from '@/features/agents/composables/useAgentAssistantCredentialHelp';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
@@ -318,10 +319,9 @@ const hideAskAssistant = computed<boolean>(() => {
 	return modalOptions.value?.hideAskAssistant === true;
 });
 
-// The host's Instance AI credential-help behavior, stashed in the modal state by
-// whoever opened the modal (the editor capability or the credentials list).
+const { isAgentUi, getCredentialHelp } = useAgentAssistantCredentialHelp();
 const instanceAiCredentialHelp = computed(() => {
-	return modalOptions.value?.instanceAiCredentialHelp;
+	return isAgentUi.value ? getCredentialHelp() : modalOptions.value?.instanceAiCredentialHelp;
 });
 
 const closeOnSave = computed<boolean>(() => {

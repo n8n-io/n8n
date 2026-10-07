@@ -108,7 +108,10 @@ export class ImportPackageRequestDto extends Z.class({
 	overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive'),
 	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
-	dataTableSchemaConflictPolicy: optionalEnum(['keep-existing', 'fail'], 'keep-existing'),
+	dataTableSchemaConflictPolicy: optionalEnum(
+		['keep-existing', 'fail', 'overwrite', 'overwrite-non-destructive'],
+		'keep-existing',
+	),
 	variableMissingMode: optionalEnum(
 		['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
 		'create-with-value',
@@ -126,6 +129,7 @@ export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
 	'deletedWorkflowIds',
 	'workflowConflictPolicy',
 	'workflowIdPolicy',
+	'overwriteDeletionPolicy',
 ] as const;
 
 const SELECTED_WORKFLOW_IDS_ERROR_MESSAGE =
@@ -185,4 +189,5 @@ export class ImportPackageSelectionRequestDto extends Z.class({
 	deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE),
 	workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version'),
 	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
+	overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive'),
 }) {}

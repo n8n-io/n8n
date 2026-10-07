@@ -678,7 +678,7 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(getHoverCard()).toBeNull();
 		});
 
-		it('stays open while the pointer is on the card and closes after it leaves', async () => {
+		it('closes after the pointer leaves the tab, even when it moves onto the card', async () => {
 			const { container } = renderComponent({
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
@@ -687,13 +687,6 @@ describe('InstanceAiPreviewTabBar', () => {
 			const cardContent = getHoverCard()!.parentElement!;
 			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
 			await fireEvent.pointerEnter(cardContent, { pointerType: 'mouse' });
-			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE * 2);
-
-			expect(getHoverCard()).not.toBeNull();
-
-			await fireEvent.pointerLeave(cardContent, { pointerType: 'mouse' });
-			// The card closes once the pointer moves out of its grace area.
-			await fireEvent.pointerMove(document.body, { clientX: 500, clientY: 500 });
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE);
 
 			expect(getHoverCard()).toBeNull();

@@ -238,7 +238,11 @@ describe('PreferenceCard', () => {
 			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
 				'instanceAi.preferenceCard.appliesTo:{"scope":"settings.context.preferences.scope.user"}',
 			);
-			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
+			// A new tab keeps the chat and its unsent draft.
+			expect(screen.getByTestId('instance-ai-preference-card-manage')).toHaveAttribute(
+				'target',
+				'_blank',
+			);
 		});
 
 		it('names the project once a fact moved the row into one', () => {

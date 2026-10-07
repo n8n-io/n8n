@@ -19,6 +19,12 @@ describe('executionResponseSchema', () => {
 		});
 	});
 
+	it('accepts a cancelled run, which no step settled', () => {
+		const response = ended({ status: 'cancelled', lastStep: null });
+
+		expect(executionResponseSchema.parse(response)).toEqual(response);
+	});
+
 	it('accepts an undeliverable response', () => {
 		expect(
 			executionResponseSchema.parse({
@@ -31,6 +37,16 @@ describe('executionResponseSchema', () => {
 			executionId: 'exec-1',
 			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 		});
+	});
+
+	it('accepts a chunk response', () => {
+		const chunk = {
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hi' },
+		};
+
+		expect(executionResponseSchema.parse(chunk)).toEqual(chunk);
 	});
 
 	it.each([
@@ -78,6 +94,9 @@ describe('executionResponseSchema', () => {
 		['an unknown type', { ...ended(), type: 'started' }],
 		['a missing execution id', ended({ executionId: '' })],
 		['a run status no caller can act on', ended({ status: 'running' })],
+		['a settled run without its last step', ended({ lastStep: null })],
+		['a failed run without its last step', ended({ status: 'failed', lastStep: null })],
+		['a cancelled run that names a last step', ended({ status: 'cancelled' })],
 		[
 			'a step status the engine does not use',
 			ended({ lastStep: { nodeId: 'a', nodeName: 'A', status: 'paused', outputs: null } }),
@@ -102,11 +121,11 @@ describe('executionResponseSchema', () => {
 });
 
 describe('responseExpectationSchema', () => {
-	it.each(['none', 'runEnd', 'stepResponse'])('accepts the kind %s', (kind) => {
+	it.each(['none', 'runEnd', 'stepResponse', 'stream'])('accepts the kind %s', (kind) => {
 		expect(responseExpectationSchema.parse({ kind })).toEqual({ kind });
 	});
 
-	it.each([{ kind: 'stream' }, { kind: 'none', extra: true }, {}, 'none'])(
+	it.each([{ kind: 'chunks' }, { kind: 'none', extra: true }, {}, 'none'])(
 		'rejects %j',
 		(value) => {
 			expect(responseExpectationSchema.safeParse(value).success).toBe(false);

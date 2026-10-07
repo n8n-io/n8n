@@ -313,10 +313,12 @@ describe('subnode integration with node builder', () => {
 		});
 
 		expect(agent.type).toBe('@n8n/n8n-nodes-langchain.agent');
-		expect(agent.config.subnodes?.model).toBeDefined();
-		expect(
-			(agent.config.subnodes?.model as LanguageModelInstance<string, string, unknown>)._subnodeType,
-		).toBe('ai_languageModel');
+		const configuredModel = agent.config.subnodes?.model;
+		expect(configuredModel).toBeDefined();
+		if (!configuredModel) throw new Error('Expected a configured model');
+		expect((configuredModel as LanguageModelInstance<string, string, unknown>)._subnodeType).toBe(
+			'ai_languageModel',
+		);
 	});
 
 	it('should allow multiple tools in subnodes', () => {

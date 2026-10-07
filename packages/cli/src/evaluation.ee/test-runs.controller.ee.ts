@@ -106,6 +106,7 @@ export class TestRunsController {
 		});
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { workflowId } = req.params;
