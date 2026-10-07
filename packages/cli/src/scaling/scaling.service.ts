@@ -53,6 +53,8 @@ export class ScalingService {
 
 	private createBullQueue?: (name: string) => JobQueue;
 
+	private stopping = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -169,6 +171,16 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+			// The job still runs: the handler passes it to JobProcessor, which tracks it and holds the drain.
+			if (this.stopping) {
+				const { executionId } = job.data;
+				const jobId = job.id;
+				this.logger.warn(
+					`Worker received job ${jobId} for execution ${executionId} after it began to stop`,
+					{ executionId, jobId },
+				);
+			}
+
 			try {
 				this.eventService.emit('job-dequeued', {
 					executionId: job.data.executionId,
@@ -249,6 +261,8 @@ export class ScalingService {
 	}
 
 	private async stopWorker() {
+		this.stopping = true;
+
 		await this.pauseAllQueues();
 
 		const shutdownWindowMs =
@@ -318,6 +332,17 @@ export class ScalingService {
 			this.logger.info(
 				`Waiting for ${executionIds.length} active executions to finish... (execution IDs: ${executionIds.join(', ')})`,
 				{ executionIds },
+			);
+		}
+
+		const preflightExecutionIds = this.jobProcessor
+			.getJobsInPreflight()
+			.map(({ executionId }) => executionId);
+
+		if (preflightExecutionIds.length > 0) {
+			this.logger.info(
+				`Waiting for ${preflightExecutionIds.length} executions to start... (execution IDs: ${preflightExecutionIds.join(', ')})`,
+				{ executionIds: preflightExecutionIds },
 			);
 		}
 
@@ -445,7 +470,7 @@ export class ScalingService {
 	}
 
 	getRunningJobsCount() {
-		return this.jobProcessor.getRunningJobIds().length;
+		return this.jobProcessor.getTrackedJobIds().length;
 	}
 
 	/**

@@ -135,6 +135,7 @@ describe('ScalingService', () => {
 		activeExecutions.getRunningExecutionIds.mockReturnValue([]);
 		activeExecutions.cancelRunningExecutions.mockResolvedValue([]);
 		jobProcessor.getRunningJobsSummary.mockReturnValue([]);
+		jobProcessor.getJobsInPreflight.mockReturnValue([]);
 		globalConfig.generic.gracefulShutdownTimeout = 30;
 
 		scalingService = new ScalingService(
@@ -336,6 +337,40 @@ describe('ScalingService', () => {
 			);
 			expect(errorReporter.error).toHaveBeenCalledWith(originalError, { executionId: '123' });
 		});
+
+		it('should warn once when a job reaches the worker after shutdown began', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+			scalingService.setupWorker(5);
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+			jobProcessor.getTrackedJobIds.mockReturnValue([]);
+
+			await scalingService.stop();
+
+			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
+			await processFn(job);
+
+			expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('123'),
+				expect.objectContaining({ executionId: '123', jobId: '1' }),
+			);
+		});
+
+		it('should process a job that reaches the worker before shutdown without warning', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+			scalingService.setupWorker(5);
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+
+			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
+			await processFn(job);
+
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
+			expect(jobProcessor.processJob).toHaveBeenCalledWith(job);
+		});
 	});
 
 	describe('stop', () => {
@@ -373,7 +408,7 @@ describe('ScalingService', () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValue([]);
 
 				await scalingService.stop();
 
@@ -387,7 +422,7 @@ describe('ScalingService', () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValueOnce(['1']).mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValueOnce(['1']).mockReturnValue([]);
 				jobProcessor.getRunningJobsSummary.mockReturnValue([mock({ executionId: 'exec-1' })]);
 
 				const stopped = scalingService.stop();
@@ -400,12 +435,30 @@ describe('ScalingService', () => {
 				);
 			});
 
+			it('should log the execution IDs of jobs still in preflight while draining', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+				jobProcessor.getTrackedJobIds.mockReturnValueOnce(['1']).mockReturnValue([]);
+				jobProcessor.getJobsInPreflight.mockReturnValue([{ jobId: '1', executionId: 'exec-1' }]);
+
+				const stopped = scalingService.stop();
+				await vi.advanceTimersByTimeAsync(500);
+				await stopped;
+
+				expect(scopedLogger.info).toHaveBeenCalledWith(
+					'Waiting for 1 executions to start... (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
+
 			it('should keep waiting for an in-process execution that has no queue job', async () => {
 				vi.useFakeTimers();
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValue([]);
 
 				let inProcessExecutionIds = ['exec-1'];
 				activeExecutions.getRunningExecutionIds.mockImplementation(() => inProcessExecutionIds);
@@ -436,7 +489,7 @@ describe('ScalingService', () => {
 				// The budget is 80% of the shutdown window, so 4s of the 5s here.
 				globalConfig.generic.gracefulShutdownTimeout = 5;
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValue([]);
 				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
 				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
 
@@ -468,7 +521,7 @@ describe('ScalingService', () => {
 				instanceSettings.instanceType = 'worker';
 				globalConfig.generic.gracefulShutdownTimeout = 5;
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValue([]);
 				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
 
 				let finishCancellation: (executionIds: string[]) => void = () => {};
@@ -500,7 +553,7 @@ describe('ScalingService', () => {
 				instanceSettings.instanceType = 'worker';
 				globalConfig.generic.gracefulShutdownTimeout = 1;
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValue([]);
 
 				let inProcessExecutionIds = ['exec-1'];
 				activeExecutions.getRunningExecutionIds.mockImplementation(() => inProcessExecutionIds);
@@ -535,7 +588,7 @@ describe('ScalingService', () => {
 					await scalingService.setupQueue();
 
 					let runningJobIds = ['1'];
-					jobProcessor.getRunningJobIds.mockImplementation(() => runningJobIds);
+					jobProcessor.getTrackedJobIds.mockImplementation(() => runningJobIds);
 					activeExecutions.getRunningExecutionIds.mockReturnValue(inProcessExecutionIds);
 					activeExecutions.cancelRunningExecutions.mockResolvedValue(inProcessExecutionIds);
 
@@ -567,7 +620,7 @@ describe('ScalingService', () => {
 				// The budget is 800ms, which the force-exit timer at 1s must not beat.
 				globalConfig.generic.gracefulShutdownTimeout = 1;
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValue([]);
 				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
 				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
 
@@ -588,7 +641,7 @@ describe('ScalingService', () => {
 				instanceSettings.instanceType = 'worker';
 				globalConfig.generic.gracefulShutdownTimeout = 0;
 				await scalingService.setupQueue();
-				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				jobProcessor.getTrackedJobIds.mockReturnValue([]);
 				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
 
 				let hasStopped = false;
@@ -618,7 +671,7 @@ describe('ScalingService', () => {
 					instanceSettings.instanceType = 'worker';
 					globalConfig.generic.gracefulShutdownTimeout = shutdownTimeout;
 					await scalingService.setupQueue();
-					jobProcessor.getRunningJobIds.mockReturnValue([]);
+					jobProcessor.getTrackedJobIds.mockReturnValue([]);
 					activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
 					activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
 
@@ -1010,7 +1063,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			queue.eventNames.mockReturnValue(['global:progress', 'global:completed']);
 			queue.listenerCount.mockImplementation((event) => (event === 'global:completed' ? 2 : 1));
-			jobProcessor.getRunningJobIds.mockReturnValue(['job-1']);
+			jobProcessor.getTrackedJobIds.mockReturnValue(['job-1']);
 
 			const messageHandler = queue.on.mock.calls.find(
 				([event]) => (event as string) === 'global:progress',
