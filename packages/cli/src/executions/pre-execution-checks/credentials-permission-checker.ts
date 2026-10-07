@@ -407,10 +407,11 @@ export class CredentialsPermissionChecker {
 	 * Behind {@link isCredSharingEnabled}: the credentials `userId` may not use in
 	 * this workflow. The workflow payload and the publish check share it.
 	 *
-	 * Global credentials and credentials of the workflow's team project are
-	 * usable. Anything else needs the user's own access, and in a team project an
-	 * Owner's or Admin's global `credential:use` does not count. A personal
-	 * project does not lend its owner's credentials.
+	 * Global credentials and credentials of any team project the workflow is in
+	 * are usable. Anything else needs the user's own access, and in a team project
+	 * an Owner's or Admin's global `credential:use` does not count. A personal
+	 * project does not lend its owner's credentials, even when the workflow is
+	 * shared with it.
 	 */
 	async findUnusableInWorkflow(
 		workflowId: string,
@@ -422,7 +423,10 @@ export class CredentialsPermissionChecker {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		const isTeamProject = homeProject.type === 'team';
 		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
-		const carried = await this.findCarried(isTeamProject ? homeProject : null, projectScopedIds);
+		const carried = await this.findCarried(
+			isTeamProject ? await this.projectService.findTeamProjectsWorkflowIsIn(workflowId) : [],
+			projectScopedIds,
+		);
 		const leftover = projectScopedIds.filter((id) => !carried.has(id));
 
 		// The ids are already partitioned, so this asks the finder directly rather
@@ -443,17 +447,17 @@ export class CredentialsPermissionChecker {
 		return [...instanceScoped, ...notGranted];
 	}
 
-	/** The ids among `projectScopedIds` that are global, or shared with `teamProject`. */
+	/** The ids among `projectScopedIds` that are global, or shared with one of `teamProjectIds`. */
 	private async findCarried(
-		teamProject: Project | null,
+		teamProjectIds: string[],
 		projectScopedIds: string[],
 	): Promise<ReadonlySet<string>> {
 		if (projectScopedIds.length === 0) return new Set();
 
 		const [shared, global] = await Promise.all([
-			teamProject
+			teamProjectIds.length > 0
 				? this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
-						[teamProject.id],
+						teamProjectIds,
 						projectScopedIds,
 					)
 				: [],

@@ -960,7 +960,11 @@ describe('GET /workflows/:workflowId', () => {
 		});
 
 		describe('the Owner in a team-project workflow', () => {
-			const ownerSees = async (credentialId: string, teamProject: Project) => {
+			const ownerSees = async (
+				credentialId: string,
+				teamProject: Project,
+				sharedWith: Project[] = [],
+			) => {
 				const workflow = await createWorkflow(
 					makeWorkflow({
 						withPinData: false,
@@ -968,6 +972,12 @@ describe('GET /workflows/:workflowId', () => {
 					}),
 					teamProject,
 				);
+				if (sharedWith.length > 0) {
+					await shareWorkflowWithProjects(
+						workflow,
+						sharedWith.map((project) => ({ project })),
+					);
+				}
 				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
 				const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 				return responseWorkflow.usedCredentials?.[0]?.currentUserCanUse;
@@ -978,6 +988,23 @@ describe('GET /workflows/:workflowId', () => {
 				const credential = await saveCredential(randomCredentialPayload(), { user: member });
 
 				expect(await ownerSees(credential.id, teamProject)).toBe(false);
+			});
+
+			test('can use a credential shared with another team project the workflow is in', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const salesProject = await createTeamProject('Sales', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithProjects(credential, [salesProject]);
+
+				expect(await ownerSees(credential.id, teamProject, [salesProject])).toBe(true);
+			});
+
+			test('cannot use the personal credential of someone the workflow is shared with', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				const memberPersonalProject = await getPersonalProject(member);
+
+				expect(await ownerSees(credential.id, teamProject, [memberPersonalProject])).toBe(false);
 			});
 
 			test('can use a credential shared with the project', async () => {

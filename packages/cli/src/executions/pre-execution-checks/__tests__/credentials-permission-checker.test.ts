@@ -1116,6 +1116,25 @@ describe('CredentialsPermissionChecker', () => {
 			beforeEach(() => {
 				ownershipService.getWorkflowProjectCached.mockReset();
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
+				projectService.findTeamProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
+			});
+
+			it('does not ask about a credential another team project of the workflow carries', async () => {
+				// The workflow is also shared with Sales, which holds the credential: a run
+				// accepts it through the project route, so the editor must too.
+				projectService.findTeamProjectsWorkflowIsIn.mockResolvedValue([teamProject.id, 'sales']);
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					credentialId,
+				]);
+
+				await expect(
+					permissionChecker.findInaccessibleForUser(userId, [node], workflowId),
+				).resolves.toEqual([]);
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id, 'sales'],
+					[credentialId],
+				);
+				expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 			});
 
 			it('does not ask about a credential the project carries', async () => {
@@ -1163,6 +1182,17 @@ describe('CredentialsPermissionChecker', () => {
 				permissionChecker.findInaccessibleForUser(userId, [node], workflowId),
 			).resolves.toEqual([{ id: credentialId, name: 'Test Credential', exists: true }]);
 			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+		});
+
+		it('does not look up team projects for a workflow in a personal project', async () => {
+			userRepository.findOne.mockResolvedValueOnce(
+				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
+			);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([]);
+
+			await permissionChecker.findInaccessibleForUser(userId, [node], workflowId);
+
+			expect(projectService.findTeamProjectsWorkflowIsIn).not.toHaveBeenCalled();
 		});
 
 		it('does not ask about a global credential', async () => {
