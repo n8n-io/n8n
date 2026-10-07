@@ -32,13 +32,8 @@ const mockCredentials = [
 const renderComponent = createComponentRenderer(DeleteSecretsProviderModal, {
 	global: {
 		stubs: {
-			Modal: {
-				template: `
-					<div>
-						<slot name="content" />
-						<slot name="footer" />
-					</div>
-				`,
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
 		},
 	},
