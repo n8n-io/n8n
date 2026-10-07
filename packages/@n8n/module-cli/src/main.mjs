@@ -35,7 +35,7 @@ const scaffold = async (args) => {
 			type: 'select',
 			options: [
 				{ value: 'frontend', label: 'frontend', hint: 'a real, resolvable module package' },
-				{ value: 'backend', label: 'backend', hint: 'placeholder only, nothing loads it' },
+				{ value: 'backend', label: 'backend', hint: 'a built backend module package' },
 				{ value: 'both', label: 'both' },
 			],
 			cancel: 'reject',
@@ -54,7 +54,7 @@ const scaffold = async (args) => {
 	const wants = (side) => stack === side || stack === 'both';
 	const created = [];
 	let edits = [];
-	let packageName;
+	const packageNames = [];
 
 	if (wants('frontend')) {
 		const result = createFrontend({
@@ -62,14 +62,20 @@ const scaffold = async (args) => {
 			packageDir: join(moduleDir, 'frontend'),
 			substitutions,
 		});
-		packageName = result.packageName;
-		edits = result.edits;
+		packageNames.push(result.packageName);
+		edits.push(...result.edits);
 		created.push(`packages/modules/${name}/frontend  → ${result.packageName}`);
 	}
 
 	if (wants('backend')) {
-		createBackend({ packageDir: join(moduleDir, 'backend'), substitutions });
-		created.push(`packages/modules/${name}/backend   → placeholder, see its README`);
+		const result = createBackend({
+			name,
+			packageDir: join(moduleDir, 'backend'),
+			substitutions,
+		});
+		packageNames.push(result.packageName);
+		edits.push(...result.edits);
+		created.push(`packages/modules/${name}/backend   → ${result.packageName}`);
 	}
 
 	const formatted = formatFiles([moduleDir, ...edits.map((edit) => edit.path)]);
@@ -82,28 +88,24 @@ const scaffold = async (args) => {
 		consola.warn('Biome did not run. Run `pnpm install`, then `pnpm format`.');
 	}
 
-	if (wants('backend')) {
-		consola.warn(
-			'The backend half is a placeholder. Nothing loads it: the runtime reads backend\n' +
-				'modules from packages/cli/src/modules/<name>. Use `pnpm setup-backend-module`\n' +
-				'for a backend module that runs.',
-		);
-	}
-
 	// `pnpm --filter <pkg> typecheck` fails on a cold tree. The dependencies of the package are not
 	// built yet, and that command builds none of them. Turbo builds them first.
 	consola.box(
-		wants('frontend')
-			? [
-					'Next:',
-					'  pnpm install',
-					`  pnpm turbo typecheck --filter=${packageName}`,
-					`  pnpm turbo lint --filter=${packageName}`,
-					`  pnpm turbo test --filter=${packageName}`,
-					'',
-					'  Guide: packages/@n8n/module-cli/frontend-module-guide.md',
-				].join('\n')
-			: ['Next:', `  read packages/modules/${name}/backend/README.md`].join('\n'),
+		[
+			'Next:',
+			'  pnpm install',
+			...packageNames.flatMap((packageName) => [
+				`  pnpm turbo typecheck --filter=${packageName}`,
+				`  pnpm turbo lint --filter=${packageName}`,
+				`  pnpm turbo test --filter=${packageName}`,
+			]),
+			...(wants('frontend')
+				? ['', '  Frontend guide: packages/@n8n/module-cli/frontend-module-guide.md']
+				: []),
+			...(wants('backend')
+				? ['', '  Backend guide: scripts/backend-module/backend-module-guide.md']
+				: []),
+		].join('\n'),
 	);
 };
 

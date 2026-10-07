@@ -62,7 +62,7 @@ The command prints this output:
  │    pnpm turbo lint --filter=@n8n/frontend-module-my-feature       │
  │    pnpm turbo test --filter=@n8n/frontend-module-my-feature       │
  │                                                                   │
- │    Guide: packages/@n8n/module-cli/frontend-module-guide.md       │
+ │    Frontend guide: packages/@n8n/module-cli/frontend-module-guide.md │
  │                                                                   │
  ╰───────────────────────────────────────────────────────────────────╯
 ```
@@ -90,18 +90,13 @@ dependencies first, and the typecheck then passes. `lint` and `test` pass in bot
 The CLI makes every edit outside the new package idempotent. You can run the command again after
 a partial failure.
 
-### `--stack=backend` is a placeholder
+### `--stack=backend` creates a separate package
 
-The backend half is a reserved path and a README. **Nothing loads it.**
+The backend half is a built workspace package at `packages/modules/<name>/backend`. The CLI adds
+its runtime dependency and lazy registration to `packages/cli`. It also adds the module id to the
+validated list in `@n8n/backend-common`.
 
-The backend runtime reads its modules from `packages/cli/src/modules/<name>`. All 37 real backend
-modules are there. For this reason `packages/modules/<name>/backend` is not a workspace package.
-
-To create a backend module that runs, use `pnpm setup-backend-module`. Then obey
-`scripts/backend-module/backend-module-guide.md`.
-
-The CLI prints all of this when you ask for the backend half. This guide repeats it, because it is
-the one part of `create` that can mislead you.
+Read `scripts/backend-module/backend-module-guide.md` before you add backend behavior.
 
 ## File structure
 
