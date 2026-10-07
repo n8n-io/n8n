@@ -123,6 +123,17 @@ useIntervalFn(() => {
 	animation-fill-mode: backwards;
 }
 
+:global(.agent-building-indicator-leave-active) {
+	animation: none;
+	transition: opacity var(--duration--snappy) var(--easing--ease-in);
+
+	@include motion.reduced-motion;
+}
+
+:global(.agent-building-indicator-leave-to) {
+	opacity: 0;
+}
+
 .buildingIndicator {
 	position: relative;
 	z-index: 5;
@@ -141,10 +152,7 @@ useIntervalFn(() => {
 	pointer-events: none;
 	white-space: nowrap;
 	width: fit-content;
-	will-change: width;
-	transition:
-		width,
-		transform var(--duration--base);
+	transition: transform var(--duration--base);
 
 	--animation--fade-in-up--end: calc(var(--spacing--lg) * -1);
 	transform: translateY(var(--animation--fade-in-up--end));

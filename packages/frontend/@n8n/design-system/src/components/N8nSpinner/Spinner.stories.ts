@@ -12,7 +12,7 @@ const meta = {
 		},
 		size: {
 			control: 'select',
-			options: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
+			options: ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'],
 		},
 	},
 	parameters: {
