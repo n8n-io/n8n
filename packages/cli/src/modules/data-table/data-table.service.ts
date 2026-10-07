@@ -288,12 +288,11 @@ export class DataTableService {
 		dataTableId: string,
 		projectId: string,
 		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
-		options: { droppableColumns: string[] },
 	) {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
 		if (table.name !== schema.name) await this.validateUniqueName(schema.name, projectId);
 
-		await this.dataTableColumnRepository.replaceSchema(dataTableId, projectId, schema, options);
+		await this.dataTableColumnRepository.replaceSchema(dataTableId, projectId, schema);
 	}
 
 	async moveColumn(

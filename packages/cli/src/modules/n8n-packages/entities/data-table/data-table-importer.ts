@@ -140,17 +140,11 @@ export class DataTableImporter {
 			);
 		}
 
-		for (const { table, operations } of plan.updates) {
-			await this.dataTableService.replaceSchema(
-				table.id,
-				context.projectId,
-				{ name: table.name, columns: table.columns },
-				{
-					droppableColumns: operations.flatMap((operation) =>
-						operation.destructive ? [operation.column] : [],
-					),
-				},
-			);
+		for (const { table } of plan.updates) {
+			await this.dataTableService.replaceSchema(table.id, context.projectId, {
+				name: table.name,
+				columns: table.columns,
+			});
 		}
 	}
 

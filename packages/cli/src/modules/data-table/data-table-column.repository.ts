@@ -145,7 +145,6 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		dataTableId: string,
 		projectId: string,
 		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
-		{ droppableColumns }: { droppableColumns: string[] },
 		ctx: OperationContext = {},
 	) {
 		await this.runInTransaction(ctx, async (em) => {
@@ -155,20 +154,10 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 
 			const wantedTypes = new Map(schema.columns.map(({ name, type }) => [name, type]));
 			const keptColumnNames = new Set<string>();
-			// A type change counts as a drop: the column is deleted and added again.
-			const droppedColumns: DataTableColumn[] = [];
 			for (const column of await this.getColumns(dataTableId, em)) {
 				if (wantedTypes.get(column.name) === column.type) keptColumnNames.add(column.name);
-				else droppedColumns.push(column);
+				else await this.deleteColumn(dataTableId, column, em);
 			}
-			const undroppable = droppedColumns.filter(({ name }) => !droppableColumns.includes(name));
-			if (undroppable.length > 0) {
-				const names = undroppable.map(({ name }) => `"${name}"`).join(', ');
-				throw new DataTableValidationError(
-					`replacing the schema of data table "${dataTableId}" would delete the columns ${names}`,
-				);
-			}
-			for (const column of droppedColumns) await this.deleteColumn(dataTableId, column, em);
 
 			for (const { name, type } of schema.columns) {
 				if (!keptColumnNames.has(name)) await this.addColumn(dataTableId, { name, type }, em);
