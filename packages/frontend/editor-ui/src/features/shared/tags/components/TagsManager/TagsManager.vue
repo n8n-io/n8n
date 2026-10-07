@@ -3,12 +3,11 @@ import { ref, computed, onMounted } from 'vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import TagsView from './TagsView/TagsView.vue';
 import NoTagsView from './NoTagsView.vue';
-import Modal from '@/app/components/Modal.vue';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { ElRow } from 'element-plus';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter } from '@n8n/design-system';
 interface TagsManagerProps {
 	modalKey: string;
 	usageLocaleKey?: BaseTextKey;
@@ -43,7 +42,8 @@ const emit = defineEmits<{
 
 const tagIds = ref(props.tags.map((tag) => tag.id));
 const isCreating = ref(false);
-const modalBus = createEventBus();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalKey]?.open === true);
 
 const tags = computed(() =>
 	tagIds.value
@@ -53,6 +53,14 @@ const tags = computed(() =>
 const hasTags = computed(() => tags.value.length > 0);
 
 const i18n = useI18n();
+
+function closeDialog() {
+	uiStore.closeModal(props.modalKey);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 onMounted(() => {
 	void props.onFetchTags();
@@ -139,28 +147,17 @@ async function onDelete(id: string, deleteCallback: (deleted: boolean, error?: E
 		deleteCallback(false, error as Error);
 	}
 }
-
-function onEnter() {
-	if (props.isLoading) {
-		return;
-	} else if (!hasTags.value && props.canCreate) {
-		onEnableCreate();
-	} else {
-		modalBus.emit('close');
-	}
-}
 </script>
 
 <template>
-	<Modal
-		:title="i18n.baseText(titleLocaleKey)"
-		:name="modalKey"
-		:event-bus="modalBus"
-		min-width="620px"
-		min-height="420px"
-		@enter="onEnter"
+	<N8nDialog
+		:open="modalOpen"
+		size="xlarge"
+		:header="i18n.baseText(titleLocaleKey)"
+		:container-class="$style.dialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<ElRow>
 				<TagsView
 					v-if="hasTags || isCreating"
@@ -185,14 +182,15 @@ function onEnter() {
 					@enable-create="onEnableCreate"
 				/>
 			</ElRow>
-		</template>
-		<template #footer="{ close }">
-			<N8nButton
-				variant="subtle"
-				:label="i18n.baseText('tagsManager.done')"
-				style="margin-left: auto"
-				@click="close"
-			/>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton variant="subtle" :label="i18n.baseText('tagsManager.done')" @click="closeDialog" />
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
+
+<style module lang="scss">
+.dialog {
+	min-height: 420px;
+}
+</style>
