@@ -74,7 +74,7 @@ export default defineConfig(
 					// Tests and migration tooling can use TypeORM directly. The two repository
 					// entries are composition-based adapters that do not extend a repository base.
 					allowedFilePatterns: [
-						'**/test/**/*.ts',
+						'**/packages/cli/test/**/*.ts',
 						'**/src/**/__tests__/**/*.ts',
 						'**/src/commands/db/revert.ts',
 						'**/src/modules/data-table/data-table-rows.repository.ts',

@@ -35,10 +35,28 @@ ruleTester.run('misplaced-n8n-typeorm-import', MisplacedN8nTypeormImportRule, {
 		// n8n BaseRepository declarations are persistence adapters too.
 		{
 			code: `
-				import { BaseRepository, In } from '@n8n/db';
+				import { BaseRepository } from '@n8n/db';
+				import { In } from '@n8n/typeorm';
 				export class AuditStore extends BaseRepository<AuditRecord> {}
 			`,
 			filename: '/repo/packages/example/src/persistence/audit-store.ts',
+		},
+		// Namespace imports support the same semantic declarations.
+		{
+			code: `
+				import * as TypeOrm from '@n8n/typeorm';
+				@TypeOrm.Entity()
+				export class AuditRecord {}
+			`,
+			filename: '/repo/packages/example/src/audit/record.ts',
+			languageOptions: { parserOptions: { ecmaFeatures: { legacyDecorators: true } } },
+		},
+		{
+			code: `
+				import * as TypeOrm from '@n8n/typeorm';
+				export class AuditStore extends TypeOrm.Repository<AuditRecord> {}
+			`,
+			filename: '/repo/packages/example/src/audit/store.ts',
 		},
 		// Helper-only adapters, migrations, tests, and legacy names stay explicit and shrinkable.
 		{
@@ -80,6 +98,13 @@ ruleTester.run('misplaced-n8n-typeorm-import', MisplacedN8nTypeormImportRule, {
 			filename: '/repo/packages/cli/src/services/foo.repository.ts',
 			errors: [{ messageId: 'moveImport' }],
 		},
+		// A package-level test exception does not allow production files in a nested test folder.
+		{
+			code: "import { In } from '@n8n/typeorm';",
+			filename: '/repo/packages/cli/src/workflows/test/query.ts',
+			options: [{ allowedFilePatterns: ['**/packages/cli/test/**/*.ts'] }],
+			errors: [{ messageId: 'moveImport' }],
+		},
 		// Importing a persistence class does not make business logic a persistence adapter.
 		{
 			code: `
@@ -118,6 +143,15 @@ ruleTester.run('misplaced-n8n-typeorm-import', MisplacedN8nTypeormImportRule, {
 		{
 			code: "import { In } from '@n8n/db';",
 			filename: '/repo/packages/example/src/persistence/workflow.service.ts',
+			errors: [{ messageId: 'noTypeormViaDb', data: { name: 'In' } }],
+		},
+		// Persistence adapters import TypeORM operators directly, not through @n8n/db.
+		{
+			code: `
+				import { BaseRepository, In } from '@n8n/db';
+				export class AuditStore extends BaseRepository<AuditRecord> {}
+			`,
+			filename: '/repo/packages/example/src/audit/store.ts',
 			errors: [{ messageId: 'noTypeormViaDb', data: { name: 'In' } }],
 		},
 	],

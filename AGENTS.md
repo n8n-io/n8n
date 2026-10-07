@@ -223,7 +223,8 @@ import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). The
 `misplaced-n8n-typeorm-import` lint rule recognizes entity and repository
 declarations. Package lint configs list tests, migrations, helper-only adapters,
 and legacy filenames as explicit exceptions. A new business-logic import or an
-inline `eslint-disable` of the rule fails CI.
+inline `eslint-disable` of the rule in `packages/cli` or
+`@n8n/backend-services` fails CI.
 
 - **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
   `FindOptionsWhere`, …), put it behind a **use-case-named repository method**

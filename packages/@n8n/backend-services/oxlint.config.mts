@@ -9,7 +9,12 @@ export default defineConfig({
 	rules: {
 		'n8n-local-rules/misplaced-n8n-typeorm-import': [
 			'error',
-			{ allowedFilePatterns: ['**/test/**/*.ts', '**/src/**/__tests__/**/*.ts'] },
+			{
+				allowedFilePatterns: [
+					'**/packages/@n8n/backend-services/test/**/*.ts',
+					'**/src/**/__tests__/**/*.ts',
+				],
+			},
 		],
 		'n8n-local-rules/no-guardrail-disable': [
 			'error',

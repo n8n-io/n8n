@@ -1,3 +1,5 @@
+import { isAbsolute, resolve } from 'node:path';
+
 import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils';
 import { minimatch } from 'minimatch';
 
@@ -24,13 +26,26 @@ const GUARDED_DB_REEXPORTS = new Set([
 const getImportedName = (specifier: TSESTree.ImportSpecifier) =>
 	specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value;
 
-const isMatchingDecorator = (decorator: TSESTree.Decorator, names: Set<string>) => {
+const isNamespaceMember = (node: TSESTree.Node, namespaceNames: Set<string>, memberName: string) =>
+	node.type === 'MemberExpression' &&
+	!node.computed &&
+	node.object.type === 'Identifier' &&
+	namespaceNames.has(node.object.name) &&
+	node.property.type === 'Identifier' &&
+	node.property.name === memberName;
+
+const isMatchingDecorator = (
+	decorator: TSESTree.Decorator,
+	names: Set<string>,
+	namespaceNames: Set<string>,
+) => {
 	const expression = decorator.expression;
 	if (expression.type === 'Identifier') return names.has(expression.name);
 
-	return expression.type === 'CallExpression' && expression.callee.type === 'Identifier'
-		? names.has(expression.callee.name)
-		: false;
+	const callee = expression.type === 'CallExpression' ? expression.callee : expression;
+	return callee.type === 'Identifier'
+		? names.has(callee.name)
+		: isNamespaceMember(callee, namespaceNames, 'Entity');
 };
 
 export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs<
@@ -64,7 +79,9 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 	},
 	defaultOptions: [{}],
 	create(context, [options]) {
-		const filename = context.filename.replaceAll('\\', '/');
+		const filename = (
+			isAbsolute(context.filename) ? context.filename : resolve(process.cwd(), context.filename)
+		).replaceAll('\\', '/');
 		if (filename.includes('/packages/@n8n/db/')) return {};
 
 		const isExplicitlyAllowed = options.allowedFilePatterns?.some((pattern) =>
@@ -74,6 +91,7 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 
 		const entityDecoratorNames = new Set<string>();
 		const repositoryBaseNames = new Set<string>();
+		const typeormNamespaceNames = new Set<string>();
 		const typeormImports: TSESTree.ImportDeclaration[] = [];
 		const guardedDbImports: Array<{ node: TSESTree.ImportSpecifier; name: string }> = [];
 		const classes: Array<TSESTree.ClassDeclaration | TSESTree.ClassExpression> = [];
@@ -82,7 +100,9 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 		};
 		const isPersistenceAdapter = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression) => {
 			if (
-				node.decorators.some((decorator) => isMatchingDecorator(decorator, entityDecoratorNames))
+				node.decorators.some((decorator) =>
+					isMatchingDecorator(decorator, entityDecoratorNames, typeormNamespaceNames),
+				)
 			) {
 				return true;
 			}
@@ -91,7 +111,9 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 				return true;
 			}
 
-			return false;
+			return node.superClass
+				? isNamespaceMember(node.superClass, typeormNamespaceNames, 'Repository')
+				: false;
 		};
 
 		return {
@@ -103,6 +125,10 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 					typeormImports.push(node);
 					if (source === '@n8n/typeorm') {
 						for (const specifier of node.specifiers) {
+							if (specifier.type === 'ImportNamespaceSpecifier') {
+								typeormNamespaceNames.add(specifier.local.name);
+								continue;
+							}
 							if (specifier.type !== 'ImportSpecifier') continue;
 
 							const importedName = getImportedName(specifier);
@@ -128,9 +154,9 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 			ClassDeclaration: inspectClass,
 			ClassExpression: inspectClass,
 			'Program:exit'() {
-				if (classes.some(isPersistenceAdapter)) return;
-
-				for (const node of typeormImports) context.report({ node, messageId: 'moveImport' });
+				if (!classes.some(isPersistenceAdapter)) {
+					for (const node of typeormImports) context.report({ node, messageId: 'moveImport' });
+				}
 				for (const { node, name } of guardedDbImports) {
 					context.report({ node, messageId: 'noTypeormViaDb', data: { name } });
 				}
