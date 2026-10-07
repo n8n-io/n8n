@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateSelfHealingResultTable1791305991901 implements ReversibleMigration {
+export class CreateSelfHealingResultTable1791378361769 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, createIndex }, escape }: MigrationContext) {
 		await createTable('self_healing_result')
 			.withColumns(

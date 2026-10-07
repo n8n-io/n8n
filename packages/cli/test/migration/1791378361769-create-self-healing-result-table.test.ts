@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'CreateSelfHealingResultTable1791305991901';
+const migrationName = 'CreateSelfHealingResultTable1791378361769';
 
 describe('CreateSelfHealingResultTable migration', () => {
 	async function withContext(operation: (context: TestMigrationContext) => Promise<void>) {

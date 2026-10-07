@@ -10,6 +10,7 @@ Scans repository files for structural and dependency-policy violations:
 - **Hardcoded catalog deps** — dependencies using a pinned version when `pnpm-workspace.yaml` already defines a catalog entry
 - **Cross-package version drift** — the same dependency appearing in multiple packages with different versions
 - **Encryption boundary coverage** — every package that depends on `n8n-core` or `@n8n/db` composes the encryption-boundary ESLint config at `error` severity and contains no ESLint directive that silences it
+- **TypeORM persistence boundary** — business logic cannot import TypeORM directly or through guarded `@n8n/db` re-exports; entity and repository declarations can use any package layout
 
 ## Usage
 
