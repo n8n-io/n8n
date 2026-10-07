@@ -79,7 +79,7 @@ describe('SystemTaskMetadata', () => {
 			metadata.subscribe(() => {
 				throw new Error('listener failed');
 			}),
-		).toThrowError('FirstTask');
+		).toThrow('FirstTask');
 
 		const listener = vi.fn();
 
@@ -108,7 +108,7 @@ describe('SystemTaskMetadata', () => {
 	it('should reject a second subscriber', () => {
 		metadata.subscribe(vi.fn());
 
-		expect(() => metadata.subscribe(vi.fn())).toThrowError(
+		expect(() => metadata.subscribe(vi.fn())).toThrow(
 			'A listener is already subscribed to system task registrations',
 		);
 	});

@@ -178,7 +178,14 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	workflowsGroupsWithTriggersEnabled: boolean;
+	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
+	/**
+	 * Granular credential sharing: a personal credential is usable in any
+	 * project its owner works in. Set from `N8N_ENV_FEAT_CRED_SHARING`.
+	 */
+	granularCredentialSharing: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -365,6 +372,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for SCIM user-provisioning module.
+	 */
+	scim?: {
+		/** Whether SCIM provisioning is enabled in the instance. */
+		scimEnabled: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {
@@ -428,6 +443,7 @@ export type FrontendModuleSettings = {
 	 * Client settings for the agents module.
 	 */
 	agents?: {
+		enabled?: boolean;
 		/**
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's

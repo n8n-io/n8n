@@ -20,6 +20,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
+		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
@@ -72,6 +73,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository.js');
 		Container.get(AgentHistoryRepository);
 
+		const { AgentBudgetSpendRepository } = await import(
+			'./repositories/agent-budget-spend.repository.js'
+		);
+		Container.get(AgentBudgetSpendRepository);
+
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime.js');
@@ -88,6 +94,9 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { WhatsAppIntegration } = await import(
+			'./integrations/platforms/whatsapp-integration.js'
+		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
@@ -97,6 +106,7 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(WhatsAppIntegration));
 		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
@@ -214,12 +224,13 @@ export class AgentsModule implements ModuleInterface {
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
-			enabled: true,
+			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
@@ -236,10 +247,16 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
+		const { AgentExecutionMessageLink } = await import(
+			'./entities/agent-execution-message-link.entity.js'
+		);
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
+		const { AgentThreadGrant } = await import('./entities/agent-thread-grant.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
+		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
+		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -249,6 +266,10 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
+		const { AgentBudgetSpend } = await import('./entities/agent-budget-spend.entity.js');
+		const { AgentBudgetAppliedCall } = await import(
+			'./entities/agent-budget-applied-call.entity.js'
+		);
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity.js');
 		const { AgentObservationCursorEntity } = await import(
@@ -278,15 +299,21 @@ export class AgentsModule implements ModuleInterface {
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
+			AgentExecutionMessageLink,
 			AgentExecutionThread,
+			AgentThreadGrant,
 			AgentExecution,
 			AgentMessageQueue,
 			AgentBackgroundJob,
+			AgentPlan,
+			AgentPlanHistory,
 			AgentHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
+			AgentBudgetSpend,
+			AgentBudgetAppliedCall,
 			AgentTaskSnapshot,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,

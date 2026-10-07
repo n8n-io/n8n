@@ -5,21 +5,19 @@ import {
 	type AgentSkillMutationResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import {
-	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
 	captureAgentMutation,
 	type AgentMutationSnapshot,
 } from './agent-modification-telemetry.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
@@ -32,8 +30,7 @@ export class AgentSkillsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly saveCompletion: AgentSaveCompletionService,
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
@@ -303,10 +300,6 @@ export class AgentSkillsService {
 		];
 	}
 
-	private async clearRuntimes(agentId: string): Promise<void> {
-		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
-		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
-	}
 	private async saveSkillChanges(
 		entity: Agent,
 		projectId: string,
@@ -315,13 +308,9 @@ export class AgentSkillsService {
 	): Promise<Agent> {
 		markAgentDraftDirty(entity);
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId: entity.id, source: context.modifiedBy },
-			context.pushRef,
-		);
-		await this.clearRuntimes(entity.id);
-		this.modificationTelemetry.record(
+		await this.saveCompletion.bodySaved(
 			buildAgentMutationEvent(saved, projectId, context, previous, { skills: true }),
+			context.pushRef,
 		);
 		return saved;
 	}

@@ -1,11 +1,11 @@
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 @SystemTask()
 export class DummySystemTask implements SystemTask {
 	name = 'dummy';
 
-	schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
+	schedule: SystemTaskSchedule = intervalFromSeconds(60);
 
 	effects: SystemTaskEffects = 'idempotent';
 

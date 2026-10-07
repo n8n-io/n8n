@@ -125,6 +125,21 @@ describe('PostHog', () => {
 			);
 			expect(PostHog.prototype.evaluateFlags).not.toHaveBeenCalled();
 		});
+
+		it('skips PostHog on an eval instance and still applies overrides', async () => {
+			globalConfig.instanceAi.evalInstance = true;
+			globalConfig.featureFlags.override = { '110_instance_ai_folder_exploration': 'test' };
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const flags = await ph.getFeatureFlags({ id: 'user-1', createdAt: new Date() });
+
+			expect(PostHog.prototype.constructor).not.toHaveBeenCalled();
+			expect(PostHog.prototype.evaluateFlags).not.toHaveBeenCalled();
+			expect(flags['110_instance_ai_folder_exploration']).toBe('test');
+			globalConfig.instanceAi.evalInstance = false;
+			globalConfig.featureFlags.override = {};
+		});
 	});
 
 	it('captures PostHog events', async () => {
@@ -196,25 +211,15 @@ describe('PostHog', () => {
 		});
 	});
 
-	it('falls back to company_instanceId and disables person profile when no distinctId is provided', async () => {
+	it('does not send $groupidentify event without a distinctId', async () => {
 		const properties = { name: 'test-instance' } as Record<string, string | number>;
 
 		const ph = new PostHogClient(instanceSettings, globalConfig);
 		await ph.init();
 
-		ph.groupIdentify({ instanceId, properties });
+		ph.groupIdentify({ instanceId, distinctId: '', properties });
 
-		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
-			distinctId: `company_${instanceId}`,
-			event: '$groupidentify',
-			properties: {
-				$group_type: 'company',
-				$group_key: instanceId,
-				$group_set: properties,
-				$process_person_profile: false,
-			},
-			groups: { company: instanceId },
-		});
+		expect(PostHog.prototype.capture).not.toHaveBeenCalled();
 	});
 
 	describe('getFeatureFlags', () => {
@@ -358,7 +363,8 @@ describe('PostHog', () => {
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
-
+				globalConfig.workflows.groupsWithTriggersEnabled = false;
+				globalConfig.workflows.groupsWithManyBoundariesEnabled = false;
 				globalConfig.featureFlags.override = {};
 			});
 
@@ -407,6 +413,48 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '110_instance_ai_folder_exploration': 'test' });
+			});
+
+			it('force-enables the groups-with-triggers flag on its own env var', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({
+						'117_flexible_groups_triggers': false,
+						'122_flexible_groups_multiple_boundaries': false,
+					}),
+				);
+
+				globalConfig.workflows.groupsWithTriggersEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({
+					'117_flexible_groups_triggers': true,
+					'122_flexible_groups_multiple_boundaries': false,
+				});
+			});
+
+			it('force-enables the groups-with-many-boundaries flag on its own env var', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({
+						'117_flexible_groups_triggers': false,
+						'122_flexible_groups_multiple_boundaries': false,
+					}),
+				);
+
+				globalConfig.workflows.groupsWithManyBoundariesEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({
+					'117_flexible_groups_triggers': false,
+					'122_flexible_groups_multiple_boundaries': true,
+				});
 			});
 
 			it('applies the generic override map on top of resolved flags', async () => {

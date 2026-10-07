@@ -1,8 +1,8 @@
 import type { PolicyViolation } from '@n8n/decorators';
 import { UserError } from 'n8n-workflow';
 
-import { classifyHttpError, HttpErrorKind } from '@/errors/http-error-classifier';
-import { serializeInternalRestError } from '@/errors/http-error-serializers';
+import { classifyRestError, RestErrorKind } from '@n8n/backend-services';
+import { serializeInternalRestError } from '@n8n/backend-services';
 
 import {
 	isPolicyRefusal,
@@ -67,7 +67,7 @@ describe('PolicyViolationError', () => {
 		});
 	});
 
-	describe('classifyHttpError', () => {
+	describe('classifyRestError', () => {
 		it('classifies as a responseError carrying the violations in meta', () => {
 			const violations: NonEmptyViolations = [
 				violation(),
@@ -75,8 +75,8 @@ describe('PolicyViolationError', () => {
 			];
 			const error = new PolicyViolationError(violations);
 
-			expect(classifyHttpError(error)).toEqual({
-				kind: HttpErrorKind.responseError,
+			expect(classifyRestError(error)).toEqual({
+				kind: RestErrorKind.responseError,
 				status: 403,
 				code: 403,
 				message: error.message,
@@ -85,7 +85,7 @@ describe('PolicyViolationError', () => {
 		});
 
 		it('carries the violations into the REST response body', () => {
-			const descriptor = classifyHttpError(new PolicyViolationError([violation()]));
+			const descriptor = classifyRestError(new PolicyViolationError([violation()]));
 			const { status, body } = serializeInternalRestError(descriptor);
 
 			expect(status).toBe(403);

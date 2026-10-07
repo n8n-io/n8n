@@ -3,10 +3,10 @@ import { aiPreferenceScopeOf } from '@n8n/api-types';
 import type { InferTelemetryProps, TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { AiPreferenceWriteRejection } from '@/services/ai-preference-write';
-import { toAiPreferenceWriteRejection } from '@/services/ai-preference-write';
-import type { UrlService } from '@/services/url.service';
+import { secondsSinceSaved, toAiPreferenceWriteRejection } from '@/services/ai-preference-write';
+import type { UrlService } from '@n8n/backend-services';
 
 /**
  * Why a write by id did not land. The shared rejections plus `not_found`, which only a tool that
@@ -75,7 +75,4 @@ export function preferenceScopeOf(preference: AiPreferenceDto): AiPreferenceScop
 	return aiPreferenceScopeOf(preference);
 }
 
-/** Whole seconds between the write and now, for the undo-rate reading. */
-export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now()): number {
-	return Math.max(0, Math.round((now - new Date(preference.createdAt).getTime()) / 1000));
-}
+export { secondsSinceSaved };

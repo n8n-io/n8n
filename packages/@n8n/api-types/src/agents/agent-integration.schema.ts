@@ -104,6 +104,9 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+export const AgentWhatsAppSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentWhatsAppIntegrationSettings = z.infer<typeof AgentWhatsAppSettingsSchema>;
+
 /**
  * Where the Teams app may be used, and how much it may read there.
  *
@@ -169,6 +172,7 @@ export const AgentIntegrationSettingsSchema = z.union([
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentWhatsAppSettingsSchema,
 	// Teams was left out while it aliased the shared shape, when the entry was a
 	// no-op. Its settings now differ, so leaving it out would reject them.
 	AgentTeamsSettingsSchema,
@@ -191,6 +195,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
@@ -209,17 +216,38 @@ const draftCredentialIntegrations = [
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createDraftCredIntegrationSchema('whatsapp', AgentWhatsAppSettingsSchema).extend({
+		settings: AgentWhatsAppSettingsSchema.optional(),
+	}),
 	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
 		settings: AgentTeamsSettingsSchema.optional(),
 	}),
 ] as const;
 
+const n8nChatIntegration = z
+	.object({
+		type: z.literal('n8n_chat'),
+		credentialId: z.literal('').default(''),
+	})
+	.strict();
+
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 /** Draft config variant that allows cleared stale credential IDs. */
-export const AgentIntegrationConfigSchema = z.discriminatedUnion(
-	'type',
-	draftCredentialIntegrations,
-);
+export const AgentIntegrationConfigSchema = z.discriminatedUnion('type', [
+	...draftCredentialIntegrations,
+	n8nChatIntegration,
+]);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
+
+export type CredentialAgentIntegrationConfig = Exclude<
+	AgentIntegrationConfig,
+	{ type: 'n8n_chat' }
+>;
+
+export function isCredentialAgentIntegration(
+	integration: AgentIntegrationConfig,
+): integration is CredentialAgentIntegrationConfig {
+	return integration.type !== 'n8n_chat';
+}

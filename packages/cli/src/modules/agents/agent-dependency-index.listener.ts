@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-
-import { EventService } from '@/events/event.service';
 
 import { AgentDependencyIndexService } from './agent-dependency-index.service';
 

@@ -208,6 +208,17 @@ describe('InstanceSettings', () => {
 			expect(instanceType).toEqual('main');
 			expect(hostId.length).toBeGreaterThan(0); // hostname or nanoID
 		});
+
+		it('should detect the engine command as its own instance type', () => {
+			process.argv[2] = 'engine';
+			mockFs.existsSync.mockReturnValue(true);
+			mockFs.readFileSync.mockReturnValue(JSON.stringify({ encryptionKey: 'test_key' }));
+
+			const settings = createInstanceSettings();
+
+			expect(settings.instanceType).toBe('engine');
+			expect(settings.hostId.startsWith('engine-')).toBe(true);
+		});
 	});
 
 	describe('nodeDefinitionsDir', () => {

@@ -6,11 +6,16 @@
 // it, push it, and delete the local file. Requires the agents module.
 // ---------------------------------------------------------------------------
 
-import { loadEvalCasesFromDir, type WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
+import {
+	loadEvalCasesFromDir,
+	type LoadEvalCasesOptions,
+	type WorkflowTestCaseWithFile,
+} from '../../utils/load-eval-cases';
 
 export function loadAgentEvalTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
+	options?: LoadEvalCasesOptions,
 ): WorkflowTestCaseWithFile[] {
-	return loadEvalCasesFromDir(__dirname, filter, exclude);
+	return loadEvalCasesFromDir(__dirname, filter, exclude, undefined, options);
 }

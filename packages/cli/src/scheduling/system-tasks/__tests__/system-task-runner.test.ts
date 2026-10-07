@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
@@ -8,8 +9,6 @@ import type { ClaimedTask } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
 import { Tracing, type ErrorReporter, type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import type { DurableScheduler } from '../../durable-scheduler';
 import { SystemTaskHandler } from '../system-task-handler';
@@ -35,6 +34,7 @@ describe('SystemTaskRunner', () => {
 		enabledForSystemTasks = false,
 		instanceRole = 'leader' as InstanceSettings['instanceRole'],
 		instanceType = 'main' as InstanceSettings['instanceType'],
+		timezone = 'UTC',
 	} = {}) {
 		const logger = mock<Logger>();
 		const metadata = new SystemTaskMetadata();
@@ -55,7 +55,7 @@ describe('SystemTaskRunner', () => {
 			jobRegistrar,
 			systemTaskOwner,
 			mock<GlobalConfig>({
-				generic: { timezone: 'UTC' },
+				generic: { timezone },
 				scheduler: { enabledForSystemTasks },
 			}),
 			instanceSettings,
@@ -117,6 +117,17 @@ describe('SystemTaskRunner', () => {
 				name: 'dummy',
 				schedule: { kind: 'interval', intervalSeconds: 60 },
 			});
+		});
+
+		it('fires a cluster-scoped task with a sub-second interval every whole second', async () => {
+			const { runner, metadata } = setup({ isLeader: true });
+			dummy.schedule = { kind: 'interval', intervalSeconds: 0.5 };
+			metadata.register(DummySystemTask);
+
+			await initRunner(runner);
+			await vi.advanceTimersByTimeAsync(2 * Time.seconds.toMilliseconds);
+
+			expect(dummy.runCount).toBe(2);
 		});
 
 		it('fires a task registered after it took over the registry', async () => {
@@ -776,7 +787,11 @@ describe('SystemTaskRunner', () => {
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
 			await expect(
-				handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn())),
+				handler.execute(
+					mock<ClaimedTask>(),
+					createDispatchReporter(vi.fn()),
+					new AbortController().signal,
+				),
 			).rejects.toThrow(error);
 
 			expect(errorReporter.error).toHaveBeenCalledWith(error, {
@@ -801,7 +816,11 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			const executing = handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
+			const executing = handler.execute(
+				mock<ClaimedTask>(),
+				createDispatchReporter(vi.fn()),
+				new AbortController().signal,
+			);
 			expect(runSignal?.aborted).toBe(false);
 
 			await runner.shutdown();
@@ -842,6 +861,22 @@ describe('SystemTaskRunner', () => {
 
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('runs a durable cron task on its timer, in the instance timezone, while the scheduler is inactive', async () => {
+			dummy.placement = { scope: 'cluster', durable: true };
+			dummy.schedule = { kind: 'cron', cronExpression: '0 3 * * *', timezone: null };
+			const { runner, metadata, durableScheduler } = setup({ timezone: 'Europe/Berlin' });
+			metadata.register(DummySystemTask);
+
+			await initRunner(runner);
+			// 03:00 in Berlin is 02:00 UTC in January.
+			await vi.advanceTimersByTimeAsync(2 * Time.hours.toMilliseconds - 1);
+			expect(dummy.runCount).toBe(0);
+			await vi.advanceTimersByTimeAsync(1);
 
 			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
 			expect(dummy.runCount).toBe(1);
@@ -1304,7 +1339,11 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			await handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
+			await handler.execute(
+				mock<ClaimedTask>(),
+				createDispatchReporter(vi.fn()),
+				new AbortController().signal,
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
 				name: 'dummy',
@@ -1330,6 +1369,18 @@ describe('SystemTaskRunner', () => {
 
 			expect(perInstance.runCount).toBe(1);
 			expect(dummy.runCount).toBe(0);
+		});
+
+		it('fires an instance-scoped task with a sub-second interval on its sub-second cadence', async () => {
+			const { runner, metadata, errorReporter } = setup();
+			perInstance.schedule = { kind: 'interval', intervalSeconds: 0.5 };
+			metadata.register(PerInstanceDummySystemTask);
+
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(2 * Time.seconds.toMilliseconds);
+
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(perInstance.runCount).toBe(4);
 		});
 
 		it('fires an instance-scoped task on a worker, which has no role at all', async () => {

@@ -2,7 +2,7 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
@@ -25,6 +25,7 @@ import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgent
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -38,7 +39,6 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const sessionsStore = useAgentSessionsStore();
-const projectsStore = useProjectsStore();
 const {
 	isEnabled: isLangSmithExportEnabled,
 	isExporting,
@@ -102,6 +102,8 @@ const triggerIcon = computed((): IconName => {
 			return 'slack';
 		case 'instance-ai':
 			return 'sparkles';
+		case 'n8n_chat_production':
+			return 'message-square';
 		default:
 			return 'bolt-filled';
 	}
@@ -117,6 +119,9 @@ const triggerLabel = computed((): string => {
 	if (source === 'instance-ai') {
 		return i18n.baseText('agentSessions.origin.instanceAi');
 	}
+	if (source === 'n8n_chat_production') {
+		return i18n.baseText('agentSessions.origin.n8nChat');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -125,15 +130,7 @@ const sessionTitle = computed(() => {
 	return truncate(threadTitleOf(thread.value), 64);
 });
 
-const projectName = computed<string | null>(() => {
-	if (projectsStore.personalProject?.id === projectId.value) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	const current = projectsStore.currentProject;
-	if (current && current.id === projectId.value) return current.name ?? null;
-	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
-	return match?.name ?? null;
-});
+const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
 	name: VIEWS.PROJECTS_WORKFLOWS,
@@ -313,22 +310,9 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-function closeTimeline() {
-	/**
-	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
-	 * If no state is available, it's most likey because the link was visited directly.
-	 * Here we fallback to default Agents view.
-	 */
-	const previousRoute = router.options.history.state.back;
-	const resolvedPreviousRoute =
-		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
-
-	if (resolvedPreviousRoute?.matched.length) {
-		router.back();
-		return;
-	}
-	void router.push(agentExecutionsRoute.value);
-}
+// Returns to the correct starting point (e.g. Preview) when there is one;
+// otherwise falls back to the agent's executions tab, e.g. for a direct visit.
+const closeTimeline = useBackOrFallback(agentExecutionsRoute);
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
@@ -368,6 +352,7 @@ function viewPreviewTrace() {
 	<div :class="$style.view">
 		<AgentSessionTimelineHeader
 			:breadcrumb-items="breadcrumbItems"
+			:project-icon="projectIcon"
 			:session-title="sessionTitle"
 			:session-options="sessionOptions"
 			:show-metrics="Boolean(thread)"

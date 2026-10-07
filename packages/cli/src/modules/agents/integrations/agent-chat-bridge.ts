@@ -1,4 +1,9 @@
-import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	isAttachmentValidationError,
+	type AgentMessage,
+	type StreamChunk,
+} from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -11,10 +16,10 @@ import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Attachment, Author, Chat, Message, Thread } from 'chat';
+import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -23,6 +28,7 @@ import type {
 	QueuedIntegrationMessage,
 } from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
@@ -38,14 +44,18 @@ import type {
 	BridgeExecutionContext,
 	PlatformAgentContext,
 } from './agent-chat-integration';
-import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
+import {
+	ChatIntegrationRegistry,
+	onceStatusHandle,
+	postToUserOrThread,
+} from './agent-chat-integration';
 import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
-import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-suspension-cards';
+import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
@@ -135,13 +145,16 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		config: Omit<ExecuteForChatPublishedConfig, 'memory'> & {
 			memory: { threadId: InternalThread; resourceId: string };
 		},
-	): AsyncGenerator<StreamChunk>;
+	): AsyncGenerator<AgentExecutionStreamChunk>;
 
 	/** An open approval prevents automatic session rotation. */
 	findOpenSuspension?(config: {
 		agentId: string;
 		threadId: string;
 	}): Promise<OpenSuspension | null>;
+
+	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
+	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
 }
 
 /** An open checkpoint prevents automatic session rotation. */
@@ -239,6 +252,7 @@ export class AgentChatBridge {
 		const actionToolNamePattern = new RegExp(`^${integration.type}(_\\d+)?_action$`);
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
+			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
@@ -344,6 +358,9 @@ export class AgentChatBridge {
 					(toolCall) => toolCall.suspended,
 				);
 				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
+			},
+			async isResumable({ agentId: aid, runId }) {
+				return await Container.get(AgentConversationStateService).isResumable(aid, runId);
 			},
 		};
 		return new AgentChatBridge(
@@ -480,18 +497,69 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
-			{ notifyOnDuplicate: false, ...(context ? { messageContext: context.messageContext } : {}) },
+			{
+				...(context ? { messageContext: context.messageContext } : {}),
+				// Nobody clicked, so this must not speak to them. It only keeps a
+				// card the resumed turn raises addressed to the person whose
+				// conversation it belongs to.
+				...(context?.messageContext?.interactingUserId
+					? { cardRecipientId: context.messageContext.interactingUserId }
+					: {}),
+			},
 		);
 	}
 
-	async deliverWakeResponse(threadId: string, chunks: StreamChunk[]): Promise<void> {
+	async deliverWakeResponse(
+		threadId: string,
+		chunks: AgentExecutionStreamChunk[],
+		cardRecipientId?: string,
+	): Promise<void> {
 		await this.streamConsumer.consume(
 			(async function* () {
 				yield* chunks;
 			})(),
 			this.chat.thread(threadId),
-			{ throwOnDeliveryError: true },
+			{
+				throwOnDeliveryError: true,
+				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
+			},
 		);
+	}
+
+	async deliverBackgroundApproval(
+		threadId: string,
+		{
+			jobId,
+			title,
+			token,
+			toolCall,
+		}: {
+			jobId: string;
+			title: string;
+			token: string;
+			toolCall: Extract<StreamChunk, { type: 'tool-call-suspended' }>;
+		},
+	): Promise<void> {
+		const payload = buildSuspendCardPayload(toolCall.suspendPayload);
+		if (!payload) throw new UserError('This background approval cannot be displayed');
+		const card = await this.componentMapper.toCard(
+			{ ...payload, title: `${title}: Approval required` },
+			toolCall.runId,
+			toolCall.toolCallId,
+			toolCall.resumeSchema,
+			async (_actionId, value) => {
+				const response = APPROVAL_RESUME_SCHEMA.safeParse(JSON.parse(value));
+				if (!response.success) {
+					throw new UserError('Invalid background approval response');
+				}
+				let decision = response.data.approved ? '1' : '0';
+				if (response.data.approved && response.data.scope === 'session') decision = 's';
+				// The durable checkpoint resolves this 64-byte callback after a restart.
+				return { id: `bg:${jobId}:${token}:${decision}`, value: '' };
+			},
+			this.integration.type,
+		);
+		await this.chat.thread(threadId).post({ card });
 	}
 
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
@@ -514,7 +582,19 @@ export class AgentChatBridge {
 	 */
 	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
 		const baseId = this.baseThreadId(thread);
-		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
+		// `null` is a documented, explicit opt-out distinct from `undefined`
+		// (unset) — only fall back to the integration's default when the setting
+		// was never configured at all, not when it was deliberately disabled.
+		// Some integration types (see `AgentIntegrationConfig`) carry no
+		// `settings` field at all, hence the `in` check before reading it.
+		const configuredIdleTimeoutMinutes =
+			'settings' in this.integration
+				? this.integration.settings?.sessionIdleTimeoutMinutes
+				: undefined;
+		const idleTimeoutMinutes =
+			configuredIdleTimeoutMinutes !== undefined
+				? configuredIdleTimeoutMinutes
+				: (this.integrationImpl?.defaultSessionIdleTimeoutMinutes ?? null);
 		const id = await this.withSessionLock(
 			baseId,
 			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
@@ -746,6 +826,7 @@ export class AgentChatBridge {
 				isNewMention,
 				platformAgentContext,
 			}) ?? 'required';
+		let accepted = false;
 		try {
 			const [context, subject] = await Promise.all([
 				this.resolveBridgeExecutionContext(
@@ -768,7 +849,7 @@ export class AgentChatBridge {
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
-			await this.messageQueue.enqueue({
+			const result = await this.messageQueue.enqueue({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				threadId: session.memory.threadId.id,
@@ -793,9 +874,11 @@ export class AgentChatBridge {
 					slackThreadContext: context.slackThreadContext,
 				},
 			});
-		} catch (error) {
-			await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			throw error;
+			accepted = result.status === 'accepted';
+		} finally {
+			if (!accepted) {
+				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			}
 		}
 	}
 
@@ -847,6 +930,7 @@ export class AgentChatBridge {
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: payload.forceBuffered,
 				statusHandle,
+				actingUserId: payload.sender.userId,
 			});
 		} catch (error) {
 			await this.postErrorToThread(thread, error);
@@ -1006,6 +1090,7 @@ export class AgentChatBridge {
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 		thread: Thread,
+		actingUserId?: string,
 	): Promise<SuspensionHandlingResult> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
@@ -1018,7 +1103,6 @@ export class AgentChatBridge {
 		if (!cardPayload) return 'skipped';
 		const callbackMetadata: CallbackMetadata = {
 			groupId: JSON.stringify([runId, toolCallId]),
-			...(isApprovalSuspendPayload(suspendPayload) ? { kind: 'approval' } : {}),
 		};
 
 		try {
@@ -1030,7 +1114,7 @@ export class AgentChatBridge {
 				this.getShortenCallback(callbackMetadata),
 				this.integration.type,
 			);
-			await thread.post({ card });
+			await this.deliverSuspensionCard(thread, card, actingUserId);
 			return 'posted';
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post suspension card', {
@@ -1041,6 +1125,24 @@ export class AgentChatBridge {
 			});
 			return 'failed';
 		}
+	}
+
+	/**
+	 * Where the platform can address one user, the card goes to them alone, so
+	 * the rest of the conversation never sees it. Everything else falls back to
+	 * the thread: a card nobody receives leaves the run parked with nothing to
+	 * click.
+	 */
+	private async deliverSuspensionCard(
+		thread: Thread,
+		card: CardElement,
+		actingUserId?: string,
+	): Promise<void> {
+		if (this.integrationImpl?.targetSuspensionCardAtActingUser && actingUserId) {
+			await postToUserOrThread(thread, actingUserId, { card });
+			return;
+		}
+		await thread.post({ card });
 	}
 
 	// ---------------------------------------------------------------------------

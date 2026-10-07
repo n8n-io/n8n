@@ -14,6 +14,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
+import cloneDeep from 'lodash/cloneDeep';
 
 import { ElDatePicker } from 'element-plus';
 import {
@@ -29,6 +30,7 @@ import {
 } from '@n8n/design-system';
 
 export type ExecutionFilterProps = {
+	initialFilters?: ExecutionFilterType;
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	workflowId?: string;
 	popoverSide?: 'top' | 'right' | 'bottom' | 'left';
@@ -74,7 +76,8 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	vote: 'all',
 	workflowVersionId: 'all',
 });
-const filter = reactive(getDefaultFilter());
+// Copy, so nested edits do not change the caller's filters before this component emits them.
+const filter = reactive({ ...getDefaultFilter(), ...cloneDeep(props.initialFilters) });
 
 type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
 const workflowVersions = ref<ExecutionVersion[]>([]);

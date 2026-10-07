@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
@@ -5,7 +6,6 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
-import { EventService } from '@/events/event.service';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
@@ -265,6 +265,7 @@ describe('POST /n8n-packages/import', () => {
 			dataTables: {
 				matched: 0,
 				created: 0,
+				updated: 0,
 			},
 			variables: {
 				matched: [],
@@ -323,7 +324,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('missingNodeTypeMode', 'fail')
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
-			.field('dataTableSchemaConflictPolicy', 'fail')
+			.field('dataTableSchemaConflictPolicy', 'overwrite')
 			.field('variableMissingMode', 'create-with-value')
 			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')

@@ -1,21 +1,23 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { EventService } from '@n8n/backend-services';
+import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
-import { FolderRepository, WorkflowRepository } from '@n8n/db';
+import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode, INodeParameterResourceLocator, Workflow } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { createFolder } from '@test-integration/db/folders';
-import { createOwner } from '@test-integration/db/users';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
@@ -28,11 +30,12 @@ import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
 	serializedDataTable,
+	serializedProject,
 	serializedWorkflowWithDataTable,
 	type PackageWorkflow,
 } from './fixtures/package-fixtures';
 import { buildWorkflowReferencingDataTables } from './utils/test-builders';
-import { streamToBuffer } from './utils/tar-support';
+import { readExport, streamToBuffer } from './utils/tar-support';
 
 let service: N8nPackagesService;
 let dataTableService: DataTableService;
@@ -108,6 +111,13 @@ async function buildDataTablePackage(
 	});
 
 	return { packageBuffer, workflows };
+}
+
+async function expectBlocked(promise: Promise<unknown>, ...issues: Array<Record<string, unknown>>) {
+	await expect(promise).rejects.toMatchObject({
+		message: expect.stringContaining('Import blocked'),
+		meta: { issues: issues.map((issue) => expect.objectContaining(issue)) },
+	});
 }
 
 async function tablesInProject(projectId: string) {
@@ -194,7 +204,12 @@ describe('workflow package import — with data tables', () => {
 				expect(options.dataTableMatchingMode).toBe('by-id');
 				expect(options.dataTableMissingMode).toBe('create');
 				expect(options.dataTableSchemaConflictPolicy).toBe('keep-existing');
-				expect(counts.dataTables).toEqual({ matched: 1, created: 1, requirements: 2 });
+				expect(counts.dataTables).toEqual({
+					matched: 1,
+					created: 1,
+					updated: 0,
+					requirements: 2,
+				});
 			} finally {
 				emitSpy.mockRestore();
 			}
@@ -345,13 +360,6 @@ describe('workflow package import — with data tables', () => {
 	});
 
 	describe('blocked imports write nothing', () => {
-		async function expectBlocked(promise: Promise<unknown>, issue: Record<string, unknown>) {
-			await expect(promise).rejects.toMatchObject({
-				message: expect.stringContaining('Import blocked'),
-				meta: { issues: [expect.objectContaining(issue)] },
-			});
-		}
-
 		it('blocks when a matched table is missing a package column', async () => {
 			const existing = await dataTableService.createDataTable(project.id, {
 				name: 'Customers',
@@ -367,6 +375,9 @@ describe('workflow package import — with data tables', () => {
 				sourceId: existing.id,
 				missingColumns: ['signed_up_at'],
 				typeMismatches: [],
+				overwriteChanges: [
+					{ kind: 'add-column', column: 'signed_up_at', type: 'date', destructive: false },
+				],
 				usedByWorkflows: ['wf-0'],
 			});
 
@@ -400,6 +411,9 @@ describe('workflow package import — with data tables', () => {
 					missingColumns: [],
 					typeMismatches: [],
 					extraColumns: ['extra'],
+					overwriteChanges: [
+						{ kind: 'remove-column', column: 'extra', type: 'boolean', destructive: true },
+					],
 				},
 			);
 
@@ -657,6 +671,8 @@ describe('workflow package import — with data tables', () => {
 	});
 
 	describe('public API key scopes', () => {
+		afterEach(() => licenseMocker.reset());
+
 		it('rejects a table-creating import when the API key lacks the dataTable:create scope', async () => {
 			const { packageBuffer } = await buildDataTablePackage([serializedDataTable()]);
 
@@ -681,6 +697,396 @@ describe('workflow package import — with data tables', () => {
 			});
 
 			expect(await tablesInProject(project.id)).toHaveLength(1);
+		});
+
+		it('rejects a project package that creates a table when the API key lacks the dataTable:create scope', async () => {
+			licenseMocker.enable('feat:projectRole:admin');
+			licenseMocker.setQuota('quota:maxTeamProjects', 100);
+			const table = serializedDataTable();
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
+				workflows: [
+					{
+						target: 'projects/p1/workflows/wf-0',
+						workflow: serializedWorkflowWithDataTable({
+							id: 'wf-0',
+							name: 'Workflow 0',
+							dataTableId: table.id,
+						}),
+					},
+				],
+				dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
+				manifestExtras: { requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] } },
+			});
+
+			const importWithKeyScopes = async (apiKeyScopes: string[]) =>
+				await service.importPackage(
+					importPackageRequest({ user: owner, packageBuffer, apiKeyScopes }),
+				);
+
+			await expect(
+				importWithKeyScopes(['project:create', 'project:update', 'workflow:import']),
+			).rejects.toBeInstanceOf(ForbiddenError);
+
+			expect(await Container.get(ProjectRepository).findOneBy({ id: 'P1' })).toBeNull();
+			expect(await dataTableRepository.count()).toBe(0);
+			expect(await workflowRepository.count()).toBe(0);
+
+			const result = await importWithKeyScopes([
+				'project:create',
+				'project:update',
+				'workflow:import',
+				'dataTable:create',
+			]);
+			expect(result.dataTables).toMatchObject({ created: 1 });
+		});
+	});
+
+	describe('overwrite schema conflict policy', () => {
+		async function importWithOverwrite(params: Omit<ImportParams, 'projectId'>) {
+			return await importPackage({
+				projectId: project.id,
+				dataTableSchemaConflictPolicy: 'overwrite',
+				...params,
+			});
+		}
+
+		async function columnsOf(tableId: string) {
+			const columns = await dataTableService.getColumns(tableId, project.id);
+			return columns.map(({ name, type, index }) => ({ name, type, index }));
+		}
+
+		async function exportedDataTableFile(workflowId: string) {
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflowId] });
+			const { entries } = await readExport(stream);
+			return entries.find(({ name }) => name.endsWith('/data-table.json'))!.content;
+		}
+
+		async function memberWithoutDataTableUpdate() {
+			const member = await createMember();
+			const role = await createCustomRoleWithScopeSlugs(
+				[
+					'project:read',
+					'project:list',
+					'project:update',
+					'workflow:create',
+					'workflow:read',
+					'workflow:update',
+					'workflow:import',
+					'workflow:list',
+					'workflow:publish',
+					'folder:create',
+					'folder:read',
+					'folder:update',
+					'folder:list',
+					'credential:read',
+					'credential:list',
+					'dataTable:create',
+					'dataTable:read',
+				],
+				{ roleType: 'project' },
+			);
+			await linkUserToProject(member, project, role.slug);
+			return member;
+		}
+
+		it('exports a byte-identical data table file after an overwrite import', async () => {
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+					{ name: 'signed_up_at', type: 'date' },
+				],
+			});
+			const workflow = await buildWorkflowReferencingDataTables({
+				name: 'Customers workflow',
+				project,
+				references: [{ dataTableId: table.id }],
+			});
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const packageBuffer = await streamToBuffer(stream);
+			const packageFile = await exportedDataTableFile(workflow.id);
+			await workflowRepository.delete({ id: workflow.id });
+
+			const columnId = async (name: string) =>
+				(await dataTableService.getColumns(table.id, project.id)).find(
+					(column) => column.name === name,
+				)!.id;
+			await dataTableService.updateDataTable(table.id, project.id, { name: 'Clients' });
+			await dataTableService.addColumn(table.id, project.id, { name: 'extra', type: 'string' });
+			await dataTableService.deleteColumn(table.id, project.id, await columnId('active'));
+			await dataTableService.deleteColumn(table.id, project.id, await columnId('age'));
+			await dataTableService.addColumn(table.id, project.id, { name: 'age', type: 'string' });
+			await dataTableService.moveColumn(table.id, project.id, await columnId('signed_up_at'), {
+				targetIndex: 0,
+			});
+
+			const result = await importWithOverwrite({ user: owner, packageBuffer });
+
+			expect(result.dataTables).toEqual({ matched: 0, created: 0, updated: 1 });
+			expect(await exportedDataTableFile(result.workflows[0].localId)).toEqual(packageFile);
+		});
+
+		it('adds, removes, retypes, and renames columns, and keeps data in all other columns', async () => {
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'foo', type: 'string' },
+					{ name: 'score', type: 'string' },
+					{ name: 'note', type: 'string' },
+					{ name: 'email', type: 'string' },
+				],
+			});
+			await dataTableService.insertRows(table.id, project.id, [
+				{ foo: 'x', score: '10', note: 'first', email: 'a@example.com' },
+			]);
+			const packageColumns: SerializedDataTable['columns'] = [
+				{ name: 'email', type: 'string', index: 0 },
+				{ name: 'note', type: 'string', index: 1 },
+				{ name: 'Foo', type: 'string', index: 2 },
+				{ name: 'score', type: 'number', index: 3 },
+				{ name: 'added', type: 'boolean', index: 4 },
+			];
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: table.id, columns: packageColumns }),
+			]);
+
+			await importWithOverwrite({ user: owner, packageBuffer });
+
+			expect(await columnsOf(table.id)).toEqual(packageColumns);
+			const { data } = await dataTableService.getManyRowsAndCount(table.id, project.id, {});
+			expect(data).toHaveLength(1);
+			expect(data[0]).toMatchObject({
+				email: 'a@example.com',
+				note: 'first',
+				Foo: null,
+				score: null,
+				added: null,
+			});
+			expect(data[0]).not.toHaveProperty('foo');
+		});
+
+		it('blocks a table-changing overwrite when the user cannot update data tables in the project', async () => {
+			const member = await memberWithoutDataTableUpdate();
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' }],
+			});
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: table.id }),
+			]);
+
+			await expectBlocked(importWithOverwrite({ user: member, packageBuffer }), {
+				type: 'data-table-unresolved',
+				kind: 'permission-denied',
+				missingScope: 'dataTable:update',
+			});
+
+			expect(await columnsOf(table.id)).toEqual([{ name: 'email', type: 'string', index: 0 }]);
+			expect(await workflowRepository.count()).toBe(0);
+		});
+
+		it('does not require dataTable:update when the table already matches the package', async () => {
+			const member = await memberWithoutDataTableUpdate();
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'signed_up_at', type: 'date' },
+				],
+			});
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: table.id }),
+			]);
+
+			const result = await importWithOverwrite({
+				user: member,
+				packageBuffer,
+				apiKeyScopes: ['workflow:import', 'dataTable:create'],
+			});
+
+			expect(result.dataTables).toEqual({ matched: 1, created: 0, updated: 0 });
+		});
+
+		it('rejects a table-changing overwrite when the API key lacks dataTable:update', async () => {
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Orders',
+				columns: [{ name: 'email', type: 'string' }],
+			});
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: table.id }),
+			]);
+
+			await expect(
+				importWithOverwrite({
+					user: owner,
+					packageBuffer,
+					apiKeyScopes: ['workflow:import', 'dataTable:create'],
+				}),
+			).rejects.toBeInstanceOf(ForbiddenError);
+
+			expect((await dataTableService.getOne(table.id, project.id)).name).toBe('Orders');
+			expect(await columnsOf(table.id)).toEqual([{ name: 'email', type: 'string', index: 0 }]);
+			expect(await workflowRepository.count()).toBe(0);
+
+			const result = await importWithOverwrite({
+				user: owner,
+				packageBuffer,
+				apiKeyScopes: ['workflow:import', 'dataTable:create', 'dataTable:update'],
+			});
+			expect(result.dataTables).toMatchObject({ updated: 1 });
+		});
+
+		it('blocks a rename when another table in the project already has the package name', async () => {
+			const columns = [
+				{ name: 'email', type: 'string' as const },
+				{ name: 'signed_up_at', type: 'date' as const },
+			];
+			const orders = await dataTableService.createDataTable(project.id, {
+				name: 'Orders',
+				columns,
+			});
+			const sales = await dataTableService.createDataTable(project.id, { name: 'Sales', columns });
+
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: orders.id, name: 'Sales' }),
+			]);
+			await expectBlocked(importWithOverwrite({ user: owner, packageBuffer }), {
+				type: 'data-table-unresolved',
+				kind: 'name-conflict',
+				sourceId: orders.id,
+				currentName: 'Orders',
+				name: 'Sales',
+				conflictingTableId: sales.id,
+			});
+			expect((await dataTableService.getOne(orders.id, project.id)).name).toBe('Orders');
+			expect(await workflowRepository.count()).toBe(0);
+
+			const { packageBuffer: swapBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: orders.id, name: 'Sales' }),
+				serializedDataTable({ id: sales.id, name: 'Orders' }),
+			]);
+			await expectBlocked(
+				importWithOverwrite({ user: owner, packageBuffer: swapBuffer }),
+				{ kind: 'name-conflict', sourceId: orders.id, conflictingTableId: sales.id },
+				{ kind: 'name-conflict', sourceId: sales.id, conflictingTableId: orders.id },
+			);
+			expect((await dataTableService.getOne(orders.id, project.id)).name).toBe('Orders');
+			expect((await dataTableService.getOne(sales.id, project.id)).name).toBe('Sales');
+		});
+
+		it('blocks a rename to a name that a new table in the same import uses', async () => {
+			const orders = await dataTableService.createDataTable(project.id, {
+				name: 'Orders',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'signed_up_at', type: 'date' },
+				],
+			});
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({ id: orders.id, name: 'Sales' }),
+				serializedDataTable({ id: 'newsales1', name: 'Sales' }),
+			]);
+
+			await expectBlocked(
+				importWithOverwrite({ user: owner, packageBuffer }),
+				{ kind: 'name-conflict', sourceId: 'newsales1', conflictingTableId: orders.id },
+				{
+					kind: 'name-conflict',
+					sourceId: orders.id,
+					currentName: 'Orders',
+					name: 'Sales',
+					conflictingTableId: 'newsales1',
+				},
+			);
+
+			const tables = await tablesInProject(project.id);
+			expect(tables.map(({ id, name }) => ({ id, name }))).toEqual([
+				{ id: orders.id, name: 'Orders' },
+			]);
+		});
+
+		it('rolls back every change to a table when one of its changes fails', async () => {
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'extra', type: 'string' },
+				],
+			});
+			await dataTableService.insertRows(table.id, project.id, [
+				{ email: 'a@example.com', extra: 'keep me' },
+			]);
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({
+					id: table.id,
+					columns: [
+						{ name: 'email', type: 'string', index: 0 },
+						{ name: 'first_new', type: 'string', index: 1 },
+						{ name: 'second_new', type: 'string', index: 2 },
+					],
+				}),
+			]);
+			const ddlService = Container.get(DataTableDDLService);
+			const realAddColumn = ddlService.addColumn.bind(ddlService);
+			const addColumn = vi
+				.spyOn(ddlService, 'addColumn')
+				.mockImplementationOnce(realAddColumn)
+				.mockRejectedValueOnce(new Error('Column could not be added'));
+
+			try {
+				await expect(importWithOverwrite({ user: owner, packageBuffer })).rejects.toThrow(
+					'Column could not be added',
+				);
+				expect(addColumn.mock.calls.map(([, column]) => column.name)).toEqual([
+					'first_new',
+					'second_new',
+				]);
+			} finally {
+				addColumn.mockRestore();
+			}
+
+			expect(await columnsOf(table.id)).toEqual([
+				{ name: 'email', type: 'string', index: 0 },
+				{ name: 'extra', type: 'string', index: 1 },
+			]);
+			const { data } = await dataTableService.getManyRowsAndCount(table.id, project.id, {});
+			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', extra: 'keep me' })]);
+			expect(data[0]).not.toHaveProperty('first_new');
+			expect(data[0]).not.toHaveProperty('second_new');
+			expect(await workflowRepository.count()).toBe(0);
+		});
+
+		it('normalizes duplicate and non-contiguous column indexes by index, then name', async () => {
+			const table = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'a', type: 'string' },
+					{ name: 'b', type: 'string' },
+					{ name: 'c', type: 'string' },
+				],
+			});
+			const { packageBuffer } = await buildDataTablePackage([
+				serializedDataTable({
+					id: table.id,
+					columns: [
+						{ name: 'c', type: 'string', index: 1 },
+						{ name: 'b', type: 'string', index: 5 },
+						{ name: 'a', type: 'string', index: 5 },
+					],
+				}),
+			]);
+
+			const result = await importWithOverwrite({ user: owner, packageBuffer });
+
+			expect(result.dataTables).toEqual({ matched: 0, created: 0, updated: 1 });
+			expect(await columnsOf(table.id)).toEqual([
+				{ name: 'c', type: 'string', index: 0 },
+				{ name: 'a', type: 'string', index: 1 },
+				{ name: 'b', type: 'string', index: 2 },
+			]);
 		});
 	});
 

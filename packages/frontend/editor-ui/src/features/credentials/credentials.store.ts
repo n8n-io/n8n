@@ -444,7 +444,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		data: CredentialPayload,
 		projectId?: string,
 		uiContext?: string,
-		options?: { skipStoreUpdate?: boolean },
+		options?: { skipStoreUpdate?: boolean; pendingAuthorization?: boolean },
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
@@ -459,6 +459,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
 			usageScope: data.usageScope,
+			pendingAuthorization: options?.pendingAuthorization,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {

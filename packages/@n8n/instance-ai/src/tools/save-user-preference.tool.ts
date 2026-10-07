@@ -28,7 +28,13 @@ const inputSchema = z.object({
 const outputSchema = z.object({
 	ok: z.boolean(),
 	preference: z
-		.object({ id: z.string(), content: z.string(), scope: z.literal('user') })
+		.object({
+			id: z.string(),
+			content: z.string(),
+			scope: z.enum(['user', 'project', 'instance']),
+			projectId: z.string().nullable().optional(),
+			userId: z.string().nullable().optional(),
+		})
 		.optional(),
 	reason: z
 		.enum(['too_long', 'scope_full', 'duplicate', 'not_permitted', 'blocked_by_admin', 'failed'])
@@ -65,7 +71,7 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 			const textLength = input.content.length;
 
 			if (context.permissions?.createPreference === 'blocked') {
-				service.recordRejection('blocked_by_admin', textLength);
+				service.recordRejection('blocked_by_admin', textLength, input.scope);
 				return {
 					ok: false,
 					reason: 'blocked_by_admin',
@@ -81,7 +87,7 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 			if (!parsed.success) {
 				const trimmedLength = input.content.trim().length;
 				if (trimmedLength > AI_PREFERENCE_CONTENT_MAX_LENGTH) {
-					service.recordRejection('too_long', textLength);
+					service.recordRejection('too_long', textLength, input.scope);
 					// Numbers, so the model can shorten by the right amount.
 					return {
 						ok: false,
@@ -91,7 +97,7 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 						actual: trimmedLength,
 					};
 				}
-				service.recordRejection('failed', textLength);
+				service.recordRejection('failed', textLength, input.scope);
 				return { ok: false, reason: 'failed', message: 'A preference must not be empty.' };
 			}
 

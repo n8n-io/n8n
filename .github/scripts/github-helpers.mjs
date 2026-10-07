@@ -491,6 +491,23 @@ export async function getPrReviews(pullRequestNumber) {
 }
 
 /**
+ * Returns all events for a PR, including label changes and their actors.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Array<{ event: string, actor: { login: string } | null, label?: { name?: string } | null, created_at?: string }>> }
+ * */
+export async function getPrEvents(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	return await octokit.paginate(octokit.rest.issues.listEvents, {
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
+		per_page: 100,
+	});
+}
+
+/**
  * Test whether a user is an active member of an org team.
  *
  * Team slugs are the part after the org, e.g. `catalysts` for

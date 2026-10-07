@@ -5,9 +5,8 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
 import type { DataTable } from '../../data-table/data-table.entity';

@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { AgentResource } from '@/features/agents/types';
@@ -9,10 +9,13 @@ import {
 	getPendingAgentTargetFromThreadMetadata,
 } from '../instanceAi.threadRuntime';
 
-const threadState = {
+const threadState = reactive({
 	id: 'thread-1',
 	messages: [] as InstanceAiMessage[],
-};
+	activeArtifactId: undefined as string | undefined,
+	isSendingMessage: false,
+	isStreaming: false,
+});
 const metadataState = ref<Record<string, unknown>>();
 const updateThreadMetadataMock = vi.fn(
 	async (_threadId: string, metadata: Record<string, unknown>) => {
@@ -100,6 +103,9 @@ describe('InstanceAiAgentPreview', () => {
 			},
 		};
 		threadState.messages = [];
+		threadState.activeArtifactId = undefined;
+		threadState.isSendingMessage = false;
+		threadState.isStreaming = false;
 		updateThreadMetadataMock.mockClear();
 		persistPendingAgentMock.mockReset();
 	});
@@ -135,8 +141,9 @@ describe('InstanceAiAgentPreview', () => {
 		expect(wrapper.emitted('assistant-handoff')).toEqual([[handoff]]);
 	});
 
-	it('shows the building indicator and locks editing while the AI mutates this agent', () => {
-		threadState.messages = [makeBuildingMessage('agent-1')];
+	it('shows activity from sending through agent changes and only locks editing for changes', async () => {
+		threadState.activeArtifactId = 'agent-1';
+		threadState.isSendingMessage = true;
 
 		const wrapper = mount(InstanceAiAgentPreview, {
 			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
@@ -147,12 +154,28 @@ describe('InstanceAiAgentPreview', () => {
 			true,
 		);
 		expect(wrapper.findComponent({ name: 'AgentBuilderView' }).props('artifactEditingLocked')).toBe(
+			false,
+		);
+		threadState.isSendingMessage = false;
+		await wrapper.vm.$nextTick();
+		expect(wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists()).toBe(
+			false,
+		);
+
+		threadState.messages = [makeBuildingMessage('agent-1')];
+		await wrapper.vm.$nextTick();
+		expect(wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists()).toBe(
+			true,
+		);
+		expect(wrapper.findComponent({ name: 'AgentBuilderView' }).props('artifactEditingLocked')).toBe(
 			true,
 		);
 	});
 
 	it('hides the building indicator when the AI is working on a different agent', () => {
 		threadState.messages = [makeBuildingMessage('agent-other')];
+		threadState.activeArtifactId = 'agent-other';
+		threadState.isSendingMessage = true;
 
 		const wrapper = mount(InstanceAiAgentPreview, {
 			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },

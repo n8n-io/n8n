@@ -9,6 +9,7 @@
 //   pnpm session:opencode [name]   connect a local OpenCode client
 //   pnpm session ls                list Codespaces and tmux sessions
 //   pnpm session tunnel [port…]    forward ports to localhost
+//   pnpm session ssh-config        add an `n8n-codespace` host to ~/.ssh/config
 //   pnpm session stop              stop the Codespace
 //   pnpm session rm                delete the Codespace
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -21,7 +22,10 @@ const DEVCONTAINER = '.devcontainer/codespaces/devcontainer.json';
 const MACHINE = 'premiumLinux';
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
-const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
+// On a TTY, gh queries the terminal background colour. The reply can reach the
+// shell (or the remote session) as text. A fixed GLAMOUR_STYLE skips the query.
+const ghTty = (...args) =>
+	spawnSync('gh', args, { stdio: 'inherit', env: { ...process.env, GLAMOUR_STYLE: 'dark' } });
 
 // Check the remote terminal database before tmux starts. Older images can lack
 // terminal definitions such as xterm-ghostty.
@@ -214,6 +218,25 @@ switch (cmd) {
 			...ports.flatMap((p) => ['-L', `${p}:localhost:${p}`]),
 		);
 		process.exitCode = status ?? 1;
+		break;
+	}
+	case 'ssh-config': {
+		const name = ensureCodespace();
+		// A first connection starts a stopped codespace and creates gh's automatic
+		// key pair. The generated config names that key.
+		const { status } = ghTty('codespace', 'ssh', '-c', name, '--', 'true');
+		if (status !== 0) {
+			console.error(`Could not connect to ${name} over ssh.`);
+			process.exit(status ?? 1);
+		}
+		const { writeSshConfig, HOST_ALIAS } = await import('./cloud-session-ssh-config.mjs');
+		const { hostPath, configPath, includeAdded } = writeSshConfig(
+			gh('codespace', 'ssh', '--config', '-c', name),
+		);
+		console.log(`Wrote ${hostPath}${includeAdded ? ` and included it from ${configPath}` : ''}.`);
+		console.log(`Connect with \`ssh ${HOST_ALIAS}\`, or add the SSH host \`${HOST_ALIAS}\` in the`);
+		console.log('Claude Code desktop app and open /workspaces/n8n.');
+		console.log('Run this command again after you recreate the codespace.');
 		break;
 	}
 	case 'stop':

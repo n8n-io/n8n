@@ -4,13 +4,22 @@ import type {
 	AgentBackgroundJobsResponse,
 	PushMessage,
 } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { flushPromises } from '@vue/test-utils';
 import { effectScope, reactive, ref, type EffectScope } from 'vue';
 
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
-import { getAgentBackgroundJobs } from '../composables/useAgentApi';
+import {
+	getAgentBackgroundJobs,
+	resumeAgentBackgroundJob,
+	stopAgentBackgroundJobs,
+} from '../composables/useAgentApi';
 
-vi.mock('../composables/useAgentApi', () => ({ getAgentBackgroundJobs: vi.fn() }));
+vi.mock('../composables/useAgentApi', () => ({
+	getAgentBackgroundJobs: vi.fn(),
+	resumeAgentBackgroundJob: vi.fn(),
+	stopAgentBackgroundJobs: vi.fn(),
+}));
 vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiContext: {} }) }));
 vi.mock('@/app/stores/pushConnection.store', () => ({ usePushConnectionStore: () => pushStore }));
 vi.mock('@vueuse/core', async (importOriginal) => ({
@@ -70,6 +79,82 @@ describe('useAgentBackgroundJobs', () => {
 		vi.useRealTimers();
 	});
 
+	it('keeps accepted stops visible until settlement and ignores an earlier fetch', async () => {
+		const workflow = { ...job, id: 'workflow', kind: 'workflow' as const };
+		const sibling = { ...job, id: 'sibling' };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [job, sibling, workflow] });
+		const { jobs, stopAll, isStopping } = create();
+		await flushPromises();
+		const stale = createDeferredPromise<AgentBackgroundJobsResponse>();
+		vi.mocked(getAgentBackgroundJobs).mockReturnValueOnce(stale.promise);
+		onEvent(update);
+		await flushPromises();
+		const stopped = createDeferredPromise<AgentBackgroundJobsResponse>();
+		vi.mocked(stopAgentBackgroundJobs).mockReturnValue(stopped.promise);
+		const stopping = stopAll();
+		expect(isStopping.value).toBe(true);
+		expect(jobs.value).toHaveLength(3);
+		await stopAll();
+		expect(stopAgentBackgroundJobs).toHaveBeenCalledExactlyOnceWith({}, 'p1', 'a1', 't1');
+		const pausingJob = { ...job, pauseRequested: true };
+		const pausingSibling = { ...sibling, pauseRequested: true };
+		const cancelledWorkflow = { ...workflow, status: 'cancelled' as const, pauseRequested: true };
+		stopped.resolve({ tasks: [pausingJob, pausingSibling, cancelledWorkflow] });
+		await stopping;
+		expect(isStopping.value).toBe(false);
+		expect(jobs.value).toEqual([pausingJob, pausingSibling, cancelledWorkflow]);
+		const paused = { ...pausingJob, status: 'paused' as const };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({
+			tasks: [paused, pausingSibling, cancelledWorkflow],
+		});
+		onEvent(update);
+		stale.resolve({ tasks: [job, sibling, workflow] });
+		await flushPromises();
+		expect(jobs.value).toEqual([paused, pausingSibling, cancelledWorkflow]);
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		onEvent(update);
+		await flushPromises();
+		expect(jobs.value).toEqual([]);
+		const replacement = { ...workflow, id: 'replacement-workflow' };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [job, replacement] });
+		onEvent(update);
+		await flushPromises();
+		expect(jobs.value).toEqual([job, replacement]);
+	});
+
+	it('keeps rows after a failed stop and permits a retry', async () => {
+		const workflow = { ...job, kind: 'workflow' as const };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [workflow] });
+		const { jobs, stopAll, isStopping } = create();
+		await flushPromises();
+		vi.mocked(stopAgentBackgroundJobs).mockRejectedValueOnce(new Error('Unavailable'));
+		await expect(stopAll()).rejects.toThrow('Unavailable');
+		expect(isStopping.value).toBe(false);
+		expect(jobs.value).toEqual([workflow]);
+		vi.mocked(stopAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		await stopAll();
+		await flushPromises();
+		expect(jobs.value).toEqual([]);
+	});
+
+	it('does not apply a stop response to another conversation', async () => {
+		const { jobs, stopAll, isStopping } = create();
+		await flushPromises();
+		const stopped = createDeferredPromise<AgentBackgroundJobsResponse>();
+		vi.mocked(stopAgentBackgroundJobs).mockReturnValue(stopped.promise);
+		const stopping = stopAll();
+		const other = { ...job, id: 'other' };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [other] });
+		threadId.value = 't2';
+		await flushPromises();
+		stopped.resolve({ tasks: [] });
+		await stopping;
+		await flushPromises();
+		expect(jobs.value).toEqual([other]);
+		expect(isStopping.value).toBe(false);
+	});
+
 	it('subscribes before fetching and refreshes only on matching notifications', async () => {
 		const { jobs } = create();
 		await flushPromises();
@@ -125,6 +210,51 @@ describe('useAgentBackgroundJobs', () => {
 		expect(jobs.value).toEqual([completedJob, runningJob]);
 		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
 		onEvent(update);
+		await flushPromises();
+		expect(jobs.value).toEqual([]);
+	});
+
+	it('loads a waiting approval and preserves a new gate when the previous response finishes', async () => {
+		const approval = { runId: 'background-job-job-1', toolCallId: 'gate-1' };
+		const waiting: AgentBackgroundJobDto = { ...job, status: 'suspended', approval };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [waiting] });
+		const { jobs, respondToApproval } = create();
+		await flushPromises();
+		expect(jobs.value).toEqual([waiting]);
+		let finishResponse!: () => void;
+		vi.mocked(resumeAgentBackgroundJob).mockReturnValueOnce(
+			new Promise((resolve) => {
+				finishResponse = resolve;
+			}),
+		);
+		const payload = { ...approval, resumeData: { approved: true } };
+		const response = respondToApproval(payload);
+		const next = { ...waiting, approval: { ...approval, toolCallId: 'gate-2' } };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [next] });
+		onEvent(update);
+		await flushPromises();
+		const refresh = createDeferredPromise<AgentBackgroundJobsResponse>();
+		vi.mocked(getAgentBackgroundJobs).mockReturnValueOnce(refresh.promise);
+		finishResponse();
+		await response;
+		expect(resumeAgentBackgroundJob).toHaveBeenCalledWith({}, 'p1', 'a1', 't1', payload);
+		expect(jobs.value[0].approval?.toolCallId).toBe('gate-2');
+		refresh.resolve({ tasks: [next] });
+		await flushPromises();
+	});
+
+	it('refreshes an expired approval after a late response fails', async () => {
+		const approval = { runId: 'background-job-job-1', toolCallId: 'gate-1' };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({
+			tasks: [{ ...job, status: 'suspended', approval }],
+		});
+		const { jobs, respondToApproval } = create();
+		await flushPromises();
+		vi.mocked(resumeAgentBackgroundJob).mockRejectedValueOnce(new Error('Approval expired'));
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		await expect(
+			respondToApproval({ ...approval, resumeData: { approved: false } }),
+		).rejects.toThrow('Approval expired');
 		await flushPromises();
 		expect(jobs.value).toEqual([]);
 	});

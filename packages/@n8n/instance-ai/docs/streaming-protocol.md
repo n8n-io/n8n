@@ -217,7 +217,7 @@ The orchestrator has started a child or embedded specialist agent.
     "role": "agent-builder",
     "tools": [],
     "kind": "agent-builder",
-    "title": "Building agent"
+    "activity": "exploring"
   }
 }
 ```
@@ -237,12 +237,14 @@ A child or embedded specialist agent has finished its work.
   "agentId": "agent-002",
   "payload": {
     "role": "agent-builder",
-    "result": "Updated the support agent"
+    "result": "Explained the support agent configuration",
+    "agentChange": "none"
   }
 }
 ```
 
-The frontend marks the child agent node as completed.
+The frontend marks the child agent node as completed. For Agent Builder runs,
+`agentChange` states if the run created, updated, or only inspected the Agent.
 
 ### `confirmation-request`
 
@@ -342,8 +344,26 @@ persisted snapshots at run start and drops a snapshot whose content did not
 change, so a recomputed, unchanged list publishes nothing. Snapshot reads wait for
 pending events to drain. The final workflow setup handoff confirms the stored
 snapshot before it saves the setup routing marker. A failed handoff returns an
-error instead of `announced: true`. Credential replacement requests and existing
-setup cards keep their selection and resume flows.
+error instead of `announced: true`. Requests to replace a bound account and
+existing setup cards keep their selection and resume flows. A new-account request
+for an unconnected service stays in the panel. Choices saved during the current
+build satisfy repeated new-account flags at the final handoff.
+
+Before generating source, the agent can call `credentials(action="setup")`
+with `filePath`, `workflowName`, and known service credential types. This creates
+a temporary workflow in the bound project and persists its source-file binding.
+The tool confirms the stored checklist and returns `preBuild: true` without
+suspending. Later calls replace the planned requirements until the first build.
+New-account preferences keep those rows unselected. A saved user choice satisfies
+the preference for the rest of that run, including later build repairs.
+The build saves into the same workflow and replaces the checklist with its
+actual requirements.
+
+The panel saves pending credential references through the existing thread
+metadata endpoint. Each choice has its own completion marker. The builder
+validates choices against project-scoped credentials before automatic selection.
+The panel applies choices made later when the build ends. Refresh and artifact
+switches retain pending choices. Removing a requirement never deletes a credential.
 
 The agent observes saved workflows at the start of a user turn. This read updates
 its private open-item memo. It does not publish a snapshot or select a workflow.
@@ -406,6 +426,21 @@ The schema defines this event. CONTEXT-139 publishes it.
 
 ```json
 {"type":"preferences-applied","runId":"run_abc123","agentId":"agent-001","payload":{"preferences":[{"id":"9f1c…","scope":"user"},{"id":"3c7a…","scope":"project","projectId":"pr_1","projectName":"Marketing"}],"renderedLength":1240,"injectedThisTurn":true}}
+```
+
+### `preference-card`
+
+A later fact about a preference the `save_user_preference` tool saved in this run: the
+user edited it or undid it from the card. `state` is `edited` or `undone`. The two card
+endpoints append it after the row write succeeded, and return the same fact so the card
+renders at once.
+
+An `edited` fact names the text and the scope the row now has, with `projectId` when the
+scope is `project`. An `undone` fact names none of the three. The reducer keeps the last
+text and scope a fact named, so an edit then an undo still strikes out the edited text.
+
+```json
+{"type":"preference-card","runId":"run_abc123","agentId":"orchestrator-run_abc123","payload":{"toolCallId":"tc-1","preferenceId":"9f1c…","state":"edited","content":"Name trigger nodes On <event>.","scope":"project","projectId":"pr_1"}}
 ```
 
 ### `thread-title-updated`
@@ -696,6 +731,7 @@ creating duplicate messages.
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |
 | `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn`, `carriedFromRunId?` | Which saved preferences the turn carried |
+| `preference-card` | `toolCallId`, `preferenceId`, `state` (`edited` or `undone`), `content?`, `scope?`, `projectId?` | A saved preference was edited or undone from the chat card |
 | `filesystem-request` | `requestId`, `toolCall` | Local gateway MCP tool request (internal) |
 | `tool-input-start` | `toolCallId`, `toolName` | Tool arguments began streaming |
 | `text-block` | `text` (`responseId` is on the event) | Completed text segment, coalesced |

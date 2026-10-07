@@ -66,6 +66,7 @@ describe('save_user_preference tool', () => {
 		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith(
 			'blocked_by_admin',
 			'Keep replies short.'.length,
+			'user',
 		);
 	});
 
@@ -83,7 +84,11 @@ describe('save_user_preference tool', () => {
 			actual: AI_PREFERENCE_CONTENT_MAX_LENGTH + 1,
 		});
 		expect(context.aiPreferenceService?.create).not.toHaveBeenCalled();
-		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith('too_long', 2001);
+		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith(
+			'too_long',
+			2001,
+			'user',
+		);
 	});
 
 	it('measures the trimmed text, so padding does not count against the cap', async () => {
@@ -107,7 +112,7 @@ describe('save_user_preference tool', () => {
 			message: 'A preference must not be empty.',
 		});
 		expect(context.aiPreferenceService?.create).not.toHaveBeenCalled();
-		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith('failed', 3);
+		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith('failed', 3, 'user');
 	});
 
 	it('writes the trimmed text and returns the service result', async () => {

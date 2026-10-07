@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import cloneDeep from 'lodash/cloneDeep';
 import type {
 	IDataObject,
 	ExecutionSummary,
@@ -41,6 +42,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const activeExecution = ref<ExecutionSummary | null>(null);
 
 	const filters = ref<ExecutionFilterType>(getDefaultExecutionFilters());
+	const savedFilters: Record<string, ExecutionFilterType> = {};
 	const executionsFilters = computed<ExecutionsQueryFilter>(() => {
 		const filter = executionFilterToQueryFilter(filters.value);
 
@@ -147,6 +149,14 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	function setFilters(value: ExecutionFilterType) {
 		filters.value = value;
+	}
+
+	function saveFilters(key: string) {
+		savedFilters[key] = cloneDeep(filters.value);
+	}
+
+	function restoreFilters(key: string) {
+		filters.value = cloneDeep(savedFilters[key] ?? getDefaultExecutionFilters());
 	}
 
 	async function initialize(workflowId?: string) {
@@ -428,6 +438,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 		initialize,
 		filters,
 		setFilters,
+		saveFilters,
+		restoreFilters,
 		executionsFilters,
 		currentExecutionsFilters,
 		allExecutions,

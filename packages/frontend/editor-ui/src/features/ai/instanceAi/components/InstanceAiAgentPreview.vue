@@ -61,6 +61,13 @@ const isAgentBuilding = computed(() => {
 	return false;
 });
 
+// The prompt starts processing before the agent-builder event arrives.
+const showBuildingIndicator = computed(
+	() =>
+		isAgentBuilding.value ||
+		(thread.activeArtifactId === props.agentId && (thread.isSendingMessage || thread.isStreaming)),
+);
+
 async function syncAgentTarget(name: string) {
 	const metadata = instanceAiStore.getThreadMetadata(thread.id);
 	const target = getAgentBuilderTargetFromThreadMetadata(metadata);
@@ -111,7 +118,7 @@ async function persistAgent(name: string): Promise<AgentResource> {
 <template>
 	<div :class="$style.root">
 		<Transition name="agent-building-indicator">
-			<AgentBuildingIndicator v-if="isAgentBuilding" />
+			<AgentBuildingIndicator v-if="showBuildingIndicator" />
 		</Transition>
 		<AgentBuilderView
 			artifact-mode

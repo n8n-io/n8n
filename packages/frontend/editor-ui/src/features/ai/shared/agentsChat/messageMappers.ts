@@ -129,31 +129,18 @@ export function isApprovalSuspendInput(value: unknown): boolean {
 	return parseApprovalInput(value) !== undefined;
 }
 
-function parseApprovalInput(value: unknown): ApprovalInput | undefined {
+export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	if (!isRecord(value)) return undefined;
 	if (value.type !== 'approval') return undefined;
 	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
 	return {
 		type: 'approval',
 		toolName: value.toolName,
+		...(value.supportsSessionApproval === true && { supportsSessionApproval: true }),
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
-		...(value.details !== undefined && { details: value.details }),
 	};
-}
-
-function preserveApprovalDetails(next: unknown, previous: unknown): unknown {
-	const nextApproval = parseApprovalInput(next);
-	const previousApproval = parseApprovalInput(previous);
-	if (
-		!nextApproval ||
-		nextApproval.details !== undefined ||
-		previousApproval?.details === undefined
-	) {
-		return next;
-	}
-	return { ...nextApproval, details: previousApproval.details };
 }
 
 function isDeclinedToolOutput(value: unknown): boolean {
@@ -395,10 +382,7 @@ export function applyOpenSuspensions(
 				toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 				toolCall.runId = suspension.runId;
 				if (suspension.suspendPayload !== undefined) {
-					toolCall.suspendPayload = preserveApprovalDetails(
-						suspension.suspendPayload,
-						toolCall.suspendPayload,
-					);
+					toolCall.suspendPayload = suspension.suspendPayload;
 				}
 				const rebuilt = rebuildInteractiveFromHistory(toolCall);
 				if (rebuilt) {

@@ -41,7 +41,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
-		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
+		template:
+			'<div data-testid="stub-breadcrumbs"><slot name="prepend" /><slot name="append" /></div>',
 		props: ['items'],
 		emits: ['itemSelected'],
 	},
@@ -74,6 +75,7 @@ describe('AgentSessionTimelineHeader', () => {
 		return mount(AgentSessionTimelineHeader, {
 			props: {
 				breadcrumbItems,
+				projectIcon: { type: 'icon', value: 'user' },
 				sessionTitle: 'Support session',
 				sessionOptions: [
 					{
@@ -106,6 +108,14 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(wrapper.text()).toContain('Slack');
 		expect(wrapper.text()).toContain('1,234t ($0.1234)');
 		expect(wrapper.text()).toContain('1.2s');
+	});
+
+	it('shows the project icon before the breadcrumb', () => {
+		const wrapper = mountHeader();
+		const icon = wrapper.getComponent({ name: 'ProjectIcon' });
+
+		expect(icon.props('icon')).toEqual({ type: 'icon', value: 'user' });
+		expect(icon.props('size')).toBe('mini');
 	});
 
 	it('hides metrics and close button while metrics are unavailable', () => {

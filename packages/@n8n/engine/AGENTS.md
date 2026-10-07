@@ -68,7 +68,7 @@ a deployable engine worker) without touching core logic.
   `EngineConfig`), never in core logic. (The blueprint flags `@n8n/config` as
   debatable precisely because it pulls the DI runtime in — keep it out of core.)
 - We go one step stricter than the scheduler's allowlist: **no `n8n-workflow`
-  dependency at all, not even type-only** (per the Engine 2.0 design — the core
+  dependency at all, not even type-only** (per the Engine v2 design — the core
   must stay free of v1 concepts). Shared JSON types are redefined locally in
   `common/`.
 - Arrows point inward: `cli`/`serve` depend on the engine; the engine never
