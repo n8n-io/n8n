@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nText, N8nLoading, N8nIcon, N8nTooltip, N8nButton } from '@n8n/design-system';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
@@ -32,12 +32,14 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 
 const isLoading = ref(true);
 const isLoadingMore = ref(false);
+const hasLoadError = ref(false);
 const hasMore = ref(false);
 const events = ref<PublishTimelineEvent[]>([]);
 const fetchedCount = ref(0);
 const adoptionDate = ref<Date | null>(null);
 const contentElement = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
+let disposed = false;
 
 type EntryStatus = 'published' | 'unpublished';
 
@@ -213,6 +215,7 @@ const fetchNextPage = async () => {
 		take: PAGE_SIZE,
 		skip: fetchedCount.value,
 	});
+	if (disposed) return;
 	fetchedCount.value += page.length;
 	hasMore.value = page.length === PAGE_SIZE;
 	// A publish while scrolling shifts the pages, so they can overlap.
@@ -223,28 +226,47 @@ const fetchNextPage = async () => {
 };
 
 const loadTimeline = async () => {
+	if (disposed) return;
 	isLoading.value = true;
+	hasLoadError.value = false;
 	try {
 		const [, firstAdoptionDate] = await Promise.all([
 			fetchNextPage(),
 			workflowHistoryStore.getVersionFirstAdoptionDate(ADOPTION_VERSION).catch(() => null),
 		]);
-		adoptionDate.value = firstAdoptionDate ? new Date(firstAdoptionDate) : null;
+		if (!disposed) {
+			adoptionDate.value = firstAdoptionDate ? new Date(firstAdoptionDate) : null;
+		}
+	} catch (error) {
+		if (!disposed) {
+			hasLoadError.value = true;
+			toast.showError(error, i18n.baseText('workflowHistory.title'));
+		}
 	} finally {
-		isLoading.value = false;
+		if (!disposed) isLoading.value = false;
 	}
 };
 
 const loadMore = async () => {
-	if (isLoadingMore.value || !hasMore.value) return;
+	if (disposed || isLoadingMore.value || !hasMore.value) return;
 	isLoadingMore.value = true;
+	hasLoadError.value = false;
 	try {
 		await fetchNextPage();
 	} catch (error) {
-		toast.showError(error, i18n.baseText('workflowHistory.title'));
+		if (!disposed) {
+			hasLoadError.value = true;
+			toast.showError(error, i18n.baseText('workflowHistory.title'));
+		}
 	} finally {
-		isLoadingMore.value = false;
+		if (!disposed) isLoadingMore.value = false;
 	}
+};
+
+const retry = async () => {
+	if (disposed || isLoading.value || isLoadingMore.value) return;
+	if (fetchedCount.value === 0) await loadTimeline();
+	else await loadMore();
 };
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
@@ -259,12 +281,16 @@ watch([loadMoreSentinel, hasMore, fetchedCount], ([sentinel, canLoadMore]) => {
 });
 
 onMounted(loadTimeline);
+
+onBeforeUnmount(() => {
+	disposed = true;
+});
 </script>
 
 <template>
 	<div ref="contentElement" :class="$style.content">
 		<N8nLoading v-if="isLoading" :rows="4" />
-		<div v-else-if="entries.length === 0 && !hasMore" :class="$style.empty">
+		<div v-else-if="entries.length === 0 && !hasMore && !hasLoadError" :class="$style.empty">
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}
 			</N8nText>
@@ -347,6 +373,15 @@ onMounted(loadTimeline);
 			</div>
 			<div v-if="hasMore" ref="loadMoreSentinel" :class="$style.sentinel" aria-hidden="true" />
 			<N8nLoading v-if="isLoadingMore" :rows="1" />
+			<N8nButton
+				v-if="hasLoadError"
+				variant="subtle"
+				size="small"
+				:disabled="isLoading || isLoadingMore"
+				@click="retry"
+			>
+				{{ i18n.baseText('generic.retry') }}
+			</N8nButton>
 			<N8nTooltip
 				v-if="showDeletedVersionsDisclaimer"
 				placement="top"

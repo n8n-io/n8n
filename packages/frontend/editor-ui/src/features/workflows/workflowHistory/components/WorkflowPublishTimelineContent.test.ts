@@ -1,6 +1,9 @@
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { flushPromises } from '@vue/test-utils';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
@@ -235,27 +238,47 @@ describe('WorkflowPublishTimelineContent', () => {
 	});
 
 	describe('paging', () => {
+		const renderKeyedTimeline = createComponentRenderer(
+			defineComponent({
+				props: { workflowId: { type: String, required: true } },
+				setup(props) {
+					return () =>
+						h(WorkflowPublishTimelineContent, {
+							key: props.workflowId,
+							workflowId: props.workflowId,
+						});
+				},
+			}),
+		);
+
 		let scrollToEnd = () => {};
+		let scrollAwayFromEnd = () => {};
 
 		beforeEach(() => {
 			scrollToEnd = () => {};
+			scrollAwayFromEnd = () => {};
 			vi.stubGlobal(
 				'IntersectionObserver',
 				class {
 					isObserving = false;
+					isIntersecting = false;
 
 					constructor(callback: IntersectionObserverCallback) {
-						scrollToEnd = () => {
-							if (!this.isObserving) return;
+						const intersect = (isIntersecting: boolean) => {
+							if (!this.isObserving || this.isIntersecting === isIntersecting) return;
+							this.isIntersecting = isIntersecting;
 							callback(
-								[{ isIntersecting: true } as IntersectionObserverEntry],
+								[{ isIntersecting } as IntersectionObserverEntry],
 								this as unknown as IntersectionObserver,
 							);
 						};
+						scrollToEnd = () => intersect(true);
+						scrollAwayFromEnd = () => intersect(false);
 					}
 
 					observe = vi.fn(() => {
 						this.isObserving = true;
+						this.isIntersecting = false;
 					});
 
 					disconnect = vi.fn(() => {
@@ -289,7 +312,7 @@ describe('WorkflowPublishTimelineContent', () => {
 			}
 			workflowHistoryStore.getVersionFirstAdoptionDate.mockResolvedValue(null);
 
-			return { ...renderComponent({ pinia, props: { workflowId } }), workflowHistoryStore };
+			return { ...renderKeyedTimeline({ pinia, props: { workflowId } }), workflowHistoryStore };
 		};
 
 		it('should request the next page when the end of the list becomes visible', async () => {
@@ -342,12 +365,17 @@ describe('WorkflowPublishTimelineContent', () => {
 			);
 		});
 
-		it('should retry a failed page on the next scroll without advancing the offset', async () => {
+		it('should retry a failed page without scrolling or advancing the offset', async () => {
 			registerToastNotifier();
 			const newest = new Date('2026-03-01T10:00:00Z');
-			const { findByText, findAllByText, getAllByText, workflowHistoryStore } = renderWithPages(
-				buildPage(100, 1, newest),
-			);
+			const {
+				findByRole,
+				findByText,
+				findAllByText,
+				getAllByText,
+				queryByRole,
+				workflowHistoryStore,
+			} = renderWithPages(buildPage(100, 1, newest));
 			const error = new Error('Failed to load page');
 			workflowHistoryStore.getPublishTimeline
 				.mockRejectedValueOnce(error)
@@ -361,6 +389,8 @@ describe('WorkflowPublishTimelineContent', () => {
 			expect(getAllByText('Published')).toHaveLength(100);
 
 			scrollToEnd();
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(2);
+			await userEvent.click(await findByRole('button', { name: 'Retry' }));
 			await waitFor(() => expect(getAllByText('Published')).toHaveLength(101));
 
 			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(3);
@@ -368,6 +398,170 @@ describe('WorkflowPublishTimelineContent', () => {
 				[workflowId, { take: 100, skip: 100 }],
 				[workflowId, { take: 100, skip: 100 }],
 			]);
+			expect(queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+		});
+
+		it('should retain scroll-based retry after leaving and re-entering the sentinel', async () => {
+			registerToastNotifier();
+			const newest = new Date('2026-03-01T10:00:00Z');
+			const { findAllByText, findByText, getAllByText, workflowHistoryStore } = renderWithPages(
+				buildPage(100, 1, newest),
+			);
+			workflowHistoryStore.getPublishTimeline
+				.mockRejectedValueOnce(new Error('Page request failed'))
+				.mockResolvedValueOnce(buildPage(1, 101, new Date(newest.getTime() - 100 * 60_000)));
+			await findAllByText('Published');
+			scrollToEnd();
+			await findByText('Page request failed');
+			scrollAwayFromEnd();
+			scrollToEnd();
+			await waitFor(() => expect(getAllByText('Published')).toHaveLength(101));
+		});
+
+		it('should reload from the first page when the workflow changes', async () => {
+			const { findAllByText, findByText, queryAllByText, rerender, workflowHistoryStore } =
+				renderWithPages(buildPage(100, 1, new Date('2026-03-01T10:00:00Z')), [
+					buildEvent({ id: 1001, workflowId: 'wf-2', versionName: 'Workflow B' }),
+				]);
+			await findAllByText('Published');
+			await rerender({ workflowId: 'wf-2' });
+			expect(await findByText('Published Workflow B')).toBeInTheDocument();
+			expect(queryAllByText('Published')).toHaveLength(0);
+			expect(workflowHistoryStore.getPublishTimeline.mock.calls).toEqual([
+				[workflowId, { take: 100, skip: 0 }],
+				['wf-2', { take: 100, skip: 0 }],
+			]);
+		});
+
+		it('should ignore an old page that resolves after the workflow changes', async () => {
+			const pending = createDeferredPromise<PublishTimelineEvent[]>();
+			const { findAllByText, findByText, queryByText, rerender, workflowHistoryStore } =
+				renderWithPages(buildPage(100, 1, new Date('2026-03-01T10:00:00Z')));
+			workflowHistoryStore.getPublishTimeline
+				.mockReturnValueOnce(pending.promise)
+				.mockResolvedValueOnce([
+					buildEvent({ id: 1001, workflowId: 'wf-2', versionName: 'Workflow B' }),
+				]);
+			await findAllByText('Published');
+			scrollToEnd();
+			await waitFor(() => expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(2));
+			await rerender({ workflowId: 'wf-2' });
+			await findByText('Published Workflow B');
+			pending.resolve([buildEvent({ id: 101, versionName: 'Late workflow A' })]);
+			await flushPromises();
+			expect(queryByText('Published Late workflow A')).not.toBeInTheDocument();
+			expect(queryByText('Published')).not.toBeInTheDocument();
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenLastCalledWith('wf-2', {
+				take: 100,
+				skip: 0,
+			});
+		});
+
+		it.each(['workflow change', 'unmount'])(
+			'should ignore a page failure after %s',
+			async (action) => {
+				registerToastNotifier();
+				const pending = createDeferredPromise<PublishTimelineEvent[]>();
+				const { findAllByText, queryByText, rerender, unmount, workflowHistoryStore } =
+					renderWithPages(buildPage(100, 1, new Date('2026-03-01T10:00:00Z')));
+				workflowHistoryStore.getPublishTimeline
+					.mockReturnValueOnce(pending.promise)
+					.mockResolvedValueOnce([buildEvent({ id: 1001, workflowId: 'wf-2' })]);
+				await findAllByText('Published');
+				scrollToEnd();
+				await waitFor(() =>
+					expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(2),
+				);
+				if (action === 'workflow change') await rerender({ workflowId: 'wf-2' });
+				else unmount();
+				pending.reject(new Error('Stale page failure'));
+				await flushPromises();
+				expect(queryByText('Stale page failure')).not.toBeInTheDocument();
+			},
+		);
+
+		it('should retry the first page without starting duplicate requests', async () => {
+			registerToastNotifier();
+			const pinia = createTestingPinia({ stubActions: false });
+			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			const pending = createDeferredPromise<PublishTimelineEvent[]>();
+			workflowHistoryStore.getPublishTimeline
+				.mockRejectedValueOnce(new Error('Initial page failed'))
+				.mockReturnValueOnce(pending.promise);
+			workflowHistoryStore.getVersionFirstAdoptionDate.mockResolvedValue(null);
+			const { findByRole, findByText, queryByText } = renderComponent({
+				pinia,
+				props: { workflowId },
+			});
+			const retryButton = await findByRole('button', { name: 'Retry' });
+			expect(queryByText('This workflow has no publish history yet.')).not.toBeInTheDocument();
+			fireEvent.click(retryButton);
+			fireEvent.click(retryButton);
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(2);
+			pending.resolve([buildEvent()]);
+			expect(await findByText('Published')).toBeInTheDocument();
+		});
+
+		it('should ignore initial results and adoption data from the previous workflow', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			const oldPage = createDeferredPromise<PublishTimelineEvent[]>();
+			const newPage = createDeferredPromise<PublishTimelineEvent[]>();
+			const oldAdoption = createDeferredPromise<string | null>();
+			workflowHistoryStore.getPublishTimeline
+				.mockReturnValueOnce(oldPage.promise)
+				.mockReturnValueOnce(newPage.promise);
+			workflowHistoryStore.getVersionFirstAdoptionDate
+				.mockReturnValueOnce(oldAdoption.promise)
+				.mockResolvedValueOnce('2024-01-01T00:00:00Z');
+			const { findByText, queryByText, rerender } = renderKeyedTimeline({
+				pinia,
+				props: { workflowId },
+			});
+			await rerender({ workflowId: 'wf-2' });
+			oldPage.resolve([buildEvent({ versionName: 'Old workflow A' })]);
+			oldAdoption.resolve('2026-01-01T00:00:00Z');
+			await flushPromises();
+			expect(queryByText('Published Old workflow A')).not.toBeInTheDocument();
+			expect(queryByText('This workflow has no publish history yet.')).not.toBeInTheDocument();
+			newPage.resolve([
+				buildEvent({
+					id: 1001,
+					workflowId: 'wf-2',
+					versionName: 'Workflow B',
+					createdAt: '2025-01-01T00:00:00Z',
+				}),
+			]);
+			expect(await findByText('Published Workflow B')).toBeInTheDocument();
+			expect(queryByText(/History before .* may be incomplete/)).not.toBeInTheDocument();
+		});
+
+		it('should not let an old completion clear the new workflow loading guard', async () => {
+			const oldPage = createDeferredPromise<PublishTimelineEvent[]>();
+			const newPage = createDeferredPromise<PublishTimelineEvent[]>();
+			const newest = new Date('2026-03-01T10:00:00Z');
+			const { findAllByText, getAllByText, rerender, workflowHistoryStore } = renderWithPages(
+				buildPage(100, 1, newest),
+			);
+			workflowHistoryStore.getPublishTimeline
+				.mockReturnValueOnce(oldPage.promise)
+				.mockResolvedValueOnce(
+					buildPage(100, 1001, newest).map((event) => ({ ...event, workflowId: 'wf-2' })),
+				)
+				.mockReturnValueOnce(newPage.promise);
+			await findAllByText('Published');
+			scrollToEnd();
+			await rerender({ workflowId: 'wf-2' });
+			await waitFor(() => expect(getAllByText('Published')).toHaveLength(100));
+			scrollToEnd();
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(4);
+			oldPage.resolve([buildEvent({ id: 101 })]);
+			await flushPromises();
+			scrollAwayFromEnd();
+			scrollToEnd();
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(4);
+			newPage.resolve([buildEvent({ id: 1101, workflowId: 'wf-2' })]);
+			await waitFor(() => expect(getAllByText('Published')).toHaveLength(101));
 		});
 
 		it('should not request another page after a page that is not full', async () => {
