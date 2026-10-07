@@ -71,8 +71,8 @@ export async function getLakebaseMappingColumns(
 			// database fills in, so asking for those would demand a value twice.
 			required: column.isRequired && !column.hasDefault && !column.isReadOnly,
 			display: true,
-			defaultMatch: false,
-			canBeUsedToMatch: false,
+			defaultMatch: column.isPrimaryKey,
+			canBeUsedToMatch: true,
 			readOnly: column.isReadOnly,
 			type: fieldTypeOf(column),
 			options: column.enum?.map((value) => ({ name: String(value), value: value as string })),
