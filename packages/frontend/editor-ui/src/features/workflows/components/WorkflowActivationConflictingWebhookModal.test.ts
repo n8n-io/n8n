@@ -13,6 +13,7 @@ vi.mock('@/app/stores/ui.store', () => {
 	return {
 		useUIStore: vi.fn(() => ({
 			closeModal: vi.fn(),
+			modalsById: new Proxy({}, { get: () => ({ open: true }) }),
 		})),
 	};
 });
@@ -28,9 +29,8 @@ vi.mock('@n8n/stores/useRootStore', () => {
 const renderComponent = createComponentRenderer(WorkflowActivationConflictingWebhookModal, {
 	global: {
 		stubs: {
-			Modal: {
-				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
 		},
 	},
