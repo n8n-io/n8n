@@ -32,7 +32,7 @@ import { WorkflowLoaderService } from '../workflow-loader.service';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
-import * as checkAccess from '@/permissions.ee/check-access';
+import * as checkAccess from '@/permissions.ee/scope-access';
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);
@@ -609,7 +609,7 @@ describe('DynamicNodeParametersService', () => {
 		const user = mock<User>();
 
 		beforeEach(() => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 			// No end-user credentials unless a test says otherwise.
 			credentialsRepository.getManyByIds.mockResolvedValue([]);

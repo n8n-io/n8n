@@ -75,7 +75,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@/permissions.ee/scope-access');
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({}),
 }));
@@ -83,14 +83,14 @@ vi.mock('node:fs/promises', () => ({
 	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 
-const userHasScopesMock = vi.mocked(userHasScopes);
+const hasScopesMock = vi.mocked(hasScopes);
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -304,7 +304,7 @@ describe('workflow list — caller-supplied projectId', () => {
 
 describe('folder operations — project scope enforcement', () => {
 	it('rejects listFolders when user lacks folder:list scope', async () => {
-		userHasScopesMock.mockResolvedValue(false);
+		hasScopesMock.mockResolvedValue(false);
 
 		const ctx = service.createContext(user);
 		await expect(ctx.workspaceService!.listFolders!('project-1')).rejects.toThrow('permissions');
@@ -313,20 +313,20 @@ describe('folder operations — project scope enforcement', () => {
 	});
 
 	it('allows listFolders when user has folder:list scope', async () => {
-		userHasScopesMock.mockResolvedValue(true);
+		hasScopesMock.mockResolvedValue(true);
 		folderService.getManyAndCount.mockResolvedValue([[], 0]);
 
 		const ctx = service.createContext(user);
 		const result = await ctx.workspaceService!.listFolders!('project-1');
 
 		expect(result).toEqual([]);
-		expect(userHasScopesMock).toHaveBeenCalledWith(user, ['folder:list'], false, {
+		expect(hasScopesMock).toHaveBeenCalledWith(user, ['folder:list'], false, {
 			projectId: 'project-1',
 		});
 	});
 
 	it('rejects createFolder when user lacks folder:create scope', async () => {
-		userHasScopesMock.mockResolvedValue(false);
+		hasScopesMock.mockResolvedValue(false);
 
 		const ctx = service.createContext(user);
 		await expect(ctx.workspaceService!.createFolder!('New Folder', 'project-1')).rejects.toThrow(
@@ -337,7 +337,7 @@ describe('folder operations — project scope enforcement', () => {
 	});
 
 	it('rejects deleteFolder when user lacks folder:delete scope', async () => {
-		userHasScopesMock.mockResolvedValue(false);
+		hasScopesMock.mockResolvedValue(false);
 
 		const ctx = service.createContext(user);
 		await expect(ctx.workspaceService!.deleteFolder!('folder-1', 'project-1')).rejects.toThrow(

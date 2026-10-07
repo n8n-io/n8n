@@ -22,7 +22,7 @@ import assert from 'node:assert';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { reportError, send, sendErrorResponse } from '@/response-helper';
 
 import { AbstractServer } from './abstract-server';
@@ -267,7 +267,7 @@ export class ControllerRegistry {
 			const { scope, globalOnly } = accessScope;
 
 			try {
-				if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
+				if (!(await hasScopes(req.user, [scope], globalOnly, req.params))) {
 					res.status(403).json({
 						status: 'error',
 						message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,

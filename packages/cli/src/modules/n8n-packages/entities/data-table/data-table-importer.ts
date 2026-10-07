@@ -5,7 +5,7 @@ import { UserError } from 'n8n-workflow';
 import { ForbiddenError } from '@n8n/errors';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { diffDataTableSchema } from './data-table-compat';
 import { matchTargetTable } from './data-table-matching-mode';
@@ -322,7 +322,7 @@ async function hasProjectScope(
 	context: ImportContext,
 	scope: 'dataTable:create' | 'dataTable:update',
 ): Promise<boolean> {
-	return await userHasScopes(context.user, [scope], false, { projectId: context.projectId });
+	return await hasScopes(context.user, [scope], false, { projectId: context.projectId });
 }
 
 /** Sorted unique workflow ids referencing the given requirements. */

@@ -3,7 +3,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import * as checkAccess from '@/permissions.ee/check-access';
+import * as checkAccess from '@/permissions.ee/scope-access';
 
 import {
 	validateExternalSecretsPermissions,
@@ -35,7 +35,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should pass when credential data contains external secrets and user has permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 			const data = {
 				apiKey: '={{ $secrets.myApiKey }}',
 				domain: 'example.com',
@@ -47,7 +47,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should throw BadRequestError when user lacks externalSecret:list permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 			const data = {
 				apiKey: '={{ $secrets.myApiKey }}',
 				domain: 'example.com',
@@ -59,7 +59,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should throw when user lacks permission and uses nested external secrets', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 			const data = {
 				apiKey: 'regular-key',
 				advanced: {
@@ -73,7 +73,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should pass when user has permission and uses nested external secrets', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 			const data = {
 				apiKey: 'regular-key',
 				advanced: {
@@ -87,7 +87,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should throw when updating nested credential with external secret without permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 			const existingData = {
 				apiKey: 'key',
 				config: { token: 'old-token' },
@@ -109,7 +109,7 @@ describe('Credentials Validation', () => {
 
 		describe('bracket notation', () => {
 			it('should throw when user lacks permission and uses bracket notation', async () => {
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 				const data = {
 					apiKey: "={{ $secrets['vault']['key'] }}",
 				};
@@ -120,7 +120,7 @@ describe('Credentials Validation', () => {
 			});
 
 			it('should pass when user has permission and uses bracket notation', async () => {
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(true);
 				const data = {
 					apiKey: "={{ $secrets['vault']['key'] }}",
 				};
@@ -131,7 +131,7 @@ describe('Credentials Validation', () => {
 			});
 
 			it('should throw when user lacks permission and uses mixed notation', async () => {
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 				const data = {
 					apiKey: "={{ $secrets.vault['nested'] }}",
 				};
@@ -161,7 +161,7 @@ describe('Credentials Validation', () => {
 				['template-literal key', '={{ $secrets [`vault`].key }}'],
 				['concatenated key', '={{ $secrets ["va".concat("ult")].key }}'],
 			])('should throw when user lacks permission and uses %s', async (_label, expression) => {
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 
 				await expect(
 					validateExternalSecretsPermissions({

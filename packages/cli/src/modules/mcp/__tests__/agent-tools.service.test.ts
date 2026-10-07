@@ -11,8 +11,8 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn(),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn(),
 }));
 
 vi.mock('@n8n/agents', async (importOriginal) => ({
@@ -63,7 +63,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { Telemetry } from '@/telemetry';
 
 import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
@@ -73,7 +73,7 @@ import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 
-const userHasScopesMock = userHasScopes as Mock;
+const hasScopesMock = hasScopes as Mock;
 
 type ToolResult = {
 	content: Array<{ type: string; text: string }>;
@@ -187,7 +187,7 @@ describe('McpAgentToolsService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		userHasScopesMock.mockResolvedValue(true);
+		hasScopesMock.mockResolvedValue(true);
 		agentsService.findByIdForUser.mockResolvedValue(agentEntity());
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
@@ -362,7 +362,7 @@ describe('McpAgentToolsService', () => {
 				missing: [],
 				url: 'https://n8n.test/projects/project-1/agents/agent-1',
 			});
-			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:execute'], false, {
+			expect(hasScopesMock).not.toHaveBeenCalledWith(user, ['agent:execute'], false, {
 				projectId: 'project-1',
 			});
 		});
@@ -423,11 +423,11 @@ describe('McpAgentToolsService', () => {
 				{ ...identity, action: 'connect', type: 'slack', credentialId: 'cred-1' },
 			],
 		])('%s denies access without the %s scope', async (toolName, scope, input) => {
-			userHasScopesMock.mockResolvedValue(false);
+			hasScopesMock.mockResolvedValue(false);
 
 			const result = await callTool(toolName, input);
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, [scope], false, {
+			expect(hasScopesMock).toHaveBeenCalledWith(user, [scope], false, {
 				projectId: 'project-1',
 			});
 			expect(result.isError).toBe(true);
@@ -1150,9 +1150,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('omits call_agent when the user cannot execute the agent', async () => {
-			userHasScopesMock.mockImplementation(
-				async (_user, scopes) => !scopes.includes('agent:execute'),
-			);
+			hasScopesMock.mockImplementation(async (_user, scopes) => !scopes.includes('agent:execute'));
 			agentConfigService.validateConfig.mockResolvedValue({ valid: true, config: baseConfig });
 			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 				status: 'valid',
@@ -1168,7 +1166,7 @@ describe('McpAgentToolsService', () => {
 				missing: [],
 				url: 'https://n8n.test/projects/project-1/agents/agent-1',
 			});
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:execute'], false, {
+			expect(hasScopesMock).toHaveBeenCalledWith(user, ['agent:execute'], false, {
 				projectId: 'project-1',
 			});
 		});
@@ -1196,7 +1194,7 @@ describe('McpAgentToolsService', () => {
 				missing: ['credential', 'model'],
 			});
 			expect(result.structuredContent).not.toHaveProperty('nextStep');
-			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:execute'], false, {
+			expect(hasScopesMock).not.toHaveBeenCalledWith(user, ['agent:execute'], false, {
 				projectId: 'project-1',
 			});
 		});
@@ -1264,9 +1262,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('starts and continues a draft session with MCP execution context', async () => {
-			userHasScopesMock.mockImplementation(async (_user, scopes) =>
-				scopes.includes('agent:execute'),
-			);
+			hasScopesMock.mockImplementation(async (_user, scopes) => scopes.includes('agent:execute'));
 			agentTestRunService.executeDraftRun
 				.mockResolvedValueOnce({
 					status: 'completed',
@@ -1451,7 +1447,7 @@ describe('McpAgentToolsService', () => {
 		])(
 			'cancels mixed suspensions and hands the session off to Preview with $access access',
 			async ({ canOpenPreview }) => {
-				userHasScopesMock.mockImplementation(
+				hasScopesMock.mockImplementation(
 					async (_user, scopes) => canOpenPreview || scopes.includes('agent:execute'),
 				);
 				const suspensions = [
@@ -1500,9 +1496,7 @@ describe('McpAgentToolsService', () => {
 		);
 
 		it('returns Preview when an unsupported suspension cannot be cancelled', async () => {
-			userHasScopesMock.mockImplementation(async (_user, scopes) =>
-				scopes.includes('agent:execute'),
-			);
+			hasScopesMock.mockImplementation(async (_user, scopes) => scopes.includes('agent:execute'));
 			agentTestRunService.executeDraftRun.mockResolvedValue({
 				status: 'suspended',
 				response: '',
@@ -2074,7 +2068,7 @@ describe('McpAgentToolsService', () => {
 			const result = await callTool('get_agent', { agentId: 'agent-1' });
 
 			expect(agentsService.findByIdForUser).toHaveBeenCalledWith('agent-1', user);
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:read'], false, {
+			expect(hasScopesMock).toHaveBeenCalledWith(user, ['agent:read'], false, {
 				projectId: 'project-9',
 			});
 			expect(result.structuredContent).toMatchObject({ ok: true });
@@ -2139,7 +2133,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('persists and connects the channel without publishing for a published Agent', async () => {
-			userHasScopesMock.mockImplementation(
+			hasScopesMock.mockImplementation(
 				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
 			);
 
@@ -2152,10 +2146,10 @@ describe('McpAgentToolsService', () => {
 				modifiedBy: 'mcp',
 			});
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
+			expect(hasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
 				projectId: 'project-1',
 			});
-			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
+			expect(hasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
 				projectId: 'project-1',
 			});
 			expect(result.structuredContent).toMatchObject({
@@ -2462,7 +2456,7 @@ describe('McpAgentToolsService', () => {
 				workspaceId: 'T1',
 			});
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['credential:create'], false, {
+			expect(hasScopesMock).toHaveBeenCalledWith(user, ['credential:create'], false, {
 				projectId: 'project-1',
 			});
 			expect(slackManagedSetup.installApp).toHaveBeenCalledWith({
@@ -2617,7 +2611,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('rejects an install when the user cannot create credentials', async () => {
-			userHasScopesMock.mockImplementation(
+			hasScopesMock.mockImplementation(
 				async (_user: unknown, scopes: string[]) => !scopes.includes('credential:create'),
 			);
 

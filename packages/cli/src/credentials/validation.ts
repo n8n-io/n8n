@@ -5,7 +5,7 @@ import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { BadRequestError } from '@n8n/errors';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import {
 	extractProviderKeysFromExpression,
@@ -71,7 +71,7 @@ export async function validateExternalSecretsPermissions({
 		? isChangingExternalSecretExpression(dataToSave, decryptedExistingData)
 		: containsExternalSecrets(dataToSave);
 	if (needsCheck) {
-		const hasAccess = await userHasScopes(user, ['externalSecret:list'], false, { projectId });
+		const hasAccess = await hasScopes(user, ['externalSecret:list'], false, { projectId });
 		if (!hasAccess) {
 			throw new BadRequestError('Lacking permissions to reference external secrets in credentials');
 		}

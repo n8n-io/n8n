@@ -31,7 +31,7 @@ import {
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { withExpressionIsolate } from '@/utils';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
@@ -79,7 +79,7 @@ export class DynamicNodeParametersService {
 		// the project id
 		if (
 			payload.projectId &&
-			!(await userHasScopes(user, ['dataTable:listProject'], false, {
+			!(await hasScopes(user, ['dataTable:listProject'], false, {
 				projectId: payload.projectId,
 			}))
 		) {
@@ -90,7 +90,7 @@ export class DynamicNodeParametersService {
 		}
 
 		if (payload.workflowId) {
-			const hasAccess = await userHasScopes(user, ['workflow:read'], false, {
+			const hasAccess = await hasScopes(user, ['workflow:read'], false, {
 				workflowId: payload.workflowId,
 			});
 

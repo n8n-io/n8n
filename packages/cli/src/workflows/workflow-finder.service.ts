@@ -19,7 +19,7 @@ import { hasGlobalScope, type AuthPrincipal, type Scope } from '@n8n/permissions
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {
@@ -412,7 +412,7 @@ export class WorkflowFinderService {
 	}
 
 	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {
-		return await userHasScopes(user, scopes, false, { projectId });
+		return await hasScopes(user, scopes, false, { projectId });
 	}
 
 	async findProjectIdForFolder(folderId: string): Promise<string | null> {

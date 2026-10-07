@@ -14,7 +14,7 @@ import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { AgentConfigService } from './agent-config.service';
 import { AgentSkillsService } from './agent-skills.service';
@@ -141,7 +141,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		// controller middleware, so a user reaching agent-building via Instance AI
 		// must still hold the corresponding project scope before any agent mutation.
 		const assertProjectScope = async (...scopes: Scope[]): Promise<void> => {
-			if (!(await userHasScopes(user, scopes, false, { projectId }))) {
+			if (!(await hasScopes(user, scopes, false, { projectId }))) {
 				throw new ForbiddenError('You do not have permission to access agents in this project.');
 			}
 		};

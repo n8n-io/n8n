@@ -23,8 +23,8 @@ import {
 	type InstanceContextScope,
 } from '../instance-context.service';
 
-const { userHasScopes } = vi.hoisted(() => ({ userHasScopes: vi.fn() }));
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes }));
+const { hasScopes } = vi.hoisted(() => ({ hasScopes: vi.fn() }));
+vi.mock('@/permissions.ee/scope-access', () => ({ hasScopes }));
 
 const NOW = new Date('2026-09-04T12:00:00.000Z');
 const USER_ID = 'user-1';
@@ -92,7 +92,7 @@ describe('InstanceContextService', () => {
 	let projectRepository: MockProxy<ProjectRepository>;
 	let projectService: MockProxy<ProjectService>;
 
-	beforeEach(() => userHasScopes.mockResolvedValue(true));
+	beforeEach(() => hasScopes.mockResolvedValue(true));
 
 	/**
 	 * Reads an injected result's block, asserting the state on the way through. Keeps the
@@ -176,7 +176,7 @@ describe('InstanceContextService', () => {
 
 		/** A narrowed scope keeps its cursor: it reads less than the cursor accounted for. */
 		it('keeps the cursor when the scope narrows', async () => {
-			userHasScopes.mockImplementation(async (...args: unknown[]) => {
+			hasScopes.mockImplementation(async (...args: unknown[]) => {
 				const scopes = args[1];
 				return !(Array.isArray(scopes) && scopes.includes('credential:read'));
 			});
@@ -206,7 +206,7 @@ describe('InstanceContextService', () => {
 				total: 3,
 				workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: true }],
 			});
-			userHasScopes.mockResolvedValue(false);
+			hasScopes.mockResolvedValue(false);
 
 			const built = await service.buildBlock({
 				enabled: true,
@@ -218,14 +218,14 @@ describe('InstanceContextService', () => {
 
 			expect(built).toMatchObject({ state: 'absent', reason: 'empty' });
 			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
-			expect(userHasScopes).toHaveBeenCalledWith(USER, ['workflow:read'], false, {
+			expect(hasScopes).toHaveBeenCalledWith(USER, ['workflow:read'], false, {
 				projectId: PROJECT_ID,
 			});
 		});
 
 		it('returns nothing from the tool reads once the user loses project access', async () => {
 			const service = serviceWith();
-			userHasScopes.mockResolvedValue(false);
+			hasScopes.mockResolvedValue(false);
 
 			expect(await service.list({ user: USER, scope: BOUND, limit: 5 })).toEqual([]);
 			expect(await service.expand({ id: 1, user: USER, scope: BOUND })).toBeNull();
@@ -510,7 +510,7 @@ describe('InstanceContextService', () => {
 			});
 
 			it('withholds credential entries from a caller without credential:read', async () => {
-				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+				hasScopes.mockImplementation(async (...args: unknown[]) => {
 					const scopes = args[1];
 					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
 				});
@@ -606,7 +606,7 @@ describe('InstanceContextService', () => {
 				});
 				const idsIn = (block: string) => block.match(/^\[id:\d+\]/gm) ?? [];
 
-				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+				hasScopes.mockImplementation(async (...args: unknown[]) => {
 					const scopes = args[1];
 					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
 				});
@@ -630,7 +630,7 @@ describe('InstanceContextService', () => {
 				});
 				expect(cursorOf(second).activityFloor).toBe(4);
 
-				userHasScopes.mockResolvedValue(true);
+				hasScopes.mockResolvedValue(true);
 				const third = await service.buildBlock({
 					enabled: true,
 					user: USER,
@@ -1285,7 +1285,7 @@ describe('InstanceContextService', () => {
 
 		it('reads nothing from a named project the caller cannot open', async () => {
 			const service = serviceWith();
-			userHasScopes.mockResolvedValue(false);
+			hasScopes.mockResolvedValue(false);
 
 			expect(await service.list({ user: USER, scope: MCP_BOUND, limit: 5 })).toEqual([]);
 			expect(await service.expand({ id: 1, user: USER, scope: MCP_BOUND })).toBeNull();

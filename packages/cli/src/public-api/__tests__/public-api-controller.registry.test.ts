@@ -25,7 +25,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { NotFoundError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import {
 	markPublicApiController,
 	OptionalWidgetBodyDto,
@@ -35,7 +35,7 @@ import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@/permissions.ee/scope-access', () => ({ hasScopes: vi.fn() }));
 
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
@@ -288,33 +288,33 @@ describe('PublicApiControllerRegistry', () => {
 		it('rejects a malformed parameter with 400 before the scope check looks it up', async () => {
 			// A scope check resolves access by looking the id up, and reports an id it cannot find as
 			// a 404. Validation runs first, so the status does not depend on the caller's access.
-			vi.mocked(userHasScopes).mockRejectedValue(new NotFoundError('Widget not found'));
+			vi.mocked(hasScopes).mockRejectedValue(new NotFoundError('Widget not found'));
 			registerScopedRoute();
 
 			const response = await request(activate()).get('/api/v1/widgets/abc').expect(400);
 
 			expect(response.body.message).toBe('request/params/widgetId must be a positive integer');
-			expect(userHasScopes).not.toHaveBeenCalled();
+			expect(hasScopes).not.toHaveBeenCalled();
 		});
 
 		it('runs the scope check once the parameter is valid', async () => {
-			vi.mocked(userHasScopes).mockRejectedValue(new NotFoundError('Widget not found'));
+			vi.mocked(hasScopes).mockRejectedValue(new NotFoundError('Widget not found'));
 			registerScopedRoute();
 
 			await request(activate()).get('/api/v1/widgets/12').expect(404);
 
-			expect(userHasScopes).toHaveBeenCalled();
+			expect(hasScopes).toHaveBeenCalled();
 		});
 
 		it('refuses a valid parameter when the scope check denies access', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			vi.mocked(hasScopes).mockResolvedValue(false);
 			registerScopedRoute();
 
 			await request(activate()).get('/api/v1/widgets/12').expect(403);
 		});
 
 		it('hands the parsed value to the handler when the scope check passes', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			vi.mocked(hasScopes).mockResolvedValue(true);
 			registerScopedRoute();
 
 			const response = await request(activate()).get('/api/v1/widgets/12').expect(200);

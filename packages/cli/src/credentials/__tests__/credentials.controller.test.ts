@@ -21,7 +21,7 @@ import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import * as checkAccess from '@/permissions.ee/check-access';
+import * as checkAccess from '@/permissions.ee/scope-access';
 import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
@@ -909,7 +909,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when editing external secret expression without permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -942,7 +942,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'hasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },

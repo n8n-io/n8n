@@ -7,7 +7,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentConversationStateService } from '../agent-conversation-state.service';
@@ -273,7 +273,7 @@ export class AgentWakeService {
 			// Load the current user role to verify that the user still has permission to run the agent.
 			const user = await this.userRepository.findByIdWithRole(userId);
 			if (!user || user.disabled) throw new OperationalError('Wake user is no longer active');
-			if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+			if (!(await hasScopes(user, ['agent:execute'], false, { projectId }))) {
 				throw new OperationalError('Wake user can no longer execute this agent');
 			}
 			return draftUserId

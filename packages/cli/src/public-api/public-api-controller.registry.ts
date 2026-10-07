@@ -21,7 +21,7 @@ import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
 import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {
@@ -321,12 +321,7 @@ export class PublicApiControllerRegistry {
 
 			try {
 				if (
-					!(await userHasScopes(
-						authReq.user,
-						[accessScope.scope],
-						accessScope.globalOnly,
-						req.params,
-					))
+					!(await hasScopes(authReq.user, [accessScope.scope], accessScope.globalOnly, req.params))
 				) {
 					res.status(403).json({ message: 'Forbidden' });
 					return;

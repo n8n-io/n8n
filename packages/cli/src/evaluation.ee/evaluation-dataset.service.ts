@@ -28,7 +28,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
@@ -207,7 +207,7 @@ export class EvaluationDatasetService {
 	/**
 	 * Mirror the `@ProjectScope('dataTable:*')` guard the canonical data table
 	 * routes use. Our routes are workflow-scoped, so we check the user's access to
-	 * the resolved data table's project explicitly. `userHasScopes` throws
+	 * the resolved data table's project explicitly. `hasScopes` throws
 	 * NotFoundError when the table no longer exists.
 	 */
 	private async assertDataTableAccess(
@@ -215,7 +215,7 @@ export class EvaluationDatasetService {
 		dataTableId: string,
 		scope: Scope,
 	): Promise<void> {
-		const allowed = await userHasScopes(user, [scope], false, { dataTableId });
+		const allowed = await hasScopes(user, [scope], false, { dataTableId });
 		if (!allowed) {
 			throw new ForbiddenError('You do not have access to this data table');
 		}

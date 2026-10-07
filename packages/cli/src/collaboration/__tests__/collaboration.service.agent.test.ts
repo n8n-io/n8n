@@ -19,10 +19,10 @@ import type { AccessService } from '@/services/access.service';
 import type { Logger } from '@n8n/backend-common';
 import type { ErrorReporter } from 'n8n-core';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn().mockResolvedValue(true),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn().mockResolvedValue(true),
 }));
 
 describe('CollaborationService — agent messages', () => {
@@ -74,7 +74,7 @@ describe('CollaborationService — agent messages', () => {
 	});
 
 	it('does not add a collaborator on agentOpened when the user lacks read access', async () => {
-		vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+		vi.mocked(hasScopes).mockResolvedValueOnce(false);
 		const msg: AgentOpenedMessage = { type: 'agentOpened', agentId: 'agent-1' };
 
 		await service.handleUserMessage(userId, 'client-1', msg);
@@ -103,7 +103,7 @@ describe('CollaborationService — agent messages', () => {
 	});
 
 	it('does not remove a collaborator on agentClosed when the user lacks read access', async () => {
-		vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+		vi.mocked(hasScopes).mockResolvedValueOnce(false);
 		const msg: AgentClosedMessage = { type: 'agentClosed', agentId: 'agent-1' };
 
 		await service.handleUserMessage(userId, 'client-1', msg);
@@ -139,7 +139,7 @@ describe('CollaborationService — agent messages', () => {
 	});
 
 	it('does not set the lock on agentWriteAccessRequested when the user lacks write access', async () => {
-		vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+		vi.mocked(hasScopes).mockResolvedValueOnce(false);
 		const msg: AgentWriteAccessRequestedMessage = {
 			type: 'agentWriteAccessRequested',
 			agentId: 'agent-1',

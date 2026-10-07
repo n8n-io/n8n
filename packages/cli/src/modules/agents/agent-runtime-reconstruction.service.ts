@@ -42,7 +42,7 @@ import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
@@ -390,7 +390,7 @@ export class AgentRuntimeReconstructionService {
 		snapshot?: UserToolAccessSnapshot;
 		unavailable: UnavailableTool[];
 	}> {
-		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
+		const canExecute = await hasScopes(user, ['workflow:execute'], false, { projectId });
 		const filtered: AgentJsonToolConfig[] = [];
 		const unavailable: UnavailableTool[] = [];
 		const grantedCredentialIds = new Set<string>();
@@ -486,7 +486,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		user: User,
 	): Promise<boolean> {
-		if (!(await userHasScopes(user, ['workflow:execute'], false, { projectId }))) return false;
+		if (!(await hasScopes(user, ['workflow:execute'], false, { projectId }))) return false;
 
 		const credentials = await Promise.all(
 			snapshot.credentialIds.map(

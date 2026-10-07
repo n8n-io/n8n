@@ -11,12 +11,12 @@ import type { ExecutionRedactionServiceProxy } from '@/executions/execution-reda
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { EvaluationDatasetService } from '../evaluation-dataset.service';
 
-vi.mock('@/permissions.ee/check-access');
-const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
+vi.mock('@/permissions.ee/scope-access');
+const hasScopesMock = hasScopes as MockedFunction<typeof hasScopes>;
 
 describe('EvaluationDatasetService', () => {
 	let configRepository: Mocked<EvaluationConfigRepository>;
@@ -134,8 +134,8 @@ describe('EvaluationDatasetService', () => {
 		dataTableService.getProjectIdForDataTable.mockResolvedValue(PROJECT_ID);
 		dataTableService.getColumns.mockResolvedValue(makeColumns());
 		instanceWriteAccess.isReadOnly.mockReturnValue(false);
-		userHasScopesMock.mockReset();
-		userHasScopesMock.mockResolvedValue(true);
+		hasScopesMock.mockReset();
+		hasScopesMock.mockResolvedValue(true);
 	});
 
 	describe('getCandidate', () => {
@@ -326,13 +326,13 @@ describe('EvaluationDatasetService', () => {
 
 		it('enforces read access on the data table for the user', async () => {
 			await service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID);
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+			expect(hasScopesMock).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
 				dataTableId: DATA_TABLE_ID,
 			});
 		});
 
 		it('throws ForbiddenError when the user cannot read the data table', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			hasScopesMock.mockResolvedValue(false);
 			await expect(
 				service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID),
 			).rejects.toThrow(ForbiddenError);
@@ -355,7 +355,7 @@ describe('EvaluationDatasetService', () => {
 		});
 
 		it('enforces write access on the data table and throws ForbiddenError when denied', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			hasScopesMock.mockResolvedValue(false);
 			const dto: AddDatasetRowDto = {
 				executionId: EXECUTION_ID,
 				mapping: { question: { source: 'input', field: 'question' } },
@@ -364,7 +364,7 @@ describe('EvaluationDatasetService', () => {
 			await expect(service.addRow(user, WORKFLOW_ID, CONFIG_ID, dto)).rejects.toThrow(
 				ForbiddenError,
 			);
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
+			expect(hasScopesMock).toHaveBeenCalledWith(user, ['dataTable:writeRow'], false, {
 				dataTableId: DATA_TABLE_ID,
 			});
 			expect(dataTableService.insertRows).not.toHaveBeenCalled();

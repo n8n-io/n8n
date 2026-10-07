@@ -13,7 +13,7 @@ type CollectionParam = { workflowId: string; collectionId: string };
 /**
  * Single-route controller for the AI insights endpoint. Mounted as a child
  * of `/workflows` so the `@ProjectScope` middleware resolves the workflow's
- * project from the `:workflowId` URL param (`check-access.ts:93`).
+ * project from the `:workflowId` URL parameter.
  *
  * Auth flow per request:
  *  1. `@ProjectScope('workflow:read')` middleware verifies the user has

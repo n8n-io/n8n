@@ -15,7 +15,7 @@ import { AgentsSettingsService } from '@/modules/agents/agents-settings.service'
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import {
 	EvalAgentExecutionService,
@@ -46,7 +46,7 @@ vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
 vi.mock('@/modules/agents/json-config/agent-config-composition', () => ({
 	sanitizeToolName: (name: string) => name.replace(/[^a-zA-Z0-9_-]+/g, '_'),
 }));
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@/permissions.ee/scope-access', () => ({ hasScopes: vi.fn() }));
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }));
@@ -132,7 +132,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		Container.set(AgentRuntimeReconstructionService, {
 			reconstructFromAgentEntity,
 		} as unknown as AgentRuntimeReconstructionService);
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 		vi.mocked(generateAgentScenarioSeed).mockResolvedValue(seed);
 		vi.mocked(createLlmMockHandler).mockReturnValue(
 			vi.fn().mockResolvedValue({ body: { ok: true }, statusCode: 200, headers: {} }),
@@ -168,7 +168,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	});
 
 	it('reports not-accessible when the user lacks agent:execute', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(false);
+		vi.mocked(hasScopes).mockResolvedValue(false);
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/not found or not accessible/);

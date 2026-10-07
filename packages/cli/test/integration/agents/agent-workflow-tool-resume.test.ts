@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentTestRunService } from '@/modules/agents/agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '@/modules/agents/agent-workflow-tool-resume.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { createMember } from '../shared/db/users';
 
@@ -31,7 +31,7 @@ describe('Preview workflow resume permissions', () => {
 		let canExecute: boolean | undefined;
 		const agentTestRunService = mock<AgentTestRunService>();
 		agentTestRunService.resumeDraftRun.mockImplementation(async (input) => {
-			canExecute = await userHasScopes(input.user, ['workflow:execute'], false, {
+			canExecute = await hasScopes(input.user, ['workflow:execute'], false, {
 				projectId: input.projectId,
 			});
 			return { status: 'session_not_found' };

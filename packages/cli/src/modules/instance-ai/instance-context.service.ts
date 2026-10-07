@@ -25,7 +25,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { INSTANCE_CONTEXT_CLOSE_TAG, INSTANCE_CONTEXT_OPEN_TAG } from './internal-messages';
@@ -674,11 +674,11 @@ export class InstanceContextService {
 		// and credential entries are gated separately below.
 		if (scope.projectId !== undefined) {
 			const projectId = scope.projectId;
-			const allowed = await userHasScopes(user, ['workflow:read'], false, { projectId });
+			const allowed = await hasScopes(user, ['workflow:read'], false, { projectId });
 			if (!allowed) return null;
 
 			if (scope.surface === 'conversation') {
-				const credentials = await userHasScopes(user, ['credential:read'], false, { projectId });
+				const credentials = await hasScopes(user, ['credential:read'], false, { projectId });
 				return {
 					surface: 'conversation',
 					projectIds: [projectId],

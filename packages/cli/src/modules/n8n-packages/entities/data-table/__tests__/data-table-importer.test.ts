@@ -4,17 +4,17 @@ import { mock } from 'vitest-mock-extended';
 
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { DataTableImporter } from '../data-table-importer';
 import type { DataTableImportRequest } from '../data-table.types';
 import type { ImportContext } from '../../../n8n-packages.types';
 
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn(),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn(),
 }));
 
-const userHasScopesMock = vi.mocked(userHasScopes);
+const hasScopesMock = vi.mocked(hasScopes);
 
 const context: ImportContext = {
 	user: mock<User>({ id: 'user-1' }),
@@ -45,8 +45,8 @@ function makeRequest(overrides: Partial<DataTableImportRequest> = {}): DataTable
 }
 
 beforeEach(() => {
-	userHasScopesMock.mockReset();
-	userHasScopesMock.mockResolvedValue(true);
+	hasScopesMock.mockReset();
+	hasScopesMock.mockResolvedValue(true);
 });
 
 describe('DataTableImporter.plan', () => {
@@ -71,14 +71,14 @@ describe('DataTableImporter.plan', () => {
 
 	it('fails with permission-denied when the user cannot create tables in the target project', async () => {
 		const { importer } = makeImporter();
-		userHasScopesMock.mockResolvedValue(false);
+		hasScopesMock.mockResolvedValue(false);
 
 		const plan = await importer.plan(context, makeRequest());
 
 		expect(plan.failures).toEqual([
 			{ kind: 'permission-denied', missingScope: 'dataTable:create', usedByWorkflows: ['wf-1'] },
 		]);
-		expect(userHasScopesMock).toHaveBeenCalledWith(context.user, ['dataTable:create'], false, {
+		expect(hasScopesMock).toHaveBeenCalledWith(context.user, ['dataTable:create'], false, {
 			projectId: context.projectId,
 		});
 	});
@@ -89,7 +89,7 @@ describe('DataTableImporter.plan', () => {
 		const plan = await importer.plan(context, makeRequest({ missingMode: 'do-nothing' }));
 
 		expect(plan).toEqual({ creations: [], updates: [], failures: [], matchedCount: 0 });
-		expect(userHasScopesMock).not.toHaveBeenCalled();
+		expect(hasScopesMock).not.toHaveBeenCalled();
 	});
 
 	it('throws when a required table has no bundled schema file', async () => {

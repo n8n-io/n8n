@@ -7,7 +7,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
@@ -32,8 +32,8 @@ import {
 	WAKE_RESULT_TEXT_MAX_CHARS,
 } from '../background-job-messages';
 
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn().mockResolvedValue(true),
+vi.mock('@/permissions.ee/scope-access', () => ({
+	hasScopes: vi.fn().mockResolvedValue(true),
 }));
 
 const user = { id: 'user-1', disabled: false };
@@ -241,7 +241,7 @@ describe('AgentWakeService', () => {
 	});
 
 	beforeEach(() => {
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		vi.mocked(hasScopes).mockResolvedValue(true);
 	});
 
 	it('debounces wakes for one thread', async () => {
@@ -681,11 +681,11 @@ describe('AgentWakeService', () => {
 
 		it('rejects a draft wake when its user can no longer execute the agent', async () => {
 			const { service, orchestrator, jobRepository } = setup();
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			vi.mocked(hasScopes).mockResolvedValue(false);
 
 			await service.attemptWake('thread-1');
 
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:execute'], false, {
+			expect(hasScopes).toHaveBeenCalledWith(user, ['agent:execute'], false, {
 				projectId: 'project-1',
 			});
 			expect(orchestrator.executeForWake).not.toHaveBeenCalled();

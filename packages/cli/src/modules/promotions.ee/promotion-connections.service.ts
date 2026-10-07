@@ -20,7 +20,7 @@ import { ProjectRepository, TransactionRunner, type OperationContext, type User 
 import { Service } from '@n8n/di';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 
 import { DIRECTION_LABELS } from './constants';
 import type { PromotionConfig } from './database/entities/promotion-config.entity';
@@ -434,7 +434,7 @@ export class PromotionConnectionsService {
 	// Manage links only for projects the caller can edit, on top of the route's
 	// global `gitConnection:manageProjects` scope.
 	private async assertProjectAccess(user: User, projectId: string) {
-		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
+		const allowed = await hasScopes(user, ['project:update'], false, { projectId });
 		if (!allowed) throw new ForbiddenError('You do not have access to this project');
 	}
 

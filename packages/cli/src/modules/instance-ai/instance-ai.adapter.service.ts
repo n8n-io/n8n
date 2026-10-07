@@ -190,7 +190,7 @@ import {
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -1005,7 +1005,7 @@ export class InstanceAiAdapterService {
 		};
 
 		const assertProjectScope = async (scopes: Scope[], projectId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { projectId });
+			const allowed = await hasScopes(user, scopes, false, { projectId });
 			if (!allowed) {
 				throw new Error('User does not have the required permissions in this project');
 			}
@@ -1143,7 +1143,7 @@ export class InstanceAiAdapterService {
 			// the fallback scan, instead of running the same scope query twice.
 			const scopedProjectIds: string[] = [];
 			for (const projectId of projectIds) {
-				if (await userHasScopes(user, ['folder:list'], false, { projectId })) {
+				if (await hasScopes(user, ['folder:list'], false, { projectId })) {
 					scopedProjectIds.push(projectId);
 				}
 			}
@@ -1415,7 +1415,7 @@ export class InstanceAiAdapterService {
 								async (projectId) =>
 									[
 										projectId,
-										await userHasScopes(user, ['folder:list'], false, { projectId }),
+										await hasScopes(user, ['folder:list'], false, { projectId }),
 									] as const,
 							),
 						)
@@ -1690,12 +1690,9 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
 				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
-					const canUpdateRedaction = await userHasScopes(
-						user,
-						['workflow:enableRedaction'],
-						false,
-						{ projectId },
-					);
+					const canUpdateRedaction = await hasScopes(user, ['workflow:enableRedaction'], false, {
+						projectId,
+					});
 					if (!canUpdateRedaction) {
 						delete settings.redactionPolicy;
 					}
@@ -1840,7 +1837,7 @@ export class InstanceAiAdapterService {
 
 						const canUpdateRedaction =
 							ownerProject &&
-							(await userHasScopes(user, requiredScopes, false, { projectId: ownerProject.id }));
+							(await hasScopes(user, requiredScopes, false, { projectId: ownerProject.id }));
 
 						if (!canUpdateRedaction) {
 							delete settings.redactionPolicy;
@@ -3291,7 +3288,7 @@ export class InstanceAiAdapterService {
 			const projectIdFilter = disambiguator?.projectId;
 			const result = await resolveDataTableByIdOrName(dataTableRepository, logger, dataTableId, {
 				projectIdFilter,
-				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
+				accessFilter: async (id) => await hasScopes(user, scopes, false, { dataTableId: id }),
 			});
 			if (result.kind === 'miss') {
 				throw new Error(`Data table "${dataTableId}" not found`);

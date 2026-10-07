@@ -26,7 +26,7 @@ import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { AccessService } from '@/services/access.service';
 
 const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;
@@ -438,7 +438,7 @@ export class CollaborationService {
 			this.userRepository.findOne({ where: { id: userId }, relations: ['role'] }),
 		]);
 		if (!projectId || !user) return false;
-		return await userHasScopes(user, [scope], false, { projectId });
+		return await hasScopes(user, [scope], false, { projectId });
 	}
 
 	private async hasAgentReadAccess(userId: User['id'], agentId: string): Promise<boolean> {

@@ -35,7 +35,7 @@ import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-comp
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
@@ -133,7 +133,7 @@ export class EvalAgentExecutionService {
 		}
 
 		const { projectId } = options;
-		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+		if (!(await hasScopes(user, ['agent:execute'], false, { projectId }))) {
 			return this.errorResult(`Agent ${agentId} not found or not accessible`);
 		}
 

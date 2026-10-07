@@ -26,7 +26,7 @@ import {
 } from 'n8n-workflow';
 
 import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -118,7 +118,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
-		const hasScope = await userHasScopes(user, [scope], false, { projectId });
+		const hasScope = await hasScopes(user, [scope], false, { projectId });
 		if (!hasScope) {
 			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
 		}

@@ -19,7 +19,7 @@ import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import type { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { FolderService } from '@/services/folder.service';
@@ -33,12 +33,12 @@ import type { WorkflowValidationService } from '@/workflows/workflow-validation.
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@/permissions.ee/scope-access');
 vi.mock('@/workflow-helpers');
 vi.mock('@/generic-helpers');
 
 describe('WorkflowCreationService', () => {
-	const userHasScopesMock = vi.mocked(userHasScopes);
+	const hasScopesMock = vi.mocked(hasScopes);
 
 	let workflowCreationService: WorkflowCreationService;
 	let credentialsFinderServiceMock: MockProxy<CredentialsFinderService>;
@@ -636,8 +636,8 @@ describe('WorkflowCreationService', () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
-			userHasScopesMock.mockResolvedValue(false);
-			const { transactionManager } = setupTransactionMocks();
+			hasScopesMock.mockResolvedValue(false);
+			setupTransactionMocks();
 
 			const user = mock<User>();
 			const newWorkflow = new WorkflowEntity();
@@ -653,12 +653,12 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).toHaveBeenCalledWith(
+			expect(hasScopesMock).toHaveBeenCalledWith(
 				user,
 				['workflow:enableRedaction'],
 				false,
 				{ projectId: 'project-1' },
-				transactionManager,
+				workflowRepositoryMock.runInTransaction.mock.calls[0][0],
 			);
 
 			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
@@ -672,8 +672,8 @@ describe('WorkflowCreationService', () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
-			userHasScopesMock.mockResolvedValue(true);
-			const { transactionManager } = setupTransactionMocks();
+			hasScopesMock.mockResolvedValue(true);
+			setupTransactionMocks();
 
 			const user = mock<User>();
 			const newWorkflow = new WorkflowEntity();
@@ -689,12 +689,12 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).toHaveBeenCalledWith(
+			expect(hasScopesMock).toHaveBeenCalledWith(
 				user,
 				['workflow:enableRedaction'],
 				false,
 				{ projectId: 'project-1' },
-				transactionManager,
+				workflowRepositoryMock.runInTransaction.mock.calls[0][0],
 			);
 
 			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
@@ -724,7 +724,7 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).not.toHaveBeenCalled();
+			expect(hasScopesMock).not.toHaveBeenCalled();
 
 			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('none');
@@ -739,8 +739,8 @@ describe('WorkflowCreationService', () => {
 			} as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
-			userHasScopesMock.mockResolvedValue(false);
-			const { transactionManager } = setupTransactionMocks({
+			hasScopesMock.mockResolvedValue(false);
+			setupTransactionMocks({
 				personalProjectId: 'personal-project-789',
 			});
 
@@ -761,12 +761,12 @@ describe('WorkflowCreationService', () => {
 			expect(projectRepositoryMock.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
 				'user-456',
 			);
-			expect(userHasScopesMock).toHaveBeenCalledWith(
+			expect(hasScopesMock).toHaveBeenCalledWith(
 				user,
 				['workflow:enableRedaction'],
 				false,
 				{ projectId: 'personal-project-789' },
-				transactionManager,
+				workflowRepositoryMock.runInTransaction.mock.calls[0][0],
 			);
 		});
 
@@ -792,7 +792,7 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Assert
 			 */
-			expect(userHasScopesMock).not.toHaveBeenCalled();
+			expect(hasScopesMock).not.toHaveBeenCalled();
 		});
 	});
 
@@ -804,7 +804,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('seeds non-manual when floor is production-only and no policy is provided', async () => {
-			userHasScopesMock.mockResolvedValue(true);
+			hasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
 			setupTransactionMocks();
 
@@ -823,7 +823,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('seeds all when floor is production+manual and no policy is provided', async () => {
-			userHasScopesMock.mockResolvedValue(true);
+			hasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('all');
 			setupTransactionMocks();
 
@@ -842,7 +842,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('does not seed when floor is not enforced', async () => {
-			userHasScopesMock.mockResolvedValue(true);
+			hasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('off');
 			setupTransactionMocks();
 
@@ -861,7 +861,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('does not seed when user lacks workflow:enableRedaction', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			hasScopesMock.mockResolvedValue(false);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
 			setupTransactionMocks();
 
@@ -880,7 +880,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('does not seed when the effective floor is off', async () => {
-			userHasScopesMock.mockResolvedValue(true);
+			hasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('off');
 			setupTransactionMocks();
 
@@ -899,7 +899,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('clamps a none policy up to non-manual when the floor requires production redaction', async () => {
-			userHasScopesMock.mockResolvedValue(true);
+			hasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
 			setupTransactionMocks();
 
@@ -917,7 +917,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('replaces a manual-only policy with the floor seed when the floor requires production redaction', async () => {
-			userHasScopesMock.mockResolvedValue(true);
+			hasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
 			setupTransactionMocks();
 
@@ -935,7 +935,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('accepts a stricter-than-floor policy unchanged', async () => {
-			userHasScopesMock.mockResolvedValue(true);
+			hasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
 			setupTransactionMocks();
 

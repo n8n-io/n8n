@@ -10,7 +10,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@n8n/errors';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { hasScopes } from '@/permissions.ee/scope-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import type { PaginatedRequest } from '@/public-api/types';
 
@@ -40,7 +40,7 @@ const buildScopeMiddleware = (
 		}
 
 		try {
-			if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
+			if (!(await hasScopes(req.user, scopes, globalOnly, params))) {
 				return res.status(403).json({ message: 'Forbidden' });
 			}
 		} catch (error) {
