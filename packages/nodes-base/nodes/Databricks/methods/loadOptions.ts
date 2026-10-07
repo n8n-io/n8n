@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
+import { resolveLakebaseSchemaUrlFor } from '../actions/lakebase/helpers';
 import { fetchLakebaseColumns } from '../actions/lakebase/schema';
-import { resolveLakebaseRestBase } from '../transport';
 
 const LOCATORS = [
 	'lakebaseProject',
@@ -30,12 +30,13 @@ async function listColumns(context: ILoadOptionsFunctions): Promise<INodePropert
 	if (!locators) return [];
 
 	const [project, branch, database, schema, table] = locators;
-	const base = await resolveLakebaseRestBase(context, project, branch);
-	const columns = await fetchLakebaseColumns(
-		context,
-		`${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
-		table,
-	);
+	const schemaUrl = await resolveLakebaseSchemaUrlFor(context, {
+		project,
+		branch,
+		database,
+		schema,
+	});
+	const columns = await fetchLakebaseColumns(context, schemaUrl, table);
 
 	return columns.map((column) => ({ name: column.name, value: column.name }));
 }

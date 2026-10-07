@@ -13,3 +13,6 @@ export function isOpenApiUnavailable(error: unknown, url: string): boolean {
 	const body = error instanceof NodeApiError ? error.context.data : undefined;
 	return isRecord(body) && body.code === 'PGRST205';
 }
+
+export const FUNCTION_ARGUMENTS_UNAVAILABLE_NOTICE =
+	'The schema document lists no arguments for this function. If the function takes arguments, set Specify Arguments to Using JSON. If the project does not serve the document, turn on Data API > API > Advanced settings > OpenAPI specification.';
