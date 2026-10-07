@@ -51,7 +51,7 @@ pnpm scenarios --after-image n8nio/n8n:my-build      # every after variant on on
 - A variant passes when the image behaves as the spec expects for it: the bug on `before`, the fix on `after`. A `before` run that fails another way counts as a failure
 - A scenario with no image for a variant is skipped. A missing local build fails the run
 - Results go to `$TMPDIR/test-rig-results/<timestamp>/<scenario>.<variant>.jsonl`. Each line holds the outcome fields, the failed checks and a timeline
-- Container logs of the last run of each variant are in `<results dir>/<scenario>.<variant>/*/logs/`
+- Container logs of each run are in `<results dir>/<scenario>.<variant>/*/logs/`
 
 To run one spec by hand:
 
