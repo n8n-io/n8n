@@ -994,7 +994,7 @@
     "minifaker": "1.34.1",
     "moment-timezone": "catalog:",
     "mongodb": "6.11.0",
-    "mqtt": "5.7.2",
+    "mqtt": "5.16.0",
     "mqtt-packet": "catalog:",
     "mssql": "12.7.0",
     "mysql2": "catalog:",
