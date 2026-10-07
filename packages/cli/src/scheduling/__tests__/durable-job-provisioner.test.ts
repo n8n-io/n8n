@@ -53,6 +53,7 @@ const jobRow = ({ payload = {}, ...over }: Partial<ScheduledJob> = {}): Schedule
 			fireAt: null,
 			nextRunAt: CLOCK,
 			maxAttempts: 5,
+			timeoutSeconds: 300,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 90,
 			concurrencyLimit: null,
@@ -84,6 +85,7 @@ describe('DurableJobProvisioner', () => {
 				executorIntervalSeconds: 5,
 				maxAttempts: 5,
 				misfireGraceSeconds: 90,
+				taskTimeoutSeconds: 300,
 				...scheduler,
 			},
 			generic: { timezone: 'UTC' },
@@ -140,6 +142,19 @@ describe('DurableJobProvisioner', () => {
 			desired,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			maxAttempts,
+		});
+
+	const provisionWithTimeout = async (
+		timeoutSeconds: number | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			timeoutSeconds,
 		});
 
 	const provisionWithConcurrencyLimit = async (
@@ -203,6 +218,7 @@ describe('DurableJobProvisioner', () => {
 					fireAt: null,
 					nextRunAt: CLOCK,
 					maxAttempts: 5,
+					timeoutSeconds: 300,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
 					concurrencyLimit: null,
@@ -271,6 +287,7 @@ describe('DurableJobProvisioner', () => {
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				misfireGraceSeconds: 90,
 				concurrencyLimit: null,
@@ -307,6 +324,7 @@ describe('DurableJobProvisioner', () => {
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 				concurrencyLimit: null,
@@ -367,6 +385,7 @@ describe('DurableJobProvisioner', () => {
 				fireAt: null,
 				nextRunAt: CLOCK,
 				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 				concurrencyLimit: null,
@@ -662,6 +681,7 @@ describe('DurableJobProvisioner', () => {
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 				concurrencyLimit: null,
@@ -678,6 +698,7 @@ describe('DurableJobProvisioner', () => {
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
 				concurrencyLimit: null,
@@ -728,6 +749,7 @@ describe('DurableJobProvisioner', () => {
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 				concurrencyLimit: null,
@@ -743,6 +765,82 @@ describe('DurableJobProvisioner', () => {
 			await provisionWithAttempts(1);
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+		});
+	});
+
+	describe('timeout resolution', () => {
+		it('stamps a request-supplied timeout onto the inserted row, in place of the configured one', async () => {
+			await provisionWithTimeout(45);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ timeoutSeconds: 45 }),
+			]);
+		});
+
+		it('stamps the configured timeout onto the inserted row when the request omits one', async () => {
+			provisioner = makeProvisioner({ taskTimeoutSeconds: 120 });
+
+			await provisionWithTimeout(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ timeoutSeconds: 120 }),
+			]);
+		});
+
+		it("writes a request-supplied timeout onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithTimeout(45, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ timeoutSeconds: 45 }),
+			);
+		});
+
+		it('reconciles the timeout of a job and its pending occurrences when its schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ timeoutSeconds: 300 })]);
+
+			await provisionWithTimeout(600);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				timeoutSeconds: 600,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
+			});
+			expect(tasks.updateTimeoutForPendingJobs).toHaveBeenCalledWith(manager, [10], 600);
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+		});
+
+		it('leaves a job already stored at the requested timeout and its occurrences alone', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ timeoutSeconds: 600 })]);
+
+			await provisionWithTimeout(600);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(tasks.updateTimeoutForPendingJobs).toHaveBeenCalledWith(manager, [], 600);
+		});
+
+		it.each([0, -1, 1.5, 2_147_484])('rejects a timeout of %s', async (timeoutSeconds) => {
+			await expect(provisionWithTimeout(timeoutSeconds)).rejects.toThrow(UserError);
+			expect(jobs.insertMany).not.toHaveBeenCalled();
+		});
+
+		it('accepts the longest timeout a timer honors', async () => {
+			await provisionWithTimeout(2_147_483);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ timeoutSeconds: 2_147_483 }),
+			]);
 		});
 	});
 
@@ -788,6 +886,7 @@ describe('DurableJobProvisioner', () => {
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
 				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 				concurrencyLimit: 2,
@@ -859,6 +958,7 @@ describe('DurableJobProvisioner', () => {
 				taskType: 'schedule-trigger',
 				payload: {},
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			}) as unknown as ScheduledJob;
@@ -873,6 +973,7 @@ describe('DurableJobProvisioner', () => {
 				scheduledFor: at(30),
 				runAt: at(30),
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 				// Its own instant plus the job's 60s grace.
 				missedAfter: at(90),
 			},
@@ -883,6 +984,7 @@ describe('DurableJobProvisioner', () => {
 				scheduledFor: at(60),
 				runAt: at(60),
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 				missedAfter: at(120),
 			},
 		];
@@ -1036,6 +1138,7 @@ describe('DurableJobProvisioner', () => {
 					fireAt: null,
 					nextRunAt: CLOCK,
 					maxAttempts: 5,
+					timeoutSeconds: 300,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
 					concurrencyLimit: null,

@@ -91,6 +91,29 @@ describe('system task provisioning', () => {
 		expect(seeded.every((occurrence) => occurrence.status === 'pending')).toBe(true);
 	});
 
+	it('applies a changed timeout to the job and its pending occurrences, not to a running one', async () => {
+		await provision();
+		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(inserted.timeoutSeconds).toBe(Container.get(GlobalConfig).scheduler.taskTimeoutSeconds);
+		const [running, ...pending] = await taskRepo.findBy({ jobId: inserted.id });
+		await taskRepo.update(
+			{ id: running.id },
+			{ status: 'running', claimedBy: 'main-a', leaseExpiresAt: new Date(Date.now() + 60_000) },
+		);
+
+		const summary = await provision({ timeoutSeconds: 600 });
+
+		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(row.timeoutSeconds).toBe(600);
+		const tasks = await taskRepo.findBy({ jobId: inserted.id });
+		const timeoutById = new Map(tasks.map((t) => [t.id, t.timeoutSeconds]));
+		expect(timeoutById.get(running.id)).toBe(inserted.timeoutSeconds);
+		for (const occurrence of pending) {
+			expect(timeoutById.get(occurrence.id)).toBe(600);
+		}
+	});
+
 	it('seeds a claimable occurrence at once for an interval task', async () => {
 		const before = new Date();
 

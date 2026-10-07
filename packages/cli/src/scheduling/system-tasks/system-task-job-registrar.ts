@@ -37,7 +37,7 @@ export function systemTaskProvisionRequest(
 			? now
 			: computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
 	const name = systemTaskType(task.name);
-	const { misfirePolicy, misfireGraceSeconds, maxAttempts, concurrencyLimit } =
+	const { misfirePolicy, misfireGraceSeconds, maxAttempts, concurrencyLimit, timeoutSeconds } =
 		resolveSystemTaskRunOptions(task);
 
 	return {
@@ -49,6 +49,7 @@ export function systemTaskProvisionRequest(
 		misfireGraceSeconds,
 		maxAttempts,
 		concurrencyLimit,
+		timeoutSeconds,
 	};
 }
 
