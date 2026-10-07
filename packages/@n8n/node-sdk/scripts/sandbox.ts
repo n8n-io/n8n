@@ -19,6 +19,7 @@ const UNAVAILABLE = 'n8n-guest-unavailable';
 
 /** The identifier in `action-snapshot.js` that `snapshot-bundle.ts` replaces with the bundle code. */
 export const SNAPSHOT_BUNDLE = 'N8N_SNAPSHOT_BUNDLE_SOURCE';
+export const SNAPSHOT_SDK = 'N8N_SNAPSHOT_SDK_SOURCE';
 
 /** The guest of each kind interface: its entry in `sandbox/` and its world in `wit/guest.wit`. */
 const GUESTS = {
@@ -221,8 +222,9 @@ async function buildGuests() {
 	}
 	const template = path.join(DIST, 'action-snapshot.js');
 	await bundleGuest('snapshot-entry', template);
-	if (readFileSync(template, 'utf8').split(SNAPSHOT_BUNDLE).length !== 2) {
-		throw new Error(`${template} must name ${SNAPSHOT_BUNDLE} once`);
+	const text = readFileSync(template, 'utf8');
+	if ([SNAPSHOT_BUNDLE, SNAPSHOT_SDK].some((name) => text.split(name).length !== 2)) {
+		throw new Error(`${template} must name ${SNAPSHOT_BUNDLE} and ${SNAPSHOT_SDK} once`);
 	}
 }
 

@@ -1,6 +1,6 @@
 /**
  * The manifest format of the Node Contract: what pack writes for each version of an action,
- * trigger, provider or credential. `scripts/spec.ts` writes these schemas to
+ * trigger, provider, credential or the SDK runtime. `scripts/spec.ts` writes these schemas to
  * `spec/manifest.schema.json`, and `parseManifest` reads with them.
  */
 import { UnexpectedError } from 'n8n-workflow';
@@ -20,7 +20,7 @@ import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema
 import { matches } from './validate';
 import type { StoreDeprecation, StoreRecord, StoreRevoke, StoreYank } from './store';
 import type { Signature, WebhookEndpoint } from './triggers';
-import type { NodeContractVersion, VersionManifest } from './version';
+import type { NodeContractVersion, SdkPin, VersionManifest } from './version';
 
 const constant = <const V extends string | number | boolean>(value: V) =>
 	new Schema<V>({ const: value }, false);
@@ -29,6 +29,7 @@ const SINCE_2_5 = { 'x-n8n-since': '2.5.0' } as const satisfies JsonSchema;
 const SINCE_2_6 = { 'x-n8n-since': '2.6.0' } as const satisfies JsonSchema;
 const SINCE_2_7 = { 'x-n8n-since': '2.7.0' } as const satisfies JsonSchema;
 const SINCE_2_10 = { 'x-n8n-since': '2.10.0' } as const satisfies JsonSchema;
+const SINCE_2_11 = { 'x-n8n-since': '2.11.0' } as const satisfies JsonSchema;
 
 /**
  * A reader ignores a top-level field it does not know, so a newer SDK can add an annotation.
@@ -67,6 +68,8 @@ const jsonSchema = () =>
 	new Schema<JsonSchema>({ type: 'object', description: 'A JSON Schema.' }, false);
 
 const hex = () => t.str().with({ pattern: '^[0-9a-f]{64}$' });
+
+const digest = () => t.str().with({ pattern: '^sha256:[0-9a-f]{64}$' });
 
 const names = () => t.arr(t.str());
 
@@ -200,7 +203,18 @@ export const versionManifestSchema = typed<VersionManifest>()(
 		.obj({
 			kind: t.oneOf('action', 'trigger', 'provider').with(SINCE_2_5),
 			nodeContract: nodeContractVersion().with(SINCE_2_5),
-			sdk: t.str().with(SINCE_2_5).optional(),
+			sdk: t
+				.union(
+					t.str().describe('The SDK version that a self-contained bundle inlines.'),
+					typed<SdkPin>()(
+						t
+							.obj({ version: semver(), digest: digest() })
+							.describe('The SDK runtime that the bundle imports.')
+							.with(SINCE_2_11),
+					),
+				)
+				.with(SINCE_2_5)
+				.optional(),
 			credentials: credentialPins().with(SINCE_2_5).optional(),
 			errorOf: new Schema<`=${string}`>({ type: 'string', pattern: '^=' }, false)
 				.describe('The n8n expression that finds an error in a successful response.')
@@ -350,8 +364,6 @@ export interface CredentialManifest {
 	readonly semver: string;
 	/** The lowest Node Contract version that has what the type uses. */
 	readonly nodeContract: NodeContractVersion;
-	/** The `@n8n/node-sdk` version that packed it, for traceability only. */
-	readonly sdk: string;
 	/** The type name in the n8n UI. */
 	readonly displayName: string;
 	/** The n8n docs page of the type. */
@@ -382,7 +394,6 @@ export const credentialManifestSchema = typed<CredentialManifest>()(
 			name: t.str(),
 			semver: semver(),
 			nodeContract: nodeContractVersion(),
-			sdk: t.str(),
 			displayName: t.str(),
 			documentationUrl: t.str().optional(),
 			fields: jsonSchema(),
@@ -411,8 +422,6 @@ export interface NativeManifest {
 	readonly semver: string;
 	/** The lowest Node Contract version that has native manifests. */
 	readonly nodeContract: NodeContractVersion;
-	/** The `@n8n/node-sdk` version that packed it, for traceability only. */
-	readonly sdk: string;
 	/** `<id>@<major>` of each credential type with a credential manifest. Absent when none has one. */
 	readonly credentials?: readonly string[];
 	/** The normative hash of `contract`, see `contractHash`. */
@@ -447,7 +456,6 @@ export const nativeManifestSchema = typed<NativeManifest>()(
 			id: t.str(),
 			semver: semver(),
 			nodeContract: nodeContractVersion(),
-			sdk: t.str(),
 			credentials: credentialPins().optional(),
 			contractHash: hex(),
 			contract,
@@ -463,9 +471,37 @@ export const nativeManifestSchema = typed<NativeManifest>()(
 		.with({ title: 'Native action or trigger manifest', ...SINCE_2_5, ...OPEN }),
 );
 
-const digest = () => t.str().with({ pattern: '^sha256:[0-9a-f]{64}$' });
-
 const signatures = () => t.arr(t.obj({ key: digest(), sig: t.str() })).optional();
+
+/** The id of the SDK runtime in a store. Its npm name is `<scope>/sdk-runtime`. */
+export const SDK_RUNTIME_ID = 'sdkRuntime';
+
+/** The manifest of one version of the SDK runtime: `@n8n/node-sdk` as one bundle. */
+export interface SdkManifest {
+	/** Marks an SDK runtime manifest. */
+	readonly kind: 'sdk';
+	/** Always `SDK_RUNTIME_ID`. */
+	readonly id: string;
+	/** The `@n8n/node-sdk` version, `major.minor.patch`. */
+	readonly semver: string;
+	/** The Node Contract version that added the SDK runtime. */
+	readonly nodeContract: NodeContractVersion;
+	/** The hex SHA-256 of the runtime bundle bytes. */
+	readonly bundleHash: string;
+}
+
+/** The manifest of one version of the SDK runtime. */
+export const sdkManifestSchema = typed<SdkManifest>()(
+	t
+		.obj({
+			kind: constant('sdk'),
+			id: t.str(),
+			semver: semver(),
+			nodeContract: nodeContractVersion(),
+			bundleHash: hex(),
+		})
+		.with({ title: 'SDK runtime manifest', ...SINCE_2_11, ...OPEN }),
+);
 
 /** One version line of a store index, `index/<id>.ndjson`. It is not part of the Node Contract. */
 export const storeRecordSchema = typed<StoreRecord>()(
@@ -473,7 +509,7 @@ export const storeRecordSchema = typed<StoreRecord>()(
 		.obj({
 			id: t.str(),
 			version: semver(),
-			kind: t.oneOf('action', 'trigger', 'provider', 'credential'),
+			kind: t.oneOf('action', 'trigger', 'provider', 'credential', 'sdk'),
 			nodeContract: nodeContractVersion(),
 			manifest: digest(),
 			bundle: digest().optional(),
@@ -536,14 +572,16 @@ export const manifestJsonSchema = (version: string) => ({
 	title: 'n8n Node Contract manifest',
 	description:
 		'Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.',
-	oneOf: [versionManifestSchema.json, credentialManifestSchema.json, nativeManifestSchema.json],
+	oneOf: [
+		versionManifestSchema.json,
+		credentialManifestSchema.json,
+		nativeManifestSchema.json,
+		sdkManifestSchema.json,
+	],
 });
 
 /** The credential manifest that pack writes. A compat type has none. */
-export function credentialManifestOf(
-	type: AnyCredentialType,
-	sdk: string,
-): CredentialManifest | undefined {
+export function credentialManifestOf(type: AnyCredentialType): CredentialManifest | undefined {
 	const { scheme: typeScheme } = type;
 	if (typeScheme.kind === 'compat' || type.semver === undefined) return undefined;
 	return {
@@ -552,7 +590,6 @@ export function credentialManifestOf(
 		name: type.name,
 		semver: type.semver,
 		nodeContract: '2.5.0',
-		sdk,
 		displayName: type.displayName,
 		...(type.documentationUrl ? { documentationUrl: type.documentationUrl } : {}),
 		fields: t.obj(type.fields ?? {}).json,
@@ -565,6 +602,15 @@ export function credentialManifestOf(
 		...(type.legacyParent ? { legacyParent: type.legacyParent } : {}),
 		...(type.renamed ? { renamed: type.renamed } : {}),
 	};
+}
+
+/** Reads an SDK runtime manifest that pack wrote. */
+export function parseSdkManifest(text: string): SdkManifest {
+	const value: unknown = JSON.parse(text);
+	if (!matches(sdkManifestSchema, value)) {
+		throw new UnexpectedError('The SDK runtime manifest is not valid');
+	}
+	return value;
 }
 
 /** Reads a credential manifest that pack wrote. */

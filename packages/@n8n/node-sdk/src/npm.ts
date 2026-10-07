@@ -23,6 +23,7 @@ import {
 	type StoreRevoke,
 	type StoreYank,
 } from './store';
+import { SDK_RUNTIME_ID } from './manifest';
 import { sha256, type ContractFixtures } from './version';
 
 /** The npm scope of contract packages. It is a placeholder of the POC: n8n has not picked the scope. */
@@ -73,7 +74,17 @@ const jsonText = (value: unknown) => `${JSON.stringify(value, null, '\t')}\n`;
 export const npmDigestOf = (manifest: StoreManifest) =>
 	`sha256:${sha256(manifestTextOf(manifest))}`;
 
-/** The files of the npm package of one version, by file name. */
+const descriptionOf = (manifest: StoreManifest) =>
+	manifest.kind === 'credential'
+		? manifest.displayName
+		: manifest.kind === 'sdk'
+			? `The @n8n/node-sdk runtime ${manifest.semver} that contract bundles import`
+			: manifest.contract.summary;
+
+/**
+ * The files of the npm package of one version, by file name. A version that pins the SDK runtime
+ * depends on its exact version.
+ */
 export function npmPackageOf(
 	{ manifest, bundle, fixtures }: NpmVersion,
 	options: {
@@ -86,11 +97,15 @@ export function npmPackageOf(
 	},
 ): Record<string, string> {
 	const manifestText = manifestTextOf(manifest);
+	const sdk = 'sdk' in manifest ? manifest.sdk : undefined;
 	const packageJson = {
 		name: npmNameOf(manifest.id, options.scope),
 		version: manifest.semver,
-		description: manifest.kind === 'credential' ? manifest.displayName : manifest.contract.summary,
+		description: descriptionOf(manifest),
 		...options.source,
+		...(typeof sdk === 'object'
+			? { dependencies: { [npmNameOf(SDK_RUNTIME_ID, options.scope)]: sdk.version } }
+			: {}),
 		// Publish compares `digest` with the manifest, so it needs no tarball for a known version.
 		n8n: {
 			id: manifest.id,

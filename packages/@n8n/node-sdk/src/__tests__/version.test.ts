@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
-import { packAction, packPackage, type PackedAction } from '../pack';
+import { packAction, packPackage, packSdkRuntime, type PackedAction } from '../pack';
 import { generateNodeModule } from '../entry/codegen';
 import {
 	hostRuntime,
@@ -848,10 +848,15 @@ describe('published versions', () => {
 		const [items = []]: INodeExecutionData[][] = Array.isArray(result) ? result : [];
 		return items.map((item) => item.json.text);
 	};
+	const sdk = { bundle: '' };
+	beforeAll(async () => {
+		sdk.bundle = (await packSdkRuntime()).bundle;
+	});
 	const packedOf = (manifest: VersionManifest, bundle: string): PackedVersion => ({
 		manifest,
 		origin: 'first-party',
 		readBundle: async () => bundle,
+		readSdk: async () => sdk.bundle,
 	});
 
 	it('keep their behaviour when a shared helper changes', async () => {
@@ -925,6 +930,7 @@ describe('published versions', () => {
 				if (reads.count === 1) throw new Error('offline');
 				return bundle;
 			},
+			readSdk: async () => sdk.bundle,
 		};
 
 		const runtime = hostRuntime();
@@ -933,12 +939,51 @@ describe('published versions', () => {
 		expect(reads.count).toBe(2);
 	});
 
+	it('keep running a self-contained bundle of Node Contract 2.10.0, which pins no SDK runtime', async () => {
+		await writeShout('text');
+		await writeFile(dirs.entry, echoSource());
+		const { manifest } = await packAction(dirs.entry, 'echo');
+		// The bundle inlines the SDK, as pack did before Node Contract 2.11.0.
+		const { build } = await import('esbuild');
+		const result = await build({
+			stdin: {
+				contents: `export { echo as default } from ${JSON.stringify(dirs.entry)};`,
+				resolveDir: dirs.root,
+				loader: 'ts',
+			},
+			bundle: true,
+			write: false,
+			format: 'cjs',
+			platform: 'neutral',
+			mainFields: ['browser', 'module', 'main'],
+			external: ['n8n-workflow'],
+			alias: { '@n8n/node-sdk': path.resolve(__dirname, '../index.ts') },
+		});
+		const bundle = result.outputFiles[0]?.text ?? '';
+		expect(bundle).not.toContain('require("@n8n/node-sdk")');
+		const old: VersionManifest = {
+			...manifest,
+			nodeContract: '2.10.0',
+			sdk: '0.1.0',
+			bundleHash: sha256(bundle),
+		};
+		const selfContained: PackedVersion = {
+			manifest: parseManifest(JSON.stringify(old)),
+			origin: 'first-party',
+			readBundle: async () => bundle,
+		};
+		expect(await run(selfContained)).toEqual(['hello!']);
+	});
+
 	describe('nodeContract', () => {
-		it('is the version packAction writes: 2.1.0 without binary data', async () => {
+		it('is 2.11.0 for a bundle that imports the SDK runtime, which the manifest pins', async () => {
 			await writeShout('text');
-			const { manifest } = await pack();
-			expect(manifest).toMatchObject({ kind: 'action', nodeContract: '2.1.0' });
-			expect(manifest.sdk).toMatch(/^\d+\.\d+\.\d+$/);
+			const { manifest, sdk: runtime } = await pack();
+			expect(manifest).toMatchObject({ kind: 'action', nodeContract: '2.11.0' });
+			expect(manifest.sdk).toEqual({
+				version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
+				digest: `sha256:${sha256(runtime ?? '')}`,
+			});
 		});
 
 		it('is 2.4.0 for a list binding or a page value input', () => {
@@ -973,9 +1018,10 @@ describe('published versions', () => {
 				toVersionedNodeType([packedOf({ ...manifest, nodeContract }, bundle)], runtime);
 
 			expect(() => typeOf('3.0.0')).toThrow(
-				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.10.0.',
+				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.11.0.',
 			);
-			expect(() => typeOf('2.11.0')).toThrow('needs Node Contract 2.11.0');
+			expect(() => typeOf('2.12.0')).toThrow('needs Node Contract 2.12.0');
+			expect(() => typeOf('2.11.0')).not.toThrow();
 			expect(() => typeOf('2.10.0')).not.toThrow();
 			expect(() => typeOf('2.8.0')).not.toThrow();
 			expect(() => typeOf('2.7.0')).not.toThrow();
@@ -988,7 +1034,7 @@ describe('published versions', () => {
 			expect(() => typeOf('2.0.3')).not.toThrow();
 
 			expect(() => typeOf('1.0.0', hostRuntime({ nodeContractRange: '>=1.0.0 <3.0.0' }))).toThrow(
-				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.10.0.',
+				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.11.0.',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
 			const picking = hostRuntime({
@@ -1037,17 +1083,20 @@ describe('published versions', () => {
 
 		it('is refused by evaluateBundle for a major or minor this host lacks', async () => {
 			await writeShout('text');
-			const { bundle } = await pack();
-			expect(() => evaluateBundle(bundle, '3.0.0')).toThrow(
+			const { bundle, sdk: runtime } = await pack();
+			expect(() => evaluateBundle(bundle, '3.0.0', runtime)).toThrow(
 				'This host cannot run Node Contract 3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, '2.11.0')).toThrow('cannot run');
-			expect(() => evaluateBundle(bundle, '1.0.0')).toThrow(
-				'This host cannot run Node Contract 1.0.0. It implements 2.10.0.',
+			expect(() => evaluateBundle(bundle, '2.12.0', runtime)).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, '1.0.0', runtime)).toThrow(
+				'This host cannot run Node Contract 1.0.0. It implements 2.11.0.',
 			);
-			expect(evaluateBundle(bundle, '2.0.0').id).toBe('demo.echo');
-			expect(evaluateBundle(bundle, '2.1.0').id).toBe('demo.echo');
-			expect(evaluateBundle(bundle, NODE_CONTRACT_VERSION).id).toBe('demo.echo');
+			expect(() => evaluateBundle(bundle, NODE_CONTRACT_VERSION)).toThrow(
+				'A packed action cannot import @n8n/node-sdk',
+			);
+			expect(evaluateBundle(bundle, '2.0.0', runtime).id).toBe('demo.echo');
+			expect(evaluateBundle(bundle, '2.1.0', runtime).id).toBe('demo.echo');
+			expect(evaluateBundle(bundle, NODE_CONTRACT_VERSION, runtime).id).toBe('demo.echo');
 		});
 	});
 });

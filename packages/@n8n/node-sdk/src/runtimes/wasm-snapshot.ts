@@ -40,6 +40,8 @@ export interface SnapshotJob {
 	readonly guests: string;
 	readonly bundleFile: string;
 	readonly bundleSha256: string;
+	/** The SDK runtime that the bundle pins. A self-contained bundle has none. */
+	readonly sdk?: GuestSession['sdk'];
 	readonly outDir: string;
 }
 
@@ -110,7 +112,7 @@ export interface SnapshotStatus {
  * Like `wasmReuseRuntime`, but an action runs in a component built for its bundle: the bundle is
  * evaluated in the Wizer snapshot, not at the first call of each instance. The first session of a
  * bundle builds the component from `<guests>/action-snapshot.js` with `buildSnapshot` into
- * `<cacheDir>/snapshots`, keyed on the bundle and the template digest.
+ * `<cacheDir>/snapshots`, keyed on the bundle, its SDK runtime and the template digest.
  *
  * The snapshots and their `.cwasm` files take at most `maxCacheBytes` in each cache directory: a
  * new build removes the snapshots used longest ago. Use one runtime for each cache directory.
@@ -195,7 +197,7 @@ export function wasmSnapshotRuntime(
 		return generic;
 	};
 
-	const build = async ({ manifest, bundleFile, cacheDir }: GuestSession, dir: string) => {
+	const build = async ({ manifest, bundleFile, sdk, cacheDir }: GuestSession, dir: string) => {
 		const { id, bundleHash } = manifest;
 		const recorded = path.join(dir, 'action.wasm.sha256');
 		const { buildSnapshot } = options;
@@ -209,6 +211,7 @@ export function wasmSnapshotRuntime(
 							guests: options.guests,
 							bundleFile,
 							bundleSha256: bundleHash,
+							sdk,
 							outDir: dir,
 						}),
 				).then(() => undefined, reasonOf);
@@ -243,7 +246,10 @@ export function wasmSnapshotRuntime(
 		const dir = path.join(
 			cacheDir,
 			'snapshots',
-			`${manifest.bundleHash}-${template.digest.slice(0, 16)}`,
+			// The bundle is evaluated with its SDK runtime in the snapshot, so both name it.
+			[manifest.bundleHash, session.sdk?.sha256.slice(0, 16), template.digest.slice(0, 16)]
+				.filter((part) => part !== undefined)
+				.join('-'),
 		);
 		uses.count += 1;
 		used.set(dir, uses.count);

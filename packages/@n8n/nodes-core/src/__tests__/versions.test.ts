@@ -41,10 +41,13 @@ async function headOf(id: string): Promise<PackedVersion> {
 	if (!read || !isVersionManifest(read.manifest)) throw new Error(`${id} has no bundled HEAD`);
 	const bundle = record.bundle && (await store.blob(record.bundle));
 	if (!bundle) throw new Error(`${id} has no bundle`);
+	const { sdk } = read.manifest;
+	const runtime = typeof sdk === 'object' ? await store.blob(sdk.digest) : undefined;
 	return {
 		manifest: read.manifest,
 		origin: 'first-party',
 		readBundle: async () => bundle.toString('utf8'),
+		readSdk: async () => runtime?.toString('utf8') ?? '',
 	};
 }
 
@@ -77,8 +80,8 @@ describe('bundled versions', () => {
 		const issues = await Promise.all(
 			actions.map(async ({ id }) => {
 				const head = await headOf(id);
-				const bundle = await head.readBundle();
-				return await replayFixtures({ manifest: head.manifest, bundle }, fixturesOf(id));
+				const [bundle, sdk] = await Promise.all([head.readBundle(), head.readSdk?.()]);
+				return await replayFixtures({ manifest: head.manifest, bundle, sdk }, fixturesOf(id));
 			}),
 		);
 		expect(issues.flat()).toEqual([]);

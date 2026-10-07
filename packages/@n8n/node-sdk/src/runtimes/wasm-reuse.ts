@@ -33,12 +33,13 @@ const IDLE_MS = 30_000;
 const MAX_RUNS = 100;
 
 /** Sessions with the same key start the sidecar with the same arguments. */
-const keyOf = ({ kind, manifest, bundleFile, grants, limits, cacheDir }: GuestSession) =>
+const keyOf = ({ kind, manifest, bundleFile, sdk, grants, limits, cacheDir }: GuestSession) =>
 	JSON.stringify([
 		kind,
 		manifest.bundleHash,
 		manifest.nodeContract,
 		bundleFile,
+		sdk,
 		cacheDir,
 		[...grants].sort(),
 		Object.entries(limits).sort(([a], [b]) => a.localeCompare(b)),

@@ -25,10 +25,12 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	parseCredentialManifest,
+	parseSdkManifest,
 	storeRecordSchema,
 	storeStatusRecordSchema,
 	type CredentialManifest,
 	type NativeManifest,
+	type SdkManifest,
 } from './manifest';
 import { canonicalJson } from './schema';
 import { matches } from './validate';
@@ -41,12 +43,15 @@ import {
 	type VersionManifest,
 } from './version';
 
-/** A manifest that a store holds: a bundled version, a credential type, or a native version. */
-export type StoreManifest = VersionManifest | CredentialManifest | NativeManifest;
+/**
+ * A manifest that a store holds: a bundled version, a credential type, a native version, or the
+ * SDK runtime.
+ */
+export type StoreManifest = VersionManifest | CredentialManifest | NativeManifest | SdkManifest;
 
 /** True for the manifest of a version with a bundle: an action, trigger or provider that the SDK runs. */
 export const isVersionManifest = (manifest: StoreManifest): manifest is VersionManifest =>
-	manifest.kind !== 'credential' && !('native' in manifest);
+	manifest.kind !== 'credential' && manifest.kind !== 'sdk' && !('native' in manifest);
 
 /**
  * The credential pins of a manifest that none of `credentials` resolves, e.g. to refuse the
@@ -74,7 +79,7 @@ export interface StoreRecord {
 	/** `major.minor.patch` of the version. */
 	readonly version: string;
 	/** What the manifest describes. */
-	readonly kind: VersionManifest['kind'] | CredentialManifest['kind'];
+	readonly kind: StoreManifest['kind'];
 	/** The lowest Node Contract version that the version needs. */
 	readonly nodeContract: NodeContractVersion;
 	/** `sha256:<hex>` of the manifest bytes. It identifies the version. */
@@ -256,6 +261,7 @@ export const manifestTextOf = (manifest: StoreManifest) =>
 const parseAnyManifest = (text: string): StoreManifest => {
 	const value: unknown = JSON.parse(text);
 	if (isRecord(value) && value.kind === 'credential') return parseCredentialManifest(text);
+	if (isRecord(value) && value.kind === 'sdk') return parseSdkManifest(text);
 	return isRecord(value) && 'native' in value ? parseNativeManifest(text) : parseManifest(text);
 };
 
@@ -266,6 +272,7 @@ function recordOf(manifest: StoreManifest, digest: string): StoreRecord {
 	const { id, semver: version, kind, nodeContract } = manifest;
 	const head = { id, version, kind, nodeContract, manifest: digest };
 	if (manifest.kind === 'credential') return { ...head, name: manifest.name };
+	if (manifest.kind === 'sdk') return { ...head, bundle: `sha256:${manifest.bundleHash}` };
 	const { contract, contractHash, credentials } = manifest;
 	const pins = credentials ? { credentials } : {};
 	// A legacy node runs a native version, so its line has no bundle and no permissions.

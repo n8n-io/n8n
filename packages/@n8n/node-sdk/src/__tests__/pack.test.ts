@@ -10,11 +10,15 @@ import type { Action } from '../define';
 import type { PermissionRefusal } from '../egress';
 import { defineCredential, field } from '../entry/credentials';
 import {
+	contractsOfPackage,
 	credentialTypesOf,
 	packAction,
 	packPackage,
+	packSdkRuntime,
+	sdkVersion,
 	GUEST_LACKS,
 	type PackedAction,
+	type PackedSdkRuntime,
 } from '../pack';
 import { npmDigestOf, npmPackageOf } from '../npm';
 import {
@@ -28,6 +32,7 @@ import {
 } from '../runtime';
 import { storeFilesOfDir, storeReader } from '../store';
 import { loadTriggerExecutor, toVersionedTriggerType } from '../triggers';
+import { sha256 } from '../version';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
@@ -63,6 +68,52 @@ export const probeAction = probe.action('probe', {
 } as any);
 `;
 
+describe('packSdkRuntime', () => {
+	it('bundles the SDK as one runtime with the same bytes each time, and only host modules outside', async () => {
+		const [one, two] = await Promise.all([packSdkRuntime(), packSdkRuntime()]);
+		expect(two.bundle).toBe(one.bundle);
+		expect(one.manifest).toEqual({
+			kind: 'sdk',
+			id: 'sdkRuntime',
+			semver: sdkVersion(),
+			nodeContract: '2.11.0',
+			bundleHash: sha256(one.bundle),
+		});
+		const required = new Set([...one.bundle.matchAll(/require\("([^"]+)"\)/g)].map(([, id]) => id));
+		expect(required).toEqual(new Set(['n8n-workflow', '@n8n/node-sdk/validator']));
+	});
+
+	it('leaves the bundle hash of each first-party action when only the SDK version changes', async () => {
+		const packages = ['nodes-core', 'nodes-integrations'].map((name) => ({
+			name: `@n8n/${name}`,
+			dir: path.resolve(__dirname, '../../..', name),
+		}));
+		const entries = (await Promise.all(packages.map(contractsOfPackage))).flatMap(
+			({ entries: found }) => found,
+		);
+		const [sdk, bumped] = await Promise.all([packSdkRuntime(), packSdkRuntime('9.9.9')]);
+		const manifestsOf = async (runtime: PackedSdkRuntime) =>
+			await Promise.all(
+				entries.map(
+					async ({ entryFile, exportName }) =>
+						(await packAction(entryFile, exportName, runtime)).manifest,
+				),
+			);
+		const [before, after] = await Promise.all([manifestsOf(sdk), manifestsOf(bumped)]);
+		expect(entries.length).toBeGreaterThan(80);
+		expect(after.map(({ id, bundleHash }) => [id, bundleHash])).toEqual(
+			before.map(({ id, bundleHash }) => [id, bundleHash]),
+		);
+		const digest = `sha256:${sha256(sdk.bundle)}`;
+		expect(before.map(({ sdk: pin }) => pin)).toEqual(
+			before.map(() => ({ version: sdkVersion(), digest })),
+		);
+		expect(after.map(({ sdk: pin }) => pin)).toEqual(
+			after.map(() => ({ version: '9.9.9', digest })),
+		);
+	}, 120_000);
+});
+
 describe('packAction', () => {
 	const dirs = { root: '' };
 	const pack = async (value: string, header?: string, spec?: string) => {
@@ -87,7 +138,7 @@ describe('packAction', () => {
 			`runtime: { image: '${image}', childProcess: true },`,
 		);
 		expect(manifest.contract.runtime).toEqual({ image, childProcess: true });
-		expect(manifest.nodeContract).toBe('2.7.0');
+		expect(manifest.nodeContract).toBe('2.11.0');
 	});
 
 	it('writes the ui block beside the contract, and refuses one that is not valid', async () => {
@@ -191,14 +242,14 @@ describe('packAction', () => {
 		);
 	});
 
-	it('takes validate from the host module, which needs Node Contract 2.9.0', async () => {
+	it('takes validate from the SDK runtime, which takes it from the host module', async () => {
 		const { manifest, bundle, action } = await pack(
 			'validate(1, t.str().json).join()',
 			"import { validate } from '@n8n/node-sdk';",
 		);
-		expect(bundle).toContain('require("@n8n/node-sdk/validator")');
+		expect(bundle).toContain('require("@n8n/node-sdk")');
 		expect(bundle).not.toContain('does not match any allowed shape');
-		expect(manifest.nodeContract).toBe('2.9.0');
+		expect(manifest.nodeContract).toBe('2.11.0');
 		const { run } = action as unknown as { run: () => Promise<{ value: string }> };
 		await expect(run()).resolves.toEqual({ value: 'input: must be string, got 1' });
 	});
@@ -264,11 +315,12 @@ describe('the manifest as the permission source', () => {
 	const state: { root: string; packed?: PackedAction } = { root: '' };
 	const versionOf = (contract: Record<string, unknown> = {}): PackedVersion => {
 		if (!state.packed) throw new Error('Not packed');
-		const { manifest, bundle } = state.packed;
+		const { manifest, bundle, sdk } = state.packed;
 		return {
 			manifest: { ...manifest, contract: { ...manifest.contract, ...contract } },
 			origin: 'first-party',
 			readBundle: async () => bundle,
+			readSdk: async () => sdk ?? '',
 		};
 	};
 
@@ -359,11 +411,12 @@ describe('the manifest of a trigger as the permission source', () => {
 	const state: { root: string; packed?: PackedAction } = { root: '' };
 	const versionOf = (contract: Record<string, unknown> = {}): PackedVersion => {
 		if (!state.packed) throw new Error('Not packed');
-		const { manifest, bundle } = state.packed;
+		const { manifest, bundle, sdk } = state.packed;
 		return {
 			manifest: { ...manifest, contract: { ...manifest.contract, ...contract } },
 			origin: 'first-party',
 			readBundle: async () => bundle,
+			readSdk: async () => sdk ?? '',
 		};
 	};
 
@@ -386,11 +439,15 @@ describe('the manifest of a trigger as the permission source', () => {
 	});
 
 	it('shows the advanced fields of a packed trigger in Options, and reads them from there', async () => {
-		const { manifest, bundle } = await packAction(path.join(state.root, 'hook.ts'), 'labelTrigger');
+		const { manifest, bundle, sdk } = await packAction(
+			path.join(state.root, 'hook.ts'),
+			'labelTrigger',
+		);
 		const version: PackedVersion = {
 			manifest,
 			origin: 'first-party',
 			readBundle: async () => bundle,
+			readSdk: async () => sdk ?? '',
 		};
 		const type = new (toVersionedTriggerType([version], hostRuntime()))().getNodeType(1);
 		expect(type.description.properties.map(({ name, type: kind }) => [name, kind])).toEqual([
@@ -531,6 +588,10 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 		const local = await packPackage(pkg);
 		expect(local.manifests[0]?.bundleHash).not.toBe(published.manifest.bundleHash);
 		expect((await headOf())?.manifest).toBe(npmDigestOf(local.manifests[0] ?? published.manifest));
+		const store = storeReader(storeFilesOfDir(path.join(dirs.pkg, 'dist', 'store')));
+		const sdkLines = await store.records('sdkRuntime');
+		expect(sdkLines).toEqual([expect.objectContaining({ kind: 'sdk', version: sdkVersion() })]);
+		expect(local.manifests[0]?.sdk).toEqual({ version: sdkVersion(), digest: sdkLines[0]?.bundle });
 
 		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', registry);
 		await writeFile(

@@ -183,7 +183,12 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action-sn
 		const counterOf = async (runtime: GuestRuntime, file = 'counter.ts') => {
 			const packed = await packAction(path.join(dirs.root, file), 'count');
 			const { executor } = await sandboxedVersionOf(
-				{ manifest: packed.manifest, origin: 'private', readBundle: async () => packed.bundle },
+				{
+					manifest: packed.manifest,
+					origin: 'private',
+					readBundle: async () => packed.bundle,
+					readSdk: async () => packed.sdk ?? '',
+				},
 				{ runtime, cacheDir: cacheDir(), credentialType: () => undefined },
 				firstPartyRuntime(),
 			);

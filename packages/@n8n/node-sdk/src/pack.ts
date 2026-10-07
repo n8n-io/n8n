@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import type { BuildOptions, BuildResult, Plugin } from 'esbuild';
 import path from 'node:path';
 import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -18,8 +19,10 @@ import {
 import {
 	actionUiSchema,
 	credentialManifestOf,
+	SDK_RUNTIME_ID,
 	type CredentialManifest,
 	type NativeManifest,
+	type SdkManifest,
 } from './manifest';
 import {
 	DEFAULT_NPM_SCOPE,
@@ -30,7 +33,7 @@ import {
 	npmTarballFile,
 	npmVersionsOf,
 } from './npm';
-import { evaluateBundle, isHostModule, VALIDATOR_MODULE } from './runtime';
+import { evaluateBundle, isHostModule, SDK_MODULES, VALIDATOR_MODULE } from './runtime';
 import {
 	addToStore,
 	embeddedStoreDirOf,
@@ -50,17 +53,18 @@ import {
 	parseSemver,
 	requiredNodeContractOf,
 	sha256,
+	type NodeContractVersion,
 	type VersionManifest,
 } from './version';
 import { canonicalJson } from './schema';
 
-/** The SDK source inlines into each bundle, so a version keeps the SDK helpers it was packed with. */
+/** The SDK source that the SDK runtime bundles. */
 const SDK_SOURCE = path.resolve(__dirname, '..', 'src');
 
 /** The SDK module that the host gives each bundle as `VALIDATOR_MODULE`, with ajv. */
 const VALIDATOR_SOURCE = path.join(SDK_SOURCE, 'validator.ts');
 
-/** The `@n8n/node-sdk` version, recorded in each manifest for traceability. */
+/** The `@n8n/node-sdk` version: the version of the SDK runtime. */
 export function sdkVersion(): string {
 	const packageJson: unknown = JSON.parse(
 		readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8'),
@@ -158,7 +162,9 @@ async function sandboxGapsOf(
 		[...unguarded.matchAll(new RegExp(`${LACKS_MARKER}(\\w+)`, 'g'))].map(([, name]) => name),
 	);
 	return [
-		...modules.filter((module) => !isHostModule(module)).map((module) => `the module ${module}`),
+		...modules
+			.filter((module) => !isHostModule(module) && !SDK_MODULES.includes(module))
+			.map((module) => `the module ${module}`),
 		// The host validates with its own ajv, so a bundle that carries ajv only grows.
 		...(inputs.some((input) => /(^|\/)node_modules\/ajv\//.test(input))
 			? ['ajv (use validate of @n8n/node-sdk: the host gives it)']
@@ -176,8 +182,103 @@ export interface PackedAction {
 	readonly manifest: VersionManifest;
 	/** The bundle code. */
 	readonly bundle: string;
+	/** The SDK runtime bundle that `manifest.sdk` pins. An HTTP guest config has none. */
+	readonly sdk?: string;
 	/** The action or trigger that the bundle exports. */
 	readonly action: Action | Trigger;
+}
+
+/** The SDK runtime in memory: its manifest and its bundle. */
+export interface PackedSdkRuntime {
+	/** The manifest of the runtime. */
+	readonly manifest: SdkManifest;
+	/** The runtime code. Its default export is `{ root, credentials }`. */
+	readonly bundle: string;
+}
+
+/** The Node Contract version that added the SDK runtime. */
+const SDK_NODE_CONTRACT: NodeContractVersion = '2.11.0';
+
+/** The build settings of a bundle and of the SDK runtime. The same source gives the same bytes. */
+const BUILD_OPTIONS = {
+	bundle: true,
+	write: false,
+	metafile: true,
+	format: 'cjs',
+	platform: 'neutral',
+	// The neutral platform reads no main field, so a package without `exports` would not resolve.
+	// The guest has web APIs and no Node builtins, so the browser build of a package comes first.
+	mainFields: ['browser', 'module', 'main'],
+	target: 'es2022',
+	charset: 'utf8',
+	// Comments and layout stay out of the bytes, so only code changes need a new version.
+	minifyWhitespace: true,
+} as const satisfies BuildOptions;
+
+/** Keeps the SDK `validator` module out of the bytes: the host gives it as `VALIDATOR_MODULE`. */
+const sdkSourcePlugin: Plugin = {
+	name: 'node-sdk-source',
+	setup(bundler) {
+		bundler.onResolve({ filter: /^\.\.?\/[\w./-]+$/ }, ({ importer, path: file }) => {
+			const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
+			if (!importer.startsWith(SDK_SOURCE) || !resolved.startsWith(SDK_SOURCE)) {
+				return undefined;
+			}
+			return resolved === VALIDATOR_SOURCE
+				? { path: VALIDATOR_MODULE, external: true, sideEffects: false }
+				: { path: resolved, sideEffects: false };
+		});
+	},
+};
+
+/** The modules that a build leaves to the host. */
+const externalsOf = ({ metafile }: BuildResult<{ metafile: true }>) => [
+	...new Set(
+		Object.values(metafile.outputs).flatMap(({ imports }) =>
+			imports.filter(({ external }) => external).map(({ path: module }) => module),
+		),
+	),
+];
+
+/**
+ * Bundles `@n8n/node-sdk` and `@n8n/node-sdk/credentials` as one runtime, which the host gives
+ * each bundle as `SDK_MODULES`. The same source gives the same bytes, so a new SDK version
+ * with the same code keeps the digest.
+ */
+export async function packSdkRuntime(version = sdkVersion()): Promise<PackedSdkRuntime> {
+	const { build } = await import('esbuild');
+	const [root, credentials] = ['index.ts', 'entry/credentials.ts'].map((file) =>
+		JSON.stringify(path.join(SDK_SOURCE, file)),
+	);
+	const result = await build({
+		...BUILD_OPTIONS,
+		stdin: {
+			contents: `import * as root from ${root};\nimport * as credentials from ${credentials};\nexport default { root, credentials };`,
+			resolveDir: SDK_SOURCE,
+			loader: 'ts',
+		},
+		external: ['n8n-workflow', 'node:*'],
+		plugins: [sdkSourcePlugin],
+	});
+	const bundle = result.outputFiles[0]?.text ?? '';
+	const gaps = await sandboxGapsOf(
+		bundle,
+		externalsOf(result),
+		Object.keys(result.metafile.inputs),
+	);
+	if (gaps.length > 0) {
+		throw new UnexpectedError(`The SDK runtime uses what a bundle may not use: ${gaps.join(', ')}`);
+	}
+	return {
+		manifest: {
+			kind: 'sdk',
+			id: SDK_RUNTIME_ID,
+			semver: version,
+			nodeContract: SDK_NODE_CONTRACT,
+			bundleHash: sha256(bundle),
+		},
+		bundle,
+	};
 }
 
 /** The version that the source sets. Only an action that the host makes has none. */
@@ -185,66 +286,37 @@ const semverOf = (source: Action | Trigger) => source.semver ?? `${source.versio
 
 /**
  * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
- * same bytes, so a release build reproduces the HEAD bundle the registry holds.
+ * same bytes, so a release build reproduces the HEAD bundle the registry holds. The bundle imports
+ * the SDK from the host, and its manifest pins `sdk`. Default: the SDK runtime of this source.
  */
-export async function packAction(entryFile: string, exportName: string): Promise<PackedAction> {
+export async function packAction(
+	entryFile: string,
+	exportName: string,
+	sdk?: PackedSdkRuntime,
+): Promise<PackedAction> {
 	const { build } = await import('esbuild');
 	const result = await build({
+		...BUILD_OPTIONS,
 		stdin: {
 			contents: `export { ${exportName} as default } from ${JSON.stringify(entryFile)};`,
 			resolveDir: path.dirname(entryFile),
 			loader: 'ts',
 		},
-		bundle: true,
-		write: false,
-		metafile: true,
-		format: 'cjs',
-		platform: 'neutral',
-		// The neutral platform reads no main field, so a package without `exports` would not resolve.
-		// The guest has web APIs and no Node builtins, so the browser build of a package comes first.
-		mainFields: ['browser', 'module', 'main'],
-		target: 'es2022',
-		charset: 'utf8',
-		// Comments and layout stay out of the bytes, so only code changes need a new version.
-		minifyWhitespace: true,
-		// The host provides `n8n-workflow`. Unused SDK modules drop out with their imports.
-		external: ['n8n-workflow', 'node:*'],
-		plugins: [
-			{
-				name: 'node-sdk-source',
-				setup(bundler) {
-					bundler.onResolve({ filter: /^@n8n\/node-sdk(\/credentials)?$/ }, ({ path: name }) => ({
-						path: path.join(
-							SDK_SOURCE,
-							name.endsWith('/credentials') ? 'entry/credentials.ts' : 'index.ts',
-						),
-						sideEffects: false,
-					}));
-					bundler.onResolve({ filter: /^\.\.?\/[\w./-]+$/ }, ({ importer, path: file }) => {
-						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
-						if (!importer.startsWith(SDK_SOURCE) || !resolved.startsWith(SDK_SOURCE)) {
-							return undefined;
-						}
-						return resolved === VALIDATOR_SOURCE
-							? { path: VALIDATOR_MODULE, external: true, sideEffects: false }
-							: { path: resolved, sideEffects: false };
-					});
-				},
-			},
-		],
+		// The host provides `n8n-workflow` and the SDK runtime.
+		external: ['n8n-workflow', 'node:*', ...SDK_MODULES],
+		plugins: [sdkSourcePlugin],
 	});
 	const bundle = result.outputFiles[0]?.text ?? '';
-	const modules = Object.values(result.metafile.outputs).flatMap(({ imports }) =>
-		imports.filter(({ external }) => external).map(({ path: module }) => module),
-	);
-	const imported = [...new Set(modules)];
+	const imported = externalsOf(result);
 	const gaps = await sandboxGapsOf(bundle, imported, Object.keys(result.metafile.inputs));
 	if (gaps.length > 0) {
 		throw new UserError(
 			`${exportName} in ${entryFile} uses what a bundle may not use: ${gaps.join(', ')}. Use web APIs, http.request for requests, no timers, and no Unicode property escapes.`,
 		);
 	}
-	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION);
+	const usesSdk = imported.some((module) => SDK_MODULES.includes(module));
+	const runtimeSdk = usesSdk ? (sdk ?? (await packSdkRuntime())) : undefined;
+	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION, runtimeSdk?.bundle);
 	const runtime = 'runtime' in action ? action.runtime : undefined;
 	// A tag can point to other bytes later, so only a digest pins what the version runs.
 	if (runtime && !/@sha256:[0-9a-f]{64}$/.test(runtime.image)) {
@@ -265,16 +337,25 @@ export async function packAction(entryFile: string, exportName: string): Promise
 		'list' in action && action.list !== undefined,
 		errorOf !== undefined,
 	);
+	// The host gives the validator module since 2.9.0, and the SDK runtime since 2.11.0.
+	const floors: NodeContractVersion[] = [
+		required,
+		...(imported.includes(VALIDATOR_MODULE) ? ['2.9.0' as const] : []),
+		...(runtimeSdk ? [SDK_NODE_CONTRACT] : []),
+	];
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
 		id: action.id,
 		semver: semverOf(action),
-		// The host gives the validator module since 2.9.0.
-		nodeContract:
-			imported.includes(VALIDATOR_MODULE) && compareSemver(required, '2.9.0') < 0
-				? '2.9.0'
-				: required,
-		sdk: sdkVersion(),
+		nodeContract: floors.reduce((top, floor) => (compareSemver(top, floor) >= 0 ? top : floor)),
+		...(runtimeSdk
+			? {
+					sdk: {
+						version: runtimeSdk.manifest.semver,
+						digest: `sha256:${runtimeSdk.manifest.bundleHash}`,
+					},
+				}
+			: {}),
 		...(credentials.length ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		bundleHash,
@@ -282,7 +363,7 @@ export async function packAction(entryFile: string, exportName: string): Promise
 		contract,
 		...(ui ? { ui } : {}),
 	};
-	return { manifest, bundle, action };
+	return { manifest, bundle, ...(runtimeSdk ? { sdk: runtimeSdk.bundle } : {}), action };
 }
 
 /**
@@ -324,7 +405,6 @@ export async function packHttpGuest(
 		id: action.id,
 		semver: semverOf(action),
 		nodeContract: HTTP_GUEST_NODE_CONTRACT,
-		sdk: sdkVersion(),
 		...(credentials.length ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		bundleHash,
@@ -469,7 +549,7 @@ function assertCredentialHost(baseUrl: string | undefined, type: AnyCredentialTy
 
 /** The credential manifest of a type, with the version of its source, or none for a compat type. */
 export const packCredential = (type: AnyCredentialType): CredentialManifest | undefined =>
-	credentialManifestOf(type, sdkVersion());
+	credentialManifestOf(type);
 
 /**
  * The manifest of a native action or trigger: its contract and the legacy node that runs it. It
@@ -493,7 +573,6 @@ export function packNative(source: Action | Trigger): NativeManifest {
 		id: source.id,
 		semver: semverOf(source),
 		nodeContract: '2.5.0',
-		sdk: sdkVersion(),
 		...(credentials.length ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		contract,
@@ -618,8 +697,8 @@ async function publishedOf(registry: string, scope: string, { id, semver }: Stor
 }
 
 /**
- * The version to ship of a HEAD with a bundle. A bundle inlines the SDK, so a rebuild can give
- * other bytes for a published version: then the published manifest, bundle and fixtures ship.
+ * The version to ship of a HEAD with a bundle. A rebuild can give other bytes for a published
+ * version: then the published manifest, bundle and fixtures ship.
  */
 async function shippedOf(
 	registry: string,
@@ -651,10 +730,10 @@ async function shippedOf(
 }
 
 /**
- * Packs the HEAD of each action, trigger, credential type and native contract of a package
- * into the store in `outDir`, by default the embedded store of the package. It replaces the
- * store in `outDir`: n8n loads every version there, so a removed contract must not stay from an
- * older build. Each version comes from the source. It finds the contracts in the action files
+ * Packs the HEAD of each action, trigger, credential type and native contract of a package,
+ * and the SDK runtime that the bundles pin, into the store in `outDir`, by default the embedded
+ * store of the package. It replaces the store in `outDir`: n8n loads every version there, so a
+ * removed contract must not stay from an older build. Each version comes from the source. It finds the contracts in the action files
  * (`contractsOfPackage`).
  *
  * With `N8N_NODE_CONTRACTS_NPM_REGISTRY` (scope: `N8N_NODE_CONTRACTS_NPM_SCOPE`), a release ships
@@ -669,8 +748,9 @@ export async function packPackage(
 ): Promise<PackedPackage> {
 	const { entries, natives: sources } = await contractsOfPackage(pkg);
 	const types = credentialTypesOf([...entries.map(({ action }) => action), ...sources]);
+	const sdk = await packSdkRuntime();
 	const packed = await Promise.all(
-		entries.map(async ({ entryFile, exportName }) => await packAction(entryFile, exportName)),
+		entries.map(async ({ entryFile, exportName }) => await packAction(entryFile, exportName, sdk)),
 	);
 	const credentialManifests = types.flatMap((type) => packCredential(type) ?? []);
 	const natives = sources.map(packNative);
@@ -699,6 +779,7 @@ export async function packPackage(
 	}
 	rmSync(outDir, { recursive: true, force: true });
 	await addToStore(outDir, [
+		{ manifestText: manifestTextOf(sdk.manifest), bundle: sdk.bundle },
 		...shipped,
 		...[...credentialManifests, ...natives].map((manifest) => ({
 			manifestText: manifestTextOf(manifest),

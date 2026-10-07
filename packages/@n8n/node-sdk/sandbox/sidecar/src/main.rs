@@ -7,8 +7,8 @@
 //! imports and the limits. A call to an import that is not granted stops the run. The
 //! component gets no other import, except `wasi:random` (the OS random source), the
 //! `now` functions of `wasi:clocks` (the host clocks in whole milliseconds) and, for the JS
-//! guest, the code of its bundle. The other WASI functions that the JS guest imports stop the
-//! run: they give timers, polls and streams.
+//! guest, the code of its bundle and of its SDK runtime. The other WASI functions that the JS
+//! guest imports stop the run: they give timers, polls and streams.
 
 use base64::Engine as _;
 use serde_json::{json, Map, Value};
@@ -52,6 +52,9 @@ struct Args {
     grants: Vec<String>,
     bundle: Option<PathBuf>,
     bundle_sha256: Option<String>,
+    /// The SDK runtime that the manifest pins. A self-contained bundle has none.
+    sdk: Option<PathBuf>,
+    sdk_sha256: Option<String>,
     node_contract: String,
     memory_mb: usize,
     cpu_ms: u64,
@@ -86,6 +89,8 @@ fn args() -> Result<Args> {
         grants: values.get("grant").cloned().unwrap_or_default(),
         bundle: one("bundle").map(PathBuf::from),
         bundle_sha256: one("bundle-sha256"),
+        sdk: one("sdk").map(PathBuf::from),
+        sdk_sha256: one("sdk-sha256"),
         node_contract: required("node-contract")?,
         memory_mb: number("memory-mb", 256)? as usize,
         cpu_ms: number("cpu-ms", 30_000)?,
@@ -298,6 +303,7 @@ struct State {
     guest_handles: HashMap<u64, ResourceAny>,
     next_handle: u64,
     bundle: Arc<String>,
+    sdk: Arc<String>,
     /// The zero of the guest monotonic clock. Each instance has its own, so a guest in a reused
     /// sidecar cannot see the runs before it.
     clock_origin: Instant,
@@ -1055,6 +1061,19 @@ impl Usage {
     }
 }
 
+/// The text of a file that the host verified, after its hash is checked again. No file gives "".
+fn checked_text(file: Option<&Path>, sha256: Option<&str>, flag: &str) -> Result<String> {
+    let Some(file) = file else {
+        return Ok(String::new());
+    };
+    let code =
+        std::fs::read_to_string(file).map_err(|e| format_err!("read {}: {e}", file.display()))?;
+    if sha256 != Some(hex(&Sha256::digest(code.as_bytes())).as_str()) {
+        bail!("The {flag} file does not match --{flag}-sha256");
+    }
+    Ok(code)
+}
+
 struct Host {
     args: Args,
     engine: Engine,
@@ -1103,19 +1122,6 @@ impl Host {
         unsafe { Component::deserialize_file(&self.engine, &file) }
     }
 
-    fn bundle(&self) -> Result<String> {
-        let Some(file) = &self.args.bundle else {
-            return Ok(String::new());
-        };
-        let code = std::fs::read_to_string(file)
-            .map_err(|e| format_err!("read {}: {e}", file.display()))?;
-        let digest = hex(&Sha256::digest(code.as_bytes()));
-        if self.args.bundle_sha256.as_deref() != Some(digest.as_str()) {
-            bail!("The bundle file does not match --bundle-sha256");
-        }
-        Ok(code)
-    }
-
     /// The component with its imports linked. Each instance of it starts with no guest state.
     fn link(&self) -> Result<InstancePre<State>> {
         let short_imports: HashMap<&str, &str> = self
@@ -1144,6 +1150,10 @@ impl Host {
                 let mut bundle = linker.instance(name)?;
                 bundle.func_new("source", |store, _, _, results| {
                     results[0] = Val::String(store.data().bundle.as_ref().clone());
+                    Ok(())
+                })?;
+                bundle.func_new("sdk", |store, _, _, results| {
+                    results[0] = Val::String(store.data().sdk.as_ref().clone());
                     Ok(())
                 })?;
             } else if name.starts_with(RANDOM_IMPORT) {
@@ -1204,7 +1214,16 @@ impl Host {
             slice: Instant::now(),
             guest_handles: HashMap::new(),
             next_handle: 1,
-            bundle: Arc::new(self.bundle()?),
+            bundle: Arc::new(checked_text(
+                self.args.bundle.as_deref(),
+                self.args.bundle_sha256.as_deref(),
+                "bundle",
+            )?),
+            sdk: Arc::new(checked_text(
+                self.args.sdk.as_deref(),
+                self.args.sdk_sha256.as_deref(),
+                "sdk",
+            )?),
             clock_origin: Instant::now(),
         };
         let mut store = Store::new(&self.engine, state);
@@ -1533,6 +1552,7 @@ mod tests {
             guest_handles: HashMap::new(),
             next_handle: 1,
             bundle: Arc::new(String::new()),
+            sdk: Arc::new(String::new()),
             clock_origin: Instant::now(),
         };
         Store::new(&Engine::default(), state)
@@ -1689,6 +1709,8 @@ mod tests {
                 grants: Vec::new(),
                 bundle: None,
                 bundle_sha256: None,
+                sdk: None,
+                sdk_sha256: None,
                 node_contract: version.clone(),
                 memory_mb: 64,
                 cpu_ms: 1_000,
@@ -1728,6 +1750,22 @@ mod tests {
 
         host.dispatch("[reset]", &Value::Null).unwrap();
         assert_eq!(host.dispatch("[stats]", &Value::Null).unwrap(), zero);
+    }
+
+    #[test]
+    fn a_file_with_another_hash_is_refused() {
+        let file = std::env::temp_dir().join(format!("n8n-sidecar-sdk-{}.cjs", std::process::id()));
+        std::fs::write(&file, "module.exports = {};").unwrap();
+        let digest = hex(&Sha256::digest(b"module.exports = {};"));
+        let wrong = "0".repeat(64);
+        let read = |sha256: &str, flag| checked_text(Some(&file), Some(sha256), flag);
+        assert_eq!(read(&digest, "sdk").unwrap(), "module.exports = {};");
+        let refused = read(&wrong, "sdk").unwrap_err().to_string();
+        assert_eq!(refused, "The sdk file does not match --sdk-sha256");
+        let refused = read(&wrong, "bundle").unwrap_err().to_string();
+        assert_eq!(refused, "The bundle file does not match --bundle-sha256");
+        assert_eq!(checked_text(None, None, "sdk").unwrap(), "");
+        std::fs::remove_file(&file).unwrap();
     }
 
     #[test]

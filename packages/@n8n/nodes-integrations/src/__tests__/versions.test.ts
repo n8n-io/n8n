@@ -10,10 +10,8 @@ import {
 	npmStoreReader,
 	parseFixtures,
 	parseStoreCatalog,
-	requiredNodeContractOf,
 	STORE_CATALOG_FILE,
 	storeBlobFileOf,
-	toContract,
 	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
 } from '@n8n/node-sdk/registry';
@@ -229,94 +227,8 @@ describe('bundled versions', () => {
 		const versions = Object.fromEntries(
 			packed.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
-		// A bundle that validates takes the validator from the host, which has it since 2.9.0.
-		const validating = new Set([
-			'ai.agent',
-			'ai.classify',
-			'ai.prompt',
-			'code.javaScript',
-			'code.python',
-			'gmail.message.get',
-			'gmail.message.getAll',
-			'gmail.message.send',
-			'googleSheets.sheet.read',
-			'httpRequest.get',
-			'microsoftTeams.channelMessage.create',
-			'microsoftTeams.chatMessage.create',
-			'notion.databasePage.getAll',
-			'openAi.text.message',
-			'whatsApp.message.send',
-			'whatsApp.message.sendTemplate',
-		]);
-		expect(versions).toEqual(
-			Object.fromEntries(
-				source.contracts.map((contract) => [
-					contract.id,
-					validating.has(contract.id)
-						? '2.9.0'
-						: requiredNodeContractOf(
-								toContract(contract),
-								'list' in contract && contract.list !== undefined,
-								typeof contract.node.errorOf === 'string',
-							),
-				]),
-			),
-		);
-		// Only the error expressions need 2.10.0, only the file readers need 2.8.0, only counted inputs and binary key patterns need 2.6.0,
-		// only the paged lists need 2.4.0, only the actions with host imports, named inputs or
-		// providers need 2.3.0, and only the actions with binary data need 2.2.0.
-		const withVersion = (version: string) =>
-			Object.keys(versions)
-				.filter((id) => versions[id] === version)
-				.sort();
-		// The host reads the error expression of Slack from the manifest, from 2.10.0.
-		expect(withVersion('2.10.0').every((id) => id.startsWith('slack.'))).toBe(true);
-		expect(withVersion('2.9.0')).toEqual([...validating].sort());
-		expect(withVersion('2.8.0')).toEqual([
-			'extractFromFile.csv',
-			'extractFromFile.json',
-			'extractFromFile.pdf',
-			'extractFromFile.text',
-			'extractFromFile.xlsx',
-		]);
-		expect(withVersion('2.6.0')).toEqual([
-			'merge.append',
-			'merge.chooseBranch',
-			'merge.combineByPosition',
-		]);
-		expect(withVersion('2.5.0')).toEqual([]);
-		expect(withVersion('2.4.0')).toEqual([
-			'github.issue.getAll',
-			'googleDrive.file.search',
-			'supabase.row.getAll',
-		]);
-		expect(withVersion('2.3.0')).toEqual([
-			'anthropic.chatModel',
-			'dataTable.row.delete',
-			'dataTable.row.exists',
-			'dataTable.row.get',
-			'dataTable.row.insert',
-			'dataTable.row.update',
-			'dataTable.row.upsert',
-			'dataTable.table.clear',
-			'dataTable.table.create',
-			'dataTable.table.delete',
-			'dataTable.table.list',
-			'dataTable.table.rename',
-			'googleGemini.chatModel',
-			'merge.combine',
-			'minimax.chatModel',
-			'openAi.chatModel',
-			'wait.interval',
-			'wait.until',
-			'xAi.chatModel',
-		]);
-		expect(withVersion('2.2.0')).toEqual([
-			'googleDrive.file.upload',
-			'httpRequest.download',
-			'httpRequest.send',
-			'openAi.image.generate',
-		]);
+		// Each bundle imports the SDK runtime from the host, which has it since 2.11.0.
+		expect(versions).toEqual(Object.fromEntries(source.contracts.map(({ id }) => [id, '2.11.0'])));
 	});
 
 	describe('match spec/manifest.schema.json of node-sdk', () => {
@@ -339,7 +251,11 @@ describe('bundled versions', () => {
 				),
 			);
 			const groupOf = ({ kind, native }: (typeof catalog)[number]) =>
-				kind === 'credential' ? 'credential' : native === undefined ? 'bundled' : 'native';
+				kind === 'credential' || kind === 'sdk'
+					? kind
+					: native === undefined
+						? 'bundled'
+						: 'native';
 			const idsOf = (group: ReturnType<typeof groupOf>) =>
 				catalog
 					.filter((line) => groupOf(line) === group)
@@ -350,6 +266,8 @@ describe('bundled versions', () => {
 			expect(idsOf('bundled')).toEqual(sortedIds(source.contracts));
 			expect(idsOf('credential')).toEqual(sortedIds(source.credentialTypes));
 			expect(idsOf('native')).toEqual(sortedIds(source.natives));
+			// One SDK runtime in the store of each package.
+			expect(idsOf('sdk')).toEqual(FIRST_PARTY_PACKAGES.map(() => 'sdkRuntime'));
 			const issues = catalog.flatMap(({ id, manifest, dir }) =>
 				validate(readJson(path.join(dir, storeBlobFileOf(manifest))), schema, { path: id }),
 			);
@@ -425,8 +343,8 @@ describe('bundled versions', () => {
 			source.actions.map(async ({ id }) => {
 				const [head] = versionsOf(id);
 				if (!head) return [`${id} has no bundled HEAD`];
-				const bundle = await head.readBundle();
-				return await replayFixtures({ manifest: head.manifest, bundle }, fixturesOf(id));
+				const [bundle, sdk] = await Promise.all([head.readBundle(), head.readSdk?.()]);
+				return await replayFixtures({ manifest: head.manifest, bundle, sdk }, fixturesOf(id));
 			}),
 		);
 		expect(issues.flat()).toEqual([]);
@@ -464,7 +382,7 @@ describe('bundled versions', () => {
 					action: 'httpRequest.get',
 					version: head?.manifest.semver,
 					bundleHash: head?.manifest.bundleHash,
-					nodeContract: '2.9.0',
+					nodeContract: '2.11.0',
 				},
 			},
 		]);

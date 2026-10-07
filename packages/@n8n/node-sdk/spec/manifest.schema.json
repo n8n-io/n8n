@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "urn:n8n:node-contract:manifest@2.10.0",
+	"$id": "urn:n8n:node-contract:manifest@2.11.0",
 	"title": "n8n Node Contract manifest",
 	"description": "Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.",
 	"oneOf": [
@@ -21,7 +21,32 @@
 					"x-n8n-since": "2.5.0"
 				},
 				"sdk": {
-					"type": "string",
+					"anyOf": [
+						{
+							"type": "string",
+							"description": "The SDK version that a self-contained bundle inlines."
+						},
+						{
+							"type": "object",
+							"properties": {
+								"version": {
+									"type": "string",
+									"pattern": "^\\d+\\.\\d+\\.\\d+$"
+								},
+								"digest": {
+									"type": "string",
+									"pattern": "^sha256:[0-9a-f]{64}$"
+								}
+							},
+							"required": [
+								"version",
+								"digest"
+							],
+							"additionalProperties": false,
+							"description": "The SDK runtime that the bundle imports.",
+							"x-n8n-since": "2.11.0"
+						}
+					],
 					"x-n8n-since": "2.5.0"
 				},
 				"credentials": {
@@ -422,9 +447,6 @@
 				"nodeContract": {
 					"type": "string",
 					"pattern": "^\\d+\\.\\d+\\.\\d+$"
-				},
-				"sdk": {
-					"type": "string"
 				},
 				"displayName": {
 					"type": "string"
@@ -1084,7 +1106,6 @@
 				"name",
 				"semver",
 				"nodeContract",
-				"sdk",
 				"displayName",
 				"fields",
 				"scheme"
@@ -1112,9 +1133,6 @@
 				"nodeContract": {
 					"type": "string",
 					"pattern": "^\\d+\\.\\d+\\.\\d+$"
-				},
-				"sdk": {
-					"type": "string"
 				},
 				"credentials": {
 					"type": "array",
@@ -1776,7 +1794,6 @@
 				"id",
 				"semver",
 				"nodeContract",
-				"sdk",
 				"contractHash",
 				"contract",
 				"native"
@@ -1784,6 +1801,39 @@
 			"additionalProperties": true,
 			"title": "Native action or trigger manifest",
 			"x-n8n-since": "2.5.0"
+		},
+		{
+			"type": "object",
+			"properties": {
+				"kind": {
+					"const": "sdk"
+				},
+				"id": {
+					"type": "string"
+				},
+				"semver": {
+					"type": "string",
+					"pattern": "^\\d+\\.\\d+\\.\\d+$"
+				},
+				"nodeContract": {
+					"type": "string",
+					"pattern": "^\\d+\\.\\d+\\.\\d+$"
+				},
+				"bundleHash": {
+					"type": "string",
+					"pattern": "^[0-9a-f]{64}$"
+				}
+			},
+			"required": [
+				"kind",
+				"id",
+				"semver",
+				"nodeContract",
+				"bundleHash"
+			],
+			"additionalProperties": true,
+			"title": "SDK runtime manifest",
+			"x-n8n-since": "2.11.0"
 		}
 	]
 }

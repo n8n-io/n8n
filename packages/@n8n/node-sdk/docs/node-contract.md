@@ -3,7 +3,7 @@
 For how this part fits in n8n, see [architecture.md](architecture.md).
 
 The Node Contract is the spec between nodes and the n8n engine. It has one version,
-`n8n:node-contract@x.y.z` (now 2.10.0), and two parts:
+`n8n:node-contract@x.y.z` (now 2.11.0), and two parts:
 
 - The **manifest format** tells what a thing is, as data. The host reads a manifest before it
   loads code. Source: `src/manifest.ts`. Spec: `spec/manifest.schema.json` (JSON Schema
@@ -55,7 +55,7 @@ flowchart LR
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
 | action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Pack writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version. Publish refuses a published version with other manifest bytes | Yes: a workflow pins it |
 | credential version | the content | `semver` of the credential manifest, from `defineCredential({ version })`; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
-| SDK version | `@n8n/node-sdk` | `sdk` in each manifest | No: for traceability only |
+| SDK version | `@n8n/node-sdk` | `sdk: { version, digest }` in each bundled manifest | Yes: the host gives the bundle the SDK runtime of that digest |
 | n8n version | the product | — | Only through the Node Contract range it supports |
 
 What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
@@ -73,6 +73,7 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.8.0 | the `parsers` import (`parsers.extract`): the host reads a CSV, XLSX, JSON, text or PDF file with the parsers of n8n |
 | 2.9.0 | the host module `@n8n/node-sdk/validator` and the `schema` import (`schema.validate`): the host validates against JSON Schema 2020-12 with ajv, so no bundle and no guest carries a validator. The host refuses a guest schema of more than 256 KiB, of more than 64 levels, or with a pattern that can take more than linear time. The same limits apply to the `input` and `output` schemas of a sandboxed version that is not first-party: the host does not load it |
 | 2.10.0 | the `guest` of a version (`http`: the bundle is the JSON config of the generic HTTP guest, which runs in this process) and `errorOf`: the n8n expression that the host checks each response with |
+| 2.11.0 | the SDK runtime: a bundle imports `@n8n/node-sdk` and `@n8n/node-sdk/credentials` from the host, and its manifest pins the runtime with `sdk: { version, digest }`. The runtime is a store version of kind `sdk` (id `sdkRuntime`). Credential and native manifests have no `sdk` |
 | unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
 The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
@@ -186,7 +187,7 @@ the bundle against `bundleHash`. It sends the token to the registry host only.
 ## Rules
 
 - Pack writes the lowest version that has what a bundle uses
-  (`requiredNodeContractOf`): 2.10.0 for an `errorOf` expression, 2.9.0 for a bundle that imports the validator module, 2.8.0 for the `parsers` import, 2.7.0 for a `runtime` image, 2.6.0 for counted inputs or a binary key pattern, 2.4.0 for a
+  (`requiredNodeContractOf`): 2.11.0 for a bundle that imports the SDK runtime, 2.10.0 for an `errorOf` expression, 2.9.0 for a bundle that imports the validator module, 2.8.0 for the `parsers` import, 2.7.0 for a `runtime` image, 2.6.0 for counted inputs or a binary key pattern, 2.4.0 for a
   `list` binding or a `t.pageValue()` input, 2.3.0 for host imports, named inputs or a provider
   capability, 2.2.0 for a binary field, else 2.1.0. So an older host still runs it. A JS trigger bundle follows the same rule: hosts before 2.5.0 run
   triggers in JS. The trigger interface of 2.5.0 is its WIT form, for a sandbox runner.
@@ -347,7 +348,7 @@ if it starts with `http://` or `https://`. Agents list a resource with
 
 | Path | What |
 |---|---|
-| `spec/wit/*.wit` | Package `n8n:node-contract@2.10.0`: `host.wit` (capabilities and shared types), one file per kind |
+| `spec/wit/*.wit` | Package `n8n:node-contract@2.11.0`: `host.wit` (capabilities and shared types), one file per kind |
 | `spec/manifest.schema.json` | Generated from `src/manifest.ts` |
 | `spec/<kind>.openrpc.json` | Generated from `spec/wit` |
 | `spec/json-rpc.md` | The JSON-RPC mapping |

@@ -35,6 +35,7 @@ import {
 	executorOf,
 	loadExecutor,
 	verifiedCodeOf,
+	verifiedSdkOf,
 	withBinaries,
 	type ChunkContext,
 	type ChunkRunner,
@@ -69,7 +70,7 @@ import {
 	type TriggerCall,
 } from './triggers';
 import { runtimeNameOf, type RuntimePolicy } from './runtime-policy';
-import { NODE_CONTRACT_VERSION, type VersionManifest } from './version';
+import { NODE_CONTRACT_VERSION, sha256, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -204,6 +205,13 @@ export interface GuestSession {
 	readonly manifest: VersionManifest;
 	/** The verified bundle, named by its hash. */
 	readonly bundleFile: string;
+	/** The verified SDK runtime that `manifest.sdk` pins, named by its hash. A self-contained bundle has none. */
+	readonly sdk?: {
+		/** The path of the runtime file in the cache. */
+		readonly file: string;
+		/** The hex SHA-256 of the runtime code. The guest checks it. */
+		readonly sha256: string;
+	};
 	/** The imports of the world that the manifest grants. */
 	readonly grants: readonly string[];
 	/** The limits of the session. */
@@ -300,10 +308,11 @@ interface SidecarRun {
 	readonly cacheDir: string;
 	readonly nodeContract: string;
 	readonly bundle?: { readonly file: string; readonly sha256: string };
+	readonly sdk?: { readonly file: string; readonly sha256: string };
 }
 
 async function spawnSidecar({ sidecar, guests }: WasmSidecarOptions, run: SidecarRun) {
-	const { kind, limits, bundle } = run;
+	const { kind, limits, bundle, sdk } = run;
 	const guest = path.join(guests, `${kind}.wasm`);
 	return spawn(
 		sidecar,
@@ -312,6 +321,7 @@ async function spawnSidecar({ sidecar, guests }: WasmSidecarOptions, run: Sideca
 			...['--component-sha256', await guestSha256Of(guest)],
 			...run.grants.flatMap((grant) => ['--grant', grant]),
 			...(bundle ? ['--bundle', bundle.file, '--bundle-sha256', bundle.sha256] : []),
+			...(sdk ? ['--sdk', sdk.file, '--sdk-sha256', sdk.sha256] : []),
 			...['--node-contract', run.nodeContract, '--cache', run.cacheDir],
 			...['--memory-mb', String(limits.memoryMb), '--cpu-ms', String(limits.cpuMs)],
 		],
@@ -2188,13 +2198,16 @@ const guestSha256Of = async (file: string) => {
 };
 
 /**
- * A verified bundle in the cache under its hash; the sidecar checks the hash again. The rename
+ * Verified code in the cache under its hash; the guest checks the hash again. The rename
  * makes the write atomic, so a sidecar that starts at the same time never reads part of a file.
  */
-async function bundleFileOf(options: SandboxOptions, manifest: VersionManifest, code: string) {
+async function bundleFileOf(options: SandboxOptions, hex: string, code: string) {
 	const dir = path.join(options.cacheDir, 'bundles');
 	await mkdir(dir, { recursive: true, mode: 0o700 });
-	const file = path.join(dir, `${manifest.bundleHash}.cjs`);
+	const file = path.join(dir, `${hex}.cjs`);
+	// A running container mounts the file by name, so an intact file stays in place.
+	const existing = await readFile(file, 'utf8').catch(() => undefined);
+	if (existing !== undefined && sha256(existing) === hex) return file;
 	const partial = `${file}.${randomUUID()}.partial`;
 	await writeFile(partial, code, { mode: 0o600 });
 	await rename(partial, file);
@@ -2240,11 +2253,16 @@ export async function sandboxedVersionOf(
 	}
 	const kind: SandboxKind = manifest.kind;
 	const code = await verifiedCodeOf(packed, hostRuntime.nodeContractRange);
+	const sdkCode = await verifiedSdkOf(packed);
+	const sdk = sdkCode === undefined ? undefined : { code: sdkCode, sha256: sha256(sdkCode) };
 	const config: GuestSession = {
 		kind,
 		limits: { ...DEFAULT_LIMITS, ...options.limits },
 		manifest,
-		bundleFile: await bundleFileOf(options, manifest, code),
+		bundleFile: await bundleFileOf(options, manifest.bundleHash, code),
+		...(sdk
+			? { sdk: { file: await bundleFileOf(options, sdk.sha256, sdk.code), sha256: sdk.sha256 } }
+			: {}),
 		grants: grantsOf(manifest, chunksItems(manifest, options)),
 		cacheDir: options.cacheDir,
 	};

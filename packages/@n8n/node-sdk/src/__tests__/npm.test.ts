@@ -139,6 +139,7 @@ describe('npmPackageOf', () => {
 			version: '1.2.3',
 			description: 'Echo the text.',
 			license: 'MIT',
+			dependencies: { '@n8n-nodes/sdk-runtime': expect.stringMatching(/^\d+\.\d+\.\d+$/) },
 			n8n: {
 				id: 'demo.echoText',
 				kind: 'action',
@@ -301,10 +302,20 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 
 			await publishPackage(pkg, [], (line) => log.push(line));
 			await publishPackage(pkg, [], (line) => log.push(line));
-			expect(log).toEqual(['demo.pass@1.0.0', 'demo.pass@1.0.0']);
-			expect(fake().state.writes).toBe(1);
+			const sdk = expect.stringMatching(/^sdkRuntime@\d+\.\d+\.\d+$/);
+			expect(log).toEqual([sdk, 'demo.pass@1.0.0', sdk, 'demo.pass@1.0.0']);
+			expect(fake().state.writes).toBe(2);
 			const versions = fake().packuments.get(name)?.versions as Json;
-			expect(versions['1.0.0']).toMatchObject({ license: 'MIT', n8n: { id: 'demo.pass' } });
+			expect(versions['1.0.0']).toMatchObject({
+				license: 'MIT',
+				dependencies: { '@acme/sdk-runtime': expect.any(String) },
+				n8n: { id: 'demo.pass' },
+			});
+			expect(Object.values(fake().packuments.get('@acme/sdk-runtime')?.versions ?? {})).toEqual([
+				expect.objectContaining({
+					n8n: expect.objectContaining({ id: 'sdkRuntime', kind: 'sdk' }),
+				}),
+			]);
 
 			await publishPackage(pkg, ['yank', 'demo.pass@1.0.0', 'broken'], (line) => log.push(line));
 			expect(fake().packuments.get(name)?.versions).toMatchObject({
@@ -314,7 +325,7 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 			expect(fake().packuments.get(name)?.versions).toMatchObject({
 				'1.0.0': { deprecated: 'revoked: leaks' },
 			});
-			expect(log.slice(2)).toEqual([
+			expect(log.slice(4)).toEqual([
 				'@acme/demo.pass@1.0.0: broken',
 				'@acme/demo.pass@1.0.0: revoked: leaks',
 			]);

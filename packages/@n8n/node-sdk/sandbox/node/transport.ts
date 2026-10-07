@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readSync, writeSync } from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
-import type * as wit from 'n8n:node-contract/capabilities@2.10.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.11.0';
 
 import { action } from '../action';
 import { capabilities, provider } from '../provider';
@@ -29,6 +29,8 @@ export interface GuestArgs {
 	readonly kind: 'action' | 'provider';
 	readonly bundle?: string;
 	readonly bundleSha256?: string;
+	readonly sdk?: string;
+	readonly sdkSha256?: string;
 	readonly grants: readonly string[];
 	readonly nodeContract: string;
 }
@@ -59,6 +61,8 @@ export function guestArgsOf(argv: readonly string[]): GuestArgs {
 		kind: one('kind') === 'provider' ? 'provider' : 'action',
 		bundle: one('bundle'),
 		bundleSha256: one('bundle-sha256'),
+		sdk: one('sdk'),
+		sdkSha256: one('sdk-sha256'),
 		grants: pairs.filter(([key]) => key === 'grant').map(([, value = '']) => value),
 		nodeContract: one('node-contract') ?? NODE_CONTRACT,
 	};
@@ -229,6 +233,16 @@ const replyOf = ({ toolCalls, ...reply }: wit.ChatReply) => ({
 	toolCalls: toolCalls.map(toolCallOut),
 });
 
+/** The text of a file that the host verified, after its hash is checked again. No file gives ''. */
+function checkedFile(file: string | undefined, sha256: string | undefined, flag: string) {
+	if (file === undefined) return '';
+	const code = readFileSync(file, 'utf8');
+	if (createHash('sha256').update(code).digest('hex') !== sha256) {
+		throw new RpcError(-32000, `The ${flag} file does not match --${flag}-sha256`);
+	}
+	return code;
+}
+
 export async function runGuest(transport: SyncTransport, args: GuestArgs): Promise<void> {
 	const handles = new Map<number, object>();
 	const counter = { next: 1 };
@@ -249,12 +263,10 @@ export async function runGuest(transport: SyncTransport, args: GuestArgs): Promi
 				`${unknown.join(', ')} is not an import of the ${args.kind} world`,
 			);
 		}
-		const code = args.bundle === undefined ? '' : readFileSync(args.bundle, 'utf8');
-		const digest = createHash('sha256').update(code).digest('hex');
-		if (args.bundle !== undefined && digest !== args.bundleSha256) {
-			throw new RpcError(-32000, 'The bundle file does not match --bundle-sha256');
-		}
-		setSource(code);
+		setSource(
+			checkedFile(args.bundle, args.bundleSha256, 'bundle'),
+			checkedFile(args.sdk, args.sdkSha256, 'sdk'),
+		);
 		return { nodeContract: args.nodeContract, kind: args.kind };
 	};
 

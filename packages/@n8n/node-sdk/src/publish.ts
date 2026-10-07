@@ -25,6 +25,7 @@ import {
 	packAction,
 	packCredential,
 	packNative,
+	packSdkRuntime,
 	type PackedAction,
 } from './pack';
 import {
@@ -45,7 +46,12 @@ import {
 import { parameterPathOf, toProperty } from './properties';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
 import { canonicalJson, shapeOf } from './schema';
-import { parseCredentialManifest, type CredentialManifest, type NativeManifest } from './manifest';
+import {
+	parseCredentialManifest,
+	parseSdkManifest,
+	type CredentialManifest,
+	type NativeManifest,
+} from './manifest';
 import {
 	DEFAULT_NPM_SCOPE,
 	npmDeprecate,
@@ -216,7 +222,7 @@ async function callResults(capability: unknown, calls: ExecutionFixture['calls']
  * A trigger replays only its migration pairs.
  */
 export async function replayFixtures(
-	{ manifest, bundle }: Pick<PackedAction, 'manifest' | 'bundle'>,
+	{ manifest, bundle, sdk }: Pick<PackedAction, 'manifest' | 'bundle' | 'sdk'>,
 	fixtures: ContractFixtures,
 	/** The action, its executor and its `migrate`, e.g. in the sandbox. The default runs the bundle here. */
 	loaded?: {
@@ -231,7 +237,7 @@ export async function replayFixtures(
 		) => Promise<Record<string, unknown>>;
 	},
 ): Promise<string[]> {
-	const contract = loaded?.contract ?? evaluateVersion(bundle, manifest);
+	const contract = loaded?.contract ?? evaluateVersion(bundle, manifest, sdk);
 	const migrate =
 		loaded?.migrate ??
 		(async (fromMajor: number, params: Readonly<Record<string, unknown>>) => {
@@ -649,8 +655,9 @@ function deprecationOfArgs(args: readonly string[]) {
 }
 
 /**
- * Without `args`, publishes the HEAD of each action and trigger, each credential type that is
- * not a compat type, and each native contract of a package as npm packages, one at a time, and
+ * Without `args`, publishes the SDK runtime, then the HEAD of each action and trigger, each
+ * credential type that is not a compat type, and each native contract of a package as npm
+ * packages, one at a time, and
  * gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a version
  * already published with the same manifest digest is a no-op. With the arguments
  * `<yank|revoke> <id>@<version> <reason>`, it runs `npm deprecate`.
@@ -683,6 +690,8 @@ export async function publishPackage(
 	const logVersion = ({ id, semver }: { readonly id: string; readonly semver: string }) =>
 		log(`${id}@${semver}`);
 	const { entries, natives } = await contractsOfPackage(pkg);
+	// The bundles depend on the SDK runtime, so it comes first. It has no gate: only its bytes count.
+	logVersion(await publishVersion(target, await packSdkRuntime(), parseSdkManifest, () => {}));
 	// One at a time, so the log stays readable.
 	for (const type of credentialTypesOf([...entries.map(({ action }) => action), ...natives]))
 		logVersion(await publishCredential({ ...target, type }));

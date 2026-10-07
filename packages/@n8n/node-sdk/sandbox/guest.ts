@@ -2,16 +2,16 @@
 // for every JS bundle of that kind: `action.ts`, `provider.ts` and `trigger.ts`. The bundle runs in the same
 // JS realm, so this code is not a trust boundary: the sidecar links only the granted imports,
 // and the host checks every call and every output.
-import { source } from 'n8n:js-guest/bundle@1.0.0';
-import type * as wit from 'n8n:node-contract/capabilities@2.10.0';
+import { sdk, source } from 'n8n:js-guest/bundle@1.0.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.11.0';
 import {
 	request as witRequest,
 	type HttpError as WitHttpError,
 	type HttpFailure,
 	type HttpRequest as WitHttpRequest,
-} from 'n8n:node-contract/http@2.10.0';
-import { log as witLog } from 'n8n:node-contract/log@2.10.0';
-import { get as witCredential } from 'n8n:node-contract/run-credential@2.10.0';
+} from 'n8n:node-contract/http@2.11.0';
+import { log as witLog } from 'n8n:node-contract/log@2.11.0';
+import { get as witCredential } from 'n8n:node-contract/run-credential@2.11.0';
 import { OperationalError, safeRegex, UserError } from 'n8n-workflow';
 
 import { isHttpError, type Action, type Http, type HttpRequest, type Trigger } from '../src/define';
@@ -64,20 +64,38 @@ const HOST_MODULES: Readonly<Record<string, unknown>> = {
  */
 const loaded = new Map<'bundle', unknown>();
 const exportOf = (): unknown =>
-	loaded.has('bundle') ? loaded.get('bundle') : evaluateBundle(source());
+	loaded.has('bundle') ? loaded.get('bundle') : evaluateBundle(source(), sdk());
 
-/** Evaluates the code of a bundle once and keeps its default export. */
-export function evaluateBundle(code: string): unknown {
+/** Runs CommonJS code with the modules that its `require` may give, and returns its default export. */
+function defaultExportOf(code: string, modules: Readonly<Record<string, unknown>>): unknown {
 	const module: { exports: unknown } = { exports: {} };
 	const hostRequire = (id: string) => {
-		if (!(id in HOST_MODULES)) throw new Error(`A packed bundle cannot import ${id}`);
-		return HOST_MODULES[id];
+		if (!(id in modules)) throw new Error(`A packed bundle cannot import ${id}`);
+		return modules[id];
 	};
 	// The engine has no `node:vm`. The bundle runs in this realm either way.
 	// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
 	const evaluate = new Function('module', 'require', code);
 	Reflect.apply(evaluate, undefined, [module, hostRequire]);
-	const exported = isRecord(module.exports) ? module.exports.default : undefined;
+	return isRecord(module.exports) ? module.exports.default : undefined;
+}
+
+/** The SDK modules of the runtime that the manifest pins, as the host gives them (`SDK_MODULES`). */
+function sdkModulesOf(code: string): Record<string, unknown> {
+	const runtime = defaultExportOf(code, HOST_MODULES);
+	if (!isRecord(runtime) || !isRecord(runtime.root) || !isRecord(runtime.credentials)) {
+		throw new Error('The SDK runtime does not export root and credentials');
+	}
+	return { '@n8n/node-sdk': runtime.root, '@n8n/node-sdk/credentials': runtime.credentials };
+}
+
+/**
+ * Evaluates the code of a bundle once and keeps its default export. `sdkCode` is the SDK runtime
+ * that the manifest pins; a self-contained bundle (Node Contract 2.10.0 or older) has ''.
+ */
+export function evaluateBundle(code: string, sdkCode = ''): unknown {
+	const modules = sdkCode === '' ? HOST_MODULES : { ...HOST_MODULES, ...sdkModulesOf(sdkCode) };
+	const exported = defaultExportOf(code, modules);
 	loaded.set('bundle', exported);
 	return exported;
 }

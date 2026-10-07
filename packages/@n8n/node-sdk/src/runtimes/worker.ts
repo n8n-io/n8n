@@ -21,7 +21,7 @@ export interface WorkerOptions {
 export function workerRuntime({ guest = WORKER_GUEST }: WorkerOptions = {}): GuestRuntime {
 	return {
 		name: 'worker',
-		async start({ kind, limits, manifest, bundleFile, grants }) {
+		async start({ kind, limits, manifest, bundleFile, sdk, grants }) {
 			const { port1: port, port2 } = new MessageChannel();
 			const signal = new Int32Array(new SharedArrayBuffer(4));
 			const worker = new Worker(guest, {
@@ -29,6 +29,7 @@ export function workerRuntime({ guest = WORKER_GUEST }: WorkerOptions = {}): Gue
 					...['--kind', kind],
 					...grants.flatMap((grant) => ['--grant', grant]),
 					...['--bundle', bundleFile, '--bundle-sha256', manifest.bundleHash],
+					...(sdk ? ['--sdk', sdk.file, '--sdk-sha256', sdk.sha256] : []),
 					...['--node-contract', manifest.nodeContract],
 				],
 				env: {},

@@ -19,12 +19,14 @@ const MAX_IDLE = 8;
 const IDLE_MS = 30_000;
 
 /** Sessions with the same key start the same guest, so a prestarted connection fits all of them. */
-const keyOf = ({ kind, manifest, grants, limits, bundleFile, cacheDir }: GuestSession) =>
+const keyOf = ({ kind, manifest, grants, limits, bundleFile, sdk, cacheDir }: GuestSession) =>
 	JSON.stringify([
 		kind,
 		manifest.bundleHash,
 		// A prestarted guest reads these paths, so a session with other paths needs another guest.
 		bundleFile,
+		// The same bundle can pin another SDK runtime in another version.
+		sdk,
 		cacheDir,
 		[...grants].sort(),
 		Object.entries(limits).sort(([a], [b]) => a.localeCompare(b)),

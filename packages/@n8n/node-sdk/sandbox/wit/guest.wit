@@ -4,22 +4,25 @@ package n8n:js-guest@1.0.0;
 /// that the host verified, so the host never answers this call. It is not a capability.
 interface bundle {
     source: func() -> string;
+    /// The SDK runtime that the manifest pins, from its verified file. A self-contained bundle
+    /// (Node Contract 2.10.0 or older) gets an empty string.
+    sdk: func() -> string;
 }
 
 /// The action world of the Node Contract, for a JS bundle.
 world action-js {
-    include n8n:node-contract/action-bundle@2.10.0;
+    include n8n:node-contract/action-bundle@2.11.0;
     import bundle;
 }
 
 /// The provider world of the Node Contract, for a JS bundle.
 world provider-js {
-    include n8n:node-contract/provider-bundle@2.10.0;
+    include n8n:node-contract/provider-bundle@2.11.0;
     import bundle;
 }
 
 /// The trigger world of the Node Contract, for a JS bundle.
 world trigger-js {
-    include n8n:node-contract/trigger-bundle@2.10.0;
+    include n8n:node-contract/trigger-bundle@2.11.0;
     import bundle;
 }

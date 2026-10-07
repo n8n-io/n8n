@@ -2689,6 +2689,11 @@ export interface PackedVersion {
 	readonly origin: ContractOrigin;
 	/** Reads the bundle code. The host checks it against `manifest.bundleHash`. */
 	readBundle(): Promise<string>;
+	/**
+	 * Reads the SDK runtime that `manifest.sdk` pins. The host checks it against the digest. A
+	 * self-contained bundle needs none.
+	 */
+	readSdk?(): Promise<string>;
 }
 
 /**
@@ -2711,6 +2716,34 @@ const HOST_MODULES: Readonly<Record<string, unknown>> = {
 /** The host gives a packed bundle the module of this name. */
 export const isHostModule = (name: string) => Object.hasOwn(HOST_MODULES, name);
 
+/**
+ * The modules of the SDK runtime, since Node Contract 2.11.0. A bundle imports them, and the host
+ * gives each bundle its own evaluation of the runtime that its manifest pins.
+ */
+export const SDK_MODULES: readonly string[] = ['@n8n/node-sdk', '@n8n/node-sdk/credentials'];
+
+/** Runs CommonJS code with the modules that its `require` may give, and returns its default export. */
+function defaultExportOf(code: string, modules: Readonly<Record<string, unknown>>): unknown {
+	const module: { exports: unknown } = { exports: {} };
+	const hostRequire = (id: string) => {
+		if (!Object.hasOwn(modules, id)) {
+			throw new UnexpectedError(`A packed action cannot import ${id}`);
+		}
+		return modules[id];
+	};
+	Reflect.apply(compileFunction(code, ['module', 'require']), undefined, [module, hostRequire]);
+	return isRecord(module.exports) ? module.exports.default : undefined;
+}
+
+/** The modules of `SDK_MODULES` from a new evaluation of an SDK runtime bundle. */
+function sdkModulesOf(sdk: string): Record<string, unknown> {
+	const runtime = defaultExportOf(sdk, HOST_MODULES);
+	if (!isRecord(runtime) || !isRecord(runtime.root) || !isRecord(runtime.credentials)) {
+		throw new UnexpectedError('The SDK runtime does not export root and credentials');
+	}
+	return { '@n8n/node-sdk': runtime.root, '@n8n/node-sdk/credentials': runtime.credentials };
+}
+
 const isContract = (value: unknown): value is Action | Trigger =>
 	isRecord(value) &&
 	typeof value.id === 'string' &&
@@ -2722,22 +2755,37 @@ const isContract = (value: unknown): value is Action | Trigger =>
 		isRecord(value.poll) ||
 		isRecord(value.webhook));
 
-/** Runs a CommonJS bundle from `packAction` and returns the action or trigger it exports. */
-export function evaluateBundle(code: string, nodeContract: NodeContractVersion): Action | Trigger {
+/**
+ * Runs a CommonJS bundle from `packAction` and returns the action or trigger it exports. `sdk` is
+ * the SDK runtime that the manifest pins. A self-contained bundle has none.
+ */
+export function evaluateBundle(
+	code: string,
+	nodeContract: NodeContractVersion,
+	sdk?: string,
+): Action | Trigger {
 	if (!implementsNodeContract(nodeContract)) {
 		throw new UserError(
 			`This host cannot run Node Contract ${nodeContract}. It implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
 		);
 	}
-	const module: { exports: unknown } = { exports: {} };
-	const hostRequire = (id: string) => {
-		if (!(id in HOST_MODULES)) throw new UnexpectedError(`A packed action cannot import ${id}`);
-		return HOST_MODULES[id];
-	};
-	Reflect.apply(compileFunction(code, ['module', 'require']), undefined, [module, hostRequire]);
-	const exported = isRecord(module.exports) ? module.exports.default : undefined;
+	const modules = sdk === undefined ? HOST_MODULES : { ...HOST_MODULES, ...sdkModulesOf(sdk) };
+	const exported = defaultExportOf(code, modules);
 	if (!isContract(exported)) throw new UnexpectedError('The bundle does not export a contract');
 	return exported;
+}
+
+/** The SDK runtime that a packed version pins, after its digest is checked. */
+export async function verifiedSdkOf({ manifest, readSdk }: PackedVersion) {
+	const { sdk } = manifest;
+	if (typeof sdk !== 'object') return undefined;
+	const at = `${manifest.id}@${manifest.semver}`;
+	if (!readSdk) throw new UnexpectedError(`The host has no SDK runtime for ${at}`);
+	const code = await readSdk();
+	if (`sha256:${sha256(code)}` !== sdk.digest) {
+		throw new UnexpectedError(`The SDK runtime of ${at} does not match ${sdk.digest}`);
+	}
+	return code;
 }
 
 /** The code of a packed version, after its Node Contract version and its hash are checked. */
@@ -2773,10 +2821,17 @@ export function evaluateHttpGuestConfig(code: string, manifest: VersionManifest)
 	return liftHttpGuest(config);
 }
 
-/** The contract of a bundle: JS code, or the config of the guest that its manifest names. */
-export function evaluateVersion(code: string, manifest: VersionManifest): Action | Trigger {
+/**
+ * The contract of a bundle: JS code, or the config of the guest that its manifest names. `sdk` is
+ * the SDK runtime that the manifest pins.
+ */
+export function evaluateVersion(
+	code: string,
+	manifest: VersionManifest,
+	sdk?: string,
+): Action | Trigger {
 	if (manifest.guest === 'http') return evaluateHttpGuestConfig(code, manifest);
-	return evaluateBundle(code, manifest.nodeContract);
+	return evaluateBundle(code, manifest.nodeContract, sdk);
 }
 
 /** The bundle of a packed version, after its Node Contract version and its hash are checked. */
@@ -2784,7 +2839,8 @@ export async function verifiedBundleOf(
 	packed: PackedVersion,
 	range: NodeContractRange,
 ): Promise<Action | Trigger> {
-	return evaluateVersion(await verifiedCodeOf(packed, range), packed.manifest);
+	const code = await verifiedCodeOf(packed, range);
+	return evaluateVersion(code, packed.manifest, await verifiedSdkOf(packed));
 }
 
 /** The executor of the action interface for one node execution. */

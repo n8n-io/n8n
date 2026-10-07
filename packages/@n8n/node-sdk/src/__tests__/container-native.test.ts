@@ -135,9 +135,9 @@ const probe = async (
 ) => {
 	const file = path.join(cacheDir, 'probes.ts');
 	writeFileSync(file, PROBES);
-	const { manifest, bundle } = await packAction(file, name);
+	const { manifest, bundle, sdk } = await packAction(file, name);
 	const { executor } = await sandboxedVersionOf(
-		{ manifest, origin: 'private', readBundle: async () => bundle },
+		{ manifest, origin: 'private', readBundle: async () => bundle, readSdk: async () => sdk ?? '' },
 		{
 			runtime: containerRuntime(options),
 			cacheDir,

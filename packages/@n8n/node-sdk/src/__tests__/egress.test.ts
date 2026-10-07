@@ -630,7 +630,6 @@ describe('credential hosts of a packed version', () => {
 		name: 'echoApi',
 		semver: '1.0.0',
 		nodeContract: '2.5.0',
-		sdk: '0.0.0',
 		displayName: 'Echo',
 		fields: t.obj({}).json,
 		scheme: { kind: 'none' },

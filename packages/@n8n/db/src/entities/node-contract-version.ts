@@ -2,7 +2,13 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithCreatedAt } from './abstract-entity';
 
-export const nodeContractVersionKinds = ['action', 'trigger', 'provider', 'credential'] as const;
+export const nodeContractVersionKinds = [
+	'action',
+	'trigger',
+	'provider',
+	'credential',
+	'sdk',
+] as const;
 
 export type NodeContractVersionKind = (typeof nodeContractVersionKinds)[number];
 

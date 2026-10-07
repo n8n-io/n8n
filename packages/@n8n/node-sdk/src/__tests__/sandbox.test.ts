@@ -178,7 +178,12 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	) => {
 		const packed = await packAction(path.join(dirs.root, 'probes.ts'), name);
 		const { executor } = await sandboxedVersionOf(
-			{ manifest: packed.manifest, origin: 'community', readBundle: async () => packed.bundle },
+			{
+				manifest: packed.manifest,
+				origin: 'community',
+				readBundle: async () => packed.bundle,
+				readSdk: async () => packed.sdk ?? '',
+			},
 			sandbox,
 			runtime,
 		);
@@ -363,7 +368,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	});
 
 	it('refuses a bundle that names a base URL outside the egress hosts of its manifest', async () => {
-		const { manifest, bundle } = await packAction(
+		const { manifest, bundle, sdk } = await packAction(
 			path.join(dirs.root, 'probes.ts'),
 			'baseUrlProbe',
 		);
@@ -375,6 +380,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 					manifest: { ...manifest, contract },
 					origin: 'community',
 					readBundle: async () => bundle,
+					readSdk: async () => sdk ?? '',
 				},
 				options(),
 				hostRuntime(),
@@ -798,7 +804,12 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		const replay = async (name: ProbeName, expected: Record<string, unknown>) => {
 			const packed = await packAction(path.join(dirs.root, 'probes.ts'), name);
 			const loaded = await sandboxedVersionOf(
-				{ manifest: packed.manifest, origin: 'community', readBundle: async () => packed.bundle },
+				{
+					manifest: packed.manifest,
+					origin: 'community',
+					readBundle: async () => packed.bundle,
+					readSdk: async () => packed.sdk ?? '',
+				},
 				options(),
 				hostRuntime(),
 			);
@@ -879,8 +890,8 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
 			limits: { cpuMs: 1_000, memoryMb: 64, wallMs: 20_000 },
 		});
 		const versionOf = async (name: string, origin: ContractOrigin): Promise<PackedVersion> => {
-			const { manifest, bundle } = await packAction(path.join(dirs.root, 'triggers.ts'), name);
-			return { manifest, origin, readBundle: async () => bundle };
+			const { manifest, bundle, sdk } = await packAction(path.join(dirs.root, 'triggers.ts'), name);
+			return { manifest, origin, readBundle: async () => bundle, readSdk: async () => sdk ?? '' };
 		};
 		/** A loader that runs first-party versions in this process and every other one in wasm. */
 		const loaderOf = (sandbox: SandboxOptions) =>

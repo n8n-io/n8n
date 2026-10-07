@@ -70,7 +70,12 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action.wa
 		) => {
 			const packed = await packAction(path.join(dirs.root, 'counter.ts'), 'count');
 			const { executor } = await sandboxedVersionOf(
-				{ manifest: packed.manifest, origin: 'private', readBundle: async () => packed.bundle },
+				{
+					manifest: packed.manifest,
+					origin: 'private',
+					readBundle: async () => packed.bundle,
+					readSdk: async () => packed.sdk ?? '',
+				},
 				{
 					runtime,
 					cacheDir: path.join(dirs.root, 'cache'),

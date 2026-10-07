@@ -8,7 +8,7 @@
 /// import, export or field. A major breaks. `@since` tells which minor added an item. A
 /// bundle states the lowest version that has all it uses (`nodeContract` in its manifest), so
 /// an older host still runs it.
-package n8n:node-contract@2.10.0;
+package n8n:node-contract@2.11.0;
 
 @since(version = 2.0.0)
 interface types {

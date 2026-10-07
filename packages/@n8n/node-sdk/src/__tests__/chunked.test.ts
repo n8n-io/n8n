@@ -113,7 +113,12 @@ describe('chunked item runs', () => {
 	const executorOf = async (runtime: GuestRuntime, chunkItems: boolean) => {
 		const probe = packed.get('probe')!;
 		const { executor } = await sandboxedVersionOf(
-			{ manifest: probe.manifest, origin: 'private', readBundle: async () => probe.bundle },
+			{
+				manifest: probe.manifest,
+				origin: 'private',
+				readBundle: async () => probe.bundle,
+				readSdk: async () => probe.sdk ?? '',
+			},
 			{
 				runtime,
 				chunkItems,

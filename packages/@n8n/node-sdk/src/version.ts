@@ -43,11 +43,13 @@ export { parseSemver, type Semver } from './define';
  * validates values against JSON Schema 2020-12, so no bundle and no guest carries a validator.
  * 2.10.0 adds the `guest` of a version: `http` for the JSON config of the generic HTTP guest,
  * and `errorOf`: the error expression that the host checks each response with.
+ * 2.11.0 adds the SDK runtime: a bundle imports `@n8n/node-sdk` and `@n8n/node-sdk/credentials`
+ * from the host, and its manifest pins the runtime with `sdk: { version, digest }`.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
 /** The newest version this host implements. */
-export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.10.0';
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.11.0';
 
 /** The Node Contract version that added the HTTP guest. An older host reads its config as JS. */
 export const HTTP_GUEST_NODE_CONTRACT: NodeContractVersion = '2.10.0';
@@ -134,6 +136,14 @@ export function assertNodeContract(
 	);
 }
 
+/** The SDK runtime that a bundle runs with. */
+export interface SdkPin {
+	/** The `@n8n/node-sdk` version of the runtime, e.g. `0.1.0`. */
+	readonly version: string;
+	/** `sha256:<hex>` of the runtime bundle bytes. */
+	readonly digest: string;
+}
+
 /** One packed version of an action, trigger or provider. A published `id` and `semver` never change their bytes. */
 export interface VersionManifest {
 	/** What the version is: an action, a trigger, or a provider. */
@@ -144,8 +154,12 @@ export interface VersionManifest {
 	readonly semver: string;
 	/** The lowest Node Contract version that has what the bundle uses. */
 	readonly nodeContract: NodeContractVersion;
-	/** The `@n8n/node-sdk` version that packed it, for traceability only. An older SDK did not write it. */
-	readonly sdk?: string;
+	/**
+	 * The SDK runtime that the bundle imports, since Node Contract 2.11.0. Text: the version of
+	 * the SDK that a self-contained bundle inlines, for traceability only. Absent: an older SDK
+	 * packed it, or the bundle is an HTTP guest config.
+	 */
+	readonly sdk?: string | SdkPin;
 	/**
 	 * `<id>@<major>` of each credential type of `contract.credentials` that has a credential
 	 * manifest, e.g. `notion.token@1`. A compat type has none: its legacy class defines it. Absent

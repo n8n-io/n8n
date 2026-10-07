@@ -4,7 +4,7 @@
  * picks the version that a node pin names.
  */
 import { isRecord } from '@n8n/utils/is-record';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
 	LoggerProxy,
@@ -17,7 +17,12 @@ import {
 
 import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './catalog';
 import { permissionsOf, type ContractPermissions, type PermissionRefusalListener } from './egress';
-import { parseCredentialManifest, type CredentialManifest } from './manifest';
+import {
+	parseCredentialManifest,
+	parseSdkManifest,
+	SDK_RUNTIME_ID,
+	type CredentialManifest,
+} from './manifest';
 import { npmRegistryOf, npmStoreReader } from './npm';
 import type { ContractOrigin, ContractVersionLoader, PackedVersion } from './runtime';
 import { canonicalJson } from './schema';
@@ -26,6 +31,7 @@ import {
 	addToStore,
 	embeddedStoreDirOf,
 	isVersionManifest,
+	storeBlobFileOf,
 	storeIndexFileOf,
 	storeStatusTextOf,
 	unresolvedCredentialPinsOf,
@@ -194,6 +200,8 @@ export interface EmbeddedContracts {
 	versionsOf(id: string): readonly DigestedVersion[];
 	/** The embedded credential manifests. n8n registers each one and signs with it. */
 	credentials(): readonly CredentialManifest[];
+	/** The embedded SDK runtime bundle of a `sha256:<hex>` digest, or `undefined`. */
+	sdk(digest: string): string | undefined;
 }
 
 /** The embedded contracts of `packages`. A package that ships no index of an id gives no version. */
@@ -206,6 +214,12 @@ export const embeddedContractsOf = (packages: readonly SourcePackage[]): Embedde
 			),
 		credentials: () =>
 			dirs.flatMap((dir) => bundledCredentialsOf(dir).map(({ manifest }) => manifest)),
+		sdk: (digest) => {
+			const file = dirs
+				.map((dir) => path.join(dir, storeBlobFileOf(digest)))
+				.find((candidate) => existsSync(candidate));
+			return file === undefined ? undefined : readFileSync(file, 'utf8');
+		},
 	};
 };
 
@@ -339,7 +353,7 @@ export interface ContractInstall {
 
 /** The manifest of a stored version with a bundle. A native or a bad version gives none. */
 const versionManifestOf = ({ kind, manifestText }: StoredManifest) => {
-	if (kind === 'credential') return [];
+	if (kind === 'credential' || kind === 'sdk') return [];
 	try {
 		return [parseManifest(manifestText)];
 	} catch {
@@ -403,7 +417,7 @@ const assertSameBytes = (stored: readonly StoredManifest[], versions: readonly S
 
 /** The manifest of a stored version that can pin credentials: a version with a bundle or a native version. */
 const pinningManifestOf = ({ kind, bundle, manifestText }: StoredVersion) => {
-	if (kind === 'credential') return undefined;
+	if (kind === 'credential' || kind === 'sdk') return undefined;
 	return bundle === undefined ? parseNativeManifest(manifestText) : parseManifest(manifestText);
 };
 
@@ -658,12 +672,12 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	};
 
 	/**
-	 * The checked stored versions with a bundle, of one id or of all ids. A credential, a native
-	 * or a bad version is skipped.
+	 * The checked stored versions with a bundle, of one id or of all ids. A credential, an SDK
+	 * runtime, a native or a bad version is skipped.
 	 */
 	const storedManifests = async (id?: string) =>
 		(await store.manifests(id)).flatMap((entry) => {
-			if (entry.kind === 'credential') return [];
+			if (entry.kind === 'credential' || entry.kind === 'sdk') return [];
 			try {
 				return [storedManifestOf(entry)];
 			} catch {
@@ -780,13 +794,30 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		);
 	};
 
-	/** The bundle loads on the first execution. */
-	const storedVersion = ({ manifest, origin, digest }: PinnableVersion): DigestedVersion => ({
-		manifest,
-		origin,
-		digest,
-		readBundle: async () => (await load(manifest.id, { version: manifest.semver, digest })).bundle,
-	});
+	/** The SDK runtime of a digest: from an embedded store, else from the store of the instance. */
+	const sdkOf = async (digest: string) => {
+		const embedded = store.embedded.sdk(digest);
+		if (embedded !== undefined) return embedded;
+		const row = (await store.manifests(SDK_RUNTIME_ID)).find(
+			({ manifestText }) => `sha256:${parseSdkManifest(manifestText).bundleHash}` === digest,
+		);
+		const code = row && (await store.bundle(row.manifest));
+		if (code === undefined) throw new UserError(`n8n has no SDK runtime ${digest}`);
+		return code;
+	};
+
+	/** The bundle and the SDK runtime load on the first execution. */
+	const storedVersion = ({ manifest, origin, digest }: PinnableVersion): DigestedVersion => {
+		const { sdk } = manifest;
+		return {
+			manifest,
+			origin,
+			digest,
+			readBundle: async () =>
+				(await load(manifest.id, { version: manifest.semver, digest })).bundle,
+			...(typeof sdk === 'object' ? { readSdk: async () => await sdkOf(sdk.digest) } : {}),
+		};
+	};
 
 	const notWithdrawn = async <T extends CheckedVersion>(versions: readonly T[]) => {
 		const withdrawn = await Promise.all(versions.map(async (version) => await withdrawal(version)));

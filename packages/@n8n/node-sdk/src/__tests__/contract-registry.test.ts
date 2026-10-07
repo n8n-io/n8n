@@ -245,6 +245,7 @@ const bundled = (version: string): PackedVersion => ({
 	manifest: packedOf(version).manifest,
 	origin: 'first-party',
 	readBundle: async () => packedOf(version).bundle,
+	readSdk: async () => packedOf(version).sdk ?? '',
 });
 
 const lockOf = (version: string): NodeContractLock => {
@@ -416,7 +417,7 @@ describe('contractVersionLoader', () => {
 					action: 'demo.echo',
 					version: '1.0.1',
 					bundleHash,
-					nodeContract: '2.1.0',
+					nodeContract: '2.11.0',
 				},
 			},
 		]);
@@ -1243,7 +1244,7 @@ describe('syncContractStore', () => {
 	it('reports nodes whose pinned version needs a Node Contract version the host does not run', async () => {
 		const { runsNodeContract } = hostRuntime({ nodeContractRange: '>=3.0.0 <4.0.0' });
 		const result = await syncContractStore(storeOf({ runsNodeContract }), [nodeOf('1.0.0')]);
-		expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), nodeContract: '2.1.0' }]);
+		expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), nodeContract: '2.11.0' }]);
 	});
 });
 

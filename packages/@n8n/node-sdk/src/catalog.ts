@@ -49,19 +49,32 @@ export function versionsOf(actionId: string, dir: string): DigestedVersion[] {
 		.flatMap((record): DigestedVersion[] => {
 			const manifest = manifestOf(dir, record);
 			if (!isVersionManifest(manifest)) return [];
-			const readBundle = async () => {
-				const bundle = await blobs.blob(`sha256:${manifest.bundleHash}`);
-				if (!bundle) throw new UnexpectedError(`The embedded store has no bundle of ${actionId}`);
-				return bundle.toString('utf8');
+			const blobOf = async (digest: string, what: string) => {
+				const bytes = await blobs.blob(digest);
+				if (!bytes) throw new UnexpectedError(`The embedded store has no ${what} of ${actionId}`);
+				return bytes.toString('utf8');
 			};
-			return [{ manifest, origin: 'first-party', readBundle, digest: record.manifest }];
+			const { sdk } = manifest;
+			return [
+				{
+					manifest,
+					origin: 'first-party',
+					readBundle: async () => await blobOf(`sha256:${manifest.bundleHash}`, 'bundle'),
+					...(typeof sdk === 'object'
+						? { readSdk: async () => await blobOf(sdk.digest, 'SDK runtime') }
+						: {}),
+					digest: record.manifest,
+				},
+			];
 		})
 		.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 }
 
 /** The ids of the actions, triggers and providers with a bundle in the embedded store `dir`. */
 export const bundledIdsOf = (dir: string) =>
-	catalogOf(dir).flatMap(({ id, bundle }) => (bundle === undefined ? [] : [id]));
+	catalogOf(dir).flatMap(({ id, kind, bundle }) =>
+		bundle === undefined || kind === 'sdk' ? [] : [id],
+	);
 
 /** The credential manifests in the embedded store `dir`, with the blob file of each one. */
 export const bundledCredentialsOf = (dir: string) =>
@@ -127,9 +140,9 @@ function pathOf(id: string, node: string) {
 function entriesOf(pkg: SourcePackage): CatalogEntry[] {
 	const dir = embeddedStoreDirOf(pkg);
 	return catalogOf(dir).flatMap((record) => {
-		if (record.kind === 'credential') return [];
+		if (record.kind === 'credential' || record.kind === 'sdk') return [];
 		const manifest = manifestOf(dir, record);
-		if (manifest.kind === 'credential') return [];
+		if (manifest.kind === 'credential' || manifest.kind === 'sdk') return [];
 		const nodeType = contractNodeTypeOf(pkg.name, manifest.id);
 		const tool = isVersionManifest(manifest) && isToolContract(manifest.contract);
 		return [
@@ -161,12 +174,24 @@ export function contractCatalogOf(packages: readonly SourcePackage[]): ContractC
 		const manifest = owned.find((entry) => entry.manifest.id === id)?.manifest;
 		const pkg = packageOf(id);
 		if (!manifest || !('bundleHash' in manifest) || !pkg) return undefined;
-		const file = storeBlobFileOf(`sha256:${manifest.bundleHash}`);
-		const code = readFileSync(path.join(embeddedStoreDirOf(pkg), file), 'utf8');
-		if (sha256(code) !== manifest.bundleHash) {
-			throw new UnexpectedError(`The bundle of ${id}@${manifest.semver} does not match its hash`);
-		}
-		return evaluateBundle(code, manifest.nodeContract);
+		const read = (digest: string, what: string) => {
+			const code = readFileSync(
+				path.join(embeddedStoreDirOf(pkg), storeBlobFileOf(digest)),
+				'utf8',
+			);
+			if (`sha256:${sha256(code)}` !== digest) {
+				throw new UnexpectedError(
+					`The ${what} of ${id}@${manifest.semver} does not match its hash`,
+				);
+			}
+			return code;
+		};
+		const { sdk } = manifest;
+		return evaluateBundle(
+			read(`sha256:${manifest.bundleHash}`, 'bundle'),
+			manifest.nodeContract,
+			typeof sdk === 'object' ? read(sdk.digest, 'SDK runtime') : undefined,
+		);
 	};
 	return {
 		packages,

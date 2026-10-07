@@ -44,9 +44,11 @@ import type {
 import {
 	credentialManifestSchema,
 	nativeManifestSchema,
+	sdkManifestSchema,
 	versionManifestSchema,
 	type CredentialManifest,
 	type NativeManifest,
+	type SdkManifest,
 } from '../manifest';
 import type { AnySchema, BinaryMeta, JsonSchema, Shape } from '../schema';
 import {
@@ -590,7 +592,6 @@ describe('spec/manifest.schema.json', () => {
 					'name',
 					'semver',
 					'nodeContract',
-					'sdk',
 					'displayName',
 					'documentationUrl',
 					'fields',
@@ -611,7 +612,6 @@ describe('spec/manifest.schema.json', () => {
 					'id',
 					'semver',
 					'nodeContract',
-					'sdk',
 					'credentials',
 					'contractHash',
 					'contract',
@@ -620,9 +620,17 @@ describe('spec/manifest.schema.json', () => {
 				]),
 			),
 		);
+		expect(keys(sdkManifestSchema.json)).toEqual(
+			sorted(keysOf<SdkManifest>()(['kind', 'id', 'semver', 'nodeContract', 'bundleHash'])),
+		);
 		expect(schema).toMatchObject({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
-			oneOf: [versionManifestSchema.json, credentialManifestSchema.json, nativeManifestSchema.json],
+			oneOf: [
+				versionManifestSchema.json,
+				credentialManifestSchema.json,
+				nativeManifestSchema.json,
+				sdkManifestSchema.json,
+			],
 		});
 	});
 
@@ -636,9 +644,12 @@ describe('spec/manifest.schema.json', () => {
 	describe('as JSON Schema 2020-12', () => {
 		const ajv = strictAjv();
 		const validateManifest = ajv.compile(schema as JsonSchema);
-		const branches = [versionManifestSchema, credentialManifestSchema, nativeManifestSchema].map(
-			({ json }) => ajv.compile(json),
-		);
+		const branches = [
+			versionManifestSchema,
+			credentialManifestSchema,
+			nativeManifestSchema,
+			sdkManifestSchema,
+		].map(({ json }) => ajv.compile(json));
 		const branchesOf = (manifest: unknown) => branches.map((branch) => branch(manifest));
 
 		it('refuses a keyword that the contract format does not have', () => {
@@ -652,9 +663,10 @@ describe('spec/manifest.schema.json', () => {
 			expect(shipped.length).toBeGreaterThan(100);
 			const failures = shipped.flatMap(({ file, manifest }) => {
 				const expected = [
-					!('native' in manifest) && manifest.kind !== 'credential',
+					!('native' in manifest) && manifest.kind !== 'credential' && manifest.kind !== 'sdk',
 					manifest.kind === 'credential',
 					'native' in manifest,
+					manifest.kind === 'sdk',
 				];
 				return validateManifest(manifest) && isDeepStrictEqual(branchesOf(manifest), expected)
 					? []
@@ -662,7 +674,7 @@ describe('spec/manifest.schema.json', () => {
 			});
 			expect(failures).toEqual([]);
 			expect(new Set(shipped.map(({ manifest }) => manifest.kind))).toEqual(
-				new Set(['action', 'trigger', 'provider', 'credential']),
+				new Set(['action', 'trigger', 'provider', 'credential', 'sdk']),
 			);
 			expect(shipped.some(({ manifest }) => 'native' in manifest)).toBe(true);
 		});
@@ -698,7 +710,7 @@ describe('spec/manifest.schema.json', () => {
 			};
 			it('refuses a manifest that matches no branch', () => {
 				const manifest = { kind: 'action', id: 'a.b', semver: '1.0.0' };
-				expect(branchesOf(manifest)).toEqual([false, false, false]);
+				expect(branchesOf(manifest)).toEqual([false, false, false, false]);
 				expect(validateManifest(manifest)).toBe(false);
 			});
 
@@ -719,7 +731,7 @@ describe('spec/manifest.schema.json', () => {
 
 			it('refuses a native manifest with a bundle hash, as the SDK validator does', () => {
 				const manifest = { ...shippedOf(true), bundleHash: '0'.repeat(64) };
-				expect(branchesOf(manifest)).toEqual([true, false, true]);
+				expect(branchesOf(manifest)).toEqual([true, false, true, false]);
 				expect(validateManifest(manifest)).toBe(false);
 				expect(validate(manifest, schema as JsonSchema)).toEqual([
 					'input: does not match any allowed shape',

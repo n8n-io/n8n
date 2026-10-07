@@ -475,11 +475,12 @@ const supplied = {
 	},
 };
 
-const sources = new Map<'source', string>();
+const sources = new Map<'source' | 'sdk', string>();
 
-export const setSource = (source: string) => sources.set('source', source);
+export const setSource = (source: string, sdk: string) =>
+	sources.set('source', source).set('sdk', sdk);
 
-const bundle = { source: () => sources.get('source') ?? '' };
+const bundle = { source: () => sources.get('source') ?? '', sdk: () => sources.get('sdk') ?? '' };
 
 /** The modules by WIT interface name, without the package and the version. */
 export const modules: Readonly<Record<string, object>> = {

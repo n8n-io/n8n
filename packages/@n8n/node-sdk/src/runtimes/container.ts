@@ -15,6 +15,7 @@ export const CONTAINER_GUEST = path.resolve(__dirname, '..', '..', 'dist', 'gues
 
 const GUEST_PATH = '/guest/action.cjs';
 const BUNDLE_PATH = '/bundle/bundle.js';
+const SDK_PATH = '/bundle/sdk.js';
 
 /** The guest, the image, the permissions and the limits of `containerRuntime`. */
 export interface ContainerOptions {
@@ -107,7 +108,7 @@ export function containerRuntime({
 	return {
 		name: 'container',
 		async start(session) {
-			const { kind, limits, manifest, bundleFile, grants } = session;
+			const { kind, limits, manifest, bundleFile, sdk, grants } = session;
 			const own = manifest.contract.runtime;
 			const used = own?.image ?? image;
 			if (!checked.has(used)) {
@@ -122,6 +123,8 @@ export function containerRuntime({
 			// renamed a new bundle to a moment ago. A new name for each session avoids that.
 			const mounted = `${bundleFile}.${name}`;
 			await link(bundleFile, mounted);
+			const sdkMounted = sdk ? `${sdk.file}.${name}` : undefined;
+			if (sdk && sdkMounted) await link(sdk.file, sdkMounted);
 			const child = spawn(
 				'docker',
 				[
@@ -133,11 +136,17 @@ export function containerRuntime({
 					...(ociRuntime ? ['--runtime', ociRuntime] : []),
 					...['--mount', `type=bind,src=${guest},dst=${GUEST_PATH},readonly`],
 					...['--mount', `type=bind,src=${mounted},dst=${BUNDLE_PATH},readonly`],
+					...(sdkMounted
+						? ['--mount', `type=bind,src=${sdkMounted},dst=${SDK_PATH},readonly`]
+						: []),
 					used,
-					...['node', '--permission', `--allow-fs-read=${BUNDLE_PATH}`, ...permissions, GUEST_PATH],
+					...['node', '--permission', `--allow-fs-read=${BUNDLE_PATH}`],
+					...(sdk ? [`--allow-fs-read=${SDK_PATH}`] : []),
+					...[...permissions, GUEST_PATH],
 					...['--kind', kind],
 					...grants.flatMap((grant) => ['--grant', grant]),
 					...['--bundle', BUNDLE_PATH, '--bundle-sha256', manifest.bundleHash],
+					...(sdk ? ['--sdk', SDK_PATH, '--sdk-sha256', sdk.sha256] : []),
 					...['--node-contract', manifest.nodeContract],
 				],
 				{ stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
@@ -146,6 +155,7 @@ export function containerRuntime({
 			child.once('close', () => {
 				spawn('docker', ['rm', '--force', name], { stdio: 'ignore' }).on('error', () => {});
 				void rm(mounted, { force: true });
+				if (sdkMounted) void rm(sdkMounted, { force: true });
 			});
 			return connectChild(child, {
 				limits,

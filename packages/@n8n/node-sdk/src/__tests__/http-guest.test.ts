@@ -27,10 +27,11 @@ import { parseManifest, sha256, type VersionManifest } from '../version';
 const RUNTIME = hostRuntime();
 
 /** A version that no trusted key signs, as an instance publishes it. */
-const versionOf = (manifest: VersionManifest, bundle: string): PackedVersion => ({
+const versionOf = (manifest: VersionManifest, bundle: string, sdk?: string): PackedVersion => ({
 	manifest,
 	origin: 'private',
 	readBundle: async () => bundle,
+	readSdk: async () => sdk ?? '',
 });
 
 const ACTIONS = `import { defineNode, t } from '@n8n/node-sdk';
@@ -143,7 +144,7 @@ describe('the HTTP guest', () => {
 	async function versionsOf(name: keyof typeof BINDINGS) {
 		const packed = await packAction(path.join(dirs.root, 'actions.ts'), name);
 		const guest = await packHttpGuest({ contract: packed.manifest.contract, ...BINDINGS[name] });
-		const js: PackedVersion = versionOf(packed.manifest, packed.bundle);
+		const js: PackedVersion = versionOf(packed.manifest, packed.bundle, packed.sdk);
 		const http: PackedVersion = versionOf(guest.manifest, guest.bundle);
 		return { js, http, config: guest.bundle };
 	}
@@ -165,6 +166,8 @@ describe('the HTTP guest', () => {
 			const fromHttp = await outputsOf(name, await loadExecutor(http, RUNTIME));
 			expect(fromJs.outputs).not.toEqual([[]]);
 			expect(fromHttp).toEqual(fromJs);
+			// The host lifts a config, so it pins no SDK runtime.
+			expect(http.manifest.sdk).toBeUndefined();
 		},
 	);
 

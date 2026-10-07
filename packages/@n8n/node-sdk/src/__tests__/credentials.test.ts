@@ -1125,7 +1125,7 @@ describe('secretRedactorOf', () => {
 
 describe('credentialTypeOfManifest', () => {
 	const fromManifest = (type: AnyCredentialType) => {
-		const manifest = credentialManifestOf(type, '0.0.0');
+		const manifest = credentialManifestOf(type);
 		if (!manifest) throw new Error('no manifest');
 		return credentialTypeOfManifest(parseCredentialManifest(JSON.stringify(manifest)));
 	};

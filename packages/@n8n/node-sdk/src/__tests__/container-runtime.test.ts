@@ -95,9 +95,9 @@ const host: ExecutorHost = {
 const probe = async (name: string, limits?: SandboxOptions['limits']) => {
 	const file = path.join(cacheDir, 'probes.ts');
 	writeFileSync(file, PROBES);
-	const { manifest, bundle } = await packAction(file, name);
+	const { manifest, bundle, sdk } = await packAction(file, name);
 	const { executor } = await sandboxedVersionOf(
-		{ manifest, origin: 'private', readBundle: async () => bundle },
+		{ manifest, origin: 'private', readBundle: async () => bundle, readSdk: async () => sdk ?? '' },
 		options(runtime, limits),
 		firstPartyRuntime(),
 	);

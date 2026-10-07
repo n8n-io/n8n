@@ -16,7 +16,7 @@ import { t } from '../schema';
 import type { ExecutorHost } from '../runtime';
 import { WORKER_GUEST, workerRuntime } from '../runtimes/worker';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
-import { NODE_CONTRACT_VERSION, parseFixtures } from '../version';
+import { NODE_CONTRACT_VERSION, parseFixtures, parseManifest, sha256 } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
 const SIDECAR = path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
@@ -91,6 +91,7 @@ export const echoProbe = probe.action('probe', {
 	egress: { hosts: ['api.example.com'] },
 	run: async ({ http }: any) => ({ value: JSON.stringify(await http.request({ url: 'https://api.example.com/echo' })) }),
 } as any);
+export const helloProbe = spec(async () => ({ value: 'hello' }));
 // A name built at run time passes the pack check.
 export const exitProbe = spec(async () => {
 	(globalThis as any)[['pro', 'cess'].join('')].exit(3);
@@ -125,9 +126,14 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 	beforeAll(() => writeFileSync(file, PROBES));
 
 	const runProbe = async (name: string, limits?: SandboxOptions['limits']) => {
-		const { manifest, bundle } = await packAction(file, name);
+		const { manifest, bundle, sdk } = await packAction(file, name);
 		const { executor } = await sandboxedVersionOf(
-			{ manifest, origin: 'private', readBundle: async () => bundle },
+			{
+				manifest,
+				origin: 'private',
+				readBundle: async () => bundle,
+				readSdk: async () => sdk ?? '',
+			},
 			options(runtime, limits),
 			firstPartyRuntime(),
 		);
@@ -189,10 +195,59 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 		expect(await replay('items.set', options(runtime))).toEqual([]);
 	});
 
-	it('records each JSON-RPC message of the worker in the run profile', async () => {
-		const { manifest, bundle } = await packAction(file, 'echoProbe');
+	it('runs a self-contained bundle of Node Contract 2.10.0, which pins no SDK runtime', async () => {
+		const { manifest } = await packAction(file, 'helloProbe');
+		// The bundle inlines the SDK, as pack did before Node Contract 2.11.0.
+		const { build } = await import('esbuild');
+		const result = await build({
+			stdin: {
+				contents: `export { helloProbe as default } from ${JSON.stringify(file)};`,
+				resolveDir: cacheDir,
+				loader: 'ts',
+			},
+			bundle: true,
+			write: false,
+			format: 'cjs',
+			platform: 'neutral',
+			mainFields: ['browser', 'module', 'main'],
+			external: ['n8n-workflow'],
+			alias: { '@n8n/node-sdk': path.resolve(__dirname, '../index.ts') },
+		});
+		const bundle = result.outputFiles[0]?.text ?? '';
+		expect(bundle).not.toContain('require("@n8n/node-sdk")');
+		const old = { ...manifest, nodeContract: '2.10.0', sdk: '0.1.0', bundleHash: sha256(bundle) };
 		const { executor } = await sandboxedVersionOf(
-			{ manifest, origin: 'private', readBundle: async () => bundle },
+			{
+				manifest: parseManifest(JSON.stringify(old)),
+				origin: 'private',
+				readBundle: async () => bundle,
+			},
+			options(runtime),
+			firstPartyRuntime(),
+		);
+		expect(await executor(host)).toEqual([[{ json: { value: 'hello' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('refuses a bundle that pins an SDK runtime when the host cannot read it', async () => {
+		const { manifest, bundle } = await packAction(file, 'echoProbe');
+		await expect(
+			sandboxedVersionOf(
+				{ manifest, origin: 'private', readBundle: async () => bundle },
+				options(runtime),
+				firstPartyRuntime(),
+			),
+		).rejects.toThrow(`The host has no SDK runtime for ${manifest.id}@${manifest.semver}`);
+	});
+
+	it('records each JSON-RPC message of the worker in the run profile', async () => {
+		const { manifest, bundle, sdk } = await packAction(file, 'echoProbe');
+		const { executor } = await sandboxedVersionOf(
+			{
+				manifest,
+				origin: 'private',
+				readBundle: async () => bundle,
+				readSdk: async () => sdk ?? '',
+			},
 			options(runtime),
 			firstPartyRuntime(),
 		);

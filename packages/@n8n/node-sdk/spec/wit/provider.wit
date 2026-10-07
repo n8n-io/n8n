@@ -1,4 +1,4 @@
-package n8n:node-contract@2.10.0;
+package n8n:node-contract@2.11.0;
 
 /// What a provider bundle exports besides its capabilities. The UI calls a provider a
 /// sub-node.
