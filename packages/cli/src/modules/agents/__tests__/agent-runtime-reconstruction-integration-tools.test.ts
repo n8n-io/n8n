@@ -334,7 +334,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
-			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,

@@ -3,7 +3,6 @@ import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { resolveToolNodeType } from '@/node-execution/resolve-tool-node-type';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -15,11 +14,6 @@ import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integra
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { AgentPolicyService } from '../agent-policy.service';
-
-vi.mock('@/node-execution/resolve-tool-node-type', () => ({
-	resolveToolNodeType: vi.fn((nodeType: string) => nodeType),
-}));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -84,8 +78,6 @@ function makeService() {
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
 	const aiGatewayService = mock<AiGatewayService>();
-	const agentPolicyService = mock<AgentPolicyService>();
-	agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -99,9 +91,7 @@ function makeService() {
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
-			agentPolicyService,
 		),
-		agentPolicyService,
 		agentRepository,
 		agentSkillsService,
 		agentTaskRepository,
@@ -511,206 +501,6 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
 			}),
 		]);
-	});
-
-	describe('policy', () => {
-		const slackTool = {
-			type: 'node' as const,
-			name: 'post_message',
-			node: {
-				nodeType: 'n8n-nodes-base.slack',
-				nodeTypeVersion: 2,
-				nodeParameters: {},
-				credentials: { slackApi: { id: 'slack-1', name: 'Slack' } },
-			},
-		};
-		const blockedBy = (subjectType: string, subject: string) => ({
-			kind: 'x',
-			checkId: 'x',
-			message: 'blocked',
-			subjectType,
-			subject,
-		});
-
-		beforeEach(() => {
-			vi.mocked(resolveToolNodeType).mockImplementation((nodeType) => nodeType);
-		});
-
-		function setUp() {
-			const setup = makeService();
-			setup.nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: { credentials: [], properties: [] },
-			} as never);
-			setup.agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({ ...runnableConfig, tools: [slackTool] }),
-			);
-			return setup;
-		}
-
-		const credentials = makeCredentialProvider([
-			{ id: 'openai-main', type: 'openAiApi' },
-			{ id: 'slack-1', type: 'slackApi' },
-		]);
-
-		it('points a blocked node type and a blocked credential type at the tool that uses them', async () => {
-			const { service, agentPolicyService } = setUp();
-			agentPolicyService.evaluatePublish.mockResolvedValue({
-				violations: [
-					blockedBy('nodeType', 'n8n-nodes-base.slack'),
-					blockedBy('credentialType', 'slackApi'),
-				],
-			});
-
-			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
-
-			const capability = { kind: 'tool', id: 'post_message', index: 0, toolType: 'node' };
-			expect(result.status).toBe('invalid');
-			expect(result.issues).toEqual([
-				{
-					code: 'incompatible_reference',
-					path: 'tools.0.node.nodeType',
-					capability,
-					reason: 'blocked_by_policy',
-				},
-				{
-					code: 'incompatible_reference',
-					path: 'tools.0.node.credentials.slackApi',
-					capability,
-					reason: 'blocked_by_policy',
-				},
-			]);
-			expect(agentPolicyService.evaluatePublish).toHaveBeenCalledWith(
-				projectId,
-				agentId,
-				expect.objectContaining({ tools: [slackTool] }),
-			);
-		});
-
-		it('ignores a violation about something no tool uses', async () => {
-			const { service, agentPolicyService } = setUp();
-			agentPolicyService.evaluatePublish.mockResolvedValue({
-				violations: [blockedBy('nodeType', 'n8n-nodes-base.code')],
-			});
-
-			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
-
-			expect(result.issues).toEqual([]);
-		});
-
-		it('points a violation on the `…Tool` variant at the tool that runs as it', async () => {
-			const { service, agentPolicyService } = setUp();
-			vi.mocked(resolveToolNodeType).mockImplementation((nodeType) => `${nodeType}Tool`);
-			agentPolicyService.evaluatePublish.mockResolvedValue({
-				violations: [blockedBy('nodeType', 'n8n-nodes-base.slackTool')],
-			});
-
-			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
-
-			expect(result.issues).toEqual([
-				expect.objectContaining({ path: 'tools.0.node.nodeType', reason: 'blocked_by_policy' }),
-			]);
-		});
-
-		it('points a violation inside an embedded inline agent at the tool that embeds it', async () => {
-			const setup = setUp();
-			const messageAnAgentTool = {
-				type: 'node' as const,
-				name: 'ask_helper',
-				node: {
-					nodeType: 'n8n-nodes-base.messageAnAgent',
-					nodeTypeVersion: 2,
-					nodeParameters: {
-						agentSource: 'inline',
-						inlineAgent: { config: { tools: [slackTool] } },
-					},
-				},
-			};
-			setup.agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({ ...runnableConfig, tools: [messageAnAgentTool] }),
-			);
-			setup.agentPolicyService.evaluatePublish.mockResolvedValue({
-				violations: [blockedBy('nodeType', 'n8n-nodes-base.slack')],
-			});
-
-			const result = await setup.service.validateAgentConfiguration(
-				agentId,
-				projectId,
-				credentials,
-			);
-
-			expect(result.issues).toContainEqual(
-				expect.objectContaining({
-					path: 'tools.0.node.nodeParameters.inlineAgent',
-					capability: { kind: 'tool', id: 'ask_helper', index: 0, toolType: 'node' },
-					reason: 'blocked_by_policy',
-				}),
-			);
-		});
-
-		it('points a credential type named by parameter at that parameter', async () => {
-			const setup = setUp();
-			const httpTool = {
-				type: 'node' as const,
-				name: 'call_api',
-				node: {
-					nodeType: 'n8n-nodes-base.httpRequest',
-					nodeTypeVersion: 4.2,
-					nodeParameters: {
-						authentication: 'predefinedCredentialType',
-						nodeCredentialType: 'githubApi',
-					},
-				},
-			};
-			setup.agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({ ...runnableConfig, tools: [httpTool] }),
-			);
-			setup.agentPolicyService.evaluatePublish.mockResolvedValue({
-				violations: [blockedBy('credentialType', 'githubApi')],
-			});
-
-			const result = await setup.service.validateAgentConfiguration(
-				agentId,
-				projectId,
-				credentials,
-			);
-
-			expect(result.issues).toContainEqual(
-				expect.objectContaining({
-					path: 'tools.0.node.nodeParameters.nodeCredentialType',
-					capability: { kind: 'tool', id: 'call_api', index: 0, toolType: 'node' },
-					reason: 'blocked_by_policy',
-				}),
-			);
-		});
-
-		it('reports a policy check that failed to run instead of a valid result', async () => {
-			const { service, agentPolicyService } = setUp();
-			agentPolicyService.evaluatePublish.mockResolvedValue({
-				violations: [],
-				checkErrors: [{ checkId: 'node-type-availability', correlationId: 'corr-1' }],
-			});
-
-			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
-
-			expect(result.status).toBe('invalid');
-			expect(result.issues).toEqual([
-				{
-					code: 'invalid_value',
-					path: 'tools',
-					capability: { kind: 'tool' },
-					reason: 'policy_check_failed',
-				},
-			]);
-		});
-
-		// A blocked tool fails on its own at run time; it must not refuse the whole chat.
-		it('does not ask the policy at runtime scope', async () => {
-			const { service, agentPolicyService } = setUp();
-
-			await service.validateAgentIsRunnable(agentId, projectId, credentials);
-
-			expect(agentPolicyService.evaluatePublish).not.toHaveBeenCalled();
-		});
 	});
 
 	it('ignores a conditionally required node-tool credential when its display options are inactive', async () => {

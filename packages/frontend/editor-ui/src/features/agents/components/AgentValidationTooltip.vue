@@ -28,15 +28,12 @@ const PREVIEW_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	incompatible_nodes: 'agents.builder.preview.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger:
 		'agents.builder.preview.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
-	blocked_by_policy: 'agents.builder.preview.issue.tool.node.blockedByPolicy' as BaseTextKey,
 };
 
 const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	incompatible_nodes: 'agents.publish.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger: 'agents.publish.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.publish.issue.tool.workflow.notPublished' as BaseTextKey,
-	blocked_by_policy: 'agents.publish.issue.tool.node.blockedByPolicy' as BaseTextKey,
-	policy_check_failed: 'agents.publish.issue.tool.node.policyCheckFailed' as BaseTextKey,
 };
 
 const CORE_PATH_KEYS: Record<string, BaseTextKey> = {

@@ -33,7 +33,6 @@ const violation: PolicyViolation = {
 function setUp() {
 	const backend = mock<PolicyEnforcementBackend>();
 	backend.enforce.mockResolvedValue({ violations: [] });
-	backend.evaluate.mockResolvedValue({ violations: [] });
 	const enforcement = new PolicyEnforcementService();
 	enforcement.setImplementation(backend);
 	return { backend, service: new AgentPolicyService(enforcement) };
@@ -96,18 +95,5 @@ describe('AgentPolicyService', () => {
 		expect(backend.enforce).toHaveBeenCalledWith('workflowPublish', expect.anything(), actor);
 		expect(error).toBeInstanceOf(PolicyViolationError);
 		expect((error as PolicyViolationError).violations).toEqual([violation]);
-	});
-
-	it('returns the whole advisory publish decision, failed checks included', async () => {
-		const { backend, service } = setUp();
-		const decision = {
-			violations: [violation],
-			checkErrors: [{ checkId: 'credential-type-availability', correlationId: 'corr-1' }],
-		};
-		backend.evaluate.mockResolvedValue(decision);
-
-		await expect(
-			service.evaluatePublish('proj-1', 'agent-1', agent([dateTimeTool])),
-		).resolves.toEqual(decision);
 	});
 });

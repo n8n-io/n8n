@@ -155,9 +155,7 @@ points, so every check that reads `nodes` covers agents with no change.
   names. The token binds to an `agent` subject, and the audit line records
   `agentId` and `agentName`.
 - **Agent hosts:** config update and create (`workflowSave`), revert
-  (`workflowSave` over the current draft), publish (`workflowPublish`), and
-  publish-scope validation (`evaluateWorkflowPublish`). Validation reports a
-  check that fails to run as an issue, because publish refuses in that case.
+  (`workflowSave` over the current draft), and publish (`workflowPublish`).
 - **Agent node tools run through `EphemeralNodeExecutor`, not `WorkflowRunner`.**
   So `workflowExecuteBefore` never fires. Each run path of the executor calls
   `workflowStart` on the one-node workflow it builds, and returns a refusal as a

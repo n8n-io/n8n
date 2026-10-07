@@ -1,5 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { PolicedWorkflow, PolicyDecision } from '@n8n/decorators';
+import type { PolicedWorkflow } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 import { toPolicedNodes } from '@/policy/policed-agent-nodes';
@@ -58,16 +58,5 @@ export class AgentPolicyService {
 			{ workflow: policedWorkflowForAgent(agentId, content), projectId },
 			actor,
 		);
-	}
-
-	async evaluatePublish(
-		projectId: string,
-		agentId: string,
-		content: PolicedAgentContent,
-	): Promise<PolicyDecision> {
-		return await this.policyEnforcementService.evaluateWorkflowPublish({
-			workflow: policedWorkflowForAgent(agentId, content),
-			projectId,
-		});
 	}
 }
