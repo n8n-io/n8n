@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
+import partition from 'lodash/partition';
 import { InstanceSettings } from 'n8n-core';
 import type { McpRegistryConnection } from 'n8n-workflow';
 
@@ -142,13 +143,22 @@ export class McpRegistryService {
 		const registryServers = storedServers.filter((server) => !isN8nConnectServer(server));
 		const n8nConnectServers = storedServers.filter(isN8nConnectServer);
 		const fetchedAt = await this.repository.readDbNow();
-		const registryUpdates = (
+		const fetchedRegistryUpdates =
 			registryServers.length === 0
 				? await this.apiClient.fetchAllServers(signal)
-				: ((await this.refreshUpdatedServers(registryServers, signal)) ?? [])
-		)
-			// The prefix is reserved for n8n Connect rows, so no registry row replaces one.
-			.filter((server) => !server.slug.startsWith(N8N_CONNECT_MCP_SLUG_PREFIX));
+				: ((await this.refreshUpdatedServers(registryServers, signal)) ?? []);
+		// The prefix is reserved for n8n Connect rows, so no registry row replaces one.
+		const [reservedSlugUpdates, registryUpdates] = partition(fetchedRegistryUpdates, (server) =>
+			server.slug.startsWith(N8N_CONNECT_MCP_SLUG_PREFIX),
+		);
+		if (reservedSlugUpdates.length > 0) {
+			this.logger.warn(
+				'Ignored MCP registry servers that use the reserved n8n Connect slug prefix',
+				{
+					slugs: reservedSlugUpdates.map(({ slug }) => slug),
+				},
+			);
+		}
 
 		// A gateway failure must not discard the registry updates, so it is rethrown
 		// only after they are saved. The task then retries the gateway part.

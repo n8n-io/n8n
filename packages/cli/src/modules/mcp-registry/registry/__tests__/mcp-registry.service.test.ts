@@ -106,6 +106,7 @@ function createService(options: CreateServiceOptions = {}) {
 
 	return {
 		service,
+		logger,
 		repository,
 		apiClient,
 		aiGatewayService,
@@ -267,7 +268,7 @@ describe('McpRegistryService', () => {
 		});
 
 		it('refreshFromApi drops a registry server that uses the reserved n8n Connect slug prefix', async () => {
-			const { service, apiClient, repository } = createService({ storedServers: null });
+			const { service, logger, apiClient, repository } = createService({ storedServers: null });
 			apiClient.fetchAllServers.mockResolvedValue([
 				notionMockServer,
 				{ ...linearMockServer, slug: 'n8n-connect-linear' },
@@ -278,6 +279,10 @@ describe('McpRegistryService', () => {
 			expect(repository.upsertFetchedServers).toHaveBeenCalledWith(
 				[toEntity(notionMockServer)],
 				DB_NOW,
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('reserved n8n Connect slug prefix'),
+				{ slugs: ['n8n-connect-linear'] },
 			);
 		});
 	});

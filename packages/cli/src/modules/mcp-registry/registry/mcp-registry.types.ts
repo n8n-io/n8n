@@ -18,7 +18,8 @@ export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
 /**
  * Slug prefix of an n8n Connect MCP server row. Both sources store their rows in
  * one table keyed by slug, so the prefix stops a gateway server from replacing
- * a registry server with the same slug.
+ * a registry server with the same slug. The prefix is reserved: the registry
+ * refresh drops any registry server whose slug starts with it.
  */
 export const N8N_CONNECT_MCP_SLUG_PREFIX = 'n8n-connect-';
 
