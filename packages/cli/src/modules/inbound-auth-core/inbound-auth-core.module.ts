@@ -4,12 +4,17 @@ import { Container } from '@n8n/di';
 import {
 	AuthenticationService,
 	IdentityService,
+	LocalAuthorizationServer,
 	TrustedSourceGate,
+	TrustedSourceStore,
+	type AuthorizationServerMetadata,
 	type Extracted,
+	type Jwk,
 	type Result,
 	type Verified,
 } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
+import { OperationalError } from 'n8n-workflow';
 
 // Fail-closed defaults: a consumer that runs before a real implementation is registered gets a
 // rejection, not a throw. The OAuth2 driver replaces the AuthenticationService binding.
@@ -35,6 +40,17 @@ class UnregisteredTrustedSourceGate extends TrustedSourceGate {
 	}
 }
 
+// Discovery of the local source must fail, not succeed with made-up documents.
+class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
+	async getMetadata(): Promise<AuthorizationServerMetadata> {
+		throw new OperationalError('No local authorization server is registered');
+	}
+
+	async getJwks(): Promise<{ keys: Jwk[] }> {
+		throw new OperationalError('No local authorization server is registered');
+	}
+}
+
 /**
  * Owns the `trusted_source` and `trusted_source_identity` tables and binds the inbound-auth
  * contracts. Main, webhook and worker instances load it, because workers and webhook processes
@@ -53,6 +69,20 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (!Container.has(TrustedSourceGate)) {
 			Container.set(TrustedSourceGate, new UnregisteredTrustedSourceGate());
 		}
+		if (!Container.has(LocalAuthorizationServer)) {
+			Container.set(LocalAuthorizationServer, new UnregisteredLocalAuthorizationServer());
+		}
+
+		const { TrustedSourceDbStore } = await import('./trusted-source.store.js');
+		if (!Container.has(TrustedSourceStore)) {
+			Container.set(TrustedSourceStore, Container.get(TrustedSourceDbStore));
+		}
+	}
+
+	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.
+	async systemTasks() {
+		const { TrustedSourceDiscoveryTask } = await import('./trusted-source-discovery.task.js');
+		return [TrustedSourceDiscoveryTask];
 	}
 
 	async entities() {

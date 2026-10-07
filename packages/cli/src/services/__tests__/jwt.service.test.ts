@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
+import { generateKeyPairSync } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
@@ -86,12 +87,17 @@ describe('JwtService', () => {
 
 		it('should bind a resource token to the audience it is given', () => {
 			const resource = 'https://n8n.example.com/mcp-server/http';
-			const token = jwtService.signForResource(payload, resource);
+			const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+			const token = jwtService.signForResource(payload, resource, privateKey, {
+				algorithm: 'ES256',
+			});
 
-			expect(jwtService.verifyForResource(token, resource)).toMatchObject({ sub: 1 });
-			expect(() => jwtService.verifyForResource(token, 'https://other.example.com')).toThrow(
-				jwt.JsonWebTokenError,
-			);
+			expect(jwtService.verifyForResource(token, resource, publicKey).payload).toMatchObject({
+				sub: 1,
+			});
+			expect(() =>
+				jwtService.verifyForResource(token, 'https://other.example.com', publicKey),
+			).toThrow(jwt.JsonWebTokenError);
 		});
 
 		describe('tokens minted before audience binding', () => {

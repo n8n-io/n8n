@@ -100,7 +100,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
-		{ withProject = false }: { withProject?: boolean } = {},
+		{
+			withProject = false,
+			usageCounts,
+		}: { withProject?: boolean; usageCounts?: Map<string, number> } = {},
 	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
@@ -119,11 +122,61 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.where('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		this.applyFilters(query, options.filter);
-		this.applySorting(query, options.sortBy);
+		this.applySorting(query, options.sortBy, usageCounts);
 		query.skip(options.skip).take(options.take);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data };
+	}
+
+	/**
+	 * Adds the shared n8n Chat reachability predicate to an already-started
+	 * `agent` query: the given projects (or any, when `projectIds` is null)
+	 * and {@link applyFilters}'s `availableInChat` predicate. Callers add their
+	 * own `where` first — this only appends `andWhere` clauses, so it never
+	 * discards a condition a caller already set. Shared by
+	 * `findChatReachableIds` and `findChatReachableById` so both stay in
+	 * lockstep with each other and with the chat agent list.
+	 */
+	private chatReachableQuery(
+		query: SelectQueryBuilder<Agent>,
+		projectIds: string[] | null,
+	): SelectQueryBuilder<Agent> {
+		if (projectIds !== null) {
+			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
+		}
+		this.applyFilters(query, { availableInChat: true });
+		return query;
+	}
+
+	/** Ids of the agents the user can reach over n8n Chat: published config carries the channel. */
+	async findChatReachableIds(projectIds: string[] | null): Promise<string[]> {
+		if (projectIds?.length === 0) return [];
+
+		// `availableInChat` reads `activeVersion.schema`, so the join must exist
+		// even though the select list drops it again.
+		const query = this.createQueryBuilder('agent')
+			.leftJoin('agent.activeVersion', 'activeVersion')
+			.select(['agent.id']);
+
+		const rows = await this.chatReachableQuery(query, projectIds).getMany();
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * One agent reachable over n8n Chat: in one of the given projects (or any
+	 * project, when `projectIds` is null) and its published config carries the
+	 * channel. Loads `project` too — the chat page labels the agent with it.
+	 */
+	async findChatReachableById(id: string, projectIds: string[] | null): Promise<Agent | null> {
+		if (projectIds?.length === 0) return null;
+
+		const query = this.createQueryBuilder('agent')
+			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.leftJoinAndSelect('agent.project', 'project')
+			.where('agent.id = :id', { id });
+
+		return await this.chatReachableQuery(query, projectIds).getOne();
 	}
 
 	private applyFilters(
@@ -170,6 +223,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	private applySorting(
 		query: SelectQueryBuilder<Agent>,
 		sortBy?: ListAgentsQueryDto['sortBy'],
+		usageCounts?: Map<string, number>,
 	): void {
 		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];
 		const sortDirection = direction.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
@@ -181,7 +235,39 @@ export class AgentRepository extends BaseRepository<Agent> {
 			return;
 		}
 
+		if (field === 'usage') {
+			this.applyUsageSorting(query, usageCounts);
+			return;
+		}
+
 		query.orderBy(`agent.${field}`, sortDirection);
+	}
+
+	/**
+	 * Ranks by each agent's pre-counted n8n Chat thread usage, so the agents the
+	 * chat user actually talks to rise to the top. Ties (including agents with
+	 * no usage) fall back to `createdAt` DESC, then `id` DESC.
+	 */
+	private applyUsageSorting(
+		query: SelectQueryBuilder<Agent>,
+		usageCounts?: Map<string, number>,
+	): void {
+		if (!usageCounts || usageCounts.size === 0) {
+			query.orderBy('agent.createdAt', 'DESC').addOrderBy('agent.id', 'DESC');
+			return;
+		}
+
+		const agentIds = [...usageCounts.keys()];
+		const cases = agentIds.map((_, i) => `WHEN :usageAgent${i} THEN :usageCount${i}`).join(' ');
+		agentIds.forEach((id, i) => {
+			query.setParameter(`usageAgent${i}`, id).setParameter(`usageCount${i}`, usageCounts.get(id));
+		});
+
+		query
+			.addSelect(`CASE agent.id ${cases} ELSE 0 END`, 'agent_usage_count')
+			.orderBy('agent_usage_count', 'DESC')
+			.addOrderBy('agent.createdAt', 'DESC')
+			.addOrderBy('agent.id', 'DESC');
 	}
 
 	/**

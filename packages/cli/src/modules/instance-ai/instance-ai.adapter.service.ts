@@ -182,7 +182,11 @@ import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registr
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
-import { NodeCatalogService } from '@/node-catalog';
+import {
+	getModuleDisabledNodeTypes,
+	getModuleDisabledNotice,
+	NodeCatalogService,
+} from '@/node-catalog';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
@@ -3709,7 +3713,15 @@ export class InstanceAiAdapterService {
 	private createNodeAdapter(user: User): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
-		const getNodes = async () => await this.getNodesFromCache();
+		const getAllNodes = async () => await this.getNodesFromCache();
+		// Discovery leaves out nodes whose module is off. Lookups by name keep them and say why.
+		const getNodes = async () => {
+			const nodes = await getAllNodes();
+			const disabled = new Set(getModuleDisabledNodeTypes(Container.get(ModuleRegistry)));
+			return disabled.size > 0 ? nodes.filter((n) => !disabled.has(n.name)) : nodes;
+		};
+		const getUnavailableNotice = (nodeType: string) =>
+			getModuleDisabledNotice(Container.get(ModuleRegistry), nodeType);
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
 			this.buildAiGatewayNodeMeta(config, nodeName);
@@ -3833,7 +3845,7 @@ export class InstanceAiAdapterService {
 
 			async getDescription(nodeType, version, options) {
 				const [nodes, gatewayConfig] = await Promise.all([
-					getNodes(),
+					getAllNodes(),
 					options?.includeGatewayMetadata === false ? Promise.resolve(null) : getGatewayConfig(),
 				]);
 				let desc =
@@ -3854,6 +3866,7 @@ export class InstanceAiAdapterService {
 				}
 
 				const meta = buildMeta(gatewayConfig, desc.name);
+				const unavailable = getUnavailableNotice(desc.name);
 
 				return {
 					name: desc.name,
@@ -3894,6 +3907,7 @@ export class InstanceAiAdapterService {
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
 					...(meta ? { aiGateway: meta } : {}),
+					...(unavailable ? { unavailable } : {}),
 				} satisfies NodeDescription;
 			},
 
@@ -3912,6 +3926,8 @@ export class InstanceAiAdapterService {
 					});
 
 				const result = await getDefinition(nodeType);
+				const unavailable = getUnavailableNotice(nodeType);
+				if (unavailable && !result.error) return { ...result, unavailable };
 				if (!result.error || nodeType.includes('.')) return result;
 
 				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
@@ -3924,7 +3940,7 @@ export class InstanceAiAdapterService {
 			},
 
 			getParameterIssues: async (nodeType, typeVersion, parameters) => {
-				const nodes = await getNodes();
+				const nodes = await getAllNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return {};
 
@@ -3983,7 +3999,7 @@ export class InstanceAiAdapterService {
 			},
 
 			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, _existingCredentials) => {
-				const nodes = await getNodes();
+				const nodes = await getAllNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return [];
 

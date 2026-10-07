@@ -267,7 +267,7 @@ describe('AgentPreviewDock', () => {
 			{
 				testId: 'agent-preview-close-btn',
 				icon: 'x',
-				label: 'agents.builder.preview.hide',
+				label: 'agents.builder.preview.close.ariaLabel',
 			},
 		];
 		const traceTooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
@@ -358,7 +358,7 @@ describe('AgentPreviewDock', () => {
 			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
 		});
 		expect(tooltips[1]?.props()).toMatchObject({
-			label: 'agents.builder.preview.hide',
+			label: 'agents.builder.preview.close.ariaLabel',
 			shortcut: { metaKey: false, shiftKey: false, keys: ['esc'] },
 		});
 	});

@@ -8,7 +8,7 @@ The module holds no policy of its own. A policy feature adds a check class and a
 store for its rules. It does not add an enforcement path, an error shape, or an
 audit gap.
 
-Why these seven points, why every check must pass, and why a check that does not
+Why these eight points, why every check must pass, and why a check that does not
 answer blocks: read the policy infrastructure RFC in Notion. This README is the
 working reference for writing a check. It does not restate the RFC.
 
@@ -25,7 +25,7 @@ flowchart LR
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
-        other["workflowTransfer<br/>credentialSave<br/>contentImport<br/>credentialDecrypt"]
+        other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt"]
     end
 
     subgraph pep["Enforcement point · src/policy (always loaded)"]
@@ -97,6 +97,7 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
 | `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
 | `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
+| `credentialTransfer` | 1000 ms | row id                            | move to another project                                               |
 | `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
 | `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
 
@@ -125,6 +126,7 @@ Each point hands its check a different context. The types are in
 | `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
 | `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
 | `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
+| `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
 | `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
 

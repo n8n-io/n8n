@@ -192,6 +192,15 @@ export interface AgentIntegrationConnectResponse {
 	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
 }
 
+/**
+ * WhatsApp needs the user to paste this token by hand into the Meta app's
+ * webhook config, unlike other platforms' secrets — so it's exposed here for
+ * the setup screen to display next to the webhook URL.
+ */
+export interface AgentWhatsAppVerifyTokenResponse {
+	verifyToken: string;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;
@@ -413,19 +422,40 @@ export interface AgentChatMessagesResponse {
  * Deliberately narrow. Its audience holds `agent:execute` alone — a
  * `project:chatUser` can start a production chat but has no `agent:read` — so
  * the published instructions, tools and skills must not travel with the list.
- * The page needs a label, an avatar and the owning project, and nothing else.
+ * The page needs a label, an avatar, the owning project, and a user-facing
+ * blurb (`description`) to help a chat user pick an agent — nothing else.
  */
 export interface AgentChatListItem {
 	id: string;
 	name: string;
 	/** Icon and gradient from the published config; unset when the agent has none. */
 	personalisation?: AgentPersonalisation;
+	/** User-facing blurb from the published config; unset when the agent has none. */
+	description?: string;
 	project: { id: string; name: string };
 }
 
 export interface AgentChatListResponse {
 	count: number;
 	data: AgentChatListItem[];
+}
+
+/** One of the user's own n8n Chat threads. `agent` is as narrow as {@link AgentChatListItem}. */
+export interface AgentN8nChatThreadSummary {
+	id: string;
+	title: string | null;
+	updatedAt: string;
+	agent: {
+		id: string;
+		name: string;
+		personalisation?: AgentPersonalisation;
+		projectId: string;
+	};
+}
+
+export interface AgentN8nChatThreadsResponse {
+	data: AgentN8nChatThreadSummary[];
+	nextCursor: string | null;
 }
 
 export interface AgentSessionLangSmithExportResponse {
