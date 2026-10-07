@@ -70,6 +70,20 @@ describe('Lakebase -> helpers', () => {
 			await expect(failure).rejects.toThrow('Select a Lakebase function');
 			await expect(failure).rejects.toMatchObject({ context: { itemIndex: 3 } });
 		});
+
+		it.each([
+			['lakebaseProject', 'project'],
+			['lakebaseBranch', 'branch'],
+			['lakebaseDatabase', 'database'],
+			['lakebaseSchema', 'schema'],
+		])('asks for the %s when that locator is empty', async (name, label) => {
+			const context = executeContext({ ...locators, lakebaseFunction: 'fn', [name]: '' });
+
+			const failure = resolveLakebaseFunctionUrl(context, 3);
+
+			await expect(failure).rejects.toThrow(`Select a Lakebase ${label}`);
+			await expect(failure).rejects.toMatchObject({ context: { itemIndex: 3 } });
+		});
 	});
 
 	it('resolveLakebaseTableUrl encodes the table name', async () => {

@@ -1495,4 +1495,8 @@ describe('Lakebase -> Execute Function method wiring', () => {
 		expect(method).toBeDefined();
 		expect(typeof databricks.methods.resourceMapping[method]).toBe('function');
 	});
+
+	it('opens on the argument form', () => {
+		expect(property('specifyArguments')?.default).toBe('fields');
+	});
 });

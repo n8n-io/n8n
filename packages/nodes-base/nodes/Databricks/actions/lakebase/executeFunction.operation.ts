@@ -10,6 +10,7 @@ import type {
 import { lakebaseApiRequest } from '../../transport';
 import { resolveLakebaseFunctionUrl } from './helpers';
 
+// `isRecord` narrows to `Record<string, unknown>`, which `INodeExecutionData.json` (IDataObject) does not accept
 function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
 }
@@ -36,27 +37,31 @@ function readArguments(context: IExecuteFunctions, i: number): IDataObject {
 	return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined && v !== null));
 }
 
-function shapeResult(response: GenericValue): IDataObject[] {
-	// Not `!response`: 0 and false are results, only a void/204 body is empty
-	if (response === undefined || response === null || response === '') return [{ success: true }];
-	if (Array.isArray(response)) {
-		return response.map((row: GenericValue) => (isDataObject(row) ? row : { result: row }));
+function shapeResult(statusCode: number, body: GenericValue): IDataObject[] {
+	// Only a void function (204) has no result; null, '', 0 and false are results
+	if (statusCode === 204 || body === undefined) return [{ success: true }];
+	if (Array.isArray(body)) {
+		return body.map((row: GenericValue) => (isDataObject(row) ? row : { result: row }));
 	}
-	if (isDataObject(response)) return [response];
-	return [{ result: response }];
+	if (isDataObject(body)) return [body];
+	return [{ result: body }];
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const url = await resolveLakebaseFunctionUrl(this, i);
 	const body = readArguments(this, i);
 
-	const response = await lakebaseApiRequest(this, {
+	const response: { statusCode: number; body: GenericValue } = await lakebaseApiRequest(this, {
 		method: 'POST',
 		url,
 		body,
 		json: true,
+		returnFullResponse: true,
 		headers: { Accept: 'application/json' },
 	});
 
-	return shapeResult(response).map((json) => ({ json, pairedItem: { item: i } }));
+	return shapeResult(response.statusCode, response.body).map((json) => ({
+		json,
+		pairedItem: { item: i },
+	}));
 }

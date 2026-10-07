@@ -40,12 +40,13 @@ describe('Lakebase -> Execute Function', () => {
 	const apiMock = (context: ReturnType<typeof setupContext>) =>
 		context.helpers.httpRequestWithAuthentication;
 	const run = (
-		response: unknown,
+		body: unknown,
 		overrides: Record<string, NodeParameterValueType | object> = {},
 		itemIndex = 0,
+		statusCode = 200,
 	) => {
 		const context = setupContext(overrides, itemIndex);
-		apiMock(context).mockResolvedValue(response);
+		apiMock(context).mockResolvedValue({ statusCode, body, headers: {} });
 		return { context, result: executeFunction.call(context, itemIndex) };
 	};
 	const requestOptions = (context: ReturnType<typeof setupContext>) =>
@@ -61,6 +62,7 @@ describe('Lakebase -> Execute Function', () => {
 				method: 'POST',
 				url: FN_URL,
 				json: true,
+				returnFullResponse: true,
 				body: { a: 1, b: 2 },
 				headers: expect.objectContaining({ Accept: 'application/json' }),
 			}),
@@ -68,8 +70,11 @@ describe('Lakebase -> Execute Function', () => {
 		expect(requestOptions(context).headers.Prefer).toBeUndefined();
 	});
 
-	it('sends an empty object when the form has no arguments', async () => {
-		const { context, result } = run(3, { 'functionArguments.value': null });
+	it.each([
+		['null', null],
+		['not an object', 'x'],
+	])('sends an empty object when the form value is %s', async (_name, value) => {
+		const { context, result } = run(3, { 'functionArguments.value': value });
 		await result;
 
 		expect(requestOptions(context).body).toEqual({});
@@ -134,7 +139,7 @@ describe('Lakebase -> Execute Function', () => {
 		it('rejects invalid JSON before any request', async () => {
 			const { context, result } = run(3, { specifyArguments: 'json', argumentsJson: '{nope' });
 
-			await expect(result).rejects.toThrow();
+			await expect(result).rejects.toThrow('Arguments (JSON) is not valid JSON');
 			expect(apiMock(context)).not.toHaveBeenCalled();
 		});
 	});
@@ -150,12 +155,18 @@ describe('Lakebase -> Execute Function', () => {
 		['an empty set', [], []],
 		['one record', { total: 3 }, [{ total: 3 }]],
 		['no body', undefined, [{ success: true }]],
-		['null', null, [{ success: true }]],
-		['an empty string', '', [{ success: true }]],
-	])('shapes %s as items', async (_name, response, expected) => {
-		const { result } = run(response);
+		['null', null, [{ result: null }]],
+		['an empty string', '', [{ result: '' }]],
+	])('shapes %s as items', async (_name, body, expected) => {
+		const { result } = run(body);
 
 		expect(await result).toEqual(expected.map((json) => ({ json, pairedItem: { item: 0 } })));
+	});
+
+	it('reports success for a void function (204)', async () => {
+		const { result } = run(undefined, {}, 0, 204);
+
+		expect(await result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 	});
 
 	it('pairs every item to the item index it was handed', async () => {

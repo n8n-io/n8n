@@ -23,12 +23,9 @@ export function readLoadLocator(context: ILoadOptionsFunctions, name: string): s
 	return typeof value === 'string' ? value : '';
 }
 
-export function readLakebaseTarget(context: ILoadOptionsFunctions): {
-	project: string;
-	branch: string;
-	database: string;
-	schema: string;
-} {
+export type LakebaseTarget = { project: string; branch: string; database: string; schema: string };
+
+export function readLakebaseTarget(context: ILoadOptionsFunctions): LakebaseTarget {
 	return {
 		project: readLoadLocator(context, 'lakebaseProject'),
 		branch: readLoadLocator(context, 'lakebaseBranch'),
@@ -40,7 +37,7 @@ export function readLakebaseTarget(context: ILoadOptionsFunctions): {
 /** `https://{host}/api/2.0/workspace/{id}/rest/{database}/{schema}` from already-read locators */
 export async function resolveLakebaseSchemaUrlFor(
 	context: DatabricksContext,
-	target: ReturnType<typeof readLakebaseTarget>,
+	target: LakebaseTarget,
 ): Promise<string> {
 	const base = await resolveLakebaseRestBase(context, target.project, target.branch);
 	return `${base}/${encodeURIComponent(target.database)}/${encodeURIComponent(target.schema)}`;
@@ -70,6 +67,6 @@ export async function resolveLakebaseFunctionUrl(
 	context: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<string> {
-	const fn = readLocator(context, itemIndex, 'lakebaseFunction', 'function');
-	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/rpc/${encodeURIComponent(fn)}`;
+	const functionName = readLocator(context, itemIndex, 'lakebaseFunction', 'function');
+	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/rpc/${encodeURIComponent(functionName)}`;
 }

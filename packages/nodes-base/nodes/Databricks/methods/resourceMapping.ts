@@ -99,7 +99,7 @@ export async function getLakebaseFunctionArguments(
 		args = await fetchLakebaseFunctionArguments(this, schemaUrl, fn);
 	} catch (error) {
 		if (!isOpenApiUnavailable(error, `${schemaUrl}/openapi.json`)) throw error;
-		return { fields: [], emptyFieldsNotice: FUNCTION_ARGUMENTS_UNAVAILABLE_NOTICE };
+		args = [];
 	}
 	if (args.length === 0) {
 		return { fields: [], emptyFieldsNotice: FUNCTION_ARGUMENTS_UNAVAILABLE_NOTICE };

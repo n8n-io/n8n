@@ -187,10 +187,19 @@ export const lakebaseParameters: INodeProperties[] = [
 			{ name: 'Using JSON', value: 'json' },
 		],
 		default: 'fields',
-		description:
-			'Use the form the node builds from the schema document, or send a JSON object when the document is off',
+		description: 'Fill in one field per argument, or send the arguments as one JSON object',
 		displayOptions: {
 			show: showForExecuteFunction,
+		},
+	},
+	{
+		displayName:
+			'Leave an optional argument blank, or remove it, to use its default in the function. A boolean argument always sends its switch value.',
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: { ...showForExecuteFunction, specifyArguments: ['fields'] },
 		},
 	},
 	{
@@ -202,8 +211,6 @@ export const lakebaseParameters: INodeProperties[] = [
 			mappingMode: 'defineBelow',
 			value: null,
 		},
-		description:
-			'Leave an optional argument blank, or remove it, to use its default in the function. A boolean argument always sends its switch value.',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'lakebaseProject.value',

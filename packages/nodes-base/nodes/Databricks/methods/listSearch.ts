@@ -573,11 +573,17 @@ export async function getLakebaseFunctions(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const target = readLakebaseTarget(this);
-	for (const [key, value] of Object.entries(target)) {
-		if (!value) {
-			const label = key[0].toUpperCase() + key.slice(1);
-			return { results: [{ name: `Please Select a ${label} First`, value: '' }] };
-		}
+	if (!target.project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!target.branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+	if (!target.database) {
+		return { results: [{ name: 'Please Select a Database First', value: '' }] };
+	}
+	if (!target.schema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
 
 	const schemaUrl = await resolveLakebaseSchemaUrlFor(this, target);
@@ -589,7 +595,7 @@ export async function getLakebaseFunctions(
 		if (!isOpenApiUnavailable(error, `${schemaUrl}/openapi.json`)) throw error;
 		throw new NodeOperationError(
 			this.getNode(),
-			'Turn on the OpenAPI specification setting of the Data API to list functions, or enter the function name By ID',
+			'Turn on Data API > API > Advanced settings > OpenAPI specification to list functions, or enter the function name By ID',
 		);
 	}
 
