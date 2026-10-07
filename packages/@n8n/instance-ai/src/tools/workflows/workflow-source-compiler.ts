@@ -10,6 +10,7 @@ import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
+import { detectGoogleOAuthHttpRequest } from './detect-google-oauth-http-request';
 import { detectPythonCodeConstraints } from './detect-python-code-constraints';
 import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
@@ -101,6 +102,7 @@ function validateCompiledWorkflow(
 	warnings.push(...detectUnparseableOpenAiSchema(json));
 	warnings.push(...detectPythonCodeConstraints(json));
 	warnings.push(...detectSlackBlocksShape(json));
+	warnings.push(...detectGoogleOAuthHttpRequest(json));
 	return warnings;
 }
 

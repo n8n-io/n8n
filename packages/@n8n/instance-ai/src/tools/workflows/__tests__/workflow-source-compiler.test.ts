@@ -736,3 +736,53 @@ describe('compileWorkflowSource > Slack Block Kit shape', () => {
 		expect(warnings).toEqual([]);
 	});
 });
+
+describe('compileWorkflowSource Google OAuth HTTP Request warning', () => {
+	async function compileHttpRequest(nodeCredentialType: string) {
+		const workflow = {
+			name: 'Google doc workflow',
+			nodes: [
+				{
+					id: 'http-1',
+					name: 'Create Google Doc',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters: {
+						method: 'POST',
+						url: 'https://www.googleapis.com/upload/drive/v3/files',
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType,
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/google-doc.workflow.json',
+			JSON.stringify(workflow),
+		);
+		if (!result.success) throw new Error('expected compile success');
+		return result.warnings;
+	}
+
+	it('surfaces an informational warning for a Google OAuth credential on HTTP Request', async () => {
+		const warnings = await compileHttpRequest('googleDriveOAuth2Api');
+
+		expect(warnings).toContainEqual(
+			expect.objectContaining({
+				code: 'GOOGLE_OAUTH_HTTP_REQUEST',
+				nodeName: 'Create Google Doc',
+				severity: 'informational',
+			}),
+		);
+	});
+
+	it('stays quiet for a non-Google predefined credential', async () => {
+		const warnings = await compileHttpRequest('slackOAuth2Api');
+
+		expect(warnings.map((w) => w.code)).not.toContain('GOOGLE_OAUTH_HTTP_REQUEST');
+	});
+});
