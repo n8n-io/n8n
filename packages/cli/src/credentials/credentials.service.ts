@@ -1031,15 +1031,18 @@ export class CredentialsService {
 	/**
 	 * Decrypts a stored credential whose secret is about to leave n8n, such as a test call to its
 	 * provider. Refuses what the credential policy blocks; `decrypt` stays for display and rewrite.
-	 * `projectId` defaults to the owning project. With no owner, only instance policy applies.
+	 * Omit `projectId` to judge on the owning project. Pass `null` when the caller already found
+	 * no owner: only instance policy applies, and the lookup is skipped.
 	 */
 	async decryptForUse(
 		credential: CredentialsEntity,
 		actor: PolicyActor,
-		projectId?: string,
+		projectId?: string | null,
 	): Promise<ICredentialDataDecryptedObject> {
 		const judgedProjectId =
-			projectId ?? (await this.findCredentialOwningProject(credential.id))?.id ?? null;
+			projectId === undefined
+				? ((await this.findCredentialOwningProject(credential.id))?.id ?? null)
+				: projectId;
 		await this.enforceCredentialUse(credential, actor, judgedProjectId);
 		return await this.decrypt(credential, true);
 	}
@@ -2431,15 +2434,18 @@ export class CredentialsService {
 		user: User;
 		credentialsToTest?: ICredentialsDecrypted;
 	}): Promise<ICredentialsDecrypted> {
+		// The tester picks its test from the posted type, so it must match the stored secrets.
+		if (credentialsToTest && credentialsToTest.type !== storedCredential.type) {
+			throw new BadRequestError('The credential type does not match the stored credential');
+		}
+
 		// Find the owning project to prevent leakage of other project data.
 		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
-		const actor: PolicyActor = { kind: 'user', user };
-		const projectId = owningProject?.id ?? null;
-		// The tester picks the provider test from the posted type, so that type must clear too.
-		if (credentialsToTest && credentialsToTest.type !== storedCredential.type) {
-			await this.enforceCredentialUse(credentialsToTest, actor, projectId);
-		}
-		const decryptedData = await this.decryptForUse(storedCredential, actor, owningProject?.id);
+		const decryptedData = await this.decryptForUse(
+			storedCredential,
+			{ kind: 'user', user },
+			owningProject?.id ?? null,
+		);
 		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
 			? deepCopy(credentialsToTest)
 			: {

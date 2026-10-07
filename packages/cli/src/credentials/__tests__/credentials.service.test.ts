@@ -1280,6 +1280,18 @@ describe('CredentialsService', () => {
 			);
 		});
 
+		it('skips the owner lookup when the caller already found no owner', async () => {
+			vi.spyOn(service, 'decrypt').mockResolvedValue({});
+
+			await service.decryptForUse(storedCredential, ownerActor, null);
+
+			expect(sharedCredentialsRepository.findCredentialOwningProject).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: null }),
+				ownerActor,
+			);
+		});
+
 		it('judges on instance policy only when the credential has no owning project', async () => {
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
 			vi.spyOn(service, 'decrypt').mockResolvedValue({});
@@ -2172,15 +2184,11 @@ describe('CredentialsService', () => {
 			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
 		});
 
-		it('also judges the posted type when it differs from the stored one', async () => {
+		it('rejects a posted type that differs from the stored one before decrypting', async () => {
 			// A managed credential ignores the posted payload, so this needs an unmanaged one.
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi', isManaged: false }),
 			);
-			policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async (context) => {
-				if (context.credentialType === 'slackApi') throw credentialUseRefusal();
-				return mock<PolicyCleared<'credentialDecrypt'>>();
-			});
 
 			await expect(
 				service.testWithCredentials(ownerUser, {
@@ -2189,7 +2197,8 @@ describe('CredentialsService', () => {
 					type: 'slackApi',
 					data: {},
 				}),
-			).rejects.toThrow(PolicyViolationError);
+			).rejects.toThrow(BadRequestError);
+			expect(policyEnforcementService.enforceCredentialDecrypt).not.toHaveBeenCalled();
 			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
 		});
 
