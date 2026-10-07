@@ -287,12 +287,13 @@ describe('useWorkflowNavigationCommands', () => {
 	});
 
 	describe('node type and tag matches', () => {
-		it('lists workflows that use a node matching the query first with the node icon', async () => {
+		it('includes workflows that use a node matching the query with the node icon', async () => {
 			mockSearchResults({
-				byName: [createTestWorkflow({ id: 'w1' })],
+				byName: [createTestWorkflow({ id: 'w1', updatedAt: '2026-01-01T00:00:00.000Z' })],
 				byNodeType: [
 					createTestWorkflow({
 						id: 'w2',
+						updatedAt: '2026-01-02T00:00:00.000Z',
 						nodes: [createTestNode({ type: HTTP_REQUEST_NODE_TYPE })],
 					}),
 				],
@@ -328,6 +329,23 @@ describe('useWorkflowNavigationCommands', () => {
 				options: { skip: 0, take: 6, sortBy: 'updatedAt:desc', includeScopes: false },
 			});
 			expect(items.map((item) => item.id)).toEqual(['w2', 'w1']);
+		});
+
+		it('sorts the merged results by last update', async () => {
+			mockSearchResults({
+				byName: [createTestWorkflow({ id: 'w1', updatedAt: '2026-01-03T00:00:00.000Z' })],
+				byNodeType: [
+					createTestWorkflow({
+						id: 'w2',
+						updatedAt: '2026-01-01T00:00:00.000Z',
+						nodes: [createTestNode({ type: HTTP_REQUEST_NODE_TYPE })],
+					}),
+				],
+			});
+
+			const { items } = await search({ query: 'http request', limit: 5 });
+
+			expect(items.map((item) => item.id)).toEqual(['w1', 'w2']);
 		});
 
 		it('pages the node type and tag searches with the name search', async () => {

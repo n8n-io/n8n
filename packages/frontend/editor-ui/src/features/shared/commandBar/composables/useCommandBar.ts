@@ -473,6 +473,11 @@ export function useCommandBar() {
 				async (group) => await group.initialize?.(),
 			),
 		);
+
+		for (const source of sourcesToLoad.value) {
+			const searchQuery = results.value[source.id]?.query;
+			if (searchQuery) void load(source, searchQuery, 0);
+		}
 	}
 
 	watch(isOpen, (open) => {

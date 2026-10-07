@@ -361,6 +361,26 @@ describe('useCommandBar', () => {
 		expect(commandBar.sections.value[1]).toMatchObject({ id: 'workflows', isLoading: true });
 	});
 
+	it('searches again when the initialization ends after a search', async () => {
+		let finishInitialization = () => {};
+		workflowNavigationInitialize.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishInitialization = resolve)),
+		);
+		await open();
+		await search('alpha');
+		expect(workflows.search).toHaveBeenCalledTimes(1);
+
+		finishInitialization();
+		await flushPromises();
+
+		expect(workflows.search).toHaveBeenCalledTimes(2);
+		expect(workflows.search).toHaveBeenLastCalledWith({
+			query: 'alpha',
+			offset: 0,
+			limit: PAGE_SIZE,
+		});
+	});
+
 	it('pages a local source and follows changes of its data', async () => {
 		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
 		await open();
