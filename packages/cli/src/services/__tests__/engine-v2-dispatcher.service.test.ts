@@ -580,12 +580,24 @@ describe('EngineV2Dispatcher', () => {
 				);
 			});
 
+			it("ignores the editor's start nodes when the run has run data", async () => {
+				const startNodes = [mock<StartNodeData>({ name: SET_NODE.name })];
+				manualRunPlanner.applies.mockReturnValue(false);
+
+				await dispatcher.start(runData({ startNodes, runData: {} }));
+
+				expect(proxy.startExecution).toHaveBeenCalledTimes(1);
+			});
+
 			it.each([
 				{
-					name: 'selected start nodes',
-					data: { startNodes: [mock<StartNodeData>()] },
+					name: 'a run that starts at a pinned node',
+					data: {
+						startNodes: [mock<StartNodeData>({ name: SET_NODE.name })],
+						pinData: { [SET_NODE.name]: [{ json: { pinned: true } }] },
+					},
 					message:
-						'Engine v2 cannot start from selected nodes yet. Run the whole workflow instead.',
+						'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 				},
 				{
 					name: 'an AI tool run',

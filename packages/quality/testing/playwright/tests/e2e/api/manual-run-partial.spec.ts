@@ -115,6 +115,29 @@ test.describe(
 			expect(partialRun).not.toHaveProperty('C');
 		});
 
+		test('should run to a node past one that has no run data yet @engine:v2', async ({ api }) => {
+			const { id: workflowId } = await api.workflows.createWorkflow(workflow('gap'));
+
+			const first = await api.workflows.runManually(workflowId, TRIGGER_NAME);
+			const { B, ...withoutB } = runDataOf(
+				await api.workflows.waitForExecutionById(first.executionId),
+			);
+
+			// What the editor sends once B is new: B as a start node, and no run data for it.
+			const second = await api.workflows.runToNode(workflowId, 'C', {
+				runData: withoutB,
+				startNodes: [{ name: 'B', sourceData: null }],
+			});
+			const execution = await api.workflows.waitForExecutionById(second.executionId);
+			expect(execution.status).toBe('success');
+
+			const partialRun = runDataOf(execution);
+			// A was reused; B and C ran.
+			expect(firstItem(partialRun, 'A')).toEqual(firstItem(withoutB, 'A'));
+			expect(firstItem(partialRun, 'B')?.b).not.toEqual(firstItem({ B }, 'B')?.b);
+			expect(firstItem(partialRun, 'C')?.a).toEqual(firstItem(withoutB, 'A')?.a);
+		});
+
 		test('should run a dirty node again and everything after it @engine:v2', async ({ api }) => {
 			const { id: workflowId } = await api.workflows.createWorkflow(workflow('dirty'));
 

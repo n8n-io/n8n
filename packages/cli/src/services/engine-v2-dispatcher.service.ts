@@ -228,6 +228,13 @@ export class EngineV2Dispatcher {
 		});
 	}
 
+	/** v1's `getExecutionStartNode`: the one case where it honours the editor's start nodes. */
+	private startsAtPinnedNode(data: IWorkflowExecutionDataProcess): boolean {
+		if (data.runData !== undefined || data.triggerToStartFrom?.data !== undefined) return false;
+		const [only, ...rest] = data.startNodes ?? [];
+		return only !== undefined && rest.length === 0 && data.pinData?.[only.name] !== undefined;
+	}
+
 	/**
 	 * Rejects what the v2 path cannot do yet, in the order the user should hear
 	 * about it: the module being off comes first, so a workflow that would also
@@ -241,9 +248,13 @@ export class EngineV2Dispatcher {
 			);
 		}
 
-		if (data.startNodes?.length) {
+		// The editor still sends the start nodes of partial executions v1. v1 ignores
+		// them once it has run data or a trigger payload, and the planner derives
+		// its own, so they only matter where v1 starts the run at one: a single
+		// pinned node in place of the trigger.
+		if (this.startsAtPinnedNode(data)) {
 			throw new UserError(
-				'Engine v2 cannot start from selected nodes yet. Run the whole workflow instead.',
+				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
 		}
 
