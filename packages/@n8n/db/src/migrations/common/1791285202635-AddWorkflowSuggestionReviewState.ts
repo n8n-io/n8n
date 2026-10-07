@@ -10,7 +10,19 @@ export class AddWorkflowSuggestionReviewState1791285202635 implements Reversible
 					.varchar(16)
 					.notNull.withEnumCheck(['fix_ready', 'needs_you'])
 					.comment('Investigation outcome; only fix_ready permits Apply'),
-				s.column('appliedVersion').json.comment('Saved version, checksum, action, and human actor'),
+				s
+					.column('appliedVersionId')
+					.varchar(36)
+					.comment('Saved version ID retained after its history is deleted'),
+				s.column('appliedChecksum').varchar(64).comment('SHA-256 checksum of the saved workflow'),
+				s
+					.column('appliedAction')
+					.varchar(32)
+					.withEnumCheck(['apply', 'approve-and-publish'])
+					.comment('Action that saved the reviewed fix'),
+				s
+					.column('appliedActorId')
+					.uuid.comment('Human actor ID retained after the user is deleted'),
 			],
 			{ recreatesOnSqlite: true },
 		);
@@ -43,8 +55,11 @@ export class AddWorkflowSuggestionReviewState1791285202635 implements Reversible
 		await s.dropIndex('workflow_suggestion_activity', ['actorId']);
 		await s.dropColumns('workflow_suggestion_activity', ['actorId'], { recreatesOnSqlite: true });
 		await s.dropEnumCheck('workflow_suggestion', 'resultKind', { recreatesOnSqlite: true });
-		await s.dropColumns('workflow_suggestion', ['resultKind', 'appliedVersion'], {
-			recreatesOnSqlite: true,
-		});
+		await s.dropEnumCheck('workflow_suggestion', 'appliedAction', { recreatesOnSqlite: true });
+		await s.dropColumns(
+			'workflow_suggestion',
+			['resultKind', 'appliedVersionId', 'appliedChecksum', 'appliedAction', 'appliedActorId'],
+			{ recreatesOnSqlite: true },
+		);
 	}
 }

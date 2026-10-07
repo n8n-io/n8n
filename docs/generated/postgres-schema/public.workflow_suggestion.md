@@ -4,7 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| appliedVersion | json |  | true |  |  | Saved version, checksum, action, and human actor |
+| appliedAction | varchar(32) |  | true |  |  | Action that saved the reviewed fix |
+| appliedActorId | uuid |  | true |  |  | Human actor ID retained after the user is deleted |
+| appliedChecksum | varchar(64) |  | true |  |  | SHA-256 checksum of the saved workflow |
+| appliedVersionId | varchar(36) |  | true |  |  | Saved version ID retained after its history is deleted |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
 | closedAt | timestamp(3) with time zone |  | true |  |  |  |
 | closedReason | varchar(16) |  | true |  |  | Reason the suggestion closed |
@@ -22,6 +25,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_workflow_suggestion_appliedAction | CHECK | CHECK ((("appliedAction")::text = ANY ((ARRAY['apply'::character varying, 'approve-and-publish'::character varying])::text[]))) |
 | CHK_workflow_suggestion_closedReason | CHECK | CHECK ((("closedReason")::text = ANY ((ARRAY['outdated'::character varying, 'applied'::character varying, 'discarded'::character varying])::text[]))) |
 | CHK_workflow_suggestion_resultKind | CHECK | CHECK ((("resultKind")::text = ANY ((ARRAY['fix_ready'::character varying, 'needs_you'::character varying])::text[]))) |
 | CHK_workflow_suggestion_state | CHECK | CHECK (((state)::text = ANY ((ARRAY['pending'::character varying, 'closed'::character varying])::text[]))) |
@@ -62,7 +66,10 @@ erDiagram
 "public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_suggestion" {
-  json appliedVersion
+  varchar_32_ appliedAction
+  uuid appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason

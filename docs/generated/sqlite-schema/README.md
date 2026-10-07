@@ -161,7 +161,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 5 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
-| [workflow_suggestion](workflow_suggestion.md) | 13 |  | table |
+| [workflow_suggestion](workflow_suggestion.md) | 16 |  | table |
 | [workflow_suggestion_activity](workflow_suggestion_activity.md) | 7 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
@@ -1929,7 +1929,10 @@ erDiagram
   VARCHAR_128_ workflowName
 }
 "workflow_suggestion" {
-  TEXT appliedVersion
+  varchar_32_ appliedAction
+  varchar appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   varchar backgroundUserId FK
   datetime_3_ closedAt
   varchar_16_ closedReason

@@ -162,7 +162,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 5 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
-| [public.workflow_suggestion](public.workflow_suggestion.md) | 13 |  | BASE TABLE |
+| [public.workflow_suggestion](public.workflow_suggestion.md) | 16 |  | BASE TABLE |
 | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 7 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
@@ -1949,7 +1949,10 @@ erDiagram
   varchar_128_ workflowName
 }
 "public.workflow_suggestion" {
-  json appliedVersion
+  varchar_32_ appliedAction
+  uuid appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason

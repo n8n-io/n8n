@@ -112,7 +112,10 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_suggestion" {
-  json appliedVersion
+  varchar_32_ appliedAction
+  uuid appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason

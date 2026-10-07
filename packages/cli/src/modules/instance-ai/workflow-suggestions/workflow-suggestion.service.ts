@@ -281,6 +281,7 @@ export class WorkflowSuggestionService {
 			projectId,
 		});
 		const activity = await this.suggestions.getActivity(suggestionId);
+		const { appliedVersionId, appliedChecksum, appliedAction, appliedActorId } = suggestion;
 		return {
 			suggestionId,
 			workflowId: suggestion.workflowId,
@@ -290,7 +291,15 @@ export class WorkflowSuggestionService {
 			state: suggestion.state,
 			closedReason: suggestion.closedReason,
 			resultKind: suggestion.resultKind,
-			appliedVersion: suggestion.appliedVersion ?? null,
+			appliedVersion:
+				appliedVersionId && appliedChecksum && appliedAction && appliedActorId
+					? {
+							versionId: appliedVersionId,
+							checksum: appliedChecksum,
+							action: appliedAction,
+							actorId: appliedActorId,
+						}
+					: null,
 			author: 'assistant',
 			payload: {
 				...suggestion.payload,
