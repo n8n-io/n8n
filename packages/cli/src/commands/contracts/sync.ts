@@ -12,7 +12,7 @@ const flagsSchema = z.object({
 	registry: z
 		.string()
 		.describe(
-			'Fetches missing pinned versions from this registry: a static store at https://… or file://… Default: N8N_NODE_CONTRACTS_REGISTRY_URL',
+			'Fetches missing pinned versions from this npm registry. Default: N8N_NODE_CONTRACTS_NPM_REGISTRY',
 		)
 		.optional(),
 });
@@ -20,12 +20,8 @@ const flagsSchema = z.object({
 @Command({
 	name: 'contracts:sync',
 	description:
-		'Puts the pinned versions of all saved workflows and their published versions into the node contracts store, from a registry or a folder',
-	examples: [
-		'',
-		'--registry=file:///mnt/node-contracts',
-		'--registry=https://contracts.example.com',
-	],
+		'Puts the pinned versions of all saved workflows and their published versions into the node contracts store, from an npm registry',
+	examples: ['', '--registry=http://localhost:4873'],
 	flagsSchema,
 })
 export class ContractsSyncCommand extends BaseCommand<z.infer<typeof flagsSchema>> {

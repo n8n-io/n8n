@@ -201,7 +201,7 @@ beforeAll(async () => {
 	);
 	Object.assign(Container.get(GlobalConfig).instanceAi, {
 		nodeContractsEnabled: true,
-		nodeContractsRegistryUrl: '',
+		nodeContractsNpmRegistry: '',
 		nodeContractsUpdatePolicy: 'strict',
 		nodeContractRange: '>=2.0.0 <3.0.0',
 	});

@@ -6,13 +6,13 @@ import {
 	embeddedStoreDirOf,
 	type SourcePackage,
 	isVersionManifest,
+	npmRegistryOf,
+	npmStoreReader,
 	parseFixtures,
 	parseStoreCatalog,
 	requiredNodeContractOf,
 	STORE_CATALOG_FILE,
 	storeBlobFileOf,
-	storeFilesOfUrl,
-	storeReader,
 	toContract,
 	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
@@ -564,16 +564,16 @@ describe('credential manifests', () => {
 	});
 });
 
-const REGISTRY_URL = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
+const REGISTRY_URL = process.env.N8N_NODE_CONTRACTS_NPM_REGISTRY;
 // This package publishes first-party versions.
 const FIRST_PARTY_KEY_FILE = process.env.N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE;
 
 // Old versions live only in the registry, so this check runs where one is configured.
 describe.skipIf(!REGISTRY_URL)('published versions', () => {
 	it('replay their own fixtures through the current executor', async () => {
-		const registry = storeReader(
-			storeFilesOfUrl(REGISTRY_URL ?? '', async (url) => await fetch(url)),
-		);
+		const registry = npmStoreReader(npmRegistryOf(REGISTRY_URL), {
+			scope: process.env.N8N_NODE_CONTRACTS_NPM_SCOPE,
+		});
 		const publicKey = FIRST_PARTY_KEY_FILE ? readFileSync(FIRST_PARTY_KEY_FILE, 'utf8') : undefined;
 		const issues = await Promise.all(
 			source.actions.map(async ({ id }) => {

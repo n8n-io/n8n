@@ -206,8 +206,8 @@ export class NodeContractsStore {
 		};
 	}
 
-	/** The store with the configured registry, or with `registryUrl`. */
-	async open(registryUrl = this.globalConfig.instanceAi.nodeContractsRegistryUrl) {
+	/** The store with the configured npm registry, or with `registryUrl`. */
+	async open(registryUrl = this.globalConfig.instanceAi.nodeContractsNpmRegistry) {
 		const known = this.stores.get(registryUrl);
 		if (known) return await known;
 		const opened = this.create(registryUrl);
@@ -220,6 +220,8 @@ export class NodeContractsStore {
 		const { instanceAi } = this.globalConfig;
 		return contractStore({
 			registryUrl,
+			npmScope: instanceAi.nodeContractsNpmScope,
+			npmToken: instanceAi.nodeContractsNpmToken,
 			keys: await this.keys(),
 			store: this.rows,
 			runsNodeContract: (version) =>

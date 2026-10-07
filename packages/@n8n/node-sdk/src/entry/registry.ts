@@ -34,6 +34,7 @@ export {
 	type VersionManifest,
 } from '../version';
 export { canonicalJson } from '../schema';
+export { npmNameOf, npmRegistryOf, npmStoreReader } from '../npm';
 export { checkCredentialType } from '../credentials';
 export {
 	parseCredentialManifest,
@@ -54,7 +55,6 @@ export {
 	STORE_CATALOG_FILE,
 	storeBlobFileOf,
 	storeFilesOfDir,
-	storeFilesOfUrl,
 	storeIndexFileOf,
 	storeManifestOf,
 	storeReader,

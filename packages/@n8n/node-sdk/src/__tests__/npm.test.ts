@@ -1,6 +1,4 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { createServer } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -19,64 +17,13 @@ import {
 import { publishAction, publishCredential, publishNative, publishPackage } from '../publish';
 import { manifestTextOf, verifyStoreSignature, type StoreSignature } from '../store';
 import { sha256, type ContractFixtures } from '../version';
+import { fakeNpmRegistry, type FakeNpmRegistry } from './fake-npm-registry';
 
 const keys = generateKeyPairSync('ed25519');
 const privateKey = keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const publicKey = keys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 
 type Json = Record<string, unknown>;
-
-/**
- * An npm registry in memory. It takes the PUT of `npm publish` and `npm deprecate`, and serves
- * packuments and tarballs. `writes` counts each PUT.
- */
-async function fakeRegistry() {
-	const packuments = new Map<string, Json>();
-	const tarballs = new Map<string, Buffer>();
-	const state = { writes: 0 };
-	const server = createServer(async (request, response) => {
-		const chunks: Buffer[] = [];
-		for await (const chunk of request) chunks.push(chunk as Buffer);
-		const route = decodeURIComponent((request.url ?? '/').split('?')[0] ?? '/').slice(1);
-		response.setHeader('content-type', 'application/json');
-		if (request.method === 'PUT') {
-			state.writes += 1;
-			const name = route.split('/-rev/')[0] ?? route;
-			const { _attachments: attachments = {}, ...doc } = JSON.parse(
-				Buffer.concat(chunks).toString('utf8'),
-			) as Json & { _attachments?: Record<string, { data: string }> };
-			for (const [file, { data }] of Object.entries(attachments)) {
-				tarballs.set(`${name}/-/${file}`, Buffer.from(data, 'base64'));
-			}
-			const old = packuments.get(name) ?? { versions: {} };
-			packuments.set(name, {
-				...old,
-				...doc,
-				versions: { ...(old.versions as Json), ...(doc.versions as Json) },
-				_rev: String(state.writes),
-			});
-			response.statusCode = 201;
-			response.end('{"ok":true}');
-			return;
-		}
-		const tarball = tarballs.get(route);
-		if (tarball) {
-			response.end(tarball);
-			return;
-		}
-		const packument = packuments.get(route);
-		response.statusCode = packument ? 200 : 404;
-		response.end(JSON.stringify(packument ?? { error: 'not found' }));
-	});
-	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-	const { port } = server.address() as AddressInfo;
-	return {
-		url: `http://127.0.0.1:${port}/`,
-		packuments,
-		state,
-		close: async () => await new Promise((resolve) => server.close(resolve)),
-	};
-}
 
 const echoSource = (version: string, text: string, input = "text: t.str().title('Text')") => `
 import { defineNode, t } from '@n8n/node-sdk';
@@ -121,7 +68,7 @@ const hookWith = (summary: string, version = 2.2, semver: '1.0.0' | '1.0.1' = '1
 	});
 
 const dirs = { root: '', entry: '' };
-const registry = { current: undefined as Awaited<ReturnType<typeof fakeRegistry>> | undefined };
+const registry = { current: undefined as FakeNpmRegistry | undefined };
 
 const fake = () => {
 	if (!registry.current) throw new Error('no registry');
@@ -134,7 +81,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	registry.current = await fakeRegistry();
+	registry.current = await fakeNpmRegistry();
 	// npm publish and npm deprecate need a token.
 	vi.stubEnv('NPM_TOKEN', 'test-token');
 });

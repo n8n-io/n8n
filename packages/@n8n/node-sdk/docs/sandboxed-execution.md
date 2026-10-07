@@ -194,7 +194,7 @@ The policy (`src/runtime-policy.ts`):
 | `N8N_NODE_CONTRACTS_VETTING_KEY_FILE` | — | PEM of the vetting key. A version that it signs, and the first-party key does not, is community. |
 
 - The origin of a version (`FrozenVersion.origin`) is `first-party`, `community` or `private`.
-  The store records it once, when it takes the version: from the registry, from
+  The store records it once, when it takes the version: from the npm registry, from
   `n8n contracts:import`, or as a credential manifest that a version pins. The key that signs the
   manifest bytes gives it. A version of the embedded store is first-party without a key check,
   because it ships in the release. With no key file, the store takes unsigned versions as

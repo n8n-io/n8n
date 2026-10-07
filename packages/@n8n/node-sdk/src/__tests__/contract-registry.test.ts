@@ -4,11 +4,11 @@ import {
 	addToStore,
 	canonicalJson,
 	manifestTextOf,
+	npmNameOf,
 	signStoreManifest,
 	signStoreStatus,
 	storeBlobFileOf,
 	storeFilesOfDir,
-	storeIndexFileOf,
 	storeReader,
 	type NodeContractLock,
 	type StoreStatusRecord,
@@ -18,8 +18,6 @@ import { credential, defineCredential, field } from '../entry/credentials';
 import { freezeAction, freezeCredential, freezeNative, type FrozenAction } from '../freeze';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -47,6 +45,8 @@ import {
 	type InstanceStore,
 	type StoredVersion,
 } from '../contract-registry';
+import { npmDeprecate, npmPackageOf, npmPublish } from '../npm';
+import { fakeNpmRegistry, type FakeNpmRegistry } from './fake-npm-registry';
 
 // The built embedded stores of the first-party packages.
 const embedded = embeddedContractsOf(
@@ -143,9 +143,10 @@ const bothKeys = { firstParty: firstParty.publicKey, vetting: publicKey };
 interface Published {
 	readonly frozen: FrozenAction;
 	readonly key: string;
-	/** Replaces fields of the index line. */
-	readonly line?: Readonly<Record<string, unknown>>;
 }
+
+/** The npm package of `demo.echo`. */
+const ECHO = npmNameOf('demo.echo');
 
 /** An instance store in memory, as the database table of the cli keeps it. */
 const memoryStore = () => {
@@ -174,49 +175,34 @@ const memoryStore = () => {
 
 /** The versions in the fake registry, by version. A test may replace one. */
 const published = new Map<string, Published>();
-const dirs = { root: '', registry: '' };
+const dirs = { root: '' };
 const instance = { current: memoryStore() };
-const registry = { url: '', server: createServer() };
+const registry: { url: string; npm?: FakeNpmRegistry } = { url: '' };
 const versions = new Map<string, FrozenAction>();
-/** The status lines of `demo.echo` in the fake registry. */
-const registryStatuses: StoreStatusRecord[] = [];
 
-/** Writes the registry store again from `published`. */
-const writeRegistry = async () => {
-	await rm(dirs.registry, { recursive: true, force: true });
-	const entries = [...published.values()];
-	const records = await addToStore(
-		dirs.registry,
-		entries.map(({ frozen, key }) => {
-			const manifestText = manifestTextOf(frozen.manifest);
-			const signatures = [signStoreManifest(manifestText, key)];
-			return { manifestText, bundle: frozen.bundle, signatures };
-		}),
-	);
-	const lines = records.map((record, index) => ({ ...record, ...entries[index]?.line }));
-	await writeFile(
-		path.join(dirs.registry, storeIndexFileOf('demo.echo')),
-		[...lines, ...registryStatuses].map((line) => `${JSON.stringify(line)}\n`).join(''),
-	);
+const fake = () => {
+	if (!registry.npm) throw new Error('no registry');
+	return registry.npm;
 };
 
-const publish = async (frozen: FrozenAction, key = privateKey, line?: Published['line']) => {
-	published.set(frozen.manifest.semver, { frozen, key, line });
-	await writeRegistry();
+/** Writes the registry again from `published`. */
+const writeRegistry = () => {
+	fake().packuments.clear();
+	published.forEach(({ frozen, key }) => fake().put(npmPackageOf(frozen, { privateKey: key })));
 };
 
-/** Replaces the bytes of a blob in the registry. */
-const tamper = async (digest: string) => {
-	const file = path.join(dirs.registry, storeBlobFileOf(digest));
-	await writeFile(file, Buffer.concat([await readFile(file), Buffer.from([0])]));
+const publish = (frozen: FrozenAction, key = privateKey) => {
+	published.set(frozen.manifest.semver, { frozen, key });
+	writeRegistry();
 };
 
-const listen = async (server: Server) =>
-	await new Promise<string>((resolve) =>
-		server.listen(0, '127.0.0.1', () =>
-			resolve(`http://127.0.0.1:${(server.address() as AddressInfo).port}`),
-		),
-	);
+/** Puts other bytes of one file into the package of a published version. */
+const tamper = (version: string, file = 'bundle.cjs') => {
+	const entry = published.get(version);
+	if (!entry) throw new Error(`${version} is not published`);
+	const files = npmPackageOf(entry.frozen, { privateKey: entry.key });
+	fake().put({ ...files, [file]: `${files[file]}\n` });
+};
 
 beforeAll(async () => {
 	dirs.root = await mkdtemp(path.join(tmpdir(), 'contract-registry-'));
@@ -231,33 +217,21 @@ beforeAll(async () => {
 	await freeze('1.1.0', "input.text + (input.suffix ?? '#')");
 	await freeze('1.2.0', 'input.text', "imports: ['code'],");
 	await freeze('1.2.1', "input.text + '!'", "imports: ['code'],");
-	dirs.registry = path.join(dirs.root, 'registry');
-	// The registry is static files.
-	registry.server.on('request', (request, response) => {
-		const file = path.join(dirs.registry, decodeURIComponent(request.url ?? ''));
-		void readFile(file).then(
-			(data) => response.end(data),
-			() => {
-				response.statusCode = 404;
-				response.end();
-			},
-		);
-	});
-	registry.url = await listen(registry.server);
+	registry.npm = await fakeNpmRegistry();
+	registry.url = registry.npm.url;
 });
 
-beforeEach(async () => {
+beforeEach(() => {
 	instance.current = memoryStore();
 	published.clear();
-	registryStatuses.length = 0;
 	['1.0.0', '1.0.1', '1.1.0'].forEach((version) =>
 		published.set(version, { frozen: frozenOf(version), key: privateKey }),
 	);
-	await writeRegistry();
+	writeRegistry();
 });
 
 afterAll(async () => {
-	registry.server.close();
+	await registry.npm?.close();
 	await rm(dirs.root, { recursive: true, force: true });
 });
 
@@ -364,49 +338,29 @@ describe('contractVersionLoader', () => {
 
 	it('applies no newer patch without a trusted key or with a wrong signature', async () => {
 		expect(await run(locked('1.0.0'), { keys: noKeys })).toEqual(['HELLO']);
-		await publish(frozenOf('1.0.1'), strangerKey);
-		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
-	});
-
-	it('applies no newer patch from an index line without nodeContract', async () => {
-		await publish(frozenOf('1.0.1'), privateKey, { nodeContract: undefined, abi: 2 });
+		publish(frozenOf('1.0.1'), strangerKey);
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
 	it('applies no newer patch outside the Node Contract range of the host', async () => {
-		await publish(frozenOf('1.0.1'), privateKey, { nodeContract: '3.0.0' });
-		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
+		const { runsNodeContract } = hostRuntime({ nodeContractRange: '>=3.0.0 <4.0.0' });
+		expect(await run(locked('1.0.0'), { runsNodeContract })).toEqual(['HELLO']);
 	});
 
-	it('refuses a tampered bundle', async () => {
-		await tamper(`sha256:${lockOf('1.0.0').bundleHash}`);
+	it('refuses a bundle or a manifest that does not match its digest', async () => {
+		tamper('1.0.0');
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			'does not match its digest',
+			`The blob sha256:${lockOf('1.0.0').bundleHash} does not match its digest`,
 		);
-	});
-
-	it('refuses an index line that does not match its manifest', async () => {
-		await publish(frozenOf('1.0.0'), privateKey, { contractHash: 'a'.repeat(64) });
+		tamper('1.0.0', 'manifest.json');
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			'does not match its manifest (contractHash)',
+			`The blob ${pinOf('1.0.0').digest} does not match its digest`,
 		);
 	});
 
 	it('skips a tampered patch and runs the locked version', async () => {
-		await tamper(`sha256:${frozenOf('1.0.1').manifest.bundleHash}`);
+		tamper('1.0.1');
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
-	});
-
-	it('reads a file:// registry', async () => {
-		const fetch = vi.fn();
-		expect(
-			await run(locked('1.0.0'), {
-				policy: 'strict',
-				registryUrl: `file://${dirs.registry}`,
-				fetch,
-			}),
-		).toEqual(['HELLO']);
-		expect(fetch).not.toHaveBeenCalled();
 	});
 
 	it('runs a cached version without a registry', async () => {
@@ -420,15 +374,15 @@ describe('contractVersionLoader', () => {
 			`Cannot get demo.echo@1.0.0 (${digest}) from the registry (none set)`,
 		);
 		published.delete('1.0.0');
-		await writeRegistry();
+		writeRegistry();
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			`Cannot get demo.echo@1.0.0 (${digest}) from the registry ${registry.url}: The registry does not have this version`,
 		);
 	});
 
 	it('refuses a locked version or its patch that a denied permission class has', async () => {
-		await publish(frozenOf('1.2.0'));
-		await publish(frozenOf('1.2.1'));
+		publish(frozenOf('1.2.0'));
+		publish(frozenOf('1.2.1'));
 		const onPermissionRefused = vi.fn();
 		const deny = { permissionsDeny: ['code'], onPermissionRefused };
 
@@ -471,7 +425,7 @@ describe('contractVersionLoader', () => {
 
 describe('contractStore', () => {
 	it('takes only bundles with the trusted signature when a key is set', async () => {
-		await publish(frozenOf('1.0.0'), strangerKey);
+		publish(frozenOf('1.0.0'), strangerKey);
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			'demo.echo@1.0.0 (bundle',
 		);
@@ -590,7 +544,7 @@ describe('contractStore', () => {
 	});
 
 	it('serves only signed versions when a key is set', async () => {
-		await publish(frozenOf('1.0.0'), strangerKey);
+		publish(frozenOf('1.0.0'), strangerKey);
 		await storeOf({ keys: noKeys }).locked('demo.echo', pinOf('1.0.0'));
 		expect((await storeOf({ keys: noKeys }).versions()).has('demo.echo')).toBe(true);
 		expect((await storeOf().versions()).has('demo.echo')).toBe(false);
@@ -604,6 +558,52 @@ describe('contractStore', () => {
 		const stored = await store.locked('demo.echo', pinOf('1.0.1'));
 		expect(await run(locked('1.0.0'), { keys: noKeys }, [], stored)).toEqual(['HELLO']);
 	});
+});
+
+describe('contractStore with npm publish', () => {
+	it('gets a pinned version and its newer patch, and reads npm deprecate as a yank or a revoke', async () => {
+		vi.stubEnv('NPM_TOKEN', 'test-token');
+		const npm = await fakeNpmRegistry();
+		try {
+			for (const version of ['1.0.0', '1.0.1']) {
+				await npmPublish(
+					npm.url,
+					npmPackageOf(frozenOf(version), { privateKey: firstParty.privateKey }),
+				);
+			}
+			const storeOfNpm = () => storeOf({ registryUrl: npm.url, keys: bothKeys });
+			const pinned = await storeOfNpm().locked('demo.echo', pinOf('1.0.0'));
+			expect(pinned.origin).toBe('first-party');
+			expect(await pinned.readBundle()).toBe(frozenOf('1.0.0').bundle);
+			const patches = await storeOfNpm().newerPatches(lockOf('1.0.0'));
+			expect(patches.map(({ manifest, origin }) => [manifest.semver, origin])).toEqual([
+				['1.0.1', 'first-party'],
+			]);
+			expect([...instance.current.rows.values()].map(({ version }) => version)).toEqual([
+				'1.0.0',
+				'1.0.1',
+			]);
+
+			await npmDeprecate(npm.url, `${ECHO}@1.0.1`, 'wrong output');
+			await npmDeprecate(npm.url, `${ECHO}@1.0.0`, 'revoked: leaks the token');
+			const store = storeOfNpm();
+			await store.syncStatuses(['demo.echo'], Date.now());
+			const withdrawalOf = async (version: string) =>
+				await store.withdrawal({ manifest: frozenOf(version).manifest, origin: 'first-party' });
+			expect(await withdrawalOf('1.0.1')).toMatchObject({
+				yank: '1.0.1',
+				reason: 'wrong output',
+				registry: npm.url,
+			});
+			expect(await withdrawalOf('1.0.0')).toMatchObject({
+				revoke: '1.0.0',
+				reason: 'leaks the token',
+			});
+		} finally {
+			vi.unstubAllEnvs();
+			await npm.close();
+		}
+	}, 60_000);
 });
 
 describe('origin', () => {
@@ -627,7 +627,7 @@ describe('origin', () => {
 	});
 
 	it('records the origin at admission and serves it from the store', async () => {
-		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(frozenOf('1.0.0'), firstParty.privateKey);
 		const store = storeOf({ keys: bothKeys });
 		expect((await store.locked('demo.echo', pinOf('1.0.0'))).origin).toBe('first-party');
 		expect((await store.locked('demo.echo', pinOf('1.0.1'))).origin).toBe('community');
@@ -643,7 +643,7 @@ describe('origin', () => {
 	});
 
 	it('serves a first-party version with the origin that the keys prove now', async () => {
-		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(frozenOf('1.0.0'), firstParty.privateKey);
 		await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
 		const [[digest, row] = []] = [...instance.current.rows];
 		if (!digest || !row) throw new Error('no stored row');
@@ -664,7 +664,7 @@ describe('origin', () => {
 	});
 
 	it('takes an unsigned version as private only without a key', async () => {
-		await publish(frozenOf('1.0.0'), strangerKey);
+		publish(frozenOf('1.0.0'), strangerKey);
 		expect((await storeOf({ keys: noKeys }).locked('demo.echo', pinOf('1.0.0'))).origin).toBe(
 			'private',
 		);
@@ -695,10 +695,10 @@ describe('origin', () => {
 	});
 
 	it('applies a newer patch only from the origin of the pinned version', async () => {
-		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(frozenOf('1.0.0'), firstParty.privateKey);
 		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['HELLO']);
 		instance.current = memoryStore();
-		await publish(frozenOf('1.0.1'), firstParty.privateKey);
+		publish(frozenOf('1.0.1'), firstParty.privateKey);
 		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['hello?']);
 	});
 
@@ -733,13 +733,11 @@ describe('status lines', () => {
 		signed({ id: 'demo.echo', yank: version, reason: 'wrong output', at }, key);
 	const revokeOf = (version: string, key?: string) =>
 		signed({ id: 'demo.echo', revoke: version, reason: 'leaks the token', at }, key);
-	const inRegistry = async (...statuses: StoreStatusRecord[]) => {
-		registryStatuses.push(...statuses);
-		await writeRegistry();
-	};
+	/** Sets the `npm deprecate` message of a version of `demo.echo`. */
+	const inRegistry = (version: string, message: string) => fake().deprecate(ECHO, version, message);
 
 	it('runs a pinned yanked version and takes no yanked version as a newer patch', async () => {
-		await inRegistry(yankOf('1.0.1'));
+		inRegistry('1.0.1', 'wrong output');
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 		expect(await run(locked('1.0.1'))).toEqual(['hello?']);
 		expect(await run(locked('1.0.1'), { policy: 'strict' })).toEqual(['hello?']);
@@ -752,7 +750,7 @@ describe('status lines', () => {
 		const newest = async () =>
 			(await storeOf().versions()).get('demo.echo')?.map(({ manifest }) => manifest.semver);
 		expect(await newest()).toEqual(['1.0.1']);
-		await inRegistry(yankOf('1.0.1'));
+		inRegistry('1.0.1', 'wrong output');
 		await syncContractStore(store, [
 			{
 				workflowId: 'wf',
@@ -763,13 +761,13 @@ describe('status lines', () => {
 			},
 		]);
 		expect(await newest()).toEqual(['1.0.0']);
-		await inRegistry(yankOf('1.0.0'));
+		inRegistry('1.0.0', 'wrong output');
 		await storeOf().syncStatuses(['demo.echo'], Date.now());
 		expect(await newest()).toEqual(['1.0.1']);
 	});
 
 	it('refuses a pinned revoked version unless the admin allows it', async () => {
-		await inRegistry(revokeOf('1.0.0'));
+		inRegistry('1.0.0', 'revoked: leaks the token');
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			'demo.echo@1.0.0 is revoked: leaks the token. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW',
 		);
@@ -779,16 +777,30 @@ describe('status lines', () => {
 		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
 	});
 
-	it('ignores a status line that no trusted key signs', async () => {
-		await inRegistry(yankOf('1.0.1', strangerKey), {
-			id: 'demo.echo',
-			revoke: '1.0.1',
-			reason: 'unsigned',
-			at,
+	it('applies a registry line to every origin, and an own line only to private versions', async () => {
+		publish(frozenOf('1.0.0'), firstParty.privateKey);
+		inRegistry('1.0.0', 'revoked: leaks the token');
+		await expect(run(locked('1.0.0'), { policy: 'strict', keys: bothKeys })).rejects.toThrow(
+			'demo.echo@1.0.0 is revoked: leaks the token',
+		);
+		expect([...instance.current.statuses.values()]).toEqual([
+			{
+				id: 'demo.echo',
+				revoke: '1.0.0',
+				reason: 'leaks the token',
+				at: '',
+				registry: registry.url,
+			},
+		]);
+		const store = storeOf();
+		const community = await store.locked('demo.echo', pinOf('1.0.1'));
+		await store.addOwnStatuses([
+			{ id: 'demo.echo', yank: '1.0.1', reason: 'Hidden on this instance', at },
+		]);
+		expect(await store.withdrawal(community)).toBeUndefined();
+		expect(await store.withdrawal({ ...community, origin: 'private' })).toMatchObject({
+			yank: '1.0.1',
 		});
-		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
-		expect(await run(locked('1.0.1'), { policy: 'strict' })).toEqual(['hello?']);
-		expect(instance.current.statuses.size).toBe(0);
 	});
 
 	it('takes a status line of a first-party version only from the first-party key', async () => {
@@ -802,16 +814,6 @@ describe('status lines', () => {
 		);
 	});
 
-	it('takes unsigned status lines only of private versions without a key', async () => {
-		const unsigned: StoreStatusRecord = { id: 'demo.echo', revoke: '1.0.0', reason: 'r', at };
-		await inRegistry(unsigned, { ...unsigned, revoke: '1.1.0' });
-		await expect(run(locked('1.0.0'), { policy: 'strict', keys: noKeys })).rejects.toThrow(
-			'demo.echo@1.0.0 is revoked',
-		);
-		await storeOf({ keys: noKeys }).syncStatuses(['demo.echo'], Date.now());
-		expect(await run({}, { keys: noKeys })).toEqual(['hello#']);
-	});
-
 	it('keeps the status lines through import and export', async () => {
 		const dir = await mkdtemp(path.join(dirs.root, 'statuses-'));
 		await addToStore(
@@ -823,7 +825,14 @@ describe('status lines', () => {
 			}),
 		);
 		const deprecation = signed({ id: 'demo.echo', deprecate: '1', message: 'Use major 2', at });
-		await addStatusToStore(dir, [yankOf('1.0.1'), deprecation, revokeOf('1.0.0', strangerKey)]);
+		// An import needs a signature for each line, also for a line that names a registry.
+		const registryLine = { id: 'demo.echo', yank: '1.0.0', reason: 'r', at, registry: 'http://x/' };
+		await addStatusToStore(dir, [
+			yankOf('1.0.1'),
+			deprecation,
+			revokeOf('1.0.0', strangerKey),
+			registryLine,
+		]);
 		await importContractStore(
 			storeReader(storeFilesOfDir(dir)),
 			instance.current.store,
@@ -1117,20 +1126,9 @@ describe('contractStore with triggers and credentials', () => {
 
 	const publishPing = async (credentialKey = privateKey) => {
 		const { trigger, credential } = await ping();
-		const triggerText = manifestTextOf(trigger.manifest);
-		const credentialText = manifestTextOf(credential);
-		await addToStore(dirs.registry, [
-			{
-				manifestText: credentialText,
-				signatures: [signStoreManifest(credentialText, credentialKey)],
-			},
-			{
-				manifestText: triggerText,
-				bundle: trigger.bundle,
-				signatures: [signStoreManifest(triggerText, privateKey)],
-			},
-		]);
-		const digest = createHash('sha256').update(triggerText).digest('hex');
+		fake().put(npmPackageOf({ manifest: credential }, { privateKey: credentialKey }));
+		fake().put(npmPackageOf(trigger, { privateKey }));
+		const digest = createHash('sha256').update(manifestTextOf(trigger.manifest)).digest('hex');
 		const pin = { version: trigger.manifest.semver, digest: `sha256:${digest}` };
 		return { trigger, credential, pin };
 	};
@@ -1211,10 +1209,10 @@ describe('syncContractStore', () => {
 	});
 
 	it('adds each missing pinned version once and reports what it cannot get', async () => {
+		published.delete('1.1.0');
+		writeRegistry();
 		const store = storeOf();
 		await store.locked('demo.echo', pinOf('1.0.0'));
-		published.delete('1.1.0');
-		await writeRegistry();
 		const result = await syncContractStore(store, [
 			nodeOf('1.0.0'),
 			nodeOf('1.0.1', 'a'),
@@ -1236,8 +1234,8 @@ describe('syncContractStore', () => {
 		const since = Date.now();
 		await syncContractStore(store, [nodeOf('1.0.1')], since);
 		await syncContractStore(store, [nodeOf('1.0.0')], since);
-		const indexReads = fetchRegistry.mock.calls.filter(([url]) =>
-			url.endsWith(storeIndexFileOf('demo.echo')),
+		const indexReads = fetchRegistry.mock.calls.filter(
+			([url]) => url === `${registry.url}${ECHO.replace('/', '%2f')}`,
 		);
 		expect(indexReads).toHaveLength(1);
 	});
@@ -1253,7 +1251,7 @@ describe('embedded contracts', () => {
 	it('give a bundled version and a version that the first-party key signs the first-party origin', async () => {
 		const [version] = versionsOf('httpRequest.send');
 		expect(version?.origin).toBe('first-party');
-		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		publish(frozenOf('1.0.0'), firstParty.privateKey);
 		const signed = await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
 		expect(signed.origin).toBe('first-party');
 	});

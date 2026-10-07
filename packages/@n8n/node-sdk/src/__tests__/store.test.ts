@@ -16,7 +16,6 @@ import {
 	storeStatusTextOf,
 	storeBlobFileOf,
 	storeFilesOfDir,
-	storeFilesOfUrl,
 	storeIndexFileOf,
 	storeReader,
 	unresolvedCredentialPinsOf,
@@ -222,16 +221,6 @@ describe('the store layout', () => {
 	it('refuses an id that is not a store file name', () => {
 		expect(() => storeIndexFileOf('../demo')).toThrow('is not a contract id');
 		expect(() => storeBlobFileOf('sha256:../x')).toThrow('is not a sha256 digest');
-	});
-
-	it('reads a file:// store as a directory', async () => {
-		const dir = await newDir('file-url');
-		const [record] = await addToStore(dir, [storeVersionOf(await freeze())]);
-		const fetch = vi.fn();
-		const reader = storeReader(storeFilesOfUrl(`file://${dir}`, fetch));
-		expect(await reader.records('demo.echo')).toEqual([record]);
-		expect(await reader.records('demo.other')).toEqual([]);
-		expect(fetch).not.toHaveBeenCalled();
 	});
 });
 

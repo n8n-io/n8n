@@ -12,7 +12,17 @@ import { promisify } from 'node:util';
 import { gunzipSync } from 'node:zlib';
 import { UserError } from 'n8n-workflow';
 
-import { manifestTextOf, signStoreManifest, type StoreManifest } from './store';
+import {
+	manifestTextOf,
+	signStoreManifest,
+	storeBlobFileOf,
+	storeReader,
+	storeRecordOf,
+	type StoreManifest,
+	type StoreReader,
+	type StoreRevoke,
+	type StoreYank,
+} from './store';
 import { sha256, type ContractFixtures } from './version';
 
 /** The npm scope of contract packages. It is a placeholder of the POC: n8n has not picked the scope. */
@@ -129,15 +139,37 @@ export interface NpmPublished {
 	readonly digest?: string;
 	/** The tarball URL. */
 	readonly tarball?: string;
+	/** The message of `npm deprecate`. */
+	readonly deprecated?: string;
+	/** When the version was published, as an ISO date. */
+	readonly published?: string;
+}
+
+/** How a host reads an npm registry. */
+export interface NpmReadOptions {
+	/** The npm scope of contract packages. Default: `DEFAULT_NPM_SCOPE`. */
+	readonly scope?: string;
+	/** The bearer token. Default: `NPM_TOKEN`. */
+	readonly token?: string;
+	/** Reads one URL, e.g. with a timeout. Default: the global `fetch`. */
+	readonly fetch?: (
+		url: string,
+		init: {
+			/** The request headers. */
+			readonly headers: Record<string, string>;
+		},
+	) => Promise<Response>;
 }
 
 const stringOf = (value: unknown) => (typeof value === 'string' ? value : undefined);
 
-const authOf = (): Record<string, string> =>
-	process.env.NPM_TOKEN ? { authorization: `Bearer ${process.env.NPM_TOKEN}` } : {};
-
-async function fetchOk(url: string, accept: string) {
-	const response = await fetch(url, { headers: { accept, ...authOf() } });
+async function fetchOk(
+	url: string,
+	accept: string,
+	{ token = process.env.NPM_TOKEN, fetch: fetchUrl = fetch }: NpmReadOptions = {},
+) {
+	const auth: Record<string, string> = token ? { authorization: `Bearer ${token}` } : {};
+	const response = await fetchUrl(url, { headers: { accept, ...auth } });
 	if (!response.ok && response.status !== 404) {
 		throw new UserError(`The npm registry returned ${response.status} for ${url}`);
 	}
@@ -145,11 +177,20 @@ async function fetchOk(url: string, accept: string) {
 }
 
 /** The versions of a package from its packument, or none when the registry does not have it. */
-export async function npmVersionsOf(registry: string, name: string): Promise<NpmPublished[]> {
-	const response = await fetchOk(`${registry}${name.replace('/', '%2f')}`, 'application/json');
+export async function npmVersionsOf(
+	registry: string,
+	name: string,
+	options?: NpmReadOptions,
+): Promise<NpmPublished[]> {
+	const response = await fetchOk(
+		`${registry}${name.replace('/', '%2f')}`,
+		'application/json',
+		options,
+	);
 	if (response.status === 404) return [];
 	const packument: unknown = await response.json();
 	const versions = isRecord(packument) && isRecord(packument.versions) ? packument.versions : {};
+	const time = isRecord(packument) && isRecord(packument.time) ? packument.time : {};
 	return Object.entries(versions).flatMap(([version, entry]) => {
 		if (!isRecord(entry)) return [];
 		const n8n = isRecord(entry.n8n) ? entry.n8n : {};
@@ -160,6 +201,8 @@ export async function npmVersionsOf(registry: string, name: string): Promise<Npm
 				id: stringOf(n8n.id),
 				digest: stringOf(n8n.digest),
 				tarball: stringOf(dist.tarball),
+				deprecated: stringOf(entry.deprecated),
+				published: stringOf(time[version]),
 			},
 		];
 	});
@@ -196,6 +239,100 @@ export async function npmManifestTextOf(
 		throw new UserError(`The manifest of ${name}@${version} does not match its digest`);
 	}
 	return text;
+}
+
+const INDEX_FILE = /^index\/(.+)\.ndjson$/;
+
+const REVOKED = /^revoked:\s*/;
+
+/**
+ * The contract packages of an npm registry as a store. The index of an id has one line for each
+ * version, from the files of its tarball, and one status line for each deprecated version. Each
+ * tarball downloads once. The reader checks each blob against the digest that the package states.
+ */
+export function npmStoreReader(registry: string, options: NpmReadOptions = {}): StoreReader {
+	/** The blobs of the downloaded tarballs, by store file. */
+	const blobs = new Map<string, Buffer>();
+	/** The index line of each version, by tarball URL. A published version never changes. */
+	const lines = new Map<string, Promise<string | undefined>>();
+
+	const download = async (tarball: string, digest: string, published?: string) => {
+		// The token goes to the registry only, not to a tarball on another host.
+		const sameOrigin = new URL(tarball).origin === new URL(registry).origin;
+		const response = await fetchOk(
+			tarball,
+			'application/octet-stream',
+			sameOrigin ? options : { ...options, token: '' },
+		);
+		if (!response.ok) return undefined;
+		const tgz = new Uint8Array(await response.arrayBuffer());
+		const [manifestText, bundle, fixtures, signatures] = [
+			'manifest.json',
+			'bundle.cjs',
+			'fixtures.json',
+			'signatures.json',
+		].map((file) => npmTarballFile(tgz, file));
+		if (manifestText === undefined) return undefined;
+		try {
+			const record = storeRecordOf({ manifestText, fixtures, published }, digest);
+			const files = [
+				[record.manifest, manifestText],
+				[record.bundle, bundle],
+				[record.fixtures, fixtures],
+			];
+			files.forEach(([key, text]) => {
+				if (key && text !== undefined) blobs.set(storeBlobFileOf(key), Buffer.from(text));
+			});
+			// The store reader checks the signatures with the schema of an index line.
+			const parsed: unknown = JSON.parse(signatures ?? '[]');
+			return JSON.stringify({ ...record, signatures: parsed });
+		} catch {
+			// A version that does not parse is not in the index.
+			return undefined;
+		}
+	};
+
+	const lineOf = async ({ tarball, digest, published }: NpmPublished) => {
+		if (!tarball || !digest) return undefined;
+		const known = lines.get(tarball);
+		if (known) return await known;
+		const line = download(tarball, digest, published);
+		lines.set(tarball, line);
+		return await line.catch((error: unknown) => {
+			lines.delete(tarball);
+			throw error;
+		});
+	};
+
+	const statusOf = (
+		id: string,
+		{ version, deprecated, published }: NpmPublished,
+	): Array<StoreYank | StoreRevoke> => {
+		if (!deprecated) return [];
+		// npm keeps no date of a deprecation. The publish date keeps the line the same on each read.
+		const at = published ?? '';
+		const revoked = REVOKED.exec(deprecated);
+		return [
+			revoked
+				? { id, revoke: version, reason: deprecated.slice(revoked[0].length), at, registry }
+				: { id, yank: version, reason: deprecated, at, registry },
+		];
+	};
+
+	return storeReader(async (file) => {
+		const id = INDEX_FILE.exec(file)?.[1];
+		if (id === undefined) return blobs.get(file);
+		const versions = (await npmVersionsOf(registry, npmNameOf(id, options.scope), options)).filter(
+			(version) => version.id === id,
+		);
+		const versionLines = await Promise.all(versions.map(lineOf));
+		const statusLines = versions.flatMap((version) =>
+			statusOf(id, version).map((status) => JSON.stringify(status)),
+		);
+		return Buffer.from(
+			[...versionLines.filter((line) => line !== undefined), ...statusLines].join('\n'),
+		);
+	});
 }
 
 const execFileAsync = promisify(execFile);

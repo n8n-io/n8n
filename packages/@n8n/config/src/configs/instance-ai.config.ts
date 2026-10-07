@@ -308,11 +308,19 @@ export class InstanceAiConfig {
 	nodeContractsUpdatePolicy: z.infer<typeof nodeContractsUpdatePolicySchema> = 'tolerant';
 
 	/**
-	 * The registry of published contract versions: a static store at `https://…` or `file://…`.
-	 * Empty: only bundled and stored versions run.
+	 * The npm registry of published contract versions, e.g. `http://localhost:4873`. During the
+	 * POC it must be a local registry. Empty: only bundled and stored versions run.
 	 */
-	@Env('N8N_NODE_CONTRACTS_REGISTRY_URL')
-	nodeContractsRegistryUrl: string = '';
+	@Env('N8N_NODE_CONTRACTS_NPM_REGISTRY')
+	nodeContractsNpmRegistry: string = '';
+
+	/** The npm scope of contract packages. */
+	@Env('N8N_NODE_CONTRACTS_NPM_SCOPE')
+	nodeContractsNpmScope: string = '@n8n-nodes';
+
+	/** The bearer token for the npm registry. Empty: no token. */
+	@Env('N8N_NODE_CONTRACTS_NPM_TOKEN')
+	nodeContractsNpmToken: string = '';
 
 	/**
 	 * PEM file of the ed25519 first-party key of n8n. A version that it signs is first-party, so it

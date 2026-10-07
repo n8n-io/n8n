@@ -111,7 +111,9 @@ describe('nodeContractsRuntime', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		instanceAi: {
 			nodeContractsUpdatePolicy: 'strict',
-			nodeContractsRegistryUrl: 'http://registry.test',
+			nodeContractsNpmRegistry: 'http://registry.test',
+			nodeContractsNpmScope: '@acme',
+			nodeContractsNpmToken: 'npm-token',
 			nodeContractsFirstPartyKeyFile: '',
 			nodeContractsVettingKeyFile: '',
 			nodeContractsRevokedAllow: ['demo.echo@1.0.0'],
@@ -160,6 +162,8 @@ describe('nodeContractsRuntime', () => {
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			store: {
 				registryUrl: 'http://registry.test',
+				npmScope: '@acme',
+				npmToken: 'npm-token',
 				keys: { firstParty: undefined, vetting: undefined },
 				store: Container.get(NodeContractsStore).rows,
 			},

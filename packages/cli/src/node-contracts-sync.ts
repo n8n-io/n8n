@@ -43,7 +43,7 @@ const merge = (a: ContractSyncResult, b: ContractSyncResult): ContractSyncResult
 });
 
 export interface NodeContractsSyncOptions {
-	/** The registry to fetch from. Default: the configured registry. Empty: the store only. */
+	/** The npm registry to fetch from. Default: the configured registry. Empty: the store only. */
 	readonly registryUrl?: string;
 	/** Rebuilds the node types when the store gets a major that no node type lists. */
 	readonly refreshNodeTypes: boolean;

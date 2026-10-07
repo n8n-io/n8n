@@ -1,12 +1,13 @@
 /**
- * The store layout of contract versions. The embedded store of a release, the store of an
- * instance and a registry use the same layout:
+ * The store layout of contract versions. The embedded store of a release and the folder of
+ * `contracts:export` use the same layout:
  * - `catalog.json`: the index line of the newest version of each id that is not yanked or
  *   revoked.
  * - `index/<id>.ndjson`: one line for each version and one line for each status (yank, revoke or
  *   deprecation), append only.
  * - `blobs/sha256/<hex>`: manifest, bundle and fixtures bytes, by their SHA-256.
  */
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash, createPublicKey, randomUUID, sign, verify } from 'node:crypto';
 import {
 	access,
@@ -20,7 +21,6 @@ import {
 	writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
@@ -125,6 +125,8 @@ export interface StoreYank {
 	readonly reason: string;
 	/** When the publisher yanked the version, as an ISO date. */
 	readonly at: string;
+	/** The npm registry of a deprecation that the line comes from. Such a line applies to every origin. */
+	readonly registry?: string;
 	/** Publisher signatures of `storeStatusTextOf` of the line. */
 	readonly signatures?: readonly StoreSignature[];
 }
@@ -142,6 +144,8 @@ export interface StoreRevoke {
 	readonly reason: string;
 	/** When the publisher revoked the version, as an ISO date. */
 	readonly at: string;
+	/** The npm registry of a deprecation that the line comes from. Such a line applies to every origin. */
+	readonly registry?: string;
 	/** Publisher signatures of `storeStatusTextOf` of the line. */
 	readonly signatures?: readonly StoreSignature[];
 }
@@ -228,9 +232,6 @@ export const STORE_CATALOG_FILE = 'catalog.json';
 
 const ID = /^[\w-]+(\.[\w-]+)*$/;
 const DIGEST = /^sha256:([0-9a-f]{64})$/;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** `index/<id>.ndjson`. The id can come from a workflow, so it must be a plain file name. */
 export function storeIndexFileOf(id: string) {
@@ -405,22 +406,6 @@ export const storeFilesOfDir =
 		}
 	};
 
-/** The files of a static store at `https://…`, `http://…` or `file://…`. */
-export function storeFilesOfUrl(
-	url: string,
-	fetch: (url: string) => Promise<Response>,
-): StoreFiles {
-	const base = url.endsWith('/') ? url : `${url}/`;
-	if (base.startsWith('file:')) return storeFilesOfDir(fileURLToPath(base));
-	return async (file) => {
-		const target = new URL(file, base).href;
-		const response = await fetch(target);
-		if (response.status === 404) return undefined;
-		if (!response.ok) throw new UserError(`The registry returned ${response.status} for ${target}`);
-		return new Uint8Array(await response.arrayBuffer());
-	};
-}
-
 /** Reads the store whose files `files` gives. */
 export function storeReader(files: StoreFiles): StoreReader {
 	const text = async (file: string) => {
@@ -500,26 +485,36 @@ const readText = async (file: string) => {
 	}
 };
 
-async function addVersion(dir: string, version: StoreVersion): Promise<StoreRecord> {
-	const { manifestText, bundle, fixtures, signatures, published } = version;
-	const derived = recordOf(parseAnyManifest(manifestText), digestOf(manifestText));
-	const at = `${derived.id}@${derived.version}`;
-	if (derived.bundle !== (bundle === undefined ? undefined : digestOf(bundle))) {
-		throw new UserError(`The bundle of ${at} is missing or does not match its manifest`);
-	}
-	const index = path.join(dir, storeIndexFileOf(derived.id));
-	const stored = parseStoreIndex(await readText(index), derived.id).find(
-		(record) => record.version === derived.version,
-	);
-	if (stored && stored.manifest !== derived.manifest) {
-		throw new UserError(`${at} is in the store with other bytes`);
-	}
-	const record: StoreRecord = {
-		...derived,
+/**
+ * The index line of a version. `manifest` is the digest that the line states. Default: the
+ * digest of `manifestText`.
+ */
+export function storeRecordOf(
+	{ manifestText, fixtures, signatures, published }: StoreVersion,
+	manifest = digestOf(manifestText),
+): StoreRecord {
+	return {
+		...recordOf(parseAnyManifest(manifestText), manifest),
 		...(fixtures === undefined ? {} : { fixtures: digestOf(fixtures) }),
 		...(signatures?.length ? { signatures } : {}),
 		...(published === undefined ? {} : { published }),
 	};
+}
+
+async function addVersion(dir: string, version: StoreVersion): Promise<StoreRecord> {
+	const { manifestText, bundle, fixtures } = version;
+	const record = storeRecordOf(version);
+	const at = `${record.id}@${record.version}`;
+	if (record.bundle !== (bundle === undefined ? undefined : digestOf(bundle))) {
+		throw new UserError(`The bundle of ${at} is missing or does not match its manifest`);
+	}
+	const index = path.join(dir, storeIndexFileOf(record.id));
+	const stored = parseStoreIndex(await readText(index), record.id).find(
+		({ version: semver }) => semver === record.version,
+	);
+	if (stored && stored.manifest !== record.manifest) {
+		throw new UserError(`${at} is in the store with other bytes`);
+	}
 	// The blobs come first, so a reader never sees a line without its blobs.
 	await writeBlob(dir, manifestText, record.manifest);
 	if (bundle !== undefined && record.bundle) await writeBlob(dir, bundle, record.bundle);

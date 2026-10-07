@@ -59,7 +59,7 @@ describe('node contracts in their runtimes', () => {
 		);
 		Object.assign(Container.get(GlobalConfig).instanceAi, {
 			nodeContractsEnabled: true,
-			nodeContractsRegistryUrl: '',
+			nodeContractsNpmRegistry: '',
 			nodeContractsFirstPartyKeyFile: '',
 			nodeContractsVettingKeyFile: '',
 			nodeContractsUpdatePolicy: 'strict',

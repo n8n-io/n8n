@@ -3,6 +3,7 @@
  * store of the instance and the registry. It checks each version before the store takes it, and
  * picks the version that a node pin names.
  */
+import { isRecord } from '@n8n/utils/is-record';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -17,6 +18,7 @@ import {
 import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './catalog';
 import { permissionsOf, type ContractPermissions, type PermissionRefusalListener } from './egress';
 import { parseCredentialManifest, type CredentialManifest } from './manifest';
+import { npmRegistryOf, npmStoreReader } from './npm';
 import type { ContractOrigin, ContractVersionLoader, FrozenVersion } from './runtime';
 import { canonicalJson } from './schema';
 import {
@@ -24,9 +26,7 @@ import {
 	addToStore,
 	embeddedStoreDirOf,
 	isVersionManifest,
-	storeFilesOfUrl,
 	storeIndexFileOf,
-	storeReader,
 	storeStatusTextOf,
 	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
@@ -56,10 +56,14 @@ import {
 /** The options of `contractStore`. */
 export interface ContractStoreOptions {
 	/**
-	 * The registry: a static store at `https://…` or `file://…`. Empty: only the bundled HEAD and
-	 * stored versions run.
+	 * The npm registry of contract packages, e.g. `http://localhost:4873`. Empty: only the bundled
+	 * HEAD and stored versions run.
 	 */
 	readonly registryUrl: string;
+	/** The npm scope of contract packages. Default: `DEFAULT_NPM_SCOPE`. */
+	readonly npmScope?: string;
+	/** The bearer token for the npm registry. */
+	readonly npmToken?: string;
 	/**
 	 * The keys that prove the origin of a version. With one of them, the store takes and serves
 	 * only versions that a key of them signs. Without both, the store takes unsigned versions as
@@ -73,10 +77,12 @@ export interface ContractStoreOptions {
 	 * does not have fails. Default: true.
 	 */
 	readonly mayFetch?: () => boolean;
-	/** Reads one registry file. `signal` ends the request at the timeout. */
+	/** Reads one registry URL. `signal` ends the request at the timeout. */
 	readonly fetch: (
 		url: string,
 		init: {
+			/** The request headers, e.g. the bearer token. */
+			headers: Record<string, string>;
 			/** Aborts the request. */
 			signal: AbortSignal;
 		},
@@ -156,21 +162,19 @@ export function originOf(
 const ORIGIN_RANK: Record<ContractOrigin, number> = { private: 0, community: 1, 'first-party': 2 };
 
 /**
- * Whether a status line applies to a version of `origin`: its signer must prove at least that
- * origin. So only the first-party key withdraws a first-party version, and an unsigned line
+ * Whether a status line applies to a version of `origin`. A line from the npm registry applies
+ * to every origin: the registry auth decides who deprecates. Else its signer must prove at least
+ * that origin. So only the first-party key withdraws a first-party version, and an unsigned line
  * applies only to a private version.
  */
 const appliesTo = (status: StoreStatusRecord, origin: ContractOrigin, keys: ContractKeys) =>
+	('registry' in status && status.registry !== undefined) ||
 	ORIGIN_RANK[originOf(status, storeStatusTextOf(status), keys)] >= ORIGIN_RANK[origin];
 
-/**
- * Inserts the status lines that the store may take and does not have, and returns them. With a
- * key, a line needs the signature of a key of them. Without a key, every line goes in.
- */
+/** Inserts the status lines that the store does not have, and returns them. */
 async function admitStatuses(
 	store: InstanceStore,
 	statuses: readonly StoreStatusRecord[],
-	keys: ContractKeys,
 ): Promise<StoreStatusRecord[]> {
 	const ids = [...new Set(statuses.map(({ id }) => id))];
 	const stored = new Set(
@@ -178,10 +182,7 @@ async function admitStatuses(
 	);
 	const lines = statuses.map(canonicalJson);
 	const added = statuses.filter(
-		(status, index) =>
-			!stored.has(lines[index] ?? '') &&
-			lines.indexOf(lines[index] ?? '') === index &&
-			(!hasKey(keys) || originOf(status, storeStatusTextOf(status), keys) !== 'private'),
+		(_, index) => !stored.has(lines[index] ?? '') && lines.indexOf(lines[index] ?? '') === index,
 	);
 	if (added.length > 0) await store.insertStatuses(added);
 	return added;
@@ -254,8 +255,9 @@ export interface ContractStore {
 	 */
 	credentials(): Promise<ReadonlyMap<string, CredentialManifest>>;
 	/**
-	 * The stored yank or revoke line of a version that a trusted key signs, or `undefined`. A
-	 * line applies only when its signer proves at least the origin of the version.
+	 * The stored yank or revoke line of a version, or `undefined`. A line from the npm registry
+	 * applies to every version. Another line applies only when its signer proves at least the
+	 * origin of the version.
 	 */
 	withdrawal(
 		version: Pick<FrozenVersion, 'manifest' | 'origin'>,
@@ -267,8 +269,8 @@ export interface ContractStore {
 	 */
 	addOwnStatuses(statuses: readonly StoreStatusRecord[]): Promise<void>;
 	/**
-	 * Puts the trusted status lines of the registry index of each id into the store. It reads an
-	 * index again only when it read it before `since` (ms since the epoch).
+	 * Puts the status lines of the registry index of each id into the store. It reads an index
+	 * again only when it read it before `since` (ms since the epoch).
 	 */
 	syncStatuses(ids: readonly string[], since: number): Promise<void>;
 }
@@ -497,9 +499,6 @@ const storedVersionOf = (
 	origin,
 });
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
 const isPolicy = (value: unknown): value is NodeContractsPolicy =>
 	value === 'strict' || value === 'tolerant';
 
@@ -557,12 +556,12 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	const mayFetch = options.mayFetch ?? (() => true);
 	const timeoutMs = options.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
 	const registryReader = registryUrl
-		? storeReader(
-				storeFilesOfUrl(
-					registryUrl,
-					async (url) => await options.fetch(url, { signal: AbortSignal.timeout(timeoutMs) }),
-				),
-			)
+		? npmStoreReader(npmRegistryOf(registryUrl), {
+				scope: options.npmScope,
+				token: options.npmToken,
+				fetch: async (url, init) =>
+					await options.fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) }),
+			})
 		: undefined;
 	const indexes = new Map<string, { at: number; records: Promise<StoreIndex> }>();
 	/** Stored versions by id, so a tolerant run does not read the store each time. */
@@ -602,11 +601,11 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		});
 	};
 
-	/** The registry index of an id. Each new read puts its trusted status lines into the store. */
+	/** The registry index of an id. Each new read puts its status lines into the store. */
 	const registryIndexOf = async (id: string) =>
 		await cachedFor(indexes, id, async () => {
 			const index = await registryOf().index(id);
-			const added = await admitStatuses(store, index.statuses, keys);
+			const added = await admitStatuses(store, index.statuses);
 			if (added.length > 0) statusesById.delete(id);
 			return index;
 		});
@@ -1195,7 +1194,7 @@ async function verifiedVersionOf(
 }
 
 /**
- * Puts each version of a store, e.g. an export or a registry folder, into the instance store
+ * Puts each version of a store folder, e.g. of `contracts:export`, into the instance store
  * with its origin. It first checks every version: the digest of each blob, the index line
  * against its manifest, and the signature when a key is set. When one check fails, it adds
  * nothing. Then it puts the status lines that a trusted key signs into the store.
@@ -1213,10 +1212,15 @@ export async function importContractStore(
 			.map(async (record) => await verifiedVersionOf(source, record, keys)),
 	);
 	const added = await admitVersions(store, versions);
+	// With a key, each line needs the signature of a key of them, also a line with `registry`.
 	await admitStatuses(
 		store,
-		indexes.flatMap(({ statuses }) => statuses),
-		keys,
+		indexes
+			.flatMap(({ statuses }) => statuses)
+			.filter(
+				(status) =>
+					!hasKey(keys) || originOf(status, storeStatusTextOf(status), keys) !== 'private',
+			),
 	);
 	return added;
 }

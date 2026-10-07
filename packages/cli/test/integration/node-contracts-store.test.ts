@@ -1,6 +1,6 @@
 import {
-	addToStore,
 	manifestTextOf,
+	npmNameOf,
 	parseManifest,
 	signStoreManifest,
 	type VersionManifest as Manifest,
@@ -17,11 +17,12 @@ import {
 	type IWorkflowBase,
 } from 'n8n-workflow';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { create } from 'tar';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
@@ -37,6 +38,7 @@ import { createOwner } from './shared/db/users';
 import * as utils from './shared/utils';
 
 const GET = '@n8n/nodes-core.httpRequestGet';
+const NAME = npmNameOf('httpRequest.get');
 const OLDER = '2.0.0';
 
 const keys = generateKeyPairSync('ed25519', {
@@ -56,21 +58,47 @@ const signed = (manifestText: string, bundle: string) => ({
 
 type Published = ReturnType<typeof signed>;
 
+/** An npm registry: the packument and the tarballs of `httpRequest.get`, by URL path. */
 const registry = {
 	url: '',
-	dir: '',
 	server: createServer(),
 	versions: new Map<string, Published>(),
+	files: new Map<string, Buffer>(),
 };
 const state = { dir: '', owner: undefined as unknown as User };
 
-/** Writes the registry store again from `registry.versions`. */
-const writeRegistry = async () => {
-	await rm(registry.dir, { recursive: true, force: true });
-	await addToStore(
-		registry.dir,
-		[...registry.versions.values()].map(({ version }) => version),
+/** Packs the files of a version in `package/`, as `npm publish` uploads them. */
+const tgzOf = async (files: Record<string, string>) => {
+	const dir = await mkdtemp(path.join(state.dir, 'pack-'));
+	await mkdir(path.join(dir, 'package'));
+	await Promise.all(
+		Object.entries(files).map(
+			async ([file, text]) => await writeFile(path.join(dir, 'package', file), text),
+		),
 	);
+	await create({ gzip: true, cwd: dir, file: path.join(dir, 'package.tgz') }, ['package']);
+	return await readFile(path.join(dir, 'package.tgz'));
+};
+
+/** Puts the npm package of each version of `registry.versions` into the registry. */
+const writeRegistry = async () => {
+	const versions = await Promise.all(
+		[...registry.versions.values()].map(async ({ manifest, version }) => {
+			const route = `${NAME}/-/${manifest.semver}.tgz`;
+			const n8n = { id: manifest.id, digest: digestOf(version.manifestText) };
+			const packageJson = { name: NAME, version: manifest.semver, n8n };
+			const files = {
+				'package.json': JSON.stringify(packageJson),
+				'manifest.json': version.manifestText,
+				'bundle.cjs': version.bundle,
+				'signatures.json': JSON.stringify(version.signatures),
+			};
+			registry.files.set(route, await tgzOf(files));
+			return [manifest.semver, { ...packageJson, dist: { tarball: `${registry.url}/${route}` } }];
+		}),
+	);
+	const packument = { name: NAME, versions: Object.fromEntries(versions) };
+	registry.files.set(NAME, Buffer.from(JSON.stringify(packument)));
 };
 
 /** Removes a version from the store, as on an instance that never fetched it. */
@@ -109,9 +137,6 @@ beforeAll(async () => {
 	const head = signed(manifestTextOf(headVersion.manifest), await headVersion.readBundle());
 	registry.versions.set(OLDER, older);
 	registry.versions.set(head.manifest.semver, head);
-	registry.dir = path.join(state.dir, 'registry');
-	await writeRegistry();
-	// The registry is static files.
 	registry.server.on('request', (request, response) => {
 		if (request.url?.startsWith('/echo?')) {
 			const { searchParams } = new URL(request.url, registry.url);
@@ -119,25 +144,22 @@ beforeAll(async () => {
 			response.end(JSON.stringify({ received: Object.fromEntries(searchParams) }));
 			return;
 		}
-		void readFile(path.join(registry.dir, decodeURIComponent(request.url ?? ''))).then(
-			(data) => response.end(data),
-			() => {
-				response.statusCode = 404;
-				response.end();
-			},
-		);
+		const body = registry.files.get(decodeURIComponent(request.url ?? '').slice(1));
+		response.statusCode = body ? 200 : 404;
+		response.end(body);
 	});
 	registry.url = await new Promise<string>((resolve) =>
 		registry.server.listen(0, '127.0.0.1', () =>
 			resolve(`http://127.0.0.1:${(registry.server.address() as AddressInfo).port}`),
 		),
 	);
+	await writeRegistry();
 
 	const publicKeyFile = path.join(state.dir, 'publisher.pem');
 	await writeFile(publicKeyFile, keys.publicKey);
 	Object.assign(Container.get(GlobalConfig).instanceAi, {
 		nodeContractsEnabled: true,
-		nodeContractsRegistryUrl: registry.url,
+		nodeContractsNpmRegistry: registry.url,
 		nodeContractsVettingKeyFile: publicKeyFile,
 		nodeContractsUpdatePolicy: 'strict',
 		nodeContractRange: '>=2.0.0 <3.0.0',
@@ -181,7 +203,7 @@ function publishedOlder() {
 	return older;
 }
 
-async function createOlderWorkflow() {
+async function createOlderWorkflow(contract = pinOf(publishedOlder())) {
 	return await createWorkflow(
 		{
 			name: 'Get on major 2',
@@ -191,7 +213,7 @@ async function createOlderWorkflow() {
 					name: 'Get',
 					type: GET,
 					typeVersion: 2,
-					contract: pinOf(publishedOlder()),
+					contract,
 					position: [0, 0],
 					parameters: { url: `${registry.url}/echo?name=Ada` },
 				},
@@ -279,20 +301,14 @@ describe('node contracts store', () => {
 	});
 
 	it('names the action, version, digest, and registry when the fetch before the run fails', async () => {
-		const workflow = await createOlderWorkflow();
-		const older = publishedOlder();
-		registry.versions.delete(OLDER);
-		await writeRegistry();
-		await unstore(older.manifest);
+		// npm keeps each published version, so the pin names a version that was never published.
+		const pin = { version: OLDER, digest: `sha256:${'f'.repeat(64)}` };
+		const workflow = await createOlderWorkflow(pin);
+		await unstore(publishedOlder().manifest);
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
-		try {
-			await expect(runToEnd(workflow)).rejects.toThrow(
-				`Cannot get httpRequest.get@${OLDER} (${pinOf(older).digest}) from the registry ${registry.url}`,
-			);
-		} finally {
-			registry.versions.set(OLDER, older);
-			await writeRegistry();
-		}
+		await expect(runToEnd(workflow)).rejects.toThrow(
+			`Cannot get httpRequest.get@${OLDER} (${pin.digest}) from the registry ${registry.url}`,
+		);
 	});
 
 	it('fetches a missing version once and rebuilds the node types once for parallel runs', async () => {

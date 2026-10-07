@@ -493,7 +493,14 @@ export const storeRecordSchema = typed<StoreRecord>()(
 export const storeStatusRecordSchema = t.union(
 	typed<StoreYank>()(
 		t
-			.obj({ id: t.str(), yank: semver(), reason: t.str(), at: t.str(), signatures: signatures() })
+			.obj({
+				id: t.str(),
+				yank: semver(),
+				reason: t.str(),
+				at: t.str(),
+				registry: t.str().optional(),
+				signatures: signatures(),
+			})
 			.with(OPEN),
 	),
 	typed<StoreRevoke>()(
@@ -503,6 +510,7 @@ export const storeStatusRecordSchema = t.union(
 				revoke: semver(),
 				reason: t.str(),
 				at: t.str(),
+				registry: t.str().optional(),
 				signatures: signatures(),
 			})
 			.with(OPEN),

@@ -99,7 +99,7 @@ flowchart LR
   W["1 Write<br/>defineNode, n8n-node-next check"] --> F["2 Freeze<br/>pnpm freeze"]
   F --> E["embedded store<br/>dist/store (HEAD)"]
   F --> P["3 Publish<br/>pnpm publish:contracts"]
-  P --> R["registry<br/>https:// or file://"]
+  P --> R["npm registry<br/>Verdaccio in the POC"]
   E --> L
   R -- "4 Install<br/>sync, fetch, import" --> S["instance store<br/>node_contract_version"]
   S --> L["5 Load<br/>node types"]
@@ -117,7 +117,12 @@ An author writes `defineNode` and one `node.action(...)` per operation, then run
 contracts in the exports of `src/nodes/<node>/actions/*.ts`, with no list. It bundles each action
 and writes its manifest, bundle and fixtures into `dist/store`.
 `pnpm publish:contracts` calls `publishPackage`. Freeze takes the version from the source and
-sets the lowest Node Contract version that the bundle needs. The same source gives the same bytes. The release
+sets the lowest Node Contract version that the bundle needs. The same source gives the same bytes.
+A bundle inlines the SDK, so a rebuild can give other bytes for an unchanged version. With
+`N8N_NODE_CONTRACTS_NPM_REGISTRY`, freeze writes the published manifest, bundle and fixtures of
+each HEAD that the registry has, and logs `<id>@<version> has unpublished changes; bump the
+version to ship them`. Another contract hash, or other bytes of a version without a bundle, under
+a published version is an error. Without the variable, freeze reads no registry. The release
 ships this store, so its versions are first-party with no key check. Details:
 [node-contract.md, Versions](node-contract.md#versions) and
 [Store layout](node-contract.md#store-layout).
@@ -144,12 +149,18 @@ four ways:
 |---|---|---|
 | Sync of pinned versions | At start and at leader takeover, on the leader main, in the background | `NodeContractsSync` |
 | Fetch when needed | A run needs a pinned version or a newer patch that the table does not have | `contractStore` (`locked`, `newerPatches`) |
-| `n8n contracts:sync` | On demand, from a registry or a folder | `commands/contracts/sync.ts` |
+| `n8n contracts:sync` | On demand, from the configured npm registry or `--registry=<url>` | `commands/contracts/sync.ts` |
 | `n8n contracts:import --input=<dir>` | A host without network, after `contracts:export` on another host | `commands/contracts/import.ts` |
 
-- Only the leader main and the `contracts:*` commands fetch from `N8N_NODE_CONTRACTS_REGISTRY_URL`.
-  Workers and follower mains only read the table, so they need no registry egress.
-- Before the table takes a version, the store checks each blob digest, checks the manifest
+- Only the leader main and the `contracts:*` commands fetch from the npm registry of
+  `N8N_NODE_CONTRACTS_NPM_REGISTRY`. Workers and follower mains only read the table, so they
+  need no registry egress.
+- The store reads the packument of `npmNameOf(id)` and downloads the tarball of each version
+  once. An npm deprecation is a yank, and a message that starts with `revoked:` is a revoke. These
+  status lines have no signature. They apply to every origin, because the registry auth controls
+  who can deprecate.
+- Before the table takes a version, the store checks each blob digest (the manifest against
+  `n8n.digest` of its package), checks the manifest
   against the pin, and records the **origin** from the key that signed it:
   `first-party`, `community` (vetting key) or `private` (no trusted key). See
   [sandboxed-execution.md, n8n configuration](sandboxed-execution.md#n8n-configuration).
@@ -242,7 +253,9 @@ The runtime and key settings are in
 | Variable | Default | Meaning |
 |---|---|---|
 | `N8N_INSTANCE_AI_NODE_CONTRACTS_ENABLED` | `true` (spike) | Loads the contract nodes |
-| `N8N_NODE_CONTRACTS_REGISTRY_URL` | — | The registry. Empty: only bundled and stored versions run |
+| `N8N_NODE_CONTRACTS_NPM_REGISTRY` | — | The npm registry. Empty: only bundled and stored versions run |
+| `N8N_NODE_CONTRACTS_NPM_SCOPE` | `@n8n-nodes` | The npm scope of contract packages |
+| `N8N_NODE_CONTRACTS_NPM_TOKEN` | — | The bearer token for the npm registry. n8n does not log it |
 | `N8N_NODE_CONTRACTS_UPDATE_POLICY` | `tolerant` | `tolerant` or `strict`, see Run. `meta.nodeContractsPolicy` of a workflow overrides it |
 | `N8N_NODE_CONTRACTS_REVOKED_ALLOW` | — | `<id>@<version>` list of revoked versions that may still run |
 | `N8N_NODE_CONTRACT_RANGE` | `>=2.0.0 <3.0.0` | The Node Contract versions that this n8n runs |

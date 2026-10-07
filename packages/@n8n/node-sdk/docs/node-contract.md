@@ -53,7 +53,7 @@ flowchart LR
 | Version | Of what | Where | At run time |
 |---|---|---|---|
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
-| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Freeze writes it and reads no registry. Publish refuses a published version with other manifest bytes | Yes: a workflow pins it |
+| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets all of it: `version: '3.2.0'`, `1.0.0` when omitted. Freeze writes it. With `N8N_NODE_CONTRACTS_NPM_REGISTRY` it ships the published bytes of a published version. Publish refuses a published version with other manifest bytes | Yes: a workflow pins it |
 | credential version | the content | `semver` of the credential manifest, from `defineCredential({ version })`; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
 | SDK version | `@n8n/node-sdk` | `sdk` in each manifest | No: for traceability only |
 | n8n version | the product | — | Only through the Node Contract range it supports |
@@ -81,8 +81,8 @@ index line of a version in a store also states `nodeContract`.
 
 ## Store layout
 
-The embedded store of a release, an instance export and a registry use one layout
-(`src/store.ts`). A registry is the same files, served at `https://…` or `file://…`. An
+The embedded store of a release and an instance export use one layout (`src/store.ts`). The
+registry is an npm registry, see [npm packages](#npm-packages). An
 instance keeps its versions of all kinds, also credential and native manifests, in the
 `node_contract_version` table: one row for each manifest digest, with the origin of the version
 from its signing key (see sandboxed-execution.md). `n8n contracts:import --input=<dir>` adds the verified versions of a folder to the
@@ -105,6 +105,7 @@ of a native version has its legacy node type in `native`, so a reader finds them
 against its digest, and the fields of each index line against the manifest. A line can also
 have `fixtures`, `signatures` (ed25519 over the manifest bytes, `key` is `sha256:` of the public
 key) and `published`. Freeze adds none of them, so it writes the same bytes for the same source.
+When freeze ships the published bytes of a version, it writes the published `fixtures` too.
 
 ### Status lines
 
@@ -129,20 +130,23 @@ status line (`addStatusToStore`):
 
 The signatures of a status line cover its canonical JSON without `signatures`
 (`storeStatusTextOf`), with the same key id and ed25519 form as a version. The instance keeps
-the lines in the `node_contract_status` table. It takes a line only when a configured key signs
-it, or every line when no key is set. A line applies to a version only when its key proves at
-least the origin of the version: only the first-party key withdraws a first-party version, and
-an unsigned line applies only to a private version. The lines arrive with
-`n8n contracts:import`, with `contracts:export`, and from the registry index of each id that
-the leader main reads (a sync of the pinned ids, a download, a newer-patch check).
-`contracts:export` writes only the yank and revoke lines of the versions that it writes. An
-embedded HEAD is not a stored version, so the export drops its lines. To move such a line to a
-host without a registry, import a copy of the registry folder.
+the lines in the `node_contract_status` table. It takes a line of `n8n contracts:import` only
+when a configured key signs it, or every line when no key is set. A signed line applies to a
+version only when its key proves at least the origin of the version: only the first-party key
+withdraws a first-party version, and an unsigned line, such as a line that the instance writes,
+applies only to a private version. A line from the npm registry is the exception, see below.
+The lines arrive with `n8n contracts:import`, with `contracts:export`, and from the npm
+registry for each id that the leader main reads (a sync of the pinned ids, a download, a
+newer-patch check). `contracts:export` writes only the yank and revoke lines of the versions
+that it writes. An embedded HEAD is not a stored version, so the export drops its lines.
 
 In an npm registry, `pnpm publish:contracts yank|revoke <id>@<version> <reason>` in a source
 package runs `npm deprecate <name>@<version> <message>`. A host reads every npm deprecation as a
 yank. The message of a yank is the reason, and the message of a revoke is `revoked: <reason>`.
-The POC has no deprecation that is not a yank.
+The POC has no deprecation that is not a yank. The host reads the `deprecated` field of each
+version in the packument and makes a yank or revoke line with `registry: <url>` and no
+signature. Such a line applies to every origin, because the registry auth controls who can
+deprecate. Its `at` is the publish date of the version: npm keeps no date of a deprecation.
 
 ### npm packages
 
@@ -166,11 +170,17 @@ skips a published version with the same `n8n.digest`, and refuses one with anoth
 published version below it. Publish reads that manifest from its tarball, and checks it against
 its digest. During the POC the registry is a local Verdaccio: publish refuses `registry.npmjs.*`.
 
+n8n reads the same packages (`npmStoreReader`). For an id, it reads the packument and downloads
+the tarball of each version once. It makes the index line from `manifest.json` and
+`signatures.json`, and checks each blob against its digest: the manifest against `n8n.digest`,
+the bundle against `bundleHash`. It sends the token to the registry host only.
+
 | Variable | What |
 |---|---|
 | `N8N_NODE_CONTRACTS_NPM_REGISTRY` | The npm registry, e.g. `http://localhost:4873` |
 | `N8N_NODE_CONTRACTS_NPM_SCOPE` | The npm scope. Default: `@n8n-nodes` |
 | `NPM_TOKEN` | The registry token. Publish writes `${NPM_TOKEN}` into a temporary `.npmrc`, so the token is never on the command line |
+| `N8N_NODE_CONTRACTS_NPM_TOKEN` | The bearer token that n8n sends to read the registry. n8n does not log it |
 | `N8N_NODE_CONTRACTS_SIGNING_KEY_FILE` | The PEM file of the ed25519 publisher key. A yank, revoke or deprecation does not need it |
 
 ## Rules
