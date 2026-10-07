@@ -347,6 +347,10 @@ erDiagram
   varchar_36_ workflowVersionId FK
 }
 "workflow_suggestion" {
+  varchar_32_ appliedAction
+  varchar appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   varchar backgroundUserId FK
   datetime_3_ closedAt
   varchar_16_ closedReason
@@ -355,6 +359,7 @@ erDiagram
   varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
+  varchar_16_ resultKind
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK

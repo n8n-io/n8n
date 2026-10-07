@@ -356,6 +356,10 @@ erDiagram
   varchar_36_ workflowVersionId FK
 }
 "public.workflow_suggestion" {
+  varchar_32_ appliedAction
+  uuid appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
   uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason
@@ -364,6 +368,7 @@ erDiagram
   varchar_36_ id
   json payload
   varchar_36_ projectId FK
+  varchar_16_ resultKind
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
