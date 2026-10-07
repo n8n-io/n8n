@@ -106,9 +106,10 @@ const config: KnipConfig = {
 			ignoreDependencies: ['@types/uuid'],
 		}),
 		'packages/@n8n/oxlint-config': pkg({
-			// The exported config names these plugins as strings.
+			// The exported config names these plugins as strings, or resolves them by path.
 			ignoreDependencies: [
 				'@n8n/eslint-config',
+				'@n8n/eslint-plugin-design-system',
 				'@stylistic/eslint-plugin',
 				'eslint-plugin-lodash',
 				'eslint-plugin-unused-imports',
@@ -175,7 +176,7 @@ const config: KnipConfig = {
 				'web-tree-sitter',
 				// Target of the `stream` alias that @n8n/frontend-vite-config declares.
 				'stream-browserify',
-				// .oxlintrc.json names these plugins; @n8n/oxlint-config provides them.
+				// oxlint-rules.json names these plugins; @n8n/oxlint-config provides them.
 				'@stylistic/eslint-plugin',
 				'eslint-plugin-lodash',
 				'eslint-plugin-unused-imports',

@@ -260,6 +260,13 @@ config picks exactly one:
 | `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
 | `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
 
+Vue rules do not run in ESLint. The Vize CLI (`vize lint`) runs the template
+rules from `@n8n/oxlint-config/vize`, through the package `vize.config.ts`.
+Oxlint runs the Vue script rules from `@n8n/oxlint-config/vue` (or
+`@n8n/oxlint-config/frontend` in a package that has moved to Oxlint). To
+suppress a template rule for some files, add an `entries` item to
+`vize.config.ts`. See `scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md`.
+
 A package config may add `ignores`, an additive plugin config, a block that
 raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
 down for the whole package: every lint script runs with `--quiet`, so a `warn`

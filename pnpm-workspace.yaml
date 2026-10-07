@@ -246,6 +246,7 @@ catalog:
   openai: 6.46.0
   oracledb: 6.10.0
   oxlint: 1.78.0
+  vize: 0.432.0
   oxlint-tsgolint: ^0.21.1
   p-limit: ^3.1.0
   pdf-parse: 2.4.5

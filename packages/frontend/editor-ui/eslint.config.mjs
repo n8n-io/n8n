@@ -11,7 +11,7 @@ import oxlint from 'eslint-plugin-oxlint';
  */
 const oxlintConfig = (() => {
 	const { ignorePatterns, ...rest } = JSON.parse(
-		readFileSync(new URL('./.oxlintrc.json', import.meta.url), 'utf8'),
+		readFileSync(new URL('./oxlint-rules.json', import.meta.url), 'utf8'),
 	);
 	return rest;
 })();
@@ -270,7 +270,6 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 			'@typescript-eslint/prefer-promise-reject-errors': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
-			'vue/attribute-hyphenation': 'warn',
 			'@typescript-eslint/restrict-template-expressions': 'warn',
 			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedFeatures }],
 		},

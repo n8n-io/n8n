@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-/* eslint-disable vue/no-multiple-template-root */
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { BaseEdge } from '@vue-flow/core';
 import { computed, onMounted, ref, useCssModule } from 'vue';

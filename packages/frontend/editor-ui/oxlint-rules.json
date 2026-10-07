@@ -110,15 +110,6 @@
 		"unicorn/no-useless-promise-resolve-reject": "error",
 		"lodash/path-style": ["error", "as-needed"],
 		"lodash/import-scope": ["error", "method"],
-		"vue/no-arrow-functions-in-watch": "error",
-		"vue/no-deprecated-destroyed-lifecycle": "error",
-		"vue/no-export-in-script-setup": "error",
-		"vue/no-lifecycle-after-await": "error",
-		"vue/prefer-import-from-vue": "error",
-		"vue/valid-define-emits": "error",
-		"vue/valid-define-props": "error",
-		"vue/no-multiple-slot-args": "warn",
-		"vue/no-required-prop-with-default": "warn",
 		"no-console": "warn",
 		"@stylistic/lines-between-class-members": "warn",
 		"@stylistic/member-delimiter-style": "warn",
@@ -294,7 +285,6 @@
 		{
 			"files": ["**/*.vue"],
 			"rules": {
-				"vue/define-emits-declaration": ["error", "type-literal"],
 				"unused-imports/no-unused-imports": "off"
 			},
 			"globals": {

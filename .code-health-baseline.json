@@ -1202,12 +1202,6 @@
 			},
 			{
 				"rule": "lint-config-layering",
-				"line": 268,
-				"message": "packages/frontend/editor-ui turns 'vue/attribute-hyphenation' down to 'warn' for the whole package.",
-				"hash": "33e956db8dec"
-			},
-			{
-				"rule": "lint-config-layering",
 				"line": 269,
 				"message": "packages/frontend/editor-ui turns '@typescript-eslint/restrict-template-expressions' down to 'warn' for the whole package.",
 				"hash": "affee27335fc"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/* eslint-disable vue/no-multiple-template-root */
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
 import { ref, computed, useCssModule, onMounted, onBeforeUnmount } from 'vue';

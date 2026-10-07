@@ -1,15 +1,20 @@
-import { baseConfig } from '@n8n/oxlint-config/base';
+import { frontendConfig } from '@n8n/oxlint-config/frontend';
 import { defineConfig } from 'oxlint';
 
 export default defineConfig({
-	extends: [baseConfig],
+	extends: [frontendConfig],
 	options: { typeAware: true },
-	ignorePatterns: ['vite.*.config.mts', 'vitest.config.mts', 'scripts/**', '**/*.vue'],
+	ignorePatterns: ['vite.*.config.mts', 'vitest.config.mts', 'scripts/**'],
 	rules: {
 		'typescript/no-deprecated': 'off',
 		'unicorn/filename-case': ['error', { case: 'camelCase' }],
 	},
 	overrides: [
+		{
+			// Vue components keep PascalCase file names.
+			files: ['src/**/*.vue'],
+			rules: { 'unicorn/filename-case': ['error', { case: 'pascalCase' }] },
+		},
 		{
 			files: ['src/**/*.test.ts', 'src/__tests__/**/*.ts'],
 			rules: {

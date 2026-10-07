@@ -10,7 +10,7 @@ Use ESLint rules to enforce Design System constraints that cannot be reliably en
 
 ESLint is appropriate when a constraint spans component composition or usage context and cannot be expressed through TypeScript or the component API.
 
-The recommended flat config enables all rules for Vue files and is included by `@n8n/eslint-config/frontend`.
+Oxlint runs these rules through `@n8n/oxlint-config/vue`. Oxlint gives a JS plugin only the script block of an SFC, so a template rule reads the SFC from disk and parses it with `@vue/compiler-dom`. The rule reports at the start of the script block, and the message gives the template position.
 
 ## Rules
 
