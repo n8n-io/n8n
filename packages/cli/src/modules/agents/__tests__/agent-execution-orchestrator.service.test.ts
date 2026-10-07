@@ -2884,6 +2884,42 @@ describe('AgentExecutionOrchestratorService', () => {
 		).toBeUndefined();
 	});
 
+	it('keeps a production n8n Chat wake connected to its lease signal after admission', async () => {
+		const { service, agentRepository, executionService, runtimeCacheService } = makeService();
+		const runtime = makeRuntime();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const lease = new AbortController();
+		let abortedDuringTurn: boolean | undefined;
+		runtime.agent.stream.mockImplementation(
+			async (_input, options: { abortSignal: AbortSignal }) => {
+				// The turn is admitted before the model stream starts.
+				lease.abort();
+				abortedDuringTurn = options.abortSignal.aborted;
+				return { runId: 'runtime-run-1', stream: makeReadableStream([]) };
+			},
+		);
+
+		await service
+			.executeForWake({
+				backgroundJobSignal,
+				agentId,
+				projectId,
+				message: 'The job is done.',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					principalHash: userPrincipalHash,
+				},
+				abortSignal: lease.signal,
+			})
+			.catch(() => {});
+
+		expect(abortedDuringTurn).toBe(true);
+	});
+
 	it('throws instead of silently dropping a production n8n Chat wake that fails its published check', async () => {
 		const { service, agentRepository, runtimeCacheService } = makeService();
 		agentRepository.isN8nChatPublished.mockResolvedValue(false);
