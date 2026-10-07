@@ -56,6 +56,7 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 		'credentialEdit.credentialSharing.onlyYou': 'Only you',
 		'credentialEdit.credentialSharing.onlyOwner': 'Only {name}',
 		'credentialEdit.credentialSharing.share': 'Share',
+		'credentialEdit.credentialSharing.shareWith': 'Share with {project}',
 		'auth.roles.owner': 'Owner',
 		'contextual.credentials.sharing.unavailable.title': 'Upgrade to collaborate',
 		'contextual.credentials.sharing.unavailable.description':
@@ -696,7 +697,81 @@ describe('CredentialSharing.ee', () => {
 			expect(row).toHaveTextContent('Marketing');
 			expect(row).toHaveTextContent('Used in "Email summary"');
 			expect(row).toHaveTextContent('Only you');
-			expect(getByTestId('credential-used-in-project-share')).toBeInTheDocument();
+			expect(getByTestId('credential-used-in-project-share')).toHaveTextContent(
+				'Share with Marketing',
+			);
+		});
+
+		it.each([
+			['Priya Nair <priya@example.com>', 'Share with Priya Nair'],
+			['<priya@example.com>', 'Share'],
+		])(
+			'hides the email of a personal project in the Share button (%s)',
+			(projectName, expectedLabel) => {
+				projectsStore.myProjects = [
+					{ ...marketingProject, name: projectName, type: 'personal' as const },
+				];
+				getDependenciesMock.mockReturnValue({
+					dependencies: [
+						{
+							id: 'wf-1',
+							name: 'Email summary',
+							type: 'workflowParent',
+							projectId: 'marketing-project',
+						},
+					],
+					inaccessibleCount: 0,
+				});
+
+				const credential = createCredential({
+					homeProject: ownerPersonalProject,
+					sharedWithProjects: [],
+				});
+				const { getByTestId } = renderComponent({
+					props: {
+						credentialId: credential.id,
+						credentialData: {},
+						credentialPermissions: { share: true },
+						credential,
+						modalBus: createEventBus(),
+					},
+				});
+
+				const label = getByTestId('credential-used-in-project-share').textContent?.trim();
+				expect(label).toBe(expectedLabel);
+				expect(label).not.toContain('@');
+			},
+		);
+
+		it('falls back to a plain "Share" button when the project has no name', () => {
+			projectsStore.myProjects = [{ ...marketingProject, name: null }];
+			getDependenciesMock.mockReturnValue({
+				dependencies: [
+					{
+						id: 'wf-1',
+						name: 'Email summary',
+						type: 'workflowParent',
+						projectId: 'marketing-project',
+					},
+				],
+				inaccessibleCount: 0,
+			});
+
+			const credential = createCredential({
+				homeProject: ownerPersonalProject,
+				sharedWithProjects: [],
+			});
+			const { getByTestId } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			expect(getByTestId('credential-used-in-project-share')).toHaveTextContent(/^\s*Share\s*$/);
 		});
 
 		it('summarizes as "Used in N workflows" when the credential is used in more than one workflow in the same project', () => {

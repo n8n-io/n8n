@@ -356,6 +356,10 @@ export class ProjectService {
 		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
 	}
 
+	async findTeamProjectsWorkflowIsIn(workflowId: string) {
+		return await this.sharedWorkflowRepository.findTeamProjectIds(workflowId);
+	}
+
 	/**
 	 * Enrich projects with the requesting user's role and scopes.
 	 * Mirrors the logic in getMyProjects controller: for each project,
