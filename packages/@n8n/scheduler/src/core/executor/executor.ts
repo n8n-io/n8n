@@ -1,8 +1,8 @@
-import { MAX_INTEGER_32BITS_SIGNED, Time } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
-import { LeaseLostError } from '../errors';
+import { LeaseLostError, TaskTimeoutError } from '../errors';
 import { LONG_RUN_THRESHOLD_IN_LEASES, MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
 import { LeaseHeartbeat } from './lease-heartbeat';
 import type { LeaseRenewalResult } from './lease-heartbeat';
@@ -13,6 +13,7 @@ import { createDispatchReporter } from './task-handler';
 import type { DispatchReporter, TaskHandler, TaskHandlerRegistry } from './task-handler';
 import { noopExecutorTracing } from './tracing';
 import type { ExecutorTracing, FireResult } from './tracing';
+import { Alarm } from '../lifecycle/alarm';
 import type { ClaimedTask } from '../types';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
@@ -64,8 +65,17 @@ export interface ExecutorHooks {
 	/** A lease renewal write failed; the next renewal tries again. */
 	onLeaseRenewalError?: (task: ClaimedTask, error: unknown) => void;
 
-	/** A handler is still running after many leases, so it may be stuck. Fires once a run. */
+	/**
+	 * A handler is still running after many leases, so it may be stuck. Fires once a
+	 * run, and only for a run whose timeout comes later.
+	 */
 	onLongRunningTask?: (task: ClaimedTask, runningSeconds: number) => void;
+
+	/**
+	 * A run reached the timeout of its occurrence. Its signal is aborted and its
+	 * lease is no longer renewed. Fires once a run.
+	 */
+	onTaskTimeout?: (task: ClaimedTask) => void;
 
 	// Fire-path metrics hooks (the normal path), distinct from the incident hooks above.
 
@@ -98,7 +108,7 @@ export interface ExecutorHooks {
  * an atomic compare-and-set that stamps `startedAt` and returns 1 for a single
  * winner, so the handler runs at most once per lease. That same write refreshes the
  * lease, and a heartbeat renews it while the handler runs, so a long handler keeps
- * its claim for as long as its instance is alive.
+ * its claim for as long as its instance is alive, up to the timeout of its occurrence.
  *
  * The contract is at-least-once. Ownership only lasts as long as the lease: if an
  * owner is lost past it (crash or partition), the reaper reclaims the row, clears
@@ -311,19 +321,23 @@ export class Executor {
 			);
 		};
 		const report = createDispatchReporter(markDispatched);
+		const run = new AbortController();
 
 		// Record success only after the try, so a failure to record it isn't taken for a
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
 		// in claimAndSchedule) and leaves the row `running` for the reaper.
 		try {
-			await this.executeWithHeartbeat(handler, task, report, {
+			await this.executeWithHeartbeat(handler, task, report, run, {
 				claim,
 				leaseSetAt,
 				isMarkedDispatched: () => isMarkedDispatched,
 			});
 		} catch (error) {
 			await dispatchMark;
-			return await this.recordHandlerFailure(task, claim, error, dispatchMark !== undefined);
+			return await this.recordHandlerFailure(task, claim, error, {
+				dispatchWasReported: dispatchMark !== undefined,
+				timedOut: run.signal.reason instanceof TaskTimeoutError,
+			});
 		}
 
 		markDispatched(); // A handler that returned without throwing is considered as dispatched
@@ -341,11 +355,13 @@ export class Executor {
 		task: ClaimedTask,
 		claim: ClaimedTaskRef,
 		error: unknown,
-		dispatchWasReported: boolean,
+		{ dispatchWasReported, timedOut }: { dispatchWasReported: boolean; timedOut: boolean },
 	): Promise<FireResult> {
 		const errorMessage = ensureError(error).message;
 		const nextAttempts = task.attempts + 1;
-		if (nextAttempts < task.maxAttempts) {
+		// A dispatched run that timed out is completed, as the reaper completes it
+		// when the handler ignores its signal.
+		if (nextAttempts < task.maxAttempts && !(dispatchWasReported && timedOut)) {
 			const rowsAffected = await this.store.rescheduleTask(
 				claim,
 				backoff(nextAttempts),
@@ -359,7 +375,7 @@ export class Executor {
 			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
-		// On the last attempt, complete work whose effect was handed off before the error.
+		// On the last attempt or a timeout, complete work whose effect was handed off before the error.
 		// The report counts even if its marker write failed.
 		if (dispatchWasReported) {
 			const rowsAffected = await this.store.completeTask(claim);
@@ -383,15 +399,16 @@ export class Executor {
 
 	/**
 	 * Run the handler while a heartbeat renews the claim's lease, until it settles.
-	 * A lost claim aborts the handler's signal unless the dispatch marker is stored.
+	 * A lost claim aborts `run` unless the dispatch marker is stored. The timeout
+	 * of the occurrence aborts `run` and stops the renewals.
 	 */
 	private async executeWithHeartbeat(
 		handler: TaskHandler,
 		task: ClaimedTask,
 		report: DispatchReporter,
+		run: AbortController,
 		{ claim, leaseSetAt, isMarkedDispatched }: HeartbeatRun,
 	): Promise<void> {
-		const lease = new AbortController();
 		const heartbeat = new LeaseHeartbeat(
 			async (expiresInMs) => await this.store.renewLease(claim, expiresInMs),
 			{ leaseDurationMs: this.leaseMs, leaseSetAt },
@@ -403,26 +420,37 @@ export class Executor {
 					// marker write still in flight counts as not stored: the reaper may
 					// already redeliver the row, and that write may never finish.
 					if (result !== 'renewed' && !isMarkedDispatched()) {
-						lease.abort(new LeaseLostError());
+						run.abort(new LeaseLostError());
 					}
 				},
 				onRenewalError: (error) => this.hooks.onLeaseRenewalError?.(task, error),
 			},
 		);
-		// `setTimeout` fires a longer delay at once.
-		const longRunMs = Math.min(
-			LONG_RUN_THRESHOLD_IN_LEASES * this.leaseMs,
-			MAX_INTEGER_32BITS_SIGNED,
-		);
-		const longRunTimer = setTimeout(
-			() => this.hooks.onLongRunningTask?.(task, longRunMs / Time.seconds.toMilliseconds),
-			longRunMs,
-		);
-		longRunTimer.unref();
+		const timeoutMs = task.timeoutSeconds * Time.seconds.toMilliseconds;
+		// A run whose timeout comes first gets the timeout warning instead.
+		const longRunMs = LONG_RUN_THRESHOLD_IN_LEASES * this.leaseMs;
+		const longRun = new Alarm(() => performance.now());
+		if (longRunMs < timeoutMs) {
+			longRun.set(leaseSetAt + longRunMs, () =>
+				this.hooks.onLongRunningTask?.(task, longRunMs / Time.seconds.toMilliseconds),
+			);
+		}
+		const deadline = leaseSetAt + timeoutMs;
+		const timeout = new Alarm(() => performance.now());
+		timeout.set(deadline, () => {
+			// Without renewals the lease expires, so the reaper recovers a handler that
+			// ignores its signal.
+			heartbeat.stop();
+			if (!run.signal.aborted) {
+				this.hooks.onTaskTimeout?.(task);
+				run.abort(new TaskTimeoutError(task.timeoutSeconds));
+			}
+		});
 		try {
-			await handler.execute(task, report, lease.signal);
+			await handler.execute(task, report, run.signal, deadline);
 		} finally {
-			clearTimeout(longRunTimer);
+			longRun.cancel();
+			timeout.cancel();
 			heartbeat.stop();
 		}
 	}

@@ -1,5 +1,5 @@
 // These are constants, not environment variables, to keep this mechanism under
-// control in its first version. A per-job timeout may come later.
+// control in its first version.
 
 /**
  * Renewals per lease: two may fail in a row before the lease expires.

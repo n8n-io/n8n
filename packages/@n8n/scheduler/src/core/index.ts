@@ -112,6 +112,7 @@ export {
 	InvalidOwnerMemberIdError,
 	InvalidRunOptionError,
 	LeaseLostError,
+	TaskTimeoutError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 
