@@ -191,6 +191,11 @@ export class AgentMessageQueueService {
 		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);
 	}
 
+	/** Whether a message waits in the thread queue, hidden machine turns included. */
+	async hasQueuedMessages(threadId: string): Promise<boolean> {
+		return await this.repository.hasItems(threadId);
+	}
+
 	async listPending(input: PendingMessageScope): Promise<AgentChatQueueResponse> {
 		const { kind } = input;
 		const thread = await this.threadRepository.findOneBy({ id: input.threadId });

@@ -223,8 +223,13 @@ export class SystemAgentExecutionService {
 			? null
 			: await this.checkpointStorage.findSuspendedForThread(thread.agentId, thread.id);
 		const latest = await this.executionRepository.findLatestByThreadId(thread.id);
+		// A queued message (for example a hidden follow-up turn) means more work is
+		// coming, so the thread is not idle yet. A suspension still wins: the queue
+		// waits for the user to answer it.
+		const queued =
+			!running && !checkpoint && (await this.messageQueue.hasQueuedMessages(thread.id));
 		return {
-			status: running ? 'running' : checkpoint ? 'suspended' : 'idle',
+			status: running || queued ? 'running' : checkpoint ? 'suspended' : 'idle',
 			latestExecutionId: latest?.id ?? null,
 			checkpoint,
 		} as const;

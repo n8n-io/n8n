@@ -567,6 +567,35 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
+	describe('getStatus', () => {
+		it('reports a thread with a queued message as running', async () => {
+			const { service, executionRepository, checkpointStorage, messageQueue } = setup();
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+			messageQueue.hasQueuedMessages.mockResolvedValue(true);
+
+			expect((await service.getStatus(thread)).status).toBe('running');
+		});
+
+		it('keeps a suspended thread suspended while a message waits', async () => {
+			const { service, executionRepository, checkpointStorage, messageQueue } = setup();
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			messageQueue.hasQueuedMessages.mockResolvedValue(true);
+
+			expect((await service.getStatus(thread)).status).toBe('suspended');
+		});
+
+		it('reports an idle thread with an empty queue', async () => {
+			const { service, executionRepository, checkpointStorage, messageQueue } = setup();
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+			messageQueue.hasQueuedMessages.mockResolvedValue(false);
+
+			expect((await service.getStatus(thread)).status).toBe('idle');
+		});
+	});
+
 	describe('access floor', () => {
 		it('refuses a user who cannot read the working project, before the provider checks', async () => {
 			const { service, provider } = setup();
