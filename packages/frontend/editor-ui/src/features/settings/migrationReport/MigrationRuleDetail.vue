@@ -126,6 +126,7 @@ async function loadMembers(projectId: string | undefined, query = '') {
 	isLoadingUsers.value = true;
 	try {
 		const { items } = await getUsers(rootStore.restApiContext, {
+			skip: 0,
 			take: 50,
 			filter: {
 				...(projectId ? { projectId } : {}),

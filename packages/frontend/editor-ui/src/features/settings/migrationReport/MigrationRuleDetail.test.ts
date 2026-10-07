@@ -503,7 +503,9 @@ describe('MigrationRuleDetail', () => {
 			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(screen.getByTestId('migration-owner-select')).toBeInTheDocument());
 
-			await userEvent.click(screen.getByRole('combobox'));
+			await userEvent.click(
+				within(screen.getByTestId('migration-owner-select')).getByRole('combobox'),
+			);
 			await waitFor(() => {
 				expect(usersApi.getUsers).toHaveBeenCalledWith(
 					expect.anything(),
@@ -544,11 +546,14 @@ describe('MigrationRuleDetail', () => {
 				}),
 			);
 			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
-			await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(2));
+			await waitFor(() => expect(screen.getAllByTestId('migration-owner-select')).toHaveLength(2));
+			const pickers = screen
+				.getAllByTestId('migration-owner-select')
+				.map((picker) => within(picker).getByRole('combobox'));
 
 			// The first row's search hangs; the second row's answers at once.
-			await userEvent.click(screen.getAllByRole('combobox')[0]);
-			await userEvent.click(screen.getAllByRole('combobox')[1]);
+			await userEvent.click(pickers[0]);
+			await userEvent.click(pickers[1]);
 			await waitFor(() => expect(usersApi.getUsers).toHaveBeenCalledTimes(2));
 			await waitFor(() => {
 				expect(baseElement.querySelector('#user-select-option-id-user-2')).not.toBeNull();
