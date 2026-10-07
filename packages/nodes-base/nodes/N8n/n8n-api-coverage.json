@@ -151,7 +151,7 @@
 			"status": "covered",
 			"nodeOperation": "workflow:update"
 		},
-		"GET /workflows/{id}/{versionId}": {
+		"GET /workflows/{workflowId}/{workflowVersionId}": {
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},

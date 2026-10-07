@@ -91,6 +91,7 @@ function handleThreadSelect(threadId: string) {
 				:credits-used="threadCreditsUsed"
 				:is-low-credits="store.isLowCredits"
 				button-size="small"
+				icon-size="large"
 				@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 			/>
 			<slot name="actions" />

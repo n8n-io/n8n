@@ -108,15 +108,14 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
 		if (this.activeWakes.has(threadId)) return undefined;
 
-		const [pending, stopped] = await Promise.all([
+		const [pending, stoppedHere] = await Promise.all([
 			this.jobRepository.findWakeableUnconsumed(threadId),
-			this.jobRepository.findRequestedPauses(threadId),
+			this.jobRepository.hasRequestedStop(threadId, resourceId),
 		]);
 		const jobs = pending.filter(
 			(job) =>
 				job.parentResourceId === resourceId && job.status !== 'suspended' && !job.pauseRequestId,
 		);
-		const stoppedHere = stopped.some((job) => job.parentResourceId === resourceId);
 		if (jobs.length === 0 && !stoppedHere) return undefined;
 
 		// Remove tag characters so titles cannot close the surrounding tag.
@@ -134,7 +133,7 @@ export class AgentWakeService {
 			);
 		if (stoppedHere)
 			updates.push(
-				'The user stopped background sub-agents. They will send one combined report after they reach their checkpoints. Do not replace or resume these tasks automatically. Only call resume_background_jobs when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry.',
+				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call resume_background_jobs when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
 			);
 		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${updates.join('\n')}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
@@ -165,7 +164,13 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
-		const pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		const stopped = pending.filter((job) => job.pauseRequestId);
+		if (stopped.length > 0) {
+			// A worker can stop after settlement and before it replaces older checkpoints.
+			for (const job of stopped) await this.backgroundJobService.retainLatestStopGroup(job);
+			pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		}
 		for (const job of pending.filter(
 			(item) => item.status === 'suspended' && !item.pauseRequestId,
 		)) {

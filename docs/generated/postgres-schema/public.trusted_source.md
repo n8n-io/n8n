@@ -7,11 +7,14 @@
 | config | text |  | false |  |  |  |
 | configVersion | integer |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| discoveryClaimToken | varchar(36) |  | true |  |  |  |
+| discoveryClaimedAt | timestamp(3) with time zone |  | true |  |  |  |
 | id | varchar(36) |  | false | [public.trusted_source_identity](public.trusted_source_identity.md) |  |  |
 | issuer | varchar |  | false |  |  |  |
 | lastCheckedAt | timestamp(3) with time zone |  | true |  |  |  |
 | lastError | text |  | true |  |  |  |
 | managedBy | varchar(16) |  | false |  |  |  |
+| metadata | text |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
@@ -52,11 +55,14 @@ erDiagram
   text config
   integer configVersion
   timestamp_3__with_time_zone createdAt
+  varchar_36_ discoveryClaimToken
+  timestamp_3__with_time_zone discoveryClaimedAt
   varchar_36_ id
   varchar issuer
   timestamp_3__with_time_zone lastCheckedAt
   text lastError
   varchar_16_ managedBy
+  text metadata
   varchar_128_ name
   varchar_16_ status
   varchar_32_ type

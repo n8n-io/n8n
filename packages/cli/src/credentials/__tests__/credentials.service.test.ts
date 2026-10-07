@@ -371,6 +371,100 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('prepareUpdateData with the client credentials grant', () => {
+		const CREDENTIAL_TYPE = 'oAuth2Api';
+
+		const oauthTokenData = { access_token: 'token-of-the-old-client' };
+
+		const storedClient = {
+			grantType: 'clientCredentials',
+			clientId: 'old-client-id',
+			clientSecret: 'old-client-secret',
+			accessTokenUrl: 'https://auth.example.com/token',
+			scope: 'read',
+		};
+
+		function storedCredential(data: ICredentialDataDecryptedObject) {
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue(data);
+			return mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Acme API',
+				type: CREDENTIAL_TYPE,
+				usageScope: 'project',
+				shared: [{ role: 'credential:owner', projectId: 'project-1' }],
+			});
+		}
+
+		async function prepare(
+			data: ICredentialDataDecryptedObject,
+			stored: ICredentialDataDecryptedObject = { ...storedClient, oauthTokenData },
+		) {
+			const prepared = await service.prepareUpdateData(
+				ownerUser,
+				{ name: 'Acme API', type: CREDENTIAL_TYPE, data },
+				storedCredential(stored),
+			);
+			return prepared.data as unknown as ICredentialDataDecryptedObject;
+		}
+
+		beforeEach(() => {
+			credentialTypes.getByName.mockReturnValue(
+				mock<ICredentialType>({ extends: [], properties: [] }),
+			);
+			credentialsRepository.create.mockImplementation(
+				(data) => Object.assign(new CredentialsEntity(), data) as CredentialsEntity,
+			);
+			// The grant is user-owned here, so every field the diff reads is displayed.
+			credentialsHelper.getCredentialsProperties.mockReturnValue(new OAuth2Api().properties);
+		});
+
+		it.each([
+			['clientId', 'new-client-id'],
+			['clientSecret', 'new-client-secret'],
+			['accessTokenUrl', 'https://other-auth.example.com/token'],
+			['scope', 'read write'],
+		])('drops the stored token when %s changes', async (field, value) => {
+			const preparedData = await prepare({ ...storedClient, [field]: value });
+
+			// The grant fetches a token only when none is stored, so the next
+			// execution has to find the slot empty to use the new client.
+			expect(preparedData.oauthTokenData).toBeUndefined();
+		});
+
+		it('keeps the token when the editor sends the unchanged secret back redacted', async () => {
+			const preparedData = await prepare({
+				...storedClient,
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
+			});
+
+			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+		});
+
+		it('keeps the token when a field the token does not depend on changes', async () => {
+			const preparedData = await prepare({ ...storedClient, ignoreSSLIssues: true });
+
+			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+		});
+
+		it('drops a token minted under another grant when the grant type changes', async () => {
+			const preparedData = await prepare(
+				{ ...storedClient, grantType: 'clientCredentials' },
+				{ ...storedClient, grantType: 'authorizationCode', oauthTokenData },
+			);
+
+			expect(preparedData.oauthTokenData).toBeUndefined();
+		});
+
+		it('leaves the authorization code grant alone, which reconnects through its own flow', async () => {
+			const preparedData = await prepare(
+				{ ...storedClient, grantType: 'authorizationCode', clientId: 'new-client-id' },
+				{ ...storedClient, grantType: 'authorizationCode', oauthTokenData },
+			);
+
+			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+		});
+	});
+
 	describe('prepareUpdateData description handling', () => {
 		const storedCredential = () => {
 			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({});
@@ -3226,6 +3320,81 @@ describe('CredentialsService', () => {
 
 				expect(result).toHaveLength(1);
 				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'personal' });
+			});
+
+			it('includes a credential shared directly with the user when the user works in the project', async () => {
+				flags.credSharingEnabled = true;
+				const sharedCredential = makePersonalCredential();
+				sharedCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:user',
+						projectId: personalProject.id,
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([sharedCredential]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue(['project-in-workflow']);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'project-in-workflow' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'personal' });
+			});
+
+			it('excludes a credential shared directly with the user when the user does not work in the project', async () => {
+				flags.credSharingEnabled = true;
+				const sharedCredential = makePersonalCredential();
+				sharedCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:user',
+						projectId: personalProject.id,
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([sharedCredential]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue(['some-other-project']);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: personalProject.id }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			it('excludes a credential owned by another personal project and not shared with the user', async () => {
+				flags.credSharingEnabled = true;
+				const foreignCredential = makePersonalCredential();
+				foreignCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue(['project-in-workflow']);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'project-in-workflow' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toEqual([]);
 			});
 
 			it('excludes the credential when the flag is on but the user does not work in the project', async () => {

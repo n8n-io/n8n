@@ -56,6 +56,7 @@ export class ChatExecutionManager {
 		await this.workflowRunner.run(await this.getRunData(execution, message), true, true, {
 			executionId: execution.id,
 			expectedStatus: 'waiting',
+			storedAt: execution.storedAt,
 		});
 	}
 

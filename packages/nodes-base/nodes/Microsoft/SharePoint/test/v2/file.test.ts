@@ -5,7 +5,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { fileRLC, getFiles } from '../../v2/file';
-import { SEARCH_PAGE_LIMIT } from '../../v2/helpers/graphSearch';
+import { SEARCH_PAGE_LIMIT } from '../../helpers/graphSearch';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
