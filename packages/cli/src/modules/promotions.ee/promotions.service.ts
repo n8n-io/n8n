@@ -631,7 +631,7 @@ export class PromotionsService {
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
 			{
 				user: actor,
-				overwriteDeletionPolicy: IMPORT_POLICY.overwriteDeletionPolicy,
+				overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,

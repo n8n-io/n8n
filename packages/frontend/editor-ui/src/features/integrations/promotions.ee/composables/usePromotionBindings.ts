@@ -1,5 +1,9 @@
 import { computed, ref, shallowRef } from 'vue';
-import type { PromotionBindingConsumer, ContinueApplyPackageDto } from '@n8n/api-types';
+import type {
+	PromotionBindingConflict,
+	PromotionBindingConsumer,
+	ContinueApplyPackageDto,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { continueApplyPromotion } from '../promotionsSettings.api';
 import type {
@@ -34,6 +38,11 @@ type PromotionBindingsError =
 	// The UI uses the cause to show why Continue failed.
 	| { kind: 'continue'; cause: unknown };
 
+type DestructiveChange = Extract<PromotionBindingConflict, { code: 'destructive-change' }>;
+
+const isDestructiveChange = (conflict: PromotionBindingConflict): conflict is DestructiveChange =>
+	conflict.code === 'destructive-change';
+
 type BindingGroup = {
 	project: PromotionBindingConsumer['project'];
 	workflows: Array<{
@@ -67,7 +76,6 @@ export function usePromotionBindings() {
 	const isCreating = ref(false);
 	const isFinished = ref(false);
 	const sourceChanged = ref(false);
-	const destructiveConfirmed = ref(false);
 	const error = shallowRef<PromotionBindingsError | null>(null);
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
@@ -109,16 +117,20 @@ export function usePromotionBindings() {
 		return Array.from(projects.values());
 	});
 
-	const destructiveConflictCount = computed(
-		() =>
-			preflight.value?.conflicts.filter(({ code }) => code === 'destructive-change').length ?? 0,
+	const destructiveChanges = computed(
+		() => preflight.value?.conflicts.filter(isDestructiveChange) ?? [],
 	);
+	const hardConflicts = computed(
+		() => preflight.value?.conflicts.filter((conflict) => !isDestructiveChange(conflict)) ?? [],
+	);
+	const mode = computed<'blocked' | 'review' | 'bindings'>(() => {
+		if (hardConflicts.value.length || preflight.value?.accessRequirements.length) return 'blocked';
+		// A session that started with bindings keeps its table after the last one is created.
+		if (destructiveChanges.value.length && knownBindings.value.size === 0) return 'review';
+		return 'bindings';
+	});
 	const unresolvedCount = computed(
-		() =>
-			missingKeys.value.size +
-			accessByKey.value.size +
-			(preflight.value?.conflicts.length ?? 0) -
-			(destructiveConfirmed.value ? destructiveConflictCount.value : 0),
+		() => missingKeys.value.size + accessByKey.value.size + hardConflicts.value.length,
 	);
 	const isBusy = computed(() => isSubmitting.value || isCreating.value);
 	const canContinue = computed(
@@ -133,7 +145,6 @@ export function usePromotionBindings() {
 
 	function reconcile(result: BlockedApplyResult) {
 		preflight.value = result.preflight;
-		destructiveConfirmed.value = false;
 		const next = new Map(knownBindings.value);
 		for (const binding of result.preflight.missingBindings) {
 			next.set(promotionBindingKey(binding), binding);
@@ -208,7 +219,6 @@ export function usePromotionBindings() {
 		try {
 			const result = await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
 				expectedSource: { ...expectedSource },
-				confirmDestructiveChanges: destructiveConfirmed.value || undefined,
 			});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
@@ -227,14 +237,15 @@ export function usePromotionBindings() {
 		originalResult,
 		preflight,
 		groups,
+		destructiveChanges,
+		hardConflicts,
+		mode,
 		unresolvedCount,
 		savedResources,
 		isBusy,
 		isSubmitting,
 		isCreating,
 		sourceChanged,
-		destructiveConfirmed,
-		destructiveConflictCount,
 		error,
 		canContinue,
 		start,
