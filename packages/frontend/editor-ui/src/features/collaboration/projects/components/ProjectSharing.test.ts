@@ -30,6 +30,7 @@ const mockBaseText = vi.fn((key: string) => {
 	const translations: Record<string, string> = {
 		'projects.sharing.allUsers': 'All users and projects',
 		'auth.roles.owner': 'Owner',
+		'projects.sharing.removeAccess': 'Remove access',
 	};
 	return translations[key] || key;
 });
@@ -183,6 +184,21 @@ describe('ProjectSharing', () => {
 		expect(queryAllByTestId('project-sharing-list-item')).toHaveLength(0);
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		expect(projectSelectDropdownItems).toHaveLength(3);
+	});
+
+	it('should label the remove button "Remove access"', async () => {
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn(personalProjects),
+				modelValue: [personalProjects[0]],
+			},
+		});
+
+		const removeButton = getByTestId('project-sharing-remove');
+		expect(removeButton).toHaveAttribute('aria-label', 'Remove access');
+
+		await userEvent.hover(removeButton);
+		expect(await findByText('Remove access')).toBeVisible();
 	});
 
 	it('should work as a simple select when model is not an array', async () => {

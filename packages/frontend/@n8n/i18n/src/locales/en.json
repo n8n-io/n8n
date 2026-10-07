@@ -6270,6 +6270,7 @@
 	"projects.settings.externalSecrets.load.error": "An error occurred while loading external secrets",
 	"projects.settings.externalSecrets.expand": "Expand external secrets vault",
 	"projects.settings.externalSecrets.collapse": "Collapse external secrets vault",
+	"projects.sharing.removeAccess": "Remove access",
 	"projects.sharing.allUsers": "All users and projects",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
 	"projects.sharing.moreResults": "{count} more results — refine your search",
