@@ -85,12 +85,7 @@ export class AgentsCredentialProvider
 	 * for the MCP-server path.
 	 */
 	async resolveAiGatewayMcpCredential(credentialType: string): Promise<ResolvedCredential> {
-		const aiGatewayService = Container.get(AiGatewayService);
-		return await aiGatewayService.getSyntheticCredential({
-			credentialType,
-			userId: this.user?.id,
-			projectId: this.projectId,
-		});
+		return toResolvedCredential(await this.mintGatewayCredential(credentialType));
 	}
 
 	/**

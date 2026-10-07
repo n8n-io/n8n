@@ -913,6 +913,7 @@ describe('AiGatewayService', () => {
 			expect(servers[0]).toMatchObject({
 				slug: 'n8n-connect-firecrawl',
 				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+				requiredCapabilities: ['n8n-connect'],
 				// The URL keeps the gateway's own slug.
 				remotes: [{ type: 'streamable-http', url: 'http://gateway.test/v1/gateway/mcp/firecrawl' }],
 			});

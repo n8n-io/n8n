@@ -21,7 +21,12 @@ import {
 	type McpRegistrySearchResult,
 } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
-import { AI_GATEWAY_MANAGED_AUTH_TYPE, toEntity, fromEntity } from './mcp-registry.types';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	N8N_CONNECT_MCP_SLUG_PREFIX,
+	toEntity,
+	fromEntity,
+} from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
 
 /** A row the AI Gateway serves, not the remote registry. */
@@ -72,15 +77,17 @@ export class McpRegistryService {
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
 		const servers = await this.getStoredServers(includeDeprecated);
-		return this.filterUsable(servers);
+		return servers.filter(({ requiredCapabilities }) =>
+			this.capabilities.supports(requiredCapabilities),
+		);
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
 		if (!entity) return undefined;
 
-		const [server] = this.filterUsable([fromEntity(entity)]);
-		return server;
+		const server = fromEntity(entity);
+		return this.capabilities.supports(server.requiredCapabilities) ? server : undefined;
 	}
 
 	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
@@ -89,7 +96,9 @@ export class McpRegistryService {
 		}
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
-		return this.filterUsable(entities.map(fromEntity));
+		return entities
+			.map(fromEntity)
+			.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities));
 	}
 
 	/**
@@ -124,30 +133,45 @@ export class McpRegistryService {
 	 * writes last, and the loader rebuild is republished as a whole.
 	 * @throws when the remote API or the database write fails, or when the
 	 * signal aborts before the write starts. The signal cancels the API requests.
+	 * Also throws when the gateway request fails, after the registry updates are saved.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
 		const storedServers = await this.getStoredServers(true);
 		const registryServers = storedServers.filter((server) => !isN8nConnectServer(server));
 		const n8nConnectServers = storedServers.filter(isN8nConnectServer);
 		const fetchedAt = await this.repository.readDbNow();
-		const registryUpdates =
+		const registryUpdates = (
 			registryServers.length === 0
 				? await this.apiClient.fetchAllServers(signal)
-				: ((await this.refreshUpdatedServers(registryServers, signal)) ?? []);
-		const n8nConnectUpdates = await this.getN8nConnectUpdates(n8nConnectServers);
+				: ((await this.refreshUpdatedServers(registryServers, signal)) ?? [])
+		)
+			// The prefix is reserved for n8n Connect rows, so no registry row replaces one.
+			.filter((server) => !server.slug.startsWith(N8N_CONNECT_MCP_SLUG_PREFIX));
+
+		// A gateway failure must not discard the registry updates, so it is rethrown
+		// only after they are saved. The task then retries the gateway part.
+		let n8nConnectUpdates: McpRegistryServer[] = [];
+		let n8nConnectError: unknown;
+		try {
+			n8nConnectUpdates = await this.getN8nConnectUpdates(n8nConnectServers);
+		} catch (error) {
+			n8nConnectError = error;
+		}
+
 		const updatedServers = [...registryUpdates, ...n8nConnectUpdates];
 		if (updatedServers.length === 0) {
 			this.logger.debug('MCP registry is up to date');
-			return;
+		} else {
+			signal?.throwIfAborted();
+			await this.saveServers(updatedServers, fetchedAt);
+			await this.refreshRegistryNodeTypes(true);
+			this.notifyNodeDescriptionsUpdated();
+			await this.publishReloadCommand();
+
+			this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
 		}
 
-		signal?.throwIfAborted();
-		await this.saveServers(updatedServers, fetchedAt);
-		await this.refreshRegistryNodeTypes(true);
-		this.notifyNodeDescriptionsUpdated();
-		await this.publishReloadCommand();
-
-		this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
+		if (n8nConnectError) throw n8nConnectError;
 	}
 
 	private async getStoredServers(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
@@ -155,20 +179,6 @@ export class McpRegistryService {
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
 		return entities.map(fromEntity);
-	}
-
-	/**
-	 * Drops servers this instance cannot use: one that needs an unsupported
-	 * capability, or an n8n Connect server while n8n Connect is off. Its row stays
-	 * stored, so it comes back when n8n Connect is turned on again.
-	 */
-	private filterUsable(servers: McpRegistryServer[]): McpRegistryServer[] {
-		const isN8nConnectEnabled = this.aiGatewayService.isEnabled();
-		return servers.filter(
-			(server) =>
-				this.capabilities.supports(server.requiredCapabilities) &&
-				(isN8nConnectEnabled || !isN8nConnectServer(server)),
-		);
 	}
 
 	/**

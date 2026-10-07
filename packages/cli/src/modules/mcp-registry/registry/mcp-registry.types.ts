@@ -22,6 +22,13 @@ export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
  */
 export const N8N_CONNECT_MCP_SLUG_PREFIX = 'n8n-connect-';
 
+/**
+ * Registry capability every n8n Connect MCP server requires. The instance
+ * supports it while n8n Connect is on, so these servers are hidden like any
+ * server that needs a capability the instance lacks.
+ */
+export const N8N_CONNECT_MCP_CAPABILITY = 'n8n-connect';
+
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 

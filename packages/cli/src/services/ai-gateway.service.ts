@@ -25,6 +25,7 @@ import { MCP_BASE_GATEWAY_CREDENTIAL_NAME } from '@/modules/mcp-registry/mcp-reg
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import {
 	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	N8N_CONNECT_MCP_CAPABILITY,
 	N8N_CONNECT_MCP_SLUG_PREFIX,
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
@@ -69,6 +70,7 @@ function mcpServerToRegistryServer(server: AiGatewayMcpServer, baseUrl: string):
 		isOfficial: true,
 		origin: 'registry',
 		status: 'active',
+		requiredCapabilities: [N8N_CONNECT_MCP_CAPABILITY],
 		tags: server.tags,
 	};
 }

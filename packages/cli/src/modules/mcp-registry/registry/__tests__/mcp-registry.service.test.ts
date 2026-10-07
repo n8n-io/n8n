@@ -27,6 +27,7 @@ const n8nConnectMockServer: McpRegistryServer = {
 	name: 'n8n-connect-notion',
 	slug: 'n8n-connect-notion',
 	authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+	requiredCapabilities: ['n8n-connect'],
 };
 
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
@@ -48,7 +49,6 @@ function createService(options: CreateServiceOptions = {}) {
 	const globalConfig = mock<GlobalConfig>({
 		deployment: { type: 'default' },
 	});
-	const capabilities = new McpRegistryCapabilities(globalConfig);
 	const instanceSettings = mock<InstanceSettings>({
 		instanceType: options.instanceType ?? 'main',
 	});
@@ -59,6 +59,7 @@ function createService(options: CreateServiceOptions = {}) {
 		isEnabled: vi.fn().mockReturnValue(options.aiGatewayEnabled ?? true),
 		fetchN8nConnectMcpServers: vi.fn().mockResolvedValue([]),
 	});
+	const capabilities = new McpRegistryCapabilities(globalConfig, aiGatewayService);
 
 	if (options.storedServers === null) {
 		repository.find.mockResolvedValue([]);
@@ -223,6 +224,45 @@ describe('McpRegistryService', () => {
 
 			await expect(service.refreshFromApi()).rejects.toThrow('gateway down');
 			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
+		});
+
+		it('refreshFromApi saves the registry updates before it rethrows a gateway failure', async () => {
+			const { service, apiClient, aiGatewayService, repository, publisher } = createService({
+				storedServers: [notionMockServer],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue([
+				...unchangedMetadata.slice(0, 1),
+				{
+					slug: linearMockServer.slug,
+					version: linearMockServer.version,
+					updatedAt: linearMockServer.updatedAt,
+				},
+			]);
+			apiClient.fetchServersBySlugs.mockResolvedValue([linearMockServer]);
+			aiGatewayService.fetchN8nConnectMcpServers.mockRejectedValue(new Error('gateway down'));
+
+			await expect(service.refreshFromApi()).rejects.toThrow('gateway down');
+
+			expect(repository.upsertFetchedServers).toHaveBeenCalledWith(
+				[toEntity(linearMockServer)],
+				DB_NOW,
+			);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
+		});
+
+		it('refreshFromApi drops a registry server that uses the reserved n8n Connect slug prefix', async () => {
+			const { service, apiClient, repository } = createService({ storedServers: null });
+			apiClient.fetchAllServers.mockResolvedValue([
+				notionMockServer,
+				{ ...linearMockServer, slug: 'n8n-connect-linear' },
+			]);
+
+			await service.refreshFromApi();
+
+			expect(repository.upsertFetchedServers).toHaveBeenCalledWith(
+				[toEntity(notionMockServer)],
+				DB_NOW,
+			);
 		});
 	});
 
