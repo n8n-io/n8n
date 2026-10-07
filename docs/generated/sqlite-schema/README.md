@@ -102,6 +102,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
+| [migration_workflow_owner](migration_workflow_owner.md) | 7 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
@@ -308,6 +309,9 @@ erDiagram
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (assignedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"migration_workflow_owner" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1348,6 +1352,15 @@ erDiagram
   varchar_128_ ruleSetFingerprint
   datetime_3_ syncedAt
   varchar_16_ targetVersion PK
+}
+"migration_workflow_owner" {
+  datetime_3_ assignedAt
+  varchar assignedById FK
+  datetime_3_ createdAt
+  varchar_16_ source
+  datetime_3_ updatedAt
+  varchar userId FK
+  varchar_36_ workflowId PK
 }
 "oauth_access_tokens" {
   varchar clientId FK

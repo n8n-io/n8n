@@ -252,6 +252,8 @@ function handleChannelConnected(channelType: string) {
 	void loadChannelDetails();
 }
 
+defineExpose({ openChannelModal });
+
 function handleChannelDisconnected(channelType: string) {
 	emit(
 		'update:connected-triggers',

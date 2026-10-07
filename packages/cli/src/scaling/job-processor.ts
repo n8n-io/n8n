@@ -100,6 +100,9 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
 
+	/** Execution id per job id for every job in `processJob`, including jobs still in preflight. */
+	private readonly trackedJobs = new Map<string, string>();
+
 	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
 	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
 
@@ -119,6 +122,15 @@ export class JobProcessor {
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
+		this.trackedJobs.set(String(job.id), job.data.executionId);
+		try {
+			return await this.runJob(job);
+		} finally {
+			this.trackedJobs.delete(String(job.id));
+		}
+	}
+
+	private async runJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
@@ -308,7 +320,12 @@ export class JobProcessor {
 		const { startData, resultData, manualData } = execution.data;
 
 		if (execution.data?.executionData) {
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			workflowExecute = new WorkflowExecute(
+				additionalData,
+				execution.mode,
+				execution.data,
+				execution.storedAt,
+			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			const data: IWorkflowExecutionDataProcess = {
@@ -331,6 +348,7 @@ export class JobProcessor {
 					additionalData,
 					executionId,
 					resultData.pinData,
+					execution.storedAt,
 				);
 			} catch (error) {
 				if (error instanceof WorkflowHasIssuesError) {
@@ -574,11 +592,20 @@ export class JobProcessor {
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
+		// The run may ignore cancellation and never settle; drop tracking now instead of waiting for it.
+		this.trackedJobs.delete(String(jobId));
 		this.cancellationReasons[jobId] = reason;
 	}
 
-	getRunningJobIds(): JobId[] {
-		return Object.keys(this.runningJobs);
+	/** Ids of the jobs tracked from the start of processing, including jobs still in preflight. */
+	getTrackedJobIds(): JobId[] {
+		return [...this.trackedJobs.keys()];
+	}
+
+	getJobsInPreflight(): Array<{ jobId: JobId; executionId: string }> {
+		return [...this.trackedJobs]
+			.filter(([jobId]) => !(jobId in this.runningJobs))
+			.map(([jobId, executionId]) => ({ jobId, executionId }));
 	}
 
 	getRunningJobsSummary(): RunningJobSummary[] {

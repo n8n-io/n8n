@@ -460,16 +460,38 @@ describe('DatabricksVectorStore', () => {
 			).rejects.toThrow('Failed primary keys: row-7');
 		});
 
-		it('rejects the primary key as the content column without a request', async () => {
-			const store = await createStore(directDescribe, { contentColumn: 'id' });
+		it.each([
+			['txet', 'Index cat.sch.idx has no column txet. Select a Content Column from: text, source'],
+			['id', 'Column id is the primary key of cat.sch.idx. Select another Content Column'],
+			[
+				'embedding',
+				'Column embedding holds the embedding vector of cat.sch.idx. Select another Content Column',
+			],
+		])('rejects %s as the content column before embedding anything', async (column, message) => {
+			const store = await createStore(directDescribe, { contentColumn: column });
 
 			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
-				'primary key',
+				message,
 			);
-			expect(fetchMock).not.toHaveBeenCalledWith(
-				expect.stringContaining('upsert-data'),
-				expect.anything(),
+			expect(embeddings.embedDocuments).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects an index that declares an empty schema, rather than letting Databricks reject it', async () => {
+			const emptySchema = {
+				...directDescribe,
+				direct_access_index_spec: {
+					...directDescribe.direct_access_index_spec,
+					schema_json: '{}',
+				},
+			};
+			const store = await createStore(emptySchema, { contentColumn: 'text' });
+
+			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
+				'Index cat.sch.idx has no column text, and declares no other column to select',
 			);
+			expect(embeddings.embedDocuments).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it('rejects a managed Delta Sync index without a request', async () => {
