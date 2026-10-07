@@ -24,9 +24,19 @@ async function moveToFrontOfPriority(job: Job, logger: Logger) {
 	}
 }
 
+/** Removes the stored start time, so that the returned job looks like a job that never started. */
+async function clearProcessedOn(job: Job, logger: Logger) {
+	try {
+		await job.queue.client.hdel(job.queue.toKey(String(job.id)), 'processedOn');
+	} catch (error) {
+		logger.warn(`Could not clear the start time of job ${job.id}`, { jobId: job.id, error });
+	}
+}
+
 /** Always throws, failing the job so that Bull retries it under the same id without publishing a failure. */
 export async function throwJobBackToQueue(job: Job, logger: Logger): Promise<never> {
 	grantRetryAttempt(job);
 	await moveToFrontOfPriority(job, logger);
+	await clearProcessedOn(job, logger);
 	throw new JobReturnedToQueueError(job.id.toString());
 }

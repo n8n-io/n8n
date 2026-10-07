@@ -140,6 +140,7 @@ describe('ScalingService', () => {
 			id: '1',
 			attemptsMade,
 			opts: {},
+			queue: mock<Job['queue']>({ client: mock<Job['queue']['client']>() }),
 			data: { executionId: '123', loadStaticData: false },
 		});
 

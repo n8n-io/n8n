@@ -286,4 +286,19 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('throwJobBackToQueue (real Redis)', 
 
 		expect(ran).toEqual([next.id, held.id, behind.id]);
 	});
+
+	it('removes the stored start time of a returned job', async () => {
+		const producer = createQueue();
+		const held = await addJob(producer, 'held', 100);
+
+		const workerA = createQueue();
+		const { heldJob, returnToQueue } = await holdNextJob(workerA);
+		expect(heldJob.id).toBe(held.id);
+		const jobKey = producer.toKey(String(held.id));
+		expect(await control.hexists(jobKey, 'processedOn')).toBe(1);
+
+		await returnToQueue();
+
+		expect(await control.hexists(jobKey, 'processedOn')).toBe(0);
+	});
 });
