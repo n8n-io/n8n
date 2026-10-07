@@ -2069,8 +2069,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 /* A heading, not a choice. Disabled so it cannot be picked or arrowed onto,
    which otherwise reads as "not allowed" rather than "not a choice". */
 .credentialGroupHeader {
-	cursor: default;
 	padding-top: var(--spacing--2xs);
+
+	// Element Plus sets `not-allowed` on disabled items with a two-class selector.
+	&:global(.el-select-dropdown__item.is-disabled) {
+		cursor: default;
+	}
 }
 
 .checkIcon {
