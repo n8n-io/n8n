@@ -130,6 +130,9 @@ flowchart LR
   A8. A10 extends A9. The `system` queue kind can land with A5.
 - Stack 2 needs no Agents review. It can start in parallel with Stack 1.
 - Phase 3 starts when Stack 1, Stack 2 and the editor items have landed.
+- Extension points E1–E5 (section 12) join these: E1 and E2 as parallel editor
+  PRs, E3, E4 and E5 in Stack 1 after A9. They can also land later, but
+  before the parity rows that need them.
 
 ### Open explorations
 
@@ -665,15 +668,120 @@ config evals (`088_config_evaluations`), node usage
 
 Without these, each late feature needs a new change negotiated in the Agents
 module. With them, each feature is an Assistant-only change that can land any
-time before the switch. Add them to Phase 1 next to the related items.
+time before the switch. They are Agents-side Phase 1 work: add them to the
+stacks in section 5 next to the related items.
 
-| | Extension point | Unblocks rows | Fits with |
-|---|---|---|---|
-| E1 | Tool-result renderers: the host registers a renderer for a finished tool call (A7 covers suspended ones) | 1, 9, part of 13 | A7 |
-| E2 | Composer and message extensions: composer hooks (input element, text insertion, attachment chips) and per-message action slots | 6, 7 | A1 |
-| E3 | Host event channel: the provider emits typed custom events during a turn; the runtime stores them in history as custom message parts | 2, 3, 5, maybe 8 | A9 |
-| E4 | Error formatting hook: the provider maps an error to user-facing text before the runtime sends and stores it | 4 | A9 |
-| E5 | Execution records with token usage and, behind a flag, LLM steps | 10, 11, 12, and token data for the eval harness (C1) | A9 |
+| | Extension point | Unblocks rows | Fits with | Size |
+|---|---|---|---|---|
+| E1 | Tool-result renderers | 1, 9, part of 13 | A7 | S |
+| E2 | Composer and message extensions | 6, 7 | A1 | S–M |
+| E3 | Host event channel | 2, 3, 5, maybe 8 | A9 | M |
+| E4 | Error formatting hook | 4 | A9 | S |
+| E5 | Execution usage and step records | 10, 11, 12, eval token data (C1) | A9 | S–M (steps: M–L, optional) |
+
+#### E1. Tool-result renderers (editor)
+
+**What:** a host registers a renderer for a finished tool call. A7 covers
+suspended tool calls (cards); E1 covers the result of a completed call.
+Extend the A7 extension list: an extension can declare
+`matchToolResult(toolCall)` and a `resultComponent`. `AgentChatMessageList`
+renders the host component instead of the default tool display when it
+matches.
+
+**Use:** the preference card (row 1) renders the save-preference result with
+edit and undo. Rich results (row 9) can be host renderers or, better, move
+into the Agents chat so every agent gets them.
+
+**Acceptance:** without extensions the chat renders tool calls as today;
+tests for match, render and fallback.
+
+#### E2. Composer and message extensions (editor)
+
+**What:** two additions to the A1 host API of `AgentChatPanel`:
+
+- Composer: expose the input element, `insertText`, and an
+  `addComposerAttachment(chip, hostContextPatch)` hook; add a
+  `composer-actions` slot next to the send button.
+- Messages: a `message-actions` slot with the message and its execution id.
+
+**Use:** @-mentions (row 6) mount the existing `AssistantAtMentionPicker` in
+the composer and put picked resources into `hostContext.attachments` (the
+provider already reads them). Thumbs feedback (row 7) mounts in
+`message-actions`.
+
+**Acceptance:** slots render nothing by default; tests for text insertion
+and the hostContext patch reaching the next send.
+
+#### E3. Host event channel (backend, API types, editor)
+
+**What:** a provider emits typed custom events during a turn, and the runtime
+stores them with the turn so history shows them after a reload.
+
+- `SystemAgentTurnHandle` gets an `emitHostEvent(name, payload)` callback
+  (or the provider uses the SDK `ctx.emitEvent` path).
+- The runtime sends it on the chat stream as an `AgentSseEvent` of type
+  `host-event`, and the execution recorder appends a `host-event` timeline
+  event.
+- History maps the timeline event to a message content part
+  `{ type: 'host-event', name, payload }`.
+- The editor renders it through an extension keyed by `name` (same registry
+  as A7/E1).
+
+**Use:** "preferences applied" (row 2), the instance-context step (row 3),
+status notices such as an unreachable MCP server (row 5), possibly the
+onboarding card (row 8).
+
+**Acceptance:** an emitted event appears live and after a history reload;
+unknown event names are ignored by the editor.
+
+#### E4. Error formatting hook (backend)
+
+**What:** `SystemAgentTurnHandle.formatError?(error): string | undefined`.
+The runtime calls it before it sends the `error` event and before it stores
+`agent_execution.error`, so the live view and history show the same text.
+
+**Use:** the Assistant maps quota errors, masked stream failures and "the
+attachment was removed" to readable text with `getUserFacingErrorMessage`
+(row 4). The settle step already computes this message; it only needs a
+place to go.
+
+**Acceptance:** with no hook the raw error is shown as today; tests for live
+and stored text.
+
+#### E5. Execution usage and step records (backend)
+
+Most of this exists. `agent_execution` already stores one row per turn with
+`model`, `promptTokens`, `completionTokens`, `totalTokens`, `cost`,
+`duration`, `startedAt`, `stoppedAt`, `error`, `failureSummary` and a
+`timeline` (text, reasoning, tool calls with input and output, suspensions
+and approval answers, all with timestamps; `storedAt` allows offloading).
+The PoC database shows these filled for v2 Assistant turns (for example a
+build turn with 156,574 prompt tokens, $0.163 cost, 20 s, a 26 kB timeline).
+
+To do:
+
+1. **Prompt-cache tokens.** The SDK reports `inputTokenDetails.cacheRead`
+   and `cacheWrite`, but `execution-recorder.ts` drops them on `finish`.
+   Store them (two integer columns or a usage-details JSON column; one
+   migration). Cache hit rate is the main cost signal for the Assistant.
+2. **Builder sub-agent usage.** The totals come from the parent stream's
+   `finish` chunk. Check whether they include the builder sub-agent's model
+   calls (the Assistant credit accounting tracks them separately). If not,
+   add the forwarded sub-agent usage, or eval cost numbers undercount the
+   most expensive part.
+3. **Readers.** The eval harness (C1) reads token totals per thread; run
+   metrics (row 12) and latency telemetry (row 11; first text event minus
+   `startedAt`) read the same rows.
+4. **Optional: per-step LLM records** for the debug panel (row 10). Either
+   link the debug view to the trace (Agents OTel tracing with its
+   record-inputs and record-outputs flags, or LangSmith), or store each step
+   (prompt, usage, provider options) as timeline events behind a flag and
+   use the offload for size. The trace link is cheaper. Decide whether the
+   in-app inspector is still wanted.
+
+**Acceptance:** cache tokens stored and returned with history or a usage
+endpoint; a test that a turn with a builder sub-agent reports the combined
+usage (or a documented reason it does not).
 
 ## 13. Open decisions
 
