@@ -24,6 +24,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import { initializeQuickJsExpressionShadow } from '@/experiments/quickjsExpressionShadow/init';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -73,6 +74,11 @@ vi.mock('@/app/init/toastNotifier', () => ({
 // place in this graph. It stays inert on the default `legacy` setting anyway.
 vi.mock('@/app/init/expressionEngine', () => ({
 	initializeExpressionEngine: vi.fn(),
+}));
+
+// The real one waits for feature flags and loads the QuickJS runtime bundle.
+vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
+	initializeQuickJsExpressionShadow: vi.fn(async () => {}),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -219,6 +225,16 @@ describe('Init', () => {
 
 			expect(initializeExpressionEngine).toHaveBeenCalledTimes(2);
 			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
+		});
+
+		it('should start the expression shadow run in the login hook after PostHog', async () => {
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+
+			await initializeCore();
+
+			expect(initializeQuickJsExpressionShadow).toHaveBeenCalledTimes(1);
 		});
 
 		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {

@@ -1,5 +1,10 @@
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
-import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
+import {
+	classifyExpressionError,
+	MemoryLimitError,
+	SecurityViolationError,
+	TimeoutError,
+} from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import { UnexpectedError, UserError } from './errors';
@@ -40,6 +45,50 @@ const isTypeError = (error: unknown): error is TypeError =>
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
+
+/** What one engine did with one expression. `errorClass` names the failure without its message. */
+export type ExpressionEvaluationOutcome =
+	| { ok: true; value: unknown }
+	| { ok: false; error: unknown; errorClass: string };
+
+export interface ExpressionShadowContext {
+	/** The expression after `extendSyntax`, as the engines receive it. */
+	expression: string;
+	/** The expression as the user wrote it, without the leading `=`. */
+	source: string;
+	data: IWorkflowDataProxyData;
+	timezone: string;
+}
+
+/**
+ * Runs a second engine next to the legacy engine to compare the two. The
+ * legacy engine still gives the result: the runner only observes it.
+ */
+export interface ExpressionShadowRunner {
+	/**
+	 * Called before the legacy engine evaluates an expression. Returns a callback
+	 * for the legacy outcome, or `undefined` to skip this expression.
+	 */
+	beforeLegacy(
+		context: ExpressionShadowContext,
+	): ((legacy: ExpressionEvaluationOutcome) => void) | undefined;
+}
+
+export interface ShadowEvaluator {
+	evaluate(
+		expression: string,
+		data: IWorkflowDataProxyData,
+		timezone: string,
+	): ExpressionEvaluationOutcome;
+	dispose(): Promise<void>;
+}
+
+function errorClassOf(error: unknown): string {
+	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
+	const runtimeClass = classifyExpressionError(error);
+	if (runtimeClass !== 'unknown') return runtimeClass;
+	return error instanceof Error ? error.name : typeof error;
+}
 
 /**
  * Map errors from the VM expression evaluator to host-side error types.
@@ -229,6 +278,8 @@ export class Expression {
 
 	private static nativeEvaluation = false;
 
+	private static shadowRunner?: ExpressionShadowRunner;
+
 	constructor(private readonly timezone: string) {}
 
 	/**
@@ -283,34 +334,7 @@ export class Expression {
 		this.expressionEngine = options.engine;
 
 		if (!this.vmEvaluator) {
-			// Dynamic import to avoid loading expression-runtime in browser environments
-			const runtime = await import('@n8n/expression-runtime');
-			const createBridge =
-				options.engine === 'quickjs'
-					? () =>
-							new runtime.QuickJsBridge({
-								timeout: options.bridgeTimeout,
-								memoryLimit: options.bridgeMemoryLimit,
-								logger: LoggerProxy,
-								runtimeBundle: options.runtimeBundle,
-							})
-					: () =>
-							new runtime.IsolatedVmBridge({
-								timeout: options.bridgeTimeout,
-								memoryLimit: options.bridgeMemoryLimit,
-								logger: LoggerProxy,
-								compileCache: options.compileCache,
-							});
-			const evaluator = new runtime.ExpressionEvaluator({
-				createBridge,
-				maxCodeCacheSize: options.maxCodeCacheSize,
-				poolSize: options.poolSize,
-				idleTimeoutMs: options.idleTimeoutMs,
-				lazyAcquire: options.lazyAcquire,
-				hooks: expressionSandboxHooks,
-				logger: LoggerProxy,
-				observability: options.observability,
-			});
+			const evaluator = await this.buildEvaluator({ ...options, engine: options.engine });
 
 			// Publish the evaluator only once it is usable. A half-started one
 			// would leave `shouldUseVm` reporting the engine as active while no
@@ -342,6 +366,94 @@ export class Expression {
 				throw error;
 			}
 		}
+	}
+
+	private static async buildEvaluator(options: {
+		engine: 'vm' | 'quickjs';
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
+		poolSize: number;
+		maxCodeCacheSize: number;
+		observability?: ObservabilityProvider;
+		idleTimeoutMs?: number;
+		runtimeBundle?: string;
+		lazyAcquire?: boolean;
+		compileCache?: boolean;
+	}): Promise<IExpressionEvaluator> {
+		// Dynamic import to avoid loading expression-runtime in browser environments
+		const runtime = await import('@n8n/expression-runtime');
+		const createBridge =
+			options.engine === 'quickjs'
+				? () =>
+						new runtime.QuickJsBridge({
+							timeout: options.bridgeTimeout,
+							memoryLimit: options.bridgeMemoryLimit,
+							logger: LoggerProxy,
+							runtimeBundle: options.runtimeBundle,
+						})
+				: () =>
+						new runtime.IsolatedVmBridge({
+							timeout: options.bridgeTimeout,
+							memoryLimit: options.bridgeMemoryLimit,
+							logger: LoggerProxy,
+							compileCache: options.compileCache,
+						});
+		return new runtime.ExpressionEvaluator({
+			createBridge,
+			maxCodeCacheSize: options.maxCodeCacheSize,
+			poolSize: options.poolSize,
+			idleTimeoutMs: options.idleTimeoutMs,
+			lazyAcquire: options.lazyAcquire,
+			hooks: expressionSandboxHooks,
+			logger: LoggerProxy,
+			observability: options.observability,
+		});
+	}
+
+	/**
+	 * Start a QuickJS evaluator for a shadow run, next to whatever engine is
+	 * active. It has its own bridge and caller, so it never changes what the main
+	 * engine does, and it uses the same sandbox hooks, so the comparison is fair.
+	 */
+	static async createQuickJsShadowEvaluator(options: {
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
+		maxCodeCacheSize: number;
+		runtimeBundle?: string;
+	}): Promise<ShadowEvaluator> {
+		const evaluator = await this.buildEvaluator({
+			...options,
+			engine: 'quickjs',
+			poolSize: 1,
+			lazyAcquire: true,
+		});
+		const caller = {};
+		try {
+			await evaluator.initialize();
+			await evaluator.acquire(caller);
+		} catch (error) {
+			await evaluator.dispose().catch(() => {});
+			throw error;
+		}
+
+		return {
+			evaluate: (expression, data, timezone) => {
+				try {
+					return { ok: true, value: evaluator.evaluate(expression, data, caller, { timezone }) };
+				} catch (error) {
+					return { ok: false, error: mapVmError(error), errorClass: errorClassOf(error) };
+				}
+			},
+			dispose: async () => {
+				await evaluator.release(caller);
+				await evaluator.dispose();
+			},
+		};
+	}
+
+	/** Install the runner that compares a second engine with legacy, or remove it with `undefined`. */
+	static setShadowRunner(runner: ExpressionShadowRunner | undefined): void {
+		this.shadowRunner = runner;
 	}
 
 	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
@@ -706,7 +818,7 @@ export class Expression {
 
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
-		const returnValue = this.renderExpression(extendedExpression, data);
+		const returnValue = this.renderExpression(extendedExpression, data, parameterValue);
 		return this.finalizeResolvedValue(returnValue, returnObjectAsString);
 	}
 
@@ -728,7 +840,7 @@ export class Expression {
 		return returnValue as NodeParameterValue;
 	}
 
-	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
+	private renderExpression(expression: string, data: IWorkflowDataProxyData, source: string) {
 		const evaluator = Expression.vmEvaluator;
 
 		if (evaluator && Expression.isVmEngineSelected()) {
@@ -755,23 +867,68 @@ export class Expression {
 		}
 
 		// Fall back to current implementation
-		try {
-			return evaluateExpression(expression, data);
-		} catch (error) {
-			if (isExpressionError(error)) throw error;
+		const finishShadow = Expression.startShadow({
+			expression,
+			source,
+			data,
+			timezone: this.timezone,
+		});
+		const legacy = this.evaluateLegacy(expression, data);
+		if (finishShadow) {
+			try {
+				finishShadow(
+					legacy.ok
+						? { ok: true, value: legacy.value }
+						: { ok: false, error: legacy.error, errorClass: errorClassOf(legacy.error) },
+				);
+			} catch {
+				// A shadow run only observes: its failure must not reach the user.
+			}
+		}
 
-			if (isSyntaxError(error)) throw new UserError('invalid syntax');
+		if (legacy.ok) return legacy.value;
+		if (legacy.thrown) throw legacy.thrown;
+		return null;
+	}
+
+	private static startShadow(context: ExpressionShadowContext) {
+		if (!this.shadowRunner) return undefined;
+		try {
+			return this.shadowRunner.beforeLegacy(context);
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
+	 * Evaluate with the legacy engine. A failure without `thrown` is one the
+	 * editor shows as `null`; a shadow run still counts it as an error.
+	 */
+	private evaluateLegacy(
+		expression: string,
+		data: IWorkflowDataProxyData,
+	):
+		| { ok: true; value: string | null | (() => unknown) }
+		| { ok: false; error: unknown; thrown?: Error } {
+		try {
+			return { ok: true, value: evaluateExpression(expression, data) };
+		} catch (error) {
+			if (isExpressionError(error)) return { ok: false, error, thrown: error };
+
+			if (isSyntaxError(error)) {
+				return { ok: false, error, thrown: new UserError('invalid syntax') };
+			}
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
-				if (!match?.groups?.msg) return null;
+				if (!match?.groups?.msg) return { ok: false, error };
 
-				throw new UserError(match.groups.msg);
+				return { ok: false, error, thrown: new UserError(match.groups.msg) };
 			}
-		}
 
-		return null;
+			return { ok: false, error };
+		}
 	}
 
 	/**
