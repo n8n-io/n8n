@@ -539,6 +539,24 @@ describe('ProjectSharing', () => {
 			expect(getByTestId('project-sharing-static-role')).toHaveTextContent('Can use');
 		});
 
+		it('labels the remove button "Remove access" next to the static role', async () => {
+			const { getByTestId, findByText } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(personalProjects),
+					modelValue: [personalProjects[0]],
+					roles,
+					static: false,
+					roleDescriptions: { 'credential:user': "Can't edit it" },
+				},
+			});
+
+			const removeButton = getByTestId('project-sharing-remove');
+			expect(removeButton).toHaveAttribute('aria-label', 'Remove access');
+
+			await userEvent.hover(removeButton);
+			expect(await findByText('Remove access')).toBeVisible();
+		});
+
 		it('shows the badge (replacing the select) even when not static, since roleDescriptions implies a single fixed role', () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
