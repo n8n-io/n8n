@@ -1120,8 +1120,8 @@ importers:
         specifier: ^1.13.6
         version: 1.13.6
       nodemon:
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: ^3.1.14
+        version: 3.1.14
       npm-run-all2:
         specifier: ^7.0.2
         version: 7.0.2
