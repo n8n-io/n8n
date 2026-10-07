@@ -294,7 +294,7 @@ none.
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The configuration, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. A conflict can be a data table change that deletes data. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
 `preflight` object lists each missing project, missing binding, access
@@ -318,6 +318,11 @@ command runs the preflight again. The results and exit codes are the same as
 for `apply`: `blocked` again means that something still blocks, and
 `source-changed` means that you must review again. The server keeps no session,
 so run the command again when it exits `4`.
+
+Add `--confirm-destructive-changes` to apply data table changes that delete
+data. The flag applies all such changes when the command runs. This includes
+changes that the blocked Apply did not report. Without the flag, a change that
+deletes data blocks the command, and it exits `4`.
 
 ## Apply a reviewed commit
 
@@ -389,6 +394,11 @@ the `configId`, `git.branchName`, and `git.commitSha` that the blocked Apply
 reported. The command runs the preflight again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
+
+Add `--confirm-destructive-changes` to apply data table changes that delete
+data. The flag applies all such changes when the command runs. This includes
+changes that the blocked Apply did not report. Without the flag, a change that
+deletes data blocks the command, and it exits `4`.
 
 ## `promotion-connection list-projects` / `add-project` / `remove-project`
 

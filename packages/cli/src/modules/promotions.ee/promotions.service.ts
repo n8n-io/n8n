@@ -77,7 +77,8 @@ import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-up
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
 
-// Apply treats the package as source of truth; callers cannot override this policy.
+// Apply treats the package as source of truth. Callers cannot override this policy,
+// but a confirmed Continue uses `overwrite` for data tables.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
@@ -457,7 +458,12 @@ export class PromotionsService {
 		actor: User,
 		request: ContinueApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor, request.expectedSource);
+		return await this.applyFromSource(
+			connectionId,
+			actor,
+			request.expectedSource,
+			request.confirmDestructiveChanges === true,
+		);
 	}
 
 	async applyProjectSelection(
@@ -483,6 +489,7 @@ export class PromotionsService {
 			actor,
 			request.workflowIds,
 			request.expectedSource,
+			request.confirmDestructiveChanges === true,
 		);
 	}
 
@@ -542,6 +549,7 @@ export class PromotionsService {
 		actor: User,
 		workflowIds: string[],
 		expectedSource?: ApplySelectionDto['expectedSource'],
+		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		await this.assertCheckoutReady(input, 'applying');
@@ -591,10 +599,13 @@ export class PromotionsService {
 				selectedWorkflowIds: selection.selectedWorkflowIds,
 			},
 		});
+		const blockingConflicts = confirmDestructiveChanges
+			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
 			preflight.accessRequirements.length > 0 ||
-			preflight.conflicts.length > 0
+			blockingConflicts.length > 0
 		) {
 			this.logger.info('Apply blocked by unresolved bindings', {
 				status: 'blocked',
@@ -614,13 +625,16 @@ export class PromotionsService {
 			projectId,
 			selectedCount: selection.selectedWorkflowIds.length,
 			deletedCount: selection.deletedWorkflowIds?.length ?? 0,
+			confirmDestructiveChanges,
 		});
 
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
 			{
 				user: actor,
 				overwriteDeletionPolicy: IMPORT_POLICY.overwriteDeletionPolicy,
-				dataTableSchemaConflictPolicy: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+				dataTableSchemaConflictPolicy: confirmDestructiveChanges
+					? DataTableSchemaConflictPolicy.Overwrite
+					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -641,6 +655,7 @@ export class PromotionsService {
 		connectionId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
+		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
@@ -685,10 +700,13 @@ export class PromotionsService {
 		const preflight = await this.bindingPreflight.checkDirectory({
 			sourceDir: packageFolder,
 		});
+		const blockingConflicts = confirmDestructiveChanges
+			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
 			preflight.accessRequirements.length > 0 ||
-			preflight.conflicts.length > 0
+			blockingConflicts.length > 0
 		) {
 			this.logger.info('Apply blocked by unresolved bindings', {
 				status: 'blocked',
@@ -703,10 +721,20 @@ export class PromotionsService {
 			return { status: 'blocked', ...identity, preflight };
 		}
 
-		this.logger.info('Importing a package', { connectionId, configId: input.configId });
+		this.logger.info('Importing a package', {
+			connectionId,
+			configId: input.configId,
+			confirmDestructiveChanges,
+		});
 
 		const result = await this.n8nPackagesService.importPackageFromDirectory(
-			{ user: actor, ...IMPORT_POLICY },
+			{
+				user: actor,
+				...IMPORT_POLICY,
+				dataTableSchemaConflictPolicy: confirmDestructiveChanges
+					? DataTableSchemaConflictPolicy.Overwrite
+					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+			},
 			{ sourceDir: packageFolder },
 		);
 		const importedProjectIds = result.projects.map((project) => project.localId);

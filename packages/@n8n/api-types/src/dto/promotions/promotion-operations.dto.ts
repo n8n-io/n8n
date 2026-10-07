@@ -1,3 +1,5 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
@@ -98,9 +100,22 @@ export class ApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
+const confirmDestructiveChangesSchema = z
+	.boolean()
+	.optional()
+	.openapi({
+		description:
+			'Applies data table changes that delete data, which a `destructive-change` conflict reports. ' +
+			'The confirmation applies every change that deletes data when Continue runs, ' +
+			'including changes that are not in the reviewed result.',
+	});
+
 /** Continue must name the source that the paused Apply reported. */
 export class ContinueApplyPackageDto extends Z.class(
-	{ expectedSource: expectedSourceSchema },
+	{
+		expectedSource: expectedSourceSchema,
+		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+	},
 	{ strict: true },
 ) {}
 
@@ -124,6 +139,7 @@ export class ContinueApplySelectionDto extends Z.class(
 	{
 		workflowIds: selectedWorkflowIdsSchema,
 		expectedSource: expectedSourceSchema,
+		confirmDestructiveChanges: confirmDestructiveChangesSchema,
 	},
 	{ strict: true },
 ) {}

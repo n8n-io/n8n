@@ -103,6 +103,12 @@ describe('N8nClient packages', () => {
 				path: 'apply/continue',
 				body: { expectedSource },
 			},
+			{
+				title: 'posts continue with the confirmation of data table changes that delete data',
+				send: async () => await client.continueApplyPackage('conn-1', expectedSource, true),
+				path: 'apply/continue',
+				body: { expectedSource, confirmDestructiveChanges: true },
+			},
 		])('$title', async ({ send, path, body }) => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));
 
@@ -134,6 +140,14 @@ describe('N8nClient packages', () => {
 					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource),
 				path: 'apply/continue',
 				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+			{
+				title:
+					'continues a selection apply with the confirmation of data table changes that delete data',
+				send: async () =>
+					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource, true),
+				path: 'apply/continue',
+				body: { workflowIds: ['wf-1'], expectedSource, confirmDestructiveChanges: true },
 			},
 		])('$title', async ({ send, path, body }) => {
 			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'source-changed' }));

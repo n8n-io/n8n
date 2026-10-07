@@ -1,4 +1,8 @@
-import { applyPackageResultSchema } from '@n8n/api-types';
+import {
+	applyPackageResultSchema,
+	type ApplyPackageResultDto,
+	type ContinueApplyPackageDto,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -1454,6 +1458,15 @@ describe('Apply a project selection', () => {
 
 		expect(result.status).toBe('applied');
 		expect(await dataTableService.getColumns(orders.id, project.id)).toEqual(columnsBefore);
+
+		const confirmed = await service.continueApplyProjectSelection(project.id, owner, {
+			workflowIds: [plainWorkflow.id],
+			expectedSource: { configId: result.configId, ...result.git },
+			confirmDestructiveChanges: true,
+		});
+
+		expect(confirmed.status).toBe('applied');
+		expect(await dataTableService.getColumns(orders.id, project.id)).toEqual(columnsBefore);
 	});
 
 	it('returns source-changed for a stale commit without importing workflows', async () => {
@@ -1727,6 +1740,62 @@ describe('Apply data table changes', () => {
 			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', extra: 'keep me' })]);
 			expect(applyPackageResultSchema.parse(result)).toEqual(result);
+		},
+	);
+
+	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
+		'applies a $flow data table change that deletes data only after Continue confirms it',
+		async ({ flow }) => {
+			const promoted = await promoteDataTableWorkflows();
+			const { connection, project, workflow, orders, dataTableService } = promoted;
+			await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
+			await dataTableService.insertRows(orders.id, project.id, [
+				{ email: 'a@example.com', extra: 'keep me' },
+			]);
+			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
+			const continueFlow = async (
+				expectedSource: ContinueApplyPackageDto['expectedSource'],
+				confirmDestructiveChanges?: boolean,
+			): Promise<ApplyPackageResultDto> =>
+				flow === 'full'
+					? (
+							await testServer
+								.publicApiAgentFor(owner)
+								.post(`/promotions/connections/${connection.id}/apply/continue`)
+								.send({ expectedSource, confirmDestructiveChanges })
+								.expect(200)
+						).body
+					: await service.continueApplyProjectSelection(project.id, owner, {
+							workflowIds: [workflow.id],
+							expectedSource,
+							confirmDestructiveChanges,
+						});
+
+			const blocked = await applyFlow(flow, promoted);
+			assert(blocked.status === 'blocked');
+			const expectedSource = { configId: blocked.configId, ...blocked.git };
+
+			expect(await continueFlow(expectedSource)).toEqual(blocked);
+			const { data: rowsBefore } = await dataTableService.getManyRowsAndCount(
+				orders.id,
+				project.id,
+				{},
+			);
+			expect(rowsBefore).toEqual([expect.objectContaining({ extra: 'keep me' })]);
+
+			const result = await continueFlow(expectedSource, true);
+
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(result.counts.dataTables.updated).toBe(1);
+			expect(await dataTableService.getOne(orders.id, project.id)).toMatchObject({
+				name: 'Orders',
+			});
+			expect(
+				(await dataTableService.getColumns(orders.id, project.id)).map(({ name }) => name),
+			).toEqual(['email', 'note']);
+			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com' })]);
+			expect(data[0]).not.toHaveProperty('extra');
 		},
 	);
 
