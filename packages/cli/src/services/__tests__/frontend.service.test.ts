@@ -238,6 +238,7 @@ describe('FrontendService', () => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
@@ -278,6 +279,15 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should expose the configured health check timeout', async () => {
+			globalConfig.endpoints.frontendHealthCheckTimeoutMs = 1500;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.healthCheckTimeoutMs).toBe(1500);
 		});
 
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
