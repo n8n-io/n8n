@@ -99,16 +99,18 @@ vi.mock('../composables/useConnectionModal.ee', () => ({
 	}),
 }));
 
-// Stub the Modal component
-const ModalStub = {
+const DialogStub = {
+	props: ['header', 'description'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog">
+			<h2 v-if="header">{{ header }}</h2>
+			<p v-if="description">{{ description }}</p>
+			<slot />
 		</div>
 	`,
 };
+
+const dialogPartStub = { template: '<div><slot /></div>' };
 
 const mockProjects = orderBy(
 	Array.from({ length: 3 }, () => createProjectListItem('team')),
@@ -153,7 +155,11 @@ const renderComponent = createComponentRenderer(SecretsProviderConnectionModal, 
 	pinia: createTestingPinia({ initialState }),
 	global: {
 		stubs: {
-			Modal: ModalStub,
+			Dialog: DialogStub,
+			DialogHeader: dialogPartStub,
+			DialogTitle: dialogPartStub,
+			DialogFooter: dialogPartStub,
+			DialogDescription: dialogPartStub,
 		},
 	},
 });
