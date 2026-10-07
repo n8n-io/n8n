@@ -434,7 +434,7 @@ overrides:
   picomatch@4: 4.0.4
   avsc: 5.7.9
   brace-expansion@<2.1.4: 2.1.4
-  '@xmldom/xmldom': 0.8.14
+  '@xmldom/xmldom': 0.8.15
   yaml@<=2.8.3: 2.8.3
   axios: 'catalog:'
   fast-xml-builder: 1.2.1
