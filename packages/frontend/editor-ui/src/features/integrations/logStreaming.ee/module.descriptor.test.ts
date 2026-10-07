@@ -8,8 +8,14 @@ describe('LogStreamingModule', () => {
 		expect(LogStreamingModule.id).toBe('log-streaming');
 	});
 
-	it('should leave the settings sidebar item to the shell', () => {
-		expect(LogStreamingModule).not.toHaveProperty('settingsPages');
+	it('should register the settings sidebar item with the previous order', () => {
+		expect(LogStreamingModule.settingsPages?.map(({ id, order }) => ({ id, order }))).toEqual([
+			{ id: 'settings-log-streaming', order: 170 },
+		]);
+	});
+
+	it('should show a placeholder page, so unlicensed users still reach the paywall', () => {
+		expect(typeof LogStreamingModule.placeholderPage).toBe('function');
 	});
 
 	describe('routes', () => {
@@ -25,7 +31,7 @@ describe('LogStreamingModule', () => {
 			expect(route()?.meta?.middlewareOptions?.rbac).toEqual({ scope: 'logStreaming:manage' });
 		});
 
-		it('should not check the module state, so unlicensed users still reach the paywall', () => {
+		it('should not use the module state as a route guard, because the placeholder page handles it', () => {
 			expect(route()?.meta?.middleware).toEqual(['authenticated', 'rbac']);
 		});
 

@@ -192,17 +192,6 @@ export function useSettingsItems() {
 					hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
 				route: { to: { name: VIEWS.WORKER_VIEW } },
 			},
-			// TODO: Move this item to the log-streaming module descriptor when the SDK can show a
-			// settings page while its module is inactive. Unlicensed users must still reach the paywall.
-			{
-				id: 'settings-log-streaming',
-				order: 170,
-				icon: 'log-in',
-				label: i18n.baseText('settings.log-streaming'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
-				route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
-			},
 			{
 				id: 'settings-community-nodes',
 				order: 180,
