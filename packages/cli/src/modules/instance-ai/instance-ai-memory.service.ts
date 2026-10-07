@@ -14,11 +14,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { z } from 'zod';
-import {
-	patchThread,
-	withBoundAgentTarget,
-	type AgentBuilderTarget,
-} from '@n8n/instance-ai';
+import { patchThread, withBoundAgentTarget, type AgentBuilderTarget } from '@n8n/instance-ai';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
@@ -29,9 +25,7 @@ import { N8nMemory, type N8nMemoryImpl } from '../agents/integrations/n8n-memory
 import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
 import { SystemAgentExecutionService } from '../agents/system-agents/system-agent-execution.service';
 import { draftChatMemoryResourceId } from '../agents/utils/agent-memory-scope';
-import {
-	ASSISTANT_AGENT_ID,
-} from './assistant-turn-options';
+import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
 /** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
 export interface InstanceAiThreadLaunchMetadata {
@@ -333,6 +327,12 @@ export class InstanceAiMemoryService {
 		return session.agentId === ASSISTANT_AGENT_ID && session.ownerId === userId
 			? 'owned'
 			: 'other_user';
+	}
+
+	/** The bulk form of `checkThreadOwnership`: the threads in the list that the user owns. */
+	async findOwnedThreadIds(userId: string, threadIds: string[]): Promise<Set<string>> {
+		const unique = [...new Set(threadIds)];
+		return new Set(await this.threads.findIdsOwnedByAgent(ASSISTANT_AGENT_ID, userId, unique));
 	}
 
 	async deleteThread(threadId: string): Promise<void> {

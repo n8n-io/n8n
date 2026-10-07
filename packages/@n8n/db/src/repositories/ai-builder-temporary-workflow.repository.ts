@@ -34,4 +34,10 @@ export class AiBuilderTemporaryWorkflowRepository extends Repository<AiBuilderTe
 	async existsForWorkflow(workflowId: string): Promise<boolean> {
 		return await this.existsBy({ workflowId });
 	}
+
+	/** The chat that marked the workflow, or null when the workflow has no marker. */
+	async findThreadIdForWorkflow(workflowId: string): Promise<string | null> {
+		const marker = await this.findOne({ where: { workflowId }, select: ['threadId'] });
+		return marker?.threadId ?? null;
+	}
 }

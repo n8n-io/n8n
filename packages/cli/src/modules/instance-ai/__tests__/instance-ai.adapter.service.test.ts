@@ -1836,6 +1836,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { WorkflowProvenanceService } from '../provenance/workflow-provenance.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -2547,6 +2548,8 @@ function createWorkflowAdapterForTests(overrides?: {
 	allowSendingParameterValues?: boolean;
 	// The effective value for the run, passed to `createContext`. Overrides the env value.
 	runAllowSendingParameterValues?: boolean;
+	// Defaults to 'thread-1'. Pass `null` to build the context without a thread.
+	threadId?: string | null;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2592,6 +2595,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mark: vi.fn().mockResolvedValue(undefined),
 		unmark: vi.fn().mockResolvedValue(undefined),
 		existsForWorkflow: vi.fn().mockResolvedValue(false),
+		findThreadIdForWorkflow: vi.fn().mockResolvedValue(null),
 	};
 
 	const mockWorkflowService = {
@@ -2715,8 +2719,10 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const boundProjectId =
 		overrides && 'projectId' in overrides ? (overrides.projectId ?? undefined) : 'team-project-id';
+	const threadId =
+		overrides && 'threadId' in overrides ? (overrides.threadId ?? undefined) : 'thread-1';
 	const context = service.createContext(mockUser, {
-		threadId: 'thread-1',
+		threadId,
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
 		setupPanelVariant: overrides?.setupPanelVariant,
@@ -4281,15 +4287,148 @@ describe('createWorkflowAdapter', () => {
 		expect(updated.checksum).toEqual(expect.any(String));
 	});
 
-	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {
-		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowRepository } =
-			createWorkflowAdapterForTests();
-		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+	describe('clearAiTemporary provenance', () => {
+		const provenance = mock<WorkflowProvenanceService>();
+		let containerGet: MockInstance<typeof Container.get>;
 
-		await adapter.clearAiTemporary('wf-new');
+		beforeEach(() => {
+			provenance.record.mockReset();
+			provenance.record.mockResolvedValue(undefined);
+			const realGet = Container.get.bind(Container);
+			containerGet = vi
+				.spyOn(Container, 'get')
+				.mockImplementation((token: unknown) =>
+					token === WorkflowProvenanceService ? provenance : realGet(token as never),
+				);
+		});
+		afterEach(() => containerGet.mockRestore());
 
-		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
-		expect(mockWorkflowRepository.update).not.toHaveBeenCalled();
+		it('clears the AI-builder temporary marker when promoting the main workflow', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowRepository } =
+				createWorkflowAdapterForTests();
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+			expect(mockWorkflowRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('records the chat and the user once, before the marker is cleared', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository } = createWorkflowAdapterForTests();
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(provenance.record).toHaveBeenCalledTimes(1);
+			expect(provenance.record).toHaveBeenCalledWith('wf-new', 'thread-1', 'user-1');
+			expect(provenance.record.mock.invocationCallOrder[0]).toBeLessThan(
+				mockAiBuilderTemporaryWorkflowRepository.unmark.mock.invocationCallOrder[0],
+			);
+			expect(
+				mockAiBuilderTemporaryWorkflowRepository.findThreadIdForWorkflow,
+			).not.toHaveBeenCalled();
+		});
+
+		it('uses the thread id from the marker when the context has no thread', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository } = createWorkflowAdapterForTests({
+				threadId: null,
+			});
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+			mockAiBuilderTemporaryWorkflowRepository.findThreadIdForWorkflow.mockResolvedValue(
+				'thread-from-marker',
+			);
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(mockAiBuilderTemporaryWorkflowRepository.findThreadIdForWorkflow).toHaveBeenCalledWith(
+				'wf-new',
+			);
+			expect(provenance.record).toHaveBeenCalledWith('wf-new', 'thread-from-marker', 'user-1');
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+		});
+
+		it('clears the marker without a record when no thread id is known', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockLogger } =
+				createWorkflowAdapterForTests({ threadId: null });
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(provenance.record).not.toHaveBeenCalled();
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+			expect(mockLogger.warn).not.toHaveBeenCalledWith(
+				'Failed to record the Assistant chat of a kept workflow',
+				expect.anything(),
+			);
+		});
+
+		it('records nothing when the workflow is not AI-temporary', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository } = createWorkflowAdapterForTests();
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(false);
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(provenance.record).not.toHaveBeenCalled();
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
+		});
+
+		it('records nothing when the user cannot update the workflow', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowFinderService } =
+				createWorkflowAdapterForTests();
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(provenance.record).not.toHaveBeenCalled();
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
+		});
+
+		it('still clears the marker and logs a warning when the record cannot be stored', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockLogger } =
+				createWorkflowAdapterForTests();
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+			provenance.record.mockRejectedValueOnce(new Error('database unavailable'));
+
+			await expect(adapter.clearAiTemporary('wf-new')).resolves.toBeUndefined();
+
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to record the Assistant chat of a kept workflow',
+				{ workflowId: 'wf-new', error: 'database unavailable' },
+			);
+		});
+
+		it('still clears the marker when the marker thread lookup fails', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockLogger } =
+				createWorkflowAdapterForTests({ threadId: null });
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+			mockAiBuilderTemporaryWorkflowRepository.findThreadIdForWorkflow.mockRejectedValueOnce(
+				'lookup failed',
+			);
+
+			await adapter.clearAiTemporary('wf-new');
+
+			expect(provenance.record).not.toHaveBeenCalled();
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to record the Assistant chat of a kept workflow',
+				{ workflowId: 'wf-new', error: 'lookup failed' },
+			);
+		});
+
+		it('records nothing on a read-only instance', async () => {
+			const { adapter, mockAiBuilderTemporaryWorkflowRepository } = createWorkflowAdapterForTests({
+				branchReadOnly: true,
+			});
+			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+
+			await expect(adapter.clearAiTemporary('wf-new')).rejects.toThrow();
+
+			expect(provenance.record).not.toHaveBeenCalled();
+			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
+		});
 	});
 
 	it('archives and unmarks an unpromoted AI-builder temporary workflow', async () => {

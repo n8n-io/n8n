@@ -18,13 +18,16 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	InstanceAiProvenanceListQuery,
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiProvenanceListResponse,
 	InstanceAiThreadTabsResponse,
+	InstanceAiWorkflowProvenanceResponse,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -64,7 +67,8 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
-import { InstanceAiOnboardingService, } from './onboarding';
+import { InstanceAiOnboardingService } from './onboarding';
+import { WorkflowProvenanceService } from './provenance/workflow-provenance.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -104,6 +108,7 @@ export class InstanceAiController {
 		private readonly publisher: Publisher,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly provenanceService: WorkflowProvenanceService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -301,6 +306,30 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:manage')
 	async listInstanceModelCredentials(_req: AuthenticatedRequest) {
 		return await this.settingsService.listInstanceModelCredentials();
+	}
+
+	// ── Workflow provenance (which Assistant chat built a workflow) ─────────
+
+	@Get('/provenance')
+	@GlobalScope('instanceAi:message')
+	async listProvenance(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InstanceAiProvenanceListQuery,
+	): Promise<InstanceAiProvenanceListResponse> {
+		this.requireInstanceAiEnabled();
+		return { items: await this.provenanceService.listMine(req.user, query.limit) };
+	}
+
+	@Get('/provenance/:workflowId')
+	@GlobalScope('instanceAi:message')
+	async getWorkflowProvenance(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<InstanceAiWorkflowProvenanceResponse> {
+		this.requireInstanceAiEnabled();
+		return { provenance: await this.provenanceService.getForWorkflow(req.user, workflowId) };
 	}
 
 	@Get('/threads')
@@ -1031,5 +1060,4 @@ export class InstanceAiController {
 		if (!user) throw new ForbiddenError('Invalid API key');
 		return user;
 	}
-
 }

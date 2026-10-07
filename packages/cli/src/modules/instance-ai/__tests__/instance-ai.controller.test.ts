@@ -73,6 +73,7 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import type { WorkflowProvenanceService } from '../provenance/workflow-provenance.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -115,6 +116,7 @@ describe('InstanceAiController', () => {
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
+	const provenanceService = mock<WorkflowProvenanceService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -139,6 +141,7 @@ describe('InstanceAiController', () => {
 		publisher,
 		globalConfig,
 		threadTabsService,
+		provenanceService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -897,6 +900,112 @@ describe('InstanceAiController', () => {
 	describe('listThreads', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('listThreads')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+	});
+
+	describe('workflow provenance', () => {
+		const item = {
+			workflowId: 'wf-1',
+			name: 'Daily report',
+			active: true,
+			threadId: THREAD_ID,
+			createdAt: '2026-03-01T00:00:00.000Z',
+			canOpenThread: true,
+		};
+
+		it.each([
+			['listProvenance', 'get', '/provenance'],
+			['getWorkflowProvenance', 'get', '/provenance/:workflowId'],
+		])('exposes %s as %s %s with the instanceAi:message scope', (handler, method, path) => {
+			const route = routeMetadata.getRouteMetadata(
+				InstanceAiController as unknown as Parameters<typeof routeMetadata.getRouteMetadata>[0],
+				handler,
+			);
+			expect(route).toMatchObject({ method, path, skipAuth: false });
+			expect(scopeOf(handler)).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('lists the requesting user’s provenance with the requested limit', async () => {
+			provenanceService.listMine.mockResolvedValue([item]);
+
+			const result = await controller.listProvenance(req, res, { limit: 20 });
+
+			expect(result).toEqual({ items: [item] });
+			expect(provenanceService.listMine).toHaveBeenCalledWith(req.user, 20);
+		});
+
+		it('returns the provenance of one workflow for the requesting user', async () => {
+			const { name: _name, active: _active, ...provenance } = item;
+			provenanceService.getForWorkflow.mockResolvedValue(provenance);
+
+			const result = await controller.getWorkflowProvenance(req, res, 'wf-1');
+
+			expect(result).toEqual({ provenance });
+			expect(provenanceService.getForWorkflow).toHaveBeenCalledWith(req.user, 'wf-1');
+		});
+
+		it('returns null provenance for a workflow that the Assistant did not build', async () => {
+			provenanceService.getForWorkflow.mockResolvedValue(null);
+
+			await expect(controller.getWorkflowProvenance(req, res, 'wf-1')).resolves.toEqual({
+				provenance: null,
+			});
+		});
+
+		it('passes on NotFoundError for a workflow that the user cannot read', async () => {
+			provenanceService.getForWorkflow.mockRejectedValue(new NotFoundError('Workflow not found'));
+
+			await expect(controller.getWorkflowProvenance(req, res, 'wf-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('rejects both routes when the Assistant is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(controller.listProvenance(req, res, { limit: 20 })).rejects.toThrow(
+				ForbiddenError,
+			);
+			await expect(controller.getWorkflowProvenance(req, res, 'wf-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(provenanceService.listMine).not.toHaveBeenCalled();
+			expect(provenanceService.getForWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('route order', () => {
+		const routes = [
+			...routeMetadata.getControllerMetadata(
+				InstanceAiController as unknown as Parameters<
+					typeof routeMetadata.getControllerMetadata
+				>[0],
+			).routes,
+		].map(([handler, route]) => ({ handler: String(handler), ...route }));
+		const toPattern = (path: string) => new RegExp(`^${path.replace(/:[A-Za-z0-9_]+/g, '[^/]+')}$`);
+		const toSample = (path: string) => path.replace(/:[A-Za-z0-9_]+/g, 'sample-id');
+
+		it('treats a parameter segment as a match for any literal segment', () => {
+			expect(toPattern('/threads/:threadId').test(toSample('/threads/history'))).toBe(true);
+			expect(toPattern('/provenance').test(toSample('/provenance/:workflowId'))).toBe(false);
+		});
+
+		it('registers the provenance routes', () => {
+			const handlers = routes.map(({ handler }) => handler);
+			expect(handlers).toEqual(expect.arrayContaining(['listProvenance', 'getWorkflowProvenance']));
+		});
+
+		it('declares no route that an earlier route with the same method captures', () => {
+			const shadowed = routes.flatMap((route, index) =>
+				routes
+					.slice(0, index)
+					.filter(
+						(earlier) =>
+							earlier.method === route.method && toPattern(earlier.path).test(toSample(route.path)),
+					)
+					.map((earlier) => `${route.handler} is shadowed by ${earlier.handler}`),
+			);
+			expect(shadowed).toEqual([]);
 		});
 	});
 

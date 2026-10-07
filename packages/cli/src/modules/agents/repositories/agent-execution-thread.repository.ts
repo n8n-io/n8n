@@ -320,6 +320,16 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	/** The ids in `ids` of the sessions of this agent that this user owns. */
+	async findIdsOwnedByAgent(agentId: string, ownerId: string, ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+		const rows = await this.find({
+			select: { id: true },
+			where: { id: In(ids), agentId, ownerId },
+		});
+		return rows.map(({ id }) => id);
+	}
+
 	/** One page of a user's sessions with an agent, newest first, for keyset pagination. */
 	async findOwnedHistoryPage(
 		agentId: string,

@@ -235,6 +235,7 @@ import { InstanceContextService } from './instance-context.service';
 import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
+import { WorkflowProvenanceService } from './provenance/workflow-provenance.service';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 
@@ -1026,6 +1027,29 @@ export class InstanceAiAdapterService {
 		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
 	}
 
+	/**
+	 * Records the chat that built a kept workflow. A failed write is only logged:
+	 * the workflow must stay kept, also when its record is missing.
+	 */
+	private async recordWorkflowProvenance(
+		workflowId: string,
+		userId: string,
+		contextThreadId: string | undefined,
+	): Promise<void> {
+		try {
+			const threadId =
+				contextThreadId ??
+				(await this.aiBuilderTemporaryWorkflowRepository.findThreadIdForWorkflow(workflowId));
+			if (!threadId) return;
+			await Container.get(WorkflowProvenanceService).record(workflowId, threadId, userId);
+		} catch (error) {
+			this.logger.warn('Failed to record the Assistant chat of a kept workflow', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	private createWorkflowAdapter(
 		user: User,
 		threadId?: string,
@@ -1067,6 +1091,8 @@ export class InstanceAiAdapterService {
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
+		const recordProvenance = async (workflowId: string) =>
+			await this.recordWorkflowProvenance(workflowId, user.id, threadId);
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
 		const nodeUsageEnabled =
@@ -1516,6 +1542,8 @@ export class InstanceAiAdapterService {
 				if (!workflow) return;
 				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
 
+				// Record first: the marker is the fallback source of the thread id.
+				await recordProvenance(workflowId);
 				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
 			},
 

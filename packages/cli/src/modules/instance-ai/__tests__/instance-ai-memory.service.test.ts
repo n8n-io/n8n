@@ -28,6 +28,7 @@ const mockThreads = {
 	findOneBy: vi.fn(),
 	findOwnedHistoryPage: vi.fn(),
 	findOwnedByAgent: vi.fn(),
+	findIdsOwnedByAgent: vi.fn(),
 	findByAgentUpdatedBefore: vi.fn(),
 	delete: vi.fn(),
 	updateOwned: vi.fn(),
@@ -343,6 +344,25 @@ describe('InstanceAiMemoryService.checkThreadOwnership', () => {
 		mockThreads.findOneBy.mockResolvedValueOnce(session);
 
 		expect(await createService().checkThreadOwnership('user-1', 't')).toBe(expected);
+	});
+});
+
+describe('InstanceAiMemoryService.findOwnedThreadIds', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('asks once for the Assistant sessions of the user, without repeated ids', async () => {
+		mockThreads.findIdsOwnedByAgent.mockResolvedValueOnce(['t-1']);
+
+		const owned = await createService().findOwnedThreadIds('user-1', ['t-1', 't-2', 't-1']);
+
+		expect(owned).toEqual(new Set(['t-1']));
+		expect(mockThreads.findIdsOwnedByAgent).toHaveBeenCalledTimes(1);
+		expect(mockThreads.findIdsOwnedByAgent).toHaveBeenCalledWith('n8n-assistant', 'user-1', [
+			't-1',
+			't-2',
+		]);
 	});
 });
 
