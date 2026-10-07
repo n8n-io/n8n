@@ -273,12 +273,7 @@ export const importResultSchema = z.object({
 
 export class ImportResultDto extends Z.class(importResultSchema.shape) {}
 
-/**
- * Body of the 409/422 responses a blocked import returns: `toImportBlockedError`
- * (`packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts`) throws a
- * `ConflictError`/`UnprocessableRequestError` carrying `{ issues }` as `meta`, which
- * `serializePublicApiError` (`@n8n/backend-services`) surfaces as `message` + `issues`.
- */
+/** Body of the 409/422 responses a blocked import returns. */
 export class ImportBlockedErrorDto extends Z.class({
 	message: z.string(),
 	issues: z.array(importBlockingIssueSchema),
