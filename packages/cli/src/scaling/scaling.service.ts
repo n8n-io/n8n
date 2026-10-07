@@ -504,7 +504,7 @@ export class ScalingService {
 	}
 
 	getRunningJobsCount() {
-		return this.jobProcessor.getRunningJobIds().length;
+		return this.jobProcessor.getTrackedJobIds().length;
 	}
 
 	/**

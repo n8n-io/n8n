@@ -591,7 +591,8 @@ export class JobProcessor {
 		this.cancellationReasons[jobId] = reason;
 	}
 
-	getRunningJobIds(): JobId[] {
+	/** Ids of the jobs tracked from the start of processing, including jobs still in preflight. */
+	getTrackedJobIds(): JobId[] {
 		return [...this.trackedJobs.keys()];
 	}
 
