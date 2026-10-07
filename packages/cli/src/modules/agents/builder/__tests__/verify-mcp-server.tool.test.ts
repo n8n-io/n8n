@@ -35,6 +35,7 @@ function makeDeps(overrides: Partial<Parameters<typeof buildVerifyMcpServerTool>
 function makeMcpClient(overrides: Partial<McpClient> = {}): McpClient {
 	return {
 		listTools: vi.fn().mockResolvedValue([]),
+		getConnectionFailures: vi.fn().mockReturnValue([]),
 		close: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as McpClient;
@@ -140,6 +141,59 @@ describe('buildVerifyMcpServerTool', () => {
 			ok: true,
 			tools: [{ name: 'silent-tool', description: '' }],
 		});
+	});
+
+	it('returns { ok: false, error } when the connection fails with no tools', async () => {
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([]),
+			getConnectionFailures: vi
+				.fn()
+				.mockReturnValue([{ server: 'my-server', error: 'fetch failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = await tool.handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'MCP server "my-server" connection failed: fetch failed',
+		});
+	});
+
+	it('does not apply the credential when the connection fails with no tools', async () => {
+		const applyCredentialToMcpServer = vi.fn();
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([]),
+			getConnectionFailures: vi
+				.fn()
+				.mockReturnValue([{ server: 'my-server', error: 'fetch failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		const result = await tool.handler!(
+			{
+				name: 'my-server',
+				url: 'https://example.test/mcp',
+				credential: 'cred-42',
+			},
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: 'MCP server "my-server" connection failed: fetch failed',
+		});
+		expect(applyCredentialToMcpServer).not.toHaveBeenCalled();
 	});
 
 	it('returns { ok: false, error } when listTools throws', async () => {
