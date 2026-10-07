@@ -11,6 +11,7 @@ packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.te
 packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
   s_8631ec10eb1199::t_e53d77f07b37f7 3,6-9,98-192,203-236
   s_8631ec10eb1199::t_267ac6005ee14a 193,195-199,202
+  s_8631ec10eb1199::t_5901dfb9b95de9 194,200-201
 packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
   s_8631ec10eb1199::t_e53d77f07b37f7 1-127
 packages/cli/src/public-api/v1/controllers/index.ts
