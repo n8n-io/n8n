@@ -206,14 +206,7 @@ export class EngineV2ManualRunPlanner {
 		const outputs = pinned ? [pinned] : this.lastRunOutputs(node, runData[node.name]);
 		if (!outputs) return undefined;
 
-		// The files belong to the execution that wrote them, which the data plane
-		// deletes with that execution. TODO(CAT-4876): move them under the new run.
-		if (outputs.some((slot) => slot.some((item) => item.binary !== undefined))) {
-			throw new UserError(
-				`The results of "${node.name}" contain binary data, which engine v2 cannot reuse yet. Run the workflow from the trigger instead.`,
-			);
-		}
-
+		assertNoBinaryData(node, outputs);
 		return outputs;
 	}
 
@@ -234,7 +227,11 @@ export class EngineV2ManualRunPlanner {
 		return main ? withoutNullSlots(main) : undefined;
 	}
 
-	/** A payload the trigger just produced wins; else its pin, its run data, or v1's default. */
+	/**
+	 * A payload the trigger just produced wins; else its pin, its run data, or
+	 * v1's default. The fired payload's files are moved under the new run; the
+	 * other two are reused like a seeded node's outputs, with the same limit.
+	 */
 	private triggerOutputs(
 		root: INode,
 		data: IWorkflowExecutionDataProcess,
@@ -245,10 +242,23 @@ export class EngineV2ManualRunPlanner {
 		if (fired) return withoutNullSlots(fired);
 
 		const pinned = pinData[root.name];
-		if (pinned) return [pinned];
-
 		const main = runData[root.name]?.at(-1)?.data?.main;
-		return main ? withoutNullSlots(main) : DEFAULT_MAIN_OUTPUT;
+		const outputs = pinned ? [pinned] : main ? withoutNullSlots(main) : DEFAULT_MAIN_OUTPUT;
+
+		assertNoBinaryData(root, outputs);
+		return outputs;
+	}
+}
+
+/**
+ * The files belong to the execution that wrote them, which the data plane
+ * deletes with that execution. TODO(CAT-4876): move them under the new run.
+ */
+function assertNoBinaryData(node: INode, outputs: INodeExecutionData[][]): void {
+	if (outputs.some((slot) => slot.some((item) => item.binary !== undefined))) {
+		throw new UserError(
+			`The results of "${node.name}" contain binary data, which engine v2 cannot reuse yet. Run the workflow from the trigger instead.`,
+		);
 	}
 }
 
