@@ -194,7 +194,7 @@ describe('PublicApiControllerRegistry', () => {
 			expect(response.body.message).toBe('request/body/active is read-only');
 		});
 
-		it.each(['0', '-1'])('rejects a query limit of %s with a 400', async (limit) => {
+		it('rejects a negative query limit with a 400', async () => {
 			@Service()
 			class WidgetsPublicController {
 				@Get('/')
@@ -205,10 +205,10 @@ describe('PublicApiControllerRegistry', () => {
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-			const response = await request(activate()).get(`/api/v1/widgets?limit=${limit}`).expect(400);
+			const response = await request(activate()).get('/api/v1/widgets?limit=-1').expect(400);
 
 			expect(response.body.message).toBe(
-				'request/query/limit Param `limit` must be a positive integer',
+				'request/query/limit Param `limit` must be a non-negative integer',
 			);
 		});
 	});
