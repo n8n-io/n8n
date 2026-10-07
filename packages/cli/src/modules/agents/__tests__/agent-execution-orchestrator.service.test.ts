@@ -52,6 +52,7 @@ import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { AgentSpendLedger } from '../budget-guardrail';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
@@ -250,6 +251,7 @@ function makeService(sandboxEnabled = false) {
 		entries.map((entry) => ({ key: entry.key, totalUsd: entry.usd, previousUsd: 0 })),
 	);
 	Container.set(AgentSpendLedger, spendLedger);
+	Container.set(AgentBudgetAlertService, mock<AgentBudgetAlertService>());
 
 	executionService.canUseDraftThread.mockResolvedValue(true);
 	executionService.findThreadById.mockResolvedValue({
@@ -934,6 +936,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 				if (previewChat) expect(onBudgetNotice).toHaveBeenCalledOnce();
 				else expect(onBudgetNotice).not.toHaveBeenCalled();
+				// The email path runs for every surface. Preview only adds the card.
+				expect(
+					Container.get(AgentBudgetAlertService).notifyMonthlyThreshold,
+				).toHaveBeenCalledOnce();
+				expect(Container.get(AgentBudgetAlertService).notifyMonthlyThreshold).toHaveBeenCalledWith({
+					agentId,
+					alertThresholdPercent: 80,
+				});
 			},
 		);
 
