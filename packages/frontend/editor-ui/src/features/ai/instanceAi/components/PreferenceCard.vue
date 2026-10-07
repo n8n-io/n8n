@@ -157,7 +157,9 @@ watch(
 				:aria-expanded="expanded"
 				data-test-id="instance-ai-preference-card-header"
 			>
-				<N8nIcon :icon="rejection ? 'triangle-alert' : 'bookmark'" size="small" />
+				<!-- Only a refused save keeps an icon: the warning carries state. A saved row
+				     reads like the thinking traces above it: a plain muted title. -->
+				<N8nIcon v-if="rejection" icon="triangle-alert" size="small" />
 				<span :class="$style.title">{{ rowLabel }}</span>
 				<N8nAiActivityStepChevron :open="expanded" />
 			</button>

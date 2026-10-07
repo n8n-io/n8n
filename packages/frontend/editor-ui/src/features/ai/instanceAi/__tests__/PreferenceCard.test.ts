@@ -219,6 +219,17 @@ describe('PreferenceCard', () => {
 			expect(header).toHaveAttribute('aria-expanded', 'false');
 		});
 
+		it('carries no icon on a saved row, so the header reads like the thinking traces', () => {
+			renderActive();
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+
+			// Only the chevron icon stays. No bookmark, no warning.
+			const icons = header.querySelectorAll('[data-icon]');
+			expect(Array.from(icons).map((icon) => icon.getAttribute('data-icon'))).toEqual([
+				'chevron-right',
+			]);
+		});
+
 		// The user reopened the card on the active turn, then sent another message.
 		it('collapses when the turn moves into history, whatever the chevron did before', async () => {
 			const { rerender } = renderActive();
@@ -418,6 +429,13 @@ describe('PreferenceCard', () => {
 			expect(screen.getByTestId('instance-ai-preference-card-error')).toHaveTextContent(
 				'This user already has a preference with the same text',
 			);
+		});
+
+		it('keeps the warning icon on the row, unlike a saved one', () => {
+			renderActive(refused);
+			const header = screen.getByTestId('instance-ai-preference-card-header');
+
+			expect(header.querySelector('[data-icon="triangle-alert"]')).not.toBeNull();
 		});
 
 		it('offers no links, because nothing was saved', async () => {
