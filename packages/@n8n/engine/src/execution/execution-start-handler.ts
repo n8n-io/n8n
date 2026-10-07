@@ -66,9 +66,9 @@ export class ExecutionStartHandler {
 				status: 'completed',
 				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},
-			...seededSteps.map(({ nodeId, outputs }) => ({
+			...seededSteps.map(({ nodeId, iteration, outputs }) => ({
 				nodeId,
-				iteration: 0,
+				iteration: iteration ?? 0,
 				status: 'completed' as const,
 				outputs,
 			})),

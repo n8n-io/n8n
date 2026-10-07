@@ -465,7 +465,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	});
 
 	it('stores the seeded steps with the row', async () => {
-		const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { reused: true } }]] }];
+		const seededSteps = [{ nodeId: 'a', iteration: 0, outputs: [[{ json: { reused: true } }]] }];
 		const body = startBody({
 			graph: {
 				nodes: [

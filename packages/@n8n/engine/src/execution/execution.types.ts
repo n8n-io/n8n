@@ -113,10 +113,12 @@ export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
  * A step the caller already holds the outputs of, so the engine records it as
  * completed at start instead of running it: a partial manual run that reuses
  * earlier results, or a node with pinned data. Same opacity as `TriggerOutputs`.
- * Iteration 0 only: a loop pass has no caller-side outputs to reuse.
+ * A node inside a loop is seeded once per pass, with the pass as `iteration`.
  */
 export interface SeededStep {
 	nodeId: string;
+	/** The loop pass the outputs belong to. Defaults to 0, the only pass outside a loop. */
+	iteration?: number;
 	outputs: StepSlots;
 }
 

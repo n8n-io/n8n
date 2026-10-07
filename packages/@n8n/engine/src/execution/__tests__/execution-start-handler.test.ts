@@ -318,6 +318,32 @@ describe('ExecutionStartHandler lifecycle events', () => {
 			});
 		});
 
+		it('records a seeded step at the iteration it names', async () => {
+			const executionStore = makeExecutionStore({
+				loadExecution: vi
+					.fn()
+					.mockResolvedValue(
+						record(graph, { seededSteps: [{ nodeId: 'a', iteration: 2, outputs: [] }] }),
+					),
+			});
+			const createSteps = vi.fn().mockResolvedValue([
+				{ id: 'step-trigger', nodeId: 'trigger', iteration: 0 },
+				{ id: 'step-a', nodeId: 'a', iteration: 2 },
+			]);
+			const handler = makeHandler(
+				executionStore,
+				makeStepStore(createSteps),
+				makeOrchestrationQueue(),
+			);
+
+			await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+			expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [] },
+				{ nodeId: 'a', iteration: 2, status: 'completed', outputs: [] },
+			]);
+		});
+
 		it('throws instead of announcing when a seeded row was not inserted', async () => {
 			const executionStore = makeExecutionStore({
 				loadExecution: vi.fn().mockResolvedValue(record(graph, { seededSteps })),

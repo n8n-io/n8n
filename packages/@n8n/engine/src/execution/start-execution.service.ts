@@ -6,10 +6,12 @@ import {
 	GraphValidationError,
 	validateExecutableGraph,
 	type WorkflowGraph,
+	type WorkflowLoop,
 } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
+import { LOOP_SLOT } from './loop-ledger';
 import type {
 	CallerContext,
 	ExecutionMode,
@@ -99,46 +101,110 @@ export class StartExecutionService {
  * Rejects seeded steps that the start handler could not record correctly.
  *
  * The start handler turns each seeded step into a completed step row for its
- * node at iteration 0. That only works for a node that:
+ * node and iteration. That only works when:
  *
- * - is not the trigger: its outputs arrive as `triggerOutputs`.
- * - the trigger can reach: the completion check counts only reachable nodes,
- *   so a completed row outside that set would let the run finish while other
- *   steps are still outstanding.
- * - is not in a loop: a loop member runs once per iteration, and a row for
- *   iteration 0 does not stop the later iterations from running it.
- *   TODO(CAT-4875): seed every iteration instead.
- * - is seeded only once: the store keeps one row per node and iteration and
- *   would silently drop the second.
+ * - no seeded step names the trigger: its outputs arrive as `triggerOutputs`.
+ * - the trigger reaches every seeded node: the completion check counts only
+ *   reachable nodes, so a completed row outside that set would let the run
+ *   finish while other steps are still outstanding.
+ * - a node is seeded at most once per iteration, from iteration 0 up without
+ *   gaps: the store keeps one row per node and iteration and would silently
+ *   drop a second, and a missing pass would never be planned.
+ * - a node outside any loop is seeded at iteration 0 only: it has no other pass.
+ * - a loop is seeded whole or not at all: the batch node at iterations 0 to t,
+ *   with its loop slot filled on every pass but the last, and every member at
+ *   iterations 0 to t - 1. The loop ledger reads the loop's end from the batch
+ *   node's last row, and the completion check expects exactly these rows, so
+ *   any other shape would run passes the caller already holds or leave the
+ *   loop unfinished.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): void {
 	// The graph was validated first, so the trigger exists.
 	const trigger = findTriggerNode(graph);
 	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
-	const loopByMember = new Map(
-		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
-	);
-	const seen = new Set<string>();
-	for (const { nodeId } of seededSteps) {
-		if (nodeId === trigger?.id) {
+
+	const stepsByNode = new Map<string, SeededStep[]>();
+	for (const step of seededSteps) {
+		if (step.nodeId === trigger?.id) {
 			throw new GraphValidationError(
 				'The trigger cannot be seeded; send its payload as triggerOutputs',
 			);
 		}
-		if (!reachable.has(nodeId)) {
+		if (!reachable.has(step.nodeId)) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which the trigger does not reach`,
+				`Seeded step names node ${step.nodeId}, which the trigger does not reach`,
 			);
 		}
-		const loop = loopByMember.get(nodeId);
-		if (loop) {
+		const steps = stepsByNode.get(step.nodeId) ?? [];
+		if (steps.some((other) => iterationOf(other) === iterationOf(step))) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
+				`Node ${step.nodeId} is seeded more than once at iteration ${iterationOf(step)}`,
 			);
 		}
-		if (seen.has(nodeId)) {
-			throw new GraphValidationError(`Node ${nodeId} is seeded more than once`);
+		steps.push(step);
+		stepsByNode.set(step.nodeId, steps);
+	}
+
+	for (const [nodeId, steps] of stepsByNode) {
+		steps.sort((a, b) => iterationOf(a) - iterationOf(b));
+		steps.forEach((step, index) => {
+			if (iterationOf(step) !== index) {
+				throw new GraphValidationError(
+					`Node ${nodeId} is seeded at iteration ${iterationOf(step)} but not at iteration ${index}`,
+				);
+			}
+		});
+	}
+
+	const loops = deriveLoops(graph);
+	const loopMemberIds = new Set(loops.flatMap((loop) => [...loop.memberIds]));
+	for (const [nodeId, steps] of stepsByNode) {
+		if (!loopMemberIds.has(nodeId) && steps.length > 1) {
+			throw new GraphValidationError(
+				`Node ${nodeId} is outside any loop and has one pass, so it cannot be seeded at iteration 1`,
+			);
 		}
-		seen.add(nodeId);
+	}
+	for (const loop of loops) validateSeededLoop(loop, stepsByNode);
+}
+
+/** A loop is seeded whole or not at all. See `validateSeededSteps`. */
+function validateSeededLoop(loop: WorkflowLoop, stepsByNode: Map<string, SeededStep[]>): void {
+	const seededMemberIds = [...loop.memberIds].filter((id) => stepsByNode.has(id));
+	if (seededMemberIds.length === 0) return;
+
+	const batchSteps = stepsByNode.get(loop.batchNodeId);
+	if (!batchSteps) {
+		throw new GraphValidationError(
+			`Node ${seededMemberIds[0]} is seeded but ${loop.batchNodeId}, the batch node of its loop, is not; a loop is seeded whole or not at all`,
+		);
+	}
+
+	// Already sorted by iteration, with no gaps.
+	const passes = batchSteps.length - 1;
+	batchSteps.forEach((step, iteration) => {
+		const fillsLoopSlot = step.outputs[LOOP_SLOT] !== null && step.outputs[LOOP_SLOT] !== undefined;
+		if (iteration < passes && !fillsLoopSlot) {
+			throw new GraphValidationError(
+				`Batch node ${loop.batchNodeId} is seeded past iteration ${iteration}, but that pass does not fill its loop slot, so the loop ended there`,
+			);
+		}
+		if (iteration === passes && fillsLoopSlot) {
+			throw new GraphValidationError(
+				`Batch node ${loop.batchNodeId} fills its loop slot on its last seeded pass, iteration ${iteration}, so the loop has not ended; a loop is seeded whole or not at all`,
+			);
+		}
+	});
+
+	for (const memberId of loop.memberIds) {
+		if (memberId === loop.batchNodeId) continue;
+		const count = stepsByNode.get(memberId)?.length ?? 0;
+		if (count !== passes) {
+			throw new GraphValidationError(
+				`Node ${memberId} is seeded for ${count} passes of the loop of ${loop.batchNodeId}, which has ${passes}; a loop is seeded whole or not at all`,
+			);
+		}
 	}
 }
+
+const iterationOf = (step: SeededStep): number => step.iteration ?? 0;

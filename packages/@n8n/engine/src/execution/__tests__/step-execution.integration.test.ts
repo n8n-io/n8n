@@ -20,7 +20,7 @@ import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-eve
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
-import type { TriggerOutputs } from '../execution.types';
+import type { SeededStep, TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
@@ -65,12 +65,14 @@ describe('step execution (integration)', () => {
 		{
 			workflowId = 'wf-1',
 			graph: workflowGraph = graph,
+			seededSteps,
 			lifecycleEventCallback,
 			waitSweepIntervalMs,
 			resolveOn = 'finish',
 		}: {
 			workflowId?: string;
 			graph?: WorkflowGraph;
+			seededSteps?: SeededStep[];
 			lifecycleEventCallback?: LifecycleEventCallback;
 			waitSweepIntervalMs?: number;
 			/**
@@ -126,6 +128,7 @@ describe('step execution (integration)', () => {
 				graph: workflowGraph,
 				workflow: {},
 				triggerOutputs,
+				seededSteps,
 				executionId: generateId(),
 				callerContext: { hostMode: 'trigger' },
 			})
@@ -434,6 +437,69 @@ describe('step execution (integration)', () => {
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
+	});
+
+	it('runs what follows a loop seeded whole, and none of the loop itself', async () => {
+		// trigger -> loop(batch) -> x -> loop (back-edge); loop's done slot -> d
+		const loopGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+				{ id: 'd', name: 'D', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'loop', outputIndex: 0, inputIndex: 0 },
+				{ from: 'loop', to: 'x', outputIndex: 1, inputIndex: 0 },
+				{ from: 'x', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				{ from: 'loop', to: 'd', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// Two passes over two items, then the done pass carrying what came back.
+		const seededSteps: SeededStep[] = [
+			{ nodeId: 'loop', iteration: 0, outputs: [null, [{ json: { item: 1 } }]] },
+			{ nodeId: 'loop', iteration: 1, outputs: [null, [{ json: { item: 2 } }]] },
+			{ nodeId: 'loop', iteration: 2, outputs: [[{ json: { x: 1 } }, { json: { x: 2 } }], null] },
+			{ nodeId: 'x', iteration: 0, outputs: [[{ json: { x: 1 } }]] },
+			{ nodeId: 'x', iteration: 1, outputs: [[{ json: { x: 2 } }]] },
+		];
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(
+			executor,
+			[[{ json: { item: 1 } }, { json: { item: 2 } }]],
+			{
+				workflowId: 'wf-seeded-loop',
+				graph: loopGraph,
+				seededSteps,
+			},
+		);
+
+		// Only d ran, on the done pass the caller supplied.
+		expect(requests.map(({ node }) => node.id)).toEqual(['d']);
+		expect(requests[0].inputs).toEqual([[{ json: { x: 1 } }, { json: { x: 2 } }]]);
+
+		expect(execution.status).toBe('completed');
+		// The seeded rows are the loop's complete ledger: no pass was planned again.
+		const rows = steps.map(({ nodeId, iteration, status }) => ({ nodeId, iteration, status }));
+		expect(rows).toEqual(
+			expect.arrayContaining([
+				{ nodeId: 'loop', iteration: 0, status: 'completed' },
+				{ nodeId: 'loop', iteration: 1, status: 'completed' },
+				{ nodeId: 'loop', iteration: 2, status: 'completed' },
+				{ nodeId: 'x', iteration: 0, status: 'completed' },
+				{ nodeId: 'x', iteration: 1, status: 'completed' },
+				{ nodeId: 'd', iteration: 0, status: 'completed' },
+			]),
+		);
+		expect(rows).toHaveLength(7);
 	});
 
 	it('runs a fan-in once, with each input slot fed by its branch', async () => {

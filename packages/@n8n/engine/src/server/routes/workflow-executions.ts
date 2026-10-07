@@ -56,6 +56,7 @@ const StartExecutionBody = z.object({
 		.array(
 			z.object({
 				nodeId: z.string().min(1),
+				iteration: z.number().int().min(0).optional(),
 				outputs: z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS),
 			}),
 		)
