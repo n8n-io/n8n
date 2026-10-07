@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useInstallNode } from '../composables/useInstallNode';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
@@ -10,11 +9,13 @@ import {
 } from '../communityNodes.constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 import {
 	N8nButton,
 	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
 	N8nInput,
 	N8nInputLabel,
 	N8nLink,
@@ -34,7 +35,9 @@ const i18n = useI18n();
 const { installNode, loading } = useInstallNode();
 const uiStore = useUIStore();
 
-const modalBus = createEventBus();
+const modalOpen = computed(
+	() => uiStore.modalsById[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]?.open === true,
+);
 
 const modalData = computed(
 	() => uiStore.modalsById[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]?.data as ModalData | undefined,
@@ -70,7 +73,7 @@ const onInstallClick = async () => {
 		}
 
 		if (result.success) {
-			modalBus.emit('close');
+			void closeDialog();
 		}
 	}
 };
@@ -82,6 +85,18 @@ const onCheckboxChecked = () => {
 const onModalClose = () => {
 	return !loading.value;
 };
+
+async function closeDialog() {
+	const shouldClose = onModalClose();
+	if (shouldClose === false) {
+		return;
+	}
+	uiStore.closeModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const onInputBlur = () => {
 	packageName.value = packageName.value.replaceAll('npm i ', '').replaceAll('npm install ', '');
@@ -99,83 +114,83 @@ const onLearnMoreLinkClick = () => {
 </script>
 
 <template>
-	<Modal
-		width="540px"
-		:name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY"
-		:title="i18n.baseText('settings.communityNodes.installModal.title')"
-		:event-bus="modalBus"
-		:center="true"
-		:before-close="onModalClose"
-		:show-close="!loading"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="i18n.baseText('settings.communityNodes.installModal.title')"
+		:show-close-button="!loading"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div v-if="!modalData?.hideSuggestion" :class="[$style.descriptionContainer, 'p-s']">
-				<div>
-					<N8nText>
-						{{ i18n.baseText('settings.communityNodes.installModal.description') }}
-					</N8nText>
-					{{ ' ' }}
-					<N8nLink :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
-						{{ i18n.baseText('generic.moreInfo') }}
-					</N8nLink>
-				</div>
-				<N8nButton
-					:label="i18n.baseText('settings.communityNodes.browseButton.label')"
-					icon="external-link"
-					:class="$style.browseButton"
-					@click="openNPMPage"
-				/>
-			</div>
-			<div :class="[$style.formContainer, 'mt-m']">
-				<N8nInputLabel
-					:class="$style.labelTooltip"
-					:label="i18n.baseText('settings.communityNodes.installModal.packageName.label')"
-					:tooltip-text="
-						i18n.baseText('settings.communityNodes.installModal.packageName.tooltip', {
-							interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL },
-						})
-					"
-				>
-					<N8nInput
-						v-model="packageName"
-						name="packageNameInput"
-						type="text"
-						data-test-id="package-name-input"
-						:maxlength="214"
-						:placeholder="
-							i18n.baseText('settings.communityNodes.installModal.packageName.placeholder')
-						"
-						:required="true"
-						:disabled="loading || modalData?.disableInput"
-						@blur="onInputBlur"
-					/>
-				</N8nInputLabel>
-				<div :class="[$style.infoText, 'mt-4xs']">
-					<span
-						size="small"
-						:class="[$style.infoText, infoTextErrorMessage ? $style.error : '']"
-						v-text="infoTextErrorMessage"
-					></span>
-				</div>
-				<N8nCheckbox
-					v-model="userAgreed"
-					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
-					:disabled="loading"
-					data-test-id="user-agreement-checkbox"
-					@change="onCheckboxChecked"
-				>
-					<template #label>
+		<N8nDialogBody>
+			<div :data-test-id="`${COMMUNITY_PACKAGE_INSTALL_MODAL_KEY}-modal`">
+				<div v-if="!modalData?.hideSuggestion" :class="[$style.descriptionContainer, 'p-s']">
+					<div>
 						<N8nText>
-							{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </N8nText
-						><br />
-						<N8nLink :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-							i18n.baseText('generic.moreInfo')
-						}}</N8nLink>
-					</template>
-				</N8nCheckbox>
+							{{ i18n.baseText('settings.communityNodes.installModal.description') }}
+						</N8nText>
+						{{ ' ' }}
+						<N8nLink :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
+							{{ i18n.baseText('generic.moreInfo') }}
+						</N8nLink>
+					</div>
+					<N8nButton
+						:label="i18n.baseText('settings.communityNodes.browseButton.label')"
+						icon="external-link"
+						:class="$style.browseButton"
+						@click="openNPMPage"
+					/>
+				</div>
+				<div :class="[$style.formContainer, 'mt-m']">
+					<N8nInputLabel
+						:class="$style.labelTooltip"
+						:label="i18n.baseText('settings.communityNodes.installModal.packageName.label')"
+						:tooltip-text="
+							i18n.baseText('settings.communityNodes.installModal.packageName.tooltip', {
+								interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL },
+							})
+						"
+					>
+						<N8nInput
+							v-model="packageName"
+							name="packageNameInput"
+							type="text"
+							data-test-id="package-name-input"
+							:maxlength="214"
+							:placeholder="
+								i18n.baseText('settings.communityNodes.installModal.packageName.placeholder')
+							"
+							:required="true"
+							:disabled="loading || modalData?.disableInput"
+							@blur="onInputBlur"
+						/>
+					</N8nInputLabel>
+					<div :class="[$style.infoText, 'mt-4xs']">
+						<span
+							size="small"
+							:class="[$style.infoText, infoTextErrorMessage ? $style.error : '']"
+							v-text="infoTextErrorMessage"
+						></span>
+					</div>
+					<N8nCheckbox
+						v-model="userAgreed"
+						:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
+						:disabled="loading"
+						data-test-id="user-agreement-checkbox"
+						@change="onCheckboxChecked"
+					>
+						<template #label>
+							<N8nText>
+								{{ i18n.baseText('settings.communityNodes.installModal.checkbox.label') }} </N8nText
+							><br />
+							<N8nLink :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
+								i18n.baseText('generic.moreInfo')
+							}}</N8nLink>
+						</template>
+					</N8nCheckbox>
+				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
 				:loading="loading"
 				:disabled="!userAgreed || packageName === '' || loading"
@@ -189,8 +204,8 @@ const onLearnMoreLinkClick = () => {
 				data-test-id="install-community-package-button"
 				@click="onInstallClick"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
