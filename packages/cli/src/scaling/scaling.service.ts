@@ -21,6 +21,7 @@ import { assertNever } from '@/utils';
 import { JOB_TYPE_NAME } from './constants';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
+import { throwJobBackToQueue } from './job-return';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
 	JobQueue,
@@ -43,6 +44,8 @@ const CANCEL_WRITE_BUDGET_SHARE = 0.5;
 
 /** Ceiling for the cancellation write, so a long shutdown window does not stall on it. */
 const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
+
+const CURRENT_JOBS_SETTLE_TIMEOUT_MS = 5 * Time.seconds.toMilliseconds;
 
 @Service()
 export class ScalingService {
@@ -171,7 +174,6 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
-			// The job still runs: the handler passes it to JobProcessor, which tracks it and holds the drain.
 			if (this.stopping) {
 				const { executionId } = job.data;
 				const jobId = job.id;
@@ -179,6 +181,8 @@ export class ScalingService {
 					`Worker received job ${jobId} for execution ${executionId} after it began to stop`,
 					{ executionId, jobId },
 				);
+				// A job started this late may not finish before the force exit, so another worker runs it.
+				await throwJobBackToQueue(job, this.logger);
 			}
 
 			try {
@@ -263,6 +267,8 @@ export class ScalingService {
 	private async stopWorker() {
 		this.stopping = true;
 
+		const start = Date.now();
+
 		await this.pauseAllQueues();
 
 		const shutdownWindowMs =
@@ -272,12 +278,11 @@ export class ScalingService {
 		// unbounded, so a long queued execution still runs to completion.
 		const drainTimeoutMs = shutdownWindowMs * 0.8;
 
-		const start = Date.now();
-
 		const hasQueuedJobsToDrain = () => this.getRunningJobsCount() !== 0;
 		const hasInProcessExecutionsToDrain = () =>
 			this.activeExecutions.getRunningExecutionIds().length !== 0;
 		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
+		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
 
 		let count = 0;
 
@@ -294,6 +299,8 @@ export class ScalingService {
 			await sleep(sleepMs);
 		}
 
+		await this.waitForCurrentQueueJobs(getRemainingWindowMs());
+
 		// Cancel the stragglers rather than leave them to run. The task runner stops
 		// next, so they cannot make progress.
 		if (drainTimeoutMs > 0 && hasInProcessExecutionsToDrain() && !isWithinDrainBudget()) {
@@ -306,7 +313,7 @@ export class ScalingService {
 
 			// The force-exit timer is armed at the full window, so the write gets a share of
 			// what is left of it. The rest stays for the shutdown hooks that run after this one.
-			const remainingWindowMs = Math.max(0, shutdownWindowMs - (Date.now() - start));
+			const remainingWindowMs = getRemainingWindowMs();
 			const writeDeadlineMs = Math.min(
 				MAX_CANCEL_WRITE_TIMEOUT_MS,
 				Math.round(remainingWindowMs * CANCEL_WRITE_BUDGET_SHARE),
@@ -321,6 +328,33 @@ export class ScalingService {
 					{ executionIds: cancelledExecutionIds },
 				);
 			}
+		}
+	}
+
+	// Waits for fetches in flight at the pause, so a job that reaches the handler is returned to the queue before exit.
+	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
+		let timeout: NodeJS.Timeout | undefined;
+
+		const timedOut = new Promise<void>((resolve) => {
+			timeout = setTimeout(
+				resolve,
+				// Leave the other half of what is left for the cancel step that follows.
+				Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs / 2),
+			);
+			timeout.unref();
+		});
+
+		const settled = Promise.all(
+			[...this.queueByName.values()].map(async (queue) => await queue.whenCurrentJobsFinished()),
+		).catch((error) => {
+			// Keep stopping; a dropped connection here must not block the cancel step.
+			this.logger.warn('Failed to wait for current queue jobs before stopping', { error });
+		});
+
+		try {
+			await Promise.race([settled, timedOut]);
+		} finally {
+			clearTimeout(timeout);
 		}
 	}
 
