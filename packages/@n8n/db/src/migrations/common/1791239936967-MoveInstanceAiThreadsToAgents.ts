@@ -12,6 +12,8 @@ const replacedTables = [
 	'instance_ai_observation_locks',
 	'instance_ai_resources',
 	'instance_ai_thread_grants',
+	// Unused since the observation tables replaced it, but it still has a foreign key to the threads table.
+	'instance_ai_observational_memory',
 ];
 
 /** Assistant data that stays, but belongs to an Agents session now. */
