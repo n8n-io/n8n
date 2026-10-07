@@ -182,7 +182,7 @@ export class ActiveExecutions {
 				if (execution.status === 'waiting') {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
-				} else {
+				} else if (this.activeExecutions[executionId] === execution) {
 					delete this.activeExecutions[executionId];
 					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
