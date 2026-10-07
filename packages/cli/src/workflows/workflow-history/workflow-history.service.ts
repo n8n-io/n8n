@@ -62,7 +62,7 @@ export class WorkflowHistoryService {
 				'description',
 				'autosaved',
 			],
-			order: { createdAt: 'DESC' },
+			order: { createdAt: 'DESC', versionId: 'ASC' },
 		});
 
 		// Callers only show the latest publish of each version.
@@ -70,10 +70,12 @@ export class WorkflowHistoryService {
 			workflow.id,
 			versions.map(({ versionId }) => versionId),
 		);
+		const activationsByVersion = new Map(
+			activations.map((activation) => [activation.versionId, activation]),
+		);
 		for (const version of versions) {
-			version.workflowPublishHistory = activations.filter(
-				({ versionId }) => versionId === version.versionId,
-			);
+			const activation = activationsByVersion.get(version.versionId);
+			version.workflowPublishHistory = activation ? [activation] : [];
 		}
 
 		return versions;

@@ -159,6 +159,59 @@ describe('GET /workflow-history/:workflowId', () => {
 		expect(resp.body.data[0]).toEqual(expected);
 	});
 
+	test('should return all versions when take is zero', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const versions = [];
+		for (let i = 0; i < 3; i++) {
+			versions.push(await createWorkflowHistoryItem(workflow.id));
+		}
+		const latest = await createWorkflowPublishHistoryItem(versions[0]);
+
+		const response = await authOwnerAgent
+			.get(`/workflow-history/workflow/${workflow.id}`)
+			.query({ take: 0 })
+			.expect(200);
+
+		const page = response.body.data as WorkflowHistory[];
+		expect(page).toHaveLength(versions.length);
+		expect(page.map(({ versionId }) => versionId).sort()).toEqual(
+			versions.map(({ versionId }) => versionId).sort(),
+		);
+		for (const version of page) {
+			expect(version.workflowPublishHistory).toEqual(
+				version.versionId === latest.versionId
+					? [{ ...latest, createdAt: latest.createdAt.toISOString() }]
+					: [],
+			);
+		}
+	});
+
+	test('should page versions with equal timestamps in ascending version ID order', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const createdAt = new Date('2026-01-01T00:00:00Z');
+		const versionIds = Array.from(
+			{ length: 5 },
+			(_, i) => `00000000-0000-4000-8000-${i.toString().padStart(12, '0')}`,
+		);
+		for (const versionId of versionIds.toReversed()) {
+			await createWorkflowHistoryItem(workflow.id, { versionId, createdAt });
+		}
+
+		const returnedIds: string[] = [];
+		for (const skip of [0, 2, 4]) {
+			const response = await authOwnerAgent
+				.get(`/workflow-history/workflow/${workflow.id}`)
+				.query({ skip, take: 2 })
+				.expect(200);
+			const page = response.body.data as WorkflowHistory[];
+			expect(page.map(({ versionId }) => versionId)).toEqual(versionIds.slice(skip, skip + 2));
+			returnedIds.push(...page.map(({ versionId }) => versionId));
+		}
+
+		expect(returnedIds).toEqual(versionIds);
+		expect(new Set(returnedIds).size).toBe(versionIds.length);
+	});
+
 	test('should work with skip parameter', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const versions = await Promise.all(
