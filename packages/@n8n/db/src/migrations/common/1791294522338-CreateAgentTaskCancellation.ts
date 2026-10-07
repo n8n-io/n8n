@@ -15,7 +15,7 @@ export class CreateAgentTaskCancellation1791294522338 implements ReversibleMigra
 					.comment('stopping, failed, or stopped'),
 				column('cutoffAt')
 					.timestampTimezone(3)
-					.notNull.comment('Work accepted at or before this time cannot restart'),
+					.notNull.comment('Time when this cancellation was requested'),
 				column('settledAt').timestampTimezone(3),
 				column('generation').json.notNull.comment(
 					'Captured execution, job, and child session IDs for this cancellation',

@@ -69,6 +69,9 @@ function setup() {
 	repository.latest.mockImplementation(async () => saved);
 	repository.findRequest.mockImplementation(async () => saved);
 	repository.saveRequest.mockImplementation(async (value) => (saved = value));
+	repository.insertRequest.mockImplementation(async (value) => {
+		saved = value;
+	});
 	repository.targetedJobs.mockImplementation(async () => work);
 	repository.targetedDescendants.mockResolvedValue([]);
 	jobs.cancelPermanently.mockImplementation(async (_threadId, id) => {
@@ -129,7 +132,7 @@ it('preserves Done and Failed results and cancels unfinished tasks and groups', 
 it('saves the request and holds pending messages before stopping all kinds of work', async () => {
 	const { service, repository, queue, jobs, work } = setup();
 	const state = await service.request('thread', null);
-	expect(repository.saveRequest.mock.invocationCallOrder[0]).toBeLessThan(
+	expect(repository.insertRequest.mock.invocationCallOrder[0]).toBeLessThan(
 		jobs.cancelPermanently.mock.invocationCallOrder[0],
 	);
 	expect(queue.holdPending.mock.invocationCallOrder[0]).toBeLessThan(

@@ -42,7 +42,7 @@ export class AgentTaskCancellation extends WithTimestamps {
 	@JsonColumn({ comment: 'Captured execution, job, and child session IDs for this cancellation' })
 	generation: { executionIds: string[]; jobIds: string[]; threadIds: string[] };
 
-	@DateTimeColumn({ precision: 3, comment: 'Work accepted at or before this time cannot restart' })
+	@DateTimeColumn({ precision: 3, comment: 'Time when this cancellation was requested' })
 	cutoffAt: Date;
 
 	@DateTimeColumn({ precision: 3, nullable: true })

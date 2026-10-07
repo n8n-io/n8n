@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, LessThanOrEqual, MoreThan, Not } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { AgentTaskCancellation } from '../entities/agent-task-cancellation.entity';
@@ -33,8 +33,6 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 			manager.find(AgentExecution, {
 				where: { threadId },
 				select: ['id'],
-				order: { createdAt: 'DESC' },
-				take: 1,
 			}),
 			manager.find(AgentBackgroundJob, {
 				where: { parentThreadId: threadId },
@@ -65,6 +63,21 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 
 	async saveRequest(request: AgentTaskCancellation, ctx: OperationContext) {
 		return await this.managerFor(ctx).save(AgentTaskCancellation, request);
+	}
+
+	async insertRequest(request: AgentTaskCancellation, ctx: OperationContext) {
+		await this.managerFor(ctx).insert(AgentTaskCancellation, {
+			id: request.id,
+			threadId: request.threadId,
+			planId: request.planId,
+			status: request.status,
+			generation: request.generation,
+			cutoffAt: request.cutoffAt,
+			settledAt: request.settledAt,
+			failures: request.failures,
+			reportStatus: request.reportStatus,
+			report: request.report,
+		});
 	}
 
 	async pendingThreads() {
@@ -142,7 +155,8 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 				if (
 					request.generation.threadIds.includes(child.id) ||
 					(job && request.generation.jobIds.includes(job.id)) ||
-					(job?.createdAt ?? child.createdAt) <= request.cutoffAt
+					(job?.sourceExecutionId &&
+						request.generation.executionIds.includes(job.sourceExecutionId))
 				)
 					return true;
 				continue;
@@ -153,12 +167,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 						where: { threadId, status: 'running' },
 						order: { createdAt: 'DESC' },
 					});
-			if (
-				execution &&
-				(request.generation.executionIds.includes(execution.id) ||
-					execution.createdAt <= request.cutoffAt)
-			)
-				return true;
+			if (execution && request.generation.executionIds.includes(execution.id)) return true;
 		}
 		return false;
 	}
@@ -174,17 +183,12 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 			visited.add(threadId);
 			const children = await manager.find(AgentBackgroundJob, {
 				where:
-					threadId === request.threadId
+					threadId === request.threadId && request.status === 'stopped'
 						? [
-								{ parentThreadId: threadId, createdAt: LessThanOrEqual(request.cutoffAt) },
 								{ parentThreadId: threadId, id: In(request.generation.jobIds) },
 								{
 									parentThreadId: threadId,
 									sourceExecutionId: In(request.generation.executionIds),
-								},
-								{
-									parentThreadId: threadId,
-									sourceExecution: { createdAt: LessThanOrEqual(request.cutoffAt) },
 								},
 							]
 						: { parentThreadId: threadId },
@@ -195,7 +199,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 				where: {
 					parentThreadId: threadId,
 					...(threadId === request.threadId && request.status === 'stopped'
-						? { createdAt: LessThanOrEqual(request.cutoffAt) }
+						? { id: In(request.generation.threadIds) }
 						: {}),
 				},
 			});
@@ -220,11 +224,11 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 		const scope = {
 			parentThreadId: request.threadId,
 			status: In(['running', 'suspended', 'paused']),
-			createdAt: MoreThan(request.cutoffAt),
+			id: Not(In(request.generation.jobIds)),
 		};
 		return await this.managerFor(ctx).existsBy(AgentBackgroundJob, [
 			{ ...scope, sourceExecutionId: IsNull() },
-			{ ...scope, sourceExecution: { createdAt: MoreThan(request.cutoffAt) } },
+			{ ...scope, sourceExecutionId: Not(In(request.generation.executionIds)) },
 		]);
 	}
 
@@ -261,11 +265,6 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 			return true;
 		return await this.managerFor(ctx).existsBy(AgentExecution, [
 			{ threadId: request.threadId, id: In(request.generation.executionIds), status: 'running' },
-			{
-				threadId: request.threadId,
-				status: 'running',
-				createdAt: LessThanOrEqual(request.cutoffAt),
-			},
 			{ threadId: In(threads), status: 'running' },
 		]);
 	}

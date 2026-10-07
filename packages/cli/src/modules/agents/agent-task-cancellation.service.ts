@@ -90,7 +90,7 @@ export class AgentTaskCancellationService {
 				reportStatus: 'pending',
 				report: '',
 			});
-			await this.repository.saveRequest(request, ctx);
+			await this.repository.insertRequest(request, ctx);
 			await this.queue.holdPending(threadId, ctx);
 		});
 		this.updates.notifyQueueUpdated(threadId);
@@ -112,8 +112,7 @@ export class AgentTaskCancellationService {
 				const execution = await this.executions.findLatestByThreadId(threadId);
 				if (
 					execution &&
-					(request.generation.executionIds.includes(execution.id) ||
-						execution.createdAt <= request.cutoffAt) &&
+					request.generation.executionIds.includes(execution.id) &&
 					(execution.status === 'running' || execution.hitlStatus === 'suspended')
 				) {
 					try {
@@ -200,6 +199,17 @@ export class AgentTaskCancellationService {
 							settledJobs.map((job) => job.id),
 							ctx,
 						);
+						current.generation.jobIds = [
+							...new Set([...current.generation.jobIds, ...settledJobs.map((job) => job.id)]),
+						];
+						current.generation.threadIds = [
+							...new Set([
+								...current.generation.threadIds,
+								...(await this.repository.targetedDescendants(current, ctx)).map(
+									(child) => child.id,
+								),
+							]),
+						];
 						current.status = 'stopped';
 						current.settledAt = new Date();
 						current.report = `${completed} ${plan ? 'plan tasks' : 'background jobs'} completed. ${cancelled} ${plan ? 'plan tasks' : 'background jobs'} canceled. ${settledJobs.filter((job) => job.status === 'completed').length} background jobs have saved completed results. All background work in this chat has stopped. Queued messages remain held until you send them.`;

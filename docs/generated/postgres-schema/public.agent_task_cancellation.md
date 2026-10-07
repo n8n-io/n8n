@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| cutoffAt | timestamp(3) with time zone |  | false |  |  | Work accepted at or before this time cannot restart |
+| cutoffAt | timestamp(3) with time zone |  | false |  |  | Time when this cancellation was requested |
 | failures | json |  | false |  |  | Jobs that still require a confirmed stop |
 | generation | json |  | false |  |  | Captured execution, job, and child session IDs for this cancellation |
 | id | uuid |  | false |  |  |  |

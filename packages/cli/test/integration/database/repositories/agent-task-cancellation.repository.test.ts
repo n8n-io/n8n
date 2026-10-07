@@ -94,6 +94,22 @@ describe('Task cancellation persistence', () => {
 		return await queue.enqueue(thread.id, input.id, { kind: 'preview' }, {});
 	}
 
+	it('keeps the original request when a different session reuses its ID', async () => {
+		const original = await request();
+		const other = await db.getRepository(AgentExecutionThread).save({
+			id: randomUUID(),
+			agentId,
+			agentName: 'Other chat',
+			projectId,
+			sessionNumber: 2,
+		});
+		await expect(
+			repository.insertRequest({ ...original, threadId: other.id }, {}),
+		).rejects.toThrow();
+		expect((await repository.findRequest(thread.id, original.id))?.threadId).toBe(thread.id);
+		expect(await repository.latest(other.id)).toBeNull();
+	});
+
 	it('keeps holds across fresh reads and releases only the selected message', async () => {
 		const first = await enqueue('First');
 		const second = await enqueue('Second');
@@ -134,6 +150,33 @@ describe('Task cancellation persistence', () => {
 		});
 		await request('stopped');
 		expect(await repository.isCancelled(thread.id, execution.id)).toBe(true);
+	});
+
+	it('permits work admitted after cancellation even when its timestamp is earlier', async () => {
+		const cancellation = await request('stopped');
+		const execution = await db.getRepository(AgentExecution).save({
+			id: randomUUID(),
+			threadId: thread.id,
+			status: 'running',
+			createdAt: beforeStop,
+		});
+		expect(await repository.isCancelled(thread.id, execution.id)).toBe(false);
+		const job = await db.getRepository(AgentBackgroundJob).save({
+			id: randomUUID(),
+			parentThreadId: thread.id,
+			parentAgentId: agentId,
+			parentResourceId: 'draft-chat:test',
+			parentPrincipalHash: 'principal',
+			title: 'New work',
+			kind: 'subagent',
+			status: 'running',
+			sourceExecutionId: execution.id,
+			createdAt: beforeStop,
+		});
+		expect(await repository.hasNewWork(cancellation, {})).toBe(true);
+		expect((await repository.targetedJobs(cancellation)).map((item) => item.id)).not.toContain(
+			job.id,
+		);
 	});
 
 	it('blocks a child admitted before cancellation even if its thread starts later', async () => {
