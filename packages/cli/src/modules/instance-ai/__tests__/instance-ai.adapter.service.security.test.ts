@@ -36,6 +36,7 @@ import {
 import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { LessThan } from '@n8n/typeorm';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	CredentialsEntity,
@@ -411,10 +412,27 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		executionRepository.find.mockResolvedValue([{ id: 'exec-1' }, { id: 'exec-2' }] as never);
 		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
 
-		const ctx = service.createContext(user);
-		const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
+		const now = new Date('2026-10-07T12:00:00.000Z');
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(now);
 
-		expect(result.deletedCount).toBe(2);
+		try {
+			const ctx = service.createContext(user);
+			const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
+
+			expect(result.deletedCount).toBe(2);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(executionRepository.find).toHaveBeenCalledWith({
+			select: ['id'],
+			where: {
+				workflowId: 'wf-1',
+				mode: 'manual',
+				startedAt: LessThan(new Date(now.getTime() - 60 * 60 * 1000)),
+			},
+		});
 		expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith({
 			filters: undefined,
 			accessibleWorkflowIds: ['wf-1'],
