@@ -129,6 +129,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 					'n8n_scheduler_jobs_revived_total',
 					'n8n_scheduler_tasks_lease_lost_total',
 					'n8n_scheduler_lease_renewals_total',
+					'n8n_scheduler_task_timeouts_total',
 				]),
 			);
 
@@ -349,6 +350,13 @@ describe('PrometheusSchedulerMetricsService', () => {
 			expect(inc).toHaveBeenCalledWith({ task_type: 'system-task', result: 'lost' }, 1);
 			expect(inc).toHaveBeenCalledTimes(2);
 		});
+
+		it('increments the task-timeout counter by task type', () => {
+			service.recordTaskTimeout('workflow:poll-trigger');
+
+			const inc = counterIncFor('n8n_scheduler_task_timeouts_total');
+			expect(inc).toHaveBeenCalledExactlyOnceWith({ task_type: 'workflow:poll-trigger' }, 1);
+		});
 	});
 
 	describe('push metrics before init', () => {
@@ -369,6 +377,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 			service.recordReconciled(1, 1, 1);
 			service.recordLeaseLost('workflow');
 			service.recordLeaseRenewal('workflow', 'renewed');
+			service.recordTaskTimeout('workflow');
 
 			expect(sharedCounterInc).not.toHaveBeenCalled();
 			expect(mockHistogramObserve).not.toHaveBeenCalled();

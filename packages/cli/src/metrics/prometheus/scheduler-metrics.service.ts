@@ -44,6 +44,7 @@ export class PrometheusSchedulerMetricsService
 	private jobsRevived!: promClient.Counter;
 	private tasksLeaseLost!: promClient.Counter<'task_type'>;
 	private leaseRenewals!: promClient.Counter<'task_type' | 'result'>;
+	private taskTimeouts!: promClient.Counter<'task_type'>;
 	private dispatchLagSeconds!: promClient.Histogram<'task_type'>;
 
 	constructor(
@@ -150,6 +151,12 @@ export class PrometheusSchedulerMetricsService
 			name: `${prefix}scheduler_lease_renewals_total`,
 			help: 'Total number of lease renewals of running scheduler tasks by task type and result: renewed, lost when a renewal found the claim gone, or expired when no renewal succeeded for a whole lease.',
 			labelNames: ['task_type', 'result'],
+		});
+
+		this.taskTimeouts = new promClient.Counter({
+			name: `${prefix}scheduler_task_timeouts_total`,
+			help: 'Total number of scheduler task runs stopped because they reached their timeout, by task type.',
+			labelNames: ['task_type'],
 		});
 
 		this.dispatchLagSeconds = new promClient.Histogram({
@@ -266,6 +273,12 @@ export class PrometheusSchedulerMetricsService
 	recordLeaseRenewal(taskType: string, result: 'renewed' | 'lost' | 'expired') {
 		if (this.initialized) {
 			this.leaseRenewals.inc({ task_type: taskType, result }, 1);
+		}
+	}
+
+	recordTaskTimeout(taskType: string) {
+		if (this.initialized) {
+			this.taskTimeouts.inc({ task_type: taskType }, 1);
 		}
 	}
 
