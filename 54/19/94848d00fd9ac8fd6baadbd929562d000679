@@ -1,0 +1,15 @@
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  ai_agent 26-29
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  ai_agent 24-27
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  ai_agent 22-25
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  ai_agent 30-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "541994848d00fd9ac8fd6baadbd929562d000679",
+  "prompts": {}
+}
