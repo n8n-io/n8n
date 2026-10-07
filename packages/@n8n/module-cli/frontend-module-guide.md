@@ -62,7 +62,7 @@ The command prints this output:
  │    pnpm turbo lint --filter=@n8n/frontend-module-my-feature       │
  │    pnpm turbo test --filter=@n8n/frontend-module-my-feature       │
  │                                                                   │
- │    Frontend guide: packages/@n8n/module-cli/frontend-module-guide.md │
+ │    Frontend: packages/@n8n/module-cli/frontend-module-guide.md    │
  │                                                                   │
  ╰───────────────────────────────────────────────────────────────────╯
 ```

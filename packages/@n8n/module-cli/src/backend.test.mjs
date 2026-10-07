@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -20,11 +20,11 @@ const makeFixture = () => {
 	return root;
 };
 
-const scaffold = (root) =>
+const scaffold = (root, name = NAME) =>
 	createBackend({
-		name: NAME,
-		packageDir: join(root, 'packages', 'modules', NAME, 'backend'),
-		substitutions: substitutionsFor(NAME),
+		name,
+		packageDir: join(root, 'packages', 'modules', name, 'backend'),
+		substitutions: substitutionsFor(name),
 		root,
 	});
 
@@ -114,5 +114,16 @@ describe('createBackend', () => {
 		expect(at).toBeGreaterThan(0);
 		expect(dependencies[at - 1] < PACKAGE).toBe(true);
 		expect(dependencies[at + 1] > PACKAGE).toBe(true);
+	});
+
+	it('rejects an id that belongs to a registered backend module', () => {
+		const before = readRegistrations(root);
+		const packageDir = join(root, 'packages', 'modules', 'agents', 'backend');
+
+		expect(() => scaffold(root, 'agents')).toThrow(
+			'The backend module id "agents" is already registered. Use another module id.',
+		);
+		expect(existsSync(packageDir)).toBe(false);
+		expect(readRegistrations(root)).toEqual(before);
 	});
 });

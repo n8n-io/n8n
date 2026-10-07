@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { editLines, lineIndex, repoRoot, writeTemplates } from './scaffold.mjs';
+import { editLines, lineIndex, repoRoot, ScaffoldError, writeTemplates } from './scaffold.mjs';
 
 const TEMPLATE_DIR = fileURLToPath(new URL('templates/backend', import.meta.url));
 
@@ -37,6 +38,16 @@ const files = (name) => [
 export const createBackend = ({ name, packageDir, substitutions, root = repoRoot }) => {
 	const packageName = `@n8n/backend-module-${name}`;
 	const target = backendRegistrationFiles(root);
+	const moduleNames = readFileSync(target.moduleNames, 'utf8');
+	const manifest = readFileSync(target.manifest, 'utf8');
+	const isKnownModule = moduleNames.split('\n').some((line) => line.trim() === `'${name}',`);
+	const isRegisteredPackage = manifest.includes(`'${packageName}/module'`);
+
+	if (isKnownModule && !isRegisteredPackage) {
+		throw new ScaffoldError(
+			`The backend module id "${name}" is already registered. Use another module id.`,
+		);
+	}
 
 	writeTemplates(TEMPLATE_DIR, packageDir, files(name), substitutions);
 

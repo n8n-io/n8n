@@ -100,7 +100,7 @@ const scaffold = async (args) => {
 				`  pnpm turbo test --filter=${packageName}`,
 			]),
 			...(wants('frontend')
-				? ['', '  Frontend guide: packages/@n8n/module-cli/frontend-module-guide.md']
+				? ['', '  Frontend: packages/@n8n/module-cli/frontend-module-guide.md']
 				: []),
 			...(wants('backend')
 				? ['', '  Backend guide: scripts/backend-module/backend-module-guide.md']
