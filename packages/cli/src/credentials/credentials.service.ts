@@ -2048,11 +2048,17 @@ export class CredentialsService {
 	}
 
 	async createStubCredential(
-		opts: { id?: string; name: string; type: string; projectId: string; data?: ICredentialDataDecryptedObject },
+		opts: {
+			id?: string;
+			name: string;
+			type: string;
+			projectId: string;
+			data?: ICredentialDataDecryptedObject;
+		},
 		user: User,
 	): Promise<CredentialsEntity> {
 		const data = opts.data ?? {};
-		await validateExternalSecretsPermissions({ user, projectId: opts.projectId, dataToSave: data });
+		await this.validateStubCredentialData(data, user, opts.projectId);
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
 			name: opts.name,
@@ -2084,11 +2090,22 @@ export class CredentialsService {
 		}
 	}
 
-	/**
-	 * Used to check credential data for creating a new credential.
-	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
-	 * (likely only affects the validateExternalSecretsPermissions call)
-	 */
+	async validateStubCredentialData(
+		data: ICredentialDataDecryptedObject,
+		user: User,
+		projectId: string,
+	): Promise<void> {
+		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
+		if (this.externalSecretsConfig.externalSecretsForProjects) {
+			await validateAccessToReferencedSecretProviders(
+				projectId,
+				data,
+				this.externalSecretsProviderAccessCheckService,
+				'create',
+			);
+		}
+	}
+
 	async checkCredentialData(
 		type: string,
 		data: ICredentialDataDecryptedObject,

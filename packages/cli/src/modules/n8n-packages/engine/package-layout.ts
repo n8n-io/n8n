@@ -55,11 +55,15 @@ export function placeCredentialData({
 }): PlacedCredentialRequirement[] | undefined {
 	return requirements?.map((requirement) => {
 		const bundle = (manifestCredentials ?? []).find((entry) => entry.id === requirement.id);
-		const packageData = bundle ? bundledCredentials?.get(bundle.target)?.data : undefined;
+		const credential = bundle ? bundledCredentials?.get(bundle.target) : undefined;
+		const packageData = credential?.data;
 
 		return {
 			...requirement,
 			...(packageData !== undefined ? { packageData } : {}),
+			...(credential?.dataIsComplete !== undefined
+				? { packageDataIsComplete: credential.dataIsComplete }
+				: {}),
 		};
 	});
 }

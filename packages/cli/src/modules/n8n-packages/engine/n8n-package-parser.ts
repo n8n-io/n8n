@@ -126,11 +126,15 @@ export class N8nPackageParser {
 	}
 
 	/** Bundled credential files, keyed by manifest target. */
-	async getCredentials(reader: PackageReader): Promise<Map<string, SerializedCredential>> {
+	async getCredentials(
+		reader: PackageReader,
+		sourceIds: ReadonlySet<string>,
+	): Promise<Map<string, SerializedCredential>> {
 		const manifest = await this.getManifest(reader);
 		const credentials = new Map<string, SerializedCredential>();
 
 		for (const entry of manifest.credentials ?? []) {
+			if (!sourceIds.has(entry.id)) continue;
 			credentials.set(entry.target, await this.readCredential(reader, entry));
 		}
 

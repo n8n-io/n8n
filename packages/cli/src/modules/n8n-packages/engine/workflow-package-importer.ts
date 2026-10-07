@@ -9,6 +9,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
@@ -78,18 +79,8 @@ export class WorkflowPackageImporter {
 			manifest.requirements?.credentials,
 			workflows,
 		);
-		const bundledCredentials = needsBundledCredentialData(
-			request,
-			(credentialRequirements?.length ?? 0) > 0,
-		)
-			? await this.packageParser.getCredentials(reader)
-			: undefined;
 		const credentialRequest: CredentialBindingRequest = {
-			requirements: placeCredentialData({
-				requirements: credentialRequirements,
-				manifestCredentials: manifest.credentials,
-				bundledCredentials,
-			}),
+			requirements: credentialRequirements,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
@@ -145,6 +136,17 @@ export class WorkflowPackageImporter {
 			options: request,
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		});
+
+		const missingCredentialIds = new Set(
+			plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
+		);
+		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
+			credentialRequest.requirements = placeCredentialData({
+				requirements: credentialRequirements,
+				manifestCredentials: manifest.credentials,
+				bundledCredentials: await this.packageParser.getCredentials(reader, missingCredentialIds),
+			});
+		}
 
 		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
 		assertArchiveTransitionsAllowed(request.apiKeyScopes, [plan.workflowPlan]);

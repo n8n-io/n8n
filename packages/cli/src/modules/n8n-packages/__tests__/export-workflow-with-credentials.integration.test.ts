@@ -125,7 +125,8 @@ describe('workflow package export — with credentials', () => {
 			(e) => e.name === `${manifest.credentials![0].target}/credential.json`,
 		);
 		const parsed = jsonParse<Record<string, unknown>>(credentialFile!.content.toString());
-		expect(Object.keys(parsed).sort()).toEqual(['data', 'id', 'name', 'type']);
+		expect(Object.keys(parsed).sort()).toEqual(['data', 'dataIsComplete', 'id', 'name', 'type']);
+		expect(parsed.dataIsComplete).toBe(false);
 		expect(parsed.data).toEqual({ value: '={{ $secrets.api.key }}' });
 
 		// The literal field value must not appear anywhere in the archive.

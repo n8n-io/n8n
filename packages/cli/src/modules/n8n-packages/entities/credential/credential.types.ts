@@ -10,6 +10,7 @@ import type { SerializedCredentialData } from '../../spec/serialized/credential.
 /** A requirement enriched with the expression data the package bundles for it, when any. */
 export type PlacedCredentialRequirement = PackageCredentialRequirement & {
 	packageData?: SerializedCredentialData;
+	packageDataIsComplete?: boolean;
 };
 
 export interface CredentialReference {

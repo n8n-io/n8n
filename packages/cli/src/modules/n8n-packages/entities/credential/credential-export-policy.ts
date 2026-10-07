@@ -16,8 +16,9 @@ function isExpressionOnly(value: unknown): boolean {
 	if (typeof value === 'string') return containsExpression(value);
 	if (Array.isArray(value)) return value.length > 0 && value.every(isExpressionOnly);
 	if (isObject(value)) {
-		if (Object.keys(value).some((key) => NEVER_EXPORTED_KEYS.has(key))) return false;
-		const values = Object.values(value);
+		const values = Object.entries(value)
+			.filter(([key]) => !NEVER_EXPORTED_KEYS.has(key))
+			.map(([, entry]) => entry);
 		return values.length > 0 && values.every(isExpressionOnly);
 	}
 	return false;

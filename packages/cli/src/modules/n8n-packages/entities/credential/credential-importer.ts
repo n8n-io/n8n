@@ -55,6 +55,26 @@ export class CredentialImporter {
 		return credentialBlockingFailures(request.missingMode, resolution);
 	}
 
+	async assertCanCreate(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+		resolution: CredentialResolution,
+	): Promise<void> {
+		if (!credentialMissingModeUsesPackageData(request.missingMode)) return;
+
+		const packageData = packageDataBySourceId(request.requirements);
+		for (const { sourceId } of credentialsToStub(request.missingMode, resolution)) {
+			const data = packageData.get(sourceId);
+			if (data !== undefined) {
+				await this.credentialsService.validateStubCredentialData(
+					data,
+					context.user,
+					context.projectId,
+				);
+			}
+		}
+	}
+
 	async apply(
 		context: ImportContext,
 		request: CredentialBindingRequest,

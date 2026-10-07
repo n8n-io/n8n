@@ -17,6 +17,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 	CredentialsRepository,
+	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
@@ -141,6 +142,7 @@ beforeEach(async () => {
 		'Project',
 		'CredentialsEntity',
 		'SharedCredentials',
+		'SecretsProviderConnection',
 	]);
 });
 
@@ -2377,6 +2379,14 @@ describe('credential-missing-mode: create-stub', () => {
 
 describe('credential-missing-mode: create-with-values', () => {
 	const sourceId = 'create-with-values-test';
+	beforeEach(async () => {
+		await Container.get(SecretsProviderConnectionRepository).save({
+			providerKey: 'github',
+			type: 'dummy',
+			encryptedSettings: '{}',
+		});
+	});
+
 	const scheduleTriggerNodes = () => [
 		{
 			id: 'schedule-trigger',
@@ -2484,13 +2494,13 @@ describe('credential-missing-mode: create-with-values', () => {
 					serializedWorkflow({
 						id: 'wf-seeded',
 						name: 'Seeded',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: [...scheduleTriggerNodes(), credentialNode('seeded-cred', 'Seeded GitHub')],
 					}),
 					serializedWorkflow({
 						id: 'wf-stubbed',
 						name: 'Stubbed',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: [
 							...scheduleTriggerNodes(),
 							{ ...credentialNode('bare-cred', 'Bare GitHub'), id: 'http-node-2' },
@@ -2505,6 +2515,7 @@ describe('credential-missing-mode: create-with-values', () => {
 							name: 'Seeded GitHub',
 							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
 							data: { accessToken: '={{ $secrets.github.token }}' },
+							dataIsComplete: true,
 						},
 					],
 				},

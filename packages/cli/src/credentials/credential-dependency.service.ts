@@ -41,7 +41,7 @@ export class CredentialDependencyService {
 
 	async resolveProviderIdsFromCredentialData(
 		decryptedCredentialData: ICredentialDataDecryptedObject,
-		entityManager: EntityManager,
+		entityManager?: EntityManager,
 	): Promise<string[]> {
 		const providerKeys = [...extractProviderKeysFromCredentialData(decryptedCredentialData)];
 		return await this.secretsProviderConnectionRepository.findIdsByProviderKeys(
