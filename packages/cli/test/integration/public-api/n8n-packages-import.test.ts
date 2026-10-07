@@ -26,10 +26,7 @@ mockInstance(Telemetry);
 const credentialTypesMock = mockInstance(CredentialTypes);
 credentialTypesMock.recognizes.mockReturnValue(true);
 
-const testServer = utils.setupTestServer({
-	endpointGroups: ['publicApi'],
-	modules: ['data-table'],
-});
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 let owner: User;
 let ownerPersonalProject: Project;
