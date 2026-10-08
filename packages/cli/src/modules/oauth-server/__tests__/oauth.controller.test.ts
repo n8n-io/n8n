@@ -9,6 +9,7 @@ import type {
 } from '@/services/protected-resource.registry';
 import type { UrlService } from '@n8n/backend-services';
 
+import type { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthServerService } from '../oauth-server.service';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 
@@ -27,6 +28,7 @@ beforeAll(async () => {
 
 const urlService = mock<UrlService>();
 const registry = mock<ProtectedResourceRegistry>();
+const localServer = mock<OAuthServerLocalAuthorizationServer>();
 let controller: OAuthControllerClass;
 
 const makeRes = () => {
@@ -54,10 +56,23 @@ const resource = (scopes: string[], isAvailable?: () => Promise<boolean>): Prote
 beforeEach(() => {
 	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
-	controller = new OAuthController(urlService, registry);
+	controller = new OAuthController(urlService, registry, localServer);
 });
 
 describe('OAuthController', () => {
+	describe('metadata', () => {
+		test("returns the local authorization server's document with CORS headers", async () => {
+			const document = { issuer: 'https://n8n.test', jwks_uri: 'https://n8n.test/jwks' };
+			localServer.getMetadata.mockResolvedValue(document);
+			const res = makeRes();
+
+			await controller.metadata(makeReq([]), res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.json).toHaveBeenCalledWith(document);
+		});
+	});
+
 	describe('protectedResourceMetadata', () => {
 		test('resolves the registry with the reconstructed leading-slash path', async () => {
 			registry.getByResourcePath.mockResolvedValue(resource(['tool:listWorkflows']));
