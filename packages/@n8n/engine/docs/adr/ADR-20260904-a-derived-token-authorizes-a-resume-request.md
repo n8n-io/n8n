@@ -167,16 +167,9 @@ sequenceDiagram
   reasons. A separate data-plane process does not hold the encryption key of the control plane. The
   control plane could also build a URL. This option would need no new configuration where both
   planes run in one process.
-- **Accept one resume secret only.** We rejected it because a rotation would need a restart of every
-  process at the same moment, and each outstanding resume URL would stop working. This option would
-  need a simpler configuration.
-- **Sign the token with the shared secret of the two planes.** We rejected it for two reasons. The
-  control plane holds that secret, so the control plane could build a URL. A rotation of it would
-  also invalidate every outstanding resume URL. This option would need no new secret.
-- **Sign with an asymmetric key.** We did not select it because the data plane is the only party
-  that signs and verifies a token, and an asymmetric signature does not fit in the 64 bytes of an
-  approval callback. This option would let other parties verify a token without being able to sign
-  one.
+- **Sign the token with the shared secret of the two planes.** We rejected it because the control
+  plane holds that secret, so the control plane could build a URL. This option would need no new
+  secret.
 
 ## Consequences
 
