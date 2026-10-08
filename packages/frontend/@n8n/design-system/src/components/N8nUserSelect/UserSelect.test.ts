@@ -442,4 +442,28 @@ describe('UserSelect', () => {
 
 		await waitFor(() => expect(getByRole('combobox')).toHaveValue('eve@example.com'));
 	});
+
+	it('should show the avatar of the selected user when showAvatar is set', async () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', showAvatar: true },
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
+	});
+
+	it('should not show an avatar by default', () => {
+		const { queryByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+	});
+
+	it('should mark the select as borderless when borderless is set', () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, borderless: true },
+		});
+
+		expect(getByTestId('user-select-trigger')).toHaveClass('borderless');
+	});
 });

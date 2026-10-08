@@ -588,9 +588,10 @@ const sortedWorkflows = computed(() => {
 				<N8nUserSelect
 					v-if="canAssignOwner"
 					size="small"
-					:class="$style.ownerSelect"
 					:users="ownerOptionsFor(item)"
 					hide-email-in-label
+					show-avatar
+					borderless
 					:model-value="item.owner?.id ?? ''"
 					:placeholder="i18n.baseText('settings.migrationReport.detail.table.unassigned')"
 					remote
@@ -600,15 +601,7 @@ const sortedWorkflows = computed(() => {
 					data-test-id="migration-owner-select"
 					@focus="onOwnerPickerFocus(item)"
 					@update:model-value="(userId: string) => onOwnerChange(item, userId)"
-				>
-					<template #prefix>
-						<N8nAvatar
-							size="xsmall"
-							:first-name="item.owner?.firstName"
-							:last-name="item.owner?.lastName"
-						/>
-					</template>
-				</N8nUserSelect>
+				/>
 				<div v-else :class="$style.ownerLabel">
 					<N8nAvatar
 						size="xsmall"
@@ -683,21 +676,6 @@ const sortedWorkflows = computed(() => {
 }
 
 /* A borderless picker, so the owner reads as a value and not as a form field. */
-.ownerSelect {
-	width: 100%;
-}
-
-/* The select reserves room for an icon. The avatar is wider, so the text starts after it. */
-.ownerSelect :global(.el-select .el-input--prefix .el-input__inner) {
-	padding-left: calc(var(--spacing--2xs) * 2 + var(--spacing--md));
-}
-
-/* The picker shows its border only on hover and focus, so the owner reads as a value. */
-.ownerSelect:not(:hover, :focus-within) :global(.el-input__inner) {
-	border-color: transparent;
-	background-color: transparent;
-}
-
 .ownerLabel {
 	display: flex;
 	align-items: center;
