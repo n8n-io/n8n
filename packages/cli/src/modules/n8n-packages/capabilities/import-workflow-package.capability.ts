@@ -1,6 +1,7 @@
 import { base64EncodedSize } from '@n8n/api-types';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
 import { WorkflowAccessError } from '@/modules/mcp/mcp.errors';
@@ -14,7 +15,7 @@ import { IMPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME } from '@/services/capabilities
 
 import { type PackageSizeLimit, packageSizeLimitMessage } from './base64-limits';
 import { instanceMcpPackageSizeLimit } from './mcp-package-size-limit';
-import { packageToolError } from './package-tool-error';
+import { classifyMcpWorkflowAccessFailure, packageToolError } from './package-tool-error';
 import { describeImport } from './package-tool-text';
 import { importWorkflowPackage, type WorkflowPackageImportRules } from './workflow-package-import';
 
@@ -47,6 +48,11 @@ const outputSchema = {
 	created: z
 		.boolean()
 		.describe('True for a new workflow, false when the import updated an earlier import'),
+	published: z
+		.boolean()
+		.describe(
+			'True when a version of the workflow is live after the import. The warnings say when the live version is not the imported one.',
+		),
 	credentialsNeedingSetup: z
 		.array(z.object({ name: z.string(), type: z.string(), id: z.string() }))
 		.describe(
@@ -59,7 +65,9 @@ const outputSchema = {
 		),
 	warnings: z
 		.array(z.string())
-		.describe('What the import did not copy, for example tags and data tables, and what to do'),
+		.describe(
+			'What the import did not copy or changed, for example tags, data tables, variables, matched credentials, the error workflow and the live version, and what to do',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -78,29 +86,44 @@ function assertUpdatableOverMcp(workflow: WorkflowEntity): void {
 	}
 }
 
+const NOT_AVAILABLE_IN_MCP =
+	'The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.';
+
 /**
  * A workflow that an MCP client creates is available in MCP, as with create_workflow_from_code,
  * so that the client can update or publish it later. Gives a warning when that fails.
  */
 async function keepAvailableInMcp(user: User, workflowId: string): Promise<string[]> {
 	const mcpSettings = Container.get(McpSettingsService);
-	const { changedWorkflows, updatedCount, unchangedCount } =
-		await mcpSettings.bulkSetAvailableInMCP(user, {
-			workflowIds: [workflowId],
-			availableInMCP: true,
-		});
-	void mcpSettings.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
-	if (updatedCount + unchangedCount > 0) return [];
-	return [
-		'The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
-	];
+	try {
+		const { changedWorkflows, updatedCount, unchangedCount } =
+			await mcpSettings.bulkSetAvailableInMCP(user, {
+				workflowIds: [workflowId],
+				availableInMCP: true,
+			});
+		void mcpSettings.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
+		return updatedCount + unchangedCount > 0 ? [] : [NOT_AVAILABLE_IN_MCP];
+	} catch (error) {
+		return [`Could not turn on MCP access: ${ensureError(error).message}. ${NOT_AVAILABLE_IN_MCP}`];
+	}
 }
 
 /** The rules of the MCP surface for the workflow that an import writes. */
 export const MCP_IMPORT_RULES: WorkflowPackageImportRules = {
 	assertUpdatable: assertUpdatableOverMcp,
 	afterImport: keepAvailableInMcp,
+	classifyFailure: classifyMcpWorkflowAccessFailure,
 };
+
+const IMPORT_DESCRIPTION = [
+	'Import a workflow package from export_workflow_package into a project.',
+	'Importing the same package again updates the workflow instead of making a copy, but only while that workflow is available in MCP and not archived.',
+	'Credentials that this instance does not have become empty credentials to set up. The import uses an existing credential with the same name and type, and names it in warnings.',
+	'The import does not create tags, data tables or variables: it lists them in warnings.',
+	'A new workflow stays unpublished and is available in MCP.',
+	'When the workflow is published, a re-import publishes the new version only if the source publishes it. Otherwise an earlier version stays live. The warnings say which version is live.',
+	'A re-import keeps the error workflow of the copy. A new copy keeps the error workflow of the package only if you can use that workflow here.',
+].join(' ');
 
 function importWorkflowPackageTool(
 	user: User,
@@ -109,8 +132,7 @@ function importWorkflowPackageTool(
 	return {
 		name: IMPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME,
 		config: {
-			description:
-				'Import a workflow package from export_workflow_package into a project. Importing the same package again updates the workflow instead of making a copy, but only while that workflow is available in MCP and not archived. Credentials that this instance does not have become empty credentials to set up. The import does not create tags or data tables: it lists them in warnings. A new workflow stays unpublished and is available in MCP.',
+			description: IMPORT_DESCRIPTION,
 			inputSchema: buildInputSchema(limit),
 			outputSchema,
 			annotations: {

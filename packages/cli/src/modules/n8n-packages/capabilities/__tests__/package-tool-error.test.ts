@@ -12,7 +12,7 @@ import {
 import { WorkflowAccessError } from '@/modules/mcp/mcp.errors';
 
 import { PackageExportBlockedError } from '../../entities/package-export.errors';
-import { classifyWorkflowPackageFailure, packageToolError } from '../package-tool-error';
+import { classifyMcpWorkflowAccessFailure, packageToolError } from '../package-tool-error';
 
 const issue = {
 	type: 'credential-unresolved',
@@ -111,24 +111,23 @@ describe('packageToolError', () => {
 	});
 });
 
-describe('classifyWorkflowPackageFailure', () => {
+describe('classifyMcpWorkflowAccessFailure', () => {
 	it.each([
 		['not_available_in_mcp', 'access-denied'],
 		['workflow_archived', 'blocked'],
 		['no_permission', 'entity-not-found'],
 		['workflow_does_not_exist', 'entity-not-found'],
 	] as const)('gives the reason of a workflow access error "%s" as %s', (reason, expected) => {
-		expect(classifyWorkflowPackageFailure(new WorkflowAccessError('No access', reason))).toBe(
+		expect(classifyMcpWorkflowAccessFailure(new WorkflowAccessError('No access', reason))).toBe(
 			expected,
 		);
 	});
 
 	it.each([
-		[new ForbiddenError('No access'), 'access-denied'],
-		[new ConflictError('Lineage conflict'), 'blocked'],
-		[new BadRequestError('Not base64'), 'validation'],
-		[new PackageExportBlockedError('Too large'), 'blocked'],
-	] as const)('classifies other errors as the package service does (%s)', (error, expected) => {
-		expect(classifyWorkflowPackageFailure(error)).toBe(expected);
+		['a forbidden error', new ForbiddenError('No access')],
+		['an export block', new PackageExportBlockedError('Too large')],
+		['a plain error', new Error('Something failed')],
+	])('leaves %s to the package classifier', (_case, error) => {
+		expect(classifyMcpWorkflowAccessFailure(error)).toBeUndefined();
 	});
 });

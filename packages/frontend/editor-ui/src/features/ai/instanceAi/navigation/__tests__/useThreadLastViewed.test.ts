@@ -143,13 +143,13 @@ describe('useThreadLastViewed', () => {
 		it('drops entries without a valid time and keeps the others', () => {
 			storage.set(
 				keyFor('user-1'),
-				JSON.stringify({ good: NOW, text: 'yesterday', empty: '', number: 5, nothing: null }),
+				JSON.stringify({ good: NOW, text: 'yesterday', empty: '', count: 5, nothing: null }),
 			);
 
 			const { lastViewedAt } = useThreadLastViewed();
 
 			expect(lastViewedAt('good')).toBe(NOW);
-			for (const id of ['text', 'empty', 'number', 'nothing']) {
+			for (const id of ['text', 'empty', 'count', 'nothing']) {
 				expect(lastViewedAt(id)).toBeUndefined();
 			}
 		});
@@ -209,7 +209,10 @@ describe('useThreadLastViewed', () => {
 	describe(`the limit of ${MAX_LAST_VIEWED_ENTRIES} entries`, () => {
 		const olderViews = (count: number) =>
 			Object.fromEntries(
-				Array.from({ length: count }, (_, index) => [`thread-${index}`, secondsAfterNow(-index - 1)]),
+				Array.from({ length: count }, (_, index) => [
+					`thread-${index}`,
+					secondsAfterNow(-index - 1),
+				]),
 			);
 
 		it('drops the oldest view when a new chat is marked', () => {

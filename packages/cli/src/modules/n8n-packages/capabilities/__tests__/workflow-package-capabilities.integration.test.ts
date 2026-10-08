@@ -149,6 +149,7 @@ describe('export_workflow_package and import_workflow_package', () => {
 		const first = imported(firstResult);
 
 		expect(first.created).toBe(true);
+		expect(first.published).toBe(false);
 		expect(first.workflowName).toBe('Daily report');
 		expect(first.workflowId).not.toBe(source.id);
 		expect(first.missingNodeTypes).toEqual([]);
@@ -212,8 +213,12 @@ describe('export_workflow_package and import_workflow_package', () => {
 		expect(first.created).toBe(true);
 		expect(first.workflowId).not.toBe(source.id);
 		expect(second).toEqual({ ...first, created: false });
-		// The original credential matches by name and type in the source project.
+		// The original credential matches by name and type in the source project, and the result
+		// names it, so that the user can check which secret the copy uses.
 		expect(first.credentialsNeedingSetup).toEqual([]);
+		expect(first.warnings).toEqual([
+			`The workflow now uses 1 credential(s) that this instance already had with the same name and type: Stripe API (httpHeaderAuth, ID ${credential.id}). Make sure that they are the right ones before the workflow runs.`,
+		]);
 		expect(await workflowCountIn(sourceProject)).toBe(2);
 	});
 
@@ -304,10 +309,16 @@ describe('export_workflow_package and import_workflow_package', () => {
 			await importTool(member, { packageBase64: pkg.packageBase64, projectId: targetProject.id }),
 		);
 
-		const warning = `The error workflow "Alert the team" (${errorWorkflow.id}) is not in the package. Choose an error workflow for the copy in its workflow settings.`;
+		const label = `"Alert the team" (${errorWorkflow.id})`;
+		const warning = `The package does not hold the error workflow ${label}. A new copy keeps the link only if the user who imports it can use that workflow there. Otherwise, choose an error workflow in the settings of the copy.`;
 		expect(pkg.warnings).toEqual([warning]);
 		expect(textOf(result)).toContain(warning);
 		expect(copy.created).toBe(true);
+		// The member cannot open the error workflow of the source project, so the copy has no link.
+		expect(copy.warnings).toEqual([
+			`The import removed the link to the error workflow ${label}, because it is not on this instance or you cannot open it. Choose an error workflow in the workflow settings.`,
+		]);
+		expect((await storedWorkflow(copy.workflowId)).settings?.errorWorkflow).toBeUndefined();
 		expect(await workflowCountIn(targetProject)).toBe(1);
 	});
 

@@ -48,6 +48,7 @@ export type ImportOutput = {
 	workflowId: string;
 	workflowName: string;
 	created: boolean;
+	published: boolean;
 	credentialsNeedingSetup: { name: string; type: string; id: string }[];
 	missingNodeTypes: string[];
 	warnings: string[];

@@ -7,7 +7,11 @@ import {
 } from '@n8n/api-types';
 import { isTriggerNodeType, STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 
-import { type AutomationNode, type AutomationTrigger, canStartAutomation } from './automation-trigger';
+import {
+	type AutomationNode,
+	type AutomationTrigger,
+	canStartAutomation,
+} from './automation-trigger';
 
 /** What the model asked the card to say. */
 export type ProposalRequest = { title: string; why: string[]; cron?: string };

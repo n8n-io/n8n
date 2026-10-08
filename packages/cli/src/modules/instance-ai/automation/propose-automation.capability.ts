@@ -70,7 +70,8 @@ const inputSchema = {
 
 type ProposeAutomationArgs = CapabilityArgs<typeof inputSchema>;
 
-const DESCRIPTION = [
+/** The sentences of the tool description that apply on every surface. */
+const SHARED_DESCRIPTION = [
 	'Offer to keep a workflow and turn it on, so that it runs on its own on this n8n instance.',
 	'Call it after you built and tested a workflow that the user wants to repeat (for example on a schedule, or each time a form, chat message, webhook or app event arrives), or when the user asks to automate a workflow.',
 	'Do not call it for a one-off job, or for a workflow that the user wants to run only by hand.',
@@ -84,7 +85,7 @@ const DESCRIPTION_OF_SURFACE: Record<CapabilitySurface, string> = {
 };
 
 const describeFor = (surface: CapabilitySurface) =>
-	[...DESCRIPTION, DESCRIPTION_OF_SURFACE[surface]].join(' ');
+	[...SHARED_DESCRIPTION, DESCRIPTION_OF_SURFACE[surface]].join(' ');
 
 const loadProposalService = async () => {
 	const { AutomationProposalService } = await lazyImport<typeof ProposalServiceModule>(

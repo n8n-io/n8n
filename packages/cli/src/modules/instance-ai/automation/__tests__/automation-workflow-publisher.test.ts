@@ -75,6 +75,23 @@ describe('AutomationWorkflowPublisher', () => {
 		expect(collaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
 	});
 
+	describe('assertEditable', () => {
+		it('passes when nobody edits the workflow, and changes nothing', async () => {
+			await expect(publisher.assertEditable('wf-1')).resolves.toBeUndefined();
+
+			expect(collaborationService.ensureWorkflowEditable).toHaveBeenCalledWith('wf-1');
+			expect(calls).toEqual(['check lock']);
+		});
+
+		it('fails while someone edits the workflow in the editor', async () => {
+			const locked = new LockedError('The workflow is open in the editor');
+			collaborationService.ensureWorkflowEditable.mockRejectedValue(locked);
+
+			await expect(publisher.assertEditable('wf-1')).rejects.toBe(locked);
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
 	it('reports a live workflow also when the editors cannot be told', async () => {
 		collaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
 

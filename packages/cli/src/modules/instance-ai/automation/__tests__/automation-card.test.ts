@@ -9,6 +9,7 @@ import {
 	isSavedVersionLive,
 	ownerProjectOf,
 	type ProposalWorkflow,
+	recommendationNodeTypes,
 	runningNodes,
 	sharedProjectsOf,
 } from '../automation-card';
@@ -71,6 +72,58 @@ describe('runningNodes', () => {
 		];
 
 		expect(runningNodes(nodes).map((node) => node.name)).toEqual(['B', 'A']);
+	});
+});
+
+describe('recommendationNodeTypes', () => {
+	const MANUAL = 'n8n-nodes-base.manualTrigger';
+	const MANUAL_CHAT = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+	const EVALUATION = 'n8n-nodes-base.evaluationTrigger';
+	const SUB_WORKFLOW = 'n8n-nodes-base.executeWorkflowTrigger';
+	const ERROR_TRIGGER = 'n8n-nodes-base.errorTrigger';
+	const LEGACY_START = 'n8n-nodes-base.start';
+	const READ_FILE = 'n8n-nodes-base.readWriteFile';
+	const LOCAL_FILE_TRIGGER = 'n8n-nodes-base.localFileTrigger';
+	const IMAP = 'n8n-nodes-base.emailReadImap';
+
+	it('keeps the triggers that start the workflow on their own and every other node', () => {
+		const nodes = [
+			{ name: 'Daily', type: SCHEDULE },
+			{ name: 'Watch', type: LOCAL_FILE_TRIGGER },
+			{ name: 'Mail', type: IMAP },
+			{ name: 'Read', type: READ_FILE },
+			{ name: 'Send', type: SLACK },
+		];
+
+		expect(recommendationNodeTypes(nodes)).toEqual([
+			SCHEDULE,
+			LOCAL_FILE_TRIGGER,
+			IMAP,
+			READ_FILE,
+			SLACK,
+		]);
+	});
+
+	it.each([MANUAL, MANUAL_CHAT, EVALUATION, SUB_WORKFLOW, ERROR_TRIGGER, LEGACY_START])(
+		'leaves out %s, which cannot start the workflow on its own',
+		(type) => {
+			expect(
+				recommendationNodeTypes([
+					{ name: 'Start', type },
+					{ name: 'Send', type: SLACK },
+				]),
+			).toEqual([SLACK]);
+		},
+	);
+
+	it('leaves out sticky notes and disabled nodes', () => {
+		const nodes = [
+			{ name: 'Note', type: STICKY },
+			{ name: 'Off', type: SCHEDULE, disabled: true },
+			{ name: 'Send', type: SLACK },
+		];
+
+		expect(recommendationNodeTypes(nodes)).toEqual([SLACK]);
 	});
 });
 

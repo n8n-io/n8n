@@ -26,8 +26,17 @@ import type { AutomationWorkflowPublisher } from '../automation-workflow-publish
 
 const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
 const MANUAL = 'n8n-nodes-base.manualTrigger';
+const MANUAL_CHAT = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+const EVALUATION = 'n8n-nodes-base.evaluationTrigger';
 const SLACK = 'n8n-nodes-base.slack';
 const READ_WRITE_FILE = 'n8n-nodes-base.readWriteFile';
+
+const scheduleWith = (rule: Record<string, unknown>) => ({
+	name: 'Every weekday',
+	type: SCHEDULE,
+	parameters: { rule: { interval: [rule] } },
+});
+const WEEKDAYS_AT_8 = scheduleWith({ field: 'cronExpression', expression: '0 8 * * 1-5' });
 
 const user = Object.assign(new User(), { id: 'user-1' });
 
@@ -36,7 +45,7 @@ const storedWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
 		id: 'wf 1',
 		name: 'Digest builder',
 		nodes: [
-			{ name: 'Every weekday', type: SCHEDULE, disabled: false },
+			{ ...WEEKDAYS_AT_8, disabled: false },
 			{ name: 'Send digest', type: SLACK },
 		],
 		versionId: 'v-2',
@@ -49,15 +58,30 @@ const storedWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
 
 const manualNodes = [{ name: 'Click', type: MANUAL }] as WorkflowEntity['nodes'];
 
+const scheduleNodes = (rule: Record<string, unknown>) =>
+	[scheduleWith(rule), { name: 'Send digest', type: SLACK }] as unknown as WorkflowEntity['nodes'];
+
 const cronRuleNodes = (expression: string) =>
-	[
-		{
-			name: 'Every weekday',
-			type: SCHEDULE,
-			parameters: { rule: { interval: [{ field: 'cronExpression', expression }] } },
+	scheduleNodes({ field: 'cronExpression', expression });
+
+/** Two rules, so no single cron says when the workflow runs. */
+const twoRuleNodes = [
+	{
+		name: 'Every weekday',
+		type: SCHEDULE,
+		parameters: {
+			rule: {
+				interval: [
+					{ field: 'days', triggerAtHour: 8 },
+					{ field: 'days', triggerAtHour: 17 },
+				],
+			},
 		},
-		{ name: 'Send digest', type: SLACK },
-	] as unknown as WorkflowEntity['nodes'];
+	},
+] as unknown as WorkflowEntity['nodes'];
+
+const differs = (given: string, used: string) =>
+	`Ignored the cron expression "${given}", because the schedule trigger uses the cron expression "${used}".`;
 
 const request = { workflowId: 'wf 1', title: 'Morning digest', why: ['Every weekday'] };
 
@@ -83,13 +107,26 @@ describe('AutomationProposalService', () => {
 	const assistant: CapabilityContext = { user, surface: 'assistant' };
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */
-	const grant = (workflow: WorkflowEntity | null, scopes: Scope[] = ALL_SCOPES) => {
+	const grant = (workflow: WorkflowEntity, scopes: Scope[] = ALL_SCOPES) => {
+		const allowed = (wanted: Scope[]) => wanted.every((scope) => scopes.includes(scope));
 		finder.findWorkflowForUser.mockImplementation(async (_id, _user, wanted) =>
-			wanted.every((scope) => scopes.includes(scope)) ? workflow : null,
+			allowed(wanted) ? workflow : null,
+		);
+		finder.findWorkflowHeadForUser.mockImplementation(async (_id, _user, wanted) =>
+			allowed(wanted)
+				? {
+						versionId: workflow.versionId,
+						activeVersionId: workflow.activeVersionId,
+						updatedAt: new Date(),
+					}
+				: null,
 		);
 	};
 
-	const scopesAsked = () => finder.findWorkflowForUser.mock.calls.map(([, , scopes]) => scopes);
+	/** The scopes of each full load of the workflow, with its nodes and sharings. */
+	const workflowLoads = () => finder.findWorkflowForUser.mock.calls.map(([, , scopes]) => scopes);
+	/** The scopes of each light check that reads only the head of the workflow. */
+	const scopeChecks = () => finder.findWorkflowHeadForUser.mock.calls.map(([, , scopes]) => scopes);
 
 	const nothingChanged = () =>
 		keeper.keep.mock.calls.length === 0 && publisher.activate.mock.calls.length === 0;
@@ -98,6 +135,7 @@ describe('AutomationProposalService', () => {
 		vi.resetAllMocks();
 		urlService.getInstanceBaseUrl.mockReturnValue('http://n8n.local');
 		keeper.keep.mockImplementation(async (_user, workflow) => workflow.versionId);
+		publisher.assertEditable.mockResolvedValue(undefined);
 		publisher.activate.mockResolvedValue(true);
 	});
 
@@ -126,7 +164,8 @@ describe('AutomationProposalService', () => {
 				canActivate: true,
 				offered: { target: ['local'], activate: [true, false] },
 			});
-			expect(scopesAsked()).toEqual([['workflow:update'], ['workflow:publish']]);
+			expect(workflowLoads()).toEqual([['workflow:update']]);
+			expect(scopeChecks()).toEqual([['workflow:publish']]);
 			expect(nothingChanged()).toBe(true);
 		});
 
@@ -138,10 +177,29 @@ describe('AutomationProposalService', () => {
 			expect(card.trigger).toEqual({ kind: 'schedule', cron: '0 7 * * *' });
 		});
 
-		it('leaves out a cron that is not valid', async () => {
-			grant(storedWorkflow());
+		it.each([
+			['every day at 8', { field: 'days', triggerAtHour: 8 }, '0 17 * * *', '0 8 * * *'],
+			['every minute', { field: 'minutes', minutesInterval: 1 }, '0 9 * * 1', '* * * * *'],
+			['every hour by default', { field: 'hours' }, undefined, '0 * * * *'],
+		])(
+			'shows the schedule of an interval rule (%s), not the cron of the model',
+			async (_label, rule, given, shown) => {
+				grant(storedWorkflow({ nodes: scheduleNodes(rule) }));
 
-			const { card } = await service.propose({ ...request, cron: 'daily' }, assistant);
+				const { card } = await service.propose({ ...request, cron: given }, assistant);
+
+				expect(card.trigger).toEqual({ kind: 'schedule', cron: shown });
+			},
+		);
+
+		it.each([
+			['two rules', twoRuleNodes],
+			['a rule that n8n runs with skips', scheduleNodes({ field: 'days', daysInterval: 2 })],
+			['the legacy cron node', [{ name: 'Old', type: 'n8n-nodes-base.cron' }]],
+		])('never shows the cron of the model for a trigger with %s', async (_label, nodes) => {
+			grant(storedWorkflow({ nodes: nodes as WorkflowEntity['nodes'] }));
+
+			const { card } = await service.propose({ ...request, cron: '0 8 * * 1-5' }, assistant);
 
 			expect(card.trigger).toEqual({ kind: 'schedule' });
 		});
@@ -191,8 +249,29 @@ describe('AutomationProposalService', () => {
 			expect(card.trigger).toEqual({ kind: 'manual' });
 			expect(card.canActivate).toBe(false);
 			expect(card.recommended.reasons).toEqual(['manual-only']);
-			expect(scopesAsked()).toEqual([['workflow:update']]);
+			expect(workflowLoads()).toEqual([['workflow:update']]);
+			expect(scopeChecks()).toEqual([]);
 		});
+
+		it.each([
+			['a manual chat trigger', MANUAL_CHAT],
+			['an evaluation trigger', EVALUATION],
+		])(
+			'does not call %s an always-on trigger, because it cannot start the workflow',
+			async (_label, type) => {
+				const nodes = [
+					{ name: 'Start', type },
+					{ name: 'Click', type: MANUAL },
+					{ name: 'Send', type: SLACK },
+				] as WorkflowEntity['nodes'];
+				grant(storedWorkflow({ nodes }));
+
+				const { card } = await service.propose(request, assistant);
+
+				expect(card.canActivate).toBe(false);
+				expect(card.recommended.reasons).toEqual(['manual-only']);
+			},
+		);
 
 		it('recommends this computer with the reason of a local-only node', async () => {
 			const nodes = [
@@ -243,7 +322,7 @@ describe('AutomationProposalService', () => {
 				const { card } = await service.propose(request, assistant);
 
 				expect(card.archived).toBe(true);
-				expect(scopesAsked()).toContainEqual(['workflow:delete']);
+				expect(scopeChecks()).toContainEqual(['workflow:delete']);
 			});
 
 			it('refuses when an admin blocked restoring workflows', async () => {
@@ -273,7 +352,7 @@ describe('AutomationProposalService', () => {
 
 				await service.propose(request, assistantWith({ deleteWorkflow: 'blocked' }));
 
-				expect(scopesAsked()).not.toContainEqual(['workflow:delete']);
+				expect(scopeChecks()).not.toContainEqual(['workflow:delete']);
 			});
 		});
 	});
@@ -368,6 +447,35 @@ describe('AutomationProposalService', () => {
 			});
 		});
 
+		it('checks the editor lock before the first change and changes nothing', async () => {
+			grant(storedWorkflow({ isArchived: true }));
+			const locked = new LockedError('Cannot modify workflow while it is being edited');
+			publisher.assertEditable.mockRejectedValue(locked);
+
+			await expect(service.apply({ ...request, activate: true }, assistant)).rejects.toBe(locked);
+
+			expect(publisher.assertEditable).toHaveBeenCalledWith('wf 1');
+			expect(nothingChanged()).toBe(true);
+		});
+
+		it('does not check the editor lock when the workflow is only kept', async () => {
+			grant(storedWorkflow());
+
+			await service.apply({ ...request, activate: false }, assistant);
+
+			expect(publisher.assertEditable).not.toHaveBeenCalled();
+			expect(keeper.keep).toHaveBeenCalledTimes(1);
+		});
+
+		it('loads the full workflow once and checks other scopes with light reads', async () => {
+			grant(storedWorkflow({ isArchived: true }));
+
+			await service.apply({ ...request, activate: true }, assistant);
+
+			expect(workflowLoads()).toEqual([['workflow:update']]);
+			expect(scopeChecks()).toEqual([['workflow:delete'], ['workflow:publish']]);
+		});
+
 		it('refuses to turn on a workflow without a publish scope and changes nothing', async () => {
 			grant(storedWorkflow(), ['workflow:update']);
 
@@ -460,7 +568,7 @@ describe('AutomationProposalService', () => {
 				const result = await service.apply({ ...request, activate: true }, assistant);
 
 				expect(result).toMatchObject({ active: false, kept: true });
-				expect(scopesAsked().at(-1)).toEqual(['workflow:read']);
+				expect(scopeChecks().at(-1)).toEqual(['workflow:read']);
 			});
 
 			it('reports the older version that stays live after an early failure', async () => {
@@ -498,13 +606,25 @@ describe('AutomationProposalService', () => {
 				'a cron that is not valid',
 				storedWorkflow(),
 				'0 25 * * *',
-				'Ignored the cron expression "0 25 * * *", because it is not a valid five-field cron expression.',
+				differs('0 25 * * *', '0 8 * * 1-5'),
 			],
 			[
 				'a cron that differs from the schedule rule',
 				storedWorkflow({ nodes: cronRuleNodes('0 7 * * *') }),
 				'0 8 * * *',
-				'Ignored the cron expression "0 8 * * *", because the schedule trigger uses the cron expression "0 7 * * *".',
+				differs('0 8 * * *', '0 7 * * *'),
+			],
+			[
+				'a cron that differs from an interval rule',
+				storedWorkflow({ nodes: scheduleNodes({ field: 'days', triggerAtHour: 8 }) }),
+				'0 17 * * *',
+				differs('0 17 * * *', '0 8 * * *'),
+			],
+			[
+				'a cron for a trigger without one schedule',
+				storedWorkflow({ nodes: twoRuleNodes }),
+				'0 8 * * *',
+				'Ignored the cron expression "0 8 * * *". The card shows only a schedule that it reads from the trigger, and no single five-field cron expression says when this schedule trigger runs.',
 			],
 		])('returns a warning for %s', async (_label, workflow, cron, warning) => {
 			grant(workflow);

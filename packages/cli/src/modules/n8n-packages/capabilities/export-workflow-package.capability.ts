@@ -12,7 +12,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { PackageSizeLimit } from './base64-limits';
 import { instanceMcpPackageSizeLimit } from './mcp-package-size-limit';
-import { packageToolError } from './package-tool-error';
+import { classifyMcpWorkflowAccessFailure, packageToolError } from './package-tool-error';
 import { describeExport } from './package-tool-text';
 import { exportWorkflowPackage, type PackageSourceWorkflow } from './workflow-package-export';
 
@@ -40,7 +40,7 @@ const outputSchema = {
 		.describe('What the instance that imports the package must have'),
 	warnings: z
 		.array(z.string())
-		.describe('What the package does not copy, for example the error workflow'),
+		.describe('What the package does not copy, for example the error workflow and variable values'),
 } satisfies z.ZodRawShape;
 
 /** Finds the workflow as the MCP tools do: readable, available in MCP and not archived. */
@@ -53,6 +53,16 @@ async function findMcpWorkflow(user: User, workflowId: string): Promise<PackageS
 	);
 }
 
+const EXPORT_DESCRIPTION = [
+	'Export one workflow as an n8n package (.n8np, base64) to copy it to another n8n instance with import_workflow_package.',
+	'The package is in packageBase64 of the structured content, not in the text.',
+	'It has no credential data and no variable values: it lists the credentials and node types the workflow needs, and the warnings name the variables.',
+	'It holds the name and the columns, but not the rows, of each data table that the workflow uses.',
+	'The workflow must be available in MCP.',
+	'A workflow that calls a sub-workflow by a fixed ID cannot be exported, because a package holds one workflow only.',
+	'The package does not hold the error workflow of the workflow. A new copy keeps the link only if the user who imports it can use that workflow there.',
+].join(' ');
+
 function exportWorkflowPackageTool(
 	user: User,
 	limit: PackageSizeLimit,
@@ -60,8 +70,7 @@ function exportWorkflowPackageTool(
 	return {
 		name: EXPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME,
 		config: {
-			description:
-				'Export one workflow as an n8n package (.n8np, base64) to copy it to another n8n instance with import_workflow_package. The package is in packageBase64 of the structured content, not in the text. It has no credential data and no variable values: it lists the credentials and node types the workflow needs. It holds the columns, but not the rows, of the data tables that the workflow uses. The workflow must be available in MCP. A workflow that calls a sub-workflow by a fixed ID cannot be exported, because a package holds one workflow only. The error workflow of the workflow is not copied.',
+			description: EXPORT_DESCRIPTION,
 			inputSchema,
 			outputSchema,
 			annotations: {
@@ -76,6 +85,7 @@ function exportWorkflowPackageTool(
 					user,
 					workflowId,
 					findWorkflow: async (id) => await findMcpWorkflow(user, id),
+					classifyFailure: classifyMcpWorkflowAccessFailure,
 					limit,
 				});
 				return {

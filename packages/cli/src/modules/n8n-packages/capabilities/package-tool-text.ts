@@ -1,6 +1,7 @@
 import { formatBytes } from '@n8n/utils/number/bytes';
 
-import type { CredentialSummary, ImportedWorkflowPackage } from './package-requirements';
+import type { ImportedWorkflowPackage } from './import-summary';
+import type { CredentialSummary } from './package-requirements';
 import type { ExportedWorkflowPackage } from './workflow-package-export';
 
 function credentialList(credentials: readonly CredentialSummary[]): string {

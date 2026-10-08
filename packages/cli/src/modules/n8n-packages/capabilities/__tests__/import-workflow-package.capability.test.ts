@@ -111,4 +111,28 @@ describe('MCP_IMPORT_RULES.afterImport', () => {
 			'The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
 		]);
 	});
+
+	// The workflow is already written, so the import must not report a failure.
+	it('gives a warning, not an error, when turning on MCP access fails', async () => {
+		const settings = mockInstance(McpSettingsService, {
+			bulkSetAvailableInMCP: vi.fn().mockRejectedValue(new Error('Database is locked')),
+			broadcastWorkflowMCPAvailabilityChanged: vi.fn().mockResolvedValue(undefined),
+		});
+
+		expect(await MCP_IMPORT_RULES.afterImport?.(user, 'wf-1')).toEqual([
+			'Could not turn on MCP access: Database is locked. The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
+		]);
+		expect(settings.broadcastWorkflowMCPAvailabilityChanged).not.toHaveBeenCalled();
+	});
+});
+
+describe('MCP_IMPORT_RULES.classifyFailure', () => {
+	it('gives the audit reason of an MCP access error and leaves other errors', () => {
+		expect(
+			MCP_IMPORT_RULES.classifyFailure?.(
+				new WorkflowAccessError('Not available', 'not_available_in_mcp'),
+			),
+		).toBe('access-denied');
+		expect(MCP_IMPORT_RULES.classifyFailure?.(new Error('Other'))).toBeUndefined();
+	});
 });

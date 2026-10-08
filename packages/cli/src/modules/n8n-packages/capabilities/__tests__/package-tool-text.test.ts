@@ -1,10 +1,11 @@
-import type { ImportedWorkflowPackage } from '../package-requirements';
+import type { ImportedWorkflowPackage } from '../import-summary';
 import { describeExport, describeImport } from '../package-tool-text';
 
 const imported = (overrides: Partial<ImportedWorkflowPackage> = {}): ImportedWorkflowPackage => ({
 	workflowId: 'wf-local',
 	workflowName: 'Daily report',
 	created: true,
+	published: false,
 	credentialsNeedingSetup: [],
 	missingNodeTypes: [],
 	warnings: [],

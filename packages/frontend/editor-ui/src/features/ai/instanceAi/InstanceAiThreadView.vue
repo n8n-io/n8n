@@ -54,6 +54,7 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useMarkThreadViewed } from './navigation/useThreadLastViewed';
 import { useAutomationOffer } from './composables/useAutomationOffer';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
@@ -119,6 +120,7 @@ const agentEvalsStore = useAgentEvalsStore();
 // Passed the local runtime because this component provides the thread rather
 // than inheriting it, so the composable's own `useThread()` inject would fail.
 const isAgentWorking = useIsAgentWorking(thread);
+useMarkThreadViewed(() => props.threadId, isAgentWorking);
 
 // The agent the builder actually persisted in this thread. Absent until then,
 // which is what keeps the suggestion from firing mid-build.

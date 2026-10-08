@@ -8,13 +8,21 @@ import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { decodeBase64WithinLimit, type PackageSizeLimit } from './base64-limits';
+import { type ImportedWorkflowPackage, summariseImport } from './import-summary';
 import {
 	assertNoArchivedWorkflow,
-	type ImportedWorkflowPackage,
 	singleWorkflowEntry,
-	summariseImport,
+	workflowLabel,
 } from './package-requirements';
-import { classifyWorkflowPackageFailure } from './package-tool-error';
+import {
+	classifyWorkflowPackageFailure,
+	type SurfaceFailureClassifier,
+} from './workflow-package-failure';
+import {
+	type AfterImportStep,
+	finishImport,
+	type PreviousCopy,
+} from './workflow-package-post-import';
 import { N8nPackageParser } from '../engine/n8n-package-parser';
 import { collectMissingNodeTypes } from '../entities/workflow/missing-node-type-mode';
 import { WorkflowImportMatchService } from '../entities/workflow/workflow-import-match.service';
@@ -34,7 +42,8 @@ export const WORKFLOW_PACKAGE_IMPORT_POLICY = {
 	credentialMissingMode: 'create-stub',
 	workflowConflictPolicy: 'new-version',
 	workflowIdPolicy: 'new',
-	// A new workflow stays unpublished. A re-import keeps a published workflow published.
+	// A new workflow stays unpublished. A re-import of a published workflow publishes the new
+	// version when the source publishes it. The tool result says which version is live.
 	workflowPublishingPolicy: 'preserve-published-state',
 	// The result lists missing node types, and such a workflow is never published.
 	missingNodeTypeMode: 'import-anyway',
@@ -66,8 +75,10 @@ export const WORKFLOW_PACKAGE_IMPORT_POLICY = {
 export type WorkflowPackageImportRules = {
 	/** Throws when the surface must not change this workflow, which the import would update. */
 	assertUpdatable: (workflow: WorkflowEntity) => void;
-	/** Runs after a successful import. Gives warnings for the result. */
-	afterImport?: (user: User, workflowId: string) => Promise<string[]>;
+	/** Runs after a successful import. Gives warnings. An error becomes a warning too. */
+	afterImport?: AfterImportStep;
+	/** Gives the audit `reason` of the errors that `assertUpdatable` throws. */
+	classifyFailure?: SurfaceFailureClassifier;
 };
 
 export type WorkflowPackageImportRequest = {
@@ -125,66 +136,87 @@ async function resolveTargetProject(user: User, projectId: string | undefined): 
 	return project;
 }
 
-/** Applies the rules of the surface to the workflow that the import would update. */
-async function assertMatchUpdatable(
-	projectId: string,
-	sourceWorkflowId: string,
-	rules: WorkflowPackageImportRules,
-): Promise<void> {
-	const { matches, lineageConflicts } = await Container.get(
-		WorkflowImportMatchService,
-	).findBySourceWorkflowIds(projectId, [sourceWorkflowId]);
-	// With more than one match, the import stops with a conflict before it writes anything.
-	if (lineageConflicts.length > 0) return;
-	const existing = matches.get(sourceWorkflowId);
-	if (existing) rules.assertUpdatable(existing);
-}
-
-async function writeWorkflowPackage(
-	request: WorkflowPackageImportRequest,
-): Promise<ImportedWorkflowPackage> {
-	const { user, rules } = request;
+async function preparePackage(request: WorkflowPackageImportRequest) {
 	const packageBuffer = decodeBase64WithinLimit(request.packageBase64, request.limit);
 	const { manifest, entry, missingNodeTypes } = await readPackage(
 		packageBuffer,
 		request.sourceWorkflowId,
 	);
-	const project = await resolveTargetProject(user, request.projectId);
-	return await runSerially(importsInProgress, `${project.id}:${entry.id}`, async () => {
-		if (rules) await assertMatchUpdatable(project.id, entry.id, rules);
-		const result = await Container.get(N8nPackagesService).importPackage({
-			user,
-			packageBuffer,
-			projectId: project.id,
-			...WORKFLOW_PACKAGE_IMPORT_POLICY,
+	const project = await resolveTargetProject(request.user, request.projectId);
+	return { packageBuffer, manifest, entry, missingNodeTypes, project };
+}
+
+/**
+ * The workflow that the import would update, as it is before the import. The rules of the
+ * surface apply to it.
+ */
+async function findPreviousCopy(
+	projectId: string,
+	sourceWorkflowId: string,
+	rules: WorkflowPackageImportRules | undefined,
+): Promise<PreviousCopy | undefined> {
+	const { matches, lineageConflicts } = await Container.get(
+		WorkflowImportMatchService,
+	).findBySourceWorkflowIds(projectId, [sourceWorkflowId]);
+	// With more than one match, the import stops with a conflict before it writes anything.
+	if (lineageConflicts.length > 0) return undefined;
+	const existing = matches.get(sourceWorkflowId);
+	if (existing) rules?.assertUpdatable(existing);
+	return existing;
+}
+
+/** Runs a step of the import. A failure writes the audit event of a failed import. */
+async function failureRecorded<T>(
+	request: WorkflowPackageImportRequest,
+	step: () => Promise<T>,
+): Promise<T> {
+	try {
+		return await step();
+	} catch (error) {
+		Container.get(EventService).emit('n8n-package-import-failed', {
+			user: request.user,
+			reason: classifyWorkflowPackageFailure(error, request.rules?.classifyFailure),
+			...(request.projectId ? { projectId: request.projectId } : {}),
 		});
-		const summary = summariseImport({
-			result,
-			sourceWorkflowId: entry.id,
-			requirements: manifest.requirements,
-			missingNodeTypes,
-		});
-		const extraWarnings = (await rules?.afterImport?.(user, summary.workflowId)) ?? [];
-		return { ...summary, warnings: [...summary.warnings, ...extraWarnings] };
-	});
+		throw error;
+	}
 }
 
 /**
  * Imports a package (base64) of one workflow into a project that the user can create workflows
  * in. Every surface uses it: the caller gives the rules of its surface. Writes the audit event
- * of a failure. The package service writes the event of a success.
+ * of a failure. The package service writes the event of a success. After the package service
+ * wrote the workflow, nothing makes the import fail: the steps after it give warnings.
  */
 export async function importWorkflowPackage(
 	request: WorkflowPackageImportRequest,
 ): Promise<ImportedWorkflowPackage> {
-	try {
-		return await writeWorkflowPackage(request);
-	} catch (error) {
-		Container.get(EventService).emit('n8n-package-import-failed', {
-			user: request.user,
-			reason: classifyWorkflowPackageFailure(error),
-			...(request.projectId ? { projectId: request.projectId } : {}),
+	const { user, rules } = request;
+	const prepared = await failureRecorded(request, async () => await preparePackage(request));
+	const { manifest, entry, project } = prepared;
+	return await runSerially(importsInProgress, `${project.id}:${entry.id}`, async () => {
+		const { previous, result } = await failureRecorded(request, async () => {
+			const previousCopy = await findPreviousCopy(project.id, entry.id, rules);
+			const imported = await Container.get(N8nPackagesService).importPackage({
+				user,
+				packageBuffer: prepared.packageBuffer,
+				projectId: project.id,
+				...WORKFLOW_PACKAGE_IMPORT_POLICY,
+			});
+			return { previous: previousCopy, result: imported };
 		});
-		throw error;
-	}
+		const references = manifest.requirements?.workflows ?? [];
+		return await finishImport({
+			user,
+			summary: summariseImport({
+				result,
+				sourceWorkflowId: entry.id,
+				requirements: manifest.requirements,
+				missingNodeTypes: prepared.missingNodeTypes,
+			}),
+			previous,
+			workflowLabel: (id) => workflowLabel(references.find((r) => r.id === id) ?? { id }),
+			afterImport: rules?.afterImport,
+		});
+	});
 }

@@ -27,6 +27,7 @@ import { mock } from 'vitest-mock-extended';
 import type z from 'zod';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CollaborationState } from '@/collaboration/collaboration.state';
 import { License } from '@/license';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
@@ -265,6 +266,52 @@ describe('propose_automation (integration)', () => {
 		expect((await stored(workflow.id)).activeVersionId).toBeNull();
 		expect(await provenance.findForWorkflow(workflow.id)).toBeNull();
 		expect(await temporaryWorkflows.existsForWorkflow(workflow.id)).toBe(true);
+	});
+
+	it('shows the schedule that n8n reads from an interval rule, not the cron of the model', async () => {
+		const [scheduleNode, ...otherNodes] = SCHEDULE_NODES;
+		const dailyAt8 = { rule: { interval: [{ field: 'days', triggerAtHour: 8 }] } };
+		const workflow = await createTemporaryWorkflow({
+			nodes: [{ ...scheduleNode, parameters: dailyAt8 }, ...otherNodes],
+		});
+
+		const { card, output } = await proposeAndAnswer(workflow.id, {
+			kind: 'capabilityDecision',
+			approved: true,
+			values: { target: 'local', activate: false },
+		});
+
+		expect(card.trigger).toEqual({ kind: 'schedule', cron: '0 8 * * *' });
+		expect(output).toMatchObject({
+			kept: true,
+			warnings: [
+				'Ignored the cron expression "0 8 * * 1-5", because the schedule trigger uses the cron expression "0 8 * * *".',
+			],
+		});
+	});
+
+	it('keeps nothing when "Turn it on" meets a workflow that someone edits', async () => {
+		const workflow = await createTemporaryWorkflow({ isArchived: true });
+		const collaborationState = Container.get(CollaborationState);
+
+		try {
+			const result = proposeAndAnswer(
+				workflow.id,
+				{ kind: 'capabilityDecision', approved: true, values: { target: 'local', activate: true } },
+				async () => {
+					await collaborationState.setWriteLock(workflow.id, 'editor-tab', owner.id);
+				},
+			);
+
+			await expect(result).rejects.toThrow('being edited by a user in the editor');
+			const after = await stored(workflow.id);
+			expect(after.isArchived).toBe(true);
+			expect(after.activeVersionId).toBeNull();
+			expect(await temporaryWorkflows.existsForWorkflow(workflow.id)).toBe(true);
+			expect(await provenance.findForWorkflow(workflow.id)).toBeNull();
+		} finally {
+			await collaborationState.releaseWriteLock(workflow.id);
+		}
 	});
 
 	it('restores an archived workflow and turns it on', async () => {

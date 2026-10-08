@@ -5,11 +5,15 @@ import { Container } from '@n8n/di';
 import { collectWithinLimit, type PackageSizeLimit } from './base64-limits';
 import {
 	assertNoSubWorkflowCalls,
+	notCopiedVariablesWarning,
 	notCopiedWorkflowWarnings,
 	summariseRequirements,
 	type WorkflowPackageRequirements,
 } from './package-requirements';
-import { classifyWorkflowPackageFailure } from './package-tool-error';
+import {
+	classifyWorkflowPackageFailure,
+	type SurfaceFailureClassifier,
+} from './workflow-package-failure';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import {
@@ -28,6 +32,8 @@ export type WorkflowPackageExportRequest = {
 	workflowId: string;
 	/** Finds the workflow with the rules of the caller's surface, for example MCP access. */
 	findWorkflow: (workflowId: string) => Promise<PackageSourceWorkflow>;
+	/** Gives the audit `reason` of the errors that `findWorkflow` throws. */
+	classifyFailure?: SurfaceFailureClassifier;
 	limit: PackageSizeLimit;
 };
 
@@ -36,7 +42,7 @@ export type ExportedWorkflowPackage = {
 	workflowName: string;
 	sizeBytes: number;
 	requirements: WorkflowPackageRequirements;
-	/** What the package does not copy, for example the error workflow. */
+	/** What the package does not copy, for example the error workflow and variable values. */
 	warnings: string[];
 };
 
@@ -67,6 +73,13 @@ function errorWorkflowIdOf(workflow: PackageSourceWorkflow): string | undefined 
 	return typeof errorWorkflow === 'string' ? errorWorkflow : undefined;
 }
 
+function exportWarnings(workflow: PackageSourceWorkflow, manifest: PackageManifest): string[] {
+	const { requirements } = manifest;
+	const warnings = notCopiedWorkflowWarnings(requirements?.workflows, errorWorkflowIdOf(workflow));
+	const variables = notCopiedVariablesWarning(requirements?.variables);
+	return variables === undefined ? warnings : [...warnings, variables];
+}
+
 async function writeWorkflowPackage(
 	request: WorkflowPackageExportRequest,
 ): Promise<ExportedWorkflowPackage> {
@@ -86,10 +99,7 @@ async function writeWorkflowPackage(
 		workflowName: workflow.name,
 		sizeBytes: buffer.length,
 		requirements: summariseRequirements(manifest.requirements),
-		warnings: notCopiedWorkflowWarnings(
-			manifest.requirements?.workflows,
-			errorWorkflowIdOf(workflow),
-		),
+		warnings: exportWarnings(workflow, manifest),
 	};
 }
 
@@ -106,7 +116,7 @@ export async function exportWorkflowPackage(
 	} catch (error) {
 		Container.get(EventService).emit('n8n-package-export-failed', {
 			user: request.user,
-			reason: classifyWorkflowPackageFailure(error),
+			reason: classifyWorkflowPackageFailure(error, request.classifyFailure),
 			workflowIds: [request.workflowId],
 		});
 		throw error;

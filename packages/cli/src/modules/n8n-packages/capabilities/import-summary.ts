@@ -7,7 +7,10 @@ import {
 	uniqueSorted,
 } from './package-requirements';
 import type { ImportResult, WorkflowPublishingOutcome } from '../n8n-packages.types';
-import type { PackageCredentialRequirement, PackageRequirements } from '../spec/requirements.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageRequirements,
+} from '../spec/requirements.schema';
 
 export type CredentialNeedingSetup = CredentialSummary & { id: string };
 
@@ -26,6 +29,8 @@ export type ImportedWorkflowPackage = {
 /** What the package service reports for the workflow, before the steps after the import. */
 export type ImportSummary = Omit<ImportedWorkflowPackage, 'published'> & {
 	publishing: WorkflowPublishingOutcome;
+	/** The live version after the import, or null when the workflow is not published. */
+	activeVersionId: string | null;
 };
 
 type ImportOutcome = Pick<
@@ -101,7 +106,7 @@ export function importWarnings(
 	result: Omit<ImportOutcome, 'workflows'>,
 	requirements: PackageRequirements | undefined,
 ): string[] {
-	const warnings: Array<string | undefined> = [];
+	const warnings: (string | undefined)[] = [];
 	const skippedTags = uniqueSorted(result.tags.skipped);
 	if (skippedTags.length > 0) {
 		warnings.push(
@@ -145,5 +150,6 @@ export function summariseImport(input: ImportSummaryInput): ImportSummary {
 		missingNodeTypes: nodeTypeLabels(missingNodeTypes),
 		warnings: importWarnings(result, requirements),
 		publishing: workflow.publishing,
+		activeVersionId: workflow.activeVersionId,
 	};
 }

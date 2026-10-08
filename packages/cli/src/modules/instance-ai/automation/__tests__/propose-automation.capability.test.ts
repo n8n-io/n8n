@@ -151,6 +151,8 @@ describe('propose_automation on the n8n Assistant', () => {
 			expect(tool.suspendSchema).toBeDefined();
 			expect(tool.resumeSchema).toBeDefined();
 			expect(tool.description).toContain('Do not call it for a one-off job');
+			expect(tool.description).toContain('The user answers on a card');
+			expect(tool.description).not.toContain('Set activate to true');
 		});
 	});
 

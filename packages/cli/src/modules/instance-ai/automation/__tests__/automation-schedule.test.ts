@@ -236,7 +236,10 @@ describe('triggerCronOf', () => {
 		});
 
 		it.each([
-			['a second schedule trigger', scheduleNode(intervalRule({ field: 'minutes' }), { name: 'B' })],
+			[
+				'a second schedule trigger',
+				scheduleNode(intervalRule({ field: 'minutes' }), { name: 'B' }),
+			],
 			['a webhook', { name: 'Hook', type: WEBHOOK }],
 		])('returns nothing when %s also starts the workflow', (_label, other) => {
 			const nodes = [scheduleNode(cronRule('0 8 * * 1-5')), other];

@@ -118,7 +118,10 @@ describe('threadDisplayState', () => {
 		it('always shows needs-you when the chat waits for the viewer', () => {
 			fc.assert(
 				fc.property(summaryArb, timeArb, (summary, lastViewedAt) => {
-					const result = threadDisplayState(summaryFrom({ ...summary, needsInput: true }), lastViewedAt);
+					const result = threadDisplayState(
+						summaryFrom({ ...summary, needsInput: true }),
+						lastViewedAt,
+					);
 					expect(result).toBe('needs-you');
 				}),
 			);
@@ -161,7 +164,11 @@ describe('threadDisplayState', () => {
 					fc.integer({ min: 1, max: 20 }),
 					fc.constantFrom(undefined, false),
 					(viewedSecond, gap, needsInput) => {
-						const summary = { state: 'idle' as const, needsInput, lastActivityAt: at(viewedSecond + gap) };
+						const summary = {
+							state: 'idle' as const,
+							needsInput,
+							lastActivityAt: at(viewedSecond + gap),
+						};
 						expect(threadDisplayState(summary, at(viewedSecond))).toBe('ready');
 					},
 				),

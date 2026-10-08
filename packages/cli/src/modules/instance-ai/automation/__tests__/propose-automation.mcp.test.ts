@@ -204,9 +204,17 @@ describe('propose_automation over MCP', () => {
 
 			expect(result.structuredContent).toMatchObject({
 				warnings: [
-					'Ignored the cron expression "every day", because it is not a valid five-field cron expression.',
+					'Ignored the cron expression "every day", because the schedule trigger uses the cron expression "0 8 * * 1-5".',
 				],
 			});
+		});
+
+		it('describes the rules of MCP: no archived workflows, and activate turns it on', () => {
+			const { description } = registeredTool().config;
+
+			expect(description).toContain('must not be archived');
+			expect(description).toContain('Set activate to true');
+			expect(description).not.toContain('answers on a card');
 		});
 
 		it.each([

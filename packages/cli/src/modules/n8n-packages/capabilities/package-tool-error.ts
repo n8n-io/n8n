@@ -5,14 +5,14 @@ import { isRecord } from '@n8n/utils/is-record';
 import { WorkflowAccessError } from '@/modules/mcp/mcp.errors';
 
 import type { PackageFailureReason } from '../n8n-packages.types';
-import { classifyPackageFailure } from '../package-failure-classifier';
 
 /**
- * The `reason` of a failed package export or import for the audit log. A workflow that exists
- * but is kept out of MCP or archived is a denial or a block, not a missing entity.
+ * The audit `reason` of an MCP workflow access error, or undefined for any other error. A
+ * workflow that exists but is kept out of MCP or archived is a denial or a block, not a missing
+ * entity.
  */
-export function classifyWorkflowPackageFailure(error: unknown): PackageFailureReason {
-	if (!(error instanceof WorkflowAccessError)) return classifyPackageFailure(error);
+export function classifyMcpWorkflowAccessFailure(error: unknown): PackageFailureReason | undefined {
+	if (!(error instanceof WorkflowAccessError)) return undefined;
 	if (error.reason === 'not_available_in_mcp') return 'access-denied';
 	if (error.reason === 'workflow_archived') return 'blocked';
 	return 'entity-not-found';

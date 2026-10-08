@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import { type AiBuilderTemporaryWorkflowRepository, User, type WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,6 +11,7 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { WorkflowProvenanceService } from '../../provenance/workflow-provenance.service';
 import { AutomationProposalService } from '../automation-proposal.service';
+import { AutomationTemporaryMarker } from '../automation-temporary-marker';
 import { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
 import { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
 
@@ -35,13 +37,22 @@ export const ALL_SCOPES: Scope[] = [
 
 export const makeUser = (id: string) => Object.assign(new User(), { id });
 
+/** The cron rule of the Schedule Trigger in `storedWorkflow`. */
+export const WEEKDAYS_AT_8 = '0 8 * * 1-5';
+
 /** A workflow as the finder returns it: an AI-temporary schedule workflow in a team project. */
 export const storedWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
 	({
 		id: 'wf-1',
 		name: 'Digest builder',
 		nodes: [
-			{ name: 'Every weekday', type: SCHEDULE },
+			{
+				name: 'Every weekday',
+				type: SCHEDULE,
+				parameters: {
+					rule: { interval: [{ field: 'cronExpression', expression: WEEKDAYS_AT_8 }] },
+				},
+			},
 			{ name: 'Send digest', type: SLACK },
 		],
 		versionId: 'v-1',
@@ -67,12 +78,9 @@ export function createAutomationWorld() {
 	const writeAccess = mock<InstanceWriteAccessService>();
 	const collaborationService = mock<CollaborationService>();
 	const urlService = mock<UrlService>();
-	const keeper = new AutomationWorkflowKeeper(
-		workflowService,
-		temporaryWorkflows,
-		provenance,
-		writeAccess,
-	);
+	const logger = mock<Logger>();
+	const marker = new AutomationTemporaryMarker(temporaryWorkflows, provenance, logger);
+	const keeper = new AutomationWorkflowKeeper(workflowService, marker, writeAccess);
 	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService);
 	Container.set(
 		AutomationProposalService,
@@ -81,8 +89,18 @@ export function createAutomationWorld() {
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */
 	const grant = (workflow: WorkflowEntity, scopes: Scope[] = ALL_SCOPES) => {
+		const allowed = (wanted: Scope[]) => wanted.every((scope) => scopes.includes(scope));
 		finder.findWorkflowForUser.mockImplementation(async (_id, _user, wanted) =>
-			wanted.every((scope) => scopes.includes(scope)) ? workflow : null,
+			allowed(wanted) ? workflow : null,
+		);
+		finder.findWorkflowHeadForUser.mockImplementation(async (_id, _user, wanted) =>
+			allowed(wanted)
+				? {
+						versionId: workflow.versionId,
+						activeVersionId: workflow.activeVersionId,
+						updatedAt: new Date(),
+					}
+				: null,
 		);
 	};
 
@@ -119,6 +137,7 @@ export function createAutomationWorld() {
 		provenance,
 		writeAccess,
 		collaborationService,
+		logger,
 		grant,
 		reset,
 		nothingChanged,

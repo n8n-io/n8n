@@ -85,7 +85,10 @@ export function assertNoSubWorkflowCalls(workflow: Pick<WorkflowEntity, 'id' | '
 }
 
 /** A workflow as the tool texts name it, for example "Alert the team" (wf-1). */
-export function workflowLabel({ id, name }: Pick<PackageWorkflowRequirement, 'id' | 'name'>): string {
+export function workflowLabel({
+	id,
+	name,
+}: Pick<PackageWorkflowRequirement, 'id' | 'name'>): string {
 	return name === undefined ? `"${id}"` : `"${name}" (${id})`;
 }
 

@@ -1,23 +1,22 @@
-import { BadRequestError, UnexpectedError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 import fc from 'fast-check';
 import type { INode, INodeParameterResourceLocator, NodeParameterValueType } from 'n8n-workflow';
 
 import { PackageExportBlockedError } from '../../entities/package-export.errors';
-import type { ImportedWorkflowSummary, ImportResult } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageRequirements } from '../../spec/requirements.schema';
 import {
 	assertNoArchivedWorkflow,
 	assertNoSubWorkflowCalls,
-	credentialsNeedingSetup,
-	importWarnings,
 	nodeTypeLabel,
 	nodeTypeLabels,
+	notCopiedVariablesWarning,
 	notCopiedWorkflowWarnings,
 	singleWorkflowEntry,
 	staticSubWorkflowIds,
-	summariseImport,
 	summariseRequirements,
+	uniqueSorted,
+	workflowLabel,
 } from '../package-requirements';
 
 const entry = (id: string): ManifestEntry => ({
@@ -31,37 +30,6 @@ const credential = (id: string, name: string, type: string) => ({
 	name,
 	type,
 	usedByWorkflows: ['wf-source'],
-});
-
-const importedWorkflow = (
-	overrides: Partial<ImportedWorkflowSummary> = {},
-): ImportedWorkflowSummary => ({
-	sourceWorkflowId: 'wf-source',
-	localId: 'wf-local',
-	name: 'Daily report',
-	projectId: 'project-1',
-	parentFolderId: null,
-	activeVersionId: null,
-	isArchived: false,
-	publishing: { state: 'unchanged' },
-	status: 'created',
-	...overrides,
-});
-
-type ImportOutcome = Pick<
-	ImportResult,
-	'workflows' | 'credentials' | 'bindings' | 'tags' | 'dataTables'
->;
-
-const noTags = { matched: [], created: [], renamed: [], reconciled: [], skipped: [] };
-
-const importResult = (overrides: Partial<ImportOutcome> = {}): ImportOutcome => ({
-	workflows: [importedWorkflow()],
-	credentials: { matched: [], stubbed: [] },
-	bindings: { workflows: {}, credentials: {} },
-	tags: noTags,
-	dataTables: { matched: 0, created: 0 },
-	...overrides,
 });
 
 /** A node that calls another workflow, in the stored forms that the editor writes. */
@@ -225,139 +193,6 @@ describe('singleWorkflowEntry', () => {
 	});
 });
 
-describe('credentialsNeedingSetup', () => {
-	const requirements: PackageRequirements = {
-		credentials: [
-			credential('src-stripe', 'Stripe API', 'httpHeaderAuth'),
-			credential('src-slack', 'Slack', 'slackApi'),
-			credential('src-mail', 'Mail', 'smtp'),
-		],
-	};
-
-	it('lists the stubs that the import created, with their new ids', () => {
-		const result = importResult({
-			credentials: { matched: ['src-slack'], stubbed: ['src-stripe', 'src-mail'] },
-			bindings: {
-				workflows: {},
-				credentials: {
-					'src-stripe': 'new-stripe',
-					'src-slack': 'own-slack',
-					'src-mail': 'new-mail',
-				},
-			},
-		});
-
-		expect(credentialsNeedingSetup(result, requirements)).toEqual([
-			{ name: 'Stripe API', type: 'httpHeaderAuth', id: 'new-stripe' },
-			{ name: 'Mail', type: 'smtp', id: 'new-mail' },
-		]);
-	});
-
-	it('lists nothing when every credential matched one on this instance', () => {
-		const result = importResult({
-			credentials: { matched: ['src-stripe'], stubbed: [] },
-			bindings: { workflows: {}, credentials: { 'src-stripe': 'own-stripe' } },
-		});
-
-		expect(credentialsNeedingSetup(result, requirements)).toEqual([]);
-	});
-
-	it('leaves out a stub without a new id or without a requirement', () => {
-		const result = importResult({
-			credentials: { matched: [], stubbed: ['src-stripe', 'src-unknown'] },
-			bindings: { workflows: {}, credentials: { 'src-unknown': 'new-unknown' } },
-		});
-
-		expect(credentialsNeedingSetup(result, requirements)).toEqual([]);
-		expect(credentialsNeedingSetup(result, undefined)).toEqual([]);
-	});
-});
-
-describe('summariseImport', () => {
-	it('reports a new workflow with its local id and name', () => {
-		const output = summariseImport({
-			result: importResult(),
-			sourceWorkflowId: 'wf-source',
-			requirements: undefined,
-			missingNodeTypes: [],
-		});
-
-		expect(output).toEqual({
-			workflowId: 'wf-local',
-			workflowName: 'Daily report',
-			created: true,
-			credentialsNeedingSetup: [],
-			missingNodeTypes: [],
-			warnings: [],
-		});
-	});
-
-	it.each(['updated', 'skipped'] as const)('reports created: false for a %s workflow', (status) => {
-		const output = summariseImport({
-			result: importResult({ workflows: [importedWorkflow({ status })] }),
-			sourceWorkflowId: 'wf-source',
-			requirements: undefined,
-			missingNodeTypes: [],
-		});
-
-		expect(output.created).toBe(false);
-	});
-
-	it('reports the workflow of the package, stubs and missing node types', () => {
-		const output = summariseImport({
-			result: importResult({
-				workflows: [
-					importedWorkflow({ sourceWorkflowId: 'other', localId: 'other-local', name: 'Other' }),
-					importedWorkflow({ status: 'updated' }),
-				],
-				credentials: { matched: [], stubbed: ['src-stripe'] },
-				bindings: { workflows: {}, credentials: { 'src-stripe': 'new-stripe' } },
-				tags: { ...noTags, skipped: ['Finance'] },
-			}),
-			sourceWorkflowId: 'wf-source',
-			requirements: {
-				credentials: [credential('src-stripe', 'Stripe API', 'httpHeaderAuth')],
-				dataTables: [{ id: 'dt-1', name: 'Leads', usedByWorkflows: ['wf-source'] }],
-			},
-			missingNodeTypes: [
-				{ type: 'community.node', typeVersion: 2 },
-				{ type: 'community.node', typeVersion: 2 },
-				{ type: 'acme.node', typeVersion: 1 },
-			],
-		});
-
-		expect(output).toEqual({
-			workflowId: 'wf-local',
-			workflowName: 'Daily report',
-			created: false,
-			credentialsNeedingSetup: [{ name: 'Stripe API', type: 'httpHeaderAuth', id: 'new-stripe' }],
-			missingNodeTypes: ['acme.node@1', 'community.node@2'],
-			warnings: [
-				'The import did not add 1 tag(s), because this instance does not have them: Finance.',
-				'1 of the 1 data table(s) that the workflow uses are not in the target project, and the import did not create them. The workflow uses: Leads. Create the missing tables, then select them in the workflow.',
-			],
-		});
-	});
-
-	it('fails when the import result does not include the workflow of the package', () => {
-		const summarise = () =>
-			summariseImport({
-				result: importResult(),
-				sourceWorkflowId: 'wf-missing',
-				requirements: undefined,
-				missingNodeTypes: [],
-			});
-
-		expect(summarise).toThrow(UnexpectedError);
-		expect(summarise).toThrow(
-			expect.objectContaining({
-				message: 'The import result does not include the workflow of the package',
-				extra: { sourceWorkflowId: 'wf-missing' },
-			}),
-		);
-	});
-});
-
 describe('staticSubWorkflowIds', () => {
 	const workflow = (nodes: INode[]) => ({ id: 'wf-self', nodes });
 
@@ -425,18 +260,35 @@ describe('assertNoSubWorkflowCalls', () => {
 	});
 });
 
+describe('uniqueSorted', () => {
+	it('gives each value once, in sort order', () => {
+		expect(uniqueSorted(['b', 'a', 'b', 'c', 'a'])).toEqual(['a', 'b', 'c']);
+		expect(uniqueSorted([])).toEqual([]);
+	});
+});
+
+describe('workflowLabel', () => {
+	it('gives the name and the ID, or only the ID when the name is not known', () => {
+		expect(workflowLabel({ id: 'wf-err', name: 'Alert the team' })).toBe(
+			'"Alert the team" (wf-err)',
+		);
+		expect(workflowLabel({ id: 'wf-err' })).toBe('"wf-err"');
+	});
+});
+
 describe('notCopiedWorkflowWarnings', () => {
+	const errorWorkflowWarning = (label: string) =>
+		`The package does not hold the error workflow ${label}. A new copy keeps the link only if the user who imports it can use that workflow there. Otherwise, choose an error workflow in the settings of the copy.`;
+
 	it('names the error workflow, which the package does not copy', () => {
 		expect(notCopiedWorkflowWarnings([{ id: 'wf-err', name: 'Alert the team' }], 'wf-err')).toEqual(
-			[
-				'The error workflow "Alert the team" (wf-err) is not in the package. Choose an error workflow for the copy in its workflow settings.',
-			],
+			[errorWorkflowWarning('"Alert the team" (wf-err)')],
 		);
 	});
 
 	it('names a workflow by its ID when its name is not known', () => {
 		expect(notCopiedWorkflowWarnings([{ id: 'wf-err' }], 'wf-err')).toEqual([
-			'The error workflow "wf-err" is not in the package. Choose an error workflow for the copy in its workflow settings.',
+			errorWorkflowWarning('"wf-err"'),
 		]);
 	});
 
@@ -451,7 +303,7 @@ describe('notCopiedWorkflowWarnings', () => {
 			),
 		).toEqual([
 			'The package refers to workflow "Other" (wf-other), but does not hold it.',
-			'The error workflow "Alert the team" (wf-err) is not in the package. Choose an error workflow for the copy in its workflow settings.',
+			errorWorkflowWarning('"Alert the team" (wf-err)'),
 		]);
 		expect(notCopiedWorkflowWarnings([{ id: 'wf-other' }], undefined)).toEqual([
 			'The package refers to workflow "wf-other", but does not hold it.',
@@ -464,96 +316,18 @@ describe('notCopiedWorkflowWarnings', () => {
 	});
 });
 
-describe('importWarnings', () => {
-	const dataTable = (id: string, name: string) => ({ id, name, usedByWorkflows: ['wf-source'] });
-
-	it('gives no warnings when the import added every tag and created no data table', () => {
+describe('notCopiedVariablesWarning', () => {
+	it('names the variables once each and in order, without values', () => {
 		expect(
-			importWarnings(
-				{ tags: { ...noTags, matched: ['Finance'] }, dataTables: { matched: 2, created: 0 } },
-				{ dataTables: [dataTable('dt-1', 'Leads'), dataTable('dt-2', 'Orders')] },
-			),
-		).toEqual([]);
-	});
-
-	it('names the tags that the import did not add, sorted and once each', () => {
-		expect(
-			importWarnings(
-				{
-					tags: { ...noTags, skipped: ['Sales', 'Finance', 'Sales'] },
-					dataTables: { matched: 0, created: 0 },
-				},
-				undefined,
-			),
-		).toEqual([
-			'The import did not add 2 tag(s), because this instance does not have them: Finance, Sales.',
-		]);
-	});
-
-	it('says that new data tables are empty', () => {
-		expect(
-			importWarnings(
-				{ tags: noTags, dataTables: { matched: 0, created: 1 } },
-				{ dataTables: [dataTable('dt-1', 'Leads')] },
-			),
-		).toEqual([
-			'The import created 1 empty data table(s) for the workflow. The package holds no rows.',
-		]);
-	});
-
-	it('names the data tables of the workflow when the import neither found nor created them', () => {
-		expect(
-			importWarnings(
-				{ tags: noTags, dataTables: { matched: 0, created: 0 } },
-				{ dataTables: [dataTable('dt-2', 'Orders'), dataTable('dt-1', 'Leads')] },
-			),
-		).toEqual([
-			'2 of the 2 data table(s) that the workflow uses are not in the target project, and the import did not create them. The workflow uses: Leads, Orders. Create the missing tables, then select them in the workflow.',
-		]);
-	});
-
-	it('counts only the data tables that the import did not find or create', () => {
-		const warnings = importWarnings(
-			{ tags: noTags, dataTables: { matched: 1, created: 1 } },
-			{
-				dataTables: [
-					dataTable('dt-1', 'Leads'),
-					dataTable('dt-2', 'Orders'),
-					dataTable('dt-3', 'Leads'),
-				],
-			},
-		);
-
-		expect(warnings).toEqual([
-			'The import created 1 empty data table(s) for the workflow. The package holds no rows.',
-			'1 of the 3 data table(s) that the workflow uses are not in the target project, and the import did not create them. The workflow uses: Leads, Orders. Create the missing tables, then select them in the workflow.',
-		]);
-	});
-
-	it('gives no data table warning when the package needs no data tables', () => {
-		expect(importWarnings({ tags: noTags, dataTables: { matched: 0, created: 0 } }, {})).toEqual(
-			[],
+			notCopiedVariablesWarning([{ name: 'API_URL' }, { name: 'ACCOUNT_ID' }, { name: 'API_URL' }]),
+		).toBe(
+			'The workflow uses 2 variable(s): ACCOUNT_ID, API_URL. The package holds their names, but not their values. Make sure that the instance that imports the package has them.',
 		);
 	});
 
-	it('gives the warnings in a fixed order: tags, new tables, missing tables', () => {
-		expect(
-			importWarnings(
-				{ tags: { ...noTags, skipped: ['Finance'] }, dataTables: { matched: 0, created: 3 } },
-				{
-					dataTables: [
-						dataTable('dt-1', 'A'),
-						dataTable('dt-2', 'B'),
-						dataTable('dt-3', 'C'),
-						dataTable('dt-4', 'D'),
-					],
-				},
-			),
-		).toEqual([
-			'The import did not add 1 tag(s), because this instance does not have them: Finance.',
-			'The import created 3 empty data table(s) for the workflow. The package holds no rows.',
-			'1 of the 4 data table(s) that the workflow uses are not in the target project, and the import did not create them. The workflow uses: A, B, C, D. Create the missing tables, then select them in the workflow.',
-		]);
+	it('gives no warning when the workflow uses no variables', () => {
+		expect(notCopiedVariablesWarning([])).toBeUndefined();
+		expect(notCopiedVariablesWarning()).toBeUndefined();
 	});
 });
 
