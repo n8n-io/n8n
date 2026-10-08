@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { DialogContent, DialogTitle, DialogDescription, VisuallyHidden } from 'reka-ui';
-import { computed, useCssModule } from 'vue';
+import { computed, provide, useCssModule } from 'vue';
 
 import N8nDialogClose from './DialogClose.vue';
+import { dialogCloseButtonKey } from './dialogContext';
 
 export type DialogContentSize =
 	| 'small'
@@ -35,7 +36,19 @@ export interface DialogContentProps {
 	 */
 	disableOutsidePointerEvents?: boolean;
 	/**
-	 * Shows/hides close button in top right
+	 * Close the dialog when the user clicks outside it.
+	 * Escape and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnOverlayClick?: boolean;
+	/**
+	 * Close the dialog when the user presses Escape.
+	 * An overlay click and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnEscape?: boolean;
+	/**
+	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
 	showCloseButton?: boolean;
@@ -64,6 +77,8 @@ const props = withDefaults(defineProps<DialogContentProps>(), {
 	size: 'medium',
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
+	closeOnOverlayClick: true,
+	closeOnEscape: true,
 	showCloseButton: true,
 });
 
@@ -84,6 +99,10 @@ const sizeClasses: Record<DialogContentSize, string> = {
 
 const sizeClass = computed(() => sizeClasses[props.size]);
 
+provide(dialogCloseButtonKey, {
+	show: computed(() => props.showCloseButton),
+});
+
 /** ARIA Fallbacks: These are visually hidden but accessible to screen readers **/
 const needsFallbackTitle = computed(() => !!props.ariaLabel);
 const needsFallbackDescription = computed(() => !!props.ariaDescription);
@@ -101,7 +120,17 @@ function handleInteractOutside(e: Event) {
 	if (target?.closest('.el-popper, .el-select-dropdown, .el-overlay')) {
 		e.preventDefault();
 	}
+	if (!props.closeOnOverlayClick) {
+		e.preventDefault();
+	}
 	emit('interactOutside', e);
+}
+
+function handleEscapeKeyDown(event: KeyboardEvent) {
+	if (!props.closeOnEscape) {
+		event.preventDefault();
+	}
+	emit('escapeKeyDown', event);
 }
 </script>
 
@@ -111,7 +140,7 @@ function handleInteractOutside(e: Event) {
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
 		:class="[$style.content, sizeClass, stacked && $style.stacked]"
-		@escape-key-down="emit('escapeKeyDown', $event)"
+		@escape-key-down="handleEscapeKeyDown"
 		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
 		@close-auto-focus="emit('closeAutoFocus', $event)"
@@ -128,7 +157,8 @@ function handleInteractOutside(e: Event) {
 
 		<slot />
 
-		<N8nDialogClose v-if="showCloseButton" />
+		<!-- Last in the DOM so Tab reaches it after the fields and actions. -->
+		<N8nDialogClose v-if="showCloseButton" :class="$style.dismiss" />
 	</DialogContent>
 </template>
 
@@ -158,12 +188,51 @@ function handleInteractOutside(e: Event) {
 }
 
 .content {
+	--n8n-dialog-region--padding: var(--n8n-dialog-content--padding, var(--spacing--md));
+	--n8n-dialog-close--size: var(--spacing--lg);
+	/* One default title line. The close button stays on this line when the title wraps. */
+	--n8n-dialog-title--line: calc(var(--font-size--lg) * var(--line-height--xl));
+	--n8n-dialog-close--inset-block-start: calc(
+		var(--n8n-dialog-region--padding) +
+			(var(--n8n-dialog-title--line) - var(--n8n-dialog-close--size)) / 2
+	);
+	--n8n-dialog-close--inset-inline-end: var(--n8n-dialog-region--padding);
+
+	/* The header's bottom padding is the space above the body. Without a header, the body supplies it. */
+	&:not(:has([data-slot='dialog-header'])) :global([data-slot='dialog-body']) {
+		padding-block-start: var(--n8n-dialog-region--padding);
+	}
+
+	/* Start the body below the corner close button. */
+	&:not(:has([data-slot='dialog-header'])):has(.dismiss) :global([data-slot='dialog-body']) {
+		padding-block-start: calc(var(--n8n-dialog-close--size) + var(--spacing--xs));
+	}
+
+	/* The footer's top padding is the space below the body. */
+	&:has([data-slot='dialog-footer']) :global([data-slot='dialog-body']) {
+		padding-block-end: 0;
+	}
+
+	&:not(:has([data-slot='dialog-header'])) .dismiss {
+		top: var(--spacing--sm);
+		inset-inline-end: var(--spacing--sm);
+	}
+
+	&:has([data-slot='dialog-header']) .dismiss {
+		top: var(--n8n-dialog-close--inset-block-start);
+		inset-inline-end: var(--n8n-dialog-close--inset-inline-end);
+	}
+
 	position: fixed;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	width: 100%;
-	padding: var(--n8n-dialog-content--padding, var(--spacing--lg));
+	display: flex;
+	flex-direction: column;
+	/* Cap the dialog so the body can scroll and the header and footer stay in place. */
+	max-height: calc(100dvh - var(--spacing--lg));
+
 	border-radius: var(--radius--lg);
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-800));
 	box-shadow:
@@ -178,6 +247,11 @@ function handleInteractOutside(e: Event) {
 	&:focus {
 		outline: none;
 	}
+}
+
+.dismiss {
+	position: absolute;
+	z-index: 1;
 }
 
 .stacked {
@@ -250,6 +324,11 @@ function handleInteractOutside(e: Event) {
 	height: 100%;
 	max-width: calc(100dvw - var(--spacing--lg));
 	max-height: calc(100dvh - var(--spacing--lg));
+
+	:global([data-slot='dialog-body']) {
+		flex: 1 1 auto;
+		overflow: auto;
+	}
 }
 </style>
 
