@@ -122,18 +122,18 @@ export function uncheckedErrorWorkflowWarning(reason: string): string {
 	return `The import could not check the error workflow of the copy: ${reason}. Check it in the workflow settings.`;
 }
 
-function tableNames(tables: ReadonlyArray<{ name: string }>): string {
+function tableNames(tables: readonly { name: string }[]): string {
 	return [...new Set(tables.map(({ name }) => name))].sort().join(', ');
 }
 
 /** The warning for the data tables that a re-import kept in the copy. */
-export function keptDataTablesWarning(replacedTables: ReadonlyArray<{ name: string }>): string {
+export function keptDataTablesWarning(replacedTables: readonly { name: string }[]): string {
 	return `The copy keeps the data tables that it used in place of ${replacedTables.length} data table(s) of the package that this project does not have: ${tableNames(replacedTables)}.`;
 }
 
 /** The warning for the data tables of the copy that a re-import could not keep. */
 export function dataTablesNotKeptWarning(
-	replacedTables: ReadonlyArray<{ name: string }>,
+	replacedTables: readonly { name: string }[],
 	reason: string,
 ): string {
 	return `The import could not keep the data tables that the copy used in place of ${replacedTables.length} data table(s) of the package that this project does not have (${tableNames(replacedTables)}), because ${reason}. Check the data tables in the workflow before it runs.`;

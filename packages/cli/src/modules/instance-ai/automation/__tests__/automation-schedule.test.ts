@@ -310,6 +310,19 @@ describe('triggerCronOf', () => {
 			expect(triggerCronOf(nodes, trigger)).toBeUndefined();
 		});
 
+		// The classification finds the trigger in the same nodes, so these guard against misuse.
+		it('returns nothing when the trigger names a node that is not in the workflow', () => {
+			const nodes = [scheduleNode(cronRule('0 8 * * *'), { name: 'Renamed' })];
+
+			expect(triggerCronOf(nodes, scheduleTrigger)).toBeUndefined();
+		});
+
+		it('returns nothing for a schedule trigger without a node', () => {
+			const nodes = [scheduleNode(cronRule('0 8 * * *'))];
+
+			expect(triggerCronOf(nodes, { kind: 'schedule', canActivate: true })).toBeUndefined();
+		});
+
 		it('returns nothing for a workflow without a trigger node', () => {
 			const nodes = [scheduleNode(cronRule('0 8 * * *'), { type: SLACK })];
 

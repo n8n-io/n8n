@@ -117,6 +117,16 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
+/** A node whose parameters make the workflow file of a package large. */
+const largeSetNode = (bytes: number): INode => ({
+	id: 'set-large',
+	name: 'Large value',
+	type: 'n8n-nodes-base.set',
+	typeVersion: 1,
+	position: [400, 0],
+	parameters: { values: { string: [{ name: 'body', value: 'x'.repeat(bytes) }] } },
+});
+
 const createSourceWorkflow = async (nodes: INode[], settings: IWorkflowSettings = {}) =>
 	await createWorkflow(
 		{
@@ -185,8 +195,8 @@ describe('export_workflow_package and import_workflow_package', () => {
 
 		expect(second.workflowId).toBe(first.workflowId);
 		expect(second.created).toBe(false);
-		// The stub of the first import now matches by name and type, so it is not listed again.
-		expect(second.credentialsNeedingSetup).toEqual([]);
+		// The copy keeps the stub of the first import, which still holds no value.
+		expect(second.credentialsNeedingSetup).toEqual([stub]);
 		expect(await workflowCountIn(targetProject)).toBe(1);
 		expect(await Container.get(CredentialsRepository).countBy({ type: 'httpHeaderAuth' })).toBe(2);
 	});
@@ -212,7 +222,8 @@ describe('export_workflow_package and import_workflow_package', () => {
 
 		expect(first.created).toBe(true);
 		expect(first.workflowId).not.toBe(source.id);
-		expect(second).toEqual({ ...first, created: false });
+		// The second pull keeps the credential that the copy uses, so it does not name it again.
+		expect(second).toEqual({ ...first, created: false, warnings: [] });
 		// The original credential matches by name and type in the source project, and the result
 		// names it, so that the user can check which secret the copy uses.
 		expect(first.credentialsNeedingSetup).toEqual([]);
@@ -421,6 +432,24 @@ describe('export_workflow_package errors', () => {
 		expect(emit).not.toHaveBeenCalledWith('n8n-package-exported', expect.anything());
 	});
 
+	it('gives a tool error that names the setting when one file is over the limit of the import', async () => {
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		Container.get(PackageImportConfig).maxEntryBytes = 4 * 1024;
+		const source = await createSourceWorkflow([largeSetNode(8 * 1024)]);
+
+		const result = await exportTool(owner, source.id);
+
+		expect(result.isError).toBe(true);
+		expect(textOf(result)).toMatch(
+			/^The workflow package has a file of \d+KB \("workflows\/[^"]+\/workflow\.json"\), and the limit for one file of a package is 4KB\. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES\.$/,
+		);
+		expect(emit).toHaveBeenCalledWith('n8n-package-export-failed', {
+			user: owner,
+			reason: 'blocked',
+			workflowIds: [source.id],
+		});
+	});
+
 	it('logs one export with the counts of the package', async () => {
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 		const source = await createSourceWorkflow([httpNode(credential)]);
@@ -492,6 +521,23 @@ describe('import_workflow_package errors', () => {
 		expect(textOf(result)).toBe(
 			packageSizeLimitMessage({ maxBytes: 1024, setting: 'N8N_IMPORT_MAX_UNCOMPRESSED_BYTES' }),
 		);
+	});
+
+	it('names the setting when a file of the package is over the limit of this instance', async () => {
+		const source = await createSourceWorkflow([largeSetNode(8 * 1024)]);
+		const pkg = exported(await exportTool(owner, source.id));
+		Container.get(PackageImportConfig).maxEntryBytes = 4 * 1024;
+
+		const result = await importTool(member, {
+			packageBase64: pkg.packageBase64,
+			projectId: targetProject.id,
+		});
+
+		expect(result.isError).toBe(true);
+		expect(textOf(result)).toMatch(
+			/^Package entry "workflows\/[^"]+\/workflow\.json" exceeds the maximum allowed uncompressed size per entry\. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES\.$/,
+		);
+		expect(await workflowCountIn(targetProject)).toBe(0);
 	});
 
 	it('gives a tool error for text that is not a package', async () => {

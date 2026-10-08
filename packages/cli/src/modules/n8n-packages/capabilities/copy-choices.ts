@@ -67,7 +67,7 @@ export type UsableCredential = { id: string; type: string };
  */
 export function acceptedCredentialChoices(
 	bindings: ReadonlyMap<string, string>,
-	requirements: ReadonlyArray<Pick<PackageCredentialRequirement, 'id' | 'type'>>,
+	requirements: readonly Pick<PackageCredentialRequirement, 'id' | 'type'>[],
 	usable: readonly UsableCredential[],
 ): Map<string, string> {
 	const requiredType = new Map(requirements.map(({ id, type }) => [id, type]));
@@ -102,7 +102,7 @@ export type DataTableChoices = {
 	/** Node id → the `dataTableId` parameter that the copy has in that node. */
 	selections: Map<string, NodeParameterValueType>;
 	/** The data tables of the package that the copy replaces, once each. */
-	replacedTables: Array<Pick<PackageDataTableRequirement, 'id' | 'name'>>;
+	replacedTables: Pick<PackageDataTableRequirement, 'id' | 'name'>[];
 };
 
 /**
@@ -113,7 +113,7 @@ export type DataTableChoices = {
 export function dataTableChoicesOfCopy(
 	packageNodes: readonly INode[],
 	copyNodes: readonly INode[],
-	missingTables: ReadonlyArray<Pick<PackageDataTableRequirement, 'id' | 'name'>>,
+	missingTables: readonly Pick<PackageDataTableRequirement, 'id' | 'name'>[],
 ): DataTableChoices {
 	const missingById = new Map(missingTables.map((table) => [table.id, table]));
 	const copyById = nodesById(copyNodes);

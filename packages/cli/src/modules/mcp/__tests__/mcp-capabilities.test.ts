@@ -1,3 +1,5 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
@@ -6,11 +8,14 @@ import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from
 import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
+	Project,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	User,
+	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { InstanceSettings } from 'n8n-core';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
@@ -29,7 +34,16 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { registerInstanceAiCapabilities } from '@/modules/instance-ai/capabilities/instance-ai-capabilities';
 import { registerN8nPackagesCapabilities } from '@/modules/n8n-packages/capabilities/n8n-packages-capabilities';
+import { WorkflowImportMatchService } from '@/modules/n8n-packages/entities/workflow/workflow-import-match.service';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import type { ImportResult } from '@/modules/n8n-packages/n8n-packages.types';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import {
+	buildImportPackageBuffer,
+	serializedWorkflow,
+} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
+import { McpSettingsService } from '../mcp.settings.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -340,6 +354,206 @@ describe('McpService capabilities', () => {
 
 			expect(names).toContain('export_workflow_package');
 			expect(names).not.toContain('import_workflow_package');
+		});
+
+		/**
+		 * The MCP SDK client of linked instances, Claude Desktop and Cursor checks structured
+		 * content against the output schema that tools/list published, also for an error result.
+		 */
+		describe('results through the MCP SDK client', () => {
+			const sourceWorkflow = Object.assign(new WorkflowEntity(), {
+				id: 'wf-source',
+				name: 'Daily report',
+				isArchived: false,
+				nodes: [],
+				settings: { availableInMCP: true },
+			});
+
+			const manifest = {
+				workflows: [{ id: 'wf-source', name: 'Daily report', target: 'workflows/wf-0' }],
+				requirements: {
+					credentials: [
+						{ id: 'cred-1', name: 'Stripe API', type: 'httpHeaderAuth', usedByWorkflows: [] },
+					],
+					nodeTypes: [{ type: 'n8n-nodes-base.httpRequest', typeVersion: 4, usedByWorkflows: [] }],
+				},
+			} as unknown as PackageManifest;
+
+			const importResult = {
+				workflows: [
+					{
+						sourceWorkflowId: 'wf-source',
+						localId: 'wf-copy',
+						name: 'Daily report',
+						projectId: 'project-1',
+						parentFolderId: null,
+						activeVersionId: null,
+						isArchived: false,
+						publishing: { state: 'unchanged' },
+						status: 'created',
+					},
+				],
+				credentials: { matched: [], stubbed: [] },
+				bindings: { workflows: {}, credentials: {} },
+				tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
+				dataTables: { matched: 0, created: 0 },
+				variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
+			} as unknown as ImportResult;
+
+			let packages: ReturnType<typeof mockInstance<N8nPackagesService>>;
+
+			beforeEach(() => {
+				packages = mockInstance(N8nPackagesService, {
+					exportPackageToWriter: vi.fn(async (_request, writer) => {
+						await writer.writeFile('manifest.json', '{}');
+						return { manifest, counts: {} } as Awaited<
+							ReturnType<N8nPackagesService['exportPackageToWriter']>
+						>;
+					}),
+					importPackage: vi.fn().mockResolvedValue(importResult),
+				});
+				mockInstance(WorkflowImportMatchService, {
+					findBySourceWorkflowIds: vi
+						.fn()
+						.mockResolvedValue({ matches: new Map(), lineageConflicts: [] }),
+				});
+				mockInstance(McpSettingsService, {
+					bulkSetAvailableInMCP: vi.fn().mockResolvedValue({
+						updatedCount: 1,
+						unchangedCount: 0,
+						skippedCount: 0,
+						failedCount: 0,
+						changedWorkflows: [],
+					}),
+					broadcastWorkflowMCPAvailabilityChanged: vi.fn().mockResolvedValue(undefined),
+				});
+				vi.mocked(Container.get(ProjectService).getPersonalProject).mockResolvedValue(
+					Object.assign(new Project(), { id: 'project-1' }),
+				);
+				vi.mocked(Container.get(WorkflowFinderService).findWorkflowForUser).mockImplementation(
+					async (workflowId) =>
+						workflowId === 'wf-copy'
+							? Object.assign(new WorkflowEntity(), {
+									id: 'wf-copy',
+									versionId: 'v-1',
+									activeVersionId: null,
+									nodes: [],
+									settings: {},
+								})
+							: sourceWorkflow,
+				);
+			});
+
+			/** A client of the MCP SDK that linked instances use, connected to this server. */
+			const connectSdkClient = async () => {
+				const handler = createMcpHandler(
+					async () => await service.getServer(user, flags, undefined, API_KEY_CALLER),
+					{ legacy: 'stateless' },
+				);
+				const client = new Client({ name: 'vitest', version: '1.0.0' }, { capabilities: {} });
+				await client.connect(
+					new StreamableHTTPClientTransport(new URL('http://n8n.local/mcp-server/http'), {
+						fetch: async (input, init) => await handler.fetch(new Request(input, init)),
+					}),
+				);
+				// The client checks results only against the schemas of a tool list that it read.
+				await client.listTools();
+				return client;
+			};
+
+			const textOf = (result: Awaited<ReturnType<Client['callTool']>>) =>
+				Array.isArray(result.content)
+					? result.content.map((block) => ('text' in block ? block.text : '')).join('')
+					: '';
+
+			it('returns an export that matches the published output schema', async () => {
+				const client = await connectSdkClient();
+
+				const result = await client.callTool({
+					name: 'export_workflow_package',
+					arguments: { workflowId: 'wf-source' },
+				});
+
+				expect(result.isError).toBeFalsy();
+				expect(result.structuredContent).toEqual({
+					packageBase64: expect.any(String),
+					workflowName: 'Daily report',
+					sizeBytes: expect.any(Number),
+					requirements: {
+						nodeTypes: ['n8n-nodes-base.httpRequest@4'],
+						credentials: [{ name: 'Stripe API', type: 'httpHeaderAuth' }],
+					},
+					warnings: [],
+				});
+				await client.close();
+			});
+
+			it('returns an import that matches the published output schema', async () => {
+				const packageBuffer = await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-source', name: 'Daily report' }),
+				]);
+				const client = await connectSdkClient();
+
+				const result = await client.callTool({
+					name: 'import_workflow_package',
+					arguments: { packageBase64: packageBuffer.toString('base64') },
+				});
+
+				expect(result.isError).toBeFalsy();
+				expect(result.structuredContent).toEqual({
+					workflowId: 'wf-copy',
+					workflowName: 'Daily report',
+					created: true,
+					published: false,
+					credentialsNeedingSetup: [],
+					missingNodeTypes: expect.any(Array),
+					warnings: [],
+				});
+				expect(packages.importPackage).toHaveBeenCalledWith(
+					expect.objectContaining({ projectId: 'project-1', workflowIdPolicy: 'new' }),
+				);
+				await client.close();
+			});
+
+			it('gives the message of an export error, not a schema mismatch', async () => {
+				vi.mocked(Container.get(WorkflowFinderService).findWorkflowForUser).mockResolvedValue(
+					Object.assign(new WorkflowEntity(), { ...sourceWorkflow, settings: {} }),
+				);
+				const client = await connectSdkClient();
+
+				const result = await client.callTool({
+					name: 'export_workflow_package',
+					arguments: { workflowId: 'wf-source' },
+				});
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				expect(textOf(result)).toContain('Workflow is not available in MCP.');
+				await client.close();
+			});
+
+			it('gives the message and the blocking issues of an import error, not a schema mismatch', async () => {
+				const issue = { type: 'credential-unresolved', kind: 'type_mismatch', sourceId: 'cred-1' };
+				packages.importPackage.mockRejectedValue(
+					new ConflictError('Import blocked: 1 issue(s).', undefined, { issues: [issue] }),
+				);
+				const packageBuffer = await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-source', name: 'Daily report' }),
+				]);
+				const client = await connectSdkClient();
+
+				const result = await client.callTool({
+					name: 'import_workflow_package',
+					arguments: { packageBase64: packageBuffer.toString('base64') },
+				});
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				expect(textOf(result)).toBe(
+					`Import blocked: 1 issue(s). Issues: ${JSON.stringify([issue])}`,
+				);
+				await client.close();
+			});
 		});
 
 		it('offers neither when the n8n-packages module registered nothing', async () => {

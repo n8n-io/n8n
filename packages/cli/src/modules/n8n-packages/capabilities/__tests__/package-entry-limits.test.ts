@@ -1,6 +1,10 @@
 import { PackageExportBlockedError } from '../../entities/package-export.errors';
 import type { PackageWriter } from '../../io/package-writer';
-import { EntryLimitedPackageWriter, type PackageEntryLimits } from '../package-entry-limits';
+import {
+	EntryLimitedPackageWriter,
+	packageEntrySizeMessage,
+	type PackageEntryLimits,
+} from '../package-entry-limits';
 
 const limits: PackageEntryLimits = { maxEntryBytes: 10, maxEntries: 4, maxUncompressedBytes: 25 };
 
@@ -49,6 +53,15 @@ describe('EntryLimitedPackageWriter', () => {
 			'The workflow package has a file of 2KB ("workflows/daily/workflow.json"), and the limit for one file of a package is 1KB. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES.',
 		);
 		expect(written).toEqual([]);
+	});
+
+	it('gives the sizes in bytes when they look the same when rounded', () => {
+		expect(packageEntrySizeMessage('a.json', 5 * 1024 * 1024 + 1, 5 * 1024 * 1024)).toBe(
+			'The workflow package has a file of 5242881B ("a.json"), and the limit for one file of a package is 5242880B. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES.',
+		);
+		expect(packageEntrySizeMessage('a.json', 7 * 1024 * 1024, 5 * 1024 * 1024)).toContain(
+			'a file of 7MB ("a.json"), and the limit for one file of a package is 5MB.',
+		);
 	});
 
 	it('counts the bytes of text, not its characters', async () => {

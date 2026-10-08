@@ -11,9 +11,16 @@ export type PackageEntryLimits = Pick<
 	'maxEntryBytes' | 'maxEntries' | 'maxUncompressedBytes'
 >;
 
+/** Two sizes in words. Rounded sizes that look the same are given in bytes. */
+function sizesInWords(size: number, limit: number): [string, string] {
+	const [sizeText, limitText] = [formatBytes(size), formatBytes(limit)];
+	return sizeText === limitText ? [`${size}B`, `${limit}B`] : [sizeText, limitText];
+}
+
 /** The size limit of one file in a package, in words that name the setting that changes it. */
 export function packageEntrySizeMessage(path: string, bytes: number, maxEntryBytes: number) {
-	return `The workflow package has a file of ${formatBytes(bytes)} ("${path}"), and the limit for one file of a package is ${formatBytes(maxEntryBytes)}. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES.`;
+	const [size, limit] = sizesInWords(bytes, maxEntryBytes);
+	return `The workflow package has a file of ${size} ("${path}"), and the limit for one file of a package is ${limit}. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES.`;
 }
 
 /**
