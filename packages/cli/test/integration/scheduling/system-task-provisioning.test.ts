@@ -96,6 +96,7 @@ describe('system task provisioning', () => {
 		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
 		expect(inserted.timeoutSeconds).toBe(Container.get(GlobalConfig).scheduler.taskTimeoutSeconds);
 		const [running, ...pending] = await taskRepo.findBy({ jobId: inserted.id });
+		expect(pending).not.toHaveLength(0);
 		await taskRepo.update(
 			{ id: running.id },
 			{ status: 'running', claimedBy: 'main-a', leaseExpiresAt: new Date(Date.now() + 60_000) },
