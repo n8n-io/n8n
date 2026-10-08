@@ -39,6 +39,7 @@ export type PromotableResource = z.infer<typeof promotableResourceSchema>;
 
 export const promotionChangesSchema = z.object({
 	commitSha: z.string().nullable(),
+	source: z.object({ configId: n8nIdSchema, branchName: z.string() }),
 	changes: promotableResourceSchema.array(),
 });
 
