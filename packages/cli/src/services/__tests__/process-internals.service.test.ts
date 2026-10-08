@@ -69,6 +69,14 @@ describe('ProcessInternalsService', () => {
 		expect(Object.values(internals.resources).every((count) => count > 0)).toBe(true);
 	});
 
+	it('should distinguish process lifetimes with the same host identifier', () => {
+		const first = createService('main', 'regular');
+		const second = createService('main', 'regular');
+		expect(first.collect().processStartId).toBe(first.collect().processStartId);
+		expect(first.collect().hostId).toBe(second.collect().hostId);
+		expect(first.collect().processStartId).not.toBe(second.collect().processStartId);
+	});
+
 	it('should omit scaling collections in regular mode', () => {
 		const internals = createService('main', 'regular').collect();
 
