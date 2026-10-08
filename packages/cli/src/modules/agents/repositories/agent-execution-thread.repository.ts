@@ -520,6 +520,22 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	/**
+	 * Child sessions that a session of the given agent started, in any project.
+	 * A system agent session can start child sessions in another project, so
+	 * the parent cleanup must not filter by project.
+	 */
+	async findChildSessions(
+		parentThreadId: string,
+		parentAgentId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: { parentThreadId, parentAgentId },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
 	async bumpUpdatedAt(threadId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });

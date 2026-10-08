@@ -1,4 +1,5 @@
 import type {
+	AgentExecutionCounter,
 	BuiltTelemetry,
 	CredentialProvider,
 	MemoryTaskUsageReport,
@@ -31,7 +32,16 @@ import { NotFoundError } from '@n8n/errors';
 import { NodeCatalogService } from '@/node-catalog';
 
 import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
+import type { StartExecutionParams } from '../agent-execution.service';
+import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import { AgentsService } from '../agents.service';
+import type { ExecutionRecorder } from '../execution-recorder';
+import {
+	AgentExecutionRepository,
+	type AgentExecutionLinks,
+} from '../repositories/agent-execution.repository';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import { bindExecutionInput } from '../utils/execution-input';
 import { modelStreamStallOptions } from '../model-stream-stall-options';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
@@ -46,6 +56,26 @@ import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import { streamAgentChunks } from '../utils/agent-stream';
+
+/** Execution source of a recorded builder turn. */
+export const BUILDER_EXECUTION_SOURCE = 'builder';
+
+/**
+ * The parent turn on the Agents runtime that calls the builder. Only a system
+ * agent (for example the Assistant on the Agents runtime) supplies it. The
+ * parent thread must be an Agents execution thread, because the builder
+ * session links to it as its parent.
+ */
+export interface BuilderParentExecution {
+	/** Agents execution thread id of the parent session. */
+	threadId: string;
+	/** Instance agent id that owns the parent thread. */
+	agentId: string;
+	/** Execution id of the parent turn that starts or resumes this builder turn. */
+	executionId: string;
+	/** Execution counter of the parent turn, so the parent's limits include builder tokens. */
+	executionCounter?: AgentExecutionCounter;
+}
 
 /**
  * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
@@ -86,6 +116,32 @@ export interface InstanceAiBuilderSessionOptions {
 	useEvalModelCatalog?: boolean;
 	/** Reports host-owned artifacts requested by the embedded builder. Omitted in the standalone builder. */
 	onRequiredArtifact?: (artifact: BuilderRequiredArtifact) => void;
+	/**
+	 * When set, each builder turn writes an execution thread and an execution
+	 * row, linked to the parent turn. When absent, the builder records nothing.
+	 */
+	parentExecution?: BuilderParentExecution;
+}
+
+interface BuilderTurnScope {
+	agentId: string;
+	agentName: string;
+	projectId: string;
+	user: User;
+	session: InstanceAiBuilderSessionOptions;
+	parentExecution: BuilderParentExecution;
+	/** The message of a start turn. Null for a resume. */
+	userMessage: string | null;
+	/** The suspended run that a resume continues. */
+	resumeRunId?: string;
+}
+
+interface RecordedBuilderTurn {
+	executionId: string;
+	inputMessageIds: string[];
+	recorder: ExecutionRecorder;
+	/** Call when the runtime has claimed the run, so a failure counts as a started execution. */
+	markStarted: () => void;
 }
 
 @Service()
@@ -99,6 +155,8 @@ export class AgentsBuilderService {
 		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly aiConfig: AiConfig,
+		private readonly turnExecutionService: AgentTurnExecutionService,
+		private readonly executionRepository: AgentExecutionRepository,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -114,7 +172,7 @@ export class AgentsBuilderService {
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
-		const builder = await this.createBuilderAgent(
+		const { builder, agentName } = await this.createBuilderAgent(
 			agentId,
 			projectId,
 			credentialProvider,
@@ -126,15 +184,46 @@ export class AgentsBuilderService {
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
 		const resourceId = user.id;
-		const resultStream = await builder.stream(message, {
-			persistence: { threadId: session.threadId, resourceId },
+		const options = {
 			abortSignal: session.abortSignal,
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
-		});
+		};
 
-		yield* this.streamFromAgent(resultStream);
+		const { parentExecution } = session;
+		if (!parentExecution) {
+			const resultStream = await builder.stream(message, {
+				persistence: { threadId: session.threadId, resourceId },
+				...options,
+			});
+			yield* this.streamFromAgent(resultStream);
+			return;
+		}
+
+		yield* this.streamRecordedTurn(
+			{
+				agentId,
+				agentName,
+				projectId,
+				user,
+				session,
+				parentExecution,
+				userMessage: message,
+			},
+			async ({ executionId, inputMessageIds, markStarted }) => {
+				markStarted();
+				return await builder.stream(bindExecutionInput(message, inputMessageIds), {
+					persistence: {
+						threadId: session.threadId,
+						resourceId,
+						hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					},
+					...options,
+					...executionCounterOption(parentExecution),
+				});
+			},
+		);
 	}
 
 	/**
@@ -175,7 +264,7 @@ export class AgentsBuilderService {
 			throw new BuilderCheckpointUnavailableError('not-found');
 		}
 
-		const builder = await this.createBuilderAgent(
+		const { builder, agentName } = await this.createBuilderAgent(
 			agentId,
 			projectId,
 			credentialProvider,
@@ -186,16 +275,44 @@ export class AgentsBuilderService {
 
 		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
 
-		const resultStream = await builder.resume('stream', resumeData, {
+		const options = {
 			runId,
 			toolCallId,
 			abortSignal: session.abortSignal,
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
-		});
+		};
 
-		yield* this.streamFromAgent(resultStream);
+		const { parentExecution } = session;
+		if (!parentExecution) {
+			const resultStream = await builder.resume('stream', resumeData, options);
+			yield* this.streamFromAgent(resultStream);
+			return;
+		}
+
+		yield* this.streamRecordedTurn(
+			{
+				agentId,
+				agentName,
+				projectId,
+				user,
+				session,
+				parentExecution,
+				userMessage: null,
+				resumeRunId: runId,
+			},
+			async ({ executionId, recorder, markStarted }) =>
+				await builder.resume('stream', resumeData, {
+					...options,
+					...executionCounterOption(parentExecution),
+					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					onResumeClaimed: async () => {
+						markStarted();
+						recorder.recordHitlResponse(toolCallId, resumeData);
+					},
+				}),
+		);
 	}
 
 	/** Expire a suspended builder checkpoint (e.g. when a host cannot render its question), scoped to the agent that owns it. */
@@ -223,7 +340,7 @@ export class AgentsBuilderService {
 		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
-	): Promise<RuntimeAgent> {
+	): Promise<{ builder: RuntimeAgent; agentName: string }> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -283,7 +400,108 @@ export class AgentsBuilderService {
 
 		builder.reasoning(resolveAIAReasoning(modelConfig));
 
-		return builder;
+		return { builder, agentName: agent.name };
+	}
+
+	/**
+	 * Record one builder turn like a delegated run: an execution thread for the
+	 * builder session, under the parent thread, and one execution row for the
+	 * turn, linked to the parent turn. Each start and each resume links to the
+	 * parent execution that calls it, because one builder session lives across
+	 * many parent turns.
+	 */
+	private async *streamRecordedTurn(
+		scope: BuilderTurnScope,
+		openStream: (turn: RecordedBuilderTurn) => Promise<StreamResult>,
+	): AsyncGenerator<StreamChunk> {
+		const { session, parentExecution } = scope;
+		const executionLinks = await this.resolveExecutionLinks(scope);
+		const recording: StartExecutionParams = {
+			// The thread takes its access from the parent thread on creation.
+			access: { accessScope: 'user', ownerId: scope.user.id },
+			threadId: session.threadId,
+			agentId: scope.agentId,
+			agentName: scope.agentName,
+			projectId: scope.projectId,
+			userMessage: scope.userMessage,
+			resourceId: scope.user.id,
+			source: BUILDER_EXECUTION_SOURCE,
+			...(scope.resumeRunId !== undefined
+				? { resumeRunId: scope.resumeRunId, sessionMode: 'existing' as const }
+				: {}),
+			...(executionLinks !== undefined ? { executionLinks } : {}),
+			threadMetadata: {
+				parentThreadId: parentExecution.threadId,
+				parentAgentId: parentExecution.agentId,
+			},
+		};
+		const recorder = this.turnExecutionService.createRecorder(
+			undefined,
+			// The recorder writes timeline snapshots only after the admission below.
+			() => executionId,
+			recording,
+		);
+		session.abortSignal.throwIfAborted();
+		const admission = await this.turnExecutionService.startExecution(recording, recorder.startedAt);
+		const { executionId } = admission;
+		let executionStarted = false;
+		let executionError: unknown;
+		try {
+			session.abortSignal.throwIfAborted();
+			const resultStream = await openStream({
+				executionId,
+				inputMessageIds: admission.inputMessageIds,
+				recorder,
+				markStarted: () => {
+					executionStarted = true;
+				},
+			});
+			for await (const chunk of streamAgentChunks(resultStream.stream)) {
+				recorder.record(chunk);
+				if (chunk.type === 'error') executionError = chunk.error;
+				yield chunk;
+			}
+		} catch (error) {
+			executionError = error;
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			throw error;
+		} finally {
+			const record = recorder.getMessageRecord();
+			let hitlStatus: 'suspended' | 'resumed' | undefined;
+			if (recorder.suspended) hitlStatus = 'suspended';
+			else if (scope.resumeRunId !== undefined && executionStarted) hitlStatus = 'resumed';
+			await this.turnExecutionService.finalizeExecution({
+				executionId,
+				executionStarted,
+				executionError,
+				params: {
+					...recording,
+					record: session.abortSignal.aborted
+						? { ...record, finishReason: 'cancelled', error: null }
+						: record,
+					hitlStatus,
+				},
+			});
+		}
+	}
+
+	private async resolveExecutionLinks(
+		scope: BuilderTurnScope,
+	): Promise<AgentExecutionLinks | undefined> {
+		try {
+			return (
+				(await this.executionRepository.findLinksForChildOf(scope.parentExecution.executionId)) ??
+				undefined
+			);
+		} catch (error) {
+			// Links serve usage reads only. A failed lookup must not stop the builder turn.
+			this.logger.warn('Failed to resolve builder execution links', {
+				agentId: scope.agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**
@@ -422,4 +640,12 @@ export class AgentsBuilderService {
 			})
 			.build();
 	}
+}
+
+function executionCounterOption(parentExecution: BuilderParentExecution): {
+	executionCounter?: AgentExecutionCounter;
+} {
+	return parentExecution.executionCounter !== undefined
+		? { executionCounter: parentExecution.executionCounter }
+		: {};
 }

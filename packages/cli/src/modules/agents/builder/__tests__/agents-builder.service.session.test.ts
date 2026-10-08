@@ -8,7 +8,11 @@ import { mock } from 'vitest-mock-extended';
 import type { NodeCatalogService } from '@/node-catalog';
 
 import type { InstanceAiCreditService } from '../../../instance-ai/instance-ai-credit.service';
+import type { StartExecutionParams } from '../../agent-execution.service';
+import type { AgentTurnExecutionService } from '../../agent-turn-execution.service';
 import type { AgentsService } from '../../agents.service';
+import { ExecutionRecorder } from '../../execution-recorder';
+import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { ProjectAgent } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
@@ -23,9 +27,19 @@ const aiConfigMock = mock<AiConfig>();
 // runtime without standing up a real model/tool/telemetry stack.
 const agentsSdkMocks = vi.hoisted(() => {
 	const streamCalls: Array<{
-		message: string;
-		options: { persistence: { threadId: string; resourceId: string }; abortSignal?: AbortSignal };
+		message: unknown;
+		options: {
+			persistence: {
+				threadId: string;
+				resourceId: string;
+				hostMetadata?: Record<string, unknown>;
+			};
+			abortSignal?: AbortSignal;
+			executionCounter?: unknown;
+		};
 	}> = [];
+	/** Chunks that the next stream or resume call emits. */
+	const nextChunks: StreamChunk[] = [];
 	const resumeCalls: Array<{ options: Record<string, unknown> }> = [];
 	const instructionsCalls: string[] = [];
 	const volatileInstructionsProviders: Array<() => Promise<string | undefined>> = [];
@@ -42,8 +56,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 	}> = [];
 
 	function emptyStream() {
+		const chunks = nextChunks.splice(0);
 		return new ReadableStream<StreamChunk>({
 			start(controller) {
+				for (const chunk of chunks) controller.enqueue(chunk);
 				controller.close();
 			},
 		});
@@ -96,15 +112,13 @@ const agentsSdkMocks = vi.hoisted(() => {
 			registeredToolNames.push(tool.name);
 			return this;
 		}
-		async stream(
-			message: string,
-			options: { persistence: { threadId: string; resourceId: string } },
-		) {
+		async stream(message: unknown, options: (typeof streamCalls)[number]['options']) {
 			streamCalls.push({ message, options });
 			return { stream: emptyStream() };
 		}
 		async resume(_mode: string, _resumeData: unknown, options: Record<string, unknown>) {
 			resumeCalls.push({ options });
+			if (typeof options.onResumeClaimed === 'function') await options.onResumeClaimed();
 			return { stream: emptyStream() };
 		}
 	}
@@ -132,6 +146,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 
 	return {
 		streamCalls,
+		nextChunks,
 		resumeCalls,
 		instructionsCalls,
 		volatileInstructionsProviders,
@@ -187,6 +202,18 @@ function setup(
 	const n8nMemory = mock<N8nMemory>();
 	const instanceAiCreditService = mock<InstanceAiCreditService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+	const turnExecutionService = mock<AgentTurnExecutionService>();
+	const executionRepository = mock<AgentExecutionRepository>();
+	turnExecutionService.createRecorder.mockImplementation(() => new ExecutionRecorder());
+	turnExecutionService.startExecution.mockResolvedValue({
+		executionId: 'builder-execution-1',
+		startedAt: new Date(),
+		inputMessageIds: ['input-message-1'],
+	});
+	executionRepository.findLinksForChildOf.mockResolvedValue({
+		parentExecutionId: 'parent-execution-1',
+		rootExecutionId: 'root-execution-1',
+	});
 
 	nodeCatalogService.initialize.mockResolvedValue(undefined);
 	agentsBuilderToolsService.getTools.mockReturnValue(standardTools);
@@ -197,6 +224,7 @@ function setup(
 
 	const agent = mock<ProjectAgent>({
 		id: 'agent-1',
+		name: 'Support agent',
 		schema: null,
 		integrations: [],
 		tools: {},
@@ -213,6 +241,8 @@ function setup(
 		instanceAiCreditService,
 		n8nCheckpointStorage,
 		aiConfigMock,
+		turnExecutionService,
+		executionRepository,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -228,6 +258,8 @@ function setup(
 		instanceAiCreditService,
 		n8nCheckpointStorage,
 		credentialService,
+		turnExecutionService,
+		executionRepository,
 	};
 }
 
@@ -242,6 +274,7 @@ const baseSession = {
 describe('AgentsBuilderService session isolation', () => {
 	beforeEach(() => {
 		agentsSdkMocks.streamCalls.length = 0;
+		agentsSdkMocks.nextChunks.length = 0;
 		agentsSdkMocks.resumeCalls.length = 0;
 		agentsSdkMocks.instructionsCalls.length = 0;
 		agentsSdkMocks.volatileInstructionsProviders.length = 0;
@@ -725,6 +758,366 @@ describe('AgentsBuilderService session isolation', () => {
 			'run-1:agent-builder:agent-1:memory:observer:report-1',
 			expect.arrayContaining([expect.objectContaining({ type: 'llmTokens' })]),
 			'completed',
+		);
+	});
+});
+
+describe('AgentsBuilderService execution records', () => {
+	const executionCounter = {
+		incrementMessageCount: vi.fn(),
+		incrementToolCallCount: vi.fn(),
+		incrementTokenCount: vi.fn(),
+	};
+	const parentExecution = {
+		threadId: 'assistant-thread-1',
+		agentId: 'instance-assistant',
+		executionId: 'parent-execution-1',
+		executionCounter,
+	};
+	const finishChunk = {
+		type: 'finish',
+		finishReason: 'stop',
+		model: 'anthropic/claude-sonnet-host-resolved',
+		usage: {
+			promptTokens: 120,
+			completionTokens: 30,
+			totalTokens: 150,
+			inputTokenDetails: { cacheRead: 100, cacheWrite: 10 },
+		},
+	} as StreamChunk;
+
+	beforeEach(() => {
+		agentsSdkMocks.streamCalls.length = 0;
+		agentsSdkMocks.nextChunks.length = 0;
+		agentsSdkMocks.resumeCalls.length = 0;
+	});
+
+	function recordedStart(turnExecutionService: ReturnType<typeof setup>['turnExecutionService']) {
+		return turnExecutionService.startExecution.mock.calls[0]?.[0] as StartExecutionParams;
+	}
+
+	function finalized(turnExecutionService: ReturnType<typeof setup>['turnExecutionService']) {
+		return turnExecutionService.finalizeExecution.mock.calls[0]?.[0];
+	}
+
+	it('records nothing and keeps the stream options when no parent execution is given', async () => {
+		const {
+			service,
+			user,
+			credentialProvider,
+			credentialService,
+			turnExecutionService,
+			executionRepository,
+		} = setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
+		);
+
+		expect(turnExecutionService.startExecution).not.toHaveBeenCalled();
+		expect(turnExecutionService.finalizeExecution).not.toHaveBeenCalled();
+		expect(executionRepository.findLinksForChildOf).not.toHaveBeenCalled();
+		expect(agentsSdkMocks.streamCalls[0]?.message).toBe('hi');
+		expect(agentsSdkMocks.streamCalls[0]?.options).toEqual({
+			persistence: { threadId: 'ia-builder:t:agent-1', resourceId: 'user-1' },
+			abortSignal: baseSession.abortSignal,
+			recoverUsageOnAbort: true,
+		});
+	});
+
+	it('records nothing for a resume when no parent execution is given', async () => {
+		const {
+			service,
+			user,
+			credentialProvider,
+			credentialService,
+			n8nCheckpointStorage,
+			turnExecutionService,
+		} = setup();
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
+		);
+
+		expect(turnExecutionService.startExecution).not.toHaveBeenCalled();
+		expect(agentsSdkMocks.resumeCalls[0]?.options).toEqual({
+			runId: 'builder-run-1',
+			toolCallId: 'tool-call-1',
+			abortSignal: baseSession.abortSignal,
+			recoverUsageOnAbort: true,
+		});
+	});
+
+	it('records a start turn under the parent thread and links it to the parent execution', async () => {
+		const {
+			service,
+			user,
+			credentialProvider,
+			credentialService,
+			turnExecutionService,
+			executionRepository,
+		} = setup();
+		agentsSdkMocks.nextChunks.push(finishChunk);
+
+		const chunks = await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'Build a support agent',
+				credentialProvider,
+				credentialService,
+				user,
+				{ ...baseSession, parentExecution },
+			),
+		);
+
+		expect(chunks).toEqual([finishChunk]);
+		expect(executionRepository.findLinksForChildOf).toHaveBeenCalledWith('parent-execution-1');
+		expect(recordedStart(turnExecutionService)).toEqual({
+			access: { accessScope: 'user', ownerId: 'user-1' },
+			threadId: 'ia-builder:t:agent-1',
+			agentId: 'agent-1',
+			agentName: 'Support agent',
+			projectId: 'project-1',
+			userMessage: 'Build a support agent',
+			resourceId: 'user-1',
+			source: 'builder',
+			executionLinks: {
+				parentExecutionId: 'parent-execution-1',
+				rootExecutionId: 'root-execution-1',
+			},
+			threadMetadata: {
+				parentThreadId: 'assistant-thread-1',
+				parentAgentId: 'instance-assistant',
+			},
+		});
+
+		const streamCall = agentsSdkMocks.streamCalls[0];
+		expect(streamCall?.message).toEqual([
+			{
+				id: 'input-message-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Build a support agent' }],
+			},
+		]);
+		expect(streamCall?.options.persistence).toEqual({
+			threadId: 'ia-builder:t:agent-1',
+			resourceId: 'user-1',
+			hostMetadata: { n8nExecutionId: 'builder-execution-1' },
+		});
+		expect(streamCall?.options.executionCounter).toBe(executionCounter);
+		expect(streamCall?.options).toMatchObject({ recoverUsageOnAbort: true });
+
+		const finalize = finalized(turnExecutionService);
+		expect(finalize).toMatchObject({
+			executionId: 'builder-execution-1',
+			executionStarted: true,
+			params: {
+				threadId: 'ia-builder:t:agent-1',
+				source: 'builder',
+				executionLinks: {
+					parentExecutionId: 'parent-execution-1',
+					rootExecutionId: 'root-execution-1',
+				},
+				hitlStatus: undefined,
+				record: {
+					finishReason: 'stop',
+					model: 'anthropic/claude-sonnet-host-resolved',
+					usage: { promptTokens: 120, completionTokens: 30, totalTokens: 150 },
+					cacheReadTokens: 100,
+					cacheWriteTokens: 10,
+				},
+			},
+		});
+	});
+
+	it('records a resume with the same links and the resumed HITL status', async () => {
+		const {
+			service,
+			user,
+			credentialProvider,
+			credentialService,
+			turnExecutionService,
+			n8nCheckpointStorage,
+		} = setup();
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+		agentsSdkMocks.nextChunks.push(finishChunk);
+
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{ approved: true },
+				credentialProvider,
+				credentialService,
+				user,
+				{ ...baseSession, parentExecution },
+			),
+		);
+
+		expect(recordedStart(turnExecutionService)).toMatchObject({
+			threadId: 'ia-builder:t:agent-1',
+			userMessage: null,
+			resumeRunId: 'builder-run-1',
+			sessionMode: 'existing',
+			source: 'builder',
+			executionLinks: {
+				parentExecutionId: 'parent-execution-1',
+				rootExecutionId: 'root-execution-1',
+			},
+			threadMetadata: {
+				parentThreadId: 'assistant-thread-1',
+				parentAgentId: 'instance-assistant',
+			},
+		});
+		expect(agentsSdkMocks.resumeCalls[0]?.options).toMatchObject({
+			runId: 'builder-run-1',
+			toolCallId: 'tool-call-1',
+			hostMetadata: { n8nExecutionId: 'builder-execution-1' },
+			executionCounter,
+			recoverUsageOnAbort: true,
+		});
+		expect(finalized(turnExecutionService)).toMatchObject({
+			executionId: 'builder-execution-1',
+			executionStarted: true,
+			params: {
+				hitlStatus: 'resumed',
+				record: { usage: { totalTokens: 150 } },
+			},
+		});
+	});
+
+	it('marks a turn that suspends on a builder question', async () => {
+		const { service, user, credentialProvider, credentialService, turnExecutionService } = setup();
+		agentsSdkMocks.nextChunks.push({
+			type: 'tool-call-suspended',
+			runId: 'builder-run-1',
+			toolCallId: 'tool-call-1',
+			toolName: 'ask_question',
+			input: {},
+			suspendPayload: {},
+		} as StreamChunk);
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{ ...baseSession, parentExecution },
+			),
+		);
+
+		expect(finalized(turnExecutionService)?.params.hitlStatus).toBe('suspended');
+	});
+
+	it('records a cancelled turn when the host run is stopped', async () => {
+		const { service, user, credentialProvider, credentialService, turnExecutionService } = setup();
+		const controller = new AbortController();
+		agentsSdkMocks.nextChunks.push(finishChunk);
+		const stream = service.buildAgent(
+			'agent-1',
+			'project-1',
+			'hi',
+			credentialProvider,
+			credentialService,
+			user,
+			{ ...baseSession, abortSignal: controller.signal, parentExecution },
+		);
+
+		await stream.next();
+		controller.abort();
+		await drain(stream);
+
+		expect(finalized(turnExecutionService)?.params.record).toMatchObject({
+			finishReason: 'cancelled',
+			error: null,
+			usage: { totalTokens: 150 },
+		});
+	});
+
+	it('records a failed turn and rethrows the runtime error', async () => {
+		const { service, user, credentialProvider, credentialService, turnExecutionService } = setup();
+		const failure = new Error('model unavailable');
+		const streamSpy = vi
+			.spyOn(agentsSdkMocks.MockAgent.prototype, 'stream')
+			.mockRejectedValueOnce(failure);
+
+		await expect(
+			drain(
+				service.buildAgent(
+					'agent-1',
+					'project-1',
+					'hi',
+					credentialProvider,
+					credentialService,
+					user,
+					{ ...baseSession, parentExecution },
+				),
+			),
+		).rejects.toThrow('model unavailable');
+		streamSpy.mockRestore();
+
+		expect(finalized(turnExecutionService)).toMatchObject({
+			executionId: 'builder-execution-1',
+			executionStarted: true,
+			executionError: failure,
+			params: { record: { finishReason: 'error' } },
+		});
+	});
+
+	it('records the turn without links when the link lookup fails', async () => {
+		const {
+			service,
+			logger,
+			user,
+			credentialProvider,
+			credentialService,
+			turnExecutionService,
+			executionRepository,
+		} = setup();
+		executionRepository.findLinksForChildOf.mockRejectedValue(new Error('db down'));
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{ ...baseSession, parentExecution },
+			),
+		);
+
+		expect(recordedStart(turnExecutionService)).not.toHaveProperty('executionLinks');
+		expect(turnExecutionService.finalizeExecution).toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to resolve builder execution links',
+			expect.objectContaining({ agentId: 'agent-1' }),
 		);
 	});
 });
