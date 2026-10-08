@@ -55,6 +55,24 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.end('export {};');
 	});
 
+	app.get('/raw-script-array-headers', (_req, res) => {
+		res.writeHead(200, [['Content-Type', 'application/javascript']]);
+		res.end('export {};');
+	});
+
+	app.get('/raw-sandboxed-array-headers', (_req, res) => {
+		res.writeHead(200, [
+			['Content-Type', 'text/html'],
+			['Content-Security-Policy', 'sandbox allow-scripts'],
+		]);
+		res.end('<p>sandboxed</p>');
+	});
+
+	app.get('/raw-script-flat-headers', (_req, res) => {
+		res.writeHead(200, ['Content-Type', 'application/javascript']);
+		res.end('export {};');
+	});
+
 	app.get('/typed', (req, res) => {
 		res.setHeader('Content-Type', String(req.query.type));
 		res.end('<p>typed</p>');
@@ -178,6 +196,26 @@ describe('createContentSecurityPolicyMiddleware', () => {
 		it('should not serve a policy when writeHead carries a JavaScript content type', async () => {
 			const response = await request(app).get('/raw-script');
 
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should not serve a policy when writeHead carries an array-form JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script-array-headers');
+
+			expect(response.headers['content-type']).toBe('application/javascript');
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should leave an array-form policy that writeHead carries untouched', async () => {
+			const response = await request(app).get('/raw-sandboxed-array-headers');
+
+			expect(response.headers[ENFORCED]).toBe('sandbox allow-scripts');
+		});
+
+		it('should not serve a policy when writeHead carries a flat-array JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script-flat-headers');
+
+			expect(response.headers['content-type']).toBe('application/javascript');
 			expect(response.headers[ENFORCED]).toBeUndefined();
 		});
 

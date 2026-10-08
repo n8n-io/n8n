@@ -47,22 +47,44 @@ const isHeaderValue = (value: unknown): value is number | string | string[] =>
 	typeof value === 'number' ||
 	(Array.isArray(value) && value.every((entry) => typeof entry === 'string'));
 
+const isHeaderEntry = (entry: unknown): entry is [unknown, unknown] => Array.isArray(entry);
+
 /**
  * Copy the headers of a `writeHead(status[, message][, headers])` call onto the response,
  * so the checks below see a `content-type` or a policy passed that way and not only the
- * ones set with `res.setHeader`. `writeHead` then setting them again is a no-op. The
- * array form is not handled: nothing in n8n passes one.
+ * ones set with `res.setHeader`. The object form passes through to `writeHead`, where
+ * setting the same headers again is a no-op. The array form is consumed and replaced
+ * with an empty object: once any header is set on the response, Node's `writeHead`
+ * rejects the pairs form, so forwarding it would throw where the object form succeeds.
  *
  * Takes `unknown[]` because `Parameters<>` collapses `writeHead`'s overloads to the
  * two-argument one, which cannot express the `(status, message, headers)` form.
  */
 const copyWriteHeadHeaders = (res: Response, args: unknown[]) => {
-	const headers = typeof args[1] === 'string' ? args[2] : args[1];
-	if (typeof headers !== 'object' || headers === null || Array.isArray(headers)) return;
+	const headersIndex = typeof args[1] === 'string' ? 2 : 1;
+	const headers = args[headersIndex];
+	if (typeof headers !== 'object' || headers === null) return;
 
-	for (const [name, value] of Object.entries(headers)) {
-		if (isHeaderValue(value)) res.setHeader(name, value);
+	if (!Array.isArray(headers)) {
+		for (const [name, value] of Object.entries(headers)) {
+			if (isHeaderValue(value)) res.setHeader(name, value);
+		}
+		return;
 	}
+
+	if (headers.every(isHeaderEntry)) {
+		// `[name, value]` pairs, the documented array form.
+		for (const [name, value] of headers) {
+			if (typeof name === 'string' && isHeaderValue(value)) res.setHeader(name, value);
+		}
+	} else {
+		// Alternating names and values, as in `res.getRawHeaderNames` output.
+		for (let i = 0; i + 1 < headers.length; i += 2) {
+			const [name, value] = [headers[i], headers[i + 1]];
+			if (typeof name === 'string' && isHeaderValue(value)) res.setHeader(name, value);
+		}
+	}
+	args[headersIndex] = {};
 };
 
 /**
