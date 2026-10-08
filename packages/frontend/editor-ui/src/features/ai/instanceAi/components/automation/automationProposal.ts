@@ -105,44 +105,58 @@ export function answerTargetId(proposal: Proposal): string | undefined {
 }
 
 /** The target that the place line names: the answer target, else the recommended one. */
-function placeTargetId(proposal: Proposal): string {
-	return answerTargetId(proposal) ?? proposal.recommended.targetId;
+interface PlaceTarget {
+	id: string;
+	label?: string;
+	isLocal: boolean;
+	isRecommended: boolean;
 }
 
-function isLocalPlace(proposal: Proposal): boolean {
-	const targetId = placeTargetId(proposal);
-	const target = proposal.targets.find((entry) => entry.id === targetId);
-	if (target) return target.kind === 'local';
-	if (targetId === proposal.recommended.targetId) return proposal.recommended.kind === 'local';
-	return targetId === AUTOMATION_LOCAL_TARGET_ID;
+function placeTarget(proposal: Proposal): PlaceTarget {
+	const { recommended, targets } = proposal;
+	const id = answerTargetId(proposal) ?? recommended.targetId;
+	const target = targets.find((entry) => entry.id === id);
+	const isRecommended = id === recommended.targetId;
+	let isLocal = id === AUTOMATION_LOCAL_TARGET_ID;
+	if (target) isLocal = target.kind === 'local';
+	else if (isRecommended) isLocal = recommended.kind === 'local';
+	return {
+		id,
+		...(target?.label !== undefined && { label: target.label }),
+		isLocal,
+		isRecommended,
+	};
 }
 
 /**
  * The reason is about the recommended target, so it shows only for that target. Every reason
  * text describes this computer, so a linked place shows none.
  */
-function shownReasonKey(proposal: Proposal): BaseTextKey | undefined {
-	if (placeTargetId(proposal) !== proposal.recommended.targetId) return undefined;
-	if (!isLocalPlace(proposal)) return undefined;
+function shownReasonKey(proposal: Proposal, place: PlaceTarget): BaseTextKey | undefined {
+	if (!place.isRecommended || !place.isLocal) return undefined;
 	return placeReasonKey(proposal.recommended, proposal.trigger);
+}
+
+function hasLocalCaveat(proposal: Proposal, place: PlaceTarget, reasonKey?: BaseTextKey): boolean {
+	return (
+		place.isLocal && ALWAYS_ON_KINDS.has(proposal.trigger.kind) && reasonKey !== LOCAL_CAVEAT_KEY
+	);
 }
 
 /** True when the card adds "Only runs while this computer is on." The text shows once. */
 export function showsLocalCaveat(proposal: Proposal): boolean {
-	if (!isLocalPlace(proposal) || !ALWAYS_ON_KINDS.has(proposal.trigger.kind)) return false;
-	return shownReasonKey(proposal) !== LOCAL_CAVEAT_KEY;
+	const place = placeTarget(proposal);
+	return hasLocalCaveat(proposal, place, shownReasonKey(proposal, place));
 }
 
 export function placeOf(proposal: Proposal): AutomationPlace {
-	const reasonKey = shownReasonKey(proposal);
-	const place: AutomationPlace = {
+	const place = placeTarget(proposal);
+	const reasonKey = shownReasonKey(proposal, place);
+	return {
+		...(!place.isLocal && { linkedLabel: place.label ?? place.id }),
 		...(reasonKey && { reasonKey }),
-		caveat: showsLocalCaveat(proposal),
+		caveat: hasLocalCaveat(proposal, place, reasonKey),
 	};
-	if (isLocalPlace(proposal)) return place;
-	const targetId = placeTargetId(proposal);
-	const target = proposal.targets.find((entry) => entry.id === targetId);
-	return { ...place, linkedLabel: target?.label ?? targetId };
 }
 
 function offersActivation(proposal: Proposal): boolean {

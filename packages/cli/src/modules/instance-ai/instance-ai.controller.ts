@@ -86,6 +86,7 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
+	// oxlint-disable-next-line eslint/max-params -- DI constructor injection
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
@@ -385,19 +386,24 @@ export class InstanceAiController {
 		};
 		try {
 			// An onboarding thread opens with the greeting and the first question card in place.
-			return payload.source === 'onboarding'
-				? await this.onboarding.ensureThread(
-						req.user,
-						requestedThreadId,
-						payload.projectId,
-						launchMetadata,
-					)
-				: await this.memoryService.ensureThread(
-						req.user.id,
-						requestedThreadId,
-						payload.projectId,
-						launchMetadata,
-					);
+			const ensured =
+				payload.source === 'onboarding'
+					? await this.onboarding.ensureThread(
+							req.user,
+							requestedThreadId,
+							payload.projectId,
+							launchMetadata,
+						)
+					: await this.memoryService.ensureThread(
+							req.user.id,
+							requestedThreadId,
+							payload.projectId,
+							launchMetadata,
+						);
+			return {
+				...ensured,
+				thread: await this.threadSharing.withSharingFields(req.user, ensured.thread),
+			};
 		} catch (error) {
 			this.instanceAiErrorReporter.report(error, {
 				component: 'instance-ai-ensure-thread',
@@ -437,7 +443,7 @@ export class InstanceAiController {
 			title: payload.title,
 			metadata: payload.metadata,
 		});
-		return { thread };
+		return { thread: await this.threadSharing.withSharingFields(req.user, thread) };
 	}
 
 	@Get('/threads/:threadId/tabs')

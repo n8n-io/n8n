@@ -98,7 +98,11 @@ describe('placeReasonKey', () => {
 	});
 
 	it('has no local reason for a linked recommendation', () => {
-		const linked = { targetId: 'cloud-1', kind: 'linked', reasons: ['needs-local-files'] } as const;
+		const linked: Proposal['recommended'] = {
+			targetId: 'cloud-1',
+			kind: 'linked',
+			reasons: ['needs-local-files'],
+		};
 
 		expect(
 			placeReasonKey({ ...linked, reasons: ['needs-local-files'] }, { kind: 'webhook' }),
@@ -171,10 +175,10 @@ describe('placeOf', () => {
 	});
 
 	it('names a linked instance by its label, else by its id', () => {
-		const linked = {
+		const linked: Partial<Proposal> = {
 			recommended: { targetId: 'cloud-1', kind: 'linked', reasons: ['always-on-trigger'] },
 			offered: { target: ['cloud-1'], activate: [true, false] },
-		} as const;
+		};
 
 		expect(placeOf(makeProposal({ ...linked, targets: [CLOUD_TARGET] }))).toEqual({
 			linkedLabel: 'Team cloud',

@@ -312,6 +312,29 @@ describe('ThreadSharingService', () => {
 		});
 	});
 
+	describe('withSharingFields', () => {
+		it('adds the sharing fields to a shared thread that a route already loaded', async () => {
+			const { service, threads, memory } = setup();
+			threads.findSharedByIds.mockResolvedValue([makeThread({ accessScope: 'project' })]);
+			const renamed = { ...info('thread-1'), title: 'Renamed' };
+
+			await expect(service.withSharingFields(owner, renamed)).resolves.toEqual({
+				...renamed,
+				...SHARED_FIELDS,
+			});
+			expect(threads.findSharedByIds).toHaveBeenCalledWith(ASSISTANT_AGENT_ID, ['thread-1']);
+			expect(memory.getThreadInfo).not.toHaveBeenCalled();
+		});
+
+		it('returns a private thread unchanged', async () => {
+			const { service } = setup();
+
+			await expect(service.withSharingFields(owner, info('thread-1'))).resolves.toEqual(
+				info('thread-1'),
+			);
+		});
+	});
+
 	describe('owner-only metadata', () => {
 		const withMetadata = (id: string): InstanceAiThreadInfo => ({
 			...info(id),

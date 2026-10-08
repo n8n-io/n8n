@@ -14,6 +14,8 @@ import {
 	automationProposalCardSchema,
 	confirmationRequestPayloadSchema,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	InstanceAiConfirmRequestDto,
+	sharedCardRule,
 	type InstanceAiPermissionMode,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
@@ -229,6 +231,31 @@ describe('propose_automation on the n8n Assistant', () => {
 			expect(cardOf(payload)).toMatchObject({ versionId: 'v-1', canActivate: true });
 			expect(world.nothingChanged()).toBe(true);
 		});
+
+		// A teammate in a shared chat answers this card only with the scopes of the card rule.
+		it.each([
+			['turns it on', turnOn, false, ['workflow:update', 'workflow:publish']],
+			['saves it', saveOnly, false, ['workflow:update']],
+			['declines it', notNow, false, ['workflow:update']],
+			['keeps an archived workflow', saveOnly, true, ['workflow:update', 'workflow:delete']],
+		] as const)(
+			'gives the real card a teammate rule when the answer %s',
+			async (_label, answer, isArchived, scopes) => {
+				world.grant(storedWorkflow({ isArchived }));
+				const tool = buildTool();
+				const { payload } = await firstCall(tool);
+				const card = {
+					toolName: tool.name,
+					input,
+					suspendPayload: jsonParse(JSON.stringify(payload)),
+				};
+
+				expect(sharedCardRule(card, InstanceAiConfirmRequestDto.parse(answer), 'p-1')).toEqual({
+					scopes,
+					target: { type: 'workflow', id: 'wf-1' },
+				});
+			},
+		);
 
 		it('fails for a workflow that the user cannot update, without a card', async () => {
 			world.grant(storedWorkflow(), ['workflow:read']);

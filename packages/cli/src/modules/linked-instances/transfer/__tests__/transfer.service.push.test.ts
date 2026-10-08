@@ -518,7 +518,7 @@ describe('TransferService.push', () => {
 
 		const result = await service.push(alice, linkId, { workflowId: 'wf1', publish: true });
 		remote.handlers.import_workflow_package = () => {
-			throw new RemoteInstanceError('tool-error', `Refused [REDACTED]`);
+			throw new RemoteInstanceError('tool-error', 'Refused [REDACTED]');
 		};
 		const error = await service.push(alice, linkId, { workflowId: 'wf1' }).catch((e: unknown) => e);
 

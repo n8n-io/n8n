@@ -1458,6 +1458,46 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * The user's own computer (local gateway), browser and the + menu channels that the client
+	 * reports. A shared chat runs as its owner without them, so its prompt never asks the owner
+	 * to connect one.
+	 */
+	private personalComputerUse(
+		user: User,
+		sharedThread: boolean,
+		switches: {
+			browserUseEnabledGlobally: boolean;
+			localGatewayDisabledForUser: boolean;
+			clientChannels: AssistantTurnOptions['computerUseChannels'];
+		},
+	) {
+		if (sharedThread) {
+			return { gatewayMcpServer: undefined, browserMcpServer: undefined, clientChannels: [] };
+		}
+		const userGateway = this.gatewayService.findGateway(user.id);
+		return {
+			gatewayMcpServer:
+				!switches.localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined,
+			browserMcpServer: switches.browserUseEnabledGlobally
+				? this.browserSessionService.findMcpServer(user.id)
+				: undefined,
+			clientChannels: switches.clientChannels,
+		};
+	}
+
+	/**
+	 * One scoped reader of the user's past chats backs both the tool and the first-turn hint.
+	 * A shared chat runs as its owner without a search in the owner's other chats.
+	 */
+	private pastChatsReader(
+		user: User,
+		scope: { enabled: boolean; sharedThread: boolean; projectId: string; threadId: string },
+	) {
+		if (!scope.enabled || scope.sharedThread) return undefined;
+		return this.conversationHistoryService.forContext(user.id, scope.projectId, scope.threadId);
+	}
+
 	areMcpConnectionsAvailable(): boolean {
 		return (
 			Container.get(ModuleRegistry).isActive('mcp-registry') &&
@@ -1481,8 +1521,7 @@ export class InstanceAiService {
 		const memory = this.agentMemory;
 		const session = await this.systemAgents.findThread(threadId);
 		const boundProjectId = session?.projectId;
-		// A shared chat runs as its owner without the owner's personal integrations: computer,
-		// browser, MCP connections and past chats.
+		// A shared chat runs as its owner without the owner's computer, browser, MCP and past chats.
 		const sharedThread = !!session && isSharedThread(session);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
@@ -1497,7 +1536,6 @@ export class InstanceAiService {
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
-		const userGateway = this.gatewayService.findGateway(user.id);
 
 		// There's another ensure lock check at `getCredits`, which only fires when the frontend mounts.
 		await this.creditService.ensureQuotaLockApplied(user);
@@ -1526,11 +1564,12 @@ export class InstanceAiService {
 		this.setupPanelByThread.set(threadId, setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
 		const { instanceContextEnabled, nodeUsageEnabled } = instanceContextGates ?? gates;
-		// One scoped reader backs both the tool and the first-turn hint.
-		const conversationHistory =
-			conversationHistoryEnabled && !sharedThread
-				? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
-				: undefined;
+		const conversationHistory = this.pastChatsReader(user, {
+			enabled: conversationHistoryEnabled,
+			sharedThread,
+			projectId: boundProjectId,
+			threadId,
+		});
 		// Follow-ups and resumed runs retain the selected mode if flags change.
 		const mode = turnOptions.buildMode ?? (progressiveBuildingEnabled ? 'progressive' : 'default');
 		// The operator pin sits below the request pin and the thread's own selection,
@@ -1584,14 +1623,12 @@ export class InstanceAiService {
 		// When Browser Use is disabled instance-wide, hide the gateway's browser tools
 		// too so they are neither advertised to nor callable by the agent.
 		this.gatewayService.applyToolPolicy(user.id);
-		const gatewayMcpServer =
-			!sharedThread && !localGatewayDisabledForUser && userGateway?.isConnected
-				? userGateway
-				: undefined;
-		const browserMcpServer =
-			browserUseEnabledGlobally && !sharedThread
-				? this.browserSessionService.findMcpServer(user.id)
-				: undefined;
+		const computerUse = this.personalComputerUse(user, sharedThread, {
+			browserUseEnabledGlobally,
+			localGatewayDisabledForUser,
+			clientChannels: turnOptions.computerUseChannels,
+		});
+		const { gatewayMcpServer, browserMcpServer } = computerUse;
 		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
@@ -1672,13 +1709,12 @@ export class InstanceAiService {
 
 		// The client reports which + menu entries it renders, because only it can see
 		// its own rollout and the device. The admin switches are still applied here,
-		// so the report can only narrow. A shared chat has no computer or browser, so the
-		// prompt must not ask the owner to connect one.
+		// so the report can only narrow.
 		context.computerUseState = resolveComputerUseState({
 			localGatewayDisabledGlobally,
 			localGatewayDisabledForUser,
 			browserUseEnabledGlobally,
-			clientChannels: sharedThread ? [] : turnOptions.computerUseChannels,
+			clientChannels: computerUse.clientChannels,
 			localComputerToolCategories: gatewayMcpServer
 				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
 				: undefined,
@@ -3658,9 +3694,7 @@ export class InstanceAiService {
 	/** `personalConnections`: add the user's own MCP connections, which a shared chat leaves out. */
 	private async buildMcpServers(
 		user: User,
-		threadId: string,
-		runId: string,
-		tracing: InstanceAiTraceContext | undefined,
+		run: { threadId: string; runId: string; tracing: InstanceAiTraceContext | undefined },
 		{
 			messageGroupId,
 			personalConnections,
@@ -3672,10 +3706,8 @@ export class InstanceAiService {
 				? await this.instanceAiErrorReporter.withBoundary(
 						'instance-ai-mcp-setup',
 						{
-							threadId,
-							runId,
-							tracing,
-							agentId: orchestratorAgentId(runId),
+							...run,
+							agentId: orchestratorAgentId(run.runId),
 							userId: user.id,
 							messageGroupId,
 						},
@@ -3697,10 +3729,14 @@ export class InstanceAiService {
 		}
 		await this.bindAgentContextReader(environment.context, user);
 		await this.bindAgentPreviewSession(environment.context, user);
-		const mcpServers = await this.buildMcpServers(user, threadId, runId, tracing, {
-			messageGroupId: environment.orchestrationContext.messageGroupId,
-			personalConnections: !environment.sharedThread,
-		});
+		const mcpServers = await this.buildMcpServers(
+			user,
+			{ threadId, runId, tracing },
+			{
+				messageGroupId: environment.orchestrationContext.messageGroupId,
+				personalConnections: !environment.sharedThread,
+			},
+		);
 		const { agent, mcpConnectionFailures } = await createInstanceAgent({
 			modelId: environment.modelId,
 			context: environment.context,

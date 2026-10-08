@@ -75,6 +75,18 @@ export class ThreadSharingService {
 		return thread;
 	}
 
+	/**
+	 * `thread` as `viewer` sees it, with the sharing fields when the thread is shared. Every
+	 * route that returns a thread summary uses it, so that no response drops the shared marker.
+	 */
+	async withSharingFields(
+		viewer: User,
+		thread: InstanceAiThreadInfo,
+	): Promise<InstanceAiThreadInfo> {
+		const [withFields] = await this.fields.addTo(viewer, [thread]);
+		return withFields;
+	}
+
 	/** The user's threads and the threads shared in the user's team projects. */
 	async listThreads(user: User): Promise<InstanceAiThreadListResponse> {
 		const projectIds = await this.policy.readableProjectIds(user);

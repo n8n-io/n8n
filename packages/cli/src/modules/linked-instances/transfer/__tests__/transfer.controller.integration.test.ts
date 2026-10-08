@@ -8,7 +8,12 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, Project, User } from '@n8n/db';
-import { SharedWorkflowRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
+import {
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createChatUser, createMember, createOwner } from '@test-integration/db/users';

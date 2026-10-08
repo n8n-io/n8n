@@ -518,9 +518,16 @@ describe('AgentChatController chat message history', () => {
 	});
 
 	it('shows the open card of a shared thread, which runs in its owner memory', async () => {
+		// Only an instance agent shares a thread. Its sharing rules let the teammate read it.
+		const registry = new SystemAgentRegistry();
+		const provider = mock<SystemAgentProvider>({ agentId: 'agent-1', name: 'Test Assistant' });
+		const sharing = mock<SystemAgentSharingPolicy>();
+		sharing.canRead.mockResolvedValue(true);
+		Object.defineProperty(provider, 'sharing', { value: sharing });
+		provider.authorize.mockResolvedValue(true);
+		registry.register(provider);
 		const { controller, agentsService, agentsBuilderService, agentExecutionService } =
-			makeController();
-		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			makeController(registry);
 		agentsService.getConversationHistory.mockResolvedValue(null);
 		agentExecutionService.findThreadById.mockResolvedValue(
 			mock<AgentExecutionThread>({

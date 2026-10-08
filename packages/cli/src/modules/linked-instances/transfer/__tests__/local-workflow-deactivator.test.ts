@@ -17,6 +17,8 @@ function setup() {
 	workflowService.deactivateWorkflow.mockResolvedValue(
 		mock<WorkflowEntity>({ id: 'wf1', activeVersionId: null }),
 	);
+	collaborationService.validateWriteLock.mockResolvedValue();
+	collaborationService.broadcastWorkflowUpdate.mockResolvedValue();
 	return { deactivator, workflowService, collaborationService, logger, alice };
 }
 

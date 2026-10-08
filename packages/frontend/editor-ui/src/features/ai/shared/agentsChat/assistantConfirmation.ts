@@ -41,6 +41,23 @@ const CARD_FIELDS = [
 const lenientConfirmationSchema = confirmationRequestPayloadSchema.partial().passthrough();
 
 /**
+ * The card for a payload with a field that failed validation. It keeps the
+ * capability flag, because a capability answer cannot store "Always allow".
+ */
+function fallbackInput(
+	value: Record<string, unknown>,
+	requestId: string,
+	message: string,
+): AssistantConfirmationInput {
+	return {
+		requestId,
+		message,
+		...(typeof value.toolName === 'string' && { toolName: value.toolName }),
+		...(value.capability === true && { capability: true }),
+	};
+}
+
+/**
  * Parse a `tool-call-suspended` payload as an Assistant confirmation. Returns
  * `undefined` for payloads of other tools (for example the generic approval
  * or a chat card), so normal agents keep their own renderers.
@@ -63,10 +80,5 @@ export function parseAssistantConfirmationInput(
 		return { ...parsed.data, requestId: value.requestId, message };
 	}
 	// A field failed validation: keep only what the fallback card needs.
-	return {
-		requestId: value.requestId,
-		message,
-		...(typeof value.toolName === 'string' && { toolName: value.toolName }),
-		...(value.capability === true && { capability: true }),
-	};
+	return fallbackInput(value, value.requestId, message);
 }

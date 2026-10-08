@@ -150,11 +150,24 @@ describe('InstanceAiController', () => {
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
 	const res = mock<Response>();
 
+	const threadInfo = (id: string): InstanceAiThreadInfo => ({
+		id,
+		title: 'Invoices',
+		resourceId: USER_ID,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+	});
+	const sharingFields = {
+		sharedWith: { projectId: 'project-1', projectName: 'Finance' },
+		owner: { id: USER_ID, name: 'Olivia Owner' },
+	};
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 		settingsService.isModelConfigured.mockResolvedValue(true);
 		instanceAiService.getLiveRun.mockResolvedValue({ status: 'idle', runIds: [] });
+		threadSharing.withSharingFields.mockImplementation(async (_viewer, thread) => thread);
 	});
 
 	describe('executeWithLlmMock', () => {
@@ -1054,7 +1067,7 @@ describe('InstanceAiController', () => {
 		it('should create thread with provided threadId', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
 			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
-			const threadResult = mock<InstanceAiEnsureThreadResponse>();
+			const threadResult = { thread: threadInfo('custom-id'), created: true };
 			memoryService.ensureThread.mockResolvedValue(threadResult);
 			const payload = mock<InstanceAiEnsureThreadRequest>({
 				threadId: 'custom-id',
@@ -1066,7 +1079,7 @@ describe('InstanceAiController', () => {
 
 			const result = await controller.ensureThread(req, res, payload);
 
-			expect(result).toBe(threadResult);
+			expect(result).toEqual(threadResult);
 			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1', {
 				source: 'assistant_page',
 				origin: 'internal',
@@ -1120,6 +1133,24 @@ describe('InstanceAiController', () => {
 				origin: 'external',
 				sourceContext: { templateId: '6270' },
 			});
+		});
+
+		it('returns an existing shared thread with its sharing fields', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			const existing = threadInfo(THREAD_ID);
+			memoryService.ensureThread.mockResolvedValue({ thread: existing, created: false });
+			threadSharing.withSharingFields.mockResolvedValueOnce({ ...existing, ...sharingFields });
+			const payload = {
+				threadId: THREAD_ID,
+				projectId: 'project-1',
+				source: 'assistant_page',
+			} as InstanceAiEnsureThreadRequest;
+
+			const result = await controller.ensureThread(req, res, payload);
+
+			expect(result).toEqual({ thread: { ...existing, ...sharingFields }, created: false });
+			expect(threadSharing.withSharingFields).toHaveBeenCalledWith(req.user, existing);
 		});
 
 		it('reports ensure-thread failures to observability before rethrowing', async () => {
@@ -1219,7 +1250,7 @@ describe('InstanceAiController', () => {
 
 		it('should rename thread', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const threadObj = mock<InstanceAiThreadInfo>();
+			const threadObj = threadInfo(THREAD_ID);
 			memoryService.updateThread.mockResolvedValue(threadObj);
 			const payload = mock<InstanceAiRenameThreadRequestDto>({ title: 'New Title' });
 
@@ -1230,6 +1261,20 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				expect.objectContaining({ title: 'New Title' }),
 			);
+		});
+
+		it('keeps the sharing fields on a renamed shared thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const renamed = { ...threadInfo(THREAD_ID), title: 'New Title' };
+			memoryService.updateThread.mockResolvedValue(renamed);
+			threadSharing.withSharingFields.mockResolvedValueOnce({ ...renamed, ...sharingFields });
+
+			const result = await controller.renameThread(req, res, THREAD_ID, {
+				title: 'New Title',
+			} as InstanceAiRenameThreadRequestDto);
+
+			expect(result.thread).toEqual({ ...renamed, ...sharingFields });
+			expect(threadSharing.withSharingFields).toHaveBeenCalledWith(req.user, renamed);
 		});
 	});
 

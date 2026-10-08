@@ -3444,9 +3444,7 @@ describe('InstanceAiService — MCP servers of a run', () => {
 	type McpService = {
 		buildMcpServers: (
 			user: User,
-			threadId: string,
-			runId: string,
-			tracing: undefined,
+			run: { threadId: string; runId: string; tracing: undefined },
 			options: { messageGroupId?: string; personalConnections: boolean },
 		) => Promise<{ name: string }[]>;
 	} & Record<string, unknown>;
@@ -3454,37 +3452,48 @@ describe('InstanceAiService — MCP servers of a run', () => {
 	function makeService() {
 		const service = Object.create(InstanceAiService.prototype) as McpService;
 		const getRegistryMcpServers = vi.fn(async () => [{ name: 'personal-notion' }]);
+		const withBoundary = vi.fn(
+			async (_name: string, _context: unknown, run: () => Promise<unknown>) => await run(),
+		);
 		Object.assign(service, {
 			instanceAiConfig: { mcpServers: '' },
 			parseMcpServers: vi.fn(() => [{ name: 'instance-docs' }]),
 			settingsService: { isMcpAccessEnabled: vi.fn(() => true) },
 			mcpRegistryService: { getRegistryMcpServers },
-			instanceAiErrorReporter: {
-				withBoundary: vi.fn(
-					async (_name: string, _context: unknown, run: () => Promise<unknown>) => await run(),
-				),
-			},
+			instanceAiErrorReporter: { withBoundary },
 		});
-		return { service, getRegistryMcpServers };
+		return { service, getRegistryMcpServers, withBoundary };
 	}
 
-	it("adds the user's own MCP connections to the instance servers", async () => {
-		const { service, getRegistryMcpServers } = makeService();
+	const run = { threadId: 'thread-1', runId: 'run-1', tracing: undefined };
 
-		const servers = await service.buildMcpServers(fakeUser, 'thread-1', 'run-1', undefined, {
+	it("adds the user's own MCP connections to the instance servers", async () => {
+		const { service, getRegistryMcpServers, withBoundary } = makeService();
+
+		const servers = await service.buildMcpServers(fakeUser, run, {
+			messageGroupId: 'group-1',
 			personalConnections: true,
 		});
 
 		expect(servers).toEqual([{ name: 'instance-docs' }, { name: 'personal-notion' }]);
 		expect(getRegistryMcpServers).toHaveBeenCalledWith(fakeUser);
+		// Errors of the user's connections are reported with the run that loads them.
+		expect(withBoundary).toHaveBeenCalledWith(
+			'instance-ai-mcp-setup',
+			expect.objectContaining({
+				threadId: 'thread-1',
+				runId: 'run-1',
+				userId: fakeUser.id,
+				messageGroupId: 'group-1',
+			}),
+			expect.any(Function),
+		);
 	});
 
 	it("leaves out the user's own MCP connections when the chat is shared", async () => {
 		const { service, getRegistryMcpServers } = makeService();
 
-		const servers = await service.buildMcpServers(fakeUser, 'thread-1', 'run-1', undefined, {
-			personalConnections: false,
-		});
+		const servers = await service.buildMcpServers(fakeUser, run, { personalConnections: false });
 
 		expect(servers).toEqual([{ name: 'instance-docs' }]);
 		expect(getRegistryMcpServers).not.toHaveBeenCalled();
