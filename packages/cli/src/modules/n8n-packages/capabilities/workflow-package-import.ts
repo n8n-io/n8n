@@ -31,7 +31,7 @@ import {
 } from './workflow-package-post-import';
 import {
 	credentialsWithoutValue,
-	NEW_COPY_PLAN,
+	newCopyPlan,
 	planReimport,
 	type ReimportPlan,
 } from './workflow-package-reimport';
@@ -219,7 +219,7 @@ async function writePackage(request: WorkflowPackageImportRequest, prepared: Pre
 				copyNodes: previous.nodes,
 				requirements: prepared.manifest.requirements,
 			})
-		: NEW_COPY_PLAN;
+		: newCopyPlan();
 	const credentials = plan.credentialBindings;
 	const result = await Container.get(N8nPackagesService).importPackage({
 		user,

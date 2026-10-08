@@ -341,7 +341,9 @@ describe('finishImport and the data tables that a re-import keeps', () => {
 		finder.findWorkflowForUser.mockResolvedValue(
 			storedCopy({ versionId: 'v-2', activeVersionId: 'v-1', nodes: [tableNode('dt-source')] }),
 		);
-		workflowService.update.mockResolvedValue(storedCopy({ versionId: 'v-3', activeVersionId: 'v-1' }));
+		workflowService.update.mockResolvedValue(
+			storedCopy({ versionId: 'v-3', activeVersionId: 'v-1' }),
+		);
 
 		await finishImport(reimport({ summary: summary({ created: false }) }));
 

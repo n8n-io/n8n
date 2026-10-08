@@ -5,6 +5,7 @@ import type { User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { AuthError } from '@n8n/errors';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { getHtmlSandboxCSP, type InstanceSettings } from 'n8n-core';
@@ -34,7 +35,7 @@ const PORT_PATH = '/sandboxes/sb-1/ports/5173';
 const SESSION_COOKIE = 'valid-session';
 const PAGE = { accept: 'text/html,application/xhtml+xml' };
 
-type UpstreamMode = 'ok' | 'restarted' | 'app-down';
+type UpstreamMode = 'ok' | 'restarted' | 'app-down' | 'stream';
 
 interface SeenRequest {
 	method?: string;
@@ -67,11 +68,23 @@ const UPSTREAM_PAGE_HEADERS: OutgoingHttpHeaders = {
 	'referrer-policy': 'unsafe-url',
 	'access-control-allow-origin': '*',
 	'access-control-allow-credentials': 'true',
+	'x-app-version': '1.2.3',
+};
+
+/** Upstream headers that would act on the whole n8n origin. */
+const ORIGIN_WIDE_HEADERS: OutgoingHttpHeaders = {
+	'clear-site-data': '"cookies", "storage"',
+	'strict-transport-security': 'max-age=31536000; includeSubDomains',
+	'alt-svc': 'h3=":443"',
+	nel: '{"report_to":"app","max_age":86400}',
+	'report-to': '{"group":"app","max_age":86400,"endpoints":[{"url":"https://reports.test"}]}',
+	'service-worker-allowed': '/',
 };
 
 describe('SandboxPreviewProxyController', () => {
 	const seen: SeenRequest[] = [];
 	let mode: UpstreamMode = 'ok';
+	let endStream: () => void = () => {};
 	let upstream: Server;
 	let upstreamUrl: string;
 	let server: Server;
@@ -101,9 +114,16 @@ describe('SandboxPreviewProxyController', () => {
 					res.end('No app on the port');
 					return;
 				}
+				if (mode === 'stream') {
+					res.writeHead(200, { 'content-type': 'text/event-stream' });
+					res.write('data: first\n\n');
+					endStream = () => res.end('data: last\n\n');
+					return;
+				}
 				const isPage = req.url?.split('?')[0].endsWith('/') ?? false;
 				res.writeHead(200, {
 					...UPSTREAM_PAGE_HEADERS,
+					...ORIGIN_WIDE_HEADERS,
 					'content-type': isPage ? 'text/html' : 'application/javascript',
 				});
 				res.end(body ? `echo:${body}` : isPage ? '<html>app</html>' : 'export {}');
@@ -140,6 +160,7 @@ describe('SandboxPreviewProxyController', () => {
 
 		// The same middlewares that run before every n8n controller.
 		const app = express();
+		app.use(compression());
 		app.use(rawBodyReader);
 		app.use(cookieParser());
 		app.use(bodyParser);
@@ -208,8 +229,9 @@ describe('SandboxPreviewProxyController', () => {
 	const expectHardened = (answer: Answer) => {
 		expect(answer.headers['content-security-policy']).toBe(getHtmlSandboxCSP());
 		expect(answer.headers['x-content-type-options']).toBe('nosniff');
-		expect(answer.headers['cache-control']).toBe('no-store');
+		expect(answer.headers['cache-control']).toBe('no-store, no-transform');
 		expect(answer.headers['referrer-policy']).toBe('no-referrer');
+		expect(answer.headers['access-control-allow-origin']).toBe('null');
 	};
 
 	it('is a root-level route without session auth', () => {
@@ -259,7 +281,44 @@ describe('SandboxPreviewProxyController', () => {
 		expect(headers['x-api-key']).toBe(apiKey);
 	});
 
-	it('replaces the security headers of a script and opens it to the opaque-origin frame', async () => {
+	it('keeps headers that a reverse proxy in front of n8n adds away from the app', async () => {
+		const { url } = await openPreview();
+
+		await send(`${url}src/main.ts`, {
+			headers: {
+				'x-forwarded-for': '203.0.113.7',
+				'x-forwarded-user': 'ada',
+				'x-forwarded-access-token': `token-${crypto.randomUUID()}`,
+				'cf-access-jwt-assertion': `assertion-${crypto.randomUUID()}`,
+				'proxy-authorization': 'Basic placeholder',
+				'browser-id': 'browser-1',
+				referer: `http://127.0.0.1:${port}/projects/p/agents/a`,
+			},
+		});
+
+		expect(Object.keys(seen[0].headers).sort()).toEqual(['connection', 'host', 'x-api-key']);
+	});
+
+	it('forwards the headers that the app needs to answer', async () => {
+		const { url } = await openPreview();
+		const sent = {
+			accept: 'application/json',
+			'accept-language': 'en-GB',
+			'content-type': 'application/json',
+			origin: 'null',
+			range: 'bytes=0-99',
+			'sec-fetch-dest': 'empty',
+			'sec-fetch-mode': 'cors',
+			'user-agent': 'preview-test',
+			'x-requested-with': 'XMLHttpRequest',
+		};
+
+		await send(`${url}api/items`, { headers: sent });
+
+		expect(seen[0].headers).toEqual(expect.objectContaining(sent));
+	});
+
+	it('replaces the security headers of a script and keeps its other headers', async () => {
 		const { url } = await openPreview();
 
 		const answer = await send(`${url}src/main.ts`, { headers: { accept: '*/*' } });
@@ -267,11 +326,21 @@ describe('SandboxPreviewProxyController', () => {
 		expectHardened(answer);
 		expect(answer.headers['x-frame-options']).toBeUndefined();
 		expect(answer.headers['set-cookie']).toBeUndefined();
-		expect(answer.headers['access-control-allow-origin']).toBe('null');
 		expect(answer.headers['access-control-allow-credentials']).toBeUndefined();
+		expect(answer.headers['x-app-version']).toBe('1.2.3');
 	});
 
-	it('serves the page with the hardening headers and no CORS header', async () => {
+	it('removes the headers of the app that would act on the whole n8n origin', async () => {
+		const { url } = await openPreview();
+
+		const answer = await send(url, { headers: PAGE });
+
+		for (const name of Object.keys(ORIGIN_WIDE_HEADERS)) {
+			expect(answer.headers).not.toHaveProperty(name);
+		}
+	});
+
+	it('serves the page with the hardening headers', async () => {
 		const { url } = await openPreview();
 
 		const answer = await send(url, { headers: PAGE });
@@ -279,8 +348,53 @@ describe('SandboxPreviewProxyController', () => {
 		expect(answer.status).toBe(200);
 		expect(answer.body).toBe('<html>app</html>');
 		expectHardened(answer);
-		expect(answer.headers['access-control-allow-origin']).toBeUndefined();
 		expect(answer.headers['set-cookie']).toBeUndefined();
+	});
+
+	it('proxies under the base path of a service URL', async () => {
+		const { url } = await openPreview({ serviceUrl: `${upstreamUrl}/base`, path: PORT_PATH });
+
+		const answer = await send(`${url}src/main.ts`);
+
+		expect(answer.status).toBe(200);
+		expect(seen[0].url).toBe(`/base${PORT_PATH}/src/main.ts`);
+	});
+
+	it('passes each chunk of a streamed answer on as it arrives, uncompressed', async () => {
+		const { url } = await openPreview();
+		mode = 'stream';
+
+		const { encoding, chunks } = await new Promise<{ encoding?: string; chunks: string[] }>(
+			(resolve, reject) => {
+				const received: string[] = [];
+				let ended = false;
+				const end = () => {
+					if (!ended) endStream();
+					ended = true;
+				};
+				const outgoing = request(
+					{ host: '127.0.0.1', port, path: `${url}events`, headers: { 'accept-encoding': 'gzip' } },
+					(res) => {
+						const contentEncoding = res.headers['content-encoding'];
+						// A compressed stream holds the first event back, so end it now and fail below.
+						if (contentEncoding) end();
+						res.setEncoding('utf8');
+						res.on('data', (chunk: string) => {
+							received.push(chunk);
+							// The upstream ends the stream only after the first event reached the client.
+							end();
+						});
+						res.on('end', () => resolve({ encoding: contentEncoding, chunks: received }));
+					},
+				);
+				outgoing.on('error', reject);
+				outgoing.end();
+			},
+		);
+
+		expect(encoding).toBeUndefined();
+		expect(chunks[0]).toBe('data: first\n\n');
+		expect(chunks.join('')).toBe('data: first\n\ndata: last\n\n');
 	});
 
 	it.each([
@@ -463,6 +577,70 @@ describe('SandboxPreviewProxyController', () => {
 		expect(seen[0].method).toBe('POST');
 		expect(seen[0].body).toBe(body);
 		expect(seen[0].headers['content-length']).toBe(String(Buffer.byteLength(body)));
+	});
+
+	it('streams a multipart body that n8n did not read', async () => {
+		const { url } = await openPreview();
+		const body = [
+			'--boundary',
+			'Content-Disposition: form-data; name="file"; filename="a.txt"',
+			'Content-Type: text/plain',
+			'',
+			'file contents',
+			'--boundary--',
+			'',
+		].join('\r\n');
+
+		const answer = await send(`${url}api/upload`, {
+			method: 'POST',
+			headers: { 'content-type': 'multipart/form-data; boundary=boundary' },
+			body,
+		});
+
+		expect(answer.status).toBe(200);
+		expect(seen[0].body).toBe(body);
+		expect(seen[0].headers['content-type']).toBe('multipart/form-data; boundary=boundary');
+	});
+
+	describe('CORS preflight from the opaque-origin page', () => {
+		const preflight = {
+			origin: 'null',
+			'access-control-request-method': 'PUT',
+			'access-control-request-headers': 'content-type',
+		};
+
+		it('answers the preflight itself, without the app and without an access check', async () => {
+			const { url } = await openPreview();
+
+			const answer = await send(`${url}api/items/1`, { method: 'OPTIONS', headers: preflight });
+
+			expect(answer.status).toBe(204);
+			expectHardened(answer);
+			expect(answer.headers['access-control-allow-methods']).toContain('PUT');
+			expect(answer.headers['access-control-allow-headers']).toContain('content-type');
+			expect(answer.headers['access-control-max-age']).toBe('600');
+			expect(seen).toHaveLength(0);
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('answers 404 to a preflight with an unknown token', async () => {
+			const answer = await send('/sandbox-preview/unknown/api/items', {
+				method: 'OPTIONS',
+				headers: preflight,
+			});
+
+			expect(answer.status).toBe(404);
+			expect(answer.headers['access-control-allow-methods']).toBeUndefined();
+		});
+
+		it('proxies an OPTIONS request that is not a preflight to the app', async () => {
+			const { url } = await openPreview();
+
+			const answer = await send(`${url}api/items`, { method: 'OPTIONS' });
+
+			expect(answer.status).toBe(200);
+			expect(seen[0].method).toBe('OPTIONS');
+		});
 	});
 
 	it('answers 502 when the sandbox service cannot be reached, and keeps the URL', async () => {

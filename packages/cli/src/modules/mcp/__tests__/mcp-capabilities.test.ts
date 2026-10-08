@@ -23,6 +23,7 @@ import { McpConfig } from '../mcp.config';
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpModule } from '../mcp.module';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
+import { McpSettingsService } from '../mcp.settings.service';
 import type { McpAuthContext } from '../mcp.types';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -43,7 +44,6 @@ import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
-import { McpSettingsService } from '../mcp.settings.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';

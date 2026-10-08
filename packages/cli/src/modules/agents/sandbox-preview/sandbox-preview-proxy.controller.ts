@@ -5,12 +5,18 @@ import { Container } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { getHtmlSandboxCSP } from 'n8n-core';
 import type { ClientRequest, IncomingMessage, ServerResponse } from 'node:http';
 
 import { AuthService } from '@/auth/auth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import {
+	droppedRequestHeaders,
+	hardenResponseHeaders,
+	isCorsPreflight,
+	preflightAnswerHeaders,
+	previewAnswerHeaders,
+} from './sandbox-preview-headers';
 import { isDocumentRequest, parsePreviewUrl } from './sandbox-preview-request';
 import {
 	SANDBOX_PREVIEW_PATH_PREFIX,
@@ -20,34 +26,6 @@ import {
 
 /** The sandbox service answers 409 with this header after the sandbox restarted. */
 const SANDBOX_RESTARTED_HEADER = 'x-sandbox-restarted';
-
-/**
- * n8n credentials must not reach the app, and the sandbox service refuses
- * every 3xx from its runner, so a 304 to a conditional request would fail.
- */
-const STRIPPED_REQUEST_HEADERS = [
-	'cookie',
-	'authorization',
-	'if-none-match',
-	'if-modified-since',
-	'x-api-key',
-];
-
-const STRIPPED_RESPONSE_HEADERS = [
-	'content-security-policy',
-	'x-frame-options',
-	'set-cookie',
-	'access-control-allow-origin',
-	'access-control-allow-credentials',
-];
-
-/** On every answer: the URL is the credential, and the content is untrusted. */
-const hardeningHeaders = () => ({
-	'content-security-policy': getHtmlSandboxCSP(),
-	'x-content-type-options': 'nosniff',
-	'cache-control': 'no-store',
-	'referrer-policy': 'no-referrer',
-});
 
 interface ProxyTarget {
 	entry: SandboxPreviewEntry;
@@ -61,7 +39,10 @@ function proxyTarget(req: PreviewRequest): ProxyTarget {
 	return req.sandboxPreview;
 }
 
-/** n8n reads every body before routing (`rawBodyReader`), so send the bytes that it kept. */
+/**
+ * The n8n body parser reads each body before routing, so send the bytes that
+ * it kept. It does not read a multipart body, which the proxy then streams.
+ */
 function forwardReadBody(proxyReq: ClientRequest, req: IncomingMessage): void {
 	const body: unknown = req.rawBody;
 	if (!Buffer.isBuffer(body) || body.length === 0) return;
@@ -74,9 +55,15 @@ function forwardReadBody(proxyReq: ClientRequest, req: IncomingMessage): void {
 
 /**
  * Reverse proxy from `/sandbox-preview/<token>/…` to the app on a port of an
- * n8n sandbox service sandbox (HTTP only: no WebSocket, so no hot reload).
- * The token in the path is the credential, so the router skips session auth.
- * The editor cookie and the service API key never reach the browser frame.
+ * n8n sandbox service sandbox. The token in the path is the credential, so the
+ * router skips session auth. The editor cookie and the service API key never
+ * reach the browser frame.
+ *
+ * Path mode limits (no host mode in v1):
+ * - The app gets only what follows the token, so it must use relative URLs or
+ *   a base path. A root-absolute URL (`/src/main.ts`, `/rest`) resolves against
+ *   n8n, not the app.
+ * - HTTP only: no WebSocket, so no hot reload.
  */
 @RootLevelController(SANDBOX_PREVIEW_PATH_PREFIX)
 export class SandboxPreviewProxyController {
@@ -115,7 +102,7 @@ export class SandboxPreviewProxyController {
 					return;
 				}
 				if (!res.headersSent) {
-					res.writeHead(502, { ...hardeningHeaders(), 'content-type': 'text/plain' });
+					res.writeHead(502, { ...previewAnswerHeaders(), 'content-type': 'text/plain' });
 				}
 				res.end('Bad Gateway');
 			},
@@ -132,7 +119,7 @@ export class SandboxPreviewProxyController {
 	}
 
 	async handle(req: Request & PreviewRequest, res: Response, next: NextFunction): Promise<void> {
-		res.set(hardeningHeaders());
+		res.set(previewAnswerHeaders());
 		const target = parsePreviewUrl(req.url);
 		if (target.kind === 'invalid') return this.reply(res, 400, 'Bad Request');
 		if (target.kind === 'no-token') return this.reply(res, 404, 'Not Found');
@@ -141,6 +128,10 @@ export class SandboxPreviewProxyController {
 		if (target.kind === 'token-only') {
 			// Relative, so that the redirect keeps a path prefix that a reverse proxy removed.
 			res.redirect(302, `./${target.token}/${target.search}`);
+			return;
+		}
+		if (isCorsPreflight(req.method, req.headers)) {
+			res.set(preflightAnswerHeaders()).status(204).end();
 			return;
 		}
 		if (isDocumentRequest(req.method, req.headers) && !(await this.viewerHasAccess(req, entry))) {
@@ -155,19 +146,16 @@ export class SandboxPreviewProxyController {
 	}
 
 	private onProxyRequest(proxyReq: ClientRequest, req: PreviewRequest): void {
-		for (const header of STRIPPED_REQUEST_HEADERS) proxyReq.removeHeader(header);
+		for (const name of droppedRequestHeaders(proxyReq.getHeaderNames())) {
+			proxyReq.removeHeader(name);
+		}
 		const apiKey = req.sandboxPreview?.entry.apiKey;
 		if (apiKey) proxyReq.setHeader('x-api-key', apiKey);
 		forwardReadBody(proxyReq, req);
 	}
 
 	private onProxyResponse(proxyRes: IncomingMessage, req: PreviewRequest): void {
-		for (const header of STRIPPED_RESPONSE_HEADERS) delete proxyRes.headers[header];
-		Object.assign(proxyRes.headers, hardeningHeaders());
-		if (!(proxyRes.headers['content-type'] ?? '').includes('text/html')) {
-			// The frame has an opaque origin and loads module scripts with CORS, without cookies.
-			proxyRes.headers['access-control-allow-origin'] = 'null';
-		}
+		hardenResponseHeaders(proxyRes.headers);
 		const restarted =
 			proxyRes.statusCode === 409 && proxyRes.headers[SANDBOX_RESTARTED_HEADER] !== undefined;
 		if (restarted && req.sandboxPreview) this.previewService.markDead(req.sandboxPreview.entry);

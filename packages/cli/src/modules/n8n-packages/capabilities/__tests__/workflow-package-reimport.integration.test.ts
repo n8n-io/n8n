@@ -170,9 +170,7 @@ describe('import_workflow_package and the credentials of a copy', () => {
 		expect(stub).toMatchObject({ name: 'Stripe API', type: 'httpHeaderAuth' });
 		expect(second.credentialsNeedingSetup).toEqual([stub]);
 		expect(second.warnings).toEqual([]);
-		expect(credentialIdOf((await storedWorkflow(first.workflowId)).nodes, 'http-1')).toBe(
-			stub.id,
-		);
+		expect(credentialIdOf((await storedWorkflow(first.workflowId)).nodes, 'http-1')).toBe(stub.id);
 	});
 
 	it('lists nothing to set up once the user filled in the credential of an earlier import', async () => {
@@ -196,9 +194,7 @@ describe('import_workflow_package and the credentials of a copy', () => {
 		const second = await importAsMember(packageBase64);
 
 		expect(second).toMatchObject({ created: false, credentialsNeedingSetup: [stub] });
-		expect(credentialIdOf((await storedWorkflow(first.workflowId)).nodes, 'http-1')).toBe(
-			stub.id,
-		);
+		expect(credentialIdOf((await storedWorkflow(first.workflowId)).nodes, 'http-1')).toBe(stub.id);
 	});
 });
 

@@ -131,7 +131,6 @@ const createPublishedSource = async (extraNodes: INode[] = []) => {
 	return await storedWorkflow(source.id);
 };
 
-
 /** Exports the source, imports it as the member, and publishes the copy. */
 async function createPublishedCopy(source: WorkflowEntity) {
 	const { packageBase64 } = exported(await exportTool(owner, source.id));

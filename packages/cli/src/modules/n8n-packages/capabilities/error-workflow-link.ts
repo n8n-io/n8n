@@ -22,7 +22,10 @@ import { logPostImportFailure } from './post-import-step';
  * A rule of the surface for the error workflow of a copy, for example MCP access. Gives why the
  * copy must not use the error workflow, as the end of a sentence, or undefined.
  */
-export type ErrorWorkflowRule = (user: User, errorWorkflowId: string) => Promise<string | undefined>;
+export type ErrorWorkflowRule = (
+	user: User,
+	errorWorkflowId: string,
+) => Promise<string | undefined>;
 
 export type ErrorWorkflowLinkInput = {
 	user: User;

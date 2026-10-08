@@ -28,8 +28,11 @@ const node = (id: string, overrides: Partial<INode> = {}): INode => ({
 
 const withCredentials = (id: string, credentials: INodeCredentials) => node(id, { credentials });
 
-const tableNode = (id: string, dataTableId: NodeParameterValueType, type = 'n8n-nodes-base.dataTable') =>
-	node(id, { type, parameters: { dataTableId } });
+const tableNode = (
+	id: string,
+	dataTableId: NodeParameterValueType,
+	type = 'n8n-nodes-base.dataTable',
+) => node(id, { type, parameters: { dataTableId } });
 
 const byId = (value: string, mode = 'id') => ({ __rl: true, mode, value });
 
@@ -97,7 +100,10 @@ describe('credentialChoicesOfCopy', () => {
 			}),
 		];
 		const copyNodes = [
-			withCredentials('n-1', { slackApi: { id: null, name: 'Slack' }, imap: { id: 'x', name: 'X' } }),
+			withCredentials('n-1', {
+				slackApi: { id: null, name: 'Slack' },
+				imap: { id: 'x', name: 'X' },
+			}),
 		];
 
 		expect(credentialChoicesOfCopy(packageNodes, copyNodes)).toEqual({
@@ -282,7 +288,11 @@ describe('dataTableChoicesOfCopy', () => {
 		],
 		['the node of the copy has no table', [node('n-1', { type: 'n8n-nodes-base.dataTable' })]],
 	])('keeps nothing when %s', (_case, copyNodes) => {
-		const choices = dataTableChoicesOfCopy([tableNode('n-1', byId('dt-source'))], copyNodes, missing);
+		const choices = dataTableChoicesOfCopy(
+			[tableNode('n-1', byId('dt-source'))],
+			copyNodes,
+			missing,
+		);
 
 		expect(choices).toEqual({ selections: new Map(), replacedTables: [] });
 	});
@@ -306,7 +316,10 @@ describe('withDataTableSelections', () => {
 		const nodes = [
 			tableNode('n-1', byId('dt-source')),
 			other,
-			{ ...tableNode('n-3', byId('dt-source')), parameters: { dataTableId: byId('dt-source'), limit: 5 } },
+			{
+				...tableNode('n-3', byId('dt-source')),
+				parameters: { dataTableId: byId('dt-source'), limit: 5 },
+			},
 		];
 
 		const result = withDataTableSelections(

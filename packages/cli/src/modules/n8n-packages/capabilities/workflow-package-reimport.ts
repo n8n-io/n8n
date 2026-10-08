@@ -22,10 +22,7 @@ import {
 import { dataTablesNotKeptWarning, keptDataTablesWarning } from './import-outcome';
 import { reasonForClient } from './package-tool-error';
 import { logPostImportFailure } from './post-import-step';
-import type {
-	PackageDataTableRequirement,
-	PackageRequirements,
-} from '../spec/requirements.schema';
+import type { PackageDataTableRequirement, PackageRequirements } from '../spec/requirements.schema';
 
 /** What a re-import keeps of the copy that it updates. */
 export type ReimportPlan = {
@@ -35,11 +32,14 @@ export type ReimportPlan = {
 	dataTables: DataTableChoices;
 };
 
-export const NEW_COPY_PLAN: ReimportPlan = {
-	credentialBindings: new Map(),
-	conflictingCredentialSourceIds: [],
-	dataTables: { selections: new Map(), replacedTables: [] },
-};
+/** A new copy keeps nothing. */
+export function newCopyPlan(): ReimportPlan {
+	return {
+		credentialBindings: new Map(),
+		conflictingCredentialSourceIds: [],
+		dataTables: { selections: new Map(), replacedTables: [] },
+	};
+}
 
 export type ReimportPlanInput = {
 	user: User;
@@ -150,7 +150,8 @@ export async function keepDataTableSelections(
 	const { replacedTables } = choices;
 	if (replacedTables.length === 0) return { copy: undefined, warnings: [] };
 	const nodes = withDataTableSelections(copy.nodes, choices.selections);
-	if (nodes === undefined) return { copy: undefined, warnings: [keptDataTablesWarning(replacedTables)] };
+	if (nodes === undefined)
+		return { copy: undefined, warnings: [keptDataTablesWarning(replacedTables)] };
 	try {
 		const updated = await Container.get(WorkflowService).update(
 			user,

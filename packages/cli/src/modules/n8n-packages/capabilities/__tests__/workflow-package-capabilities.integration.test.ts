@@ -169,7 +169,7 @@ describe('export_workflow_package and import_workflow_package', () => {
 		]);
 		const [stub] = first.credentialsNeedingSetup;
 		expect(textOf(firstResult)).toBe(
-			`Created workflow "Daily report" (${first.workflowId}). The import created 1 empty credential(s). Set them up before the workflow runs: Stripe API (httpHeaderAuth).`,
+			`Created workflow "Daily report" (${first.workflowId}). The workflow uses 1 credential(s) without a value. Set them up before the workflow runs: Stripe API (httpHeaderAuth).`,
 		);
 
 		// The workflow lives in the target project and points at the new stub credential.

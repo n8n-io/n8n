@@ -160,5 +160,7 @@ export function withDataTableSelections(
  * missing credential holds none until the user sets it up.
  */
 export function hasNoCredentialValue(data: Record<string, unknown>): boolean {
-	return Object.values(data).every((value) => value === undefined || value === null || value === '');
+	return Object.values(data).every(
+		(value) => value === undefined || value === null || value === '',
+	);
 }

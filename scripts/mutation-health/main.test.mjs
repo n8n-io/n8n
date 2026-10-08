@@ -125,33 +125,6 @@ describe('main', () => {
 		assert.match(run.stderr, /\nGate: FAIL \(partial\) {2}• /);
 	});
 
-	// A broken toolchain must never read as a score of zero.
-	it('exits 3 when Stryker wrote no report', async () => {
-		const run = await runMain({ raw: null, exitCode: 1 });
-		assert.equal(run.code, 3);
-		assert.match(
-			run.stderr,
-			/\nGate: ERROR — at least one Stryker run produced no valid report\.\n$/,
-		);
-	});
-
-	// The plain vitest runner under Vitest 5 ran no test for any mutant, and
-	// every mutant survived. That must read as a broken toolchain, not a score.
-	it('exits 3 and writes no summary when covered mutants survived with no test run', async () => {
-		const notRun = { coveredBy: ['t1'], testsCompleted: 0 };
-		const run = await runMain({ raw: report(['Survived', 'Survived'], notRun) });
-		assert.equal(run.code, 3);
-		assert.match(
-			run.stderr,
-			/\n✗ .*pkg: 2 mutant\(s\) survived with no test run, but tests cover them:\n {3}- src\/a\.ts:1:17\n/,
-		);
-		assert.match(
-			run.stderr,
-			/\nGate: ERROR — at least one Stryker run produced no valid report\.\n$/,
-		);
-		assert.equal(existsSync(path.join(pkgRoot, 'reports/mutation/summary.json')), false);
-	});
-
 	// The playwright package has only a `test:unit` script.
 	it('scores a package without a vitest test script through its test command', async () => {
 		writeFileSync(path.join(pkgRoot, 'package.json'), '{ "name": "pkg", "scripts": {} }');
@@ -190,6 +163,35 @@ describe('main', () => {
 			(error) =>
 				error.exitCode === 2 && /^Mutating packages\/cli needs --test-files\./.test(error.message),
 		);
+	});
+});
+
+// A broken toolchain must never read as a score of zero.
+describe('main toolchain errors', () => {
+	it('exits 3 when Stryker wrote no report', async () => {
+		const run = await runMain({ raw: null, exitCode: 1 });
+		assert.equal(run.code, 3);
+		assert.match(
+			run.stderr,
+			/\nGate: ERROR — at least one Stryker run produced no valid report\.\n$/,
+		);
+	});
+
+	// The plain vitest runner under Vitest 5 ran no test for any mutant, and
+	// every mutant survived. That must read as a broken toolchain, not a score.
+	it('exits 3 and writes no summary when covered mutants survived with no test run', async () => {
+		const notRun = { coveredBy: ['t1'], testsCompleted: 0 };
+		const run = await runMain({ raw: report(['Survived', 'Survived'], notRun) });
+		assert.equal(run.code, 3);
+		assert.match(
+			run.stderr,
+			/\n✗ .*pkg: 2 mutant\(s\) survived with no test run, but tests cover them:\n {3}- src\/a\.ts:1:17\n/,
+		);
+		assert.match(
+			run.stderr,
+			/\nGate: ERROR — at least one Stryker run produced no valid report\.\n$/,
+		);
+		assert.equal(existsSync(path.join(pkgRoot, 'reports/mutation/summary.json')), false);
 	});
 });
 

@@ -52,7 +52,7 @@ describe('describeImport', () => {
 		);
 	});
 
-	it('names the empty credentials that this import created', () => {
+	it('names the credentials without a value that the user must set up', () => {
 		const text = describeImport(
 			imported({
 				credentialsNeedingSetup: [
@@ -63,7 +63,7 @@ describe('describeImport', () => {
 		);
 
 		expect(text).toBe(
-			'Created workflow "Daily report" (wf-local). The import created 2 empty credential(s). Set them up before the workflow runs: Stripe API (httpHeaderAuth), Slack (slackApi).',
+			'Created workflow "Daily report" (wf-local). The workflow uses 2 credential(s) without a value. Set them up before the workflow runs: Stripe API (httpHeaderAuth), Slack (slackApi).',
 		);
 	});
 
@@ -88,7 +88,7 @@ describe('describeImport', () => {
 		);
 
 		expect(text).toBe(
-			'Updated workflow "Daily report" (wf-local). The import created 1 empty credential(s). Set them up before the workflow runs: Mail (smtp). This instance does not have 1 node type(s) that the workflow uses: acme.node@1. Install them before you publish the workflow. The import did not add 1 tag(s).',
+			'Updated workflow "Daily report" (wf-local). The workflow uses 1 credential(s) without a value. Set them up before the workflow runs: Mail (smtp). This instance does not have 1 node type(s) that the workflow uses: acme.node@1. Install them before you publish the workflow. The import did not add 1 tag(s).',
 		);
 	});
 });

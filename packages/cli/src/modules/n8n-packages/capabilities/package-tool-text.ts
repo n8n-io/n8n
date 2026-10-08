@@ -29,11 +29,11 @@ export function describeExport(output: Omit<ExportedWorkflowPackage, 'packageBas
 
 /** The text result of the import tool, with what the user must do before the workflow runs. */
 export function describeImport(output: ImportedWorkflowPackage): string {
-	const { credentialsNeedingSetup: stubs, missingNodeTypes } = output;
+	const { credentialsNeedingSetup: emptyCredentials, missingNodeTypes } = output;
 	return sentences(
 		`${output.created ? 'Created' : 'Updated'} workflow "${output.workflowName}" (${output.workflowId}).`,
-		stubs.length > 0
-			? `The import created ${stubs.length} empty credential(s). Set them up before the workflow runs: ${credentialList(stubs)}.`
+		emptyCredentials.length > 0
+			? `The workflow uses ${emptyCredentials.length} credential(s) without a value. Set them up before the workflow runs: ${credentialList(emptyCredentials)}.`
 			: undefined,
 		missingNodeTypes.length > 0
 			? `This instance does not have ${missingNodeTypes.length} node type(s) that the workflow uses: ${missingNodeTypes.join(', ')}. Install them before you publish the workflow.`

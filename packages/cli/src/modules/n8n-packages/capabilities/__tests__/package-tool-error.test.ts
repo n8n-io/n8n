@@ -112,7 +112,10 @@ describe('reasonForClient', () => {
 	it.each([
 		['a user error', new UserError('The project is archived')],
 		['a client response error', new ForbiddenError('You cannot import into this project')],
-		['a workflow access error', new WorkflowAccessError('Workflow is archived', 'workflow_archived')],
+		[
+			'a workflow access error',
+			new WorkflowAccessError('Workflow is archived', 'workflow_archived'),
+		],
 	])('gives the message of %s', (_case, error) => {
 		expect(reasonForClient(error)).toBe(error.message);
 	});

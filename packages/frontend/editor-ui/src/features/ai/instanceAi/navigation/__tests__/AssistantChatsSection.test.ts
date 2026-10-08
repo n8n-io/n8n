@@ -1,82 +1,54 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRouter, createMemoryHistory, type Router } from 'vue-router';
+import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { InstanceAiThreadSummary, PushMessage } from '@n8n/api-types';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
+import { ASSISTANT_AGENT_ID } from '../../agentsChatMode';
 import { useInstanceAiStore } from '../../instanceAi.store';
-import {
-	INSTANCE_AI_THREADS_VIEW,
-	INSTANCE_AI_THREAD_VIEW,
-	INSTANCE_AI_VIEW,
-} from '../../constants';
+import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
+import { resetExperienceModeState } from '../../experience/useExperienceMode';
 import { resetThreadLastViewedState, useThreadLastViewed } from '../useThreadLastViewed';
 import AssistantChatsSection from '../AssistantChatsSection.vue';
+import {
+	chat,
+	configureInstanceAi,
+	createTestRouter,
+	stubLocalStorage,
+	T0,
+	T1,
+} from './navigationFixtures';
+
+const { pushHandlers, pushStore } = vi.hoisted(() => {
+	const handlers = new Set<(event: PushMessage) => void>();
+	return {
+		pushHandlers: handlers,
+		pushStore: {
+			pushConnect: vi.fn(),
+			pushDisconnect: vi.fn(),
+			addEventListener: vi.fn((handler: (event: PushMessage) => void) => {
+				handlers.add(handler);
+				return () => handlers.delete(handler);
+			}),
+		},
+	};
+});
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => pushStore,
+}));
 
 const LAST_VIEWED_KEY = 'n8n:instance-ai:last-viewed:user-1';
 const COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
-const T0 = '2026-03-01T10:00:00.000Z';
-const T1 = '2026-03-01T11:00:00.000Z';
 
 const storage = new Map<string, string>();
 const renderComponent = createComponentRenderer(AssistantChatsSection);
 
 let router: Router;
 let instanceAiStore: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
-
-function createTestRouter() {
-	return createRouter({
-		history: createMemoryHistory(),
-		routes: [
-			{ path: '/', name: 'home', component: { template: '<div />' } },
-			{ path: '/assistant', name: INSTANCE_AI_VIEW, component: { template: '<div />' } },
-			{
-				path: '/assistant/history',
-				name: INSTANCE_AI_THREADS_VIEW,
-				component: { template: '<div />' },
-			},
-			{
-				path: '/assistant/:threadId',
-				name: INSTANCE_AI_THREAD_VIEW,
-				component: { template: '<div />' },
-			},
-		],
-	});
-}
-
-function configureInstanceAi({
-	available = true,
-	experienceModes = false,
-}: { available?: boolean; experienceModes?: boolean } = {}) {
-	const settingsStore = mockedStore(useSettingsStore);
-	settingsStore.isModuleActive = vi.fn().mockReturnValue(available);
-	settingsStore.moduleSettings = {
-		'instance-ai': {
-			enabled: true,
-			mcpConnectionsAvailable: true,
-			localGatewayDisabled: false,
-			browserUseEnabled: true,
-			proxyEnabled: false,
-			cloudManaged: false,
-			setupCompleted: true,
-			sandboxEnabled: true,
-			workflowBuilderAvailable: true,
-			sandboxUnavailableReason: null,
-			runDebugEnabled: false,
-			experience: { enabled: experienceModes, defaultMode: 'simple' },
-		},
-	};
-	vi.mocked(useRBACStore().hasScope).mockImplementation((scope) => scope === 'instanceAi:message');
-}
-
-function chat(id: string, title: string, overview: Partial<InstanceAiThreadSummary> = {}) {
-	return { id, title, createdAt: T0, updatedAt: T0, ...overview } satisfies InstanceAiThreadSummary;
-}
 
 /** One chat for each state the sidebar can show, plus one the viewer already saw. */
 function chatsInEveryState(): InstanceAiThreadSummary[] {
@@ -116,14 +88,12 @@ function rowLabels(section: HTMLElement) {
 describe('AssistantChatsSection', () => {
 	beforeEach(() => {
 		storage.clear();
-		vi.stubGlobal('localStorage', {
-			getItem: vi.fn((key: string) => storage.get(key) ?? null),
-			setItem: vi.fn((key: string, value: string) => {
-				storage.set(key, value);
-			}),
-		});
+		stubLocalStorage(storage);
+		pushHandlers.clear();
+		vi.clearAllMocks();
 		createTestingPinia();
 		resetThreadLastViewedState();
+		resetExperienceModeState();
 		useUsersStore().currentUserId = 'user-1';
 		instanceAiStore = mockedStore(useInstanceAiStore);
 		router = createTestRouter();
@@ -359,6 +329,120 @@ describe('AssistantChatsSection', () => {
 
 			expect(getByRole('menuitem', { name: 'Old chat' })).toBeVisible();
 			expect(queryByTestId('instance-ai-thread-state-older')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('in Power mode', () => {
+		beforeEach(() => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			storage.set(LAST_VIEWED_KEY, JSON.stringify({ unseen: T0, seen: T1 }));
+		});
+
+		it('groups the chats by what they need instead of the flat list', () => {
+			instanceAiStore.threads = chatsInEveryState();
+
+			const { getAllByRole, getByRole, getByTestId } = render();
+
+			expect(getAllByRole('heading').map((heading) => heading.textContent?.trim())).toEqual([
+				'Needs you',
+				'Working',
+				'Ready to review',
+				'Done',
+			]);
+			const needsYou = getByRole('list', { name: 'Needs you' });
+			expect(rowLabels(needsYou)).toEqual([
+				'Approve invoice, Waiting for you',
+				'Fix Slack alert, Failed',
+			]);
+			expect(rowLabels(getByRole('list', { name: 'Done' }))).toEqual(['Team digest']);
+			expect(within(getByTestId('assistant-chat-group-needs-you')).getByTestId(
+				'instance-ai-thread-state-broken',
+			)).toBeInTheDocument();
+		});
+
+		it('keeps the section header, its toggle and the link to the chat history', async () => {
+			instanceAiStore.threads = chatsInEveryState();
+			const { getByRole, queryByTestId } = render();
+
+			expect(getByRole('link', { name: 'View all' })).toHaveAttribute('href', '/assistant/history');
+			await userEvent.click(getByRole('button', { name: 'Chats' }));
+
+			expect(queryByTestId('assistant-chat-group-needs-you')).not.toBeInTheDocument();
+		});
+
+		it('keeps the open chat in its group when it is older than the five shown', async () => {
+			instanceAiStore.threads = Array.from({ length: 7 }, (_, index) =>
+				chat(`thread-${index}`, `Chat ${index}`, { updatedAt: `2026-03-0${7 - index}T10:00:00.000Z` }),
+			);
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: 'thread-6' } });
+
+			const { getByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Done' }))).toEqual([
+				'Chat 0',
+				'Chat 1',
+				'Chat 2',
+				'Chat 3',
+				'Chat 6',
+			]);
+		});
+
+		it('renders nothing when there is no chat', () => {
+			instanceAiStore.threads = [];
+
+			const { queryByTestId } = render();
+
+			expect(queryByTestId('instance-ai-sidebar-chats')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('live chat states', () => {
+		function emitAssistantUpdate() {
+			const event: PushMessage = {
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: ASSISTANT_AGENT_ID, threadId: 'a', executionId: 'e1' },
+			};
+			for (const handler of [...pushHandlers]) handler(event);
+		}
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('reloads the chats one second after an Assistant chat changes', () => {
+			vi.useFakeTimers();
+			configureInstanceAi({ experienceModes: true });
+			instanceAiStore.threads = [chat('a', 'First chat')];
+			render();
+			expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
+
+			emitAssistantUpdate();
+			vi.advanceTimersByTime(1000);
+
+			expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops listening when the section unmounts', () => {
+			configureInstanceAi({ experienceModes: true });
+			const { unmount } = render();
+			expect(pushStore.pushConnect).toHaveBeenCalledTimes(1);
+
+			unmount();
+
+			expect(pushHandlers.size).toBe(0);
+			expect(pushStore.pushDisconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['experience modes are off', { experienceModes: false }],
+			['Instance AI is not available', { experienceModes: true, available: false }],
+		])('does not listen when %s', (_, config) => {
+			configureInstanceAi(config);
+
+			render();
+
+			expect(pushStore.addEventListener).not.toHaveBeenCalled();
+			expect(pushStore.pushConnect).not.toHaveBeenCalled();
 		});
 	});
 });
