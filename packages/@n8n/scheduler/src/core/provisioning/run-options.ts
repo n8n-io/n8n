@@ -1,6 +1,6 @@
 import {
 	MAX_INTEGER_32BITS_SIGNED,
-	MAX_TASK_TIMEOUT_SECONDS,
+	MAX_TIMER_DELAY_SECONDS,
 	type ScheduledJobMisfirePolicy,
 	Time,
 } from '@n8n/constants';
@@ -162,18 +162,18 @@ function resolveMisfireGraceSeconds(
 
 /**
  * Check a timeout against what the executor can enforce: a whole number of seconds
- * from 1 to {@link MAX_TASK_TIMEOUT_SECONDS}.
+ * from 1 to {@link MAX_TIMER_DELAY_SECONDS}.
  *
  * @throws {InvalidRunOptionError} when the timeout falls outside that range. A timeout
  * of 0 stops every run as soon as it starts.
  */
 function resolveTimeoutSeconds(requested: number): number {
-	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_TASK_TIMEOUT_SECONDS) {
+	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_TIMER_DELAY_SECONDS) {
 		throw new InvalidRunOptionError(
 			'Scheduled job timeout is outside the range the scheduler enforces',
 			'timeoutSeconds',
 			requested,
-			MAX_TASK_TIMEOUT_SECONDS,
+			MAX_TIMER_DELAY_SECONDS,
 		);
 	}
 	return requested;
