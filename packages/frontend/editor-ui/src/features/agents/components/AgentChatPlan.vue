@@ -84,7 +84,6 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 	failed: 'danger',
 	cancelled: 'text-xlight',
 } as const;
-
 </script>
 
 <template>
@@ -218,17 +217,6 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 					</li>
 				</ul>
 			</N8nScrollArea>
-			<div v-if="traceRoute" :class="$style.footer">
-				<N8nLink
-					:to="traceRoute"
-					theme="text"
-					size="small"
-					underline
-					data-testid="agent-chat-plan-trace"
-				>
-					{{ i18n.baseText('agents.chat.plan.viewTrace') }}
-				</N8nLink>
-			</div>
 		</ChatCollapsibleContainer>
 	</div>
 </template>
@@ -236,11 +224,11 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/mixins/utils';
+@use '@n8n/design-system/css/mixins/mixins';
 
 .label {
 	@include utils.utils-ellipsis;
 }
-
 
 .footer {
 	padding: var(--spacing--xs) var(--spacing--sm);
@@ -254,8 +242,11 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 .details {
 	min-height: 0;
 	height: auto;
-	padding-block: var(--spacing--4xs) var(--spacing--sm);
-	overflow-wrap: anywhere;
+
+	@include mixins.scroll-mask(bottom);
+	> * {
+		padding-block: var(--spacing--4xs) var(--spacing--sm);
+	}
 }
 
 .items {
@@ -291,8 +282,6 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 	@include motion.shimmer;
 }
 
-
-
 .running {
 	color: var(--color--primary);
 }
@@ -306,8 +295,8 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 		inset-inline-start: var(--plan-rail-offset);
 		inset-block-start: calc(var(--height--lg) / 2);
 		inset-block-end: calc(var(--height--lg) / -2);
-		border-inline-start: var(--border);
-		border-width: 1.5px;
+		border-inline-start: 1.5px solid
+			color-mix(in oklch, var(--background--subtle), light-dark(black, white) 8%);
 		pointer-events: none;
 	}
 
@@ -342,12 +331,12 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 
 .treeBranch {
 	position: absolute;
-	inset-inline-start: calc(var(--plan-rail-offset) - var(--spacing--lg));
+	inset-inline-start: calc(var(--plan-rail-offset) - calc(var(--spacing--lg) - 1px));
 	inset-block-start: calc(50% - var(--spacing--4xs));
 	width: calc(var(--spacing--sm) - var(--spacing--4xs));
 	height: var(--spacing--2xs);
 	overflow: visible;
-	color: var(--border-color);
+	color: color-mix(in oklch, var(--background--subtle), light-dark(black, white) 8%);
 	pointer-events: none;
 
 	path {
