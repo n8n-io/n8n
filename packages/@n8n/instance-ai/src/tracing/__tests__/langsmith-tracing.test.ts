@@ -600,6 +600,21 @@ describe('createInstanceAiTraceContext', () => {
 		await telemetry.provider?.shutdown();
 	});
 
+	it('writes span tags as one comma-separated string', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Hello' },
+		});
+
+		const span = agentsMock.getSpans().find((entry) => entry.id === tracing!.rootRun.otelSpanId);
+		expect(span?.attributes['langsmith.span.tags']).toBe('instance-ai, message-turn');
+	});
+
 	it('stamps model_id on root and actor runs and native telemetry metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',

@@ -309,7 +309,8 @@ function buildProductSpanAttributes(options: {
 
 	const tags = normalizeTags(DEFAULT_TAGS, options.tags);
 	if (tags?.length) {
-		attributes[LANGSMITH_SPAN_TAGS] = tags;
+		// LangSmith reads tags only from a comma-separated string, not from an array.
+		attributes[LANGSMITH_SPAN_TAGS] = tags.join(', ');
 	}
 
 	const metadata = buildProductSpanMetadata(options);
