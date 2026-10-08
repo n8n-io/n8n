@@ -28,11 +28,6 @@ export default {
 		},
 		backgrounds: { default: 'white' },
 	},
-	decorators: [
-		() => ({
-			template: '<div style="width: 60%; margin: 0 auto; padding-top: 20px;"><story /></div>',
-		}),
-	],
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
