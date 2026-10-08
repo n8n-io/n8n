@@ -3,7 +3,7 @@ import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { DEFAULT_MISFIRE_GRACE_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
-import type { SystemTask, SystemTaskSchedule } from '@n8n/decorators';
+import type { SchedulerOptions, SchedulerSystemTask, SystemTaskSchedule } from '@n8n/decorators';
 import type { ProvisionSummary } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
@@ -24,18 +24,18 @@ const emptySummary: ProvisionSummary = {
 	removed: [],
 };
 
-const task = (over: Partial<SystemTask> = {}): SystemTask => ({
+type TaskOverrides = { schedule?: SystemTaskSchedule; scheduler?: Partial<SchedulerOptions> };
+
+const task = ({ schedule, scheduler }: TaskOverrides = {}): SchedulerSystemTask => ({
 	name: 'prune-executions',
-	schedule: { kind: 'interval', intervalSeconds: 60 },
-	effects: 'idempotent',
-	placement: { scope: 'cluster', durable: true },
+	schedule: schedule ?? { kind: 'interval', intervalSeconds: 60 },
+	target: { scope: 'cluster', scheduler: { maxAttempts: 3, ...scheduler } },
 	run: async () => {},
-	...over,
 });
 
 describe('systemTaskProvisionRequest', () => {
 	const owner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
-	const request = (over: Partial<SystemTask> = {}, defaultTimezone = 'UTC') =>
+	const request = (over: TaskOverrides = {}, defaultTimezone = 'UTC') =>
 		systemTaskProvisionRequest(task(over), owner, defaultTimezone, NOW);
 
 	it('owns the job by task name, with no member', () => {
@@ -99,16 +99,16 @@ describe('systemTaskProvisionRequest', () => {
 		expect(desired[0]?.schedule).toEqual({ kind: 'interval', intervalSeconds: 90 });
 	});
 
-	it('coalesces and retries idempotent work', () => {
-		expect(request({ effects: 'idempotent' })).toMatchObject({
+	it('catches up and keeps the default grace when the task states only its attempts', () => {
+		expect(request()).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: DEFAULT_MISFIRE_GRACE_SECONDS,
 			maxAttempts: 3,
 		});
 	});
 
-	it('skips and never retries non-idempotent work, even where the task asks for retries', () => {
-		expect(request({ effects: 'non-idempotent', maxAttempts: 5 })).toMatchObject({
+	it('stores no catch-up and a single attempt when the task asks for them', () => {
+		expect(request({ scheduler: { maxAttempts: 1, catchUp: false } })).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 			maxAttempts: 1,
 		});
@@ -118,8 +118,11 @@ describe('systemTaskProvisionRequest', () => {
 		expect(request().concurrencyLimit).toBe(1);
 	});
 
-	it.each([null, 4])('honours a declared concurrency limit of %s', (concurrencyLimit) => {
-		expect(request({ concurrencyLimit }).concurrencyLimit).toBe(concurrencyLimit);
+	it.each([
+		['unlimited', null],
+		[4, 4],
+	] as const)('honours a declared concurrency limit of %s', (concurrencyLimit, stored) => {
+		expect(request({ scheduler: { concurrencyLimit } }).concurrencyLimit).toBe(stored);
 	});
 
 	it('leaves the timeout to the instance setting when the task declares none', () => {
@@ -127,16 +130,12 @@ describe('systemTaskProvisionRequest', () => {
 	});
 
 	it("honours a task's own timeout", () => {
-		expect(request({ timeoutSeconds: 600 }).timeoutSeconds).toBe(600);
+		expect(request({ scheduler: { timeoutSeconds: 600 } }).timeoutSeconds).toBe(600);
 	});
 
-	it("honours a task's own policy, grace and attempts", () => {
+	it("honours a task's own catch-up, missed delay and attempts", () => {
 		expect(
-			request({
-				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-				misfireGraceSeconds: 300,
-				maxAttempts: 7,
-			}),
+			request({ scheduler: { catchUp: false, missedAfterSeconds: 300, maxAttempts: 7 } }),
 		).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 			misfireGraceSeconds: 300,
