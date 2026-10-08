@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
+import DataTableLoadingIndicator from '@/features/core/dataTable/components/dataGrid/DataTableLoadingIndicator.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -22,9 +23,21 @@ const i18n = useI18n();
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
 
-const dataTable = ref<DataTable | null>(null);
+type TablePreview = {
+	key: number;
+	dataTable: DataTable;
+};
+
+const tableSlots = shallowRef<{ displayed: TablePreview | null; pending: TablePreview | null }>({
+	displayed: null,
+	pending: null,
+});
+const tables = computed(() =>
+	[tableSlots.value.displayed, tableSlots.value.pending].filter((table) => table !== null),
+);
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
+const requestKey = ref(0);
 
 // === Editing lock ===
 // The grid is editable only while the AI is not running, so user edits can't
@@ -38,41 +51,50 @@ const isReadOnly = computed(
 	() => isAgentWorking.value || sourceControlStore.preferences.branchReadOnly,
 );
 
-async function fetchDataTable(id: string, projectId: string) {
-	const isRefresh = dataTable.value?.id === id;
-
-	fetchError.value = null;
-	if (!isRefresh) {
-		isLoading.value = true;
-		dataTable.value = null;
-	}
-
-	try {
-		// Always fetch fresh details (never the store cache): the grid is
-		// editable, so stale columns would let the user edit against a schema
-		// the agent has since changed.
-		const result = await dataTableStore.fetchDataTableDetails(id, projectId);
-		dataTable.value = result ?? null;
-		if (!result) {
-			fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
-		}
-	} catch {
-		dataTable.value = null;
-		fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
-	} finally {
-		isLoading.value = false;
-	}
+function showTable(key: number) {
+	const { pending } = tableSlots.value;
+	if (pending?.key !== key) return;
+	tableSlots.value = { displayed: pending, pending: null };
+	isLoading.value = false;
 }
 
-// Re-fetch when dataTableId changes OR when refreshKey increments (same table modified).
+function onLoadError(key: number) {
+	if (tableSlots.value.pending?.key !== key) return;
+
+	tableSlots.value = { displayed: null, pending: null };
+	isLoading.value = false;
+	fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
+}
+
 watch(
-	() => [props.dataTableId, props.refreshKey] as const,
-	async ([id]) => {
-		if (id && props.projectId) {
-			await fetchDataTable(id, props.projectId);
+	() => [props.dataTableId, props.projectId, props.refreshKey] as const,
+	async ([id, projectId], _previous, onCleanup) => {
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+
+		tableSlots.value = { displayed: tableSlots.value.displayed, pending: null };
+		fetchError.value = null;
+		isLoading.value = !!id && !!projectId;
+		if (!id || !projectId) {
+			tableSlots.value = { displayed: null, pending: null };
+			return;
+		}
+		const key = ++requestKey.value;
+
+		// Fetch the current schema before the replacement grid permits edits.
+		const result = await dataTableStore.fetchDataTableDetails(id, projectId).catch(() => null);
+		if (cancelled) return;
+		if (result) {
+			tableSlots.value = {
+				displayed: tableSlots.value.displayed,
+				pending: { key, dataTable: result },
+			};
 		} else {
-			dataTable.value = null;
-			fetchError.value = null;
+			tableSlots.value = { displayed: null, pending: null };
+			isLoading.value = false;
+			fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
 		}
 	},
 	{ immediate: true },
@@ -80,23 +102,36 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.content">
-		<!-- Error (only when no data table to show) -->
-		<div v-if="fetchError && !dataTable" :class="$style.centerState">
+	<div :class="$style.content" :aria-busy="isLoading">
+		<div v-if="fetchError" :class="$style.centerState">
 			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Data table grid. readOnly is part of the key because the grid bakes it
-		     into its column defs at grid-ready, so flipping it requires a remount. -->
-		<DataTableTable
-			v-if="dataTable"
-			:key="`${props.refreshKey}-${isReadOnly}`"
-			:data-table="dataTable"
-			:read-only="isReadOnly"
-		/>
+		<!-- Keep the previous grid visible until the replacement has rendered its rows. -->
+		<div
+			v-for="table in tables"
+			:key="table.key"
+			:class="{ [$style.pendingTable]: table.key !== tableSlots.displayed?.key }"
+			:aria-hidden="table.key !== tableSlots.displayed?.key"
+			:inert="isLoading || undefined"
+			:data-table-id="table.dataTable.id"
+			data-test-id="instance-ai-data-table-grid"
+		>
+			<DataTableTable
+				:data-table="table.dataTable"
+				:read-only="isReadOnly || (isLoading && table.key === tableSlots.displayed?.key)"
+				@ready="showTable(table.key)"
+				@load-error="onLoadError(table.key)"
+			/>
+		</div>
 
-		<!-- Loading overlay (shown during initial load or when no data table yet) -->
-		<div v-if="isLoading && !dataTable" :class="$style.centerState">
+		<DataTableLoadingIndicator v-if="isLoading && tableSlots.displayed" :key="requestKey" />
+
+		<div
+			v-if="isLoading && !tableSlots.displayed"
+			:class="$style.centerState"
+			data-test-id="instance-ai-data-table-loading"
+		>
 			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>
 	</div>
@@ -108,6 +143,12 @@ watch(
 	min-height: 0;
 	position: relative;
 	height: 100%;
+}
+
+.pendingTable {
+	position: absolute;
+	inset: 0;
+	visibility: hidden;
 }
 
 .centerState {

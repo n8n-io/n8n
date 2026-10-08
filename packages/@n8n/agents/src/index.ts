@@ -165,11 +165,7 @@ export {
 } from './sdk/vector-store-filter';
 export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
-export {
-	budgetMonthKey,
-	createBudgetGuardrail,
-	InMemorySpendLedger,
-} from './runtime/guardrails/budget-guardrail';
+export { budgetMonthKey, createBudgetGuardrail } from './runtime/guardrails/budget-guardrail';
 export type {
 	BudgetGuardrailOptions,
 	SpendEntry,
@@ -245,6 +241,8 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
+	RuntimeSkillReferenceContract,
+	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
@@ -319,6 +317,12 @@ export type {
 
 export { createModel } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
+export {
+	hasAzureApiKey,
+	hasAzureEntraToken,
+	isAzureEntraCredential,
+	type AzureOpenAiAuthFields,
+} from './runtime/model/provider-credentials';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,

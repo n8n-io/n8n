@@ -847,6 +847,87 @@ describe('setupSandboxWorkspace', () => {
 			'/workspace',
 		);
 	});
+
+	it('reports the install output when the tarball install fails', async () => {
+		const packSandboxLinkedWorkspacePackages = vi.fn().mockResolvedValue([
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		]);
+		const npmError = 'npm error notarget No matching version found for nanoid@3.3.18.';
+		const runInSandbox: RunInSandboxMock = vi
+			.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>()
+			// Daytona returns all command output in stdout.
+			.mockResolvedValue({ exitCode: 1, stdout: npmError, stderr: '' });
+		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
+			packSandboxLinkedWorkspacePackages,
+			runInSandbox,
+		);
+		const workspace = {
+			filesystem: { provider: 'daytona', writeFile: vi.fn(async () => {}) },
+			sandbox: {},
+		} as unknown as SandboxWorkspace;
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
+			`Failed to install workspace package tarballs (exit code 1): ${npmError}`,
+		);
+		expect(logger.error).toHaveBeenCalledWith(
+			'Failed to link workspace packages into sandbox',
+			expect.objectContaining({
+				exitCode: 1,
+				command: expect.stringContaining(
+					"npm install '/workspace/workflow-sdk.tgz' --no-save --force",
+				),
+				output: npmError,
+			}),
+		);
+	});
+
+	it('keeps the end of long install output with stderr last', async () => {
+		const packSandboxLinkedWorkspacePackages = vi.fn().mockResolvedValue([
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		]);
+		const stdout = 'npm http fetch GET 200 https://registry.npmjs.org/pkg\n'.repeat(200);
+		const stderr = 'npm error notarget No matching version found for nanoid@3.3.18.';
+		const runInSandbox: RunInSandboxMock = vi
+			.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>()
+			.mockResolvedValue({ exitCode: 1, stdout, stderr });
+		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
+			packSandboxLinkedWorkspacePackages,
+			runInSandbox,
+		);
+		const workspace = {
+			filesystem: { provider: 'local', writeFile: vi.fn(async () => {}) },
+			sandbox: {},
+		} as unknown as SandboxWorkspace;
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
+			stderr,
+		);
+		const { output } = logger.error.mock.calls[0][1] as { output: string };
+		const expectedTail = `${stdout}\n${stderr}`.trim().slice(-4000);
+		expect(output).toBe(`…${expectedTail}`);
+	});
 });
 describe('formatNodeCatalogLine', () => {
 	let formatNodeCatalogLine: FormatNodeCatalogLine;

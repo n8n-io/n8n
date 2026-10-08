@@ -220,6 +220,7 @@ function buildHook(
 		newSession?: Ref<boolean>;
 		onSessionCreated?: (sessionId: string) => void;
 		budgetCards?: boolean;
+		channel?: Ref<'chat' | 'n8n-chat'>;
 	} = {},
 ) {
 	const scope = effectScope();
@@ -616,6 +617,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			'p1',
 			'a1',
 			'run-approval',
+			'chat',
 		);
 		const assistant = hook.messages.value[1];
 		expect(assistant.toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
@@ -844,6 +846,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			'p1',
 			'a1',
 			'run-approval',
+			'chat',
 		);
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
 	});
@@ -896,6 +899,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			'p1',
 			'a1',
 			'run-external',
+			'chat',
 		);
 		expect(hook.messages.value[1].status).toBe('success');
 		expect(hook.messages.value[1].toolCalls).toEqual([
@@ -2652,6 +2656,7 @@ describe('useAgentChatStream — loadHistory', () => {
 			'p1',
 			'a1',
 			'thread-1',
+			'chat',
 		);
 		const msg = hook.messages.value.at(-1)!;
 		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
@@ -3540,6 +3545,7 @@ describe('useAgentChatStream — execution recovery', () => {
 				'a1',
 				'thread-1',
 				'exec-1',
+				'chat',
 			);
 			expect(second.isCancelling.value).toBe(true);
 			expect(first.isStreaming.value).toBe(true);
@@ -3664,6 +3670,7 @@ describe('useAgentChatStream — execution recovery', () => {
 			'a1',
 			'thread-1',
 			'exec-1',
+			'chat',
 		);
 		expect(vi.mocked(fetch).mock.calls[0][1]?.signal?.aborted).toBe(false);
 		getChatMessagesMock.mockResolvedValue({
@@ -3829,6 +3836,22 @@ describe('useAgentChatStream — queued submissions', () => {
 		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
 	});
 	afterEach(() => vi.unstubAllGlobals());
+
+	it('passes the queue item id to onAccepted when the message is queued', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				makeSseResponse([{ type: 'message-queued', queueId: 'q-7', sessionId: 'thread-1' }], false),
+			),
+		);
+		const accepted = vi.fn();
+		const hook = buildHook('thread-1');
+
+		await hook.sendMessage('Hello', undefined, accepted);
+		await flushPromises();
+
+		expect(accepted).toHaveBeenCalledWith('q-7');
+	});
 
 	it('keeps the original request UUID and stream when another delivery completes as a duplicate', async () => {
 		const clientId = 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a';
@@ -4023,6 +4046,7 @@ describe('useAgentChatStream — queued submissions', () => {
 				'thread-1',
 				'3',
 				{ executionId: 'A' },
+				'chat',
 			);
 			expect(hook.queuedMessages.value[1].steeringExecutionId).toBe('A');
 			expect(hook.messages.value.map(({ content }) => content)).toEqual(['Old question', 'A']);
@@ -4470,6 +4494,7 @@ describe('useAgentChatStream — queued submissions', () => {
 			'thread-1',
 			'1',
 			{ message: 'edited' },
+			'chat',
 		);
 		stream!.emit([
 			{
@@ -4534,6 +4559,7 @@ describe('useAgentChatStream — queued submissions', () => {
 			'thread-1',
 			'1',
 			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+			'chat',
 		);
 		expect(hook.isReorderingQueue.value).toBe(true);
 		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['1', '2']);
@@ -4681,5 +4707,167 @@ describe('useAgentChatStream — queued submissions', () => {
 		await flushPromises();
 		expect(hook.queuedMessages.value).toEqual([]);
 		expect(hook.messages.value).toEqual([]);
+	});
+});
+
+describe('useAgentChatStream — n8n Chat channel', () => {
+	beforeEach(() => {
+		pushListeners.length = 0;
+		connectionState.isConnected = false;
+		getChatMessagesMock.mockReset().mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getTestChatMessagesMock.mockReset();
+		getAgentChatQueueMock.mockReset().mockResolvedValue({ items: [] });
+		cancelAgentChatExecutionMock.mockReset().mockResolvedValue({ cancelRequested: true });
+		cancelAgentChatRunMock.mockReset().mockResolvedValue({ cancelled: true });
+		steerAgentQueuedMessageMock.mockReset().mockResolvedValue(undefined);
+		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	function buildN8nChatHook(continueSessionId?: string) {
+		return buildHook(continueSessionId, { channel: ref('n8n-chat') });
+	}
+
+	it('posts a new message to n8n-chat instead of chat', async () => {
+		globalThis.fetch = vi.fn(async () => makeSseResponse([{ type: 'done' }])) as typeof fetch;
+
+		const hook = buildN8nChatHook();
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(fetch).toHaveBeenCalledWith(
+			'http://localhost:5678/projects/p1/agents/v2/a1/n8n-chat',
+			expect.anything(),
+		);
+	});
+
+	it('posts a resume to n8n-chat/resume instead of chat/resume', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-1',
+							runId: 'run-1',
+							toolName: 'calculator',
+							input: { type: 'approval', toolName: 'calculator', args: {} },
+						},
+					},
+					{ type: 'done' },
+				]),
+			)
+			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildN8nChatHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await flushPromises();
+		await hook.resume({ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } });
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'http://localhost:5678/projects/p1/agents/v2/a1/n8n-chat/resume',
+			expect.anything(),
+		);
+	});
+
+	it('loads history and queue, and routes queue removal, through the n8n-chat channel', async () => {
+		const hook = buildN8nChatHook('thread-1');
+		await hook.loadHistory();
+
+		expect(getChatMessagesMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'n8n-chat',
+		);
+		expect(getAgentChatQueueMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'n8n-chat',
+		);
+
+		await hook.removeQueuedMessage('q1');
+		expect(removeAgentQueuedMessageMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'q1',
+			'n8n-chat',
+		);
+	});
+
+	it('reorders on the n8n-chat channel, routed through the n8n-chat queue route', async () => {
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [
+				{ id: 'q1', message: 'one', createdAt: new Date().toISOString() },
+				{ id: 'q2', message: 'two', createdAt: new Date().toISOString() },
+			],
+		});
+		const hook = buildN8nChatHook('thread-1');
+		await hook.loadHistory();
+
+		await hook.reorderQueuedMessage('q1', 'q2', ['q1', 'q2']);
+		expect(reorderAgentQueuedMessageMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+			'q1',
+			{ targetQueueId: 'q2', expectedQueueIds: ['q1', 'q2'] },
+			'n8n-chat',
+		);
+	});
+
+	it('skips the history fetch entirely for a fresh n8n Chat with no thread', async () => {
+		const hook = buildN8nChatHook();
+		await hook.loadHistory();
+
+		expect(getChatMessagesMock).not.toHaveBeenCalled();
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		expect(hook.messages.value).toEqual([]);
+	});
+
+	it('offers steer and calls the n8n-chat steer route for a steerable execution', async () => {
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: 'exec-1',
+		});
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [{ id: 'q1', message: 'queued', createdAt: new Date().toISOString() }],
+			steerableExecutionId: 'exec-1',
+		});
+		const hook = buildN8nChatHook('thread-1');
+		await hook.loadHistory();
+
+		expect(hook.canSteer.value).toBe(true);
+
+		await hook.steerQueuedMessage('q1');
+		expect(steerAgentQueuedMessageMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+			'q1',
+			{ executionId: 'exec-1' },
+			'n8n-chat',
+		);
 	});
 });

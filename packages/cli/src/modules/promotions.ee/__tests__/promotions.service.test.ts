@@ -769,7 +769,9 @@ describe('PromotionsService', () => {
 					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('These workflows moved to another project: w1');
+			).rejects.toMatchObject({
+				meta: { workflowIds: ['w1'] },
+			});
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/beta/workflows/w1/workflow.json')).toBe(
@@ -1118,7 +1120,7 @@ describe('PromotionsService', () => {
 					],
 				}),
 			);
-			expect(branch.commitSha).toBe(commitSha);
+			expect(branch).toMatchObject({ configId: CONFIG_ID, branchName: 'dev', commitSha });
 			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
 				{ entityId: 'p1', type: 'project' },
 				{ entityId: 'w1', type: 'workflow' },
@@ -1141,7 +1143,12 @@ describe('PromotionsService', () => {
 
 			const branch = await service.readBranchPackage('p1', 'apply');
 
-			expect(branch).toMatchObject({ commitSha: null, files: [] });
+			expect(branch).toMatchObject({
+				configId: CONFIG_ID,
+				branchName: 'dev',
+				commitSha: null,
+				files: [],
+			});
 			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
 				'no exported package',
 			);

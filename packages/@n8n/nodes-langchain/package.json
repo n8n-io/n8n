@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.42.0",
+  "version": "2.43.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -93,6 +93,7 @@
       "dist/nodes/vendors/Ollama/Ollama.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/vendors/Microsoft/MicrosoftAgent365Trigger.node.js",
+      "dist/nodes/vendors/Databricks/DatabricksAiAgent.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
       "dist/nodes/agents/Agent/AgentTool.node.js",
       "dist/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.js",

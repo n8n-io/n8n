@@ -1,7 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { planMessage, planTask, planView } from './fixtures/agent-plan';
 
 const copySpy = vi.fn();
 
@@ -50,6 +51,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['theme', 'icon', 'iconless', 'slim'],
 	},
 	N8nButton: {
+		name: 'N8nButton',
 		template:
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 		emits: ['click'],
@@ -79,10 +81,6 @@ vi.mock('@/features/ai/shared/components/AiReasoningBlock.vue', () => ({
 		template: '<div data-test-id="shared-reasoning-block">{{ entry.content }}</div>',
 		props: ['entry', 'streaming'],
 	},
-}));
-
-vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
-	default: { template: '<div data-test-id="typing-indicator" />' },
 }));
 
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
@@ -135,6 +133,219 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	const emptyAnswerError =
+		'The model finished without returning an answer. Try again or use another model.';
+	const streamStallError =
+		'The model stream stalled: no data received for 90 seconds. This is usually a transient connection issue — please try again.';
+
+	it.each([
+		{ content: emptyAnswerError, withTools: false },
+		{ content: emptyAnswerError, withTools: true },
+		{ content: streamStallError, withTools: false },
+		{ content: streamStallError, withTools: true },
+	])('puts resend inside the retry error callout: %j', async ({ content, withTools }) => {
+		const toolMessage: ChatMessage = {
+			id: 'tools',
+			role: 'assistant',
+			content: '',
+			toolCalls: [{ tool: 'lookup', toolCallId: 'lookup-1', state: 'done' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					...(withTools ? [toolMessage] : []),
+					{ id: 'failed', role: 'assistant', content, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+				retryDisabled: true,
+			},
+		});
+		const callout = wrapper.get('[data-testid="agent-chat-retry-error"]');
+		const retry = callout.get('[data-testid="agent-chat-retry"]');
+		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('subtle');
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toBeUndefined();
+		await wrapper.setProps({ retryDisabled: false });
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toEqual([['user-message']]);
+		expect(callout.text()).toContain(content);
+		wrapper.unmount();
+	});
+
+	it.each([
+		{ content: 'Invalid API key. Check the credential and try again.', status: 'error' },
+		{ content: 'Try again', status: 'error' },
+		{ content: emptyAnswerError, status: 'success' },
+	] as const)('does not show resend for other errors or model replies: %j', async (message) => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'assistant', role: 'assistant', ...message }],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+			},
+		});
+		expect(wrapper.find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain(message.content);
+		wrapper.unmount();
+	});
+
+	it('keeps earlier retry errors visible without a resend button', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'old-error', role: 'assistant', content: emptyAnswerError, status: 'error' },
+					{ id: 'new-user', role: 'user', content: 'New request' },
+					{ id: 'new-error', role: 'assistant', content: streamStallError, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'new-user',
+			},
+		});
+		const callouts = wrapper.findAll('[data-testid="agent-chat-retry-error"]');
+		expect(callouts).toHaveLength(2);
+		expect(callouts[0].find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(callouts[1].find('[data-testid="agent-chat-retry"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
+		const initial = planView();
+		const previous = { ...planMessage(initial), content: 'Starting research.' };
+		const stopped: ChatMessage = {
+			...planMessage({ ...initial, revision: 2 }, { tool: 'update_plan' }),
+			status: 'success',
+			budgetNotices: [{ id: 'budget-stop', code: 'budget.session' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [previous, stopped],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const cards = wrapper.findAll('[data-testid="agent-budget-notice-card"]');
+		expect(cards).toHaveLength(1);
+		expect(cards[0].attributes('data-can-increase')).toBe('true');
+		await cards[0].get('button').trigger('click');
+		expect(wrapper.emitted('increase-budget')).toEqual([
+			[{ field: 'sessionCostCapUsd', amount: 10 }],
+		]);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it.each(['success', 'awaitingUser'] as const)(
+		'hides tool-run typing dots when the final message is %s',
+		async (status) => {
+			const initial = planView();
+			const previous = { ...planMessage(initial), content: 'Starting research.' };
+			const progress: ChatMessage = {
+				...planMessage(undefined, {
+					tool: 'update_plan',
+					state: 'running',
+					input: { planId: initial.planId, expectedRevision: 1, document: initial.document },
+				}),
+				status: 'streaming',
+			};
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [previous, progress], messagingState: 'receiving' },
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			const finalMessage: ChatMessage = { id: 'final', role: 'assistant', content: '', status };
+			await wrapper.setProps({ messages: [previous, progress, finalMessage] });
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+
+			await wrapper.setProps({
+				messages: [previous, progress, { ...finalMessage, status: 'streaming' }],
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			await wrapper.setProps({
+				messages: [
+					previous,
+					progress,
+					{ ...finalMessage, status: 'streaming', content: 'Found candidates.' },
+				],
+			});
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
+
+	it('hides plan progress during streaming and completion but keeps errors and chat text', async () => {
+		const initial = planView();
+		const document = { ...initial.document, presentation: { label: 'Research candidates' } };
+		const previous = { ...planMessage(initial), id: 'previous', content: 'Starting research.' };
+		const pending: ChatMessage = {
+			...planMessage(undefined, {
+				tool: 'update_plan',
+				toolCallId: 'update',
+				state: 'running',
+				input: { planId: initial.planId, expectedRevision: 1, document },
+			}),
+			id: 'update',
+			status: 'streaming',
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [previous, pending], messagingState: 'receiving' },
+		});
+		const calls = () =>
+			wrapper
+				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.flatMap((steps) => steps.props('toolCalls') as ToolCall[]);
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(true);
+		const completed: ChatMessage = {
+			...pending,
+			status: 'success',
+			toolCalls: [
+				{ ...pending.toolCalls![0], state: 'done', output: { ...initial, revision: 2, document } },
+			],
+		};
+		await wrapper.setProps({ messages: [previous, completed], messagingState: 'idle' });
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-testid="markdown-chunk"]')).toHaveLength(1);
+		await wrapper.setProps({
+			messages: [previous, { ...completed, content: 'Found candidates.' }],
+		});
+		expect(wrapper.text()).toContain('Found candidates.');
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [{ ...completed.toolCalls![0], output: { error: 'conflict' } }],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [
+						{
+							...completed.toolCalls![0],
+							output: {
+								...initial,
+								revision: 2,
+								document: { ...document, items: [...document.items, planTask(99)] },
+							},
+						},
+					],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		wrapper.unmount();
+	});
+
 	it('keeps signal expansion and order when the response gains tools and text', async () => {
 		const message: ChatMessage = {
 			id: 'wake:assistant',
@@ -289,7 +500,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="shared-reasoning-block"]').text()).toBe(
 			'Inspect the request. Then answer.',
 		);
-		expect(wrapper.find('[data-test-id="typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
 	});
 
 	it('renders thinking below standalone assistant output', () => {

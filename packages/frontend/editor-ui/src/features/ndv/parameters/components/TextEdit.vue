@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick, computed } from 'vue';
+import { ref, watch, onMounted, nextTick, computed, inject } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
@@ -24,6 +25,7 @@ const inputField = ref<HTMLInputElement | null>(null);
 const tempValue = ref('');
 
 const ndvStore = injectNDVStore();
+const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
 const i18n = useI18n();
 
 const activeNode = computed(() => ndvStore.value.activeNode);
@@ -70,7 +72,8 @@ const closeDialog = () => {
 	<div v-if="dialogVisible">
 		<ElDialog
 			:model-value="dialogVisible"
-			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+			:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
+			:append-to-body="parameterModalContext?.appendTo === 'body'"
 			width="80%"
 			:title="`${i18n.baseText('textEdit.edit')} ${i18n
 				.nodeText(activeNode?.type)
