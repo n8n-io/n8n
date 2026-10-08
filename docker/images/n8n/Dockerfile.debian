@@ -1,4 +1,4 @@
-ARG NODE_VERSION=26.7.0
+ARG NODE_VERSION=26.10.0
 ARG N8N_VERSION=snapshot
 
 # glibc variant of ./Dockerfile. Users add vendor libraries that need glibc
@@ -6,7 +6,7 @@ ARG N8N_VERSION=snapshot
 # The builder is the DHI image that the Debian base builds on, so the native
 # modules compile against the same glibc that runs them. Change the tag and the
 # digest together.
-ARG BUILDER_IMAGE=dhi.io/node:26.7.0-debian13-dev@sha256:f64567ec3fd6eb86a5cbd384bc2f09f329796c5bcb1737d8d85041dda981e797
+ARG BUILDER_IMAGE=dhi.io/node:26.10.0-debian13-dev@sha256:ddb48790becd5f08bb5bb0d21292c098e64ca9108215cce589263abb10e0dcaa
 ARG RUNTIME_IMAGE=n8nio/base:26.7.0-debian@sha256:c2df12119b59afb938364961ffabe3b4e0f61c8f7afdebf5d8702acfebc9813c
 
 # The runtime base has no compiler, so this stage supplies one. The -dev

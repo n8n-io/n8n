@@ -44,9 +44,9 @@ jobs:
           - tag: '26.10.0'
             dockerfile: docker/images/n8n-base/Dockerfile
             dhi_ref: dhi.io/node:26.10.0-alpine3.24-dev@sha256:8da859df5dc853c923ace53c4cfe994a909a28917f7fcfc8508869beab8cf132
-          - tag: '26.7.0-debian'
+          - tag: '26.10.0-debian'
             dockerfile: docker/images/n8n-base/Dockerfile.debian
-            dhi_ref: dhi.io/node:26.7.0-debian13-dev@sha256:f64567ec3fd6eb86a5cbd384bc2f09f329796c5bcb1737d8d85041dda981e797
+            dhi_ref: dhi.io/node:26.10.0-debian13-dev@sha256:ddb48790becd5f08bb5bb0d21292c098e64ca9108215cce589263abb10e0dcaa
             # The Docker smoke test builds n8n-debian on the published base, so
             # it does not test a change to this Dockerfile. Check it here.
             smoke_check: .github/scripts/docker/base-debian-smoke-check.mjs
