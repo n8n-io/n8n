@@ -25,8 +25,9 @@ const entryFor = (jti: string, userId = 'user-1'): SandboxPreviewEntry => ({
 	expiresAt: START.getTime() + 3_600_000,
 });
 
+/** A plain object: a deep mock would answer every cookie name. */
 const requestWith = (cookie?: string) =>
-	mock<Request>({ cookies: cookie ? { 'n8n-auth': cookie } : {} });
+	({ cookies: cookie ? { 'n8n-auth': cookie } : {} }) as unknown as Request;
 
 describe('SandboxPreviewAccess', () => {
 	const authService = mock<AuthService>();

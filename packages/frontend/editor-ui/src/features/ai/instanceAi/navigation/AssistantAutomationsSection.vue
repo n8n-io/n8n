@@ -11,6 +11,7 @@ import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiAvailable } from '../composables/useInstanceAiAvailability';
 import { useExperienceMode } from '../experience/useExperienceMode';
 import AssistantSectionHeader from './AssistantSectionHeader.vue';
+import { useAutomationUpdates } from './useAutomationUpdates';
 import { useChatTurnEnded } from './useChatTurnEnded';
 import { useMyAutomations } from './useMyAutomations';
 
@@ -34,12 +35,21 @@ const isAssistantAvailable = useInstanceAiAvailable();
 const { isEnabled: experienceModesOn } = useExperienceMode();
 
 // The list endpoint needs the Assistant, so the section waits for it as well as for the flag.
-const isEnabled = computed(() => isAssistantAvailable.value && experienceModesOn.value);
-const { automations, refresh } = useMyAutomations(isEnabled);
+// A collapsed sidebar hides the section, so the list loads only when the sidebar opens.
+const isShown = computed(
+	() => isAssistantAvailable.value && experienceModesOn.value && !props.collapsed,
+);
+const { automations, refresh } = useMyAutomations(isShown);
 // A turn can build or turn on a workflow, also when the user answers an automation card.
 useChatTurnEnded(() => {
 	void refresh();
 });
+// The user can turn a workflow on or off, or rename it, in the editor or in another tab.
+useAutomationUpdates(
+	isShown,
+	() => (automations.value ?? []).map((automation) => automation.workflowId),
+	refresh,
+);
 
 const isCollapsed = useLocalStorage(COLLAPSED_KEY, false, { writeDefaults: false });
 
@@ -76,7 +86,7 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 
 <template>
 	<div
-		v-if="isEnabled && !props.collapsed && automations !== undefined"
+		v-if="isShown && automations !== undefined"
 		:class="$style.section"
 		data-test-id="assistant-automations"
 	>
@@ -87,6 +97,7 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 			:link="{
 				to: { name: VIEWS.HOMEPAGE },
 				label: i18n.baseText('instanceAi.automations.showAll'),
+				ariaLabel: i18n.baseText('instanceAi.automations.showAllLabel'),
 				testId: 'assistant-automations-show-all',
 			}"
 		/>

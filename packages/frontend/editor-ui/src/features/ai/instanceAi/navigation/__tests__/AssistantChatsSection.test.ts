@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { reactive } from 'vue';
 import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
@@ -8,7 +9,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
 import { ASSISTANT_AGENT_ID } from '../../agentsChatMode';
-import { useInstanceAiStore } from '../../instanceAi.store';
+import { useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import { resetExperienceModeState } from '../../experience/useExperienceMode';
 import { resetThreadLastViewedState, useThreadLastViewed } from '../useThreadLastViewed';
@@ -140,6 +141,17 @@ describe('AssistantChatsSection', () => {
 			expect(getByRole('link', { name: 'View all' })).toHaveAttribute('href', '/assistant/history');
 		});
 
+		it('gives the section a heading, and names it in the description of "View all"', () => {
+			configureInstanceAi();
+			instanceAiStore.threads = [chat('a', 'First chat')];
+
+			const { getByRole } = render();
+
+			const heading = getByRole('heading', { level: 2, name: 'Chats' });
+			expect(within(heading).getByRole('button', { name: 'Chats' })).toBeInTheDocument();
+			expect(getByRole('link', { name: 'View all' })).toHaveAccessibleDescription('Chats');
+		});
+
 		it('shows the five most recent chats and keeps the open chat listed', async () => {
 			configureInstanceAi();
 			instanceAiStore.threads = Array.from({ length: 7 }, (_, index) =>
@@ -247,7 +259,7 @@ describe('AssistantChatsSection', () => {
 
 			const { queryAllByRole, queryAllByTestId, getByTestId } = render();
 
-			expect(queryAllByRole('heading')).toEqual([]);
+			expect(queryAllByRole('heading', { level: 3 })).toEqual([]);
 			expect(queryAllByTestId(/^assistant-chat-group-/)).toEqual([]);
 			expect(rowTestIds(getByTestId('instance-ai-sidebar-chats'))).toHaveLength(5);
 		});
@@ -353,12 +365,12 @@ describe('AssistantChatsSection', () => {
 
 			const { getAllByRole, getByRole, getByTestId } = render();
 
-			expect(getAllByRole('heading').map((heading) => heading.textContent?.trim())).toEqual([
-				'Needs you',
-				'Working',
-				'Ready to review',
-				'Done',
-			]);
+			expect(
+				getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent?.trim()),
+			).toEqual(['Chats']);
+			expect(
+				getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.trim()),
+			).toEqual(['Needs you', 'Working', 'Ready to review', 'Done']);
 			const needsYou = getByRole('list', { name: 'Needs you' });
 			expect(rowLabels(needsYou)).toEqual([
 				'Approve invoice, Waiting for you',
@@ -407,6 +419,81 @@ describe('AssistantChatsSection', () => {
 			const { queryByTestId } = render();
 
 			expect(queryByTestId('instance-ai-sidebar-chats')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('a chat that runs a turn in this tab', () => {
+		function streamingRuntime() {
+			const runtime = reactive({ isStreaming: true, isSendingMessage: false });
+			vi.mocked(instanceAiStore.getRuntime).mockImplementation((threadId) =>
+				threadId === 'new' ? (runtime as unknown as ThreadRuntime) : undefined,
+			);
+			return runtime;
+		}
+
+		// A new chat has no state until the next list load.
+		const newChat = () => chat('new', 'New chat', { updatedAt: T1 });
+		const seenChat = () => chat('seen', 'Team digest', { state: 'idle', lastActivityAt: T0 });
+
+		beforeEach(async () => {
+			storage.set(LAST_VIEWED_KEY, JSON.stringify({ seen: T1 }));
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: 'new' } });
+		});
+
+		it('shows a new chat under "Working" while its first turn runs, and under "Done" after', async () => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			const runtime = streamingRuntime();
+			instanceAiStore.threads = [newChat(), seenChat()];
+
+			const { getByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Working' }))).toEqual(['New chat, Working']);
+
+			runtime.isStreaming = false;
+
+			await waitFor(() =>
+				expect(rowLabels(getByRole('list', { name: 'Done' }))).toEqual(['New chat', 'Team digest']),
+			);
+		});
+
+		it('shows "Working" while the first message is on its way', () => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			const runtime = streamingRuntime();
+			runtime.isStreaming = false;
+			runtime.isSendingMessage = true;
+			instanceAiStore.threads = [newChat(), seenChat()];
+
+			const { getByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Working' }))).toEqual(['New chat, Working']);
+		});
+
+		it('shows the new chat as working in the flat list of Simple mode', () => {
+			configureInstanceAi({ experienceModes: true });
+			streamingRuntime();
+			instanceAiStore.threads = [newChat(), seenChat()];
+
+			const { getByTestId } = render();
+
+			expect(rowLabels(getByTestId('instance-ai-sidebar-chats'))).toEqual([
+				'New chat, Working',
+				'Team digest',
+			]);
+		});
+
+		it('keeps the state that the server sent', () => {
+			configureInstanceAi({ experienceModes: true, defaultMode: 'power' });
+			streamingRuntime();
+			instanceAiStore.threads = [
+				chat('new', 'New chat', { state: 'needs-you', needsInput: true, lastActivityAt: T1 }),
+			];
+
+			const { getByRole, queryByRole } = render();
+
+			expect(rowLabels(getByRole('list', { name: 'Needs you' }))).toEqual([
+				'New chat, Waiting for you',
+			]);
+			expect(queryByRole('list', { name: 'Working' })).not.toBeInTheDocument();
 		});
 	});
 

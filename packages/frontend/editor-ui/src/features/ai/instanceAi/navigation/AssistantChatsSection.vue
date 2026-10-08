@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, watch } from 'vue';
+import { computed, useId, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -13,6 +13,7 @@ import AssistantChatRow from './AssistantChatRow.vue';
 import AssistantSectionHeader from './AssistantSectionHeader.vue';
 import { threadDisplayState } from './threadDisplayState';
 import { useLiveThreadList } from './useLiveThreadList';
+import { useSidebarThreads } from './useSidebarThreads';
 import { useThreadLastViewed } from './useThreadLastViewed';
 
 const CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
@@ -21,6 +22,7 @@ const props = defineProps<{ collapsed: boolean }>();
 
 const i18n = useI18n();
 const route = useRoute();
+const titleId = useId();
 const instanceAiStore = useInstanceAiStore();
 const isInstanceAiNavVisible = useInstanceAiAvailable();
 const { isEnabled: showStates, mode } = useExperienceMode();
@@ -53,13 +55,15 @@ const openThreadId = computed(() => {
 	return typeof threadId === 'string' ? threadId : undefined;
 });
 
+const threads = useSidebarThreads(openThreadId);
+
 const recentThreads = computed(() => {
-	const recent = instanceAiStore.threads.slice(0, 5);
+	const recent = threads.value.slice(0, 5);
 	// Keep the open chat in the list when it is older than the five most recent
 	// ones, e.g. opened from the history page or by URL.
 	const openId = openThreadId.value;
 	if (openId === undefined || recent.some((t) => t.id === openId)) return recent;
-	const openThread = instanceAiStore.threads.find((t) => t.id === openId);
+	const openThread = threads.value.find((t) => t.id === openId);
 	return openThread ? [...recent.slice(0, 4), openThread] : recent;
 });
 
@@ -80,17 +84,14 @@ const rows = computed(() =>
 		<AssistantSectionHeader
 			v-model:collapsed="isChatsCollapsed"
 			:title="i18n.baseText('instanceAi.threads.chats')"
+			:title-id="titleId"
 			:link="{
 				to: { name: INSTANCE_AI_THREADS_VIEW },
 				label: i18n.baseText('instanceAi.threads.viewAll'),
 			}"
 		/>
 		<template v-if="!isChatsCollapsed">
-			<AssistantChatGroups
-				v-if="showGroups"
-				:threads="instanceAiStore.threads"
-				:open-thread-id="openThreadId"
-			/>
+			<AssistantChatGroups v-if="showGroups" :threads="threads" :open-thread-id="openThreadId" />
 			<div v-else>
 				<AssistantChatRow
 					v-for="row in rows"

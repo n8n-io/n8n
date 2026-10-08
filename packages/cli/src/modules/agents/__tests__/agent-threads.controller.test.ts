@@ -74,16 +74,52 @@ describe('AgentThreadsController route access scopes', () => {
 
 describe('AgentThreadsController session details', () => {
 	it.each([
-		['private root', 'user', null, 'chat', true],
-		['MCP root', 'user', null, 'mcp', false],
-		['Instance AI root', 'user', null, 'instance-ai', false],
-		['shared root', 'project', null, 'mcp', false],
-		['child', 'user', 'parent', 'mcp', false],
-		['legacy sub-agent', 'user', null, 'subagent', false],
-		['source-less private root', 'user', null, null, true],
+		{
+			name: 'private root',
+			accessScope: 'user',
+			parentThreadId: null,
+			source: 'chat',
+			expected: true,
+		},
+		{ name: 'MCP root', accessScope: 'user', parentThreadId: null, source: 'mcp', expected: false },
+		{
+			name: 'Instance AI root',
+			accessScope: 'user',
+			parentThreadId: null,
+			source: 'instance-ai',
+			expected: false,
+		},
+		{
+			name: 'shared root',
+			accessScope: 'project',
+			parentThreadId: null,
+			source: 'mcp',
+			expected: false,
+		},
+		{
+			name: 'child',
+			accessScope: 'user',
+			parentThreadId: 'parent',
+			source: 'mcp',
+			expected: false,
+		},
+		{
+			name: 'legacy sub-agent',
+			accessScope: 'user',
+			parentThreadId: null,
+			source: 'subagent',
+			expected: false,
+		},
+		{
+			name: 'source-less private root',
+			accessScope: 'user',
+			parentThreadId: null,
+			source: null,
+			expected: true,
+		},
 	] as const)(
-		'returns origin and Preview eligibility for a %s session',
-		async (_name, accessScope, parentThreadId, source, expected) => {
+		'returns origin and Preview eligibility for a $name session',
+		async ({ accessScope, parentThreadId, source, expected }) => {
 			const service = mock<AgentExecutionService>();
 			const controller = new AgentThreadsController(
 				service,

@@ -41,7 +41,7 @@ export function canRead(
 	membership: readonly Scope[],
 ): boolean {
 	if (isThreadOwner(user, thread)) return true;
-	return isSharedThread(thread) && canReadSharedThreads(membership);
+	return isSharedThread(thread) && holdsAll(READ_SCOPES, membership);
 }
 
 /**

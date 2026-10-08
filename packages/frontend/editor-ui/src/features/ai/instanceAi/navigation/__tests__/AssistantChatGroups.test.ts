@@ -58,7 +58,7 @@ describe('AssistantChatGroups', () => {
 			chat('waiting', 'Approve invoice', { state: 'needs-you', needsInput: true }),
 		]);
 
-		const headings = getAllByRole('heading', { level: 2 });
+		const headings = getAllByRole('heading', { level: 3 });
 		expect(headings.map((heading) => heading.textContent?.trim())).toEqual([
 			'Needs you',
 			'Working',
@@ -197,6 +197,80 @@ describe('AssistantChatGroups', () => {
 			'Done chat 6',
 		]);
 		expect(getByRole('button', { name: 'Show all (7)' })).toBeInTheDocument();
+	});
+
+	describe('keyboard focus when the list changes', () => {
+		const busy = (overview: Partial<InstanceAiThreadSummary> = {}) =>
+			chat('busy', 'Build CRM sync', { state: 'working', lastActivityAt: T1, ...overview });
+
+		it('keeps the focus on a chat that moves to another group', async () => {
+			const { getByRole, rerender } = render([busy(), chat('older', 'Old chat')]);
+			getByRole('menuitem', { name: 'Build CRM sync, Working' }).focus();
+
+			await rerender({ threads: [busy({ state: 'idle' }), chat('older', 'Old chat')] });
+
+			const moved = getByRole('menuitem', { name: 'Build CRM sync, Ready to review' });
+			expect(within(getByRole('list', { name: 'Ready to review' })).getByRole('menuitem')).toBe(
+				moved,
+			);
+			expect(moved).toHaveFocus();
+		});
+
+		it('moves the focus to the last row of the group when "Show fewer" goes away', async () => {
+			const { getByRole, queryByTestId, rerender } = render(doneChats(6));
+			await userEvent.click(getByRole('button', { name: 'Show all (6)' }));
+			const showFewer = getByRole('button', { name: 'Show fewer' });
+			showFewer.focus();
+
+			await rerender({ threads: doneChats(5) });
+
+			expect(queryByTestId('assistant-chat-group-show-all')).not.toBeInTheDocument();
+			expect(getByRole('menuitem', { name: 'Done chat 4' })).toHaveFocus();
+		});
+
+		it('moves the focus to the last row of its group when the focused chat goes away', async () => {
+			const { getByRole, rerender } = render(doneChats(3));
+			getByRole('menuitem', { name: 'Done chat 1' }).focus();
+
+			await rerender({ threads: doneChats(3).filter((thread) => thread.id !== 'done-1') });
+
+			expect(getByRole('menuitem', { name: 'Done chat 2' })).toHaveFocus();
+		});
+
+		it('moves the focus to the first chat when the group of the focused chat goes away', async () => {
+			const { getByRole, queryByRole, rerender } = render([busy(), chat('older', 'Old chat')]);
+			getByRole('menuitem', { name: 'Build CRM sync, Working' }).focus();
+
+			await rerender({ threads: [chat('older', 'Old chat')] });
+
+			expect(queryByRole('list', { name: 'Working' })).not.toBeInTheDocument();
+			expect(getByRole('menuitem', { name: 'Old chat' })).toHaveFocus();
+		});
+
+		it('does not take the focus from an element outside the list', async () => {
+			const outside = document.createElement('button');
+			document.body.appendChild(outside);
+			const { rerender } = render([busy(), chat('older', 'Old chat')]);
+			outside.focus();
+
+			await rerender({ threads: [busy({ state: 'idle' }), chat('older', 'Old chat')] });
+
+			expect(outside).toHaveFocus();
+			outside.remove();
+		});
+
+		it('leaves the focus alone when the focused chat stays in its group', async () => {
+			const { getByRole, rerender } = render([busy(), chat('older', 'Old chat')]);
+			const row = getByRole('menuitem', { name: 'Build CRM sync, Working' });
+			row.focus();
+
+			await rerender({
+				threads: [busy({ title: 'Build CRM sync v2' }), chat('older', 'Old chat')],
+			});
+
+			expect(getByRole('menuitem', { name: 'Build CRM sync v2, Working' })).toBe(row);
+			expect(row).toHaveFocus();
+		});
 	});
 
 	it('gives each group heading and list a unique id', () => {

@@ -238,6 +238,15 @@ export function withAiPreferences(message: string, block: string): string {
 }
 
 /**
+ * The `<thread-context>` block among the leading internal blocks of a stored user message, or
+ * `undefined`. Only the service writes these blocks, so a tag lookalike in the user's own text
+ * is never returned. Read a service-written section from this block, never from the whole message.
+ */
+export function extractThreadContextBlock(stored: string): string | undefined {
+	return leadingInternalBlocks(stored).find((block) => block.startsWith(THREAD_CONTEXT_OPEN_TAG));
+}
+
+/**
  * Matches the service-written preferences block inside one `<thread-context>` block. The
  * renderer escapes the tags out of user text, so the first close tag is always the real one.
  */
@@ -251,9 +260,7 @@ const AI_PREFERENCES_BLOCK = /<ai-preferences>\n[\s\S]*?\n<\/ai-preferences>/;
  * `asStoredThreadContextSection(freshBlock)`, never the raw render.
  */
 export function extractAiPreferencesBlock(stored: string): string | undefined {
-	const threadContext = leadingInternalBlocks(stored).find((block) =>
-		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
-	);
+	const threadContext = extractThreadContextBlock(stored);
 	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
@@ -269,9 +276,7 @@ const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifact
  * Compare against `asStoredThreadContextSection(freshBlock)`, never the raw render.
  */
 export function extractThreadArtifactsBlock(stored: string): string | undefined {
-	const threadContext = leadingInternalBlocks(stored).find((block) =>
-		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
-	);
+	const threadContext = extractThreadContextBlock(stored);
 	return threadContext ? THREAD_ARTIFACTS_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 

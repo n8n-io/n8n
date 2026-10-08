@@ -4,10 +4,13 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 
 const props = defineProps<{
 	title: string;
-	/** Lets a list below the header take the title as its name. */
+	/** Lets a list below the header take the title as its name, and describes the link. */
 	titleId?: string;
-	/** A link at the end of the header, for example to the full list. */
-	link: { to: RouteLocationRaw; label: string; testId?: string };
+	/**
+	 * A link at the end of the header, for example to the full list. `ariaLabel` must start with
+	 * the visible `label`, so that speech input finds the link by its visible text.
+	 */
+	link: { to: RouteLocationRaw; label: string; ariaLabel?: string; testId?: string };
 }>();
 
 const collapsed = defineModel<boolean>('collapsed', { required: true });
@@ -15,22 +18,32 @@ const collapsed = defineModel<boolean>('collapsed', { required: true });
 
 <template>
 	<div :class="$style.header">
-		<button
-			type="button"
-			:class="$style.toggle"
-			:aria-expanded="!collapsed"
-			@click="collapsed = !collapsed"
+		<!-- The heading holds the toggle, so heading navigation also reaches the toggle. -->
+		<div role="heading" :aria-level="2" :class="$style.heading">
+			<button
+				type="button"
+				:class="$style.toggle"
+				:aria-expanded="!collapsed"
+				@click="collapsed = !collapsed"
+			>
+				<N8nText :id="props.titleId" size="small" bold color="text-base" :class="$style.title">
+					{{ props.title }}
+				</N8nText>
+				<N8nIcon
+					icon="chevron-down"
+					size="small"
+					:class="[$style.chevron, { [$style.chevronCollapsed]: collapsed }]"
+				/>
+			</button>
+		</div>
+		<!-- The link text is short, so the section title describes it, e.g. "View all, Chats". -->
+		<RouterLink
+			:to="props.link.to"
+			:class="$style.link"
+			:aria-label="props.link.ariaLabel"
+			:aria-describedby="props.titleId"
+			:data-test-id="props.link.testId"
 		>
-			<N8nText :id="props.titleId" size="small" bold color="text-base" :class="$style.title">
-				{{ props.title }}
-			</N8nText>
-			<N8nIcon
-				icon="chevron-down"
-				size="small"
-				:class="[$style.chevron, { [$style.chevronCollapsed]: collapsed }]"
-			/>
-		</button>
-		<RouterLink :to="props.link.to" :class="$style.link" :data-test-id="props.link.testId">
 			{{ props.link.label }}
 		</RouterLink>
 	</div>
@@ -63,6 +76,12 @@ const collapsed = defineModel<boolean>('collapsed', { required: true });
 			color: var(--color--text--shade-1);
 		}
 	}
+}
+
+.heading {
+	display: flex;
+	flex: 1;
+	min-width: 0;
 }
 
 .toggle {

@@ -238,6 +238,63 @@ describe('useInstanceAiStore - runtime registry', () => {
 		]);
 	});
 
+	describe('when list requests overlap', () => {
+		type ThreadList = Awaited<ReturnType<typeof fetchThreads>>;
+
+		const listWith = (state: InstanceAiThreadSummary['state']): ThreadList => ({
+			threads: [{ ...historyThread('a'), state }],
+			total: 1,
+			page: 1,
+			hasMore: false,
+		});
+
+		function twoPendingLoads() {
+			const store = useInstanceAiStore();
+			const older = Promise.withResolvers<ThreadList>();
+			const newer = Promise.withResolvers<ThreadList>();
+			vi.mocked(fetchThreads).mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+			return { store, older, newer, first: store.loadThreads(), second: store.loadThreads() };
+		}
+
+		const shownStates = (store: ReturnType<typeof useInstanceAiStore>) =>
+			store.threads.map(({ id, state }) => ({ id, state }));
+
+		it('keeps the newer list when the older request answers last', async () => {
+			const { store, older, newer, first, second } = twoPendingLoads();
+
+			newer.resolve(listWith('idle'));
+			await expect(second).resolves.toBe(true);
+			older.resolve(listWith('working'));
+			// The list on screen is newer, so the caller can rely on it.
+			await expect(first).resolves.toBe(true);
+
+			expect(shownStates(store)).toEqual([{ id: 'a', state: 'idle' }]);
+		});
+
+		it('shows each answer when they arrive in order', async () => {
+			const { store, older, newer, first, second } = twoPendingLoads();
+
+			older.resolve(listWith('working'));
+			await first;
+			expect(shownStates(store)).toEqual([{ id: 'a', state: 'working' }]);
+
+			newer.resolve(listWith('idle'));
+			await second;
+			expect(shownStates(store)).toEqual([{ id: 'a', state: 'idle' }]);
+		});
+
+		it('shows the older answer when the newer request fails', async () => {
+			const { store, older, newer, first, second } = twoPendingLoads();
+
+			newer.reject(new Error('offline'));
+			await expect(second).resolves.toBe(false);
+			older.resolve(listWith('working'));
+			await expect(first).resolves.toBe(true);
+
+			expect(shownStates(store)).toEqual([{ id: 'a', state: 'working' }]);
+		});
+	});
+
 	it('keeps the overview fields of a thread fetched for the history page', async () => {
 		const store = useInstanceAiStore();
 		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({

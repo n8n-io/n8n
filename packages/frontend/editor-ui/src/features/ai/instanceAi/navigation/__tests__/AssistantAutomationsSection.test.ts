@@ -4,7 +4,7 @@ import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { InstanceAiProvenanceListItem } from '@n8n/api-types';
+import type { InstanceAiProvenanceListItem, PushMessage } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -21,9 +21,31 @@ import {
 	T1,
 } from './navigationFixtures';
 
-const { fetchMyAutomations } = vi.hoisted(() => ({ fetchMyAutomations: vi.fn() }));
+const { fetchMyAutomations, pushHandlers, pushStore } = vi.hoisted(() => {
+	const handlers = new Set<(event: PushMessage) => void>();
+	return {
+		fetchMyAutomations: vi.fn(),
+		pushHandlers: handlers,
+		pushStore: {
+			pushConnect: vi.fn(),
+			pushDisconnect: vi.fn(),
+			addEventListener: vi.fn((handler: (event: PushMessage) => void) => {
+				handlers.add(handler);
+				return () => handlers.delete(handler);
+			}),
+		},
+	};
+});
 
 vi.mock('../../provenance/provenance.api', () => ({ fetchMyAutomations }));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => pushStore,
+}));
+
+function emit(event: PushMessage) {
+	for (const handler of [...pushHandlers]) handler(event);
+}
 
 const COLLAPSED_KEY = 'n8n:sidebar:instance-ai-automations-collapsed';
 
@@ -71,6 +93,7 @@ async function renderLoaded(items: InstanceAiProvenanceListItem[] = twoAutomatio
 describe('AssistantAutomationsSection', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pushHandlers.clear();
 		storage.clear();
 		stubLocalStorage(storage);
 		createTestingPinia();
@@ -82,6 +105,7 @@ describe('AssistantAutomationsSection', () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 	});
 
@@ -145,10 +169,20 @@ describe('AssistantAutomationsSection', () => {
 		expect(openChat).toHaveFocus();
 	});
 
-	it('links "Show all" to the workflows overview', async () => {
+	it('links "Show all" to the workflows overview, and says where it goes', async () => {
 		const { getByRole } = await renderLoaded();
 
-		expect(getByRole('link', { name: 'Show all' })).toHaveAttribute('href', '/home/workflows');
+		const showAll = getByRole('link', { name: 'Show all workflows' });
+		expect(showAll).toHaveAttribute('href', '/home/workflows');
+		expect(showAll).toHaveTextContent('Show all');
+		expect(showAll).toHaveAccessibleDescription('Automations');
+	});
+
+	it('gives the section a heading', async () => {
+		const { getByRole } = await renderLoaded();
+
+		const heading = getByRole('heading', { level: 2, name: 'Automations' });
+		expect(within(heading).getByRole('button', { name: 'Automations' })).toBeInTheDocument();
 	});
 
 	it('says that nothing runs automatically yet when the Assistant built nothing', async () => {
@@ -219,6 +253,74 @@ describe('AssistantAutomationsSection', () => {
 		await vi.waitFor(() => expect(fetchMyAutomations).toHaveBeenCalledTimes(3));
 
 		expect(getAllByTestId('assistant-automation-row')).toHaveLength(2);
+	});
+
+	it('loads the list again when the tab becomes visible', async () => {
+		const { getAllByTestId } = await renderLoaded([twoAutomations[1]]);
+		fetchMyAutomations.mockResolvedValue(twoAutomations);
+
+		document.dispatchEvent(new Event('visibilitychange'));
+
+		await waitFor(() => expect(getAllByTestId('assistant-automation-row')).toHaveLength(2));
+		expect(fetchMyAutomations).toHaveBeenCalledTimes(2);
+	});
+
+	it('shows the list when the tab becomes visible after a failed first load', async () => {
+		fetchMyAutomations.mockRejectedValueOnce(new Error('offline'));
+		const { queryByTestId, findByTestId } = render();
+		await vi.waitFor(() => expect(fetchMyAutomations).toHaveBeenCalledTimes(1));
+		expect(queryByTestId('assistant-automations')).not.toBeInTheDocument();
+		fetchMyAutomations.mockResolvedValue(twoAutomations);
+
+		document.dispatchEvent(new Event('visibilitychange'));
+
+		expect(await findByTestId('assistant-automations')).toBeInTheDocument();
+	});
+
+	it('updates the status one second after a listed workflow is turned off elsewhere', async () => {
+		const { getByRole } = await renderLoaded();
+		vi.useFakeTimers();
+		fetchMyAutomations.mockResolvedValue([
+			automation('wf-1', 'Weekly report', { active: false, canOpenThread: true }),
+			twoAutomations[1],
+		]);
+
+		emit({ type: 'workflowDeactivated', data: { workflowId: 'wf-1' } });
+		await vi.advanceTimersByTimeAsync(999);
+		expect(fetchMyAutomations).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		vi.useRealTimers();
+
+		await waitFor(() =>
+			expect(getByRole('menuitem', { name: 'Weekly report, Off' })).toBeInTheDocument(),
+		);
+		expect(fetchMyAutomations).toHaveBeenCalledTimes(2);
+	});
+
+	it('ignores changes to workflows that are not in the list', async () => {
+		await renderLoaded();
+		vi.useFakeTimers();
+
+		emit({ type: 'workflowActivated', data: { workflowId: 'wf-9', activeVersionId: 'v1' } });
+		await vi.advanceTimersByTimeAsync(5000);
+
+		expect(fetchMyAutomations).toHaveBeenCalledTimes(1);
+	});
+
+	it('asks the server only once the sidebar opens', async () => {
+		fetchMyAutomations.mockResolvedValue(twoAutomations);
+		const { queryByTestId, findByTestId, rerender } = render({ collapsed: true });
+		await new Promise(setImmediate);
+		document.dispatchEvent(new Event('visibilitychange'));
+		await new Promise(setImmediate);
+		expect(fetchMyAutomations).not.toHaveBeenCalled();
+		expect(pushStore.addEventListener).not.toHaveBeenCalled();
+		expect(queryByTestId('assistant-automations')).not.toBeInTheDocument();
+
+		await rerender({ collapsed: false });
+
+		expect(await findByTestId('assistant-automations')).toBeInTheDocument();
+		expect(fetchMyAutomations).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([

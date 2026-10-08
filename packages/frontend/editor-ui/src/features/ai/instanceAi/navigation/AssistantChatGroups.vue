@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { computed, shallowRef, useId } from 'vue';
+import { computed, shallowRef, useId, useTemplateRef } from 'vue';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import AssistantChatRow from './AssistantChatRow.vue';
 import { groupThreads, type ThreadGroup, type ThreadGroupEntry } from './groupThreads';
 import { threadDisplayState } from './threadDisplayState';
+import { CHAT_GROUP_ATTRIBUTE, useKeepGroupFocus } from './useKeepGroupFocus';
 import { useThreadLastViewed } from './useThreadLastViewed';
 
 /** The number of chats that a group shows until the user asks for all of them. */
@@ -26,6 +27,9 @@ const props = defineProps<{
 const i18n = useI18n();
 const idPrefix = useId();
 const { lastViewedAt } = useThreadLastViewed();
+
+// The live list moves a chat to another group when its state changes.
+useKeepGroupFocus(useTemplateRef<HTMLElement>('root'));
 
 // "Show all" expands the group here: the history page does not show what each chat needs.
 const expanded = shallowRef<ReadonlySet<ThreadGroup>>(new Set());
@@ -59,17 +63,19 @@ function toggleLabel(entry: ThreadGroupEntry) {
 </script>
 
 <template>
-	<div :class="$style.groups">
+	<div ref="root" :class="$style.groups">
 		<div
 			v-for="entry in groups"
 			:key="entry.group"
+			:[CHAT_GROUP_ATTRIBUTE]="entry.group"
 			:data-test-id="`assistant-chat-group-${entry.group}`"
 		>
+			<!-- Level 3: the "Chats" section title above is level 2. -->
 			<N8nText
 				:id="headingId(entry.group)"
 				tag="div"
 				role="heading"
-				:aria-level="2"
+				:aria-level="3"
 				size="small"
 				bold
 				color="text-base"
@@ -115,9 +121,12 @@ function toggleLabel(entry: ThreadGroupEntry) {
 	gap: var(--spacing--2xs);
 }
 
+// Group titles start where the row labels start, like "Show all", so that they read as part of
+// the section and not as a peer of the section title.
 .heading {
 	display: block;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
+	margin-inline-start: var(--spacing--lg);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .list {

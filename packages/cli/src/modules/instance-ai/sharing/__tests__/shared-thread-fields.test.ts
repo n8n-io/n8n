@@ -37,8 +37,8 @@ function setup(shared: AgentExecutionThread[]) {
 	projectService.findProject.mockImplementation(
 		async (id) => [finance, sales].find((project) => project.id === id) ?? null,
 	);
-	users.findManyByIds.mockImplementation(
-		async (ids) => [ada, grace].filter((user) => ids.includes(user.id)) as User[],
+	users.findManyByIds.mockImplementation(async (ids) =>
+		[ada, grace].filter((user) => ids.includes(user.id)),
 	);
 	return {
 		fields: new SharedThreadFields(threads, projectService, users),

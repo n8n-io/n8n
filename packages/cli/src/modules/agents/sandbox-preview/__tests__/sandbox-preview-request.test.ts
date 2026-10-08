@@ -170,19 +170,24 @@ describe('segmentClimbsOut', () => {
 		'%252e%252e%252fx%25zz',
 		'a%25zz%252f..%252fb',
 		'%25zz%252f%252e%252e',
-	])(
-		'is true for %s',
-		(segment) => {
-			expect(segmentClimbsOut(segment)).toBe(true);
-		},
-	);
+	])('is true for %s', (segment) => {
+		expect(segmentClimbsOut(segment)).toBe(true);
+	});
 
-	it.each(['', '.', '...', 'a..b', '100%25', '%252525', 'main.ts', 'a%25zz', '100%25.png', '%25%2e'])(
-		'is false for %j',
-		(segment) => {
-			expect(segmentClimbsOut(segment)).toBe(false);
-		},
-	);
+	it.each([
+		'',
+		'.',
+		'...',
+		'a..b',
+		'100%25',
+		'%252525',
+		'main.ts',
+		'a%25zz',
+		'100%25.png',
+		'%25%2e',
+	])('is false for %j', (segment) => {
+		expect(segmentClimbsOut(segment)).toBe(false);
+	});
 
 	it('keeps checking after a decode leaves a malformed escape', () => {
 		// Round two of `%252e%252e%252f%25zz` is `%2e%2e%2f%zz`, which `decodeURIComponent` refuses.

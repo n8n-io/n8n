@@ -153,12 +153,22 @@ describe('hardenResponseHeaders', () => {
 		},
 	);
 
+	it('removes keep-alive, which describes the connection from n8n to the service', () => {
+		const headers: IncomingHttpHeaders = { 'keep-alive': 'timeout=61', 'x-app-version': '1' };
+
+		hardenResponseHeaders(headers);
+
+		expect(headers).not.toHaveProperty('keep-alive');
+		expect(headers['x-app-version']).toBe('1');
+	});
+
 	it('keeps every other header of the app as it is', () => {
 		const managed = new Set([
 			...Object.keys(previewAnswerHeaders()),
 			...ORIGIN_WIDE,
 			'access-control-allow-credentials',
 			'content-security-policy-report-only',
+			'keep-alive',
 			'set-cookie',
 			'x-frame-options',
 		]);

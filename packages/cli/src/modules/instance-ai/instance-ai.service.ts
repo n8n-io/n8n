@@ -145,6 +145,7 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { RepeatableWorkNudgeService } from './automation/repeatable-work-nudge.service';
 import {
 	INSTANCE_CONTEXT_CURSOR,
 	InstanceContextService,
@@ -3038,6 +3039,10 @@ export class InstanceAiService {
 			aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
 				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
 				: undefined;
+		const repeatableWorkSection =
+			resumeReason === undefined && !isMachineFollowUp
+				? await Container.get(RepeatableWorkNudgeService).forTurn(message, loadReplayedHistory)
+				: undefined;
 		const threadContextBlock = buildThreadContextBlock([
 			instanceContext.state === 'injected' ? instanceContext.block : '',
 			onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
@@ -3051,6 +3056,7 @@ export class InstanceAiService {
 				: undefined,
 			pastConversationsSection ? buildPastConversationsBlock(pastConversationsSection) : undefined,
 			aiPreferencesTurn?.block,
+			repeatableWorkSection,
 			buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 		]);
 		const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]

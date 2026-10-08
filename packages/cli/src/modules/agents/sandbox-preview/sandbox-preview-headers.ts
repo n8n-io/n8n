@@ -64,13 +64,15 @@ export const previewAnswerHeaders = (): Record<string, string> => ({
  * Upstream headers that n8n replaces, or that act on the whole n8n origin and
  * not only on one answer. The browser shows a credential prompt for the n8n
  * origin for an authentication challenge, and the proxy never forwards
- * `authorization`, so the challenge headers go too.
+ * `authorization`, so the challenge headers go too. `keep-alive` describes the
+ * connection from n8n to the service, not the one from the browser to n8n.
  */
 const DROPPED_RESPONSE_HEADERS: readonly string[] = [
 	'access-control-allow-credentials',
 	'alt-svc',
 	'clear-site-data',
 	'content-security-policy-report-only',
+	'keep-alive',
 	'nel',
 	'proxy-authenticate',
 	'report-to',

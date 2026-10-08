@@ -7359,6 +7359,7 @@
 	"instanceAi.chatGroups.showFewer": "Show fewer",
 	"instanceAi.automations.title": "Automations",
 	"instanceAi.automations.showAll": "Show all",
+	"instanceAi.automations.showAllLabel": "Show all workflows",
 	"instanceAi.automations.empty": "Nothing runs automatically yet.",
 	"instanceAi.automations.on": "On",
 	"instanceAi.automations.off": "Off",

@@ -469,6 +469,26 @@ describe('Instance AI runtime skills', () => {
 		expect(flattened).toContain('keep the workflow for future reuse or delete');
 	});
 
+	it('loads the bundled make-automatic skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'make-automatic');
+
+		expect(skill?.description).toContain('<repeatable-work>');
+		expect(skill?.description).toContain('Make "Daily report" automatic');
+		expect(skill?.recommendedTools).toEqual(['propose_automation', 'workflows', 'executions']);
+
+		const loaded = await source.loadSkill('make-automatic');
+		// Normalize whitespace so assertions survive markdown re-wrapping.
+		const flattened = loaded?.instructions.replace(/\s+/g, ' ');
+		expect(flattened).toContain('Make one `propose_automation` call.');
+		expect(flattened).toContain('The job is one-off.');
+		expect(flattened).toContain('The user declined an offer in this chat.');
+		expect(flattened).toContain('The workflow has not run successfully yet.');
+		expect(flattened).toContain('`denied: true`');
+		expect(flattened).toContain('Say nothing more about it.');
+		expect(flattened).toContain('`workflows(action="list")`');
+	});
+
 	it('loads the bundled post-build-flow skill and trigger input reference', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');

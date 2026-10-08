@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope, type Ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ASSISTANT_AGENT_ID } from '../../agentsChatMode';
 import { isAssistantThreadEvent, useLiveThreadList } from '../useLiveThreadList';
 
@@ -99,7 +100,7 @@ describe('useLiveThreadList', () => {
 		expect(loadThreads).toHaveBeenCalledTimes(1);
 	});
 
-	it('reloads once a second while events keep coming, and covers the last event', () => {
+	it('reloads once a second while events keep coming, and covers the last event', async () => {
 		mount();
 		const reloadTimes: number[] = [];
 		loadThreads.mockImplementation(async () => {
@@ -111,11 +112,65 @@ describe('useLiveThreadList', () => {
 		// A turn that writes a step every 200 ms for 5 seconds.
 		for (let index = 0; index < 25; index++) {
 			emit(executionUpdated());
-			vi.advanceTimersByTime(200);
+			await vi.advanceTimersByTimeAsync(200);
 		}
-		vi.advanceTimersByTime(5000);
+		await vi.advanceTimersByTimeAsync(5000);
 
 		expect(reloadTimes.map((time) => time - start)).toEqual([1000, 2000, 3000, 4000, 5000]);
+	});
+
+	it('keeps one reload running and queues one more while the list loads slowly', async () => {
+		mount();
+		const slow = createDeferredPromise<boolean>();
+		const next = createDeferredPromise<boolean>();
+		loadThreads.mockReturnValueOnce(slow.promise).mockReturnValueOnce(next.promise);
+
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+
+		// Three more seconds of events while the first list request runs.
+		for (let second = 0; second < 3; second++) {
+			emit(executionUpdated());
+			await vi.advanceTimersByTimeAsync(1000);
+		}
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+
+		slow.resolve(true);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(loadThreads).toHaveBeenCalledTimes(2);
+
+		next.resolve(true);
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(loadThreads).toHaveBeenCalledTimes(2);
+	});
+
+	it('drops the queued reload when the section unmounts', async () => {
+		const scope = mount();
+		const slow = createDeferredPromise<boolean>();
+		loadThreads.mockReturnValueOnce(slow.promise);
+
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		scope.stop();
+		slow.resolve(true);
+		await vi.advanceTimersByTimeAsync(5000);
+
+		expect(loadThreads).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads again after a reload fails', async () => {
+		mount();
+		loadThreads.mockRejectedValueOnce(new Error('offline'));
+
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+		emit(executionUpdated());
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(loadThreads).toHaveBeenCalledTimes(2);
 	});
 
 	it.each<[string, PushMessage]>([
