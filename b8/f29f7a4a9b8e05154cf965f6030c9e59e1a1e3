@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_bfbb9f811bccc7::t_b042ae811b43d3 700,703,714
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8f29f7a4a9b8e05154cf965f6030c9e59e1a1e3",
+  "prompts": {},
+  "sessions": {
+    "s_bfbb9f811bccc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f48e27f9-1dae-4db8-8ba0-60dac0805194",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

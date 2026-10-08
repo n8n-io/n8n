@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_f3d2ec4529fb2a::t_d3cafc2121eaeb 2004
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd3f07dc2fe551ff151fb8aa9af7dbc13ed62e6a",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

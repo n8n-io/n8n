@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_cf8751b51c0ea6::t_43b6b2a018d075 2979
+  s_e92c471224a309::t_60082f382a627a 331,2969
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_cf8751b51c0ea6::t_43b6b2a018d075 425,446
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.vue
+  s_2c4510050710de::t_5fe4874139083d 7,47
+  s_2c4510050710de::t_52f4030b0c2c1d 56
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentBuildingIndicator.vue
+  s_795aff7972c36b::t_af78402ead8077 63,67-70
+  s_db64ea6bfd08b5::t_a88419daf7c6b5 2
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_cf8751b51c0ea6::t_43b6b2a018d075 672,3754,3763
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_cf8751b51c0ea6::t_43b6b2a018d075 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed48e21379195f325118a2f989e71a9f1e2fdc5a",
+  "prompts": {},
+  "sessions": {
+    "s_2c4510050710de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11553-b985-7430-bda6-f08ec0a27417",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_795aff7972c36b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11200-58f7-7430-bda6-f08df1e12e05",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cf8751b51c0ea6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11569-82a7-7430-bda6-f094c1a75b24",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_db64ea6bfd08b5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a111fd-7637-7430-bda6-f08a7baf4081",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e92c471224a309": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1155c-acae-7430-bda6-f091ead09ecd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
