@@ -203,6 +203,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			createdAt: thread.createdAt,
 			updatedAt: thread.updatedAt,
 			metadata: thread.metadata ?? undefined,
+			state: thread.state,
+			needsInput: thread.needsInput,
+			lastActivityAt: thread.lastActivityAt,
 		};
 	}
 

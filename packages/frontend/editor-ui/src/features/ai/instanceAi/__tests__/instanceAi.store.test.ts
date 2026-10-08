@@ -6,6 +6,7 @@ import {
 	deleteThread as deleteThreadApi,
 	fetchThreadHistory,
 	fetchThread,
+	fetchThreads,
 	renameThread as renameThreadApi,
 } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -185,6 +186,73 @@ describe('useInstanceAiStore - runtime registry', () => {
 		await store.refreshThread('t');
 		expect(store.threads).toHaveLength(1);
 		expect(store.threads[0]).toMatchObject({ title: 'Refined', metadata: { key: 'value' } });
+	});
+
+	it('keeps the state, needs-input flag and activity time of each listed thread', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreads).mockResolvedValueOnce({
+			threads: [
+				{
+					...historyThread('waiting'),
+					state: 'needs-you',
+					needsInput: true,
+					lastActivityAt: '2026-02-01T10:00:00.000Z',
+				},
+				{
+					...historyThread('finished'),
+					state: 'idle',
+					needsInput: false,
+					lastActivityAt: '2026-02-01T09:00:00.000Z',
+				},
+				// The server sends the fields only for the first 50 threads.
+				historyThread('older'),
+			],
+			total: 3,
+			page: 1,
+			hasMore: false,
+		});
+
+		await store.loadThreads();
+
+		expect(
+			store.threads.map(({ id, state, needsInput, lastActivityAt }) => ({
+				id,
+				state,
+				needsInput,
+				lastActivityAt,
+			})),
+		).toStrictEqual([
+			{
+				id: 'waiting',
+				state: 'needs-you',
+				needsInput: true,
+				lastActivityAt: '2026-02-01T10:00:00.000Z',
+			},
+			{
+				id: 'finished',
+				state: 'idle',
+				needsInput: false,
+				lastActivityAt: '2026-02-01T09:00:00.000Z',
+			},
+			{ id: 'older', state: undefined, needsInput: undefined, lastActivityAt: undefined },
+		]);
+	});
+
+	it('keeps the overview fields of a thread fetched for the history page', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
+			threads: [{ ...historyThread('a'), state: 'failed', lastActivityAt: '2026-02-01T08:00:00Z' }],
+			nextCursor: null,
+			hasMore: false,
+		});
+
+		await store.loadThreadHistoryPage();
+
+		expect(store.threadHistory.threads[0]).toMatchObject({
+			id: 'a',
+			state: 'failed',
+			lastActivityAt: '2026-02-01T08:00:00Z',
+		});
 	});
 
 	it('returns the same runtime for the same thread id', () => {
