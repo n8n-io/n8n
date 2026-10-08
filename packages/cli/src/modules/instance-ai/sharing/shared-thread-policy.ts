@@ -19,7 +19,6 @@ import type {
 	SystemAgentSharingPolicy,
 } from '../../agents/system-agents/system-agent.types';
 import { isSharedThread } from '../../agents/utils/agent-thread-access';
-import { cleanStoredUserMessage } from '../internal-messages';
 import { SharedCardAccess } from './shared-card-access';
 import { withoutStandingApproval } from './teammate-answer';
 import {
@@ -98,11 +97,6 @@ export class SharedThreadPolicy implements SystemAgentSharingPolicy {
 			);
 		}
 		return withoutStandingApproval(answer);
-	}
-
-	/** Readers see what the user wrote, without the context that the Assistant added for the model. */
-	readerText(text: string): string | null {
-		return cleanStoredUserMessage(text);
 	}
 
 	/**

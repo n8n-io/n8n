@@ -1,7 +1,9 @@
+import type { SKILL_LOAD_TOOL_NAME } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { WorkSignal } from './repeatable-work';
-import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS, WORKSPACE_TOOL_IDS } from '../tools/tool-ids';
+import { ONE_OFF_BUILD_SUCCEEDED_REASON } from '../tools/workflows/post-build-flow-reason';
 
 /**
  * The tool that offers to make a workflow automatic. The tool lives in `packages/cli`, which this
@@ -9,13 +11,36 @@ import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
  */
 export const PROPOSE_AUTOMATION_TOOL_NAME = 'propose_automation';
 
-/**
- * The `postBuildFlow.reason` of a one-off build. It mirrors the result schema in
- * `build-workflow.tool.ts`, which does not export it.
- */
-const ONE_OFF_BUILD_SUCCEEDED_REASON = 'direct-one-off-build-succeeded';
+// Tied to the runtime name at the type level. A value import would load the whole runtime here.
+const LOAD_SKILL_TOOL_NAME: typeof SKILL_LOAD_TOOL_NAME = 'load_skill';
 
 const RUN_ACTION = 'run';
+
+/**
+ * The Assistant's own tools. Their lookups, builds and set-up steps occur in almost every build
+ * chat, so of these tools only the `JOB_SIGNATURES` count as work. A tool that is not in this list
+ * (for example an MCP tool) acts outside n8n, so each of its calls counts.
+ */
+const ASSISTANT_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
+	...Object.values(DOMAIN_TOOL_IDS),
+	...Object.values(ORCHESTRATION_TOOL_IDS),
+	...Object.values(WORKSPACE_TOOL_IDS),
+	LOAD_SKILL_TOOL_NAME,
+	// The runtime adds these by name: tool search, and the research tools.
+	'search_tools',
+	'load_tool',
+	'web-search',
+	'fetch-url',
+]);
+
+/** The calls of the Assistant's own tools that do the user's job: they run or write something. */
+const JOB_SIGNATURES: ReadonlySet<string> = new Set<string>([
+	`${DOMAIN_TOOL_IDS.EXECUTIONS}:${RUN_ACTION}`,
+	`${DOMAIN_TOOL_IDS.NODES}:execute`,
+	`${DOMAIN_TOOL_IDS.DATA_TABLES}:insert-rows`,
+	`${DOMAIN_TOOL_IDS.DATA_TABLES}:update-rows`,
+	`${DOMAIN_TOOL_IDS.DATA_TABLES}:delete-rows`,
+]);
 
 /** One tool call of a chat, as `collectWorkSignals` reads it. */
 export type WorkToolCall = {
@@ -57,11 +82,25 @@ function isSuccessfulRun(call: WorkToolCall): call is CallWithWorkflow {
 	);
 }
 
+function signatureOf({ toolName, action }: Pick<WorkToolCall, 'toolName' | 'action'>): string {
+	return `${toolName}:${action ?? ''}`;
+}
+
+/**
+ * Whether a call does work that the user can want again, so that a repeat of it counts. The
+ * Assistant's own `propose_automation` call is not work.
+ */
+export function isWorkToolCall(call: Pick<WorkToolCall, 'toolName' | 'action'>): boolean {
+	if (call.toolName === PROPOSE_AUTOMATION_TOOL_NAME) return false;
+	return !ASSISTANT_TOOL_NAMES.has(call.toolName) || JOB_SIGNATURES.has(signatureOf(call));
+}
+
 /**
  * Turns a chat into the signals that `assessRepeatableWork` scores. Each user text gives a
- * `user-message` signal and each tool call a `tool-call` signal. A one-off build that a later
+ * `user-message` signal. Each call that does work (`isWorkToolCall`) gives a `tool-call` signal,
+ * so that lookups and builds never count as repeated work. A one-off build that a later
  * successful run of the same workflow follows gives one `one-off-success` signal, right after
- * that run. The Assistant's own `propose_automation` calls are not work, so they give nothing.
+ * that run.
  */
 export function collectWorkSignals({ userTexts, toolCalls }: WorkSignalsInput): WorkSignal[] {
 	const signals: WorkSignal[] = userTexts.map((text) => ({ kind: 'user-message', text }));
@@ -69,12 +108,9 @@ export function collectWorkSignals({ userTexts, toolCalls }: WorkSignalsInput): 
 	let oneOffSucceeded = false;
 
 	for (const call of toolCalls) {
-		if (call.toolName === PROPOSE_AUTOMATION_TOOL_NAME) continue;
-		signals.push({
-			kind: 'tool-call',
-			signature: `${call.toolName}:${call.action ?? ''}`,
-			ok: call.ok,
-		});
+		if (isWorkToolCall(call)) {
+			signals.push({ kind: 'tool-call', signature: signatureOf(call), ok: call.ok });
+		}
 		if (isOneOffBuild(call)) {
 			oneOffBuilds.add(call.workflowId);
 		} else if (!oneOffSucceeded && isSuccessfulRun(call) && oneOffBuilds.has(call.workflowId)) {

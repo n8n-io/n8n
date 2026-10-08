@@ -1,12 +1,31 @@
 import fc from 'fast-check';
 
+import { assessRepeatableWork } from '../repeatable-work';
 import type { WorkSignalsInput, WorkToolCall } from '../work-signals';
-import { collectWorkSignals, readWorkToolCall } from '../work-signals';
+import { collectWorkSignals, isWorkToolCall, readWorkToolCall } from '../work-signals';
 
 // Names from the spec, kept apart from the implementation on purpose.
 const SPEC_BUILD = 'build-workflow';
 const SPEC_RUNS = 'executions';
 const SPEC_IGNORED = 'propose_automation';
+// Calls of the Assistant that look things up, plan, build or set up. They occur in most build chats.
+const SPEC_NON_WORK: ReadonlyArray<[string, string | undefined]> = [
+	['load_skill', undefined],
+	['search_tools', undefined],
+	['ask-user', undefined],
+	['research', 'web-search'],
+	['n8n-docs', 'search'],
+	['build-workflow', undefined],
+	['workflows', 'list'],
+	['workflows', 'get-as-code'],
+	['executions', 'get'],
+	['executions', 'debug'],
+	['executions', 'run-step'],
+	['nodes', 'search'],
+	['nodes', 'type-definition'],
+	['data-tables', 'query'],
+	['credentials', 'setup'],
+];
 
 // Small pools make matching workflow IDs and repeated calls likely.
 const toolNameArb = fc.oneof(
@@ -36,8 +55,7 @@ const inputArb: fc.Arbitrary<WorkSignalsInput> = fc.record({
 	toolCalls: fc.array(toolCallArb, { maxLength: 30 }),
 });
 
-const counted = (calls: readonly WorkToolCall[]) =>
-	calls.filter((call) => call.toolName !== SPEC_IGNORED);
+const counted = (calls: readonly WorkToolCall[]) => calls.filter(isWorkToolCall);
 
 /** The spec rule, written out directly: a one-off build, then a later ok run of the same workflow. */
 function hasOneOffRun(calls: readonly WorkToolCall[]): boolean {
@@ -59,7 +77,7 @@ function hasOneOffRun(calls: readonly WorkToolCall[]): boolean {
 }
 
 describe('collectWorkSignals properties', () => {
-	it('gives one signal per user text and counted tool call, plus at most one more', () => {
+	it('gives one signal per user text and work call, plus at most one more', () => {
 		fc.assert(
 			fc.property(inputArb, ({ userTexts, toolCalls }) => {
 				const signals = collectWorkSignals({ userTexts, toolCalls });
@@ -122,6 +140,47 @@ describe('collectWorkSignals properties', () => {
 					);
 				},
 			),
+		);
+	});
+});
+
+describe('isWorkToolCall properties', () => {
+	it('never counts a propose_automation call, whatever its action', () => {
+		fc.assert(
+			fc.property(actionArb, (action) => {
+				expect(
+					isWorkToolCall({ toolName: SPEC_IGNORED, ...(action !== undefined ? { action } : {}) }),
+				).toBe(false);
+			}),
+		);
+	});
+
+	it('counts each call of a tool that n8n does not own', () => {
+		fc.assert(
+			fc.property(fc.string({ maxLength: 20 }), actionArb, (name, action) => {
+				const call = { toolName: `gateway_${name}`, ...(action !== undefined ? { action } : {}) };
+
+				expect(isWorkToolCall(call)).toBe(true);
+			}),
+		);
+	});
+
+	it('never finds repeated work in lookups, builds and set-up calls', () => {
+		const nonWorkCallArb: fc.Arbitrary<WorkToolCall> = fc
+			.record({ pair: fc.constantFrom(...SPEC_NON_WORK), ok: fc.boolean() })
+			.map(({ pair: [toolName, action], ok }) => ({
+				toolName,
+				...(action !== undefined ? { action } : {}),
+				ok,
+			}));
+
+		fc.assert(
+			fc.property(fc.array(nonWorkCallArb, { maxLength: 40 }), (toolCalls) => {
+				const assessment = assessRepeatableWork(collectWorkSignals({ userTexts: [], toolCalls }));
+
+				expect(assessment.reasons).not.toContain('repeated-tool-call');
+				expect(assessment.repeatedSignatures).toEqual([]);
+			}),
 		);
 	});
 });

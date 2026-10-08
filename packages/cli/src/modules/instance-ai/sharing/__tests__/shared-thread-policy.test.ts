@@ -305,30 +305,6 @@ describe('SharedThreadPolicy', () => {
 		});
 	});
 
-	describe('readerText', () => {
-		it('removes the context that the Assistant added for the model', () => {
-			const { policy } = setup();
-			const stored = [
-				'<thread-context>',
-				'<past-conversations>',
-				'Salary review',
-				'</past-conversations>',
-				'</thread-context>',
-				'',
-				'Build the invoice flow',
-			].join('\n');
-
-			expect(policy.readerText(stored)).toBe('Build the invoice flow');
-			expect(policy.readerText('Build the invoice flow')).toBe('Build the invoice flow');
-		});
-
-		it('hides an automatic follow-up', () => {
-			const { policy } = setup();
-
-			expect(policy.readerText('(continue)')).toBeNull();
-		});
-	});
-
 	describe('assertCanShare', () => {
 		const privateThread = makeThread({ accessScope: 'user' });
 

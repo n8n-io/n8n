@@ -3,6 +3,7 @@ import { assessRepeatableWork } from '../repeatable-work';
 import type { WorkToolCall } from '../work-signals';
 import {
 	collectWorkSignals,
+	isWorkToolCall,
 	PROPOSE_AUTOMATION_TOOL_NAME,
 	readWorkToolCall,
 } from '../work-signals';
@@ -30,23 +31,40 @@ describe('collectWorkSignals', () => {
 		expect(collectWorkSignals({ userTexts: [], toolCalls: [] })).toEqual([]);
 	});
 
-	it('maps each user text and each tool call to one signal, in order', () => {
+	it('maps each user text and each work call to one signal, in order', () => {
 		const signals = collectWorkSignals({
 			userTexts: ['first', 'second'],
 			toolCalls: [
-				{ toolName: 'workflows', action: 'list', ok: true },
-				{ toolName: 'nodes', action: 'search', ok: false },
-				{ toolName: 'research', ok: true },
+				{ toolName: 'executions', action: 'run', ok: true, workflowId: 'wf-1' },
+				{ toolName: 'nodes', action: 'execute', ok: false },
+				{ toolName: 'slack_post_message', ok: true },
+				{ toolName: 'github', action: 'create-issue', ok: true },
 			],
 		});
 
 		expect(signals).toEqual([
 			{ kind: 'user-message', text: 'first' },
 			{ kind: 'user-message', text: 'second' },
-			{ kind: 'tool-call', signature: 'workflows:list', ok: true },
-			{ kind: 'tool-call', signature: 'nodes:search', ok: false },
-			{ kind: 'tool-call', signature: 'research:', ok: true },
+			{ kind: 'tool-call', signature: 'executions:run', ok: true },
+			{ kind: 'tool-call', signature: 'nodes:execute', ok: false },
+			{ kind: 'tool-call', signature: 'slack_post_message:', ok: true },
+			{ kind: 'tool-call', signature: 'github:create-issue', ok: true },
 		]);
+	});
+
+	it('gives no signal for lookups, builds and set-up calls of the Assistant', () => {
+		const signals = collectWorkSignals({
+			userTexts: [],
+			toolCalls: [
+				{ toolName: 'load_skill', ok: true },
+				{ toolName: 'nodes', action: 'type-definition', ok: true },
+				{ toolName: 'workflows', action: 'list', ok: true },
+				{ toolName: 'build-workflow', ok: true, workflowId: 'wf-1' },
+				{ toolName: 'research', action: 'web-search', ok: true },
+			],
+		});
+
+		expect(signals).toEqual([]);
 	});
 
 	it('keeps user texts exactly as given, including blank ones', () => {
@@ -62,7 +80,6 @@ describe('collectWorkSignals', () => {
 		const signals = collectWorkSignals({ userTexts: [], toolCalls: [oneOffBuild(), run()] });
 
 		expect(signals).toEqual([
-			{ kind: 'tool-call', signature: 'build-workflow:', ok: true },
 			{ kind: 'tool-call', signature: 'executions:run', ok: true },
 			{ kind: 'one-off-success', workflowId: 'wf-1' },
 		]);
@@ -171,6 +188,82 @@ describe('collectWorkSignals', () => {
 
 		expect(assessment.reasons).toEqual(['repeated-tool-call', 'one-off-success']);
 		expect(assessment.score).toBe(0.6);
+	});
+
+	it('scores a one-off build chat with repeated lookups below the threshold', () => {
+		const lookup = (toolName: string, action?: string): WorkToolCall => ({
+			toolName,
+			...(action ? { action } : {}),
+			ok: true,
+		});
+		const assessment = assessRepeatableWork(
+			collectWorkSignals({
+				userTexts: ['Copy these rows to the sheet'],
+				toolCalls: [
+					lookup('load_skill'),
+					lookup('load_skill'),
+					lookup('nodes', 'type-definition'),
+					lookup('nodes', 'type-definition'),
+					lookup('workflows', 'get-as-code'),
+					lookup('workflows', 'get-as-code'),
+					{ toolName: 'build-workflow', ok: true, workflowId: 'wf-1' },
+					oneOffBuild(),
+					run(),
+				],
+			}),
+		);
+
+		expect(assessment.reasons).toEqual(['one-off-success']);
+		expect(assessment.score).toBe(0.2);
+	});
+});
+
+describe('isWorkToolCall', () => {
+	it.each([
+		['executions', 'run'],
+		['nodes', 'execute'],
+		['data-tables', 'insert-rows'],
+		['data-tables', 'update-rows'],
+		['data-tables', 'delete-rows'],
+		['slack_post_message', undefined],
+		['gmail_send', 'send'],
+	])('counts %s:%s as work', (toolName, action) => {
+		expect(isWorkToolCall({ toolName, ...(action ? { action } : {}) })).toBe(true);
+	});
+
+	it.each([
+		['load_skill', undefined],
+		['search_tools', undefined],
+		['load_tool', undefined],
+		['ask-user', undefined],
+		['research', 'web-search'],
+		['web-search', undefined],
+		['fetch-url', undefined],
+		['n8n-docs', 'search'],
+		['conversation-history', 'search'],
+		['build-workflow', undefined],
+		['workflows', 'list'],
+		['workflows', 'get-as-code'],
+		['workflows', 'publish'],
+		['workflows', 'run'],
+		['executions', undefined],
+		['executions', 'list'],
+		['executions', 'get'],
+		['executions', 'debug'],
+		['executions', 'run-step'],
+		['executions', 'get-node-output'],
+		['nodes', undefined],
+		['nodes', 'search'],
+		['nodes', 'type-definition'],
+		['nodes', 'explore-resources'],
+		['data-tables', 'query'],
+		['data-tables', 'create'],
+		['credentials', 'setup'],
+		['create-tasks', undefined],
+		['verify-built-workflow', undefined],
+		[PROPOSE_AUTOMATION_TOOL_NAME, undefined],
+	])('does not count %s:%s as work', (toolName, action) => {
+		expect(isWorkToolCall({ toolName, ...(action ? { action } : {}) })).toBe(false);
 	});
 });
 

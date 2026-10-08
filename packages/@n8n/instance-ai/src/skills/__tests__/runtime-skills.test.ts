@@ -486,6 +486,10 @@ describe('Instance AI runtime skills', () => {
 		expect(flattened).toContain('The workflow has not run successfully yet.');
 		expect(flattened).toContain('`denied: true`');
 		expect(flattened).toContain('Say nothing more about it.');
+		expect(flattened).toContain('an admin setting does not let you do this');
+		expect(flattened).toContain('Make a new call only when the user asks for it again.');
+		expect(flattened).toContain('the schedule that the user asked for last');
+		expect(flattened).toContain('"Save workflow"');
 		expect(flattened).toContain('`workflows(action="list")`');
 	});
 

@@ -3035,13 +3035,15 @@ export class InstanceAiService {
 			isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 		]);
 		const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
+		// A shared chat leaves out the owner's personal preferences, as it leaves out past chats.
 		const aiPreferencesTurn =
-			aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
+			aiPreferencesEnabled && !environment.sharedThread && resumeReason === undefined && !isMachineFollowUp
 				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
 				: undefined;
+		const nudge = Container.get(RepeatableWorkNudgeService);
 		const repeatableWorkSection =
 			resumeReason === undefined && !isMachineFollowUp
-				? await Container.get(RepeatableWorkNudgeService).forTurn(message, loadReplayedHistory)
+				? await nudge.forTurn(threadId, message, loadReplayedHistory)
 				: undefined;
 		const threadContextBlock = buildThreadContextBlock([
 			instanceContext.state === 'injected' ? instanceContext.block : '',

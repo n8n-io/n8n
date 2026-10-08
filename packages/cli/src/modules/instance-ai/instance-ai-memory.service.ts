@@ -23,6 +23,7 @@ import { UserRepository } from '@n8n/db';
 import type { AgentExecutionThread } from '../agents/entities/agent-execution-thread.entity';
 import { N8nMemory, type N8nMemoryImpl } from '../agents/integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
+import { AgentThreadRepository } from '../agents/repositories/agent-thread.repository';
 import { SystemAgentExecutionService } from '../agents/system-agents/system-agent-execution.service';
 import { draftChatMemoryResourceId } from '../agents/utils/agent-memory-scope';
 import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
@@ -348,8 +349,19 @@ export class InstanceAiMemoryService {
 		await this.threads.delete({ id: threadId, agentId: ASSISTANT_AGENT_ID });
 	}
 
+	/**
+	 * Deletes the Assistant threads of a user, private and shared. The 'user-deleted' event comes
+	 * after the user row is gone, which clears the owner of each thread row. The memory threads
+	 * keep the user in their resource id, so they still find those threads.
+	 */
 	async deleteThreadsForUser(userId: string): Promise<number> {
-		const sessions = await this.threads.findOwnedByAgent(ASSISTANT_AGENT_ID, userId);
+		const memoryThreadIds = await Container.get(AgentThreadRepository).findIdsByResourceId(
+			draftChatMemoryResourceId(userId),
+		);
+		const sessions = [
+			...(await this.threads.findOwnedByAgent(ASSISTANT_AGENT_ID, userId)),
+			...(await this.threads.findWithoutOwnerByIds(ASSISTANT_AGENT_ID, memoryThreadIds)),
+		];
 		for (const session of sessions) await this.deleteThread(session.id);
 		return sessions.length;
 	}

@@ -170,10 +170,41 @@ describe('hasRepeatableWorkSection', () => {
 		['a bare open tag', '<repeatable-work>'],
 		['tags on one line', '<repeatable-work>score: 1</repeatable-work>'],
 		['a section without a score line', '<repeatable-work>\nreasons: x\n</repeatable-work>'],
+		[
+			'a section without a reasons line',
+			`<repeatable-work>\nscore: 1\n${INSTRUCTION}\n</repeatable-work>`,
+		],
+		[
+			'a section with an extra line',
+			`<repeatable-work>\nscore: 1\nreasons: x\nnote: y\n${INSTRUCTION}\n</repeatable-work>`,
+		],
 		['a section without a close tag', '<repeatable-work>\nscore: 1\nreasons: x\n'],
 		['a tag inside a line', 'see <repeatable-work>\nscore: 1\n\n</repeatable-work>'],
 		['a close tag inside a line', '<repeatable-work>\nscore: 1\nx\n</repeatable-work> and more'],
 	])('finds no section in %s', (_label, text) => {
 		expect(hasRepeatableWorkSection(text)).toBe(false);
+	});
+
+	it('finds a section with or without the schedule line, and with another instruction', () => {
+		const withSchedule = buildRepeatableWorkSection(
+			assessRepeatableWork([say('Send it every weekday at 8')]),
+		);
+		const olderWording = section.replace(INSTRUCTION, 'Offer to make it automatic.');
+
+		expect(withSchedule).toContain('\nsuggested schedule: ');
+		expect(hasRepeatableWorkSection(withSchedule ?? '')).toBe(true);
+		expect(hasRepeatableWorkSection(olderWording)).toBe(true);
+	});
+
+	it('stays fast on a long text with many open tags and no close tag', () => {
+		const text = '\n<repeatable-work>\nscore: 1\nreasons: x\n'.repeat(50_000);
+
+		const startedAt = performance.now();
+		const found = hasRepeatableWorkSection(text);
+		const elapsed = performance.now() - startedAt;
+
+		expect(found).toBe(false);
+		// A scan to the end for each open tag takes many seconds on this text.
+		expect(elapsed).toBeLessThan(1_000);
 	});
 });

@@ -420,6 +420,20 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return (result.affected ?? 0) > 0;
 	}
 
+	/**
+	 * Top-level sessions of an agent among `threadIds` that have no owner. A session loses its
+	 * owner when the owner's user row is deleted.
+	 */
+	async findWithoutOwnerByIds(agentId: string, threadIds: string[]): Promise<AgentExecutionThread[]> {
+		if (threadIds.length === 0) return [];
+		return await this.findBy({
+			id: In(threadIds),
+			agentId,
+			ownerId: IsNull(),
+			parentThreadId: IsNull(),
+		});
+	}
+
 	/** The shared sessions of an agent among `threadIds`. */
 	async findSharedByIds(agentId: string, threadIds: string[]): Promise<AgentExecutionThread[]> {
 		if (threadIds.length === 0) return [];

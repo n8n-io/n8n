@@ -9,9 +9,14 @@ export const REPEATABLE_WORK_CLOSE_TAG = '</repeatable-work>';
 const INSTRUCTION =
 	'When the workflow for this request works, load the make-automatic skill and offer to make it automatic once.';
 
-/** Matches a whole section as `buildRepeatableWorkSection` writes it, on lines of its own. */
+/**
+ * Matches a whole section as `buildRepeatableWorkSection` writes it, on lines of its own. Each
+ * line is matched by its position, so a match attempt reads at most six lines and the time stays
+ * linear on any text. The instruction line can be any text, so sections that an older wording
+ * wrote still count.
+ */
 const SECTION_PATTERN =
-	/(?:^|\n)<repeatable-work>\nscore: [^\n]*\n[\s\S]*?\n<\/repeatable-work>(?=\n|$)/;
+	/(?:^|\n)<repeatable-work>\nscore: [^\n]*\nreasons: [^\n]*\n(?:suggested schedule: [^\n]*\n)?[^\n]*\n<\/repeatable-work>(?=\n|$)/;
 
 /** The description starts with a capital letter, but it continues a sentence here. */
 function lowerFirst(text: string): string {

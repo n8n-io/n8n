@@ -17,7 +17,9 @@ recommended_tools:
 Use this skill to offer that a workflow runs on its own: on a schedule, or
 each time its trigger fires. The `propose_automation` tool shows the user a
 card. The user chooses on the card: "Turn it on", "Save, but leave it off" or
-"Not now".
+"Not now". When n8n cannot turn the workflow on, for example when it starts
+only by hand, the card asks to keep it as a workflow and offers "Save
+workflow" instead.
 
 These instructions are in English. Text that the user sees stays in the
 language of the conversation.
@@ -45,7 +47,8 @@ Do not offer in these cases:
   the workflow and wants to run it again.
 - The user declined an offer in this chat. They chose "Not now", or they said
   no in the chat. Do not offer again, unless the user asks.
-- This chat already has a `propose_automation` call for the workflow.
+- This chat already has a `propose_automation` call for the workflow. Make a
+  new call only when the user asks for it again.
 - The workflow has not run successfully yet. First build it, then run or
   verify it. Offer when it works. If the user asks to make it automatic now,
   offer now.
@@ -69,25 +72,33 @@ in text first.
   short, for example "Morning sales digest".
 - `why`: 1 to 3 short reasons, from what the user said. For example "You asked
   for this every weekday at 08:00" or "You ran it twice in this chat".
-- `cron`: the cron expression of the `suggested schedule` line, when there is
-  one and the workflow starts with a Schedule Trigger. In all other cases,
-  leave it out.
+- `cron`: the cron expression of the schedule that the user asked for last.
+  It must be the schedule of the Schedule Trigger in the workflow. The
+  `suggested schedule` line gives it only if the user did not change the
+  schedule after that turn. If the workflow has no Schedule Trigger, or if you
+  are not sure, leave it out. n8n reads the schedule from the trigger.
 - Do not set `activate` or `versionId`. The user chooses on the card.
 
 Do not make a second call while the card waits for an answer.
 
 ## After the answer
 
-- `denied: true`: the user chose "Not now", or an admin blocked the action.
-  Say nothing more about it. Continue with the conversation.
+- `denied: true` and the `message` says that the user did not approve: the
+  user chose "Not now". Say nothing more about it. Continue with the
+  conversation.
+- `denied: true` and the `message` says that an admin blocked the action:
+  write one sentence that an admin setting does not let you do this. Use the
+  reason from `message`. Do not offer again.
 - `kept: true` and `active: true`: write one sentence that says the workflow
   is on and runs on its own.
 - `kept: true` and `active: false` without `error`: write one sentence that
-  says the workflow is saved and is off. The user can turn it on later.
+  says the workflow is saved. If its trigger can start it, also say that it is
+  off and that the user can turn it on later.
 - `kept: true` with `error`: n8n kept the workflow but could not turn it on.
   Write one sentence with the reason from `error`.
 - `warnings`: tell the user about a warning only when it changes what they
-  expect, for example when the schedule on the card is not the schedule they
-  asked for.
+  expect. For example, n8n ignored your `cron` and the card shows the schedule
+  of the Schedule Trigger. Tell the user only if that schedule is not the one
+  that they asked for last.
 - A tool error: write one sentence that says what went wrong. Do not try again
   unless the user asks.

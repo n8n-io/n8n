@@ -272,7 +272,9 @@ describe('AssistantChatsSection', () => {
 
 			instanceAiStore.threads = [chat('new', 'New chat'), ...fiveChats];
 
-			await waitFor(() => expect(queryByRole('menuitem', { name: 'Chat 4' })).not.toBeInTheDocument());
+			await waitFor(() =>
+				expect(queryByRole('menuitem', { name: 'Chat 4' })).not.toBeInTheDocument(),
+			);
 			expect(getByRole('menuitem', { name: 'Chat 3' })).toHaveFocus();
 		});
 

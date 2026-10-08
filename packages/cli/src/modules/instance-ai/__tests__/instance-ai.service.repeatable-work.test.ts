@@ -10,6 +10,7 @@ import { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import type { N8nMemory, N8nMemoryImpl } from '../../agents/integrations/n8n-memory';
 import { RepeatableWorkNudgeService } from '../automation/repeatable-work-nudge.service';
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -128,14 +129,18 @@ describe('InstanceAiService — repeatable-work section of a turn', () => {
 		expect(order.every((index) => index > 0)).toBe(true);
 		expect(order).toEqual([...order].sort((a, b) => a - b));
 		expect(input.endsWith('\n\nSend it every day at 7')).toBe(true);
-		expect(nudge.forTurn).toHaveBeenCalledWith('Send it every day at 7', expect.any(Function));
+		expect(nudge.forTurn).toHaveBeenCalledWith(
+			THREAD_ID,
+			'Send it every day at 7',
+			expect.any(Function),
+		);
 	});
 
 	it('passes the replayed history to the check', async () => {
 		const history: AgentDbMessage[] = [
 			{ id: 'm-1', createdAt: new Date(), role: 'user', content: [{ type: 'text', text: 'Hi' }] },
 		];
-		nudge.forTurn.mockImplementation(async (_message, loadHistory) => {
+		nudge.forTurn.mockImplementation(async (_threadId, _message, loadHistory) => {
 			expect(await loadHistory()).toBe(history);
 			return undefined;
 		});
@@ -180,7 +185,16 @@ describe('InstanceAiService — repeatable-work section of a turn', () => {
 	});
 
 	it('adds the section that the real check builds from the chat', async () => {
-		Container.set(RepeatableWorkNudgeService, new RepeatableWorkNudgeService(mock<Logger>()));
+		const assistantMemory = mock<N8nMemoryImpl>();
+		assistantMemory.getThread.mockResolvedValue(null);
+		assistantMemory.getMessages.mockResolvedValue([]);
+		assistantMemory.patchThread.mockResolvedValue(null);
+		const memory = mock<N8nMemory>();
+		memory.getImplementation.mockReturnValue(assistantMemory);
+		Container.set(
+			RepeatableWorkNudgeService,
+			new RepeatableWorkNudgeService(mock<Logger>(), memory),
+		);
 
 		const input = await sendTurn('Send me the sales numbers every weekday at 8', {
 			runId: 'run-1',
@@ -188,6 +202,9 @@ describe('InstanceAiService — repeatable-work section of a turn', () => {
 
 		expect(threadContextOf(input)).toContain(
 			'<repeatable-work>\nscore: 0.6\nreasons: schedule-phrase\nsuggested schedule: every weekday at 08:00 (cron 0 8 * * 1-5)\n',
+		);
+		expect(assistantMemory.patchThread).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: THREAD_ID }),
 		);
 	});
 });

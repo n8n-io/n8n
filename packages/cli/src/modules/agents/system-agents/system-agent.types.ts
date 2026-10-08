@@ -88,11 +88,6 @@ export interface SystemAgentSharingPolicy {
 		call: SystemAgentPendingCall,
 		resumeData: unknown,
 	): Promise<unknown>;
-	/**
-	 * The text of a stored user message as a reader sees it. The stored text can hold context
-	 * that the host added for the model. Null hides the text.
-	 */
-	readerText(text: string): string | null;
 }
 
 /**
