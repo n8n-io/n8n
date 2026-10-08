@@ -71,8 +71,9 @@ interface ExecuteTurnConfig {
 	onSettled?: (suspended: boolean) => Promise<void>;
 	/**
 	 * Called once when the outcome of the turn is known, before the runtime
-	 * stores the turn record. The runtime does not call it when the turn has
-	 * no execution record.
+	 * stores the turn record. Events that the host records here are stored
+	 * with the turn. The runtime does not call it when the turn has no
+	 * execution record.
 	 */
 	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
 	/**

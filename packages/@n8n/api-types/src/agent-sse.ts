@@ -155,6 +155,12 @@ export type AgentSseEvent =
 			 */
 			type: 'host-event';
 			name: string;
+			/**
+			 * Set when the event can update. The client replaces the earlier
+			 * event of the same message with the same name and key, and keeps
+			 * its position.
+			 */
+			key?: string;
 			payload: unknown;
 	  }
 	| {

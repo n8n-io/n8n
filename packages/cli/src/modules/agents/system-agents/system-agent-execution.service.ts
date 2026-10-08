@@ -805,7 +805,12 @@ export class SystemAgentExecutionService {
 					onExecutionStarted?.(id, threadId, inputMessageIds);
 				},
 				onRecorderCreated: (recorder) => hostEvents.attach(recorder),
-				onBeforeFinalize: settle,
+				// The settle hook runs before the record is final, so that the
+				// events it emits are stored with the turn.
+				onBeforeFinalize: async (outcome) => {
+					await settle(outcome);
+					hostEvents.close();
+				},
 				prepare,
 				formatError,
 			});

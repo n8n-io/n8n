@@ -41,6 +41,27 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it('passes the key of a keyed host event', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				timeline: [
+					{
+						type: 'host-event',
+						name: 'test.progress',
+						key: 'build',
+						payload: { done: 1 },
+						timestamp: 50,
+					},
+				],
+			}),
+		);
+
+		expect(result.find(({ role }) => role === 'assistant')?.content).toEqual([
+			{ type: 'host-event', name: 'test.progress', key: 'build', payload: { done: 1 } },
+		]);
+	});
+
 	it('keeps an assistant message that has only a host event', () => {
 		const result = executionsToMessagesDto([
 			execution({

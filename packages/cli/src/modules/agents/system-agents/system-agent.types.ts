@@ -33,8 +33,10 @@ interface SystemAgentTurnBase<TLease> {
 	/**
 	 * Send a custom event to the chat during this turn. The runtime streams it
 	 * as a `host-event` SSE event and records it with the turn, so history
-	 * shows it again after a reload. The provider can keep the callback for
-	 * its tools and hooks until the turn settles. Later events are dropped.
+	 * shows it again after a reload. Pass a `key` to update an earlier event
+	 * with the same name. The provider can keep the callback for its tools
+	 * and hooks, `onSettled` included. Events after `onSettled` returns are
+	 * dropped.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
 }
@@ -89,6 +91,9 @@ export interface SystemAgentTurnHandle {
 	/**
 	 * Called once per turn with its outcome, before the runtime stores the
 	 * turn record. A turn without an execution record settles after it fails.
+	 * Host events that the hook emits reach the stream before `done` and are
+	 * kept in history. Do not read the stored execution here, because it is
+	 * not final yet.
 	 */
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
 	/**
