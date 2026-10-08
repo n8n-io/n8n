@@ -182,6 +182,39 @@ export class TeamsSetupService {
 		return { defaultDisplayName: displayName, defaultDescription: description };
 	}
 
+	/** The name the provisioned Entra app and Teams app are built from. */
+	async agentNameFor(projectId: string, agentId: string): Promise<string> {
+		const agent = await this.getAgent({ projectId, agentId });
+		return agent.name;
+	}
+
+	/**
+	 * What the bot has to be created against: the Entra app it signs as, and
+	 * where Teams should deliver to. Both are read here so the provisioned bot
+	 * and the Deploy to Azure template agree on every value.
+	 */
+	async botIdentityFor(
+		user: User,
+		scope: AgentScope,
+		credentialId: string,
+	): Promise<{
+		clientId: string;
+		tenantId: string;
+		messagingEndpoint: string;
+		agentName: string;
+	}> {
+		const agent = await this.getAgent(scope);
+		const identity = await this.readIdentity(agent.projectId, credentialId, user);
+		if (!identity) {
+			throw new BadRequestError('Create the Teams app before deploying the bot.');
+		}
+		return {
+			...identity,
+			messagingEndpoint: this.messagingEndpointUrl(scope),
+			agentName: agent.name,
+		};
+	}
+
 	private async getAgent(scope: AgentScope): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(scope.agentId, scope.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${scope.agentId}" not found`);

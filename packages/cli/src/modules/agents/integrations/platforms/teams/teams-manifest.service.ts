@@ -57,6 +57,9 @@ export interface BuildTeamsManifestOptions {
 	settings?: AgentTeamsIntegrationSettings;
 }
 
+/** The placeholder Microsoft's own resource-specific consent examples carry. */
+const RSC_RESOURCE = 'https://RscBasedStoreApp';
+
 /**
  * Teams delivers only @mentions in a shared conversation unless the app asks to
  * read everything there. Each name is paired with the scope it depends on, so a
@@ -164,6 +167,10 @@ export class TeamsManifestService {
 	/**
 	 * `webApplicationInfo` is required alongside resource-specific permissions,
 	 * so both appear together or neither does.
+	 *
+	 * `resource` does nothing in a resource-specific grant, but Microsoft answers
+	 * with an error when it is missing, so it carries the placeholder their own
+	 * examples use.
 	 */
 	private buildReadPermissions(
 		botId: string,
@@ -175,7 +182,7 @@ export class TeamsManifestService {
 
 		if (resourceSpecific.length === 0) return {};
 		return {
-			webApplicationInfo: { id: botId },
+			webApplicationInfo: { id: botId, resource: RSC_RESOURCE },
 			authorization: { permissions: { resourceSpecific } },
 		};
 	}
