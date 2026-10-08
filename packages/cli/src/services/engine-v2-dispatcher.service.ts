@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { SeededStep, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
 import type {
 	INode,
 	INodeExecutionData,
@@ -162,10 +162,11 @@ export class EngineV2Dispatcher {
 		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
 			allowNonTriggerRoot: plan !== undefined,
 		});
-		const seededSteps: SeededStep[] | undefined = plan?.seeded.map(({ nodeId, outputs }) => ({
-			nodeId,
-			outputs: toStepOutputs(outputs),
-		}));
+		const seededSteps: SeededSteps | undefined = plan
+			? Object.fromEntries(
+					plan.seeded.map(({ nodeId, outputs }) => [nodeId, toStepOutputs(outputs)]),
+				)
+			: undefined;
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.

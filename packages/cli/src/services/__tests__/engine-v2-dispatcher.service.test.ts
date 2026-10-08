@@ -637,9 +637,9 @@ describe('EngineV2Dispatcher', () => {
 				expect(request.graph.nodes.map(({ id }) => id)).toEqual([MANUAL_TRIGGER.id, SET_NODE.id]);
 				expect(request.triggerOutputs).toEqual([[{ json: { from: 'runData' } }]]);
 				// An empty slot collapses to a dead edge, as for any other step.
-				expect(request.seededSteps).toEqual([
-					{ nodeId: SET_NODE.id, outputs: [[{ json: { reused: true } }], null] },
-				]);
+				expect(request.seededSteps).toEqual({
+					[SET_NODE.id]: [[{ json: { reused: true } }], null],
+				});
 			});
 
 			it('still reports the whole workflow beside the trimmed graph', async () => {
