@@ -1,8 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 
+import { WORKFLOW_TOOLS } from './event-parser';
 import type { CapturedToolCall } from '../types';
-
-const SAVE_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
 
 function toRecord(result: unknown): Record<string, unknown> | undefined {
 	if (isRecord(result)) return result;
@@ -30,7 +29,7 @@ export function findForeignWorkflowReads(
 	const own = new Set(seededWorkflowIds);
 	for (const call of calls) {
 		// A save without a target workflow creates one.
-		if (!SAVE_TOOLS.has(call.toolName) || call.args.workflowId !== undefined) continue;
+		if (!WORKFLOW_TOOLS.has(call.toolName) || call.args.workflowId !== undefined) continue;
 		const result = toRecord(call.result);
 		const id = result?.workflowId ?? result?.id;
 		if (typeof id === 'string') own.add(id);

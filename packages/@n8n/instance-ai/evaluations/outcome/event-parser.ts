@@ -26,7 +26,8 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 // Tool names whose results contain resource IDs we need to track
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
+/** Tools that save a workflow; their results carry its id. */
+export const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
 
 // Retired standalone tool names, kept so captures from older backends still parse.
 const EXECUTION_TOOL_LEGACY = 'run-workflow';
