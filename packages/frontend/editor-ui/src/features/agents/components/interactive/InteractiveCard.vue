@@ -7,10 +7,10 @@ import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import { ASSISTANT_CONFIRMATION_TOOL_NAME } from '@/features/ai/shared/agentsChat/assistantConfirmation';
 import N8nChatActionCard from './N8nChatActionCard.vue';
 
-// Only the n8n Assistant session renders these, so load them on demand.
-const InstanceAiConfirmationCard = defineAsyncComponent(
-	async () =>
-		await import('@/features/ai/instanceAi/components/agentsChat/InstanceAiConfirmationCard.vue'),
+// Only the n8n Assistant session renders these, so load them on demand. The wrapper applies
+// the rules of shared chats around the Assistant card.
+const AssistantConfirmationCard = defineAsyncComponent(
+	async () => await import('@/features/ai/instanceAi/sharing/SharedThreadCard.vue'),
 );
 
 /**
@@ -64,11 +64,14 @@ const interactiveRenderers = [
 	},
 	{
 		key: 'assistant_confirmation',
-		component: InstanceAiConfirmationCard,
+		component: AssistantConfirmationCard,
 		matches: (payload) => payload.toolName === ASSISTANT_CONFIRMATION_TOOL_NAME,
 		getProps: (payload) => {
 			if (payload.toolName !== ASSISTANT_CONFIRMATION_TOOL_NAME) return {};
-			return { input: payload.input };
+			return {
+				input: payload.input,
+				call: payload.call,
+			};
 		},
 	},
 ] satisfies AgentsChatInteractionRenderer[];

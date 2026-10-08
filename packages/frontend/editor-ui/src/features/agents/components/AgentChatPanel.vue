@@ -66,6 +66,7 @@ import {
 	budgetNoticeCodesForField,
 	type BudgetAmountField,
 } from '../utils/budget-config';
+import type { AgentResumeFailure } from '../utils/chat-rejection';
 import { TIME } from '@/app/constants/durations';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 import ApprovalCard from './interactive/ApprovalCard.vue';
@@ -150,6 +151,8 @@ const emit = defineEmits<{
 	'message-accepted': [
 		payload: { text: string; files: File[]; hostContext?: Record<string, unknown> },
 	];
+	/** A card answer did not go through. The transcript already shows the server state again. */
+	'resume-failed': [failure: AgentResumeFailure];
 }>();
 
 defineSlots<{
@@ -162,6 +165,8 @@ defineSlots<{
 	'inline-offers'?: () => unknown;
 	/** Extra chips in the composer attachment strip (for example hand-off context). */
 	'composer-attachments'?: () => unknown;
+	/** Replaces the composer, for example with a notice for a reader who cannot send. */
+	composer?: () => unknown;
 }>();
 
 const locale = useI18n();
@@ -208,6 +213,7 @@ const {
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 	budgetCards: props.budgetCards,
+	onResumeFailed: (failure) => emit('resume-failed', failure),
 });
 
 const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
@@ -1260,6 +1266,7 @@ onBeforeUnmount(() => {
 					/>
 				</div>
 			</div>
+			<slot v-else-if="$slots.composer" name="composer" />
 			<ChatInputBase
 				v-else
 				ref="chatInput"

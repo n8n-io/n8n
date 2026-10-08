@@ -5,6 +5,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
+import { AGENT_CHAT_TOOL_STEP_NOTE } from '../utils/tool-step-note';
 
 vi.mock('@n8n/design-system', () => ({
 	N8nAiActivityStep: {
@@ -764,5 +765,45 @@ describe('AgentChatToolSteps', () => {
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('Weighing the sources.');
 		expect(wrapper.text()).not.toContain('Reasoning');
+	});
+
+	it('adds the note that the chat host gives a row, after the tool summary', () => {
+		const note = vi.fn((toolCall: ToolCall) =>
+			toolCall.approvedBy ? `Approved by ${toolCall.approvedBy.name}` : undefined,
+		);
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: 'search_nodes',
+						toolCallId: 'tc-1',
+						state: TOOL_CALL_STATE.DONE,
+						displaySummary: 'Slack',
+						approvedBy: { id: 'user-1', name: 'Alice Owner' },
+					},
+					{ tool: 'search_nodes', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE },
+				],
+				projectId: 'project-1',
+			},
+			global: { provide: { [AGENT_CHAT_TOOL_STEP_NOTE as symbol]: note } },
+		});
+
+		expect(wrapper.findAll('[data-testid="tool-step-summary"]').map((part) => part.text())).toEqual(
+			['Slack', 'Approved by Alice Owner'],
+		);
+		expect(note).toHaveBeenCalledWith(expect.objectContaining({ toolCallId: 'tc-2' }));
+	});
+
+	it('shows no note without a chat host that gives one', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-1',
+				state: TOOL_CALL_STATE.DONE,
+				approvedBy: { id: 'user-1', name: 'Alice Owner' },
+			},
+		]);
+
+		expect(wrapper.text()).not.toContain('Alice Owner');
 	});
 });

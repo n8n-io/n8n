@@ -40,6 +40,8 @@ import AutomationOfferPanel from './components/automation/AutomationOfferPanel.v
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiAgentsConversation from './components/InstanceAiAgentsConversation.vue';
+import ShareThreadButton from './sharing/ShareThreadButton.vue';
+import SharedThreadChip from './sharing/SharedThreadChip.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
@@ -74,6 +76,8 @@ const recentWorkflowsStore = useRecentWorkflowsStore();
 
 const conversationRef =
 	useTemplateRef<InstanceType<typeof InstanceAiAgentsConversation>>('conversation');
+// The Share button goes away after a share, so its focus moves to the new chip.
+const sharedChip = useTemplateRef<InstanceType<typeof SharedThreadChip>>('sharedChip');
 
 // The conversation owns the composer-handoff state; read it through the
 // template ref for the agent-preview session id below and for
@@ -749,7 +753,9 @@ function handleNewThreadClick() {
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :title="currentThreadTitle">
+					<template #status><SharedThreadChip ref="sharedChip" /></template>
 					<template #actions>
+						<ShareThreadButton @shared="sharedChip?.focus()" />
 						<N8nTooltip
 							:content="i18n.baseText('instanceAi.thread.new')"
 							placement="bottom"

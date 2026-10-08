@@ -16,6 +16,7 @@ import {
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig } from '../types';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
+import type { AgentResumeFailure } from '../utils/chat-rejection';
 import { planMessage, planView } from './fixtures/agent-plan';
 
 const sendMessageMock = vi.fn();
@@ -65,6 +66,7 @@ vi.mock('../composables/useAgentBackgroundJobs', () => ({
 	}),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
+let onResumeFailed: ((failure: AgentResumeFailure) => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -232,8 +234,12 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 }));
 
 vi.mock('../composables/useAgentChatStream', () => ({
-	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
+	useAgentChatStream: (options: {
+		onHistoryLoaded: (count: number) => void;
+		onResumeFailed?: (failure: AgentResumeFailure) => void;
+	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
+		onResumeFailed = options.onResumeFailed;
 		return {
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
@@ -2480,6 +2486,50 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.text()).toContain('MCP server');
 		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('integrations.0.credentialId');
+	});
+
+	describe('composer slot', () => {
+		function mountWithComposer(composer?: () => unknown) {
+			const router = createRouter({
+				history: createMemoryHistory(),
+				routes: [{ path: '/', component: { template: '<div />' } }],
+			});
+			return mount(AgentChatPanel, {
+				global: { plugins: [router] },
+				props: {
+					projectId: 'p1',
+					agentId: 'a1',
+					agentConfig: defaultAgentConfig,
+					agentStatus: 'draft',
+					connectedTriggers: [],
+				},
+				...(composer ? { slots: { composer } } : {}),
+			});
+		}
+
+		it('replaces the composer with the content of the slot', () => {
+			const wrapper = mountWithComposer(() =>
+				h('p', { 'data-testid': 'reader-notice' }, 'Read only'),
+			);
+
+			expect(wrapper.find('[data-testid="reader-notice"]').text()).toBe('Read only');
+			expect(wrapper.find('[data-testid="chat-input"]').exists()).toBe(false);
+		});
+
+		it('keeps the composer without the slot', () => {
+			const wrapper = mountWithComposer();
+
+			expect(wrapper.find('[data-testid="chat-input"]').exists()).toBe(true);
+		});
+	});
+
+	it('passes on a card answer that did not go through', () => {
+		const wrapper = mountPanel();
+		const failure = { toolCallId: 'tc-1', status: 409, answeredBy: 'Alice Owner' };
+
+		onResumeFailed?.(failure);
+
+		expect(wrapper.emitted('resume-failed')).toEqual([[failure]]);
 	});
 });
 

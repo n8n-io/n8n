@@ -16,6 +16,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
+import { useOptionalThreadSharing } from '../../sharing/threadSharingContext';
 import { buildAlwaysAllowKey } from '../../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../../approvalDetails';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -45,6 +46,8 @@ const i18n = useI18n();
 const approvalLabels = useApprovalCardLabels();
 // Read-only: the project fallback for cards whose payload has no projectId.
 const thread = useOptionalThread();
+// A teammate's "Always allow" in a shared chat counts once, so only the owner is offered it.
+const sharing = useOptionalThreadSharing();
 const submitted = ref(false);
 const textValue = ref('');
 
@@ -432,7 +435,7 @@ function onApprovalSelect(key: string) {
 		:description-label="i18n.baseText('instanceAi.confirmation.details')"
 		:args="input.targetApproval?.args"
 		:destructive="input.severity === 'destructive'"
-		:supports-session-approval="canAlwaysAllow"
+		:supports-session-approval="canAlwaysAllow && sharing?.view.value.role !== 'teammate'"
 		:disabled="isInactive"
 		data-test-id="instance-ai-agents-chat-approval"
 		@select="onApprovalSelect"

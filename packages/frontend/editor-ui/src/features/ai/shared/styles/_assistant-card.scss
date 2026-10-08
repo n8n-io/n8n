@@ -1,0 +1,8 @@
+// The container of an n8n Assistant card in the chat (DESIGN-v3 §11.3). The cards in
+// InstanceAiConfirmationCard.vue (`.card`) use the same values, so a card that another
+// component draws looks the same as its sibling cards.
+@mixin surface {
+	border: 0;
+	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
+}

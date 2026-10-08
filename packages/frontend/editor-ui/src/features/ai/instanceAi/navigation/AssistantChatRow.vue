@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { N8nIcon, N8nMenuItem, N8nTooltip } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import { sharedRowLabel } from '../sharing/sharingView';
+import { useSharingText } from '../sharing/useSharingText';
 import type { ThreadDisplayState } from './threadDisplayState';
 
 type ShownState = Exclude<ThreadDisplayState, 'done'>;
@@ -23,33 +26,90 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
+const sharingText = useSharingText();
 
 const to = computed(() => ({
 	name: INSTANCE_AI_THREAD_VIEW,
 	params: { threadId: props.thread.id },
 }));
 
+/** "Shared by {owner}" for a teammate, "Shared with {project}" for the owner. */
+const sharedLabel = computed(() => {
+	const label = sharedRowLabel(props.thread, usersStore.currentUserId ?? undefined);
+	return label ? sharingText.sharedRowLabel(label) : undefined;
+});
+
 const item = computed<IMenuItem>(() => ({
 	id: `instance-ai-thread-${props.thread.id}`,
-	icon: 'message-circle',
+	icon: sharedLabel.value ? 'users' : 'message-circle',
 	label: props.thread.title,
 	route: { to: to.value },
 }));
+
+/** The row title, with the shared label for screen readers. */
+const titleLabel = computed(() =>
+	sharedLabel.value
+		? i18n.baseText('instanceAi.sharing.rowLabel', {
+				interpolate: { title: props.thread.title, shared: sharedLabel.value },
+			})
+		: props.thread.title,
+);
 
 const shownState = computed(() => {
 	const kind = props.state;
 	if (kind === undefined || kind === 'done') return undefined;
 	const label = i18n.baseText(STATE_LABEL_KEYS[kind]);
 	const rowLabel = i18n.baseText('instanceAi.threadState.rowLabel', {
-		interpolate: { title: props.thread.title, state: label },
+		interpolate: { title: titleLabel.value, state: label },
 	});
 	return { kind, label, rowLabel };
 });
+
+const rowLabel = computed(
+	() => shownState.value?.rowLabel ?? (sharedLabel.value ? titleLabel.value : undefined),
+);
+
+/**
+ * Keyboard focus on the row shows the shared label, as the pointer on the row icon does.
+ * A mouse click also focuses the row link, but shows no tooltip.
+ */
+const isKeyboardFocused = ref(false);
+
+/** Whether the element shows a focus ring. Without `:focus-visible` support, every focus does. */
+function hasFocusRing(element: Element): boolean {
+	try {
+		return element.matches(':focus-visible');
+	} catch {
+		return true;
+	}
+}
+
+function onFocusIn(event: FocusEvent): void {
+	isKeyboardFocused.value = event.target instanceof Element && hasFocusRing(event.target);
+}
 </script>
 
 <template>
-	<div :class="[$style.chatRow, { [$style.withState]: shownState }]">
-		<N8nMenuItem :item="item" :aria-label="shownState?.rowLabel" scroll-label-on-overflow />
+	<div
+		:class="[$style.chatRow, { [$style.withState]: shownState, [$style.shared]: sharedLabel }]"
+		@focusin="onFocusIn"
+		@focusout="isKeyboardFocused = false"
+	>
+		<N8nMenuItem :item="item" :aria-label="rowLabel" scroll-label-on-overflow />
+		<!-- Shows the shared label on the row icon. Screen readers get it from the row label. -->
+		<span v-if="sharedLabel" :class="$style.sharedSlot">
+			<N8nTooltip placement="right" as-child :visible="isKeyboardFocused">
+				<template #content>{{ sharedLabel }}</template>
+				<RouterLink
+					:to="to"
+					tabindex="-1"
+					aria-hidden="true"
+					:class="$style.sharedLink"
+					:data-test-id="`instance-ai-thread-shared-${props.thread.id}`"
+				/>
+			</N8nTooltip>
+		</span>
 		<!-- The row label already names the state, so screen readers skip this copy of the link. -->
 		<span v-if="shownState" :class="$style.stateSlot">
 			<N8nTooltip placement="right" :content="shownState.label">
@@ -96,11 +156,32 @@ const shownState = computed(() => {
 	a[role='menuitem'] {
 		padding-right: var(--spacing--lg);
 	}
+}
 
+.withState,
+.shared {
 	&:hover a[role='menuitem'] {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text--shade-1);
 	}
+}
+
+// A hover target over the row icon (the menu item's padding and icon box). It shows no
+// content of its own: the icon below it stays visible.
+.sharedSlot {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	align-items: center;
+	height: var(--spacing--xl);
+	padding-inline-start: var(--spacing--4xs);
+}
+
+.sharedLink {
+	display: block;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 }
 
 .stateSlot {

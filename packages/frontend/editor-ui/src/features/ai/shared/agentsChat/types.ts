@@ -3,6 +3,7 @@ import {
 	type APPROVAL_TOOL_NAME,
 	type AgentBackgroundJobSignal,
 	type N8N_CHAT_ACTION_TOOL_NAME,
+	type SharedCard,
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
 
@@ -48,6 +49,10 @@ export interface ToolCall {
 	 * approval for a child tool.
 	 */
 	suspendPayload?: unknown;
+	/** Who approved this suspended call. The server records it when it records the answer. */
+	approvedBy?: AgentMessageAuthor;
+	/** Who declined this suspended call. */
+	declinedBy?: AgentMessageAuthor;
 	/** Live progress of a delegated child, streamed while the delegation runs
 	 *  and restored from history when a `childTrace` was persisted on the
 	 *  parent's execution timeline. */
@@ -121,6 +126,11 @@ export type InteractivePayload =
 			toolName: typeof ASSISTANT_CONFIRMATION_TOOL_NAME;
 			input: AssistantConfirmationInput;
 			resolvedValue?: unknown;
+			/**
+			 * The tool call behind the card, as the server keeps it. The rules for shared
+			 * chats read the raw tool input and suspend payload, not the parsed card.
+			 */
+			call?: SharedCard;
 	  });
 
 export type AgentsChatInteraction = InteractivePayload;

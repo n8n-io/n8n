@@ -54,6 +54,11 @@ import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import {
+	readChatRejection,
+	type AgentResumeFailure,
+	type ChatRejection,
+} from '../utils/chat-rejection';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
 export interface FatalAgentError {
@@ -81,6 +86,8 @@ export interface UseAgentChatStreamParams {
 	onSessionCreated?: (sessionId: string) => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
+	/** Called after a card answer failed and the history was read again. */
+	onResumeFailed?: (failure: AgentResumeFailure) => void;
 }
 
 type ResumePayload =
@@ -105,6 +112,11 @@ function getApprovalDecision(value: unknown): boolean | undefined {
 	return value.approved;
 }
 
+/** The text of a refused request: the server's message, else the status text. */
+function rejectionMessage(rejection: ChatRejection, response: Response): string {
+	return rejection.message ?? (response.statusText || 'Failed to reach agent');
+}
+
 function warningKey(warning: AgentChatWarning): string {
 	return JSON.stringify([warning.code ?? '', warning.server ?? '', warning.message]);
 }
@@ -112,7 +124,7 @@ function warningKey(warning: AgentChatWarning): string {
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
-	const { showError } = useToast();
+	const { showError, showMessage } = useToast();
 
 	const messages = ref<ChatMessage[]>([]);
 	const isStreamOpen = ref(false);
@@ -577,6 +589,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		errorEmitted: boolean;
 		/** Set when the stream reaches a valid terminal event. */
 		terminalEventReceived: boolean;
+		/** Set when the error text is the server's reason for a refusal. It can name users. */
+		serverRefusal?: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -1234,7 +1248,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else if (session.userMessage && !session.executionId) {
-					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
+					showSendError(event.message, session);
 				} else {
 					messages.value.push(
 						reactive<ChatMessage>({
@@ -1372,13 +1386,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	type StreamOutcome = 'completed' | 'failed' | 'aborted' | 'busy' | 'detached';
+	type PostResult = { outcome: StreamOutcome; rejection?: ChatRejection };
 
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
 		onAccepted?: () => void,
 		userMessage?: ChatMessage,
-	): Promise<{ outcome: StreamOutcome }> {
+	): Promise<PostResult> {
 		const controller = new AbortController();
 		const session: StreamSession = {
 			controller,
@@ -1416,13 +1431,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				signal: controller.signal,
 			});
 			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
-			if (!response.ok || !response.body) {
-				handleEvent(
-					{ type: 'error', message: response.statusText || 'Failed to reach agent' },
-					session,
-				);
-				return { outcome: 'failed' };
-			}
+			if (!response.ok || !response.body)
+				return await failRefusedRequest(response, session, isCurrent);
 			await consumeStream(response, session, controller.signal);
 			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
 			if (session.busy) return { outcome: 'busy' };
@@ -1472,6 +1482,32 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 			}
 		}
+	}
+
+	/** A request that the server refused before any stream opened. */
+	async function failRefusedRequest(
+		response: Response,
+		session: StreamSession,
+		isCurrent: () => boolean,
+	): Promise<PostResult> {
+		const rejection = await readChatRejection(response);
+		if (!isCurrent() || session.controller.signal.aborted) return { outcome: 'aborted' };
+		session.serverRefusal = rejection.message !== undefined;
+		handleEvent({ type: 'error', message: rejectionMessage(rejection, response) }, session);
+		return { outcome: 'failed', rejection };
+	}
+
+	/**
+	 * A message that did not go through. The server's reason for a refusal can name users or
+	 * projects, so its toast is not tracked.
+	 */
+	function showSendError(message: string, session: StreamSession): void {
+		const title = locale.baseText('agents.chat.queue.sendError');
+		if (session.serverRefusal) {
+			showMessage({ type: 'error', title, message, duration: 0 }, false);
+			return;
+		}
+		showError(new Error(message), title);
 	}
 
 	async function streamChat(
@@ -1605,7 +1641,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
-		const { outcome } = await postAndConsume(
+		const { outcome, rejection } = await postAndConsume(
 			url,
 			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
 			onAccepted,
@@ -1639,7 +1675,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		) {
 			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
 		}
+		reportResumeFailure(payload, outcome, rejection);
 		return outcome === 'busy' ? 'busy' : 'sent';
+	}
+
+	/** A failed card answer. A steering message that cancels a card is not an answer. */
+	function reportResumeFailure(
+		payload: ResumePayload,
+		outcome: StreamOutcome,
+		rejection: ChatRejection | undefined,
+	) {
+		if (outcome !== 'failed' || disposed || 'cancelled' in payload) return;
+		params.onResumeFailed?.({ toolCallId: payload.toolCallId, ...rejection });
 	}
 
 	async function cancelAndSteer(text: string, onAccepted?: () => void): Promise<'sent' | 'busy'> {

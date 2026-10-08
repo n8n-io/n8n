@@ -188,6 +188,41 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(store.threads[0]).toMatchObject({ title: 'Refined', metadata: { key: 'value' } });
 	});
 
+	it('keeps who shared a thread and with which project, also when the share happens later', async () => {
+		const store = useInstanceAiStore();
+		const sharing = {
+			sharedWith: { projectId: 'p-1', projectName: 'Marketing' },
+			owner: { id: 'owner-1', name: 'Alice Owner' },
+		};
+		vi.mocked(fetchThreads).mockResolvedValueOnce({
+			threads: [{ ...historyThread('shared'), ...sharing }, historyThread('private')],
+			total: 2,
+			page: 0,
+			hasMore: false,
+		});
+		await store.loadThreads();
+		expect(store.threads.find((thread) => thread.id === 'shared')).toMatchObject(sharing);
+		expect(store.threads.find((thread) => thread.id === 'private')?.sharedWith).toBeUndefined();
+
+		// The answer to a share updates the copy in the list and in the history page.
+		store.threadHistory.threads = [{ ...historyThread('private'), title: 'private' }];
+		store.applyThread({ ...historyThread('private'), title: 'Shared now', ...sharing });
+		for (const copy of [store.threads, store.threadHistory.threads]) {
+			expect(copy.find((thread) => thread.id === 'private')).toMatchObject({
+				title: 'Shared now',
+				...sharing,
+			});
+		}
+	});
+
+	it('applyThread adds a thread that no list holds', () => {
+		const store = useInstanceAiStore();
+		store.applyThread({ ...historyThread('new'), owner: { id: 'owner-1', name: 'Alice' } });
+		expect(store.threads).toEqual([
+			expect.objectContaining({ id: 'new', owner: { id: 'owner-1', name: 'Alice' } }),
+		]);
+	});
+
 	it('keeps the state, needs-input flag and activity time of each listed thread', async () => {
 		const store = useInstanceAiStore();
 		vi.mocked(fetchThreads).mockResolvedValueOnce({
