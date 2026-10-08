@@ -171,7 +171,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'forum',
-				icon: 'users',
+				icon: 'book',
 				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
 					href: EXTERNAL_LINKS.FORUM,
