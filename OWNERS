@@ -247,6 +247,7 @@ packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-o
 .github/                                       					@n8n-io/qa-dx
 .github/workflows/                                      @n8n-io/qa-dx required
 .github/scripts/                                        @n8n-io/qa-dx required
+.github/scripts/link-check/                             @n8n-io/nodes
 .github/actions/                                        @n8n-io/qa-dx required
 .github/poutine-rules/                                  @n8n-io/qa-dx required
 docker/                                                 @n8n-io/qa-dx
