@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { ElDialog } from 'element-plus';
-import { N8nButton, N8nCallout, N8nCard, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nCard,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 import { ref, watch, computed } from 'vue';
 import { useAccessSettingsCsvExport } from '@/features/settings/sso/provisioning/composables/useAccessSettingsCsvExport';
 import type { RoleAssignmentTransitionType } from '../composables/useUserRoleProvisioningForm';
@@ -81,143 +90,140 @@ const onConfirmProvisioningSetting = () => {
 };
 </script>
 <template>
-	<ElDialog
-		v-model="visible"
-		:title="locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.title`)"
-		width="650"
+	<N8nDialog
+		v-model:open="visible"
+		size="xlarge"
+		:header="locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.title`)"
 	>
-		<template v-if="!isSwitchingToManual">
-			<div class="mb-s">
-				<N8nText color="text-base">{{
-					locale.baseText('settings.provisioningConfirmDialog.enable.description')
-				}}</N8nText>
-			</div>
-			<div class="mb-s">
-				<N8nText color="text-base"
-					><a
-						:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
-						target="_blank"
-						>{{ locale.baseText('settings.provisioningConfirmDialog.link.docs') }}</a
-					></N8nText
-				>
-			</div>
-			<ul :class="$style.list" class="mb-s">
-				<li>
-					<N8nText color="text-base">{{
-						locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
-					}}</N8nText>
-					<N8nButton
-						variant="ghost"
-						v-if="!hasDownloadedInstanceRoleCsv"
-						native-type="button"
-						:icon="'file-download' as any"
-						data-test-id="provisioning-download-instance-roles-csv-button"
-						:disabled="downloadingInstanceRolesCsv"
-						:loading="downloadingInstanceRolesCsv"
-						:class="[$style.button, 'n8n-button--highlight']"
-						@click="onDownloadInstanceRolesCsv"
-					></N8nButton>
-					<N8nIcon v-else icon="check" color="success" :class="$style.icon"></N8nIcon>
-				</li>
-				<li v-if="shouldShowProjectRolesCsv">
-					<N8nText color="text-base">{{
-						locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
-					}}</N8nText>
-					<N8nButton
-						variant="ghost"
-						v-if="!hasDownloadedProjectRoleCsv"
-						native-type="button"
-						:icon="'file-download' as any"
-						data-test-id="provisioning-download-project-roles-csv-button"
-						:disabled="downloadingProjectRolesCsv"
-						:loading="downloadingProjectRolesCsv"
-						:class="[$style.button, 'n8n-button--highlight']"
-						@click="onDownloadProjectRolesCsv"
-					></N8nButton>
-					<N8nIcon v-else icon="check" color="success" :class="$style.icon"></N8nIcon>
-				</li>
-			</ul>
-		</template>
-		<template v-else>
-			<div class="mb-s">
-				<N8nText color="text-base">{{
-					locale.baseText('settings.provisioningConfirmDialog.disable.description')
-				}}</N8nText>
-			</div>
-			<div class="mb-s">
-				<N8nText color="text-base"
-					><a
-						:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
-						target="_blank"
-						>{{ locale.baseText('settings.provisioningConfirmDialog.link.docs') }}</a
-					></N8nText
-				>
-			</div>
-		</template>
-		<div
-			v-if="props.willDeleteProjectRules"
-			class="mb-s"
-			data-test-id="provisioning-project-rules-deletion-warning"
-		>
-			<N8nCallout theme="danger">
-				<N8nText color="text-base" size="small" :bold="true">{{
-					locale.baseText('settings.provisioningConfirmDialog.projectRulesDeletion.warning')
-				}}</N8nText>
-				<br />
-				<N8nText color="text-base" size="small">{{
-					locale.baseText(
-						`settings.provisioningConfirmDialog.projectRulesDeletion.description.${messagingKey}`,
-					)
-				}}</N8nText>
-			</N8nCallout>
-		</div>
-		<div class="mb-s">
-			<N8nCard :class="$style.card">
-				<N8nCheckbox
-					v-model="confirmationChecked"
-					:disabled="isCsvBackupPending"
-					data-test-id="provisioning-confirmation-checkbox"
-				>
-					<template #label>
+		<N8nDialogBody>
+			<div>
+				<template v-if="!isSwitchingToManual">
+					<div class="mb-s">
 						<N8nText color="text-base">{{
-							locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.checkbox`)
+							locale.baseText('settings.provisioningConfirmDialog.enable.description')
 						}}</N8nText>
-					</template>
-				</N8nCheckbox>
-			</N8nCard>
-		</div>
-
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					variant="ghost"
-					type="button"
-					data-test-id="provisioning-cancel-button"
-					@click="emit('cancel')"
-					>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
+					</div>
+					<div class="mb-s">
+						<N8nText color="text-base"
+							><a
+								:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
+								target="_blank"
+								>{{ locale.baseText('settings.provisioningConfirmDialog.link.docs') }}</a
+							></N8nText
+						>
+					</div>
+					<ul :class="$style.list" class="mb-s">
+						<li>
+							<N8nText color="text-base">{{
+								locale.baseText(
+									'settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv',
+								)
+							}}</N8nText>
+							<N8nButton
+								variant="ghost"
+								v-if="!hasDownloadedInstanceRoleCsv"
+								native-type="button"
+								:icon="'file-download' as any"
+								data-test-id="provisioning-download-instance-roles-csv-button"
+								:disabled="downloadingInstanceRolesCsv"
+								:loading="downloadingInstanceRolesCsv"
+								:class="[$style.button, 'n8n-button--highlight']"
+								@click="onDownloadInstanceRolesCsv"
+							></N8nButton>
+							<N8nIcon v-else icon="check" color="success" :class="$style.icon"></N8nIcon>
+						</li>
+						<li v-if="shouldShowProjectRolesCsv">
+							<N8nText color="text-base">{{
+								locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
+							}}</N8nText>
+							<N8nButton
+								variant="ghost"
+								v-if="!hasDownloadedProjectRoleCsv"
+								native-type="button"
+								:icon="'file-download' as any"
+								data-test-id="provisioning-download-project-roles-csv-button"
+								:disabled="downloadingProjectRolesCsv"
+								:loading="downloadingProjectRolesCsv"
+								:class="[$style.button, 'n8n-button--highlight']"
+								@click="onDownloadProjectRolesCsv"
+							></N8nButton>
+							<N8nIcon v-else icon="check" color="success" :class="$style.icon"></N8nIcon>
+						</li>
+					</ul>
+				</template>
+				<template v-else>
+					<div class="mb-s">
+						<N8nText color="text-base">{{
+							locale.baseText('settings.provisioningConfirmDialog.disable.description')
+						}}</N8nText>
+					</div>
+					<div class="mb-s">
+						<N8nText color="text-base"
+							><a
+								:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
+								target="_blank"
+								>{{ locale.baseText('settings.provisioningConfirmDialog.link.docs') }}</a
+							></N8nText
+						>
+					</div>
+				</template>
+				<div
+					v-if="props.willDeleteProjectRules"
+					class="mb-s"
+					data-test-id="provisioning-project-rules-deletion-warning"
 				>
-				<N8nButton
-					variant="solid"
-					type="button"
-					:disabled="loading || !confirmationChecked || isCsvBackupPending"
-					data-test-id="provisioning-confirm-button"
-					@click="onConfirmProvisioningSetting"
-					>{{
-						locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
-					}}</N8nButton
-				>
+					<N8nCallout theme="danger">
+						<N8nText color="text-base" size="small" :bold="true">{{
+							locale.baseText('settings.provisioningConfirmDialog.projectRulesDeletion.warning')
+						}}</N8nText>
+						<br />
+						<N8nText color="text-base" size="small">{{
+							locale.baseText(
+								`settings.provisioningConfirmDialog.projectRulesDeletion.description.${messagingKey}`,
+							)
+						}}</N8nText>
+					</N8nCallout>
+				</div>
+				<div class="mb-s">
+					<N8nCard :class="$style.card">
+						<N8nCheckbox
+							v-model="confirmationChecked"
+							:disabled="isCsvBackupPending"
+							data-test-id="provisioning-confirmation-checkbox"
+						>
+							<template #label>
+								<N8nText color="text-base">{{
+									locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.checkbox`)
+								}}</N8nText>
+							</template>
+						</N8nCheckbox>
+					</N8nCard>
+				</div>
 			</div>
-		</template>
-	</ElDialog>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="ghost"
+				type="button"
+				data-test-id="provisioning-cancel-button"
+				@click="emit('cancel')"
+				>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
+			>
+			<N8nButton
+				variant="solid"
+				type="button"
+				:disabled="loading || !confirmationChecked || isCsvBackupPending"
+				data-test-id="provisioning-confirm-button"
+				@click="onConfirmProvisioningSetting"
+				>{{
+					locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
+				}}</N8nButton
+			>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-}
-
 .button {
 	margin-left: var(--spacing--xs);
 }
