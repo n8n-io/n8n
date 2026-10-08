@@ -21,6 +21,9 @@ export function valueType(value: unknown): string {
 	if (value instanceof Map) return 'Map';
 	if (value instanceof Set) return 'Set';
 	if (value instanceof Error) return 'Error';
+	if (value instanceof String) return 'String';
+	if (value instanceof Number) return 'Number';
+	if (value instanceof Boolean) return 'Boolean';
 	return typeof value;
 }
 
@@ -84,6 +87,11 @@ function writeCanonical(value: unknown, state: CanonicalState): string {
 	if (Interval.isInterval(value)) return `Interval(${value.toISO()})`;
 	if (value instanceof Date) {
 		return `Date(${Number.isNaN(value.getTime()) ? 'invalid' : value.toISOString()})`;
+	}
+
+	// A boxed primitive must not equal a plain object that has the same index keys.
+	if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+		return `${valueType(value)}(${writeCanonical(value.valueOf(), state)})`;
 	}
 
 	if (state.seen.has(value)) return 'circular';

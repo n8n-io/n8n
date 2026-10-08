@@ -56,6 +56,13 @@ describe('canonicalize', () => {
 		expect(canonicalize(new Set([1]))).not.toBe(canonicalize(new Set([2])));
 	});
 
+	// The legacy engine returns `new String('ab')` as is; QuickJS returns { 0: 'a', 1: 'b' }.
+	it('keeps a boxed primitive apart from a plain object with the same keys', () => {
+		expect(canonicalize(new String('ab'))).toBe(canonicalize(new String('ab')));
+		expect(canonicalize(new String('ab'))).not.toBe(canonicalize({ 0: 'a', 1: 'b' }));
+		expect(canonicalize(new Number(5))).not.toBe(canonicalize(5));
+	});
+
 	it('keeps NaN apart from null, which JSON would not', () => {
 		expect(canonicalize(NaN)).not.toBe(canonicalize(null));
 	});
@@ -85,6 +92,7 @@ describe('valueType', () => {
 		[DateTime.now(), 'DateTime'],
 		[new Date(), 'Date'],
 		[() => {}, 'function'],
+		[new String('a'), 'String'],
 	])('names %s as %s', (value, expected) => {
 		expect(valueType(value)).toBe(expected);
 	});
