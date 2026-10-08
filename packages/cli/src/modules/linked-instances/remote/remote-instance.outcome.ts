@@ -9,6 +9,9 @@ import { getLoadedSdk, type McpSdk } from './remote-instance.sdk';
 export type RemoteStep = 'connect' | 'list' | 'call';
 
 const MAX_TOOL_ERROR_LENGTH = 500;
+// Format characters and half surrogate pairs have no width. They go before the token is removed,
+// so that a token with such characters in it is found also where the cut would split it.
+const INVISIBLE_CHARACTERS = /[\p{Cf}\p{Cs}]+/gu;
 
 const textBlockSchema = z.object({ type: z.literal('text'), text: z.string() });
 
@@ -26,8 +29,9 @@ export function fromHttpStatus(status: number | undefined): RemoteInstanceError 
 
 /** Removes the token and cuts the text, so remote text is safe to show and log. */
 export function remoteText(text: string, token: string): string | undefined {
-	if (text.trim() === '') return undefined;
-	return truncate(text.split(token).join('[REDACTED]'), MAX_TOOL_ERROR_LENGTH);
+	const visible = text.replace(INVISIBLE_CHARACTERS, '');
+	if (visible.trim() === '') return undefined;
+	return truncate(visible.split(token).join('[REDACTED]'), MAX_TOOL_ERROR_LENGTH);
 }
 
 function fromMcpError(

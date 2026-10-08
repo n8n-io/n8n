@@ -120,7 +120,7 @@ export class TemplateRuntime {
 
 	/** Resolves a parameter value of a node, with each expression in it. */
 	evaluate(nodeName: string, value: unknown, run: TemplateRun = {}): unknown {
-		if (!isParameterValue(value)) throw new Error(`"${String(value)}" is not a parameter value`);
+		if (!isParameterValue(value)) throw new Error(`A ${typeof value} is not a parameter value`);
 		const context = this.contextOf(nodeName, run);
 		return plain(
 			this.workflow.expression.getParameterValue(
@@ -225,22 +225,27 @@ export class TemplateRuntime {
 		return runData;
 	}
 
-	private contextOf(nodeName: string, run: TemplateRun) {
+	private assertNodesExist(names: string[]): void {
+		const missing = names.find((name) => !this.workflow.getNode(name));
+		if (missing !== undefined) throw new Error(`The template has no node "${missing}"`);
+	}
+
+	/** The input item, and the node and run that sent it. */
+	private executeDataOf(nodeName: string, run: TemplateRun): IExecuteData {
 		const node = this.workflow.getNode(nodeName);
 		if (!node) throw new Error(`The template has no node "${nodeName}"`);
-		for (const name of [...Object.keys(run.nodes ?? {}), ...Object.keys(run.failed ?? {})]) {
-			if (!this.workflow.getNode(name)) throw new Error(`The template has no node "${name}"`);
-		}
-		const input: INodeExecutionData[] = [{ json: run.json ?? {} }];
 		const parent = mapConnectionsByDestination(this.template.connections)[nodeName]?.main?.[0]?.[0];
 		const previousNode = run.previousNode ?? parent?.node;
-		const executeData: IExecuteData = {
-			node,
-			data: { main: [input] },
-			source: previousNode
-				? { main: [{ previousNode, previousNodeRun: run.previousNodeRun ?? 0 }] }
-				: null,
-		};
+		const source = previousNode
+			? { main: [{ previousNode, previousNodeRun: run.previousNodeRun ?? 0 }] }
+			: null;
+		return { node, data: { main: [[{ json: run.json ?? {} }]] }, source };
+	}
+
+	private contextOf(nodeName: string, run: TemplateRun) {
+		this.assertNodesExist([nodeName, ...Object.keys(run.nodes ?? {}), ...Object.keys(run.failed ?? {})]);
+		const executeData = this.executeDataOf(nodeName, run);
+		const input: INodeExecutionData[] = executeData.data.main[0] ?? [];
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$execution: { id: run.executionId ?? '1', mode: 'production', resumeUrl: '', resumeFormUrl: '' },
 		};

@@ -74,6 +74,8 @@ import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
+import SharedThreadNotice from '../sharing/SharedThreadNotice.vue';
+import { provideThreadSharing } from '../sharing/useThreadSharing';
 
 const props = defineProps<{
 	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
@@ -142,6 +144,9 @@ const mirroredMessages = computed(() =>
 	agentsChatToThreadMessages(chatMessages.value, isChatStreaming.value),
 );
 const isAwaitingInput = computed(() => findTailOpenInteractive(chatMessages.value) !== undefined);
+
+// A teammate in a shared chat reads it and answers some cards. Only the owner sends.
+const sharing = provideThreadSharing(thread, () => chatMessages.value);
 
 // The first history load decides what is history and what is live, so nothing
 // is mirrored until it has run once.
@@ -618,6 +623,7 @@ onBeforeUnmount(() => {
 			:placeholder="composerPlaceholder"
 			mode="inline"
 			@message-accepted="onMessageAccepted"
+			@resume-failed="sharing.onResumeFailed"
 		>
 			<template v-if="slots.empty || workflowHandoffGreeting" #empty>
 				<div :class="$style.empty">
@@ -639,9 +645,16 @@ onBeforeUnmount(() => {
 			<template #above-input>
 				<slot name="above-input" />
 			</template>
+			<template v-if="sharing.view.value.role === 'teammate'" #composer>
+				<SharedThreadNotice :owner-name="sharing.view.value.ownerName" />
+			</template>
 			<!-- Same menu as the empty view: attachments, computer use, browser use and MCP tools -->
 			<template #footer-start>
-				<InstanceAiInputMenu :thread-id="thread.id" @attach-files="chatPanel?.openFilePicker()" />
+				<InstanceAiInputMenu
+					:thread-id="thread.id"
+					:project-id="projectId"
+					@attach-files="chatPanel?.openFilePicker()"
+				/>
 			</template>
 			<template v-if="composerContextChip || composerResources.length" #composer-attachments>
 				<InstanceAiResourceChip

@@ -25,7 +25,12 @@ export const linkedInstanceTransferProjectIdSchema = linkedInstanceEntityIdSchem
 );
 
 export const LINKED_INSTANCE_TRANSFER_CREDENTIAL_STATUSES = [
-	/** The linked instance has a credential with the same name and type, and the move uses it. */
+	/**
+	 * The linked instance has a credential with the same name and type, and the move uses it. The
+	 * status does not tell if that credential holds a value, for example the empty credential of an
+	 * earlier move. `credentialsNeedingSetup` in the result of the move tells that, and it decides
+	 * whether the move publishes the copy.
+	 */
 	'matched',
 	/** The move creates an empty credential that the user sets up in the linked instance. */
 	'needs-set-up',
@@ -75,7 +80,13 @@ export type LinkedInstanceTransferPreflight = {
 /** An empty credential that the user must set up before the copy can run. */
 export type LinkedInstanceCredentialNeedingSetup = { id: string; name: string; type: string };
 
-/** The result of a move to a linked instance. */
+/**
+ * The result of a move to a linked instance.
+ *
+ * Text from the linked instance is untrusted. It is on one line and holds no access token, but its
+ * users and admins wrote it: names, `missingNodeTypes`, the reasons in `warnings`, and the error
+ * messages of the route. Show it as plain text. Give it to a model only as fenced, untrusted data.
+ */
 export type LinkedInstancePushResult = {
 	remoteWorkflowId: string;
 	/** Opens the copy in the editor of the linked instance. */
@@ -92,10 +103,15 @@ export type LinkedInstancePushResult = {
 	/**
 	 * `true` when the move was asked to publish the copy and the new version did not go live: the
 	 * linked instance refused it, or the copy needs set-up first. The warnings say why. An earlier
-	 * version can stay live, so `published` can still be `true`.
+	 * version can stay live, so `published` can still be `true`. `false` when the import put the
+	 * new version live by itself, as for a re-move of a copy that is live there.
 	 */
 	publishFailed: boolean;
-	/** Credentials without a value. A copy that has them is not published. Ids are ids in the linked instance. */
+	/**
+	 * Credentials without a value. Ids are ids in the linked instance. The move does not publish a
+	 * copy that has them, but the import there keeps a live copy live with an empty credential that
+	 * the copy used before.
+	 */
 	credentialsNeedingSetup: LinkedInstanceCredentialNeedingSetup[];
 	/** Node types that the linked instance does not have, as "type@version". */
 	missingNodeTypes: string[];
@@ -104,11 +120,17 @@ export type LinkedInstancePushResult = {
 	 * asked to, when the workflow was not on, or when it stays on: the warnings then say why.
 	 */
 	localDeactivated: boolean;
-	/** What did not work, then what the linked instance reported. en-GB. */
+	/**
+	 * What did not work, then what the linked instance reported. en-GB. Untrusted: the texts can
+	 * repeat text of the linked instance.
+	 */
 	warnings: string[];
 };
 
-/** The result of bringing a workflow back from a linked instance. */
+/**
+ * The result of bringing a workflow back from a linked instance. The package came from the linked
+ * instance, so names and `warnings` can hold its untrusted text, as in a push result.
+ */
 export type LinkedInstancePullResult = {
 	/** The workflow in this instance. */
 	workflowId: string;

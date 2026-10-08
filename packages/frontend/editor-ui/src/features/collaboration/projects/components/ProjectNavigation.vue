@@ -65,10 +65,12 @@ const isChatLinkAvailable = computed(
 		hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 );
 const isInstanceAiNavVisible = useInstanceAiAvailable();
-// Simple mode keeps the chats on top and moves the other pages into the Workspace.
+// Simple mode keeps the chats on top and moves the other pages into the Workspace. A user who
+// cannot reach the Assistant has no chats, so the sidebar keeps the Power layout for that user.
 const { isSimple } = useExperienceMode();
+const isSimpleSidebar = computed(() => isSimple.value && isInstanceAiNavVisible.value);
 const workspaceOpen = ref(false);
-const showWorkspaceItems = computed(() => !isSimple.value || workspaceOpen.value);
+const showWorkspaceItems = computed(() => !isSimpleSidebar.value || workspaceOpen.value);
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
@@ -179,7 +181,7 @@ const pageItems = computed(() =>
 		{ item: chat.value, show: isChatLinkAvailable.value, testId: 'project-chat-menu-item' },
 	].filter((entry) => entry.show),
 );
-const topGroupItems = computed(() => (isSimple.value ? [] : pageItems.value));
+const topGroupItems = computed(() => (isSimpleSidebar.value ? [] : pageItems.value));
 // The Workspace rows below the pages, so that the Workspace knows when it holds the current page.
 const workspaceNestedItemIds = computed(() => [
 	...favoriteGroups.value.flatMap((group) => group.items.map((entry) => entry.menuItem.id)),
@@ -206,7 +208,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="[$style.projects, { [$style.inWorkspace]: isSimple && !props.collapsed }]">
+	<div :class="[$style.projects, { [$style.inWorkspace]: isSimpleSidebar && !props.collapsed }]">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
 			<N8nMenuItem
 				v-if="isInstanceAiNavVisible"
@@ -232,7 +234,7 @@ onBeforeUnmount(() => {
 			/>
 		</div>
 		<SimpleSidebarSections
-			v-if="isSimple"
+			v-if="isSimpleSidebar"
 			v-model:workspace-open="workspaceOpen"
 			:collapsed="props.collapsed"
 			:items="pageItems"
@@ -244,7 +246,7 @@ onBeforeUnmount(() => {
 				v-if="!props.collapsed"
 				v-model:collapsed="favoritesCollapsed"
 				:title="locale.baseText('favorites.menu.title')"
-				:in-workspace="isSimple"
+				:in-workspace="isSimpleSidebar"
 				chevron-size="xsmall"
 			/>
 			<div v-if="props.collapsed || !favoritesCollapsed" :class="$style.projectItems">
@@ -280,14 +282,14 @@ onBeforeUnmount(() => {
 				</template>
 			</div>
 		</template>
-		<AssistantChatsSection v-if="!isSimple" :collapsed="props.collapsed" />
-		<AssistantAutomationsSection v-if="!isSimple" :collapsed="props.collapsed" />
+		<AssistantChatsSection v-if="!isSimpleSidebar" :collapsed="props.collapsed" />
+		<AssistantAutomationsSection v-if="!isSimpleSidebar" :collapsed="props.collapsed" />
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
 			<ProjectNavigationSectionHeader
 				v-if="!props.collapsed && showWorkspaceItems"
 				v-model:collapsed="projectsCollapsed"
 				:title="locale.baseText('projects.menu.title')"
-				:in-workspace="isSimple"
+				:in-workspace="isSimpleSidebar"
 				chevron-size="small"
 			/>
 		</template>

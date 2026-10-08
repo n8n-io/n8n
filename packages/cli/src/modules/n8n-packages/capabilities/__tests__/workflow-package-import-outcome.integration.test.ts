@@ -158,7 +158,12 @@ describe('import_workflow_package and the live version of a published copy', () 
 
 		const output = imported(result);
 		const stored = await storedWorkflow(copy.id);
-		expect(output).toMatchObject({ workflowId: copy.id, created: false, published: true });
+		expect(output).toMatchObject({
+			workflowId: copy.id,
+			created: false,
+			published: true,
+			newVersionLive: true,
+		});
 		expect(stored.activeVersionId).toBe(stored.versionId);
 		expect(stored.activeVersionId).not.toBe(copy.activeVersionId);
 		expect(output.warnings).toEqual([
@@ -175,7 +180,7 @@ describe('import_workflow_package and the live version of a published copy', () 
 		const output = imported(await reimport(source));
 
 		const stored = await storedWorkflow(copy.id);
-		expect(output).toMatchObject({ created: false, published: true });
+		expect(output).toMatchObject({ created: false, published: true, newVersionLive: false });
 		expect(stored.activeVersionId).toBe(copy.versionId);
 		expect(stored.versionId).not.toBe(copy.versionId);
 		expect(output.warnings).toEqual([
@@ -193,7 +198,7 @@ describe('import_workflow_package and the live version of a published copy', () 
 
 		const output = imported(await reimport(source));
 
-		expect(output).toMatchObject({ created: false, published: true });
+		expect(output).toMatchObject({ created: false, published: true, newVersionLive: false });
 		expect((await storedWorkflow(copy.id)).activeVersionId).toBe(copy.versionId);
 		expect(output.warnings).toEqual([
 			'The new version is not live, because the import could not publish it: The webhook path is in use. An earlier version stays live.',
@@ -208,6 +213,7 @@ describe('import_workflow_package and the live version of a published copy', () 
 		const output = imported(await reimport(source));
 
 		expect(output.missingNodeTypes).toEqual(['n8n-nodes-acme.acmeCrm@2']);
+		expect(output.newVersionLive).toBe(false);
 		expect((await storedWorkflow(copy.id)).activeVersionId).toBe(copy.versionId);
 		expect(output.warnings).toEqual([
 			'The new version is not live, because this instance does not have all the node types that it uses. An earlier version stays live.',
@@ -220,7 +226,13 @@ describe('import_workflow_package and the live version of a published copy', () 
 
 		const output = imported(await reimport(source));
 
-		expect(output).toMatchObject({ created: false, published: true, warnings: [] });
+		// The content did not change, so the live version is the version of the package.
+		expect(output).toMatchObject({
+			created: false,
+			published: true,
+			newVersionLive: true,
+			warnings: [],
+		});
 		expect((await storedWorkflow(copy.id)).activeVersionId).toBe(copy.versionId);
 	});
 });

@@ -76,6 +76,7 @@ describe('finishImport', () => {
 			workflowName: 'Daily report',
 			created: true,
 			published: true,
+			newVersionLive: true,
 			credentialsNeedingSetup: [],
 			missingNodeTypes: [],
 			warnings: ['First.'],
@@ -100,6 +101,38 @@ describe('finishImport', () => {
 			'The workflow was published, so the import published the new version. The new version is live now.',
 		]);
 	});
+
+	it.each([
+		['the version that the import wrote', { versionId: 'v-2', activeVersionId: 'v-2' }, true, true],
+		['an earlier version', { versionId: 'v-2', activeVersionId: 'v-1' }, true, false],
+		['no version', { versionId: 'v-2', activeVersionId: null }, false, false],
+	])(
+		'tells which version is live when %s is live',
+		async (_, versions, published, newVersionLive) => {
+			finder.findWorkflowForUser.mockResolvedValue(storedCopy(versions));
+
+			const output = await finishImport(
+				input({ summary: summary({ created: false, activeVersionId: 'v-0' }) }),
+			);
+
+			expect(output).toMatchObject({ published, newVersionLive });
+		},
+	);
+
+	it.each([
+		[{ activeVersionId: 'v-2', publishing: { state: 'published' as const } }, true, true],
+		[{ activeVersionId: 'v-1', publishing: { state: 'unchanged' as const } }, true, false],
+		[{ activeVersionId: null, publishing: { state: 'failed' as const } }, false, false],
+	])(
+		'tells the live version from the summary %j when the copy cannot be read',
+		async (fields, published, newVersionLive) => {
+			finder.findWorkflowForUser.mockRejectedValue(new Error('Connection lost'));
+
+			const output = await finishImport(input({ summary: summary(fields) }));
+
+			expect(output).toMatchObject({ published, newVersionLive });
+		},
+	);
 
 	it('adds the warnings of the surface last, and turns its error into a warning', async () => {
 		const afterImport = vi
@@ -330,7 +363,7 @@ describe('finishImport and the data tables that a re-import keeps', () => {
 			source: 'import',
 			publishIfActive: true,
 		});
-		expect(output.published).toBe(true);
+		expect(output).toMatchObject({ published: true, newVersionLive: true });
 		expect(output.warnings).toEqual([
 			'The copy keeps the data tables that it used in place of 1 data table(s) of the package that this project does not have: Customers.',
 			'The workflow was published, so the import published the new version. The new version is live now.',
@@ -345,12 +378,13 @@ describe('finishImport and the data tables that a re-import keeps', () => {
 			storedCopy({ versionId: 'v-3', activeVersionId: 'v-1' }),
 		);
 
-		await finishImport(reimport({ summary: summary({ created: false }) }));
+		const output = await finishImport(reimport({ summary: summary({ created: false }) }));
 
 		expect(workflowService.update).toHaveBeenCalledWith(user, expect.anything(), 'wf-copy', {
 			source: 'import',
 			publishIfActive: false,
 		});
+		expect(output).toMatchObject({ published: true, newVersionLive: false });
 	});
 
 	it('does not publish a copy that is not published', async () => {

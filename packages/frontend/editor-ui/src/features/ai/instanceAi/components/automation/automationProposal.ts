@@ -92,10 +92,10 @@ export function triggerLineKey(trigger: Trigger): AutomationTriggerLine | undefi
  * the server knows, so the fallback is the zone id with spaces in place of underscores.
  */
 export function timezoneLabel(timezone: string, locale?: string): string {
+	const options: Intl.DateTimeFormatOptions = { timeZone: timezone, timeZoneName: 'longGeneric' };
 	try {
-		const name = new Intl.DateTimeFormat(locale, { timeZone: timezone, timeZoneName: 'longGeneric' })
-			.formatToParts(new Date())
-			.find((part) => part.type === 'timeZoneName')?.value;
+		const parts = new Intl.DateTimeFormat(locale, options).formatToParts(new Date());
+		const name = parts.find((part) => part.type === 'timeZoneName')?.value;
 		if (name) return name;
 	} catch {
 		// Intl rejects a zone or a locale that it does not know.

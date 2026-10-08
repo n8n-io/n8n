@@ -83,6 +83,26 @@ function errorWorkflowLink(
 	};
 }
 
+type LiveVersion = Pick<ImportedWorkflowPackage, 'published' | 'newVersionLive'>;
+
+/**
+ * Which version of the copy is live after the last write. When the copy cannot be read, the
+ * summary of the package service is the fallback.
+ */
+function liveVersion(stored: WorkflowEntity | null, summary: ImportSummary): LiveVersion {
+	if (stored === null) {
+		return {
+			published: summary.activeVersionId !== null,
+			newVersionLive: summary.publishing.state === 'published',
+		};
+	}
+	const { activeVersionId, versionId } = stored;
+	return {
+		published: activeVersionId !== null,
+		newVersionLive: activeVersionId !== null && activeVersionId === versionId,
+	};
+}
+
 async function surfaceWarnings({ afterImport, user, summary }: PostImportInput) {
 	if (afterImport === undefined) return [];
 	return await warnOnFailure(
@@ -98,26 +118,29 @@ async function surfaceWarnings({ afterImport, user, summary }: PostImportInput) 
  * them makes the import fail.
  */
 export async function finishImport(input: PostImportInput): Promise<ImportedWorkflowPackage> {
-	const { publishing, activeVersionId, ...result } = input.summary;
+	const { summary } = input;
 	const copy = await readCopy(input);
 	const tables = await keptDataTables(input, copy);
 	const linkWarnings = await settleErrorWorkflowLink(errorWorkflowLink(input, copy));
 	// The versions that the import left. A version that keeps the data tables is newer.
 	const publishingNotice = copy
 		? publishingWarning({
-				publishing,
+				publishing: summary.publishing,
 				copy,
 				previousActiveVersionId: input.previous?.activeVersionId,
 			})
 		: undefined;
 	const ruleWarnings = await surfaceWarnings(input);
-	const stored = tables.copy ?? copy;
 	return {
-		...result,
-		// The copy as stored after the last write. The summary is the fallback.
-		published: (stored ? stored.activeVersionId : activeVersionId) !== null,
+		workflowId: summary.workflowId,
+		workflowName: summary.workflowName,
+		created: summary.created,
+		// The copy as stored after the last write.
+		...liveVersion(tables.copy ?? copy, summary),
+		credentialsNeedingSetup: summary.credentialsNeedingSetup,
+		missingNodeTypes: summary.missingNodeTypes,
 		warnings: [
-			...result.warnings,
+			...summary.warnings,
 			...tables.warnings,
 			...linkWarnings,
 			...(publishingNotice === undefined ? [] : [publishingNotice]),

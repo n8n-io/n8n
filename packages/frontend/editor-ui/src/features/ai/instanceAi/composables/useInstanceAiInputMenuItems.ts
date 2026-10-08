@@ -40,6 +40,8 @@ export function useInstanceAiInputMenuItems(
 	attachFiles: () => void,
 	/** The thread whose applied preferences the menu reports. None before a thread exists. */
 	_threadId: MaybeRefOrGetter<string | undefined> = undefined,
+	/** The project of the chat, or of the new chat. Simple mode adds new work there. */
+	projectId: MaybeRefOrGetter<string | undefined> = undefined,
 ) {
 	const i18n = useI18n();
 	const router = useRouter();
@@ -443,5 +445,6 @@ export function useInstanceAiInputMenuItems(
 		return items;
 	});
 
-	return useSimpleInputMenu({ menuItems, disconnectedConnectionCount, refreshAppliedPreferences });
+	const menu = { menuItems, disconnectedConnectionCount, refreshAppliedPreferences };
+	return useSimpleInputMenu(menu, projectId);
 }

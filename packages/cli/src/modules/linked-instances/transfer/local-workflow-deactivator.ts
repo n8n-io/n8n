@@ -20,11 +20,15 @@ export type TurnOffOptions = {
 /** Turns off a workflow in this instance after it moved to a linked instance. */
 @Service()
 export class LocalWorkflowDeactivator {
+	private readonly logger: Logger;
+
 	constructor(
 		private readonly workflowService: WorkflowService,
 		private readonly collaborationService: CollaborationService,
-		private readonly logger: Logger,
-	) {}
+		logger: Logger,
+	) {
+		this.logger = logger.scoped('mcp');
+	}
 
 	/**
 	 * Turns off the workflow as the user, like the REST route: the editor tab of the request can

@@ -1,3 +1,4 @@
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import type { TemplateWorkflow } from './factory-pack-files';
@@ -8,15 +9,19 @@ import { TemplateRuntime, nodeTypesOf } from './factory-pack-runtime';
  * A small workflow in the shape of the factory: a step with an error output, a gate, a Switch,
  * two outcomes and a Code node behind both outcomes.
  */
-const node = (name: string, type: string, typeVersion: number, parameters = {}, extra = {}) => ({
-	id: randomUUID(),
-	name,
-	type: `n8n-nodes-base.${type}`,
-	typeVersion,
-	position: [0, 0] satisfies [number, number],
-	parameters,
-	...extra,
-});
+/** A node of the given `type@version`, for example `set@3.4`. */
+const node = (name: string, typeAndVersion: string, parameters = {}, extra = {}) => {
+	const [type, version] = typeAndVersion.split('@');
+	return {
+		id: randomUUID(),
+		name,
+		type: `n8n-nodes-base.${type}`,
+		typeVersion: Number(version),
+		position: [0, 0] satisfies [number, number],
+		parameters,
+		...extra,
+	};
+};
 
 const filter = (leftValue: string, operation: string, rightValue: unknown) => ({
 	options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 3 },
@@ -24,17 +29,18 @@ const filter = (leftValue: string, operation: string, rightValue: unknown) => ({
 	combinator: 'and',
 });
 
-const to = (...names: string[]) => names.map((name) => ({ node: name, type: 'main', index: 0 }));
+const to = (...names: string[]) =>
+	names.map((name) => ({ node: name, type: NodeConnectionTypes.Main, index: 0 }));
 
 const small: TemplateWorkflow = {
 	name: 'Small',
 	nodes: [
-		node('Start', 'manualTrigger', 1),
-		node('Step', 'set', 3.4, { assignments: { assignments: [] }, includeOtherFields: true }, {
+		node('Start', 'manualTrigger@1'),
+		node('Step', 'set@3.4', { assignments: { assignments: [] }, includeOtherFields: true }, {
 			onError: 'continueErrorOutput',
 		}),
-		node('Gate', 'if', 2.3, { conditions: filter('={{ $json.result }}', 'equals', 'ok') }),
-		node('Route', 'switch', 3.4, {
+		node('Gate', 'if@2.3', { conditions: filter('={{ $json.result }}', 'equals', 'ok') }),
+		node('Route', 'switch@3.4', {
 			mode: 'rules',
 			rules: {
 				values: [
@@ -44,9 +50,9 @@ const small: TemplateWorkflow = {
 			},
 			options: { fallbackOutput: 'extra' },
 		}),
-		node('Failure', 'set', 3.4, { assignments: { assignments: [] } }),
-		node('Done', 'set', 3.4, { assignments: { assignments: [] } }),
-		node('Record', 'code', 2, {
+		node('Failure', 'set@3.4', { assignments: { assignments: [] } }),
+		node('Done', 'set@3.4', { assignments: { assignments: [] } }),
+		node('Record', 'code@2', {
 			jsCode: "return [{ json: { last: $('Step').last()?.json ?? null, success: $('Step').last(0)?.json ?? null } }];",
 		}),
 	],

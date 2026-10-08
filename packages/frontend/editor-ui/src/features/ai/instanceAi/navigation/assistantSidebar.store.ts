@@ -24,6 +24,9 @@ export const useAssistantSidebarStore = defineStore('instanceAiSidebar', () => {
 	/** True when the first chat list request of the sidebar ended, with or without success. */
 	const chatListSettled = ref(false);
 
+	/** True when the first automations request ended, with or without success. */
+	const automationsSettled = ref(false);
+
 	// A sign-in or a sign-out does not reload the page. `sync` makes sure that no render and no
 	// late answer can show the state of the previous user.
 	watch(
@@ -33,9 +36,16 @@ export const useAssistantSidebarStore = defineStore('instanceAiSidebar', () => {
 			automationsRequest.value++;
 			expandedGroups.value = new Set();
 			chatListSettled.value = false;
+			automationsSettled.value = false;
 		},
 		{ flush: 'sync' },
 	);
 
-	return { automations, automationsRequest, expandedGroups, chatListSettled };
+	return {
+		automations,
+		automationsRequest,
+		expandedGroups,
+		chatListSettled,
+		automationsSettled,
+	};
 });

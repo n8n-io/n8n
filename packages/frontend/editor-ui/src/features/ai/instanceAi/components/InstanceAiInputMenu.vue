@@ -18,10 +18,15 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 
-const props = withDefaults(defineProps<{ disabled?: boolean; threadId?: string }>(), {
-	disabled: false,
-	threadId: undefined,
-});
+const props = withDefaults(
+	defineProps<{
+		disabled?: boolean;
+		threadId?: string;
+		/** The project of the chat, or of the new chat on the start screen. */
+		projectId?: string;
+	}>(),
+	{ disabled: false, threadId: undefined, projectId: undefined },
+);
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -29,6 +34,7 @@ const { menuItems, disconnectedConnectionCount, refreshAppliedPreferences } =
 	useInstanceAiInputMenuItems(
 		() => emit('attachFiles'),
 		() => props.threadId,
+		() => props.projectId,
 	);
 
 const tooltip = computed(() => {

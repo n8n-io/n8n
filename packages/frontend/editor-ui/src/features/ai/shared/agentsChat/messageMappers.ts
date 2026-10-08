@@ -205,6 +205,7 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			...(tc.canceled === true && { cancelled: true }),
 			toolName: ASSISTANT_CONFIRMATION_TOOL_NAME,
 			input: assistantInput,
+			call: { toolName: tc.tool, input: tc.input, suspendPayload: tc.suspendPayload },
 			...(resolved && tc.canceled !== true && { resolvedValue: tc.output }),
 		};
 	}

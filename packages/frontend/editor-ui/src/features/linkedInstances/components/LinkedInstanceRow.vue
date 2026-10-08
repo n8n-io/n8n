@@ -96,6 +96,7 @@ function onMenuSelect(id: string) {
 							: i18n.baseText('settings.linkedInstances.row.check')
 					"
 					:aria-describedby="nameId"
+					data-action="check"
 					data-test-id="linked-instance-check"
 					@click="emit('check')"
 				/>

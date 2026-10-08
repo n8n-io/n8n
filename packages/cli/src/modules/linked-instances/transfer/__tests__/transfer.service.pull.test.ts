@@ -29,6 +29,7 @@ const IMPORTED: ImportedWorkflowPackage = {
 	workflowName: 'Daily report',
 	created: true,
 	published: false,
+	newVersionLive: false,
 	credentialsNeedingSetup: [{ id: 'cred1', name: 'Stripe', type: 'httpHeaderAuth' }],
 	missingNodeTypes: [],
 	warnings: ['The import did not add 1 tag(s), because this instance does not have them: ops.'],
@@ -52,7 +53,9 @@ describe('TransferService.pull', () => {
 
 		const result = await service.pull(alice, linkId, { remoteWorkflowId: 'r1' });
 
-		expect(result).toEqual(IMPORTED);
+		// The result of a pull tells only whether a version is live here.
+		const { newVersionLive: _, ...pulled } = IMPORTED;
+		expect(result).toStrictEqual(pulled);
 		expect(remote.callsOf('export_workflow_package')).toEqual([{ workflowId: 'r1' }]);
 		expect(importWorkflowPackage).toHaveBeenCalledWith({
 			user: alice,

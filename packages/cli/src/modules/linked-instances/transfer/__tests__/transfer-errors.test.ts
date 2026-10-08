@@ -49,9 +49,18 @@ const REMOTE_TEXTS = {
 
 const toolError = (text: string) => new RemoteInstanceError('tool-error', text);
 
+/** The refusal of the remote import for a copy with this name, as assertUpdatableOverMcp builds it. */
+const updateRefusal = (name: string, reason: string) =>
+	`The package matches the workflow "${name}" (wf1) in the target project, so the import would update that workflow. ${reason} You can also import the package into another project.`;
+
+const NOT_IN_MCP_REASON =
+	'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list.';
+const ARCHIVED_REASON = "Workflow 'wf1' is archived and cannot be accessed.";
+
 describe('classifyRemoteRefusal', () => {
 	it.each([
 		[REMOTE_TEXTS.projectRefused, 'project-refused'],
+		[`${REMOTE_TEXTS.projectRefused} Choose another project.`, 'project-refused'],
 		[REMOTE_TEXTS.notInMcp, 'not-in-mcp'],
 		[REMOTE_TEXTS.archived, 'archived'],
 		[REMOTE_TEXTS.exportNotInMcp, 'not-in-mcp'],
@@ -61,9 +70,58 @@ describe('classifyRemoteRefusal', () => {
 			'The package holds an archived workflow. Restore the workflow, then export it again.',
 			undefined,
 		],
+		[
+			'Could not find project with the id "p1". Make sure you have the permission to create workflows in it.',
+			undefined,
+		],
+		['Your workflow is not available in MCP.', undefined],
 		['', undefined],
 	])('classifies %j as %s', (text, refusal) => {
 		expect(classifyRemoteRefusal(text)).toBe(refusal);
+	});
+
+	it.each([
+		['Invoices (permission to create workflows in it)', NOT_IN_MCP_REASON, 'not-in-mcp'],
+		[REMOTE_TEXTS.projectRefused, NOT_IN_MCP_REASON, 'not-in-mcp'],
+		['Old is archived and cannot be accessed', NOT_IN_MCP_REASON, 'not-in-mcp'],
+		[`x ${ARCHIVED_REASON}`, NOT_IN_MCP_REASON, 'not-in-mcp'],
+		[`so the import would update that workflow. ${NOT_IN_MCP_REASON}`, ARCHIVED_REASON, 'archived'],
+		['Invoices (permission to create workflows in it)', ARCHIVED_REASON, 'archived'],
+		['Invoices (permission to create workflows in it)', 'Another reason.', undefined],
+	])(
+		'classifies the refusal of a copy named %j by the reason of the tool',
+		(name, reason, refusal) => {
+			expect(classifyRemoteRefusal(updateRefusal(name, reason))).toBe(refusal);
+		},
+	);
+
+	it('classifies a refusal that the session cut at 500 characters', () => {
+		const full = updateRefusal('N'.repeat(128), `${NOT_IN_MCP_REASON} ${'More text. '.repeat(20)}`);
+		expect(full.length).toBeGreaterThan(500);
+
+		expect(classifyRemoteRefusal(`${full.slice(0, 497)}...`)).toBe('not-in-mcp');
+	});
+
+	it('never takes a refusal to update a copy for a refused project, whatever its name', () => {
+		fc.assert(
+			fc.property(
+				fc.oneof(
+					fc.string(),
+					fc.constantFrom(
+						REMOTE_TEXTS.projectRefused,
+						'permission to create workflows in it',
+						`so the import would update that workflow. ${REMOTE_TEXTS.projectRefused}`,
+					),
+				),
+				fc.constantFrom(
+					[NOT_IN_MCP_REASON, 'not-in-mcp'] as const,
+					[ARCHIVED_REASON, 'archived'] as const,
+				),
+				(name, [reason, refusal]) => {
+					expect(classifyRemoteRefusal(updateRefusal(name, reason))).toBe(refusal);
+				},
+			),
+		);
 	});
 });
 
@@ -71,6 +129,11 @@ describe('isProjectRefusal', () => {
 	it('is true only for a tool error with the project refusal text', () => {
 		expect(isProjectRefusal(toolError(REMOTE_TEXTS.projectRefused))).toBe(true);
 		expect(isProjectRefusal(toolError(REMOTE_TEXTS.notInMcp))).toBe(false);
+		expect(
+			isProjectRefusal(
+				toolError(updateRefusal('Invoices (permission to create workflows in it)', NOT_IN_MCP_REASON)),
+			),
+		).toBe(false);
 		expect(
 			isProjectRefusal(new RemoteInstanceError('unreachable', REMOTE_TEXTS.projectRefused)),
 		).toBe(false);
@@ -284,9 +347,12 @@ describe('TRANSFER_WARNINGS', () => {
 		);
 	});
 
-	it('says how many credentials need a value before the copy can go live', () => {
+	it('says how many credentials need a value before the copy can go live, in the singular and the plural', () => {
+		expect(TRANSFER_WARNINGS.credentialsNeedSetup('Cloud', 1)).toBe(
+			'The workflow is in Cloud, but 1 credential that it uses there has no value, so the move did not publish it. Set it up, then publish the workflow in Cloud.',
+		);
 		expect(TRANSFER_WARNINGS.credentialsNeedSetup('Cloud', 2)).toBe(
-			'The workflow is in Cloud, but 2 credential(s) there have no value, so it is not published. Set them up, then publish it in Cloud.',
+			'The workflow is in Cloud, but 2 credentials that it uses there have no value, so the move did not publish it. Set them up, then publish the workflow in Cloud.',
 		);
 	});
 });

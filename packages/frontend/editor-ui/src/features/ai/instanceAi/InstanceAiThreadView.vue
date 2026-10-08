@@ -40,6 +40,8 @@ import AutomationOfferPanel from './components/automation/AutomationOfferPanel.v
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiAgentsConversation from './components/InstanceAiAgentsConversation.vue';
+import ShareThreadButton from './sharing/ShareThreadButton.vue';
+import SharedThreadChip from './sharing/SharedThreadChip.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
@@ -749,7 +751,9 @@ function handleNewThreadClick() {
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :title="currentThreadTitle">
+					<template #status><SharedThreadChip /></template>
 					<template #actions>
+						<ShareThreadButton />
 						<N8nTooltip
 							:content="i18n.baseText('instanceAi.thread.new')"
 							placement="bottom"

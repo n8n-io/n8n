@@ -244,9 +244,18 @@ describe('software factory gates', () => {
 		});
 	});
 
+	it('records an opened pull request only with its link', () => {
+		const opened = (json: IDataObject) => configured.passesIf('PR opened?', { json });
+
+		expect(opened({ html_url: 'https://github.com/acme/factory/pull/7', draft: true })).toBe(true);
+		expect(opened({ html_url: '' })).toBe(false);
+		expect(opened({})).toBe(false);
+	});
+
 	describe('a step that fails as a whole', () => {
 		// n8n then sends the input item of the step to its success output. The gate after the step
-		// gets that item and must stop.
+		// gets that item and must stop. Implement and Minimise have no gate of their own: the
+		// deterministic check after them decides on the code, not on the answer of the agent.
 		const passes = (gate: string, run: TemplateRun) =>
 			gate === 'Check result' || gate === 'Critic verdict'
 				? configured.routeOf(gate, run) === 0
@@ -262,6 +271,11 @@ describe('software factory gates', () => {
 			['Fresh critic', 'Critic verdict', { json: { diff: 'diff --git a/a.ts b/a.ts' }, nodes: { 'Critic input': { diff: 'diff' } } }],
 			['Re-verify', 'Ready for PR?', { json: { structuredOutput: { summary: 'Smaller.', removed: [] } }, nodes: { ...earlierNodes, 'Get diff': checkResult() } }],
 			['Push branch', 'Branch pushed?', { json: checkResult(), nodes: earlierNodes }],
+			[
+				'Open draft PR',
+				'PR opened?',
+				{ json: { structuredContent: { pushed: true, branch: ticketOutput.branch, commit: sha } } },
+			],
 		])('stops the run when %s fails as a whole', (_step, gate, run) => {
 			expect(passes(gate, run)).toBe(false);
 		});

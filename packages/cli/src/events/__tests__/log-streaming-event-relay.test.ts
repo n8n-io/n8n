@@ -304,7 +304,8 @@ describe('LogStreamingEventRelay', () => {
 					remoteWorkflowId: 'remote-gouda',
 					remoteProjectId: null,
 					created: true,
-					published: false,
+					published: true,
+					publishFailed: true,
 					localDeactivated: false,
 				};
 
@@ -319,7 +320,8 @@ describe('LogStreamingEventRelay', () => {
 						remoteWorkflowId: 'remote-gouda',
 						remoteProjectId: null,
 						created: true,
-						published: false,
+						published: true,
+						publishFailed: true,
 						localDeactivated: false,
 					},
 				});

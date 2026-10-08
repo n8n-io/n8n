@@ -94,6 +94,9 @@ export async function publishCopy(
 	session: RemoteSession,
 	imported: RemoteImportResult,
 ): Promise<PublishOutcome> {
+	// A re-import of a live copy can put the new version live by itself. A publish then adds
+	// nothing, and the linked instance can refuse it, for example while someone edits the copy.
+	if (imported.newVersionLive === true) return { published: true, failed: false, warnings: [] };
 	const { name } = session.link;
 	const blockers = publishBlockers(name, imported);
 	if (blockers.length > 0) {

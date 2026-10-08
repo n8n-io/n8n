@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { N8nMenuItem } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
+import { useInstanceAiAvailable } from '../composables/useInstanceAiAvailability';
 import AssistantAutomationsSection from './AssistantAutomationsSection.vue';
 import AssistantChatsSection from './AssistantChatsSection.vue';
 import SimpleWorkspaceDisclosure from './SimpleWorkspaceDisclosure.vue';
+import { useAssistantListsSettled } from './useAssistantListsSettled';
 
 /** A page that Simple mode moves from the top group into the Workspace. */
 type WorkspacePage = { item: IMenuItem; testId: string };
@@ -27,6 +29,22 @@ const hasWorkspaceContent = computed(
 	() => props.items.length > 0 || props.nestedItemIds.length > 0,
 );
 
+// Chats and Automations load above the Workspace in the expanded sidebar. The Workspace waits
+// for them, so that it does not move down below the user's pointer when they appear.
+const isAssistantAvailable = useInstanceAiAvailable();
+const listsSettled = useAssistantListsSettled(() => !props.collapsed && isAssistantAvailable.value);
+const showWorkspace = computed(() => hasWorkspaceContent.value && listsSettled.value);
+
+// The parent shows Favorites and Projects while the Workspace is open, so a hidden Workspace is
+// closed. When it shows again, the disclosure gives the open state again.
+watch(
+	showWorkspace,
+	(shown) => {
+		if (!shown) workspaceOpen.value = false;
+	},
+	{ immediate: true },
+);
+
 const activeWorkspaceItemId = computed(() => {
 	const activeId = props.activeTabId;
 	if (!activeId) return undefined;
@@ -42,13 +60,13 @@ const activeWorkspaceItemId = computed(() => {
 		<AssistantChatsSection :collapsed="props.collapsed" />
 		<AssistantAutomationsSection :collapsed="props.collapsed" />
 		<SimpleWorkspaceDisclosure
-			v-if="hasWorkspaceContent"
+			v-if="showWorkspace"
 			v-model:open="workspaceOpen"
 			:collapsed="props.collapsed"
 			:active-item-id="activeWorkspaceItemId"
 		/>
 		<div
-			v-if="workspaceOpen && props.items.length > 0"
+			v-if="showWorkspace && workspaceOpen && props.items.length > 0"
 			:class="[$style.items, { [$style.nested]: !props.collapsed }]"
 		>
 			<N8nMenuItem

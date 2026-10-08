@@ -21,13 +21,18 @@ export type ImportedWorkflowPackage = {
 	created: boolean;
 	/** True when a version of the workflow is live after the import. */
 	published: boolean;
+	/**
+	 * True when the live version is the version that the import wrote. False when no version is
+	 * live, or when an earlier version stays live.
+	 */
+	newVersionLive: boolean;
 	credentialsNeedingSetup: CredentialNeedingSetup[];
 	missingNodeTypes: string[];
 	warnings: string[];
 };
 
 /** What the package service reports for the workflow, before the steps after the import. */
-export type ImportSummary = Omit<ImportedWorkflowPackage, 'published'> & {
+export type ImportSummary = Omit<ImportedWorkflowPackage, 'published' | 'newVersionLive'> & {
 	publishing: WorkflowPublishingOutcome;
 	/** The live version after the import, or null when the workflow is not published. */
 	activeVersionId: string | null;

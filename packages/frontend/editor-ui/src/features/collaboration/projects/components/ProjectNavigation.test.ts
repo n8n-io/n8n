@@ -18,8 +18,16 @@ import { stubLocalStorage } from '@/features/ai/instanceAi/navigation/__tests__/
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import type { ExperienceMode } from '@n8n/api-types';
+import type { ExperienceMode, InstanceAiProvenanceListItem } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import userEvent from '@testing-library/user-event';
+
+const { fetchMyAutomations } = vi.hoisted(() => ({ fetchMyAutomations: vi.fn() }));
+
+vi.mock('@/features/ai/instanceAi/provenance/provenance.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	fetchMyAutomations,
+}));
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -416,6 +424,9 @@ describe('ProjectsNavigation', () => {
 			stubLocalStorage(storage);
 			// The chat list listens for live updates while experience modes are on.
 			mockedStore(usePushConnectionStore).addEventListener.mockReturnValue(() => {});
+			// The Automations list loads for the signed-in user.
+			usersStore.currentUserId = '1';
+			fetchMyAutomations.mockResolvedValue([]);
 		});
 
 		/** Turns on experience modes with `mode` as the instance default. */
@@ -501,11 +512,11 @@ describe('ProjectsNavigation', () => {
 			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
 		});
 
-		it('keeps only the Assistant and Overview on top in Simple mode, then Chats, then a collapsed Workspace', () => {
+		it('keeps only the Assistant and Overview on top in Simple mode, then Chats, then a collapsed Workspace', async () => {
 			fillSidebar();
 			useMode('simple');
 
-			const { getByTestId, getByRole, queryByTestId, queryByText } = renderComponent({
+			const { getByTestId, findByRole, queryByTestId, queryByText } = renderComponent({
 				props: { collapsed: false },
 			});
 
@@ -513,7 +524,7 @@ describe('ProjectsNavigation', () => {
 			expect(getByTestId('project-home-menu-item')).toBeInTheDocument();
 			for (const testId of HIDDEN_IN_SIMPLE) expect(queryByTestId(testId)).not.toBeInTheDocument();
 
-			const workspace = getByRole('button', { name: 'Workspace' });
+			const workspace = await findByRole('button', { name: 'Workspace' });
 			expect(workspace).toHaveAttribute('aria-expanded', 'false');
 			expect(precedes(getByTestId('instance-ai-sidebar-chats'), workspace)).toBe(true);
 			expect(queryByText('Favorites')).not.toBeInTheDocument();
@@ -522,14 +533,70 @@ describe('ProjectsNavigation', () => {
 			expect(queryByTestId('project-menu-item')).not.toBeInTheDocument();
 		});
 
+		it('shows the Workspace only after Chats and Automations, so that it does not move down while they load', async () => {
+			fillSidebar();
+			useMode('simple');
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+			const chats = instanceAiStore.threads;
+			instanceAiStore.threads = [];
+			const threadsLoaded = createDeferredPromise<void>();
+			instanceAiStore.loadThreads.mockImplementation(async () => {
+				await threadsLoaded.promise;
+				instanceAiStore.threads = chats;
+			});
+			const automation: InstanceAiProvenanceListItem = {
+				workflowId: 'wf-1',
+				name: 'Weekly report',
+				active: true,
+				threadId: 'thread-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				canOpenThread: true,
+			};
+			fetchMyAutomations.mockResolvedValue([automation]);
+
+			const { queryByRole, findByRole, getByTestId, queryByTestId } = renderComponent({
+				props: { collapsed: false },
+			});
+			await waitFor(() => expect(fetchMyAutomations).toHaveBeenCalled());
+			await nextTick();
+
+			expect(queryByTestId('instance-ai-sidebar-chats')).not.toBeInTheDocument();
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+
+			threadsLoaded.resolve();
+			const workspace = await findByRole('button', { name: 'Workspace' });
+
+			const chatsSection = getByTestId('instance-ai-sidebar-chats');
+			const automationsSection = getByTestId('assistant-automations');
+			expect(precedes(chatsSection, automationsSection)).toBe(true);
+			expect(precedes(automationsSection, workspace)).toBe(true);
+		});
+
+		it('keeps the Power layout in Simple mode for a user who cannot reach the Assistant', () => {
+			fillSidebar();
+			// A member before the Assistant setup is complete.
+			configureInstanceAi(false);
+			useMode('simple');
+
+			const { getByTestId, queryByTestId, queryByRole, getByText } = renderComponent({
+				props: { collapsed: false },
+			});
+
+			expect(queryByTestId('project-instance-ai-menu-item')).not.toBeInTheDocument();
+			for (const testId of HIDDEN_IN_SIMPLE) expect(getByTestId(testId)).toBeInTheDocument();
+			expect(getByText('Favorites')).toBeVisible();
+			expect(getByText('Projects')).toBeVisible();
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+		});
+
 		it('opens Favorites and Projects below the Workspace, and remembers it', async () => {
 			fillSidebar();
 			useMode('simple');
 
-			const { getByRole, getByText, getAllByTestId } = renderComponent({
+			const { findByRole, getByText, getAllByTestId } = renderComponent({
 				props: { collapsed: false },
 			});
-			const workspace = getByRole('button', { name: 'Workspace' });
+			const workspace = await findByRole('button', { name: 'Workspace' });
 
 			await userEvent.click(workspace);
 
@@ -547,10 +614,10 @@ describe('ProjectsNavigation', () => {
 			fillSidebar();
 			useMode('simple');
 
-			const { getByRole, getByTestId, getByText, queryByTestId } = renderComponent({
+			const { findByRole, getByTestId, getByText, queryByTestId } = renderComponent({
 				props: { collapsed: false },
 			});
-			const workspace = getByRole('button', { name: 'Workspace' });
+			const workspace = await findByRole('button', { name: 'Workspace' });
 
 			await userEvent.click(workspace);
 
@@ -647,10 +714,12 @@ describe('ProjectsNavigation', () => {
 			useMode('simple');
 			projectsStore.projectNavActiveId = 'home';
 
-			const { getByRole, queryByTestId } = renderComponent({ props: { collapsed: false } });
-			await nextTick();
+			const { findByRole, queryByTestId } = renderComponent({ props: { collapsed: false } });
 
-			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'false');
+			expect(await findByRole('button', { name: 'Workspace' })).toHaveAttribute(
+				'aria-expanded',
+				'false',
+			);
 			expect(queryByTestId('project-shared-menu-item')).not.toBeInTheDocument();
 		});
 
@@ -713,10 +782,10 @@ describe('ProjectsNavigation', () => {
 			settingsStore.isFoldersFeatureEnabled = true;
 			useMode('simple');
 
-			const { getByRole, getByTestId, getAllByTestId, queryByText } = renderComponent({
+			const { findByRole, getByTestId, getAllByTestId, queryByText } = renderComponent({
 				props: { collapsed: false },
 			});
-			await userEvent.click(getByRole('button', { name: 'Workspace' }));
+			await userEvent.click(await findByRole('button', { name: 'Workspace' }));
 
 			expect(getByTestId('project-personal-menu-item')).toBeInTheDocument();
 			expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);

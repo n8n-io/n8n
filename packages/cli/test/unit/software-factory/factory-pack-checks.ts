@@ -161,7 +161,8 @@ export function outputRunIndexLimit(node: INode, outputIndex: number): number | 
 	if (node.type === 'n8n-nodes-base.if') {
 		return outputIndex === 0 ? runIndexLimit(node.parameters.conditions) : undefined;
 	}
-	const { mode = 'rules', rules, options } = node.parameters;
+	const { mode = 'rules', options } = node.parameters;
+	const rules: unknown = node.parameters.rules;
 	if (node.type !== 'n8n-nodes-base.switch' || mode !== 'rules' || !isRecord(rules)) {
 		return undefined;
 	}

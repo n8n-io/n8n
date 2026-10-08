@@ -30,6 +30,7 @@ import {
 	exportTool,
 	httpNode,
 	importTool,
+	publish,
 	workflowCountIn,
 } from '@/modules/n8n-packages/capabilities/__tests__/workflow-package-test-helpers';
 
@@ -374,8 +375,42 @@ describe('POST /linked-instances/:id/transfer', () => {
 		expect(stored.activeVersionId).not.toBeNull();
 	});
 
+	it('turns off the workflow here when a repeated move puts the new version live there by itself', async () => {
+		const workflow = await createActiveWorkflow({ name: 'Nightly sync' }, alice);
+		const first = await post(aliceAgent, '/transfer', { workflowId: workflow.id });
+		const { remoteWorkflowId } = first.body.data;
+		const copy = await Container.get(WorkflowRepository).findOneByOrFail({ id: remoteWorkflowId });
+		await publish(copy.id, copy.versionId);
+		// Someone has the copy open there, so the publish tool would refuse.
+		client.callTool.mockImplementation(async (name, args) =>
+			name === 'publish_workflow'
+				? { success: false, error: 'Cannot modify workflow while it is being edited.' }
+				: await callRemoteTool(name, args),
+		);
+
+		const second = await post(aliceAgent, '/transfer', {
+			workflowId: workflow.id,
+			publish: true,
+			deactivateLocal: true,
+		});
+
+		expect(second.status).toBe(200);
+		expect(second.body.data).toMatchObject({
+			remoteWorkflowId,
+			created: false,
+			published: true,
+			publishFailed: false,
+			localDeactivated: true,
+		});
+		expect(toolCalls('publish_workflow')).toEqual([]);
+		const repository = Container.get(WorkflowRepository);
+		const live = await repository.findOneByOrFail({ id: remoteWorkflowId });
+		expect(live.activeVersionId).toBe(live.versionId);
+		expect((await repository.findOneByOrFail({ id: workflow.id })).activeVersionId).toBeNull();
+	});
+
 	it('answers 403 and moves nothing when the user cannot turn off the workflow here', async () => {
-		const workflow = await createWorkflow({ name: 'Sales report', nodes: [] }, salesProject);
+		const workflow = await createActiveWorkflow({ name: 'Sales report' }, salesProject);
 
 		const response = await post(aliceAgent, '/transfer', {
 			workflowId: workflow.id,
@@ -394,6 +429,19 @@ describe('POST /linked-instances/:id/transfer', () => {
 		const response = await post(aliceAgent, '/transfer', { workflowId: workflow.id });
 
 		expect(response.status).toBe(200);
+		expect(await workflowCountIn(cloudProject)).toBe(1);
+	});
+
+	it('lets a project viewer ask to turn off a workflow that is not on here, because nothing turns off', async () => {
+		const workflow = await createWorkflow({ name: 'Sales report', nodes: [] }, salesProject);
+
+		const response = await post(aliceAgent, '/transfer', {
+			workflowId: workflow.id,
+			deactivateLocal: true,
+		});
+
+		expect(response.status).toBe(200);
+		expect(response.body.data).toMatchObject({ localDeactivated: false, warnings: [] });
 		expect(await workflowCountIn(cloudProject)).toBe(1);
 	});
 

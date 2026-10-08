@@ -192,6 +192,24 @@ describe('SettingsLinkedInstancesView', () => {
 			expect(announcement()).toHaveAttribute('aria-live', 'polite');
 		});
 
+		it('announces the same result again on a second check', async () => {
+			api.verifyLinkedInstance.mockResolvedValue(acme);
+			await renderList();
+			const button = within(rowOf('Acme Cloud')).getByRole('button', { name: 'Check connection' });
+			await userEvent.click(button);
+			await waitFor(() => expect(announcement()).toHaveTextContent('Acme Cloud: Online'));
+			const texts: string[] = [];
+			const observer = new MutationObserver(() => texts.push(announcement().textContent ?? ''));
+			observer.observe(announcement(), { childList: true, characterData: true, subtree: true });
+
+			await userEvent.click(button);
+
+			await waitFor(() => expect(texts.at(-1)).toBe('Acme Cloud: Online'));
+			observer.disconnect();
+			// The region was emptied first, so screen readers read the message again.
+			expect(texts).toContain('');
+		});
+
 		it('shows "Checking…" and ignores more clicks until the check ends', async () => {
 			const request = deferred<LinkedInstanceSummary>();
 			api.verifyLinkedInstance.mockReturnValue(request.promise);

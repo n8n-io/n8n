@@ -133,6 +133,22 @@ describe('remoteText', () => {
 
 		expect(result).toBe(`${'x'.repeat(500)}...`);
 	});
+
+	it.each(['\u200B', '\u202E', '\uFEFF', '\u00AD', '\uD800'])(
+		'removes a token that the text splits with %j, also where the cut is',
+		(mark) => {
+			const split = `${token.slice(0, 30)}${mark}${token.slice(30)}`;
+
+			expect(remoteText(`Bad ${split}.`, token)).toBe('Bad [REDACTED].');
+			const cut = remoteText(`${'x'.repeat(480)}${split}`, token);
+			expect(cut).toBe(`${'x'.repeat(480)}[REDACTED]`);
+			expect(remoteText(`${'x'.repeat(495)}${split}`, token)).toBe(`${'x'.repeat(495)}[REDA...`);
+		},
+	);
+
+	it('returns undefined for text with characters without width only', () => {
+		expect(remoteText('\u200B \u202E', token)).toBeUndefined();
+	});
 });
 
 describe('readToolResult', () => {

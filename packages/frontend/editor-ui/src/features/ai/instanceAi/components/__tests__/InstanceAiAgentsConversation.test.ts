@@ -4,10 +4,16 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { AgentResumeFailure } from '@/features/agents/utils/chat-rejection';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import InstanceAiAgentsConversation from '../InstanceAiAgentsConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import { fetchThread } from '../../instanceAi.memory.api';
+import {
+	OWNER,
+	TEAMMATE,
+	setUpSharing,
+} from '../../sharing/__tests__/sharingFixtures';
 import {
 	stashPendingFirstMessage,
 	stashPendingFirstMessageFiles,
@@ -26,7 +32,12 @@ const chatState = vi.hoisted(() => ({
 	setDraft: undefined as unknown as ReturnType<typeof vi.fn>,
 	openFilePicker: undefined as unknown as ReturnType<typeof vi.fn>,
 	focusInput: undefined as unknown as ReturnType<typeof vi.fn>,
+	emitResumeFailed: undefined as ((failure: AgentResumeFailure) => void) | undefined,
 }));
+
+const toast = vi.hoisted(() => ({ showMessage: vi.fn(), showError: vi.fn() }));
+
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => toast }));
 
 vi.mock('../InstanceAiInputMenu.vue', async () => {
 	const { defineComponent: define, h: render } = await import('vue');
@@ -57,10 +68,11 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
 				attachmentAccept: { type: String, required: false },
 				showAttachButton: { type: Boolean, default: true },
 			},
-			emits: ['message-accepted'],
+			emits: ['message-accepted', 'resume-failed'],
 			setup(props, { expose, emit, slots }) {
 				chatState.hostContext = props.hostContext as typeof chatState.hostContext;
 				chatState.emitAccepted = (payload) => emit('message-accepted', payload);
+				chatState.emitResumeFailed = (failure) => emit('resume-failed', failure);
 				expose({
 					messages: chatState.messages,
 					isStreaming: chatState.isStreaming,
@@ -83,8 +95,10 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
 							props.projectId,
 							slots['above-input']?.(),
 							slots['inline-offers']?.(),
-							slots['composer-attachments']?.(),
-							slots['footer-start']?.(),
+							// Like the real panel: the composer slot replaces the composer.
+							...(slots.composer
+								? [slots.composer()]
+								: [slots['composer-attachments']?.(), slots['footer-start']?.()]),
 						],
 					);
 			},
@@ -340,5 +354,120 @@ describe('InstanceAiAgentsConversation', () => {
 		await flushPromises();
 
 		expect(onMissing).toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiAgentsConversation in a shared chat', () => {
+	const sharedInfo = {
+		thread: {
+			...threadInfo('Weekly digest').thread,
+			resourceId: OWNER.id,
+			sharedWith: { projectId: 'project-1', projectName: 'Marketing' },
+			owner: OWNER,
+		},
+	};
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		localStorage.clear();
+		chatState.messages = ref<ChatMessage[]>([]);
+		chatState.isStreaming = ref(false);
+		chatState.isLoadingHistory = ref(true);
+		chatState.sendMessageFromOutside = vi.fn().mockResolvedValue(true);
+		chatState.focusInput = vi.fn();
+		vi.mocked(fetchThread).mockResolvedValue(sharedInfo);
+	});
+
+	afterEach(() => {
+		useInstanceAiStore().disposeRuntime('thread-1');
+		vi.clearAllMocks();
+	});
+
+	async function renderAs(viewerId: string) {
+		setUpSharing({ shared: true, viewerId });
+		const view = renderComponent();
+		await view.findByTestId('chat-panel');
+		await flushPromises();
+		return view;
+	}
+
+	it('replaces the composer of a teammate with a notice that names the owner', async () => {
+		const { getByTestId, queryByTestId } = await renderAs(TEAMMATE.id);
+
+		expect(getByTestId('instance-ai-shared-thread-notice')).toHaveTextContent(
+			'Only Alice Owner can send messages here. You can still answer requests.',
+		);
+		expect(queryByTestId('input-menu-stub')).not.toBeInTheDocument();
+	});
+
+	it('keeps the composer for the owner of a shared chat', async () => {
+		const { getByTestId, queryByTestId } = await renderAs(OWNER.id);
+
+		expect(getByTestId('input-menu-stub')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-shared-thread-notice')).not.toBeInTheDocument();
+	});
+
+	it('says who answered first when the server refuses an answer with a 409', async () => {
+		await renderAs(TEAMMATE.id);
+
+		chatState.emitResumeFailed?.({ toolCallId: 'tc-1', status: 409, answeredBy: 'Alice Owner' });
+
+		expect(toast.showMessage).toHaveBeenCalledWith({
+			type: 'info',
+			title: 'Already answered by Alice Owner.',
+		});
+	});
+
+	it('reads who answered first from the history after a lost race', async () => {
+		await renderAs(TEAMMATE.id);
+		chatState.messages.value = [
+			{
+				id: 'a-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: 'executions', toolCallId: 'tc-1', state: 'done', approvedBy: OWNER },
+				],
+			},
+		];
+
+		chatState.emitResumeFailed?.({ toolCallId: 'tc-1' });
+
+		expect(toast.showMessage).toHaveBeenCalledWith({
+			type: 'info',
+			title: 'Already answered by Alice Owner.',
+		});
+	});
+
+	it('shows the reason when the server refuses the answer', async () => {
+		await renderAs(TEAMMATE.id);
+
+		chatState.emitResumeFailed?.({
+			toolCallId: 'tc-1',
+			status: 403,
+			message: 'Only editors in Marketing can approve this.',
+		});
+
+		expect(toast.showMessage).toHaveBeenCalledWith({
+			type: 'error',
+			title: "Couldn't send your answer",
+			message: 'Only editors in Marketing can approve this.',
+		});
+	});
+
+	it('adds no toast to a stream error when nobody else answered', async () => {
+		await renderAs(OWNER.id);
+		chatState.messages.value = [
+			{
+				id: 'a-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'executions', toolCallId: 'tc-1', state: 'done', approvedBy: OWNER }],
+			},
+		];
+
+		chatState.emitResumeFailed?.({ toolCallId: 'tc-1' });
+
+		expect(toast.showMessage).not.toHaveBeenCalled();
 	});
 });

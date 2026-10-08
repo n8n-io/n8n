@@ -54,6 +54,7 @@ import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import { readChatRejection, type AgentResumeFailure, type ChatRejection } from '../utils/chat-rejection';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
 export interface FatalAgentError {
@@ -81,6 +82,8 @@ export interface UseAgentChatStreamParams {
 	onSessionCreated?: (sessionId: string) => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
+	/** Called after a card answer failed and the history was read again. */
+	onResumeFailed?: (failure: AgentResumeFailure) => void;
 }
 
 type ResumePayload =
@@ -1378,7 +1381,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		body: Record<string, unknown>,
 		onAccepted?: () => void,
 		userMessage?: ChatMessage,
-	): Promise<{ outcome: StreamOutcome }> {
+	): Promise<{ outcome: StreamOutcome; rejection?: ChatRejection }> {
 		const controller = new AbortController();
 		const session: StreamSession = {
 			controller,
@@ -1417,11 +1420,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
 			if (!response.ok || !response.body) {
+				const rejection = await readChatRejection(response);
+				if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
 				handleEvent(
-					{ type: 'error', message: response.statusText || 'Failed to reach agent' },
+					{
+						type: 'error',
+						message: rejection.message ?? (response.statusText || 'Failed to reach agent'),
+					},
 					session,
 				);
-				return { outcome: 'failed' };
+				return { outcome: 'failed', rejection };
 			}
 			await consumeStream(response, session, controller.signal);
 			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
@@ -1605,7 +1613,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
-		const { outcome } = await postAndConsume(
+		const { outcome, rejection } = await postAndConsume(
 			url,
 			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
 			onAccepted,
@@ -1638,6 +1646,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			(outcome === 'busy' || (outcome === 'failed' && !reconciled && !activeExecutionId.value))
 		) {
 			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
+		}
+		if (outcome === 'failed' && !isCancellation && !disposed) {
+			params.onResumeFailed?.({ toolCallId: payload.toolCallId, ...rejection });
 		}
 		return outcome === 'busy' ? 'busy' : 'sent';
 	}

@@ -59,6 +59,7 @@ describe('importOnRemote', () => {
 				workflowName: 'Daily report',
 				created: false,
 				published: true,
+				newVersionLive: true,
 				credentialsNeedingSetup: [{ id: 'c1', name: 'Stripe', type: 'httpHeaderAuth', extra: 1 }],
 				missingNodeTypes: ['n8n-nodes-acme.crm@2'],
 				warnings: ['The import did not add 1 tag(s).'],
@@ -71,6 +72,7 @@ describe('importOnRemote', () => {
 				workflowId: 'remote1',
 				created: false,
 				published: true,
+				newVersionLive: true,
 				credentialsNeedingSetup: [{ id: 'c1', name: 'Stripe', type: 'httpHeaderAuth' }],
 				missingNodeTypes: ['n8n-nodes-acme.crm@2'],
 				warnings: ['The import did not add 1 tag(s).'],
@@ -82,18 +84,44 @@ describe('importOnRemote', () => {
 		await inSession(async (session, { remote }) => {
 			remote.handlers.import_workflow_package = () => ({ workflowId: 'remote1', created: true });
 
-			expect(
-				await importOnRemote(session, { packageBase64: 'cGtn', sourceWorkflowId: 'wf1' }),
-			).toEqual({
+			const result = await importOnRemote(session, {
+				packageBase64: 'cGtn',
+				sourceWorkflowId: 'wf1',
+			});
+
+			expect(result).toStrictEqual({
 				workflowId: 'remote1',
 				created: true,
 				published: false,
+				newVersionLive: undefined,
 				credentialsNeedingSetup: [],
 				missingNodeTypes: [],
 				warnings: [],
 			});
 		});
 	});
+
+	it.each([null, 'true', 1])(
+		'does not tell which version is live for the value %j',
+		async (newVersionLive) => {
+			await inSession(async (session, { remote }) => {
+				remote.handlers.import_workflow_package = () => ({
+					workflowId: 'remote1',
+					created: false,
+					published: true,
+					newVersionLive,
+				});
+
+				const result = await importOnRemote(session, {
+					packageBase64: 'cGtn',
+					sourceWorkflowId: 'wf1',
+				});
+
+				expect(result.newVersionLive).toBeUndefined();
+				expect(result.published).toBe(true);
+			});
+		},
+	);
 
 	it('drops list items that it cannot use and puts remote text on one line', async () => {
 		await inSession(async (session, { remote }) => {
@@ -261,6 +289,26 @@ describe('publishOnRemote', () => {
 			};
 
 			expect(await catchError(publishOnRemote(session, 'remote1'))).toBe(bug);
+		});
+	});
+});
+
+describe('the calls of the preflight', () => {
+	it('wait at most 10 seconds for each list, as the project picker does', async () => {
+		await inSession(async (session, { client }) => {
+			await findRemotePersonalProjectId(session);
+			await listRemoteCredentials(session, 'p1');
+
+			expect(client.callTool).toHaveBeenCalledWith(
+				'search_projects',
+				{ type: 'personal', limit: 1 },
+				{ timeoutMs: 10_000 },
+			);
+			expect(client.callTool).toHaveBeenCalledWith(
+				'list_credentials',
+				{ limit: 200, projectId: 'p1' },
+				{ timeoutMs: 10_000 },
+			);
 		});
 	});
 });

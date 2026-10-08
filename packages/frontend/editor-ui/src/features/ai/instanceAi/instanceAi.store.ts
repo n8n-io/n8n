@@ -206,6 +206,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			state: thread.state,
 			needsInput: thread.needsInput,
 			lastActivityAt: thread.lastActivityAt,
+			sharedWith: thread.sharedWith,
+			owner: thread.owner,
 		};
 	}
 
@@ -257,18 +259,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	 */
 	async function refreshThread(threadId: string): Promise<InstanceAiThreadInfo> {
 		const { thread } = await fetchThread(rootStore.restApiContext, threadId);
+		applyThread(thread);
+		return thread;
+	}
+
+	/** Put a server copy of a thread (for example the answer to a share) into every local copy. */
+	function applyThread(thread: InstanceAiThreadInfo): void {
 		persistedThreadIds.add(thread.id);
-		const entries = localThreadEntries(threadId);
+		const entries = localThreadEntries(thread.id);
 		if (entries.length === 0) {
 			threads.value.push(toThreadSummary(thread));
-			return thread;
+			return;
 		}
 		for (const entry of entries) {
 			entry.title = thread.title || entry.title;
 			entry.updatedAt = thread.updatedAt;
 			entry.metadata = thread.metadata ?? undefined;
+			entry.sharedWith = thread.sharedWith;
+			entry.owner = thread.owner;
 		}
-		return thread;
 	}
 
 	let threadHistoryCursor: string | undefined;
@@ -521,6 +530,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		loadThreads,
 		loadThread,
 		refreshThread,
+		applyThread,
 		threadHistory,
 		resetThreadHistory,
 		loadThreadHistoryPage,

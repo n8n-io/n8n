@@ -12,6 +12,7 @@ function setup() {
 	const workflowService = mock<WorkflowService>();
 	const collaborationService = mock<CollaborationService>();
 	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
 	const deactivator = new LocalWorkflowDeactivator(workflowService, collaborationService, logger);
 	const alice = mock<User>({ id: 'alice' });
 	workflowService.deactivateWorkflow.mockResolvedValue(
@@ -77,6 +78,7 @@ describe('LocalWorkflowDeactivator', () => {
 		collaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push down'));
 
 		expect(await deactivator.turnOff(alice, 'wf1')).toBe(true);
+		expect(logger.scoped).toHaveBeenCalledWith('mcp');
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to tell open editors that a moved workflow was turned off',
 			{ workflowId: 'wf1', error: 'push down' },

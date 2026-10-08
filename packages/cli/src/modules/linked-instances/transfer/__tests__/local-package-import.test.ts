@@ -128,6 +128,7 @@ describe('LocalPackageImport', () => {
 	function importSetup() {
 		const mcpSettings = mock<McpSettingsService>();
 		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
 		const service = new LocalPackageImport(mock<ProjectService>(), mcpSettings, logger);
 		mcpSettings.getAutoExposeNewWorkflows.mockResolvedValue(false);
 		mcpSettings.broadcastWorkflowMCPAvailabilityChanged.mockResolvedValue();
@@ -239,26 +240,50 @@ describe('LocalPackageImport', () => {
 		expect(await rules.afterImport?.(alice, 'local1')).toEqual([]);
 	});
 
-	it('warns when the user cannot change the MCP access of the workflow', async () => {
+	it.each([
+		[false, TRANSFER_WARNINGS.mcpAccessNotTurnedOff],
+		[true, TRANSFER_WARNINGS.mcpAccessNotSet],
+	])(
+		'warns when the user cannot set the MCP access (%s) of the workflow',
+		async (autoExpose, warning) => {
+			const { mcpSettings, rulesOfImport } = importSetup();
+			mcpSettings.getAutoExposeNewWorkflows.mockResolvedValue(autoExpose);
+			mcpSettings.bulkSetAvailableInMCP.mockResolvedValue({
+				updatedCount: 0,
+				unchangedCount: 0,
+				skippedCount: 1,
+				failedCount: 0,
+				changedWorkflows: [],
+			});
+			const rules = await rulesOfImport();
+
+			expect(await rules.afterImport?.(alice, 'local1')).toEqual([warning]);
+		},
+	);
+
+	it('says that an updated workflow stays available in MCP when its access cannot be turned off', async () => {
 		const { mcpSettings, rulesOfImport } = importSetup();
-		mcpSettings.bulkSetAvailableInMCP.mockResolvedValue({
-			updatedCount: 0,
-			unchangedCount: 0,
-			skippedCount: 1,
-			failedCount: 0,
-			changedWorkflows: [],
-		});
+		mcpSettings.getAutoExposeNewWorkflows.mockResolvedValue(true);
+		mcpSettings.bulkSetAvailableInMCP.mockRejectedValue(new Error('SQLITE_BUSY'));
 		const rules = await rulesOfImport();
 
-		expect(await rules.afterImport?.(alice, 'local1')).toEqual([TRANSFER_WARNINGS.mcpAccessNotSet]);
+		rules.assertUpdatable(pulledCopy({ settings: { availableInMCP: false } }));
+
+		expect(await rules.afterImport?.(alice, 'local1')).toEqual([
+			TRANSFER_WARNINGS.mcpAccessNotTurnedOff,
+		]);
+		expect(TRANSFER_WARNINGS.mcpAccessNotTurnedOff).toContain('available in MCP');
 	});
 
-	it('warns and logs ids only when the MCP access cannot be written', async () => {
+	it('warns and logs ids only, in the MCP scope, when the MCP access cannot be written', async () => {
 		const { mcpSettings, logger, rulesOfImport } = importSetup();
 		mcpSettings.bulkSetAvailableInMCP.mockRejectedValue(new Error('SQLITE_BUSY'));
 		const rules = await rulesOfImport();
 
-		expect(await rules.afterImport?.(alice, 'local1')).toEqual([TRANSFER_WARNINGS.mcpAccessNotSet]);
+		expect(await rules.afterImport?.(alice, 'local1')).toEqual([
+			TRANSFER_WARNINGS.mcpAccessNotTurnedOff,
+		]);
+		expect(logger.scoped).toHaveBeenCalledWith('mcp');
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Could not set the MCP access of a workflow from a linked instance',
 			{ workflowId: 'local1', error: 'SQLITE_BUSY' },

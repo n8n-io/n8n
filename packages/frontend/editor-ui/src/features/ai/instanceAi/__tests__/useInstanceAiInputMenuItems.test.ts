@@ -518,6 +518,74 @@ describe('useInstanceAiInputMenuItems', () => {
 			openSpy.mockRestore();
 		});
 
+		describe('in the project of the chat', () => {
+			beforeEach(() => {
+				experience.isSimple = true;
+				experience.defaultProjectId = 'team-b';
+				projectsStore.myProjects = [
+					{ id: 'personal-project', scopes: ['workflow:create'] },
+					{ id: 'team-a', scopes: ['workflow:create'] },
+					{ id: 'team-b', scopes: ['workflow:create'] },
+				];
+			});
+
+			it('adds the workflow to the project of the chat, not to the last-used project', async () => {
+				const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), 'thread-1', 'team-a');
+
+				await findItem(menuItems.value, 'add-workflow')?.data?.action?.();
+
+				expect(router.push).toHaveBeenCalledWith({
+					name: VIEWS.NEW_WORKFLOW,
+					query: { projectId: 'team-a' },
+				});
+			});
+
+			it('follows the project of the new chat on the start screen', async () => {
+				const project = ref<string | undefined>('team-a');
+				const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), undefined, project);
+
+				project.value = 'personal-project';
+				await findItem(menuItems.value, 'add-workflow')?.data?.action?.();
+
+				expect(router.push).toHaveBeenCalledWith({
+					name: VIEWS.NEW_WORKFLOW,
+					query: { projectId: 'personal-project' },
+				});
+			});
+
+			it('uses the Simple default project while the chat has no project yet', async () => {
+				const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), 'thread-1', () => undefined);
+
+				await findItem(menuItems.value, 'add-workflow')?.data?.action?.();
+
+				expect(router.push).toHaveBeenCalledWith({
+					name: VIEWS.NEW_WORKFLOW,
+					query: { projectId: 'team-b' },
+				});
+			});
+
+			it('disables "New workflow" when the user cannot create workflows in the project of the chat', async () => {
+				projectsStore.myProjects = [
+					{ id: 'team-a', scopes: ['workflow:read'] },
+					{ id: 'team-b', scopes: ['workflow:create'] },
+				];
+				const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), 'thread-1', 'team-a');
+				const item = findItem(menuItems.value, 'add-workflow');
+
+				await item?.data?.action?.();
+
+				// It does not move the work to another project.
+				expect(item?.disabled).toBe(true);
+				expect(router.push).not.toHaveBeenCalled();
+			});
+
+			it('disables "New workflow" for a project that the user cannot see', () => {
+				const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), 'thread-1', 'other-team');
+
+				expect(findItem(menuItems.value, 'add-workflow')?.disabled).toBe(true);
+			});
+		});
+
 		it('reads the project when the user picks "New workflow", not when the menu is built', async () => {
 			experience.isSimple = true;
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());

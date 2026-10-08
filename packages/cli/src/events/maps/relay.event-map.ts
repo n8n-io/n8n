@@ -27,7 +27,7 @@ import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-
 import type {
 	TransferDirection,
 	TransferFailureReason,
-} from '@/modules/linked-instances/transfer/transfer-errors';
+} from '@/modules/linked-instances/transfer/transfer.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 import type {
 	AuditedActor,
@@ -177,6 +177,8 @@ export type RelayEventMap = {
 		remoteProjectId: string | null;
 		created: boolean;
 		published: boolean;
+		/** The move was asked to publish the copy, and the new version did not go live there. */
+		publishFailed: boolean;
 		localDeactivated: boolean;
 	};
 

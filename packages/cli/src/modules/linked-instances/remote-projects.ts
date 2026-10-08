@@ -13,8 +13,9 @@ export const SEARCH_PROJECTS_TOOL = 'search_projects';
 
 // The highest limit that the tool accepts.
 const MAX_PROJECTS = 100;
-// For the whole list, also for the connection that the first call opens.
-const LIST_TIMEOUT_MS = 10_000;
+// For the whole list, also for the connection that the first call opens. Other short list
+// calls to a linked instance use it too.
+export const LIST_TIMEOUT_MS = 10_000;
 // The length of the column that keeps the name.
 const MAX_NAME_LENGTH = 255;
 const ELLIPSIS_LENGTH = 3;

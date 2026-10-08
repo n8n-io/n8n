@@ -22,6 +22,7 @@ import {
 	placeReasonKey,
 	sharedProjectCount,
 	showsLocalCaveat,
+	timezoneLabel,
 	titleKey,
 	triggerLineKey,
 	visibleSteps,
@@ -75,6 +76,30 @@ describe('triggerLineKey', () => {
 			cron: '*/15 * * * *',
 			fallbackKey: 'instanceAi.automation.trigger.schedule',
 		});
+	});
+});
+
+describe('timezoneLabel', () => {
+	it.each([
+		['America/New_York', 'Eastern Time'],
+		['America/Los_Angeles', 'Pacific Time'],
+		['Asia/Ho_Chi_Minh', 'Indochina Time'],
+	])('names %s by its generic zone name', (zone, name) => {
+		expect(timezoneLabel(zone, 'en')).toBe(name);
+	});
+
+	it('uses the same name in summer and in winter, as the schedule does', () => {
+		// The generic name has no "Standard" or "Daylight" part that would be wrong half the year.
+		expect(timezoneLabel('America/New_York', 'en')).not.toMatch(/Standard|Daylight/);
+	});
+
+	it('shows the zone id with spaces when the browser does not know the zone', () => {
+		expect(timezoneLabel('America/Not_A_Zone', 'en')).toBe('America/Not A Zone');
+		expect(timezoneLabel('', 'en')).toBe('');
+	});
+
+	it('names the zone when the locale is not valid', () => {
+		expect(timezoneLabel('America/Los_Angeles', 'not a locale!')).toBe('America/Los Angeles');
 	});
 });
 
@@ -308,7 +333,8 @@ describe('a workflow that is live now', () => {
 	it('only offers to keep a workflow whose saved version is live, as turning it on changes nothing', () => {
 		const proposal = live();
 
-		expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.titleKeep');
+		// The status line says that it is on, so the title does not ask to keep it as a workflow.
+		expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.titleKeepLive');
 		expect(liveStatusKey(proposal)).toBe('instanceAi.automation.status.live');
 		expect(activationNoteKey(proposal)).toBeUndefined();
 		expect(cardActions(proposal)).toEqual([
@@ -324,7 +350,7 @@ describe('a workflow that is live now', () => {
 			offered: { target: ['local'], activate: [false] },
 		});
 
-		expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.titleKeep');
+		expect(titleKey(proposal)).toBe('instanceAi.automation.proposal.titleKeepLive');
 		expect(activationNoteKey(proposal)).toBe('instanceAi.automation.note.cannotMakeLive');
 		expect(cardActions(proposal).map(({ labelKey }) => labelKey)).toEqual([
 			'instanceAi.automation.action.saveWorkflow',
@@ -507,9 +533,14 @@ const TYPE_ORDER = { primary: 0, secondary: 1, tertiary: 2 } as const;
 
 /** The title asks the question of the primary button, or only to keep the workflow. */
 function expectedTitle(proposal: Proposal, offersTurnOn: boolean): string {
-	if (!offersTurnOn) return 'instanceAi.automation.proposal.titleKeep';
-	if (proposal.active) return 'instanceAi.automation.proposal.titleUpdate';
-	return 'instanceAi.automation.proposal.title';
+	if (proposal.active) {
+		return offersTurnOn
+			? 'instanceAi.automation.proposal.titleUpdate'
+			: 'instanceAi.automation.proposal.titleKeepLive';
+	}
+	return offersTurnOn
+		? 'instanceAi.automation.proposal.title'
+		: 'instanceAi.automation.proposal.titleKeep';
 }
 
 describe('automation proposal properties', () => {
@@ -610,6 +641,18 @@ describe('automation proposal properties', () => {
 				if (proposal.offered.target.includes(proposal.recommended.targetId)) {
 					expect(target).toBe(proposal.recommended.targetId);
 				}
+			}),
+		);
+	});
+
+	it('names every time zone without underscores and never throws', () => {
+		const zones = Intl.supportedValuesOf('timeZone');
+		fc.assert(
+			fc.property(fc.oneof(fc.constantFrom(...zones), fc.string()), (zone) => {
+				const label = timezoneLabel(zone, 'en');
+
+				expect(label).not.toContain('_');
+				if (zones.includes(zone)) expect(label.trim()).not.toBe('');
 			}),
 		);
 	});

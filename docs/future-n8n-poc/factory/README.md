@@ -64,11 +64,11 @@ flowchart LR
 | 6   | Verify       | Verify, Check result, Fix the failing check                                              | A deterministic step runs the check command of the coding config and the command of the failing test. Both must pass. When one fails, the implementer gets the end of the log. A run has 3 retries in total.                                                                                                              |
 | 7   | Fresh critic | Get diff, Has a diff?, Critic input, Fresh critic, Critic verdict, Address critic findings | A different agent reviews the diff in a new session. Its input is only the ticket, the acceptance criteria, the plan, the diff and the verify result. It returns `{ verdict, findings[{ path, line, severity, body }], scopeCreep[] }`. "request_changes" goes back to the implementer, at most 2 times.      |
 | 8   | Minimise     | Minimise, Re-verify, Ready for PR?                                                       | The implementer removes scope creep and changes that the criteria do not need. It adds and rewrites nothing. The check and the failing test run again. The change must pass, must not be empty, must stay inside the diff budget and must not grow.                                                                     |
-| 9   | Pull request | Push branch, Branch pushed?, Open draft PR                                               | The branch of the run is pushed. A gate confirms the push. Then the GitHub node opens a **draft** pull request. A person reviews and merges it. CI runs on the pull request.                                                                                                                                              |
+| 9   | Pull request | Push branch, Branch pushed?, Open draft PR, PR opened?                                   | The branch of the run is pushed. A gate confirms the push. Then the GitHub node opens a **draft** pull request. A second gate confirms its link. A person reviews and merges it. CI runs on the pull request.                                                                                                                                              |
 | 10  | Report       | Outcome nodes, Run record, Report on ticket, Ensure factory_runs table, Record run       | Every run ends in one outcome. The outcome goes to the ticket as a Linear comment and to one row in the `factory_runs` data table.                                                                                                                                                                                        |
 
-The critic findings use the same `path:line (new version)` format as the review
-comments of the coding view, so the implementer reads them the same way.
+The critic findings use the `path:line (new version)` format of the review
+comments in the coding view. So the implementer reads them the same way.
 
 ## Hard gates
 
@@ -82,9 +82,10 @@ comments of the coding view, so the implementer reads them the same way.
   For this reason, the same deterministic step also runs the command of the
   failing test. Only a `passed` result of both continues. An agent cannot
   report its own result.
-- **Critic fails closed.** Only an explicit `approve` with no blocker or major
-  findings and a diff that is not empty opens a pull request. A critic error, a
-  missing verdict, `block` or a third request for changes stops the run.
+- **Critic fails closed.** Only an explicit `approve` opens a pull request. The
+  review must have no blocker or major findings, and the diff must not be
+  empty. A critic error, a missing verdict, `block` or a third request for
+  changes stops the run.
 - **Author and critic are separate.** The critic is a different agent. At the
   start of the run, a gate compares the agents of the nodes. The run stops when
   the Fresh critic node uses the agent of Plan, Draft failing test, Implement or
@@ -110,7 +111,9 @@ This is necessary because of how n8n handles errors. A node can fail as a
 whole, for example when it cannot connect. Then n8n sends the input item of the
 node to its success output, also with "Continue (using error output)". So the
 success output alone is no proof that a step worked. Each gate reads the result
-of the step before it.
+of the step before it. Implement and Minimise have no gate of their own. The
+deterministic check after them decides on the code, not on the answer of the
+agent.
 
 ## Import the pack
 
@@ -246,8 +249,8 @@ items are missing:
    the sandbox of the session, with the same rights as the commands of the
    agent.
 2. **A sandbox identity for each workflow execution.** This exists in part. A
-   Message an Agent node without a session key runs in the sandbox of the
-   `workflow-execution` principal, one sandbox for each execution. A custom
+   Message an Agent node without a session key uses the sandbox of the
+   `workflow-execution` principal. Each execution has its own sandbox. A custom
    session key switches to the `project-session` principal (see
    [agent-sandbox-principal.ts](../../../packages/cli/src/modules/agents/agent-sandbox-principal.ts)
    and [workflow-execute-additional-data.ts](../../../packages/cli/src/workflow-execute-additional-data.ts)).
@@ -320,8 +323,8 @@ real execution.
 
 The tests check that:
 
-- the workflow is a valid body for the public API, and each node type and
-  version exists in this repository, with valid parameters;
+- the workflow is a valid body for the public API;
+- each node type and version exists in this repository, with valid parameters;
 - n8n keeps each parameter when it loads the workflow;
 - each connection names nodes that exist, and the trigger reaches each node;
 - each expression reads the success output of the nodes that it names;
@@ -332,9 +335,9 @@ The tests check that:
   result;
 - each credential is a placeholder with a name and no id;
 - the Code nodes read tickets and build run records correctly;
-- each MCP Client node sends the input that the tool table above shows, and
-  each result field that the workflow reads is in that table;
-- each agent file passes the agent JSON config schema with no unknown keys,
-  and the checks that run when an agent is saved;
+- each MCP Client node sends the input that the tool table shows;
+- the tool table names each result field that the workflow reads;
+- each agent file passes the agent JSON config schema with no unknown keys;
+- each agent file passes the checks that run when an agent is saved;
 - the critic and the planner have no write tools, and the implementer uses the
   n8n coding defaults.

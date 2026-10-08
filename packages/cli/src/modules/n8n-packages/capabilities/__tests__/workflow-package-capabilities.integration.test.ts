@@ -160,6 +160,7 @@ describe('export_workflow_package and import_workflow_package', () => {
 
 		expect(first.created).toBe(true);
 		expect(first.published).toBe(false);
+		expect(first.newVersionLive).toBe(false);
 		expect(first.workflowName).toBe('Daily report');
 		expect(first.workflowId).not.toBe(source.id);
 		expect(first.missingNodeTypes).toEqual([]);

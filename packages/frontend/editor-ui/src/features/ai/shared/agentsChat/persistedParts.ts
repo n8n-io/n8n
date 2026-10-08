@@ -44,6 +44,8 @@ export function toolCallFromPersistedPart(
 		...(part.endTime !== undefined && { endTime: part.endTime }),
 		...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 		...(part.childTrace && { childProgress: part.childTrace }),
+		...(part.approvedBy && { approvedBy: part.approvedBy }),
+		...(part.declinedBy && { declinedBy: part.declinedBy }),
 		displaySummary: summariseToolCall(toolName, output, part.input),
 	};
 }

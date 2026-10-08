@@ -34,14 +34,18 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('uuid', () => ({ v4: () => 'new-thread' }));
 
-/** The composer: a send button, and the footer that holds the project picker. */
+/**
+ * The composer: a send button, and the footer that holds the project picker. It shows the
+ * project that it gives its + menu, where Simple mode adds a new workflow.
+ */
 const ComposerStub = defineComponent({
 	name: 'InstanceAiInputStub',
+	props: { mentionProjectId: { type: String, default: undefined } },
 	emits: ['submit'],
-	setup(_props, { emit, expose, slots }) {
+	setup(props, { emit, expose, slots }) {
 		expose({ focus: vi.fn() });
 		return () =>
-			h('div', [
+			h('div', { 'data-test-id': 'composer', 'data-project-id': props.mentionProjectId }, [
 				h(
 					'button',
 					{
@@ -183,6 +187,21 @@ describe('InstanceAiEmptyView project choice', () => {
 
 			expect(rememberedProjects()).toEqual([TEAM_WITH_RIGHTS]);
 		});
+
+		it.each([
+			['the last-used team project', undefined, TEAM_WITH_RIGHTS],
+			['the project from ?projectId=', PERSONAL, PERSONAL],
+		])(
+			'gives the composer menu %s, so that a new workflow goes where the chat goes',
+			(_case, queryProjectId, expected) => {
+				stored.set(LAST_PROJECT_KEY, TEAM_WITH_RIGHTS);
+				routeQuery.projectId = queryProjectId;
+
+				const { getByTestId } = renderView();
+
+				expect(getByTestId('composer')).toHaveAttribute('data-project-id', expected);
+			},
+		);
 
 		it.each([
 			['the user loses the right to create workflows in it', ['workflow:read']],

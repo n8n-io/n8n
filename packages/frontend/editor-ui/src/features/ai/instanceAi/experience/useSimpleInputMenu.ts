@@ -1,4 +1,4 @@
-import { computed, type ComputedRef, type Ref } from 'vue';
+import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -24,8 +24,14 @@ type VisibleInputMenu<T extends FullInputMenu> = Omit<T, keyof FullInputMenu> & 
 /**
  * Trims the composer + menu to four items in Simple mode. Power mode and the flag off
  * keep the full menu and its attention count. The other fields of `menu` stay as they are.
+ * `contextProjectId` is the project of the open chat, or of the new chat on the start
+ * screen. "New workflow" adds the workflow there, so that the chat and its work share one
+ * project.
  */
-export function useSimpleInputMenu<T extends FullInputMenu>(menu: T): VisibleInputMenu<T> {
+export function useSimpleInputMenu<T extends FullInputMenu>(
+	menu: T,
+	contextProjectId: MaybeRefOrGetter<string | undefined> = undefined,
+): VisibleInputMenu<T> {
 	const i18n = useI18n();
 	const router = useRouter();
 	const projectsStore = useProjectsStore();
@@ -34,13 +40,13 @@ export function useSimpleInputMenu<T extends FullInputMenu>(menu: T): VisibleInp
 	const { simpleDefaultProjectId } = useLastUsedProject();
 
 	/**
-	 * The project in which Simple mode starts new work, when the user can create a workflow
-	 * there. The rule is the same as for "New workflow" in the sidebar + menu: no new workflow
-	 * on a protected branch or without `workflow:create` in the project.
+	 * The project of the chat (else the Simple-mode default project), when the user can create
+	 * a workflow there. The rule is the same as for "New workflow" in the sidebar + menu: no new
+	 * workflow on a protected branch or without `workflow:create` in the project.
 	 */
 	function addWorkflowProjectId(): string | undefined {
 		if (sourceControlStore.preferences.branchReadOnly) return undefined;
-		const projectId = simpleDefaultProjectId();
+		const projectId = toValue(contextProjectId) || simpleDefaultProjectId();
 		if (!projectId) return undefined;
 		const project = [projectsStore.personalProject, ...projectsStore.myProjects].find(
 			(candidate) => candidate?.id === projectId,
@@ -50,8 +56,7 @@ export function useSimpleInputMenu<T extends FullInputMenu>(menu: T): VisibleInp
 
 	// The same editor route as "New workflow" in the sidebar + menu, in the same tab.
 	async function addWorkflow() {
-		// Read the project again: the last-used project or the rights can change after the
-		// menu was built.
+		// Read the project again: the project or the rights can change after the menu was built.
 		const projectId = addWorkflowProjectId();
 		if (!projectId) return;
 		await router.push({ name: VIEWS.NEW_WORKFLOW, query: { projectId } });

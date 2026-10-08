@@ -12,12 +12,7 @@ import {
 	type RemoteInstanceErrorReason,
 } from '../remote/remote-instance.errors';
 import { RESPONSE_OVER_LIMIT_MESSAGE } from '../remote/remote-instance.transports';
-
-/** `push` moves a workflow to the linked instance, `pull` brings one back. */
-export type TransferDirection = 'push' | 'pull';
-
-/** The audit reason of a failed move: the reason of a remote failure, a refusal, or a bug. */
-export type TransferFailureReason = RemoteInstanceErrorReason | 'refused' | 'internal';
+import type { TransferDirection, TransferFailureReason } from './transfer.types';
 
 /** What a message names: the linked instance and where on it the workflow goes. */
 export type TransferErrorContext = {
@@ -75,30 +70,43 @@ export const TRANSFER_WARNINGS = {
 	cannotPublish: (name: string) =>
 		`The workflow is in ${name}, but this access token cannot publish workflows there. Publish it in ${name}.`,
 	missingNodeTypes: (name: string) =>
-		`The workflow is in ${name}, but it uses node types that ${name} does not have, so it is not published. Install them, then publish it in ${name}.`,
+		`The workflow is in ${name}, but it uses node types that ${name} does not have, so the move did not publish it. Install them, then publish the workflow in ${name}.`,
 	credentialsNeedSetup: (name: string, count: number) =>
-		`The workflow is in ${name}, but ${count} credential(s) there have no value, so it is not published. Set them up, then publish it in ${name}.`,
+		count === 1
+			? `The workflow is in ${name}, but 1 credential that it uses there has no value, so the move did not publish it. Set it up, then publish the workflow in ${name}.`
+			: `The workflow is in ${name}, but ${count} credentials that it uses there have no value, so the move did not publish it. Set them up, then publish the workflow in ${name}.`,
 	keptLocalLive: (name: string) =>
 		`The workflow stays turned on here, because the new version is not live in ${name}.`,
 	turnOffFailed: (reason: string) =>
 		`The workflow is still turned on here: ${withoutFullStop(reason)}. Turn it off in the editor.`,
 	mcpAccessNotSet:
 		'The workflow is here, but n8n could not set its MCP access. Check MCP access in its workflow settings.',
+	// The package of a linked instance always makes the workflow available in MCP.
+	mcpAccessNotTurnedOff:
+		'The workflow is here and available in MCP, because n8n could not turn off its MCP access. Turn off MCP access in its workflow settings if MCP clients must not use it.',
 } as const;
 
 /** A refusal of the linked instance that has a message of its own. */
 export type RemoteRefusal = 'project-refused' | 'not-in-mcp' | 'archived';
 
-// Remote tool errors have no machine-readable reason, so these phrases of the n8n tools identify them.
-const REFUSAL_PHRASES: readonly (readonly [RemoteRefusal, string])[] = [
-	['project-refused', 'permission to create workflows in it'],
-	['not-in-mcp', 'is not available in MCP'],
-	['archived', 'is archived and cannot be accessed'],
-];
+// Remote tool errors have no machine-readable reason, so the fixed texts of the n8n tools identify
+// them. The texts are compared only at fixed positions, because an error text can hold the name of
+// a workflow, and anyone who can rename a workflow sets that name.
+const PROJECT_REFUSED_TEXT =
+	'The project does not exist, or you do not have permission to create workflows in it.';
+// The import names the workflow that it would update before this text, and its reason after it.
+const UPDATE_REFUSED_TEXT = 'so the import would update that workflow. ';
+const NOT_IN_MCP_TEXT = 'Workflow is not available in MCP.';
+const ARCHIVED_TEXT = /^Workflow '[^']*' is archived and cannot be accessed\./;
 
 /** Finds the refusal in the error text of an n8n package tool, or `undefined` for another error. */
 export function classifyRemoteRefusal(text: string): RemoteRefusal | undefined {
-	return REFUSAL_PHRASES.find(([, phrase]) => text.includes(phrase))?.[0];
+	// The last copy is the text of the tool. A copy in the workflow name comes before it.
+	const reasonAt = text.lastIndexOf(UPDATE_REFUSED_TEXT);
+	const reason = reasonAt === -1 ? text : text.slice(reasonAt + UPDATE_REFUSED_TEXT.length);
+	if (reason.startsWith(NOT_IN_MCP_TEXT)) return 'not-in-mcp';
+	if (ARCHIVED_TEXT.test(reason)) return 'archived';
+	return text.startsWith(PROJECT_REFUSED_TEXT) ? 'project-refused' : undefined;
 }
 
 /** True when the linked instance refused the target project, so the personal project can take the workflow. */

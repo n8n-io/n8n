@@ -2166,6 +2166,10 @@ export interface InstanceAiThreadSummary extends InstanceAiThreadOverview {
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
+	/** Set when the owner shared the thread. See `InstanceAiThreadInfo.sharedWith`. */
+	sharedWith?: InstanceAiThreadSharedWith;
+	/** Set on a shared thread. See `InstanceAiThreadInfo.owner`. */
+	owner?: InstanceAiThreadOwner;
 }
 
 export type InstanceAiSSEConnectionState =

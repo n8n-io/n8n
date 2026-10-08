@@ -7,6 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { ImportedWorkflowPackage } from '@/modules/n8n-packages/capabilities/import-summary';
 import { reasonForClient } from '@/modules/n8n-packages/capabilities/package-tool-error';
@@ -20,10 +21,10 @@ import {
 	transferContext,
 	transferFailureReason,
 	TRANSFER_WARNINGS,
-	type TransferDirection,
 } from './transfer-errors';
 import { TransferLocalWorkflows } from './transfer-local-workflows';
 import { importWithFallback, publishCopy, type RemoteOutcome } from './transfer-push-steps';
+import type { TransferDirection } from './transfer.types';
 
 export type PushInput = {
 	workflowId: string;
@@ -57,6 +58,9 @@ type TransferFailure = {
 	ids: { workflowId?: string; remoteWorkflowId?: string; projectId?: string };
 };
 
+/** The RBAC check and the turn-off read the same snapshot, so they agree. */
+const isLive = (workflow: WorkflowEntity) => workflow.activeVersionId !== null;
+
 /** Opens the copy in the editor of the linked instance. */
 export function remoteWorkflowUrl(baseUrl: string, workflowId: string): string {
 	return `${baseUrl}/workflow/${encodeURIComponent(workflowId)}`;
@@ -86,7 +90,8 @@ export class TransferService {
 	 * asked. The workflow here stays on when the new version did not go live there. A failure
 	 * after the import is a warning in the result.
 	 * @throws {NotFoundError} when the user has no such link or cannot read the workflow
-	 * @throws {ForbiddenError} when `deactivateLocal` is set and the user cannot turn off the workflow
+	 * @throws {ForbiddenError} when `deactivateLocal` is set, the workflow is on here, and the user
+	 *   cannot turn it off
 	 * @throws {BadRequestError} when the linked instance cannot be used or refuses the workflow
 	 */
 	async push(
@@ -107,6 +112,7 @@ export class TransferService {
 				remoteProjectId: result.targetProject?.id ?? null,
 				created: result.created,
 				published: result.published,
+				publishFailed: result.publishFailed,
 				localDeactivated: result.localDeactivated,
 			});
 			this.logger.info('Moved a workflow to a linked instance', {
@@ -186,8 +192,11 @@ export class TransferService {
 		options: TurnOffOptions,
 	): Promise<LinkedInstancePushResult> {
 		const workflow = await this.local.findMovable(user, input.workflowId);
-		// Before any request to the linked instance, so that a refusal moves nothing.
-		if (input.deactivateLocal) await this.local.assertCanTurnOff(user, workflow.id);
+		// Before any request to the linked instance, so that a refusal moves nothing. A workflow
+		// that is not on here has nothing to turn off, so the move needs no right for it.
+		if (input.deactivateLocal && isLive(workflow)) {
+			await this.local.assertCanTurnOff(user, workflow.id);
+		}
 
 		const remote = await this.sessions.withSession(
 			link,
@@ -235,7 +244,7 @@ export class TransferService {
 		step: TurnOffStep,
 	): Promise<LocalStepOutcome> {
 		// A workflow that is not live here has nothing to turn off, and nothing stays on.
-		if (!step.requested || workflow.activeVersionId === null) {
+		if (!step.requested || !isLive(workflow)) {
 			return { localDeactivated: false, warnings: [] };
 		}
 		// The user asked for the new version to run there instead. Without it, the automation would
@@ -254,6 +263,8 @@ export class TransferService {
 				linkedInstanceId: link.id,
 				workflowId: workflow.id,
 				reason: transferFailureReason(error),
+				// The user sees only the text of a client error. A local error holds no token.
+				error: getErrorMessage(error),
 			});
 			return {
 				localDeactivated: false,

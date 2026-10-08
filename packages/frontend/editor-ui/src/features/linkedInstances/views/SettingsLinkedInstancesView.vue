@@ -50,14 +50,23 @@ const focus = useFocusReturn(() => page.value?.$el);
 function rowCheckButton(id: string): HTMLElement | null {
 	const rows = list.value?.$el?.querySelectorAll<HTMLElement>('[data-instance-id]') ?? [];
 	const row = Array.from(rows).find((element) => element.dataset.instanceId === id);
-	return row?.querySelector<HTMLElement>('[data-test-id="linked-instance-check"]') ?? null;
+	return row?.querySelector<HTMLElement>('[data-action="check"]') ?? null;
+}
+
+async function announce(text: string) {
+	// Clear the region first, so a screen reader reads the same message again.
+	announcement.value = '';
+	await nextTick();
+	announcement.value = text;
 }
 
 function announceStatus(summary: LinkedInstanceSummary) {
 	const { labelKey } = LINKED_INSTANCE_STATUS_DISPLAY[summary.status];
-	announcement.value = i18n.baseText('settings.linkedInstances.check.result', {
-		interpolate: { name: summary.name, status: i18n.baseText(labelKey) },
-	});
+	void announce(
+		i18n.baseText('settings.linkedInstances.check.result', {
+			interpolate: { name: summary.name, status: i18n.baseText(labelKey) },
+		}),
+	);
 }
 
 function openLinkDialog() {
@@ -140,7 +149,7 @@ async function unlink(instance: LinkedInstanceSummary) {
 		toast.showError(error, i18n.baseText('settings.linkedInstances.unlink.error', { interpolate }));
 		return;
 	}
-	announcement.value = i18n.baseText('settings.linkedInstances.unlink.done', { interpolate });
+	void announce(i18n.baseText('settings.linkedInstances.unlink.done', { interpolate }));
 	// The row and its menu are gone. Focus goes to "Link instance", or to the page when no row is left.
 	await focus.restore(() => linkButton.value?.$el);
 }

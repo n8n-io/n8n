@@ -139,6 +139,25 @@ describe('toolCallFromPersistedPart', () => {
 
 		expect(call.displaySummary).toBe('Approve & Send');
 	});
+
+	it('keeps who approved or declined a card, for the tool-step row', () => {
+		const alice = { id: 'user-1', name: 'Alice Owner' };
+		const approved = toolCallFromPersistedPart(
+			{ type: 'tool-call', state: 'resolved', output: { approved: true }, approvedBy: alice },
+			'workflows',
+			false,
+		);
+		const declined = toolCallFromPersistedPart(
+			{ type: 'tool-call', state: 'resolved', output: { approved: false }, declinedBy: alice },
+			'workflows',
+			false,
+		);
+
+		expect(approved.approvedBy).toEqual(alice);
+		expect(approved).not.toHaveProperty('declinedBy');
+		expect(declined.declinedBy).toEqual(alice);
+		expect(declined).not.toHaveProperty('approvedBy');
+	});
 });
 
 describe('toolCallFromPersistedPart properties', () => {

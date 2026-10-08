@@ -81,6 +81,13 @@ describe('AutomationProposalSteps', () => {
 		expect(list.getByRole('img', { name: SLACK })).toBeInTheDocument();
 	});
 
+	// Safari does not expose a list without bullets as a list unless the role is explicit.
+	it('keeps the explicit list role, so screen readers announce the steps and their count', () => {
+		const { getByRole } = renderWithSteps([{ name: 'Send digest', type: SLACK }]);
+
+		expect(getByRole('list', { name: 'Steps' })).toHaveAttribute('role', 'list');
+	});
+
 	it('shows how many steps have no icon', () => {
 		const { list } = renderWithSteps([{ name: 'Send digest', type: SLACK }], 3);
 

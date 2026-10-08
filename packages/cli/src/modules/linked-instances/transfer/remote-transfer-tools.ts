@@ -11,7 +11,7 @@ import {
 } from '@/services/capabilities/capability-scopes';
 
 import { RemoteInstanceError } from '../remote/remote-instance.errors';
-import { parseRemoteProjects, SEARCH_PROJECTS_TOOL } from '../remote-projects';
+import { LIST_TIMEOUT_MS, parseRemoteProjects, SEARCH_PROJECTS_TOOL } from '../remote-projects';
 import type { RemoteSession } from './linked-instance-sessions';
 import type { RemoteCredentialList } from './transfer-preflight';
 
@@ -38,7 +38,13 @@ const UNKNOWN_FORMAT = {
 export type RemoteImportResult = {
 	workflowId: string;
 	created: boolean;
+	/** A version of the copy is live. It can be an earlier version. */
 	published: boolean;
+	/**
+	 * The import put the version that it wrote live, for example for a re-import of a live copy.
+	 * `undefined`: an older instance that does not tell.
+	 */
+	newVersionLive: boolean | undefined;
 	credentialsNeedingSetup: LinkedInstanceCredentialNeedingSetup[];
 	missingNodeTypes: string[];
 	warnings: string[];
@@ -55,6 +61,7 @@ const importResultSchema = z.object({
 	workflowId: linkedInstanceRemoteWorkflowIdSchema,
 	created: z.boolean(),
 	published: z.boolean().catch(false),
+	newVersionLive: z.boolean().optional().catch(undefined),
 	credentialsNeedingSetup: z.array(z.unknown()).catch([]),
 	missingNodeTypes: z.array(z.unknown()).catch([]),
 	warnings: z.array(z.unknown()).catch([]),
@@ -138,6 +145,7 @@ export async function importOnRemote(
 		workflowId: parsed.workflowId,
 		created: parsed.created,
 		published: parsed.published,
+		newVersionLive: parsed.newVersionLive,
 		credentialsNeedingSetup: cleanCredentials(session, parsed.credentialsNeedingSetup),
 		missingNodeTypes: cleanTexts(session, parsed.missingNodeTypes, MAX_NAME_LENGTH),
 		warnings: cleanTexts(session, parsed.warnings),
@@ -198,7 +206,11 @@ export async function findRemotePersonalProjectId(
 	session: RemoteSession,
 ): Promise<string | undefined> {
 	if (!session.toolNames.has(SEARCH_PROJECTS_TOOL)) return undefined;
-	const result = await session.callTool(SEARCH_PROJECTS_TOOL, { type: 'personal', limit: 1 });
+	const result = await session.callTool(
+		SEARCH_PROJECTS_TOOL,
+		{ type: 'personal', limit: 1 },
+		{ timeoutMs: LIST_TIMEOUT_MS },
+	);
 	return parseRemoteProjects(result).projects.find(({ type }) => type === 'personal')?.id;
 }
 
@@ -216,7 +228,9 @@ export async function listRemoteCredentials(
 ): Promise<RemoteCredentialList | null> {
 	if (!session.toolNames.has(LIST_CREDENTIALS_TOOL)) return null;
 	const args = { limit: MAX_CREDENTIALS, projectId };
-	const result = await session.callTool(LIST_CREDENTIALS_TOOL, args);
+	const result = await session.callTool(LIST_CREDENTIALS_TOOL, args, {
+		timeoutMs: LIST_TIMEOUT_MS,
+	});
 	const { data } = parseOrThrow(credentialListSchema, result, UNKNOWN_FORMAT.credentials);
 	const credentials = data.flatMap((item) => {
 		const parsed = nameAndTypeSchema.safeParse(item);

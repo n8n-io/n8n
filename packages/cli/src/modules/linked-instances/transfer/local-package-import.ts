@@ -68,11 +68,15 @@ export function pullImportRules(setMcpAccess: SetPulledMcpAccess): WorkflowPacka
 /** Imports the workflow of a pull into this instance, checked as the acting user. */
 @Service()
 export class LocalPackageImport {
+	private readonly logger: Logger;
+
 	constructor(
 		private readonly projectService: ProjectService,
 		private readonly mcpSettings: McpSettingsService,
-		private readonly logger: Logger,
-	) {}
+		logger: Logger,
+	) {
+		this.logger = logger.scoped('mcp');
+	}
 
 	/**
 	 * The import checks the same scopes. This check comes before any request to the linked instance.
@@ -103,7 +107,8 @@ export class LocalPackageImport {
 
 	/**
 	 * A new workflow gets the setting of this instance for new workflows. An updated workflow keeps
-	 * the MCP access that it had here.
+	 * the MCP access that it had here. The import wrote the access of the package first, which is
+	 * always "available", so a failure here leaves the workflow available in MCP.
 	 */
 	private async setMcpAccess(
 		user: User,
@@ -125,7 +130,9 @@ export class LocalPackageImport {
 				error: getErrorMessage(error),
 			});
 		}
-		return [TRANSFER_WARNINGS.mcpAccessNotSet];
+		return [
+			availableInMCP ? TRANSFER_WARNINGS.mcpAccessNotSet : TRANSFER_WARNINGS.mcpAccessNotTurnedOff,
+		];
 	}
 
 	/** When the setting cannot be read, the workflow is not available in MCP, as at create. */

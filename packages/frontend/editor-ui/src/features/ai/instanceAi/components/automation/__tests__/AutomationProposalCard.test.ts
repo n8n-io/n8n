@@ -41,7 +41,7 @@ describe('AutomationProposalCard', () => {
 		expect(card).toBe(getByTestId('automation-proposal-card'));
 		expect(getByTestId('automation-proposal-name')).toHaveTextContent('Morning digest');
 		expect(getByTestId('automation-proposal-trigger')).toHaveTextContent(
-			'Runs at 08:00, Monday through Friday (Europe/London)',
+			'Runs at 08:00, Monday through Friday (United Kingdom Time)',
 		);
 		expect(getByTestId('automation-proposal-place')).toHaveTextContent(
 			'Runs on This computer · Only runs while this computer is on.',
@@ -119,7 +119,9 @@ describe('AutomationProposalCard', () => {
 			makeProposal({ active: true }),
 		);
 
-		expect(getByRole('group', { name: 'Keep this as a workflow?' })).toBeInTheDocument();
+		// The workflow is on already, so the title does not ask to keep it "as a workflow".
+		expect(getByRole('group', { name: 'Keep this automation?' })).toBeInTheDocument();
+		expect(queryByText('Keep this as a workflow?')).not.toBeInTheDocument();
 		expect(getByTestId('automation-proposal-status').textContent?.trim()).toBe("It's on now.");
 		expect(buttonLabels(getAllByRole('button'))).toEqual(['Save workflow', 'Not now']);
 		expect(queryByText(/leave it off/)).not.toBeInTheDocument();
@@ -260,6 +262,18 @@ describe('AutomationProposalCard', () => {
 		expect(getByTestId('automation-proposal-trigger').textContent?.trim()).toBe(
 			'Runs on a schedule',
 		);
+	});
+
+	it('names a time zone in words, not by its id with underscores', () => {
+		const { getByTestId } = renderCard(
+			makeProposal({
+				trigger: { kind: 'schedule', cron: '0 8 * * *', timezone: 'America/Los_Angeles' },
+			}),
+		);
+
+		const trigger = getByTestId('automation-proposal-trigger');
+		expect(trigger.textContent?.trim()).toBe('Runs at 08:00 (Pacific Time)');
+		expect(trigger).not.toHaveTextContent('_');
 	});
 
 	it('leaves out the time zone when the card has none', () => {

@@ -6,6 +6,7 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { exportWorkflowPackage } from '@/modules/n8n-packages/capabilities/workflow-package-export';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -19,6 +20,7 @@ import {
 	fakeCipher,
 	fakeRepository,
 	fakeToken,
+	user,
 } from '../../__tests__/linked-instances.test-helpers';
 import { LinkedInstanceSessions } from '../linked-instance-sessions';
 import { LocalPackageImport } from '../local-package-import';
@@ -60,6 +62,7 @@ export function fakeRemote(client: ReturnType<typeof mock<RemoteInstanceClient>>
 				workflowName: 'Daily report',
 				created,
 				published: false,
+				newVersionLive: false,
 				credentialsNeedingSetup: [],
 				missingNodeTypes: [],
 				warnings: [],
@@ -184,6 +187,63 @@ export function transferSetup() {
 		eventService,
 		link,
 	};
+}
+
+export const PACKAGE = Buffer.from('local-package').toString('base64');
+
+/** The fixed text of the remote import when the token's user cannot create workflows in the project. */
+export const REFUSED_PROJECT =
+	'The project does not exist, or you do not have permission to create workflows in it.';
+
+/** The refusal of the publish tool while someone has the copy open in the editor there. */
+export const EDITOR_LOCK = 'Cannot modify workflow while it is being edited by a user in the editor.';
+
+export const STUB_CREDENTIAL = { id: 'cred-stub', name: 'Mailgun', type: 'httpHeaderAuth' };
+
+type PushSetupOptions = {
+	defaultProject?: LinkedInstanceRemoteProject | null;
+	/** The live version of the workflow here. `null`: the workflow is not live. */
+	activeVersionId?: string | null;
+};
+
+/**
+ * A link of Alice and her workflow, which is live by default. The test file must mock the module
+ * of `exportWorkflowPackage`.
+ */
+export async function pushSetup(options: PushSetupOptions = {}) {
+	const context = transferSetup();
+	const alice = user();
+	const link = await context.link(
+		alice,
+		options.defaultProject === undefined ? OPS : options.defaultProject,
+	);
+	const workflow = workflowEntity({
+		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
+	});
+	context.workflowFinder.findWorkflowForUser.mockResolvedValue(workflow);
+	vi.mocked(exportWorkflowPackage).mockImplementation(async ({ workflowId, findWorkflow }) => {
+		const found = await findWorkflow(workflowId);
+		return {
+			packageBase64: PACKAGE,
+			workflowName: found.name,
+			sizeBytes: 13,
+			requirements: { nodeTypes: [], credentials: [] },
+			warnings: [],
+		};
+	});
+	return { ...context, alice, linkId: link.id, token: link.token, workflow };
+}
+
+/** Lets the fake import return a copy with these fields. */
+export function importReturns(
+	remote: ReturnType<typeof fakeRemote>,
+	fields: Record<string, unknown>,
+) {
+	const importCopy = remote.handlers.import_workflow_package;
+	remote.handlers.import_workflow_package = (args) => ({
+		...(importCopy(args) as object),
+		...fields,
+	});
 }
 
 /** Everything that a test can see: results, errors, events and log lines. */

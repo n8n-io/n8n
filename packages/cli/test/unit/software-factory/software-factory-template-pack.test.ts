@@ -250,6 +250,19 @@ describe('software factory template pack', () => {
 			expect(bypassed).toEqual([]);
 		});
 
+		it('records an opened pull request only after the gate that reads its link', () => {
+			const outcomes = (drop: OutputSelector) =>
+				findUnreachableNodes(
+					{ nodes: workflow.nodes, connections: withoutOutputs(workflow.connections, drop) },
+					isTrigger,
+				);
+
+			expect(outcomes(() => false)).toEqual([]);
+			expect(
+				outcomes((source, index) => source === 'PR opened?' && index === 0),
+			).toContain('Outcome: draft PR opened');
+		});
+
 		it('opens the pull request as a draft', () => {
 			expect(nodeByName(workflow, PULL_REQUEST_NODE).parameters).toMatchObject({
 				resource: 'pullRequest',

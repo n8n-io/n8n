@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref, type PropType } from 'vue';
+import { defineComponent, h, nextTick, ref, type PropType } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { IMenuItem } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/app/constants';
+import { SIDEBAR_LISTS_SETTLE_TIMEOUT } from '@/app/constants/durations';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useAssistantSidebarStore } from '../assistantSidebar.store';
 import SimpleSidebarSections from '../SimpleSidebarSections.vue';
-import { createTestRouter, stubLocalStorage } from './navigationFixtures';
+import { configureInstanceAi, createTestRouter, stubLocalStorage } from './navigationFixtures';
 
 // The Chats and Automations sections have their own tests. Here they only mark their place.
 vi.mock('../AssistantChatsSection.vue', async () => {
@@ -82,15 +85,26 @@ function precedes(first: Element, second: Element) {
 	return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 }
 
+/** Both lists above the Workspace have their first answer, as after the first load. */
+function settleLists() {
+	const sidebarStore = useAssistantSidebarStore();
+	sidebarStore.chatListSettled = true;
+	sidebarStore.automationsSettled = true;
+}
+
 describe('SimpleSidebarSections', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		useUsersStore().currentUserId = 'user-1';
+		configureInstanceAi({ experienceModes: true });
+		settleLists();
 		storage.clear();
 		stubLocalStorage(storage);
 	});
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
+		vi.useRealTimers();
 	});
 
 	it('shows Chats, then Automations, then a closed Workspace', () => {
@@ -175,6 +189,79 @@ describe('SimpleSidebarSections', () => {
 			expect(getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-expanded', 'true');
 			expect(getByTestId('page-personal-1')).toBeInTheDocument();
 		});
+	});
+
+	describe('while the lists above it load', () => {
+		beforeEach(() => {
+			const sidebarStore = useAssistantSidebarStore();
+			sidebarStore.chatListSettled = false;
+			sidebarStore.automationsSettled = false;
+		});
+
+		it('shows the Workspace only after Chats and Automations have their first answer', async () => {
+			storage.set(OPEN_KEY, 'true');
+			const { queryByRole, findByRole, queryByTestId, getByTestId } = render();
+			const sidebarStore = useAssistantSidebarStore();
+
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+			expect(queryByTestId('page-personal-1')).not.toBeInTheDocument();
+
+			sidebarStore.chatListSettled = true;
+			await nextTick();
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+
+			sidebarStore.automationsSettled = true;
+			const workspace = await findByRole('button', { name: 'Workspace' });
+			expect(precedes(getByTestId('automations'), workspace)).toBe(true);
+			// The stored choice still counts once the Workspace shows.
+			expect(workspace).toHaveAttribute('aria-expanded', 'true');
+			expect(getByTestId('page-personal-1')).toBeInTheDocument();
+		});
+
+		it('shows the Workspace after the timeout when a list request never ends', async () => {
+			vi.useFakeTimers();
+			const { queryByRole } = render();
+
+			await vi.advanceTimersByTimeAsync(SIDEBAR_LISTS_SETTLE_TIMEOUT - 1);
+			expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(queryByRole('button', { name: 'Workspace' })).toBeInTheDocument();
+		});
+
+		it('shows the Workspace at once in the collapsed sidebar, where no list shows above it', () => {
+			const { getByRole } = render({ collapsed: true });
+
+			expect(getByRole('button', { name: 'Workspace' })).toBeInTheDocument();
+		});
+
+		it('shows the Workspace at once when the Assistant is not reachable', () => {
+			configureInstanceAi({ available: false, experienceModes: true });
+
+			const { getByRole } = render();
+
+			expect(getByRole('button', { name: 'Workspace' })).toBeInTheDocument();
+		});
+	});
+
+	it('closes the Workspace for the parent while it hides, and opens it again when it shows', async () => {
+		storage.set(OPEN_KEY, 'true');
+		const { getByTestId, findByRole, queryByRole } = render();
+		expect(await findByRole('button', { name: 'Workspace' })).toBeInTheDocument();
+		expect(getByTestId('parent-open')).toHaveTextContent('true');
+
+		// A new sign-in clears the lists, so the Workspace waits for them again.
+		useUsersStore().currentUserId = 'user-2';
+		await nextTick();
+		expect(queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();
+		expect(getByTestId('parent-open')).toHaveTextContent('false');
+
+		settleLists();
+		expect(await findByRole('button', { name: 'Workspace' })).toHaveAttribute(
+			'aria-expanded',
+			'true',
+		);
+		expect(getByTestId('parent-open')).toHaveTextContent('true');
 	});
 
 	it('shows the pages as icons in the collapsed sidebar', async () => {

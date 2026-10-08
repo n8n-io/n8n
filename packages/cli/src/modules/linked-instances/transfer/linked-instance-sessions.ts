@@ -13,7 +13,8 @@ import { RemoteInstanceError } from '../remote/remote-instance.errors';
 import { remoteText } from '../remote/remote-instance.outcome';
 import { withRemoteClient } from '../remote/with-remote-client';
 import { cleanName } from '../remote-projects';
-import { missingToolMessage, type TransferDirection } from './transfer-errors';
+import { missingToolMessage } from './transfer-errors';
+import type { TransferDirection } from './transfer.types';
 
 // Remote error texts have the same limit.
 const MAX_REMOTE_TEXT_LENGTH = 500;

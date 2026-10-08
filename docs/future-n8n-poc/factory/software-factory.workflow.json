@@ -1286,6 +1286,39 @@
 		},
 		{
 			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "3a0a8111-ea3f-42bb-a7cc-f6d39753834d",
+							"leftValue": "={{ $json.html_url ?? '' }}",
+							"rightValue": "^https://",
+							"operator": {
+								"type": "string",
+								"operation": "regex"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"id": "3bacedf0-e53f-40a7-a747-9e3f7dc2a599",
+			"name": "PR opened?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [
+				6160,
+				0
+			]
+		},
+		{
+			"parameters": {
 				"assignments": {
 					"assignments": [
 						{
@@ -1547,7 +1580,7 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
 			"position": [
-				6160,
+				6380,
 				0
 			]
 		},
@@ -1886,7 +1919,7 @@
 			"parameters": {
 				"content": "## 7. Draft PR\nPush the branch, confirm the push and open a draft pull request. A person merges.",
 				"height": 560,
-				"width": 860
+				"width": 1080
 			},
 			"id": "2f31e307-c452-40ff-a93a-08165778f054",
 			"name": "Note: pr",
@@ -2404,6 +2437,24 @@
 			]
 		},
 		"Open draft PR": {
+			"main": [
+				[
+					{
+						"node": "PR opened?",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Outcome: step failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"PR opened?": {
 			"main": [
 				[
 					{
