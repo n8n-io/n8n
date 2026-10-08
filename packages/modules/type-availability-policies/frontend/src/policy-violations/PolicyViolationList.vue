@@ -22,6 +22,7 @@ const i18n = useI18n();
 const NAME_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
 	'node-type-unavailable': 'typeAvailabilityPolicies.violations.nodeType',
 	'credential-type-unavailable': 'typeAvailabilityPolicies.violations.credentialType',
+	'node-type-deprecated': 'typeAvailabilityPolicies.violations.deprecatedNodeType',
 };
 
 const SCOPE_ORDER = ['instance', 'project'];

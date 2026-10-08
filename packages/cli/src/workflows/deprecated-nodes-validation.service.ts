@@ -5,11 +5,14 @@ import isEqual from 'lodash/isEqual';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, normalizeNodeShape } from 'n8n-workflow';
 
-import {
-	DeprecatedNodesError,
-	type DeprecatedNodeViolation,
-} from '@/errors/response-errors/deprecated-nodes.error';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { NodeTypes } from '@/node-types';
+
+type DeprecatedNodeViolation = {
+	kind: 'added' | 'edited';
+	nodeName: string;
+	nodeType: string;
+};
 
 /**
  * Refuses adding a deprecated node or changing one in place. Removing a
@@ -109,7 +112,17 @@ export class DeprecatedNodesValidationService {
 			violations: violations.map(({ kind, nodeType }) => ({ kind, nodeType })),
 		});
 
-		throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
+		const policyViolations = violations.map((v) => ({
+			kind: 'node-type-deprecated',
+			checkId: 'deprecated-nodes',
+			message: this.formatMessage(v),
+			subject: v.nodeType,
+			subjectType: 'nodeType',
+		}));
+
+		throw new DeprecatedNodesError(policyViolations.map(({ message }) => message).join(' '), {
+			violations: policyViolations,
+		});
 	}
 
 	private deprecatedDescription(node: INode): INodeTypeDescription | undefined {
@@ -122,17 +135,13 @@ export class DeprecatedNodesValidationService {
 		}
 	}
 
-	private formatMessage(violations: DeprecatedNodeViolation[]): string {
-		return violations
-			.map((v) => {
-				const verb = v.kind === 'added' ? 'use a' : 'modify a';
-				const replacement = this.getReplacementDisplayName(v.nodeType);
-				const fix = replacement
-					? `Replace it with the ${replacement} node or remove it from the workflow.`
-					: 'Replace it with a supported alternative or remove it from the workflow.';
-				return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated. ${fix}`;
-			})
-			.join(' ');
+	private formatMessage(v: DeprecatedNodeViolation): string {
+		const verb = v.kind === 'added' ? 'use a' : 'modify a';
+		const replacement = this.getReplacementDisplayName(v.nodeType);
+		const fix = replacement
+			? `Replace it with the ${replacement} node or remove it from the workflow.`
+			: 'Replace it with a supported alternative or remove it from the workflow.';
+		return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated. ${fix}`;
 	}
 
 	/** Display name of the node type configured as this node's replacement, if any. */

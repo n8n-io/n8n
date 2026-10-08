@@ -4,10 +4,7 @@ import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { fail } from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	DeprecatedNodesError,
-	type DeprecatedNodeViolation,
-} from '@/errors/response-errors/deprecated-nodes.error';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
@@ -43,13 +40,27 @@ describe('DeprecatedNodesValidationService', () => {
 		validator = new DeprecatedNodesValidationService(logger, nodesConfig, nodeTypes);
 	});
 
-	const expectViolations = (run: () => void, violations: DeprecatedNodeViolation[]) => {
+	type ExpectedViolation = { kind: 'added' | 'edited'; nodeName: string; nodeType: string };
+
+	const policyViolation = ({ kind, nodeName, nodeType }: ExpectedViolation) => ({
+		kind: 'node-type-deprecated',
+		checkId: 'deprecated-nodes',
+		message: expect.stringContaining(
+			`Cannot ${kind === 'added' ? 'use' : 'modify'} a "${nodeType}" node ("${nodeName}")`,
+		),
+		subject: nodeType,
+		subjectType: 'nodeType',
+	});
+
+	const expectViolations = (run: () => void, violations: ExpectedViolation[]) => {
 		try {
 			run();
 			fail('expected to throw');
 		} catch (error) {
 			expect(error).toBeInstanceOf(DeprecatedNodesError);
-			expect((error as DeprecatedNodesError).meta.violations).toEqual(violations);
+			expect((error as DeprecatedNodesError).meta.violations).toEqual(
+				violations.map(policyViolation),
+			);
 		}
 	};
 
@@ -88,8 +99,16 @@ describe('DeprecatedNodesValidationService', () => {
 				expect(error).toBeInstanceOf(DeprecatedNodesError);
 				const typed = error as DeprecatedNodesError;
 				expect(typed.meta.violations).toEqual([
-					{ kind: 'added', nodeName: 'Func A', nodeType: 'n8n-nodes-base.function' },
-					{ kind: 'added', nodeName: 'Func B', nodeType: 'n8n-nodes-base.functionItem' },
+					policyViolation({
+						kind: 'added',
+						nodeName: 'Func A',
+						nodeType: 'n8n-nodes-base.function',
+					}),
+					policyViolation({
+						kind: 'added',
+						nodeName: 'Func B',
+						nodeType: 'n8n-nodes-base.functionItem',
+					}),
 				]);
 				expect(typed.message).toContain('Func A');
 				expect(typed.message).toContain('Func B');
