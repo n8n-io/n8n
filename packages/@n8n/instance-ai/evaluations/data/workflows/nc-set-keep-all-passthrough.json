@@ -9,7 +9,7 @@
 			"text": "Manual workflow: GET the order from https://shop.example.com/api/orders/o1 (it returns the order as JSON with an id, a total and other fields). Add a field total_with_tax (a number) = total * 1.2 and keep all the other order fields. Then POST JSON {\"id\": <order id>, \"total_with_tax\": <total_with_tax>} to https://ledger.example.com/api/orders."
 		}
 	],
-	"description": "The Set node output has only the set fields unless it keeps the input fields. Grades that the Set keeps all input fields, that total_with_tax is a number, and that the POST reads both the kept id and the new field.",
+	"description": "The Set node output has only the set fields unless it keeps the input fields. Grades that the Set keeps all input fields and that the POST reads both the kept id and the new field. The scenario checks that total_with_tax is a number.",
 	"executionScenarios": [
 		{
 			"name": "kept-fields-and-typed-total-posted",
@@ -19,6 +19,6 @@
 		}
 	],
 	"outcomeExpectations": [
-		"The Set node adds total_with_tax typed as a number and keeps all input fields, so the POST can read id from the Set output."
+		"The Set node adds total_with_tax and keeps all input fields, so the POST can read id from the Set output."
 	]
 }
