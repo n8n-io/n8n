@@ -33,6 +33,7 @@ import type {
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
+	ITaskData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	CredentialCheckResult,
@@ -1256,6 +1257,7 @@ describe('invokeWebhook', () => {
 		expect(result).toEqual({
 			webhookResultData,
 			runExecutionDataChanges: {},
+			failed: false,
 		});
 		expect(responseCallback).not.toHaveBeenCalled();
 		expect(responder.hasResponded).toBe(false);
@@ -1297,6 +1299,7 @@ describe('invokeWebhook', () => {
 			{},
 		);
 		expect(responder.hasResponded).toBe(true);
+		expect(result.failed).toBe(true);
 		expect(result.webhookResultData).toEqual({
 			noWebhookResponse: true,
 			workflowData: [[{ json: {} }]],
@@ -3100,5 +3103,145 @@ describe('executeWebhook on engine v2', () => {
 			});
 			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('executeWebhook when the node webhook throws', () => {
+	const startNode = mock<INode>({
+		name: 'Form Ending',
+		type: FORM_NODE_TYPE,
+		typeVersion: 2,
+		parameters: { operation: 'completion' },
+	});
+
+	const runRequest = async ({
+		runExecutionData,
+		executionId,
+		method = 'GET',
+	}: {
+		runExecutionData?: IRunExecutionData;
+		executionId?: string;
+		method?: 'GET' | 'POST';
+	}) => {
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
+		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
+		webhookService.runWebhook.mockRejectedValue(new Error('No binary data with field data found.'));
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodes: { [startNode.name]: startNode },
+			getChildNodes: vi.fn().mockReturnValue([]),
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'form' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+				getComplexParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => args[1],
+				),
+			},
+		});
+		const responseCallback = vi.fn();
+
+		await executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default', responseMode: 'onReceived' },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			startNode,
+			'webhook',
+			undefined,
+			runExecutionData,
+			executionId,
+			mock<WebhookRequest>({ method, headers: {}, contentType: undefined, body: {} }),
+			mock<express.Response>({ headersSent: false }),
+			responseCallback,
+		);
+
+		return { responseCallback };
+	};
+
+	const expectErrorResponse = (responseCallback: ReturnType<typeof vi.fn>) => {
+		expect(responseCallback).toHaveBeenCalledTimes(1);
+		expect(responseCallback).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Workflow Form Error: Workflow could not be started!' }),
+			{},
+		);
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
+	it('should leave a finished execution as it was', async () => {
+		const runExecutionData = createRunExecutionData({
+			executionData: { nodeExecutionStack: [] },
+		});
+
+		const { responseCallback } = await runRequest({ runExecutionData, executionId: EXECUTION_ID });
+
+		expectErrorResponse(responseCallback);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(runExecutionData.executionData?.nodeExecutionStack).toEqual([]);
+		expect(Container.get(ErrorReporter).error).toHaveBeenCalledTimes(1);
+	});
+
+	// On a POST resume, `disableNode` has already disabled the waiting node.
+	it.each([
+		{ method: 'GET' as const, disabled: false },
+		{ method: 'POST' as const, disabled: true },
+	])('should leave a waiting execution as it was on $method', async ({ method, disabled }) => {
+		const runData = { Trigger: [mock<ITaskData>()] };
+		const waitingNode = { ...startNode, disabled };
+		const runExecutionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [
+					{ node: waitingNode, data: { main: [[{ json: { submitted: true } }]] }, source: null },
+				],
+			},
+			resultData: { runData, lastNodeExecuted: 'Form Ending' },
+		});
+
+		const { responseCallback } = await runRequest({
+			runExecutionData,
+			executionId: EXECUTION_ID,
+			method,
+		});
+
+		expectErrorResponse(responseCallback);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(runExecutionData.resultData.runData).toBe(runData);
+		expect(runExecutionData.resultData.error).toBeUndefined();
+		expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
+			[{ json: { submitted: true } }],
+		]);
+	});
+
+	it('should still record a new execution as failed', async () => {
+		const { responseCallback } = await runRequest({});
+
+		expectErrorResponse(responseCallback);
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		expect(workflowRunner.run.mock.calls[0][0].executionData?.resultData).toEqual(
+			expect.objectContaining({
+				lastNodeExecuted: 'Form Ending',
+				error: expect.objectContaining({ message: 'No binary data with field data found.' }),
+			}),
+		);
 	});
 });

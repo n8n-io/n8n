@@ -124,6 +124,8 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 interface WebhookInvocationResult {
 	webhookResultData: IWebhookResponseData;
 	runExecutionDataChanges: WebhookExecutionDataChanges;
+	/** Whether the node's webhook threw. The caller has already been sent the error response. */
+	failed: boolean;
 }
 
 interface WebhookExecutionDataChanges {
@@ -572,7 +574,7 @@ export async function invokeWebhook({
 			node: workflowStartNode,
 		});
 
-		return { webhookResultData, runExecutionDataChanges: {} };
+		return { webhookResultData, runExecutionDataChanges: {}, failed: false };
 	} catch (e: unknown) {
 		const error = ensureError(e);
 		const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
@@ -604,6 +606,7 @@ export async function invokeWebhook({
 				noWebhookResponse: true,
 				workflowData: [[{ json: {} }]],
 			},
+			failed: true,
 		};
 	}
 }
@@ -1119,6 +1122,9 @@ export async function executeWebhook(
 			webhookType: ['formTrigger', 'form'].includes(nodeType.description.name) ? 'Form' : 'Webhook',
 			responder,
 		});
+
+		if (invocationResult.failed && executionId !== undefined) return;
+
 		const { webhookResultData } = invocationResult;
 		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
 		if (routesToEngineV2) engineV2Payload = webhookResultData.workflowData;
