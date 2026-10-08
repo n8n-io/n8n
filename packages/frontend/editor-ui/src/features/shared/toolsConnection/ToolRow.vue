@@ -228,9 +228,7 @@ function handleConnect() {
 				:node-type-name="item.title"
 				:scope="restriction.scope"
 				:anchor="rowRef"
-				side="top"
-				align="end"
-				:side-offset="8"
+				:side-offset="48"
 			/>
 			<N8nTooltip
 				v-else-if="isDisabled"
