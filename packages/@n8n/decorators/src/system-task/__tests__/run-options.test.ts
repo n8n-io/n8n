@@ -1,4 +1,4 @@
-import { MAX_TASK_TIMEOUT_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { MAX_TIMER_DELAY_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 import {
 	resolveSystemTaskRunOptions,
@@ -175,12 +175,12 @@ describe('timeoutAfterLimit', () => {
 	it.each([
 		{ limit: 300, margin: 300, expected: 600 },
 		{ limit: 1.2, margin: 0, expected: 2 },
-		{ limit: MAX_TASK_TIMEOUT_SECONDS, margin: 300, expected: MAX_TASK_TIMEOUT_SECONDS },
+		{ limit: MAX_TIMER_DELAY_SECONDS, margin: 300, expected: MAX_TIMER_DELAY_SECONDS },
 	])('adds the margin to a limit of $limit', ({ limit, margin, expected }) => {
 		expect(timeoutAfterLimit(limit, margin)).toBe(expected);
 	});
 
 	it.each([0, -1, Number.NaN])('uses the longest timeout for no limit (%s)', (limit) => {
-		expect(timeoutAfterLimit(limit, 300)).toBe(MAX_TASK_TIMEOUT_SECONDS);
+		expect(timeoutAfterLimit(limit, 300)).toBe(MAX_TIMER_DELAY_SECONDS);
 	});
 });
