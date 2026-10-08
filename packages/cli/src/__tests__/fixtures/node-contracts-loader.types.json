@@ -1633,6 +1633,31 @@
 			"documentationUrl": "google/oauth-single-service"
 		},
 		{
+			"name": "microsoftTeamsOAuth2Api",
+			"extends": ["microsoftOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-integrations.microsoftTeamsChannelMessageCreate",
+				"@n8n/nodes-integrations.microsoftTeamsChatMessageCreate",
+				"n8n-nodes-base.microsoftTeams",
+				"n8n-nodes-base.microsoftTeamsTrigger"
+			],
+			"properties": [
+				"grantType",
+				"customScopes",
+				"customScopesNotice",
+				"enabledScopes",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"authUrl",
+				"accessTokenUrl",
+				"graphApiBaseUrl",
+				"notice"
+			],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Microsoft/Teams/teams.svg",
+			"documentationUrl": "microsoft"
+		},
+		{
 			"name": "minimaxApi",
 			"authenticate": {
 				"type": "generic",
@@ -2211,6 +2236,19 @@
 		"googleSheetsTriggerOAuth2Api": {
 			"extends": ["googleOAuth2Api"],
 			"supportedNodes": ["n8n-nodes-base.googleSheetsTrigger"]
+		},
+		"microsoftTeamsOAuth2Api": {
+			"extends": ["microsoftOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-integrations.microsoftTeamsChannelMessageCreate",
+				"@n8n/nodes-integrations.microsoftTeamsChannelMessageCreateTool",
+				"@n8n/nodes-integrations.microsoftTeamsChatMessageCreate",
+				"@n8n/nodes-integrations.microsoftTeamsChatMessageCreateTool",
+				"n8n-nodes-base.microsoftTeams",
+				"n8n-nodes-base.microsoftTeamsHitlTool",
+				"n8n-nodes-base.microsoftTeamsTool",
+				"n8n-nodes-base.microsoftTeamsTrigger"
+			]
 		},
 		"minimaxApi": {
 			"supportedNodes": ["@n8n/nodes-integrations.minimaxChatModel"]

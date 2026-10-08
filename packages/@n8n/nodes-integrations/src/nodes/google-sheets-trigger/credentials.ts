@@ -110,6 +110,7 @@ export const googleServiceAccount = defineCredential({
 				'You can find the scopes for services <a href="https://developers.google.com/identity/protocols/oauth2/scopes" target="_blank">here</a>',
 			),
 	},
+	when: { delegatedEmail: { inpersonate: true }, scopes: { httpNode: true } },
 	auth: (a) =>
 		a.oauth2.jwtBearer({
 			tokenEndpoint: 'https://oauth2.googleapis.com/token',

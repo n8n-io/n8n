@@ -1571,8 +1571,11 @@ const editableScopeProperties = (scope: string): INodeProperties[] => [
 	hidden('Scope', 'scope', `={{$self["customScopes"] ? $self["enabledScopes"] : "${scope}"}}`),
 ];
 
-/** The hidden fields of an `oAuth2Api` child. n8n core runs the flow from them. */
-const oauth2Properties = (grant: OAuth2Grant): INodeProperties[] => {
+/**
+ * The hidden fields of an `oAuth2Api` child. n8n core runs the flow from them. A field of the type
+ * with the name of an endpoint replaces the hidden endpoint, so the user can edit it, e.g. a tenant.
+ */
+const oauth2Properties = (grant: OAuth2Grant, fields: Shape): INodeProperties[] => {
 	const isCode = grant.grant === 'authorizationCode';
 	const scope = grant.scope.join(' ');
 	// n8n core resolves `$self` in hidden defaults before it runs the flow.
@@ -1583,10 +1586,12 @@ const oauth2Properties = (grant: OAuth2Grant): INodeProperties[] => {
 			'grantType',
 			isCode ? (grant.pkce ? 'pkce' : 'authorizationCode') : 'clientCredentials',
 		),
-		...(grant.authorizationEndpoint === undefined
+		...(grant.authorizationEndpoint === undefined || 'authUrl' in fields
 			? []
 			: [hidden('Authorization URL', 'authUrl', endpoint(grant.authorizationEndpoint), true)]),
-		hidden('Access Token URL', 'accessTokenUrl', endpoint(grant.tokenEndpoint), true),
+		...('accessTokenUrl' in fields
+			? []
+			: [hidden('Access Token URL', 'accessTokenUrl', endpoint(grant.tokenEndpoint), true)]),
 		...(grant.editableScopes ? editableScopeProperties(scope) : [hidden('Scope', 'scope', scope)]),
 		...(isCode
 			? [
@@ -1960,7 +1965,7 @@ export function toCredentialType(
 		return {
 			...base,
 			extends: [type.legacyParent ?? 'oAuth2Api'],
-			properties: [...oauth2Properties(scheme), ...properties],
+			properties: [...oauth2Properties(scheme, type.fields ?? {}), ...properties],
 			...test,
 		};
 	}

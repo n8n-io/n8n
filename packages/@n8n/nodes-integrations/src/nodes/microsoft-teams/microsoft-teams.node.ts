@@ -11,9 +11,11 @@ import {
 } from '@n8n/node-sdk';
 import { compat, credential } from '@n8n/node-sdk/credentials';
 
+import { microsoftTeamsOAuth2 } from './credentials';
+
 const GRAPH = 'https://graph.microsoft.com';
 
-// The legacy types stay the definition: core runs their Microsoft sign-in, also with a
+// The legacy type stays the definition: core runs its Microsoft sign-in, also with a
 // certificate. The credential picks the Graph cloud, e.g. US Government.
 const graphApiBaseUrl = t.str().default(GRAPH);
 
@@ -24,11 +26,7 @@ export const microsoftTeams = defineNode({
 	// App-only Graph cannot post as a user, so the Service Principal type is not here.
 	credential: credential({
 		types: [
-			compat('microsoftTeamsOAuth2Api', {
-				id: 'microsoftTeams.oauth2',
-				fields: { graphApiBaseUrl },
-				baseUrl: '{graphApiBaseUrl}',
-			}),
+			microsoftTeamsOAuth2,
 			compat('microsoftOAuth2Api', {
 				id: 'microsoft.oauth2',
 				fields: { graphApiBaseUrl },

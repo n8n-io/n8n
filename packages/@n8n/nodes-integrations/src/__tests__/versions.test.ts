@@ -307,8 +307,10 @@ describe('bundled versions', () => {
 			'github.token': '^1.0.0',
 			'github.oauth2': '^1.0.0',
 		});
-		// A compat credential type has no credential manifest, so no pin.
-		expect(byId.get('microsoftTeams.chatMessage.create')?.credentials).toBeUndefined();
+		// The compat microsoftOAuth2Api has no credential manifest, so no pin.
+		expect(byId.get('microsoftTeams.chatMessage.create')?.credentials).toEqual({
+			'microsoftTeams.oauth2': '^1.0.0',
+		});
 	});
 
 	it('keep the contract hash of each action whose form stores a widget value', () => {

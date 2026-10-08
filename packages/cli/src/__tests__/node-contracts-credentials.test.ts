@@ -1,5 +1,10 @@
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
+import {
+	ClientOAuth2,
+	resolveClientAuthOptions,
+	type OAuth2CredentialData,
+} from '@n8n/client-oauth2';
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { hostRuntime } from '@n8n/node-sdk/host';
 import { bundledCredentialsOf } from '@test/first-party-contracts';
@@ -11,7 +16,9 @@ import type {
 	IVersionedNodeType,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
+import nock from 'nock';
 import { generateKeyPairSync, verify } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -406,6 +413,11 @@ describe('credential types of the node contracts package', () => {
 		expect(credentialTypes.getSupportedNodes('googleApi')).toEqual(
 			expect.arrayContaining(['n8n-nodes-base.gmail', 'n8n-nodes-base.googleSheetsTrigger']),
 		);
+		const shown = (name: string) =>
+			credentialTypes.getByName('googleApi').properties.find((p) => p.name === name)
+				?.displayOptions;
+		expect(shown('delegatedEmail')).toEqual({ show: { inpersonate: [true] } });
+		expect(shown('scopes')).toEqual({ show: { httpNode: [true] } });
 		const data = await helper.applyDefaultsAndOverwrites(
 			mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
 			stored,
@@ -421,7 +433,11 @@ describe('credential types of the node contracts package', () => {
 		expect(signed.headers).toEqual({ Authorization: 'Bearer at-1' });
 		expect(request).toHaveBeenCalledTimes(1);
 		const [options] = request.mock.calls[0] as unknown as [IHttpRequestOptions];
-		expect(options).toMatchObject({ method: 'POST', url: 'https://oauth2.googleapis.com/token' });
+		expect(options).toMatchObject({
+			method: 'POST',
+			url: 'https://oauth2.googleapis.com/token',
+			timeout: 30_000,
+		});
 		const body = new URLSearchParams(String(options.body));
 		expect(body.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:jwt-bearer');
 		const [header = '', payload = '', signature = ''] = (body.get('assertion') ?? '').split('.');
@@ -452,6 +468,177 @@ describe('credential types of the node contracts package', () => {
 			helper.authenticate({ ...data, httpNode: false }, 'googleApi', structuredClone(own)),
 		).resolves.toEqual(own);
 		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('give microsoftTeamsOAuth2Api the tenant endpoints of the stored data and the certificate sign-in of its legacy parent', async () => {
+		const [contract, legacy] = await Promise.all([loaded(true), loaded(false)]);
+		const tenant = 'https://login.microsoftonline.com/acme-tenant/oauth2/v2.0';
+		const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+		const certificate = readFileSync(
+			path.resolve(__dirname, '../../test/integration/eventbus/support/certificate.pem'),
+			'utf8',
+		);
+		const stored = {
+			clientId: 'client-1',
+			clientCredentialType: 'certificate',
+			privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+			certificate,
+			authUrl: `${tenant}/authorize`,
+			accessTokenUrl: `${tenant}/token`,
+			graphApiBaseUrl: 'https://graph.microsoft.us',
+		};
+		const dataOf = async ({ helper }: typeof contract, data: ICredentialDataDecryptedObject) =>
+			await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				data,
+				'microsoftTeamsOAuth2Api',
+				'internal',
+			);
+		const keys = [
+			'clientId',
+			'clientCredentialType',
+			'grantType',
+			'authUrl',
+			'accessTokenUrl',
+			'scope',
+			'authQueryParameters',
+			'authentication',
+			'graphApiBaseUrl',
+		];
+		const pick = (data: ICredentialDataDecryptedObject) =>
+			Object.fromEntries(keys.map((key) => [key, data[key]]));
+
+		expect(contract.instance.knownCredentials.microsoftTeamsOAuth2Api.sourcePath).toContain(NEXT);
+		expect(contract.credentialTypes.getParentTypes('microsoftTeamsOAuth2Api')).toEqual([
+			'microsoftOAuth2Api',
+			'oAuth2Api',
+		]);
+		expect(contract.credentialTypes.getSupportedNodes('microsoftTeamsOAuth2Api')).toEqual(
+			expect.arrayContaining([
+				'n8n-nodes-base.microsoftTeams',
+				'n8n-nodes-base.microsoftTeamsTrigger',
+			]),
+		);
+		const names = contract.credentialTypes
+			.getByName('microsoftTeamsOAuth2Api')
+			.properties.map(({ name }) => name);
+		expect(new Set(names).size).toBe(names.length);
+		const form = contract.helper.getCredentialsProperties('microsoftTeamsOAuth2Api');
+		const formOf = (name: string) => form.find((property) => property.name === name);
+		expect(formOf('authUrl')?.type).toBe('string');
+		expect(formOf('accessTokenUrl')?.type).toBe('string');
+		expect(formOf('privateKey')?.displayOptions).toEqual({
+			show: { clientCredentialType: ['certificate'] },
+		});
+
+		const data = await dataOf(contract, stored);
+		expect(data).toMatchObject({
+			authUrl: `${tenant}/authorize`,
+			accessTokenUrl: `${tenant}/token`,
+		});
+		expect(pick(data)).toEqual(pick(await dataOf(legacy, stored)));
+		expect(pick(await dataOf(contract, {}))).toEqual(pick(await dataOf(legacy, {})));
+
+		// The refresh client of OauthService: the tenant token URL, and a client assertion that
+		// n8n signs with the private key, not the client secret.
+		let body: Record<string, string> = {};
+		const refresh = nock('https://login.microsoftonline.com')
+			.post('/acme-tenant/oauth2/v2.0/token', (sent: Record<string, string>) => {
+				body = sent;
+				return true;
+			})
+			.reply(200, { access_token: 'at-2', token_type: 'bearer', expires_in: 3600 });
+		const oauth = data as unknown as OAuth2CredentialData;
+		const client = new ClientOAuth2({
+			clientId: oauth.clientId,
+			...resolveClientAuthOptions(oauth),
+			accessTokenUri: oauth.accessTokenUrl,
+			authentication: oauth.authentication,
+		});
+		const token = await client
+			.createToken({ access_token: 'at-1', refresh_token: 'rt-1', token_type: 'bearer' })
+			.refresh();
+
+		expect(refresh.isDone()).toBe(true);
+		expect(token.accessToken).toBe('at-2');
+		expect(body).toMatchObject({
+			grant_type: 'refresh_token',
+			refresh_token: 'rt-1',
+			client_id: 'client-1',
+			client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+		});
+		expect(body).not.toHaveProperty('client_secret');
+		const [header = '', payload = '', signature = ''] = (body.client_assertion ?? '').split('.');
+		expect(
+			verify(
+				'sha256',
+				Buffer.from(`${header}.${payload}`),
+				publicKey,
+				Buffer.from(signature, 'base64url'),
+			),
+		).toBe(true);
+		expect(JSON.parse(Buffer.from(payload, 'base64url').toString())).toMatchObject({
+			aud: `${tenant}/token`,
+			iss: 'client-1',
+		});
+	});
+
+	it('apply an admin overwrite of microsoftOAuth2Api to microsoftTeamsOAuth2Api over derive', async () => {
+		const [on, off] = await Promise.all(
+			[true, false].map(async (enabled) => {
+				const { credentialTypes } = await loaded(enabled);
+				const overwrites = new CredentialsOverwrites(
+					mock<GlobalConfig>({
+						credentials: {
+							overwrite: {
+								data: JSON.stringify({
+									microsoftOAuth2Api: {
+										clientId: 'managed-1',
+										clientSecret: 'managed-secret',
+										accessTokenUrl: 'https://login.microsoftonline.com/admin/oauth2/v2.0/token',
+									},
+								}),
+								persistence: false,
+								skipTypes: [] as unknown as CommaSeparatedStringArray<string>,
+							},
+						},
+					}),
+					credentialTypes,
+					mock(),
+					mock(),
+					mock(),
+				);
+				await overwrites.init();
+				const helper = new CredentialsHelper(
+					credentialTypes,
+					overwrites,
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+				);
+				return await helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{},
+					'microsoftTeamsOAuth2Api',
+					'internal',
+				);
+			}),
+		);
+
+		expect(on).toMatchObject({
+			clientId: 'managed-1',
+			clientSecret: 'managed-secret',
+			authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+			accessTokenUrl: 'https://login.microsoftonline.com/admin/oauth2/v2.0/token',
+		});
+		const keys = ['clientId', 'clientSecret', 'authUrl', 'accessTokenUrl'] as const;
+		const pick = (data: ICredentialDataDecryptedObject) =>
+			Object.fromEntries(keys.map((key) => [key, data[key]]));
+		expect(pick(on)).toEqual(pick(off));
 	});
 
 	it('keep the legacy classes with node contracts off', async () => {

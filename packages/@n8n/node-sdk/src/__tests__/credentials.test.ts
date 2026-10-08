@@ -959,6 +959,33 @@ describe('OAuth2 grants and OIDC', () => {
 		]);
 	});
 
+	it('projects an endpoint field of the type in place of the hidden endpoint', () => {
+		const type = projected(
+			defineCredential({
+				id: 'acme.oauth2',
+				version: '1.0.0',
+				legacyName: 'acmeOAuth2Api',
+				displayName: 'Acme OAuth2 API',
+				fields: {
+					authUrl: field.url('Authorization URL').default('https://acme.test/authorize'),
+					accessTokenUrl: field.url('Access Token URL').default('https://acme.test/token'),
+				},
+				auth: (a) =>
+					a.oauth2.authorizationCode({
+						authorizationEndpoint: 'https://acme.test/authorize',
+						tokenEndpoint: 'https://acme.test/token',
+					}),
+			}),
+		);
+		const endpoints = type.properties.filter(({ name }) =>
+			['authUrl', 'accessTokenUrl'].includes(name),
+		);
+		expect(endpoints).toEqual([
+			expect.objectContaining({ name: 'authUrl', type: 'string' }),
+			expect.objectContaining({ name: 'accessTokenUrl', type: 'string' }),
+		]);
+	});
+
 	it('keeps the grants n8n core does not run as data and refuses to project them', () => {
 		const device = defineCredential({
 			id: 'acme.device',

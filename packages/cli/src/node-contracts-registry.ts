@@ -561,8 +561,11 @@ export class ContractNodeLoader implements NodeLoader {
 		);
 		const withTypes = await this.credentialManifestsOf(storedCredentials);
 		// A jwtBearer token request runs outside a node run, so it takes the outbound client of n8n.
+		// The 30 s timeout is the timeout of the legacy token request.
 		const http = async (options: IHttpRequestOptions) =>
-			await Container.get(OutboundHttp).requests().request(options);
+			await Container.get(OutboundHttp)
+				.requests()
+				.request({ ...options, timeout: 30_000 });
 		const credentials = withTypes.map(({ file, manifest, withCode }) => {
 			const supportedNodes = [...this.nodes]
 				.filter(([, { type }]) => credentialNamesOf(type).includes(manifest.name))

@@ -38,8 +38,8 @@ describe('contractCatalogOf', () => {
 
 describe('embeddedCompatTypeOf', () => {
 	it('reads a compat type with its fields and base URL from an embedded bundle', () => {
-		expect(embeddedCompatTypeOf(firstParty, 'microsoftTeamsOAuth2Api')).toMatchObject({
-			name: 'microsoftTeamsOAuth2Api',
+		expect(embeddedCompatTypeOf(firstParty, 'microsoftOAuth2Api')).toMatchObject({
+			name: 'microsoftOAuth2Api',
 			scheme: { kind: 'compat' },
 			baseUrl: '{graphApiBaseUrl}',
 		});
