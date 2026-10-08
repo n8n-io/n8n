@@ -1013,6 +1013,20 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('renders the attach button in the composer footer when the model accepts attachments', () => {
+		const wrapper = mountPanel();
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
+	});
+
+	it('hides the attach button when the model accepts no attachments', () => {
+		const wrapper = mountPanel({
+			agentConfig: { ...defaultAgentConfig, model: 'unknown-provider/model' },
+		});
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
+	});
+
 	it('moves a queued message to the composer after removal and sends it through the normal path', async () => {
 		queuedMessagesMock.value = [
 			{
