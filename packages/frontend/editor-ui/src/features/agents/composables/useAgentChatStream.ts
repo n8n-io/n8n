@@ -80,6 +80,8 @@ export interface UseAgentChatStreamParams {
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	/** The agent is no longer available in n8n Chat (unpublished before send, or mid-run/resume). */
+	onAgentUnavailable?: () => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
 }
@@ -116,14 +118,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const { showError } = useToast();
 	const channel = params.channel ?? ref<AgentChatChannel>('chat');
 	/**
-	 * What the current channel supports. n8n Chat has no steer or reorder routes,
-	 * and no single default thread to fall back to like the builder's test chat
-	 * — `previewHistory` gates that fallback.
+	 * What the current channel supports. n8n Chat has no single default thread
+	 * to fall back to like the builder's test chat — `previewHistory` gates
+	 * that fallback.
 	 */
 	const capabilities = computed(() => ({
-		steer: channel.value !== 'n8n-chat',
 		previewHistory: channel.value !== 'n8n-chat',
-		reorder: channel.value !== 'n8n-chat',
 		/** n8n Chat has no session detail view to link a background job's trace to. */
 		traceLinks: channel.value !== 'n8n-chat',
 	}));
@@ -161,7 +161,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isCancelling = ref(false);
 	const canSteer = computed(
 		() =>
-			capabilities.value.steer &&
 			!!steerableExecutionId.value &&
 			steerableExecutionId.value === activeExecutionId.value &&
 			!isCancelling.value &&
@@ -415,7 +414,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		targetQueueId: string,
 		expectedQueueIds: string[],
 	): Promise<void> {
-		if (!capabilities.value.reorder) return;
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		if (!threadId || disposed || isReorderingQueue.value) return;
 		const target = targetKey();
@@ -428,6 +426,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ targetQueueId, expectedQueueIds },
+				channel.value,
 			);
 		} catch (error) {
 			if (!disposed && target === targetKey()) {
@@ -460,6 +459,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ executionId },
+				channel.value,
 			);
 			if (disposed || target !== targetKey()) return;
 			queuedMessages.value = queuedMessages.value.map((item) =>
@@ -1232,6 +1232,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
+				} else if (event.errorCode === 'agent_unavailable') {
+					params.onAgentUnavailable?.();
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
 				} else {

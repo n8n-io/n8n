@@ -298,6 +298,7 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () =>
 				id: 'agent-1',
 				name: 'Support Agent',
 				project: { id: 'project-1', name: 'Project' },
+				attachments: { image: true, pdf: false, audio: false },
 			},
 		}),
 		template: `
@@ -355,6 +356,7 @@ const InstanceAiInputStub = defineComponent({
 		contextualSuggestion: { type: String, required: false, default: null },
 		placeholder: { type: String, required: false },
 		mentionsEnabled: { type: Boolean, required: false },
+		attachOnlyMimeTypes: { type: String, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
@@ -487,6 +489,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mentions-enabled' },
 					String(props.mentionsEnabled),
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-attach-only' },
+					props.attachOnlyMimeTypes ?? 'unset',
 				),
 				h(
 					'button',
@@ -1561,6 +1568,20 @@ describe('InstanceAiEmptyView', () => {
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
 			await nextTick();
 			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('true');
+		});
+
+		it("switches the composer to attach-only with the agent's file types, and back to the full menu on the Assistant", async () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('unset');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('image/*');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
+			await nextTick();
+			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('unset');
 		});
 
 		it('navigates to the agent chat route on submit, without starting an Assistant thread', async () => {

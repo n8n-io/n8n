@@ -198,7 +198,7 @@ export const executeWorkflow = async (
 		user,
 		['workflow:execute'],
 		workflowFinderService,
-		{ includeActiveVersion: true },
+		{ includeActiveVersion: true, publishHistory: 'none' },
 	);
 	const runData = await buildRunData(
 		workflow,

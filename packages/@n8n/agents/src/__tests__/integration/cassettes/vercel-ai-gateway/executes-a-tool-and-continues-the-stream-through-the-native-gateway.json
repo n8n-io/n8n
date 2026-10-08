@@ -1,0 +1,183 @@
+[
+	{
+		"scope": "https://ai-gateway.vercel.sh:443",
+		"method": "POST",
+		"path": "/v4/ai/language-model",
+		"body": {
+			"tools": [
+				{
+					"type": "function",
+					"name": "add_numbers",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"description": "Add two numbers.",
+					"providerOptions": {
+						"anthropic": {
+							"eagerInputStreaming": false
+						}
+					}
+				}
+			],
+			"toolChoice": {
+				"type": "auto"
+			},
+			"prompt": [
+				{
+					"role": "system",
+					"content": "Use add_numbers for arithmetic. Reply with only the result."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Add 17 and 25."
+						}
+					]
+				}
+			],
+			"includeRawChunks": true
+		},
+		"status": 200,
+		"response": "data: {\"type\":\"stream-start\",\"warnings\":[]}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.created\",\"response\":{\"id\":\"resp_08aaa2d3fc05aee1016ac521ae833487d1b1225aab50665ce3\",\"object\":\"response\",\"created_at\":1791304110,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":32768,\"max_tool_calls\":null,\"model\":\"gpt-4.1-nano-2025-04-14\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0,\"previous_response_id\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"context\":null,\"effort\":null,\"summary\":null},\"safety_identifier\":\"d8348a0b4e5cb255aab1558aaa7c3f7f261debee368d0d262bfa7755fd994f15\",\"service_tier\":\"auto\",\"store\":false,\"temperature\":1,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Add two numbers.\",\"name\":\"add_numbers\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":false}],\"top_logprobs\":0,\"top_p\":1,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":0}}\n\ndata: {\"type\":\"response-metadata\",\"id\":\"resp_08aaa2d3fc05aee1016ac521ae833487d1b1225aab50665ce3\",\"timestamp\":\"2026-10-06T16:28:30.000Z\",\"modelId\":\"gpt-4.1-nano-2025-04-14\"}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.in_progress\",\"response\":{\"id\":\"resp_08aaa2d3fc05aee1016ac521ae833487d1b1225aab50665ce3\",\"object\":\"response\",\"created_at\":1791304110,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":32768,\"max_tool_calls\":null,\"model\":\"gpt-4.1-nano-2025-04-14\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0,\"previous_response_id\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"context\":null,\"effort\":null,\"summary\":null},\"safety_identifier\":\"d8348a0b4e5cb255aab1558aaa7c3f7f261debee368d0d262bfa7755fd994f15\",\"service_tier\":\"auto\",\"store\":false,\"temperature\":1,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Add two numbers.\",\"name\":\"add_numbers\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":false}],\"top_logprobs\":0,\"top_p\":1,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":1}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.output_item.added\",\"item\":{\"id\":\"fc_08aaa2d3fc05aee1016ac521af196087d1833e4e2c9b8d756e\",\"type\":\"function_call\",\"status\":\"in_progress\",\"arguments\":\"\",\"call_id\":\"call_TLot3FJ4pe5knn1WAUzRdJII\",\"name\":\"add_numbers\"},\"output_index\":0,\"sequence_number\":2}}\n\ndata: {\"type\":\"tool-input-start\",\"id\":\"call_TLot3FJ4pe5knn1WAUzRdJII\",\"toolName\":\"add_numbers\"}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.function_call_arguments.delta\",\"delta\":\"{\\\"a\\\":17,\\\"b\\\":25}\",\"item_id\":\"fc_08aaa2d3fc05aee1016ac521af196087d1833e4e2c9b8d756e\",\"obfuscation\":\"L\",\"output_index\":0,\"sequence_number\":3}}\n\ndata: {\"type\":\"tool-input-delta\",\"id\":\"call_TLot3FJ4pe5knn1WAUzRdJII\",\"delta\":\"{\\\"a\\\":17,\\\"b\\\":25}\"}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.function_call_arguments.done\",\"arguments\":\"{\\\"a\\\":17,\\\"b\\\":25}\",\"item_id\":\"fc_08aaa2d3fc05aee1016ac521af196087d1833e4e2c9b8d756e\",\"output_index\":0,\"sequence_number\":4}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.output_item.done\",\"item\":{\"id\":\"fc_08aaa2d3fc05aee1016ac521af196087d1833e4e2c9b8d756e\",\"type\":\"function_call\",\"status\":\"completed\",\"arguments\":\"{\\\"a\\\":17,\\\"b\\\":25}\",\"call_id\":\"call_TLot3FJ4pe5knn1WAUzRdJII\",\"name\":\"add_numbers\"},\"output_index\":0,\"sequence_number\":5}}\n\ndata: {\"type\":\"tool-input-end\",\"id\":\"call_TLot3FJ4pe5knn1WAUzRdJII\"}\n\ndata: {\"type\":\"tool-call\",\"toolCallId\":\"call_TLot3FJ4pe5knn1WAUzRdJII\",\"toolName\":\"add_numbers\",\"input\":\"{\\\"a\\\":17,\\\"b\\\":25}\",\"providerMetadata\":{\"openai\":{\"itemId\":\"fc_08aaa2d3fc05aee1016ac521af196087d1833e4e2c9b8d756e\"}}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_08aaa2d3fc05aee1016ac521ae833487d1b1225aab50665ce3\",\"object\":\"response\",\"created_at\":1791304110,\"status\":\"completed\",\"access_programs\":null,\"background\":false,\"completed_at\":1791304111,\"error\":null,\"frequency_penalty\":0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":32768,\"max_tool_calls\":null,\"model\":\"gpt-4.1-nano-2025-04-14\",\"moderation\":null,\"output\":[{\"id\":\"fc_08aaa2d3fc05aee1016ac521af196087d1833e4e2c9b8d756e\",\"type\":\"function_call\",\"status\":\"completed\",\"arguments\":\"{\\\"a\\\":17,\\\"b\\\":25}\",\"call_id\":\"call_TLot3FJ4pe5knn1WAUzRdJII\",\"name\":\"add_numbers\"}],\"parallel_tool_calls\":true,\"presence_penalty\":0,\"previous_response_id\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"context\":null,\"effort\":null,\"summary\":null},\"safety_identifier\":\"d8348a0b4e5cb255aab1558aaa7c3f7f261debee368d0d262bfa7755fd994f15\",\"service_tier\":\"default\",\"store\":false,\"temperature\":1,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Add two numbers.\",\"name\":\"add_numbers\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":false}],\"top_logprobs\":0,\"top_p\":1,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":62,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":0},\"output_tokens\":35,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":97},\"user\":null,\"metadata\":{}},\"sequence_number\":6}}\n\ndata: {\"type\":\"finish\",\"finishReason\":{\"unified\":\"tool-calls\"},\"usage\":{\"inputTokens\":{\"total\":62,\"noCache\":62,\"cacheRead\":0,\"cacheWrite\":0},\"outputTokens\":{\"total\":35,\"text\":35,\"reasoning\":0},\"raw\":{\"input_tokens\":62,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":0},\"output_tokens\":35,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":97}},\"providerMetadata\":{\"openai\":{\"responseId\":\"resp_08aaa2d3fc05aee1016ac521ae833487d1b1225aab50665ce3\",\"serviceTier\":\"default\"},\"gateway\":{\"routing\":{\"originalModelId\":\"openai/gpt-4.1-nano\",\"resolvedProvider\":\"openai\",\"fallbacksAvailable\":[\"azure\"],\"planningReasoning\":\"System credentials planned for: openai, azure. Total execution order: openai(system) → azure(system)\",\"canonicalSlug\":\"openai/gpt-4.1-nano\",\"finalProvider\":\"openai\",\"modelAttemptCount\":1,\"modelAttempts\":[{\"canonicalSlug\":\"openai/gpt-4.1-nano\",\"success\":true,\"providerAttemptCount\":1,\"providerAttempts\":[{\"provider\":\"openai\",\"credentialType\":\"system\",\"success\":true,\"startTime\":1791304110390,\"endTime\":1791304111259,\"providerRequestId\":\"req_bd45f0a29ef74b69a58c8c718b66d7b6\",\"statusCode\":200,\"providerResponseId\":\"resp_08aaa2d3fc05aee1016ac521ae833487d1b1225aab50665ce3\"}]}],\"totalProviderAttemptCount\":1,\"affinity\":{\"outcome\":\"skipped_below_min_prefix\"},\"clientSessionId\":\"b0f295be073d49fd0bfd004e48135d35\",\"clientSessionIdSource\":\"fingerprint\"},\"cost\":\"0.0000202\",\"marketCost\":\"0.0000202\",\"surchargeCost\":\"0\",\"gatewayCost\":\"0.0000202\",\"inferenceCost\":\"0.0000202\",\"inputInferenceCost\":\"0.0000062\",\"outputInferenceCost\":\"0.000014\",\"generationId\":\"gen_01M490Q48KMD2JPJ3HQGWEZWP9\"}}}\n\nDONE\n\n",
+		"rawHeaders": {
+			"access-control-allow-headers": "Content-Type, Authorization, ai-gateway-auth-method, ai-gateway-protocol-version, ai-model-id, ai-language-model-id, ai-language-model-specification-version, ai-image-model-specification-version, ai-embedding-model-specification-version, ai-decision-model-specification-version, ai-evaluation-model-specification-version, ai-language-model-streaming, ai-reporting-tags, ai-reporting-user, http-referer, x-title, x-ai-gateway-api-key, x-api-key, anthropic-beta, anthropic-version, idempotency-key, x-vercel-ai-gateway-team, x-vercel-gateway-extended-time, x-session-id, x-session-affinity",
+			"access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+			"access-control-allow-origin": "*",
+			"access-control-expose-headers": "retry-after, x-should-retry",
+			"cache-control": "no-cache, no-transform",
+			"content-type": "text/event-stream",
+			"date": "Tue, 06 Oct 2026 16:28:30 GMT",
+			"server": "Vercel",
+			"strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+			"transfer-encoding": "chunked",
+			"x-effective-store": "false",
+			"x-generation-id": "gen_01M490Q48KMD2JPJ3HQGWEZWP9",
+			"x-matched-path": "/v4/ai/language-model",
+			"x-model-id": "openai/gpt-4.1-nano",
+			"x-vercel-cache": "MISS",
+			"x-vercel-id": "lhr1::cdg1::rg8cb-1791304110338-71f53ee5a59b"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://ai-gateway.vercel.sh:443",
+		"method": "POST",
+		"path": "/v4/ai/language-model",
+		"body": {
+			"tools": [
+				{
+					"type": "function",
+					"name": "add_numbers",
+					"inputSchema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number"
+							},
+							"b": {
+								"type": "number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"description": "Add two numbers.",
+					"providerOptions": {
+						"anthropic": {
+							"eagerInputStreaming": false
+						}
+					}
+				}
+			],
+			"toolChoice": {
+				"type": "auto"
+			},
+			"prompt": [
+				{
+					"role": "system",
+					"content": "Use add_numbers for arithmetic. Reply with only the result."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Add 17 and 25."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool-call",
+							"toolCallId": "call_TLot3FJ4pe5knn1WAUzRdJII",
+							"toolName": "add_numbers",
+							"input": {
+								"a": 17,
+								"b": 25
+							},
+							"providerOptions": {
+								"openai": {
+									"itemId": "fc_08aaa2d3fc05aee1016ac521af196087d1833e4e2c9b8d756e"
+								}
+							}
+						}
+					]
+				},
+				{
+					"role": "tool",
+					"content": [
+						{
+							"type": "tool-result",
+							"toolCallId": "call_TLot3FJ4pe5knn1WAUzRdJII",
+							"toolName": "add_numbers",
+							"output": {
+								"type": "json",
+								"value": {
+									"result": 42
+								}
+							}
+						}
+					]
+				}
+			],
+			"includeRawChunks": true
+		},
+		"status": 200,
+		"response": "data: {\"type\":\"stream-start\",\"warnings\":[]}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.created\",\"response\":{\"id\":\"resp_069394ec0eac0b9f016ac521afb13c87d1a4a8d7ab8c7377b2\",\"object\":\"response\",\"created_at\":1791304111,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":32768,\"max_tool_calls\":null,\"model\":\"gpt-4.1-nano-2025-04-14\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0,\"previous_response_id\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"context\":null,\"effort\":null,\"summary\":null},\"safety_identifier\":\"d8348a0b4e5cb255aab1558aaa7c3f7f261debee368d0d262bfa7755fd994f15\",\"service_tier\":\"auto\",\"store\":false,\"temperature\":1,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Add two numbers.\",\"name\":\"add_numbers\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":false}],\"top_logprobs\":0,\"top_p\":1,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":0}}\n\ndata: {\"type\":\"response-metadata\",\"id\":\"resp_069394ec0eac0b9f016ac521afb13c87d1a4a8d7ab8c7377b2\",\"timestamp\":\"2026-10-06T16:28:31.000Z\",\"modelId\":\"gpt-4.1-nano-2025-04-14\"}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.in_progress\",\"response\":{\"id\":\"resp_069394ec0eac0b9f016ac521afb13c87d1a4a8d7ab8c7377b2\",\"object\":\"response\",\"created_at\":1791304111,\"status\":\"in_progress\",\"access_programs\":null,\"background\":false,\"completed_at\":null,\"error\":null,\"frequency_penalty\":0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":32768,\"max_tool_calls\":null,\"model\":\"gpt-4.1-nano-2025-04-14\",\"moderation\":null,\"output\":[],\"parallel_tool_calls\":true,\"presence_penalty\":0,\"previous_response_id\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"context\":null,\"effort\":null,\"summary\":null},\"safety_identifier\":\"d8348a0b4e5cb255aab1558aaa7c3f7f261debee368d0d262bfa7755fd994f15\",\"service_tier\":\"auto\",\"store\":false,\"temperature\":1,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Add two numbers.\",\"name\":\"add_numbers\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":false}],\"top_logprobs\":0,\"top_p\":1,\"truncation\":\"disabled\",\"usage\":null,\"user\":null,\"metadata\":{}},\"sequence_number\":1}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.output_item.added\",\"item\":{\"id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"type\":\"message\",\"status\":\"in_progress\",\"content\":[],\"role\":\"assistant\"},\"output_index\":0,\"sequence_number\":2}}\n\ndata: {\"type\":\"text-start\",\"id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"providerMetadata\":{\"openai\":{\"itemId\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\"}}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.content_part.added\",\"content_index\":0,\"item_id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"output_index\":0,\"part\":{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"\"},\"sequence_number\":3}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.output_text.delta\",\"content_index\":0,\"delta\":\"42\",\"item_id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"logprobs\":[],\"obfuscation\":\"GCXmmN7Ac2kCeP\",\"output_index\":0,\"sequence_number\":4}}\n\ndata: {\"type\":\"text-delta\",\"id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"delta\":\"42\"}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.output_text.done\",\"content_index\":0,\"item_id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"logprobs\":[],\"output_index\":0,\"sequence_number\":5,\"text\":\"42\"}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.content_part.done\",\"content_index\":0,\"item_id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"output_index\":0,\"part\":{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"42\"},\"sequence_number\":6}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.output_item.done\",\"item\":{\"id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"42\"}],\"role\":\"assistant\"},\"output_index\":0,\"sequence_number\":7}}\n\ndata: {\"type\":\"text-end\",\"id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"providerMetadata\":{\"openai\":{\"itemId\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\"}}}\n\ndata: {\"type\":\"raw\",\"rawValue\":{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_069394ec0eac0b9f016ac521afb13c87d1a4a8d7ab8c7377b2\",\"object\":\"response\",\"created_at\":1791304111,\"status\":\"completed\",\"access_programs\":null,\"background\":false,\"completed_at\":1791304111,\"error\":null,\"frequency_penalty\":0,\"incomplete_details\":null,\"instructions\":null,\"max_output_tokens\":32768,\"max_tool_calls\":null,\"model\":\"gpt-4.1-nano-2025-04-14\",\"moderation\":null,\"output\":[{\"id\":\"msg_069394ec0eac0b9f016ac521afec7887d18764088adc8d46da\",\"type\":\"message\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"annotations\":[],\"logprobs\":[],\"text\":\"42\"}],\"role\":\"assistant\"}],\"parallel_tool_calls\":true,\"presence_penalty\":0,\"previous_response_id\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"context\":null,\"effort\":null,\"summary\":null},\"safety_identifier\":\"d8348a0b4e5cb255aab1558aaa7c3f7f261debee368d0d262bfa7755fd994f15\",\"service_tier\":\"default\",\"store\":false,\"temperature\":1,\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"tool_choice\":\"auto\",\"tool_usage\":{\"image_gen\":{\"input_tokens\":0,\"input_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"output_tokens\":0,\"output_tokens_details\":{\"image_tokens\":0,\"text_tokens\":0},\"total_tokens\":0},\"web_search\":{\"num_requests\":0}},\"tools\":[{\"type\":\"function\",\"description\":\"Add two numbers.\",\"name\":\"add_numbers\",\"output_schema\":null,\"parameters\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\"},\"b\":{\"type\":\"number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"},\"strict\":false}],\"top_logprobs\":0,\"top_p\":1,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":91,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":0},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":94},\"user\":null,\"metadata\":{}},\"sequence_number\":8}}\n\ndata: {\"type\":\"finish\",\"finishReason\":{\"unified\":\"stop\"},\"usage\":{\"inputTokens\":{\"total\":91,\"noCache\":91,\"cacheRead\":0,\"cacheWrite\":0},\"outputTokens\":{\"total\":3,\"text\":3,\"reasoning\":0},\"raw\":{\"input_tokens\":91,\"input_tokens_details\":{\"cache_write_tokens\":0,\"cached_tokens\":0},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":0},\"total_tokens\":94}},\"providerMetadata\":{\"openai\":{\"responseId\":\"resp_069394ec0eac0b9f016ac521afb13c87d1a4a8d7ab8c7377b2\",\"serviceTier\":\"default\"},\"gateway\":{\"routing\":{\"originalModelId\":\"openai/gpt-4.1-nano\",\"resolvedProvider\":\"openai\",\"fallbacksAvailable\":[\"azure\"],\"planningReasoning\":\"System credentials planned for: openai, azure. Total execution order: openai(system) → azure(system)\",\"canonicalSlug\":\"openai/gpt-4.1-nano\",\"finalProvider\":\"openai\",\"modelAttemptCount\":1,\"modelAttempts\":[{\"canonicalSlug\":\"openai/gpt-4.1-nano\",\"success\":true,\"providerAttemptCount\":1,\"providerAttempts\":[{\"provider\":\"openai\",\"credentialType\":\"system\",\"success\":true,\"startTime\":1791304111555,\"endTime\":1791304112116,\"providerRequestId\":\"req_0585c2f8b4ef48719e2cef854b06bf39\",\"statusCode\":200,\"providerResponseId\":\"resp_069394ec0eac0b9f016ac521afb13c87d1a4a8d7ab8c7377b2\"}]}],\"totalProviderAttemptCount\":1,\"affinity\":{\"outcome\":\"skipped_below_min_prefix\"},\"clientSessionId\":\"b0f295be073d49fd0bfd004e48135d35\",\"clientSessionIdSource\":\"fingerprint\"},\"cost\":\"0.0000103\",\"marketCost\":\"0.0000103\",\"surchargeCost\":\"0\",\"gatewayCost\":\"0.0000103\",\"inferenceCost\":\"0.0000103\",\"inputInferenceCost\":\"0.0000091\",\"outputInferenceCost\":\"0.0000012\",\"generationId\":\"gen_01M490Q5D2ZMSGXY5FE8M0ACXZ\"}}}\n\nDONE\n\n",
+		"rawHeaders": {
+			"access-control-allow-headers": "Content-Type, Authorization, ai-gateway-auth-method, ai-gateway-protocol-version, ai-model-id, ai-language-model-id, ai-language-model-specification-version, ai-image-model-specification-version, ai-embedding-model-specification-version, ai-decision-model-specification-version, ai-evaluation-model-specification-version, ai-language-model-streaming, ai-reporting-tags, ai-reporting-user, http-referer, x-title, x-ai-gateway-api-key, x-api-key, anthropic-beta, anthropic-version, idempotency-key, x-vercel-ai-gateway-team, x-vercel-gateway-extended-time, x-session-id, x-session-affinity",
+			"access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+			"access-control-allow-origin": "*",
+			"access-control-expose-headers": "retry-after, x-should-retry",
+			"cache-control": "no-cache, no-transform",
+			"content-type": "text/event-stream",
+			"date": "Tue, 06 Oct 2026 16:28:32 GMT",
+			"server": "Vercel",
+			"strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+			"transfer-encoding": "chunked",
+			"x-effective-store": "false",
+			"x-generation-id": "gen_01M490Q5D2ZMSGXY5FE8M0ACXZ",
+			"x-matched-path": "/v4/ai/language-model",
+			"x-model-id": "openai/gpt-4.1-nano",
+			"x-vercel-cache": "MISS",
+			"x-vercel-id": "lhr1::cdg1::zn9bx-1791304111450-0dd315e7d371"
+		},
+		"responseIsBinary": false
+	}
+]

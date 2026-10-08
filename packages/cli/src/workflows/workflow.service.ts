@@ -7,6 +7,7 @@ import type {
 	User,
 	ListQueryDb,
 	Project,
+	PublishHistoryScope,
 	WorkflowFolderUnionFull,
 	WorkflowHistory,
 	OperationContext,
@@ -45,6 +46,7 @@ import {
 	staticErrorWorkflowId,
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
@@ -184,6 +186,7 @@ export class WorkflowService {
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	/**
@@ -667,6 +670,14 @@ export class WorkflowService {
 			);
 		}
 
+		if (hasNodesKey && nodesChanged) {
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				workflowUpdateData.nodes,
+				workflow.nodes,
+				workflow.id,
+			);
+		}
+
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
@@ -918,6 +929,7 @@ export class WorkflowService {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: workflow.activeVersionId,
 				source,
+				publishHistory: 'none',
 			});
 		}
 		return updatedWorkflow;
@@ -1094,6 +1106,7 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			publishHistory?: PublishHistoryScope;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
@@ -1151,7 +1164,7 @@ export class WorkflowService {
 				workflow.id,
 				versionIdToActivate,
 				{
-					includePublishHistory: false,
+					publishHistory: 'none',
 				},
 			);
 		} catch (error) {
@@ -1341,11 +1354,13 @@ export class WorkflowService {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
-		if (updatedWorkflow.activeVersion) {
+		const publishHistory = options?.publishHistory ?? 'all';
+		if (updatedWorkflow.activeVersion && publishHistory !== 'none') {
 			updatedWorkflow.activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
 					workflowId,
 					updatedWorkflow.activeVersion.versionId,
+					publishHistory,
 				);
 		}
 
@@ -1373,7 +1388,7 @@ export class WorkflowService {
 			workflowId,
 			user,
 			['workflow:unpublish'],
-			{ includeActiveVersion: true },
+			{ includeActiveVersion: true, publishHistory: 'none' },
 		);
 
 		if (!workflow) {

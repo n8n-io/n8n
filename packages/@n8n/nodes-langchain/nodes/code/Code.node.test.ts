@@ -1,12 +1,18 @@
 import { LOG_LEVELS, CONSOLE_OUTPUT_REDACTED_MESSAGE } from 'n8n-workflow';
 
 import {
+	Code,
 	transformLegacyLangchainImport,
 	createSandboxLogger,
 	createProductionConsoleLog,
 } from './Code.node';
 
 describe('Code.node', () => {
+	it('is marked deprecated so the backend refuses new instances', () => {
+		const node = new Code();
+		expect(node.description.deprecated).toBe(true);
+	});
+
 	describe('createSandboxLogger', () => {
 		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent');
 
