@@ -14,8 +14,9 @@ const renderComponent = createComponentRenderer(RestrictedNodePopover, {
 		stubs: {
 			ContactInstanceAdminModal: {
 				props: ['open', 'nodeTypeName'],
+				emits: ['update:open'],
 				template:
-					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}<button data-test-id="contact-instance-admin-close" @click="$emit(\'update:open\', false)" /></div>',
 			},
 		},
 	},
@@ -116,6 +117,31 @@ describe('RestrictedNodePopover', () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
 		);
+
+		otherAnchor.remove();
+	});
+
+	it('reopens on hover after the contact-admin dialog was opened from the popover and closed', async () => {
+		const otherAnchor = document.createElement('div');
+		document.body.appendChild(otherAnchor);
+		renderPopover({ anchor, nodeTypeName: 'Gmail' });
+		renderPopover({ anchor: otherAnchor, nodeTypeName: 'Slack' });
+
+		await userEvent.hover(anchor);
+		await userEvent.hover(await screen.findByTestId('node-restricted-popover'));
+		await userEvent.unhover(anchor);
+		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
+		await userEvent.click(screen.getByTestId('contact-instance-admin-close'));
+		await waitFor(() =>
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+		);
+
+		await userEvent.hover(otherAnchor);
+		expect(await screen.findByText('Slack')).toBeInTheDocument();
+
+		await userEvent.hover(anchor);
+		expect(await screen.findByText('Gmail')).toBeInTheDocument();
+		expect(screen.queryByText('Slack')).not.toBeInTheDocument();
 
 		otherAnchor.remove();
 	});

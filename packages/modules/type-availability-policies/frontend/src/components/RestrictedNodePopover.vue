@@ -2,8 +2,8 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { unrefElement, useActiveElement, useElementHover, type MaybeElement } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
 
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
@@ -33,11 +33,17 @@ const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
+watch(contentRef, (content) => {
+	if (!content) contentHovered.value = false;
+});
 const isContactAdminOpen = ref(false);
-// Content is teleported, so focus in it is outside the anchor.
-// Close for the contact-admin dialog, which this would otherwise cover.
-const { focused: anchorFocused } = useFocusWithin(anchorElement);
-const { focused: contentFocused } = useFocusWithin(contentRef);
+const activeElement = useActiveElement();
+const anchorFocused = computed(() =>
+	Boolean(anchorElement.value?.contains(activeElement.value ?? null)),
+);
+const contentFocused = computed(() =>
+	Boolean(contentRef.value?.contains(activeElement.value ?? null)),
+);
 const wantsOpen = computed(
 	() =>
 		!isContactAdminOpen.value &&
