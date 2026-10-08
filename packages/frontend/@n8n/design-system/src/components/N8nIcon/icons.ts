@@ -15,12 +15,14 @@ import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/brand/dots-horizontal--solid-16.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
+import NodeExtract from './custom/brand/workflow--solid-16.svg';
 import NodeFocus from './custom/brand/crosshair--solid-16.svg';
 import NodePin from './custom/node-pin.svg';
 import NodePlay from './custom/brand/play--solid-16.svg';
 import NodePower from './custom/brand/power--solid-16.svg';
 import NodeSparkle from './custom/brand/sparkle--solid-16.svg';
 import NodeSuccess from './custom/brand/check--solid-16.svg';
+import NodeUngroup from './custom/brand/blocks--solid-16.svg';
 import NodeTrash from './custom/brand/trash--solid-16.svg';
 import NodeValidationError from './custom/brand/exclamation-triangle--solid-16.svg';
 import PopOut from './custom/brand/arrow-square-out--outline-16.svg';
@@ -563,12 +565,14 @@ export const updatedIconSet = {
 	'node-ellipsis': NodeEllipsis,
 	'node-focus': NodeFocus,
 	'node-execution-error': NodeExecutionError,
+	'node-extract': NodeExtract,
 	'node-validation-error': NodeValidationError,
 	'node-pin': NodePin,
 	'node-play': NodePlay,
 	'node-power': NodePower,
 	'node-sparkle': NodeSparkle,
 	'node-success': NodeSuccess,
+	'node-ungroup': NodeUngroup,
 	'node-trash': NodeTrash,
 	mcp: Mcp,
 	lovable: Lovable,
