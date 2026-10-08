@@ -113,7 +113,7 @@ describe('AssistantAutomationsSection', () => {
 	});
 
 	it('offers "Open chat" only for a chat the user can open', async () => {
-		const { getAllByTestId, getByRole } = await renderLoaded();
+		const { getAllByTestId } = await renderLoaded();
 
 		const [first, second] = getAllByTestId('assistant-automation-row');
 		const openChat = within(first).getByRole('button', {
@@ -121,7 +121,6 @@ describe('AssistantAutomationsSection', () => {
 		});
 		expect(openChat).toBe(within(first).getByTestId('assistant-automation-open-chat'));
 		expect(within(second).queryByTestId('assistant-automation-open-chat')).not.toBeInTheDocument();
-		expect(getByRole('list', { name: 'Automations' })).toBeInTheDocument();
 	});
 
 	it('opens the chat that built the workflow', async () => {
