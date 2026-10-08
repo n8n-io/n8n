@@ -1,0 +1,19 @@
+packages/@n8n/db/src/entities/activity-event.ts
+  s_c4ec8d12b2217e::t_86174470654ccb 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "487629b6d77e60de6c85f47ae6db0011112a89d4",
+  "prompts": {},
+  "sessions": {
+    "s_c4ec8d12b2217e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11b8a-b481-7bc2-9fe1-ea5b7d7a37dd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
