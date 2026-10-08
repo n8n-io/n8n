@@ -65,12 +65,12 @@ describe('InstanceAiModule', () => {
 			Container.set(CapabilityRegistry, new CapabilityRegistry());
 		});
 
-		// The module owns parse_schedule, so the Assistant keeps it when the mcp module is off.
-		it('registers parse_schedule for MCP clients and for the n8n Assistant', async () => {
+		// The module owns its capabilities, so the Assistant keeps them when the mcp module is off.
+		it('registers its capabilities for MCP clients and for the n8n Assistant', async () => {
 			await new InstanceAiModule().init();
 
-			expect(capabilityNames('mcp')).toEqual(['parse_schedule']);
-			expect(capabilityNames('assistant')).toEqual(['parse_schedule']);
+			expect(capabilityNames('mcp')).toEqual(['parse_schedule', 'propose_automation']);
+			expect(capabilityNames('assistant')).toEqual(['parse_schedule', 'propose_automation']);
 		});
 
 		it('registers each capability once, also when init runs again', async () => {
@@ -79,7 +79,7 @@ describe('InstanceAiModule', () => {
 			await instanceAiModule.init();
 			await instanceAiModule.init();
 
-			expect(capabilityNames('mcp')).toEqual(['parse_schedule']);
+			expect(capabilityNames('mcp')).toEqual(['parse_schedule', 'propose_automation']);
 		});
 	});
 });

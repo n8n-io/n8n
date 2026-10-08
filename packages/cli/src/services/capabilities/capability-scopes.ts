@@ -6,6 +6,7 @@ import type { McpScope } from '@n8n/api-types';
 export const PARSE_SCHEDULE_CAPABILITY_NAME = 'parse_schedule';
 export const EXPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME = 'export_workflow_package';
 export const IMPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME = 'import_workflow_package';
+export const PROPOSE_AUTOMATION_CAPABILITY_NAME = 'propose_automation';
 
 /** The capability tools that each OAuth scope unlocks. A scope that has no capability is absent. */
 export type CapabilityToolsByScope = Readonly<Partial<Record<McpScope, readonly string[]>>>;
@@ -28,5 +29,5 @@ function freezeListing(toolsByScope: CapabilityToolsByScope): CapabilityToolsByS
  */
 export const CAPABILITY_TOOLS_BY_SCOPE: CapabilityToolsByScope = freezeListing({
 	'workflow:read': [PARSE_SCHEDULE_CAPABILITY_NAME, EXPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME],
-	'workflow:write': [IMPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME],
+	'workflow:write': [IMPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME, PROPOSE_AUTOMATION_CAPABILITY_NAME],
 });

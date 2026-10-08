@@ -1,0 +1,152 @@
+import type { Logger } from '@n8n/backend-common';
+import type { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
+import { type AiBuilderTemporaryWorkflowRepository, User, type WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
+import { mock } from 'vitest-mock-extended';
+
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
+
+import type { WorkflowProvenanceService } from '../../provenance/workflow-provenance.service';
+import { AutomationInstanceInfo } from '../automation-instance-info';
+import { AutomationProposalService } from '../automation-proposal.service';
+import { AutomationTemporaryMarker } from '../automation-temporary-marker';
+import { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
+import { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
+
+export const SCHEDULE = 'n8n-nodes-base.scheduleTrigger';
+export const MANUAL = 'n8n-nodes-base.manualTrigger';
+export const SLACK = 'n8n-nodes-base.slack';
+export const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
+
+export const BASE_URL = 'http://n8n.local';
+
+/** The default time zone of the instance in these tests. */
+export const INSTANCE_TIMEZONE = 'Europe/London';
+
+/** The thread that built the temporary workflow, as its marker names it. */
+export const THREAD_ID = 'thread-1';
+
+/** The saved version that restoring an archived workflow creates. */
+export const RESTORED_VERSION_ID = 'v-restored';
+
+export const ALL_SCOPES: Scope[] = [
+	'workflow:read',
+	'workflow:update',
+	'workflow:publish',
+	'workflow:delete',
+];
+
+export const makeUser = (id: string) => Object.assign(new User(), { id });
+
+/** The cron rule of the Schedule Trigger in `storedWorkflow`. */
+export const WEEKDAYS_AT_8 = '0 8 * * 1-5';
+
+/** A workflow as the finder returns it: an AI-temporary schedule workflow in a team project. */
+export const storedWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
+	({
+		id: 'wf-1',
+		name: 'Digest builder',
+		nodes: [
+			{
+				name: 'Every weekday',
+				type: SCHEDULE,
+				parameters: {
+					rule: { interval: [{ field: 'cronExpression', expression: WEEKDAYS_AT_8 }] },
+				},
+			},
+			{ name: 'Send digest', type: SLACK },
+		],
+		versionId: 'v-1',
+		activeVersionId: null,
+		isArchived: false,
+		settings: { availableInMCP: true },
+		shared: [{ role: 'workflow:owner', project: { id: 'p-1', name: 'Ops', type: 'team' } }],
+		...overrides,
+	}) as unknown as WorkflowEntity;
+
+export const manualNodes = [{ name: 'Click', type: MANUAL }] as WorkflowEntity['nodes'];
+
+/**
+ * The real proposal service, keeper and publisher on mocked n8n services, registered in the
+ * container as the capability loads them. The test file must stub the modules of the mocked
+ * services.
+ */
+export function createAutomationWorld() {
+	const finder = mock<WorkflowFinderService>();
+	const workflowService = mock<WorkflowService>();
+	const temporaryWorkflows = mock<AiBuilderTemporaryWorkflowRepository>();
+	const provenance = mock<WorkflowProvenanceService>();
+	const writeAccess = mock<InstanceWriteAccessService>();
+	const collaborationService = mock<CollaborationService>();
+	const urlService = mock<UrlService>();
+	const logger = mock<Logger>();
+	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_TIMEZONE } });
+	const marker = new AutomationTemporaryMarker(temporaryWorkflows, provenance, logger);
+	const keeper = new AutomationWorkflowKeeper(workflowService, marker, writeAccess);
+	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService, logger);
+	const instance = new AutomationInstanceInfo(urlService, globalConfig);
+	Container.set(
+		AutomationProposalService,
+		new AutomationProposalService(finder, keeper, publisher, instance),
+	);
+
+	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */
+	const grant = (workflow: WorkflowEntity, scopes: Scope[] = ALL_SCOPES) => {
+		const allowed = (wanted: Scope[]) => wanted.every((scope) => scopes.includes(scope));
+		finder.findWorkflowForUser.mockImplementation(async (_id, _user, wanted) =>
+			allowed(wanted) ? workflow : null,
+		);
+		finder.findWorkflowHeadForUser.mockImplementation(async (_id, _user, wanted) =>
+			allowed(wanted)
+				? {
+						versionId: workflow.versionId,
+						activeVersionId: workflow.activeVersionId,
+						updatedAt: new Date(),
+					}
+				: null,
+		);
+	};
+
+	const reset = () => {
+		vi.resetAllMocks();
+		urlService.getInstanceBaseUrl.mockReturnValue(BASE_URL);
+		writeAccess.isReadOnly.mockReturnValue(false);
+		temporaryWorkflows.existsForWorkflow.mockResolvedValue(true);
+		temporaryWorkflows.findThreadIdForWorkflow.mockResolvedValue(THREAD_ID);
+		workflowService.unarchive.mockImplementation(
+			async (_user, workflowId) =>
+				({ id: workflowId, versionId: RESTORED_VERSION_ID, isArchived: false }) as WorkflowEntity,
+		);
+		workflowService.activateWorkflow.mockImplementation(
+			async (_user, workflowId, options) =>
+				({ id: workflowId, activeVersionId: options?.versionId ?? null }) as WorkflowEntity,
+		);
+		collaborationService.ensureWorkflowEditable.mockResolvedValue(undefined);
+		collaborationService.broadcastWorkflowUpdate.mockResolvedValue(undefined);
+		grant(storedWorkflow());
+	};
+
+	/** True when no step changed the workflow. */
+	const nothingChanged = () =>
+		workflowService.unarchive.mock.calls.length === 0 &&
+		provenance.record.mock.calls.length === 0 &&
+		temporaryWorkflows.unmark.mock.calls.length === 0 &&
+		workflowService.activateWorkflow.mock.calls.length === 0;
+
+	return {
+		finder,
+		workflowService,
+		temporaryWorkflows,
+		provenance,
+		writeAccess,
+		collaborationService,
+		logger,
+		grant,
+		reset,
+		nothingChanged,
+	};
+}

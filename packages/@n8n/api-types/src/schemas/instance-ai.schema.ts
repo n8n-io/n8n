@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
+import { automationProposalCardSchema } from './instance-ai-automation.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
@@ -968,6 +969,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders the "waiting for a test request" card with the armed test URLs',
 		),
+	automationProposal: automationProposalCardSchema
+		.optional()
+		.describe('When present, renders the card that offers to keep the workflow and turn it on'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 

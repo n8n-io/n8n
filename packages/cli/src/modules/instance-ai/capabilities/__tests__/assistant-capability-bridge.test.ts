@@ -595,7 +595,8 @@ describe('toAssistantTool with confirmation', () => {
 			});
 
 			expect(tool.resumeSchema).toBe(answerSchema);
-			expect(applyAnswer).toHaveBeenCalledWith(input, { approved: true, note: 'ship it' });
+			// The third argument is the card of the checkpoint.
+			expect(applyAnswer).toHaveBeenCalledWith(input, { approved: true, note: 'ship it' }, payload);
 		});
 	});
 

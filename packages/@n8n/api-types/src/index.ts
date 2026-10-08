@@ -932,3 +932,4 @@ export { compareExecutionListItems } from './dto/executions/compare-execution-li
 
 export type * from './workflow-suggestions';
 export * from './instance-ai-provenance';
+export * from './schemas/instance-ai-automation.schema';

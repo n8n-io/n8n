@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 
 import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
 
+import { proposeAutomationCapability } from '../../automation/propose-automation.capability';
 import {
 	INSTANCE_AI_CAPABILITIES,
 	registerInstanceAiCapabilities,
@@ -16,17 +17,20 @@ describe('registerInstanceAiCapabilities', () => {
 		Container.set(CapabilityRegistry, new CapabilityRegistry());
 	});
 
-	it('owns parse_schedule', () => {
-		expect(INSTANCE_AI_CAPABILITIES).toContain(parseScheduleCapability);
+	it('owns parse_schedule and propose_automation', () => {
+		expect(INSTANCE_AI_CAPABILITIES).toEqual([
+			parseScheduleCapability,
+			proposeAutomationCapability,
+		]);
 	});
 
-	it('registers parse_schedule for MCP clients and for the n8n Assistant', () => {
+	it('registers its capabilities for MCP clients and for the n8n Assistant', () => {
 		const registry = new CapabilityRegistry();
 
 		registerInstanceAiCapabilities(registry);
 
-		expect(namesOn(registry, 'mcp')).toEqual(['parse_schedule']);
-		expect(namesOn(registry, 'assistant')).toEqual(['parse_schedule']);
+		expect(namesOn(registry, 'mcp')).toEqual(['parse_schedule', 'propose_automation']);
+		expect(namesOn(registry, 'assistant')).toEqual(['parse_schedule', 'propose_automation']);
 	});
 
 	// The real registry checks each one against CAPABILITY_TOOLS_BY_SCOPE, so this also proves
@@ -46,7 +50,7 @@ describe('registerInstanceAiCapabilities', () => {
 		registerInstanceAiCapabilities(registry);
 		registerInstanceAiCapabilities(registry);
 
-		expect(namesOn(registry, 'mcp')).toEqual(['parse_schedule']);
+		expect(namesOn(registry, 'mcp')).toEqual(['parse_schedule', 'propose_automation']);
 	});
 
 	it('uses the registry of the container by default', () => {
@@ -55,6 +59,6 @@ describe('registerInstanceAiCapabilities', () => {
 
 		registerInstanceAiCapabilities();
 
-		expect(namesOn(registry, 'assistant')).toEqual(['parse_schedule']);
+		expect(namesOn(registry, 'assistant')).toEqual(['parse_schedule', 'propose_automation']);
 	});
 });

@@ -1,4 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import { User } from '@n8n/db';
 import { UnexpectedError } from 'n8n-workflow';
 import z from 'zod';
@@ -201,6 +202,23 @@ describe('defineCapability on the Assistant surface', () => {
 		expect(build.mock.calls.map(([context]) => context.surface)).toEqual(['mcp', 'assistant']);
 		expect(textOf(await callHandler(tools[0], {}))).toBe('frank@mcp');
 		expect(await tool.handler?.({}, {})).toBe('frank@assistant');
+	});
+
+	it('gives the Assistant context the admin permission modes of the run, and MCP none', () => {
+		const { build, capability } = surfaceProbe();
+		const user = makeUser('jo');
+		const permissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, publishWorkflow: 'blocked' as const };
+
+		capability.registerOn(collectingRegister().register, { user });
+		capability.toAssistantTool({ user, permissions });
+		capability.toAssistantTool({ user });
+
+		expect(build.mock.calls.map(([context]) => context)).toEqual([
+			{ user, surface: 'mcp' },
+			{ user, surface: 'assistant', permissions },
+			{ user, surface: 'assistant' },
+		]);
+		expect(build.mock.calls[2][0]).not.toHaveProperty('permissions');
 	});
 
 	it('defers the Assistant tool unless the capability asks to stay loaded', () => {
