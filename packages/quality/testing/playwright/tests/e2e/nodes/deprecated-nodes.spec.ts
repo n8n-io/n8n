@@ -74,9 +74,26 @@ test.describe(
 
 			// NDV is read-only: the code editor is not editable
 			await expect(n8n.ndv.getParameterEditor('functionCode')).toHaveAttribute(
-				'contenteditable',
-				'false',
+				'aria-readonly',
+				'true',
 			);
+		});
+
+		test('should delete a saved deprecated node and save the workflow', async ({ api, n8n }) => {
+			await n8n.start.fromHome();
+
+			const { workflowId } = await api.workflows.createWorkflowFromDefinition(
+				createDeprecatedFunctionWorkflow(),
+				{ makeUnique: false },
+			);
+
+			await n8n.navigate.toWorkflow(workflowId);
+
+			const saved = n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.deleteNodeByName(FUNCTION_NODE_NAME);
+
+			expect((await saved).ok()).toBe(true);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 		});
 	},
 );
