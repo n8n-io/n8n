@@ -163,6 +163,8 @@ interface MultiTurnDriverConfig {
 	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
 	 *  `CredentialCreationConfig.nameCounts`. */
 	credentialNameCounts?: Map<string, number>;
+	/** The build's project, where a mid-run credential is created. */
+	credentialProjectId?: string;
 	/** Resource references sent with the FIRST message only — an attachment is a
 	 *  hand-off, not something a user re-sends every turn. */
 	openingAttachments?: InstanceAiResourceAttachment[];
@@ -203,6 +205,7 @@ async function driveMultiTurnConversation(
 						bypassCredentialTestIds: config.bypassCredentialTestIds,
 						createdCredentialIds: config.createdCredentialIds,
 						nameCounts: config.credentialNameCounts,
+						projectId: config.credentialProjectId,
 					},
 				}
 			: {}),
@@ -286,6 +289,9 @@ export interface BuildResult {
 	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
+	/** The build's own project; `cleanupBuild` deletes the user that owns it. */
+	buildProjectId?: string;
+	buildUserId?: string;
 	/** The ROOT folders a seed created in the thread's project (a folder delete
 	 *  cascades to its subfolders). Deleted in `cleanupBuild` after the workflows,
 	 *  because a folder delete archives what it holds. */
@@ -499,6 +505,8 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
+	/** Gives the build a fresh project. Absent: the owner's personal project. */
+	buildProject?: () => Promise<{ userId: string; projectId: string }>;
 	/** History restored before the live message — carried in the case
 	 *  (`mode: 'inline'`) or reconstructed from a trace (`mode: 'replay'`, which
 	 *  also supplies the live turn). */
@@ -585,6 +593,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
+	let buildProject: { userId: string; projectId: string } | undefined;
+	// On every return path, so cleanup deletes the build user even after a failure.
+	const buildProjectFields = () =>
+		buildProject
+			? { buildProjectId: buildProject.projectId, buildUserId: buildProject.userId }
+			: {};
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// Scenario seed tables are created empty before the build
@@ -736,7 +750,17 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			`  Running case${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
-		const projectId = await client.getPersonalProjectId();
+		if (config.buildProject) {
+			try {
+				buildProject = await config.buildProject();
+			} catch (error: unknown) {
+				seedingFailed = true;
+				throw new Error(
+					`Build project setup failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+		const projectId = buildProject?.projectId ?? (await client.getPersonalProjectId());
 		await client.ensureThread(
 			threadId,
 			projectId,
@@ -760,6 +784,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			onCreated: (id) => config.createdCredentialIds?.add(id),
 			logger,
 			nameCounts: credentialNameCounts,
+			projectId: buildProject?.projectId,
 		});
 		const seededCredentialIds = createdCredentials.map((c) => c.id);
 		// `createDeclaredCredentials` returns one entry per `declaredCredentials`, in
@@ -1163,6 +1188,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 							bypassCredentialTestIds,
 							createdCredentialIds: config.createdCredentialIds,
 							credentialNameCounts,
+							credentialProjectId: buildProject?.projectId,
 						}
 					: {}),
 				// The pre-seeded-table note goes to the agent, but the recorded turn
@@ -1254,12 +1280,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			seedActiveAgentId && restoredAgentIds.includes(seedActiveAgentId)
 				? [seedActiveAgentId, ...restoredAgentIds.filter((id) => id !== seedActiveAgentId)]
 				: restoredAgentIds;
-		const artifactRefs: ArtifactRef[] = [
+		const builtRefs: ArtifactRef[] = [
 			...eventOutcome.artifactRefs,
 			...restoredAgentOrder
 				.filter((id) => !seenAgentIds.has(id))
 				.map((id) => ({ type: 'agent' as const, id })),
 		];
+		const buildProjectId = buildProject?.projectId;
+		const artifactRefs = buildProjectId
+			? builtRefs.map((ref) => ({ ...ref, projectId: buildProjectId }))
+			: builtRefs;
 		const buildTrace: BuildTrace = {
 			finalText:
 				eventOutcome.finalText.length > 0 ? eventOutcome.finalText : lastAgentText(transcript),
@@ -1304,6 +1334,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
+					...buildProjectFields(),
 					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
@@ -1330,6 +1361,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
+				...buildProjectFields(),
 				createdFolderIds: restoredFolderIds,
 				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
@@ -1379,6 +1411,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			...buildProjectFields(),
 			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
@@ -1403,6 +1436,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			...buildProjectFields(),
 			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,
