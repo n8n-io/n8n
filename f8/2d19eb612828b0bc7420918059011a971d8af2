@@ -1,5 +1,83 @@
 packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
   s_2397c9db9d923f::t_61fb7f6499b5aa 212
+packages/@n8n/permissions/src/scope-information.ts
+  s_2397c9db9d923f::t_3689c74d86e973 38-41
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_2397c9db9d923f::t_3689c74d86e973 14-17,44,57-65,120,125
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_2397c9db9d923f::t_3689c74d86e973 8,14,30,33-37,39
+packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1,3-9,11-12,20-22,25-45,47
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 6,29
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 29-30,161-188
+packages/@n8n/permissions/src/constants.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 4
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_2397c9db9d923f::t_3689c74d86e973 37-40
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 71-136
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 31-51
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 10-12
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 20,43
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-2,4-5,7-10,12-13,17-18
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-2,7-15
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 7,9,11-12,15-21
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 5,21,41,99
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 51-72
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 16,18,40,82
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 9,18-19,24,56,82,107,111,114-119
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-requirements.extractor.ts
+  s_2397c9db9d923f::t_3689c74d86e973 13-17,19-21,35,40,43
+packages/workflow/src/node-helpers.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1911,2172-2175
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-requirements.ts
+  s_2397c9db9d923f::t_3689c74d86e973 2,7
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_2397c9db9d923f::t_3689c74d86e973 59-83
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_2397c9db9d923f::t_3689c74d86e973 7-13,17-25,27,29-47,49-65,73-74
+packages/cli/src/modules/n8n-packages/entities/variable/variable-requirements.extractor.ts
+  s_2397c9db9d923f::t_3689c74d86e973 34-40,43,46,48
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 26-36
+packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
+  s_2397c9db9d923f::t_3689c74d86e973 4,6-8,10,14-15,17-18,20-21,23,26-29,33
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 6,13
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-620
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 11,62-105
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 6
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 13,20,49-51,123-124,127,139-147,149-156,160
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_2397c9db9d923f::t_3689c74d86e973 7-9,18
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 1-228
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_2397c9db9d923f::t_3689c74d86e973 12,86,147,205
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 14,45
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 13-15,17-21,44,67-74,83-107,113-114,116,118,123-141,145-172,209-221,225-229
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_2397c9db9d923f::t_3689c74d86e973 9,18,43
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_2397c9db9d923f::t_3689c74d86e973 61-90
 ---
 {
   "schema_version": "authorship/3.0.0",
