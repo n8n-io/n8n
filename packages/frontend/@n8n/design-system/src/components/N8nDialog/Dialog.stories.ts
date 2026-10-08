@@ -504,3 +504,49 @@ export const NoCloseOnOverlayClick: Story = {
 		closeOnOverlayClick: false,
 	},
 } satisfies Story;
+
+export const NoCloseOnEscape: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Set closeOnEscape to false. Escape leaves the dialog open. An overlay click and the close button still close it.',
+			},
+		},
+	},
+	render: (args: DialogProps) => ({
+		components: {
+			N8nDialog,
+			N8nDialogBody,
+			N8nDialogFooter,
+			N8nDialogClose,
+			N8nButton,
+		},
+		setup() {
+			const isOpen = ref(false);
+			return { args, isOpen };
+		},
+		template: `
+		<div>
+			<N8nButton label="Open dialog" @click="isOpen = true" />
+
+			<N8nDialog v-model:open="isOpen" v-bind="args">
+				<N8nDialogBody>
+					<p>Press Escape. This dialog stays open.</p>
+				</N8nDialogBody>
+
+				<N8nDialogFooter>
+					<N8nDialogClose as-child>
+						<N8nButton variant="outline" label="Close" />
+					</N8nDialogClose>
+				</N8nDialogFooter>
+			</N8nDialog>
+		</div>
+		`,
+	}),
+	args: {
+		size: 'medium',
+		header: 'Keep this open',
+		closeOnEscape: false,
+	},
+} satisfies Story;

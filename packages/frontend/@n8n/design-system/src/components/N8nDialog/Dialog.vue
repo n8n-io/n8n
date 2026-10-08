@@ -58,6 +58,12 @@ export interface DialogProps {
 	 */
 	closeOnOverlayClick?: boolean;
 	/**
+	 * Close the dialog when the user presses Escape.
+	 * An overlay click and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnEscape?: boolean;
+	/**
 	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
@@ -105,6 +111,7 @@ withDefaults(defineProps<DialogProps>(), {
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
 	closeOnOverlayClick: true,
+	closeOnEscape: true,
 	showCloseButton: true,
 	stacked: false,
 });
@@ -133,6 +140,7 @@ const handleOpenChange = (value: boolean) => {
 				:trap-focus="trapFocus"
 				:disable-outside-pointer-events="disableOutsidePointerEvents"
 				:close-on-overlay-click="closeOnOverlayClick"
+				:close-on-escape="closeOnEscape"
 				:show-close-button="showCloseButton"
 				:aria-label="ariaLabel"
 				:aria-description="ariaDescription"

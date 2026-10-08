@@ -42,6 +42,12 @@ export interface DialogContentProps {
 	 */
 	closeOnOverlayClick?: boolean;
 	/**
+	 * Close the dialog when the user presses Escape.
+	 * An overlay click and the close button still close the dialog.
+	 * @default true
+	 */
+	closeOnEscape?: boolean;
+	/**
 	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
@@ -72,6 +78,7 @@ const props = withDefaults(defineProps<DialogContentProps>(), {
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
 	closeOnOverlayClick: true,
+	closeOnEscape: true,
 	showCloseButton: true,
 });
 
@@ -118,6 +125,13 @@ function handleInteractOutside(e: Event) {
 	}
 	emit('interactOutside', e);
 }
+
+function handleEscapeKeyDown(event: KeyboardEvent) {
+	if (!props.closeOnEscape) {
+		event.preventDefault();
+	}
+	emit('escapeKeyDown', event);
+}
 </script>
 
 <template>
@@ -126,7 +140,7 @@ function handleInteractOutside(e: Event) {
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
 		:class="[$style.content, sizeClass, stacked && $style.stacked]"
-		@escape-key-down="emit('escapeKeyDown', $event)"
+		@escape-key-down="handleEscapeKeyDown"
 		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
 		@close-auto-focus="emit('closeAutoFocus', $event)"

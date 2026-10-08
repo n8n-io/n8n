@@ -572,6 +572,60 @@ describe('N8nDialog', () => {
 			});
 		});
 
+		describe('closeOnEscape', () => {
+			it('closes when the user presses Escape', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, queryByRole } = renderDialog();
+
+				await user.click(getByTestId('dialog-trigger'));
+				await user.keyboard('{Escape}');
+
+				await waitFor(() => {
+					expect(queryByRole('dialog')).not.toBeInTheDocument();
+				});
+			});
+
+			it('stays open when closeOnEscape is false', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, getByRole } = renderDialog({ closeOnEscape: false });
+
+				await user.click(getByTestId('dialog-trigger'));
+				await user.keyboard('{Escape}');
+
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			it('still emits escapeKeyDown when closeOnEscape is false', async () => {
+				const user = userEvent.setup();
+				const escapeHandler = vi.fn();
+				const { getByTestId, getByRole } = render({
+					components: {
+						N8nDialog,
+						N8nDialogHeader,
+						N8nDialogTitle,
+					},
+					setup() {
+						const isOpen = ref(false);
+						return { isOpen, escapeHandler };
+					},
+					template: `
+						<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+						<N8nDialog v-model:open="isOpen" :close-on-escape="false" @escape-key-down="escapeHandler">
+							<N8nDialogHeader>
+								<N8nDialogTitle>Test</N8nDialogTitle>
+							</N8nDialogHeader>
+						</N8nDialog>
+					`,
+				});
+
+				await user.click(getByTestId('dialog-trigger'));
+				await user.keyboard('{Escape}');
+
+				expect(escapeHandler).toHaveBeenCalled();
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+		});
+
 		describe('disableOutsidePointerEvents', () => {
 			it('should have disableOutsidePointerEvents enabled by default', async () => {
 				const user = userEvent.setup();
