@@ -1,10 +1,14 @@
 import { computed, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	ProjectTypes,
+	type ProjectListItem,
+} from '@/features/collaboration/projects/projects.types';
 import { AGENT_BUILDER_VIEW, AGENT_N8N_CHAT_SEARCH_MAX_LENGTH } from '@/features/agents/constants';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
@@ -38,11 +42,14 @@ export function useAgentNavigationCommands(options: {
 	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 	const { canCreate: canCreateInHomeProject } = useAgentPermissions(() => homeProject.value?.id);
 
-	const getProjectName = (agent: AgentResource) => {
-		if (agent.project?.type === 'personal') {
-			return i18n.baseText('projects.menu.personal');
-		}
-		return agent.project?.name ?? '';
+	const getProjectName = (project: ProjectListItem) =>
+		project.type === ProjectTypes.Personal
+			? i18n.baseText('projects.menu.personal')
+			: (project.name ?? '');
+
+	const getProjectIcon = (project: ProjectListItem): IconOrEmoji => {
+		if (project.type === ProjectTypes.Personal) return { type: 'icon', value: 'user' };
+		return isIconOrEmoji(project.icon) ? project.icon : { type: 'icon', value: 'layers' };
 	};
 
 	const toCommandBarItem = (agent: AgentResource): CommandBarItem => {
@@ -51,10 +58,14 @@ export function useAgentNavigationCommands(options: {
 			params: { projectId: agent.projectId, agentId: agent.id },
 		};
 
+		const project = projectsStore.myProjects.find(({ id }) => id === agent.projectId);
+
 		return {
 			id: agent.id,
 			title: agent.name,
-			description: getProjectName(agent),
+			...(project
+				? { description: getProjectName(project), descriptionIcon: getProjectIcon(project) }
+				: {}),
 			icon: { type: 'icon', value: 'bot' },
 			timestamp: agent.updatedAt,
 			href: router.resolve(location).href,

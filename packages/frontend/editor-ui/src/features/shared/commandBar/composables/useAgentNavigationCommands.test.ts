@@ -76,6 +76,7 @@ describe('useAgentNavigationCommands', () => {
 		settingsStore.isAgentsEnabled = true;
 		projectsStore.currentProject = createTestProject({
 			id: 'project-1',
+			name: 'Team Project',
 			scopes: ['agent:create'],
 		});
 		projectsStore.myProjects = [toListItem(projectsStore.currentProject)];
@@ -152,6 +153,7 @@ describe('useAgentNavigationCommands', () => {
 				id: 'agent-1',
 				title: 'Support Agent',
 				description: 'Team Project',
+				descriptionIcon: { type: 'icon', value: 'folder' },
 				icon: { type: 'icon', value: 'bot' },
 				timestamp: '2026-01-02T00:00:00.000Z',
 				href: '/resolved-href',
@@ -162,22 +164,32 @@ describe('useAgentNavigationCommands', () => {
 			});
 		});
 
-		it.each([
-			{
-				scenario: 'a personal project',
-				project: { id: 'personal-1', name: 'Jane Doe', type: 'personal' as const },
-				description: 'projects.menu.personal',
-			},
-			{ scenario: 'no project', project: null, description: '' },
-		])('describes an agent in $scenario', async ({ project, description }) => {
+		it('describes an agent in a personal project', async () => {
+			projectsStore.myProjects = [
+				toListItem(createTestProject({ id: 'personal-1', type: 'personal', name: 'Jane Doe' })),
+			];
 			vi.mocked(listAgentsPageGlobal).mockResolvedValue({
 				count: 1,
-				data: [createAgent({ project })],
+				data: [createAgent({ projectId: 'personal-1' })],
 			});
 
 			const result = await setup().source?.search({ query: '', offset: 0, limit: 10 });
 
-			expect(result?.items[0].description).toBe(description);
+			expect(result?.items[0]).toMatchObject({
+				description: 'projects.menu.personal',
+				descriptionIcon: { type: 'icon', value: 'user' },
+			});
+		});
+
+		it('leaves out the description when the project is not in my projects', async () => {
+			vi.mocked(listAgentsPageGlobal).mockResolvedValue({
+				count: 1,
+				data: [createAgent({ projectId: 'unknown-project' })],
+			});
+
+			const result = await setup().source?.search({ query: '', offset: 0, limit: 10 });
+
+			expect(result?.items[0].description).toBeUndefined();
 		});
 
 		it('navigates to the agent builder when the item handler runs', async () => {
