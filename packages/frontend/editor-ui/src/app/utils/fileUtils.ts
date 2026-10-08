@@ -17,8 +17,17 @@ export function getBinaryDataFileName({
 }
 
 export function resolveFileMimeType(fileName: string, mimeType: string): string {
+	const ext = getFileExtension(fileName).toLowerCase();
+	if (
+		ext === 'csv' &&
+		(!mimeType ||
+			mimeType === 'application/vnd.ms-excel' ||
+			mimeType === 'application/octet-stream')
+	) {
+		return 'text/csv';
+	}
 	if (mimeType) return mimeType;
-	if (fileName.toLowerCase().endsWith('.md')) return 'text/markdown';
+	if (ext === 'md' || ext === 'markdown') return 'text/markdown';
 	return '';
 }
 

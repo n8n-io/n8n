@@ -65,6 +65,17 @@ describe('convertFileToBinaryData', () => {
 		);
 	});
 
+	it('maps a CSV to text/csv when the browser reports Excel or no MIME type', async () => {
+		expect(
+			await convertFileToBinaryData(
+				new File(['a,b'], 'data.csv', { type: 'application/vnd.ms-excel' }),
+			),
+		).toEqual(expect.objectContaining({ mimeType: 'text/csv' }));
+		expect(await convertFileToBinaryData(new File(['a,b'], 'data.csv'))).toEqual(
+			expect.objectContaining({ mimeType: 'text/csv' }),
+		);
+	});
+
 	it('rejects when the file cannot be read', async () => {
 		vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader) {
 			this.onerror?.(new ProgressEvent('error') as ProgressEvent<FileReader>);

@@ -32,10 +32,10 @@ import {
 	type AgentBuilderOpenSuspension,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
+	AGENT_CHAT_ATTACHMENT_ACCEPT,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
-	PROVIDER_CAPABILITIES,
 	type SessionFileDto,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -595,26 +595,6 @@ watch(
 		focusInput({ preventScroll: true });
 	},
 );
-
-const attachmentCapabilities = computed(() => {
-	const provider = props.agentConfig?.model?.split('/')[0];
-	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
-});
-const showAttach = computed(() => {
-	const capabilities = attachmentCapabilities.value;
-	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
-});
-const acceptedMimeTypes = computed(() => {
-	const capabilities = attachmentCapabilities.value;
-	if (!capabilities) return undefined;
-	return [
-		capabilities.image ? 'image/*' : null,
-		capabilities.pdf ? 'application/pdf' : null,
-		capabilities.audio ? 'audio/*' : null,
-	]
-		.filter((entry): entry is string => entry !== null)
-		.join(',');
-});
 
 function handleFilesSelected(files: File[]) {
 	for (const file of files) {
@@ -1206,8 +1186,8 @@ onBeforeUnmount(() => {
 				:is-streaming="false"
 				:show-stop-button="showStop"
 				show-voice
-				:show-attach="showAttach"
-				:accepted-mime-types="acceptedMimeTypes"
+				show-attach
+				:accepted-mime-types="AGENT_CHAT_ATTACHMENT_ACCEPT"
 				:can-submit="!isSubmissionBlocked && hasDraft"
 				:disabled="isPreparingToSend"
 				data-testid="chat-input"

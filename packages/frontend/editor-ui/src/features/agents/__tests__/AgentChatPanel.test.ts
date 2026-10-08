@@ -219,6 +219,8 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 				'canSubmit',
 				'disabled',
 				'maxLength',
+				'showAttach',
+				'acceptedMimeTypes',
 			],
 			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
 			setup(_, { expose }) {
@@ -361,6 +363,18 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('lets the composer attach CSV and other Session Files types on any provider', () => {
+		const wrapper = mountPanel({
+			agentConfig: { ...defaultAgentConfig, model: 'xai/grok-4' },
+		});
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(composer.props('showAttach')).toBe(true);
+		expect(composer.props('acceptedMimeTypes')).toContain('text/csv');
+		expect(composer.props('acceptedMimeTypes')).toContain('.csv');
+		expect(composer.props('acceptedMimeTypes')).not.toContain('application/zip');
+	});
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
 		queuedMessagesMock.value = [

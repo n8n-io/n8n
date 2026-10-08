@@ -1,3 +1,38 @@
+/**
+ * Product Agents chat picker. Images, PDF, and audio still hydrate to the
+ * model when the provider supports them. The rest persist as Session Files
+ * for sandbox code. Zip, video, and executables stay out.
+ */
+export const AGENT_CHAT_ATTACHMENT_ACCEPT_TYPES = [
+	'image/*',
+	'audio/*',
+	'text/csv',
+	'application/csv',
+	'application/vnd.ms-excel',
+	'text/tab-separated-values',
+	'application/json',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'text/plain',
+	'text/markdown',
+	'text/x-markdown',
+	'text/html',
+	'application/xhtml+xml',
+	'application/pdf',
+	'.csv',
+	'.tsv',
+	'.json',
+	'.txt',
+	'.md',
+	'.markdown',
+	'.html',
+	'.pdf',
+	'.docx',
+	'.xlsx',
+] as const;
+
+export const AGENT_CHAT_ATTACHMENT_ACCEPT = AGENT_CHAT_ATTACHMENT_ACCEPT_TYPES.join(',');
+
 export const MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB = 10;
 export const MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES = MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB * 1024 * 1024;
 /**
