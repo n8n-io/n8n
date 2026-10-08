@@ -79,7 +79,16 @@ export interface ResumeFailureFacts {
 	answeredBy?: string;
 }
 
+/** What the chat knows about the card after the history was read again. */
+export interface ResumeFailureContext {
+	/** Who the history now says answered the card. */
+	answerer?: AgentMessageAuthor;
+	viewerId?: string;
+	isShared: boolean;
+}
+
 export type ResumeFailureNotice =
+	| { kind: 'answered-by-you' }
 	| { kind: 'already-answered'; name?: string }
 	| { kind: 'refused'; message?: string };
 
@@ -167,18 +176,40 @@ export function answerAuthorship(
 	return author.name ? { decision, name: author.name } : undefined;
 }
 
+const alreadyAnswered = (name: string | undefined): ResumeFailureNotice => ({
+	kind: 'already-answered',
+	...(name && { name }),
+});
+
+/** The answerer in the history, when that is not the viewer. */
+const otherAnswerer = ({ answerer, viewerId }: ResumeFailureContext) =>
+	answerer && answerer.id !== viewerId ? answerer : undefined;
+
 /**
- * The message for an answer that did not go through. `answerer` is who the history now says
- * answered the card, when that is not the viewer. Undefined when there is nothing to add to
- * the transcript, which already shows the server state again.
+ * Whether the viewer answered the card before, when the history names no other user. Only
+ * the owner answers in a private chat, so the user that a 409 names there is the viewer.
+ */
+const viewerAnswered = (serverName: string | undefined, context: ResumeFailureContext) =>
+	context.answerer !== undefined || (!context.isShared && serverName !== undefined);
+
+/**
+ * The message for an answer that did not go through. The history has the id of the answerer,
+ * so it decides before the name in the 409. Undefined when there is nothing to add to the
+ * transcript, which already shows the server state again.
  */
 export function resumeFailureNotice(
 	failure: ResumeFailureFacts,
-	answerer: string | undefined,
+	context: ResumeFailureContext,
 ): ResumeFailureNotice | undefined {
-	const name = failure.answeredBy ?? answerer;
-	if (name) return { kind: 'already-answered', name };
-	if (failure.status === 409) return { kind: 'already-answered' };
+	const serverName = failure.answeredBy || undefined;
+	const other = otherAnswerer(context);
+	if (other) return alreadyAnswered(other.name || serverName);
+	if (failure.status === 409 || serverName) {
+		return viewerAnswered(serverName, context)
+			? { kind: 'answered-by-you' }
+			: alreadyAnswered(serverName);
+	}
+	// A stream error that names nobody else: the transcript already shows the error.
 	if (failure.status === undefined) return undefined;
 	return { kind: 'refused', ...(failure.message && { message: failure.message }) };
 }

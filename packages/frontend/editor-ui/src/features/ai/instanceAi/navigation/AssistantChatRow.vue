@@ -72,8 +72,21 @@ const rowLabel = computed(
 </script>
 
 <template>
-	<div :class="[$style.chatRow, { [$style.withState]: shownState }]">
+	<div :class="[$style.chatRow, { [$style.withState]: shownState, [$style.shared]: sharedLabel }]">
 		<N8nMenuItem :item="item" :aria-label="rowLabel" scroll-label-on-overflow />
+		<!-- Shows the shared label on the row icon. Screen readers get it from the row label. -->
+		<span v-if="sharedLabel" :class="$style.sharedSlot">
+			<N8nTooltip placement="right" as-child>
+				<template #content>{{ sharedLabel }}</template>
+				<RouterLink
+					:to="to"
+					tabindex="-1"
+					aria-hidden="true"
+					:class="$style.sharedLink"
+					:data-test-id="`instance-ai-thread-shared-${props.thread.id}`"
+				/>
+			</N8nTooltip>
+		</span>
 		<!-- The row label already names the state, so screen readers skip this copy of the link. -->
 		<span v-if="shownState" :class="$style.stateSlot">
 			<N8nTooltip placement="right" :content="shownState.label">
@@ -120,11 +133,32 @@ const rowLabel = computed(
 	a[role='menuitem'] {
 		padding-right: var(--spacing--lg);
 	}
+}
 
+.withState,
+.shared {
 	&:hover a[role='menuitem'] {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text--shade-1);
 	}
+}
+
+// A hover target over the row icon (the menu item's padding and icon box). It shows no
+// content of its own: the icon below it stays visible.
+.sharedSlot {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	align-items: center;
+	height: var(--spacing--xl);
+	padding-inline-start: var(--spacing--4xs);
+}
+
+.sharedLink {
+	display: block;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 }
 
 .stateSlot {

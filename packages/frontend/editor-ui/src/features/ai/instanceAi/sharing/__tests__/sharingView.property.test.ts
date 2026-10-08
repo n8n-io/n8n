@@ -161,17 +161,77 @@ describe('answerAuthorship properties', () => {
 
 describe('resumeFailureNotice properties', () => {
 	const statuses = fc.option(fc.constantFrom(400, 403, 404, 409, 500), { nil: undefined });
-	const optionalNames = fc.option(fc.constantFrom('Alice', 'Bob'), { nil: undefined });
+	const serverNames = fc.option(fc.constantFrom('Alice', 'Bob', ''), { nil: undefined });
+	const answerers = fc.option(owners, { nil: undefined });
+	const viewers = fc.option(userIds, { nil: undefined });
+	interface FailureCase {
+		status?: number;
+		answeredBy?: string;
+		answerer?: { id: string; name: string };
+		viewerId?: string;
+		isShared: boolean;
+	}
+	const cases: fc.Arbitrary<FailureCase> = fc.record({
+		status: statuses,
+		answeredBy: serverNames,
+		answerer: answerers,
+		viewerId: viewers,
+		isShared: fc.boolean(),
+	});
 
-	it('reports a known answerer, every 409 as answered, and stays silent on a stream error with nobody else', () => {
+	const noticeOf = ({ status, answeredBy, ...context }: FailureCase) =>
+		resumeFailureNotice({ status, answeredBy }, context);
+	const byOther = (c: FailureCase) => c.answerer !== undefined && c.answerer.id !== c.viewerId;
+
+	it('says "you" only when the history names the viewer, or in a private chat', () => {
 		fc.assert(
-			fc.property(statuses, optionalNames, optionalNames, (status, answeredBy, answerer) => {
-				const notice = resumeFailureNotice({ status, answeredBy }, answerer);
-				const name = answeredBy ?? answerer;
-				if (name) expect(notice).toEqual({ kind: 'already-answered', name });
-				else if (status === 409) expect(notice).toEqual({ kind: 'already-answered' });
-				else if (status === undefined) expect(notice).toBeUndefined();
-				else expect(notice?.kind).toBe('refused');
+			fc.property(cases, (c) => {
+				if (noticeOf(c)?.kind !== 'answered-by-you') return;
+				expect(byOther(c)).toBe(false);
+				expect(c.answerer?.id === c.viewerId || !c.isShared).toBe(true);
+			}),
+		);
+	});
+
+	it('never names the viewer’s own answer as someone else’s', () => {
+		fc.assert(
+			fc.property(cases, (c) => {
+				const notice = noticeOf(c);
+				if (c.answerer && c.answerer.id === c.viewerId) {
+					expect(notice?.kind).not.toBe('already-answered');
+				}
+				// A private chat names another user only when the history does.
+				if (!c.isShared && !byOther(c) && notice?.kind === 'already-answered') {
+					expect(notice).toEqual({ kind: 'already-answered' });
+				}
+			}),
+		);
+	});
+
+	it('names the other user that the history records', () => {
+		fc.assert(
+			fc.property(cases, (c) => {
+				if (!byOther(c)) return;
+				const notice = noticeOf(c);
+				expect(notice?.kind).toBe('already-answered');
+				if (c.answerer?.name)
+					expect(notice).toEqual({ kind: 'already-answered', name: c.answerer.name });
+			}),
+		);
+	});
+
+	it('answers every 409, and adds nothing to a stream error that names nobody else', () => {
+		fc.assert(
+			fc.property(cases, (c) => {
+				const notice = noticeOf(c);
+				if (c.status === 409) expect(notice?.kind).not.toBe('refused');
+				if (c.status === 409) expect(notice).toBeDefined();
+				if (c.status === undefined && !c.answeredBy && !byOther(c)) {
+					expect(notice).toBeUndefined();
+				}
+				if (notice?.kind === 'refused') {
+					expect(c.status !== undefined && c.status !== 409 && !c.answeredBy).toBe(true);
+				}
 			}),
 		);
 	});

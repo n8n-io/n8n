@@ -76,6 +76,8 @@ const recentWorkflowsStore = useRecentWorkflowsStore();
 
 const conversationRef =
 	useTemplateRef<InstanceType<typeof InstanceAiAgentsConversation>>('conversation');
+// The Share button goes away after a share, so its focus moves to the new chip.
+const sharedChip = useTemplateRef<InstanceType<typeof SharedThreadChip>>('sharedChip');
 
 // The conversation owns the composer-handoff state; read it through the
 // template ref for the agent-preview session id below and for
@@ -751,9 +753,9 @@ function handleNewThreadClick() {
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :title="currentThreadTitle">
-					<template #status><SharedThreadChip /></template>
+					<template #status><SharedThreadChip ref="sharedChip" /></template>
 					<template #actions>
-						<ShareThreadButton />
+						<ShareThreadButton @shared="sharedChip?.focus()" />
 						<N8nTooltip
 							:content="i18n.baseText('instanceAi.thread.new')"
 							placement="bottom"

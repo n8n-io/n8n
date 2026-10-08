@@ -9,6 +9,7 @@ import { useTokenRequest } from '../composables/useTokenRequest';
 import { useLinkedInstancesStore } from '../linkedInstances.store';
 import { accessTokenError } from '../linkFormValidation';
 import LinkFormField from './LinkFormField.vue';
+import StableButtonLabel from './StableButtonLabel.vue';
 
 /** Owned by the settings page. The page also restores focus after the dialog closes. */
 const props = defineProps<{
@@ -18,7 +19,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [open: boolean];
-	updated: [summary: LinkedInstanceSummary];
+	/** The dialog has left the page. */
+	closed: [];
 }>();
 
 const i18n = useI18n();
@@ -32,6 +34,12 @@ const { token, serverError, isSubmitting, send } = useTokenRequest(
 const touched = ref(false);
 const submitAttempted = ref(false);
 const tokenField = useTemplateRef<InstanceType<typeof LinkFormField>>('tokenField');
+
+// Both texts of the submit button. The longer one sets the width, so "Cancel" does not move.
+const submitLabels = computed(() => [
+	i18n.baseText('settings.linkedInstances.token.submit'),
+	i18n.baseText('settings.linkedInstances.form.checking'),
+]);
 
 const title = computed(() =>
 	i18n.baseText('settings.linkedInstances.token.title', {
@@ -72,11 +80,11 @@ async function submit() {
 	const newToken = token.value.trim();
 	const summary = await send(async () => await store.changeToken(instance.id, newToken));
 	if (summary) {
+		// The store holds the new row. Focus goes back to the row, which tells its new status.
 		toast.showMessage({
 			title: i18n.baseText('settings.linkedInstances.token.updated'),
 			type: 'success',
 		});
-		emit('updated', summary);
 		emit('update:open', false);
 		return;
 	}
@@ -99,8 +107,11 @@ function onOpenAutoFocus(event: Event) {
 	tokenField.value?.focus();
 }
 
+// The page stays hidden from screen readers until the dialog has left it, which ends after this
+// event. So the page moves focus and makes announcements on "closed", one task later.
 function onCloseAutoFocus(event: Event) {
 	event.preventDefault();
+	setTimeout(() => emit('closed'), 0);
 }
 </script>
 
@@ -148,13 +159,17 @@ function onCloseAutoFocus(event: Event) {
 					type="submit"
 					variant="solid"
 					:disabled="isSubmitting"
-					:label="
-						isSubmitting
-							? i18n.baseText('settings.linkedInstances.form.checking')
-							: i18n.baseText('settings.linkedInstances.token.submit')
-					"
 					data-test-id="change-token-submit"
-				/>
+				>
+					<StableButtonLabel
+						:label="
+							isSubmitting
+								? i18n.baseText('settings.linkedInstances.form.checking')
+								: i18n.baseText('settings.linkedInstances.token.submit')
+						"
+						:labels="submitLabels"
+					/>
+				</N8nButton>
 			</N8nDialogFooter>
 		</form>
 	</N8nDialog>

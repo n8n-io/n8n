@@ -41,8 +41,8 @@ describe('TransferLocalWorkflows.findMovable', () => {
 	/** `found` decides what the finder returns for the scopes of a request. */
 	function setup(found: (scopes: Scope[]) => WorkflowEntity | null) {
 		const workflowFinder = mock<WorkflowFinderService>();
-		workflowFinder.findWorkflowForUser.mockImplementation(
-			async (_id, _user, scopes) => found(scopes),
+		workflowFinder.findWorkflowForUser.mockImplementation(async (_id, _user, scopes) =>
+			found(scopes),
 		);
 		const local = new TransferLocalWorkflows(
 			workflowFinder,

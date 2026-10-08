@@ -261,8 +261,8 @@ export async function listPersonalRemoteCredentials(
 	session: RemoteSession,
 	personalProjectId: string,
 ): Promise<RemoteCredentialList | null> {
-	const owned = await listRemoteCredentials(session, personalProjectId);
-	if (owned === null) return null;
+	if (!session.toolNames.has(LIST_CREDENTIALS_TOOL)) return null;
+	const owned = await callListCredentials(session, { projectId: personalProjectId });
 	const shared = await callListCredentials(session, { onlySharedWithMe: true });
 	return {
 		credentials: [...owned.credentials, ...shared.credentials],

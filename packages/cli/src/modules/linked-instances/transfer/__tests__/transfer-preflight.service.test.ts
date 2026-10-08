@@ -192,7 +192,9 @@ describe('TransferPreflightService', () => {
 			const { preflightService, alice, linkId, remote } = await personalSetup();
 			remote.handlers.list_credentials = (args) => ({
 				data:
-					args.onlySharedWithMe === true ? [{ id: 'c9', name: 'Team Slack', type: 'slackApi' }] : [],
+					args.onlySharedWithMe === true
+						? [{ id: 'c9', name: 'Team Slack', type: 'slackApi' }]
+						: [],
 			});
 
 			const { credentials } = await preflightService.preflight(alice, linkId, 'wf1');

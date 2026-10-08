@@ -5,7 +5,7 @@
  * cannot answer. When only the owner can answer a card, a teammate sees only its request:
  * the controls of such a card (setup forms, domain access) cannot work for a teammate.
  */
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import type { InstanceAiConfirmRequest, SharedCard } from '@n8n/api-types';
 import { N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -19,6 +19,9 @@ const props = defineProps<{
 	/** The tool call behind the card. The teammate rules read it. */
 	call?: SharedCard;
 	disabled?: boolean;
+	/** The answer of a card that stays after it is answered. The card then shows the outcome. */
+	resolvedValue?: unknown;
+	toolCallId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -28,9 +31,12 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const text = useSharingText();
 const sharing = useOptionalThreadSharing();
+const footerId = useId();
 
 const access = computed(() => sharing?.cardAccess(props.call));
 const owner = computed(() => text.owner(sharing?.view.value.ownerName ?? ''));
+// The footer says who can answer. An answered card shows its outcome instead.
+const showsFooter = computed(() => props.resolvedValue === undefined);
 
 const footer = computed<{ icon: IconName; text: string }>(() => {
 	switch (access.value) {
@@ -70,9 +76,18 @@ const request = computed(
 		v-if="access === undefined"
 		:input="input"
 		:disabled="disabled"
+		:resolved-value="resolvedValue"
+		:tool-call-id="toolCallId"
 		@submit="emit('submit', $event)"
 	/>
-	<div v-else :class="$style.sharedCard" data-test-id="instance-ai-shared-card">
+	<!-- The group gives the footer with the card's controls, also to disabled buttons. -->
+	<div
+		v-else
+		:class="$style.sharedCard"
+		role="group"
+		:aria-describedby="showsFooter ? footerId : undefined"
+		data-test-id="instance-ai-shared-card"
+	>
 		<N8nCard v-if="access === 'owner-only'" data-test-id="instance-ai-shared-card-request">
 			<N8nText tag="p" :class="$style.request">{{ request }}</N8nText>
 		</N8nCard>
@@ -80,9 +95,16 @@ const request = computed(
 			v-else
 			:input="input"
 			:disabled="disabled || access === 'needs-role'"
+			:resolved-value="resolvedValue"
+			:tool-call-id="toolCallId"
 			@submit="emit('submit', $event)"
 		/>
-		<p :class="$style.footer" data-test-id="instance-ai-shared-card-footer">
+		<p
+			v-if="showsFooter"
+			:id="footerId"
+			:class="$style.footer"
+			data-test-id="instance-ai-shared-card-footer"
+		>
 			<N8nIcon :icon="footer.icon" size="small" aria-hidden="true" />
 			<N8nText tag="span" size="small" color="text-base">{{ footer.text }}</N8nText>
 		</p>

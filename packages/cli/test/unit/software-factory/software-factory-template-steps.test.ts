@@ -499,6 +499,84 @@ describe('messages', () => {
 	});
 });
 
+describe('plan approval', () => {
+	const APPROVAL = 'Ask for plan approval';
+	const planRun = (structuredOutput: IDataObject, ticket: IDataObject = ticketOutput) => ({
+		json: { structuredOutput },
+		nodes: { ...earlierNodes, 'Read factory ticket': ticket },
+	});
+	const longPlan = {
+		summary: `${'Summary text. '.repeat(400)} <b> & more`,
+		steps: Array.from({ length: 60 }, (_, index) => `Step ${index}: ${'x'.repeat(300)} & <tag>`),
+		files: Array.from({ length: 60 }, (_, index) => `src/file-${index}.ts`),
+		tests: Array.from({ length: 40 }, (_, index) => `test ${index}`),
+		risks: ['r'.repeat(900)],
+		estimatedChangedLines: 50000,
+	};
+	const hugeTicket = {
+		...ticketOutput,
+		ticket: 'ENG-'.repeat(200),
+		title: 'T'.repeat(5000),
+		url: `https://linear.app/acme/issue/${'u'.repeat(5000)}`,
+	};
+
+	it('keeps the Slack message of a maximal plan within the 3000 characters of one section', () => {
+		// escapeHtml only shortens the text, so the raw length bounds the length that Slack gets.
+		const text = textOf(APPROVAL, parameterOf(APPROVAL, 'message'), planRun(longPlan, hugeTicket));
+
+		expect(text.length).toBeLessThanOrEqual(3000);
+		expect(text).toContain('review the plan for ENG-');
+	});
+
+	it('states the counts and the estimate, and leaves the steps to the review page', () => {
+		const text = textOf(APPROVAL, parameterOf(APPROVAL, 'message'), planRun(longPlan));
+
+		expect(text).toContain('*Steps*: 60. *Files*: 60. *Tests*: 40. *Risks*: 1.');
+		expect(text).toContain('*Estimated changed lines*: 50000 of 100.');
+		expect(text).toContain('Choose "Review the plan" to read it.');
+		expect(text).not.toContain('Step 0:');
+	});
+
+	it('shows every step, file, test and risk on the review page', () => {
+		const form = z
+			.object({ responseFormDescription: z.string() })
+			.parse(parameterOf(APPROVAL, 'options')).responseFormDescription;
+		const text = textOf(APPROVAL, form, planRun(longPlan));
+		const numbered = text.split('\n').filter((line) => /^\d+\. Step \d+:/.test(line));
+
+		expect(text.startsWith('Approve the plan, ask for changes or reject the ticket.')).toBe(true);
+		expect(numbered).toHaveLength(60);
+		expect(numbered[59]).toMatch(/^60\. Step 59: x+ & <tag>$/);
+		expect(text).toContain('\nTests:\n- test 0\n');
+		expect(text).toContain(`\nRisks: ${'r'.repeat(900)}\n`);
+		expect(text).toContain('Estimated changed lines: 50000 of 100.');
+	});
+
+	it('says "none" for the risks of a plan without risks', () => {
+		const form = z
+			.object({ responseFormDescription: z.string() })
+			.parse(parameterOf(APPROVAL, 'options')).responseFormDescription;
+		const text = textOf(APPROVAL, form, planRun({ ...longPlan, risks: [] }));
+
+		expect(text).toContain('\nRisks: none\n');
+	});
+});
+
+describe('critic input', () => {
+	it('gives the critic the command and the path of the failing test next to the check', () => {
+		const check = configured.evaluate('Critic input', assignmentOf('Critic input', 'check'), {
+			nodes: { ...earlierNodes, Verify: checkResult({ test: 'failed' }) },
+		});
+
+		expect(check).toMatchObject({
+			check: 'passed',
+			test: 'failed',
+			testCommand: failingTestOutput.structuredOutput.runCommand,
+			testPath: failingTestOutput.structuredOutput.testPath,
+		});
+	});
+});
+
 describe('outcomes', () => {
 	const summary = (outcome: string, run: TemplateRun) =>
 		textOf(outcome, assignmentOf(outcome, 'summary'), run);
@@ -574,6 +652,15 @@ describe('outcomes', () => {
 				testWith({ testPath: 'packages/cli/test/', runCommand: 'pnpm test' }),
 				'Failing test: the test path packages/cli/test/ names no file.',
 			],
+			[
+				'a run command that names a file with the same end',
+				workspaceOn(repository),
+				testWith({
+					testPath: 'packages/cli/test/unit/run-count.test.ts',
+					runCommand: 'pnpm test packages/cli/test/unit/rerun-count.test.ts',
+				}),
+				'Failing test: the run command does not name packages/cli/test/unit/run-count.test.ts.',
+			],
 		])('explains a failed preparation with %s', (_case, workspace, test, expected) => {
 			const text = summary('Outcome: prep failed', prepRun(workspace, test));
 
@@ -635,6 +722,35 @@ describe('outcomes', () => {
 				{ numRuns: 150 },
 			);
 		});
+	});
+
+	it('names the diff that does not show every changed file, and an empty diff', () => {
+		const partial = summary('Outcome: step failed', {
+			json: {
+				diffProblems: [
+					'a.ts: missing from the diff',
+					'b.ts: missing from the diff',
+					'c.ts: x',
+					'd.ts: y',
+				],
+				structuredContent: { diff: 'diff', changes: [] },
+			},
+			previousNode: 'Has a diff?',
+		});
+		const empty = summary('Outcome: step failed', {
+			json: { diffProblems: [], structuredContent: { diff: ' \n' } },
+			previousNode: 'Has a diff?',
+		});
+		const unusable = summary('Outcome: step failed', {
+			json: { structuredContent: { diff: 7 } },
+			previousNode: 'Has a diff?',
+		});
+
+		expect(partial).toBe(
+			'The diff does not show every changed file, so the critic would review only part of the change: a.ts: missing from the diff; b.ts: missing from the diff; c.ts: x.',
+		);
+		expect(empty).toBe('The implementer made no change, so the critic has nothing to review.');
+		expect(unusable).toBe('The gate "Has a diff?" found no usable diff.');
 	});
 
 	it('reports both results of a failed check and why it got no retry', () => {

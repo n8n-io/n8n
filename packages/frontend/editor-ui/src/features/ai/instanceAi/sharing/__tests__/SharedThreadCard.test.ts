@@ -38,12 +38,35 @@ const questionsCall: SharedCard = {
 	suspendPayload: questionsPayload,
 };
 
-/** Mounts the card inside a conversation that provides the sharing state, like the chat does. */
-function renderCard(props: {
+interface CardProps {
 	input: AssistantConfirmationInput;
 	call?: SharedCard;
 	disabled?: boolean;
-}) {
+	resolvedValue?: unknown;
+	toolCallId?: string;
+}
+
+/** Shows the props that the Assistant card receives. */
+const ConfirmationCardStub = defineComponent({
+	props: {
+		input: { type: Object, required: true },
+		disabled: Boolean,
+		resolvedValue: { type: null, default: undefined },
+		toolCallId: { type: String, default: undefined },
+	},
+	setup(props) {
+		return () =>
+			h('div', {
+				'data-test-id': 'confirmation-card-stub',
+				'data-resolved-value': JSON.stringify(props.resolvedValue ?? null),
+				'data-tool-call-id': props.toolCallId ?? '',
+				'data-disabled': String(props.disabled),
+			});
+	},
+});
+
+/** Mounts the card inside a conversation that provides the sharing state, like the chat does. */
+function renderCard(props: CardProps, { stubCard = false } = {}) {
 	const onSubmit = vi.fn();
 	const Host = defineComponent({
 		setup() {
@@ -51,8 +74,11 @@ function renderCard(props: {
 			return () => h(SharedThreadCard, { ...props, onSubmit });
 		},
 	});
-	return { ...createComponentRenderer(Host)(), onSubmit };
+	const stubs = stubCard ? { InstanceAiConfirmationCard: ConfirmationCardStub } : {};
+	return { ...createComponentRenderer(Host)({ global: { stubs } }), onSubmit };
 }
+
+const decline = { kind: 'capabilityDecision', approved: false };
 
 describe('SharedThreadCard', () => {
 	beforeEach(() => {
@@ -110,6 +136,59 @@ describe('SharedThreadCard', () => {
 
 			expect(getByTestId('approval-card-allow-once')).toBeDisabled();
 		});
+
+		it('gives the footer to screen readers with the card', () => {
+			const { getByRole, getByTestId } = renderCard({ input: runInput, call: runCall });
+
+			expect(getByRole('group', { description: 'Runs as Alice Owner' })).toBe(
+				getByTestId('instance-ai-shared-card'),
+			);
+		});
+
+		it('hands the answer and the tool call of an answered card to the Assistant card', () => {
+			const { getByTestId, queryByTestId } = renderCard(
+				{ input: runInput, call: runCall, resolvedValue: decline, toolCallId: 'tc-1' },
+				{ stubCard: true },
+			);
+
+			const card = getByTestId('confirmation-card-stub');
+			expect(card).toHaveAttribute('data-resolved-value', JSON.stringify(decline));
+			expect(card).toHaveAttribute('data-tool-call-id', 'tc-1');
+			// The wrapper keeps no copy of them as HTML attributes.
+			const wrapper = getByTestId('instance-ai-shared-card');
+			expect(wrapper).not.toHaveAttribute('resolvedvalue');
+			expect(wrapper).not.toHaveAttribute('resolved-value');
+			expect(wrapper).not.toHaveAttribute('toolcallid');
+			expect(wrapper).not.toHaveAttribute('tool-call-id');
+			// The card shows the outcome, so who can answer no longer applies.
+			expect(queryByTestId('instance-ai-shared-card-footer')).not.toBeInTheDocument();
+			expect(wrapper).not.toHaveAttribute('aria-describedby');
+		});
+	});
+
+	it('hands the answer and the tool call of an answered card to the owner’s card', () => {
+		setUpSharing({ shared: true });
+		const { getByTestId } = renderCard(
+			{ input: runInput, call: runCall, resolvedValue: decline, toolCallId: 'tc-1' },
+			{ stubCard: true },
+		);
+
+		const card = getByTestId('confirmation-card-stub');
+		expect(card).toHaveAttribute('data-resolved-value', JSON.stringify(decline));
+		expect(card).toHaveAttribute('data-tool-call-id', 'tc-1');
+		expect(card).toHaveAttribute('data-disabled', 'false');
+	});
+
+	it('hands the answer to a card that a teammate without the role sees, still disabled', () => {
+		setUpSharing({ shared: true, viewerId: TEAMMATE.id, scopes: READ_SCOPES });
+		const { getByTestId } = renderCard(
+			{ input: runInput, call: runCall, resolvedValue: decline, toolCallId: 'tc-1' },
+			{ stubCard: true },
+		);
+
+		const card = getByTestId('confirmation-card-stub');
+		expect(card).toHaveAttribute('data-resolved-value', JSON.stringify(decline));
+		expect(card).toHaveAttribute('data-disabled', 'true');
 	});
 
 	it('disables the buttons of a teammate without the role and says who can approve', async () => {
@@ -117,6 +196,9 @@ describe('SharedThreadCard', () => {
 		const { getByTestId, onSubmit } = renderCard({ input: runInput, call: runCall });
 
 		expect(getByTestId('instance-ai-shared-card-footer')).toHaveTextContent(
+			'Only editors in Marketing can approve this.',
+		);
+		expect(getByTestId('instance-ai-shared-card')).toHaveAccessibleDescription(
 			'Only editors in Marketing can approve this.',
 		);
 		expect(getByTestId('approval-card-allow-once')).toBeDisabled();

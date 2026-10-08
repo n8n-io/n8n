@@ -572,7 +572,14 @@ describe('POST /linked-instances/:id/pull', () => {
 
 	it('answers 403 before any request when the user can create workflows in the project but cannot change them', async () => {
 		const createOnly = await createCustomRoleWithScopeSlugs(
-			['project:read', 'project:list', 'workflow:read', 'workflow:list', 'workflow:create', 'workflow:import'],
+			[
+				'project:read',
+				'project:list',
+				'workflow:read',
+				'workflow:list',
+				'workflow:create',
+				'workflow:import',
+			],
 			{ roleType: 'project' },
 		);
 		const inbox = await createTeamProject('Inbox', bob);

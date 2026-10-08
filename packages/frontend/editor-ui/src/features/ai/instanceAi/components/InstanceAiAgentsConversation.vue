@@ -145,8 +145,10 @@ const mirroredMessages = computed(() =>
 );
 const isAwaitingInput = computed(() => findTailOpenInteractive(chatMessages.value) !== undefined);
 
-// A teammate in a shared chat reads it and answers some cards. Only the owner sends.
+// A teammate in a shared chat reads it and answers some cards. Only the owner sends, so a
+// teammate gets no composer and none of the offers and panels that send a message.
 const sharing = provideThreadSharing(thread, () => chatMessages.value);
+const isTeammate = computed(() => sharing.view.value.role === 'teammate');
 
 // The first history load decides what is history and what is live, so nothing
 // is mirrored until it has run once.
@@ -637,15 +639,15 @@ onBeforeUnmount(() => {
 					<slot v-else name="empty" />
 				</div>
 			</template>
-			<template #inline-offers>
+			<template v-if="!isTeammate" #inline-offers>
 				<div :class="$style.offers">
 					<slot name="inline-offers" />
 				</div>
 			</template>
-			<template #above-input>
+			<template v-if="!isTeammate" #above-input>
 				<slot name="above-input" />
 			</template>
-			<template v-if="sharing.view.value.role === 'teammate'" #composer>
+			<template v-if="isTeammate" #composer>
 				<SharedThreadNotice :owner-name="sharing.view.value.ownerName" />
 			</template>
 			<!-- Same menu as the empty view: attachments, computer use, browser use and MCP tools -->

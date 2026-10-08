@@ -353,7 +353,7 @@ describe('InstanceAiAgentsConversation', () => {
 	});
 });
 
-describe('InstanceAiAgentsConversation in a shared chat', () => {
+describe('InstanceAiAgentsConversation with chat sharing', () => {
 	const sharedInfo = {
 		thread: {
 			...threadInfo('Weekly digest').thread,
@@ -403,6 +403,22 @@ describe('InstanceAiAgentsConversation in a shared chat', () => {
 		expect(queryByTestId('instance-ai-shared-thread-notice')).not.toBeInTheDocument();
 	});
 
+	it('shows a teammate none of the offers and panels that send a message', async () => {
+		const { queryByTestId } = await renderAs(TEAMMATE.id);
+
+		// The thread view puts "Fix with AI", "Make it automatic", the test-agent offer and
+		// the setup panel in these slots. Each of them sends a chat message.
+		expect(queryByTestId('inline-offers-slot')).not.toBeInTheDocument();
+		expect(queryByTestId('above-input-slot')).not.toBeInTheDocument();
+	});
+
+	it('keeps the offers and panels for the owner of a shared chat', async () => {
+		const { getByTestId } = await renderAs(OWNER.id);
+
+		expect(getByTestId('inline-offers-slot')).toBeInTheDocument();
+		expect(getByTestId('above-input-slot')).toBeInTheDocument();
+	});
+
 	it('says who answered first when the server refuses an answer with a 409', async () => {
 		await renderAs(TEAMMATE.id);
 
@@ -430,6 +446,61 @@ describe('InstanceAiAgentsConversation in a shared chat', () => {
 		expect(toast.showMessage).toHaveBeenCalledWith({
 			type: 'info',
 			title: 'Already answered by Alice Owner.',
+		});
+	});
+
+	it('tells a teammate who answered in another tab that they answered already', async () => {
+		await renderAs(TEAMMATE.id);
+		chatState.messages.value = [
+			{
+				id: 'a-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: 'executions', toolCallId: 'tc-1', state: 'done', approvedBy: TEAMMATE },
+				],
+			},
+		];
+
+		chatState.emitResumeFailed?.({ toolCallId: 'tc-1', status: 409, answeredBy: TEAMMATE.name });
+
+		expect(toast.showMessage).toHaveBeenCalledWith({
+			type: 'info',
+			title: 'You already answered this.',
+		});
+	});
+
+	describe('in a private chat', () => {
+		async function renderPrivate() {
+			vi.mocked(fetchThread).mockResolvedValue(threadInfo('Weekly digest'));
+			setUpSharing({ viewerId: 'user-1' });
+			const view = renderComponent();
+			await view.findByTestId('chat-panel');
+			await flushPromises();
+			return view;
+		}
+
+		it('tells the owner that they answered a stale card already', async () => {
+			await renderPrivate();
+
+			// The history was not read again, so only the name in the 409 is known.
+			chatState.emitResumeFailed?.({ toolCallId: 'tc-1', status: 409, answeredBy: 'Alice Owner' });
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'You already answered this.',
+			});
+		});
+
+		it('names nobody for a 409 that names nobody', async () => {
+			await renderPrivate();
+
+			chatState.emitResumeFailed?.({ toolCallId: 'tc-1', status: 409 });
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'This request was already answered.',
+			});
 		});
 	});
 

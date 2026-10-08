@@ -1,4 +1,5 @@
 import { computed, provide, type ComputedRef } from 'vue';
+import type { AgentMessageAuthor } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -74,25 +75,28 @@ export function provideThreadSharing(thread: SharingThreadRef, messages: () => C
 		return authorship ? text.answerAuthorship(authorship) : undefined;
 	});
 
-	/** The name of the other user who answered the card, after the history was read again. */
-	function otherAnswerer(toolCallId: string): string | undefined {
+	/** Who answered the card, as the history says after it was read again. */
+	function historyAnswerer(toolCallId: string): AgentMessageAuthor | undefined {
 		const toolCall = messages()
 			.flatMap((message) => message.toolCalls ?? [])
 			.find((call) => call.toolCallId === toolCallId);
-		const author = toolCall?.approvedBy ?? toolCall?.declinedBy;
-		return author && author.id !== viewerId() ? author.name || undefined : undefined;
+		return toolCall?.declinedBy ?? toolCall?.approvedBy;
 	}
 
 	function onResumeFailed(failure: AgentResumeFailure): void {
-		const notice = resumeFailureNotice(failure, otherAnswerer(failure.toolCallId));
-		if (notice?.kind === 'already-answered') {
-			toast.showMessage({ type: 'info', title: text.alreadyAnswered(notice.name) });
-		} else if (notice?.kind === 'refused') {
+		const notice = resumeFailureNotice(failure, {
+			answerer: historyAnswerer(failure.toolCallId),
+			viewerId: viewerId(),
+			isShared: view.value.isShared,
+		});
+		if (notice?.kind === 'refused') {
 			toast.showMessage({
 				type: 'error',
 				title: i18n.baseText('instanceAi.sharing.answerError'),
 				...(notice.message && { message: notice.message }),
 			});
+		} else if (notice) {
+			toast.showMessage({ type: 'info', title: text.alreadyAnswered(notice) });
 		}
 	}
 

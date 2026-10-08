@@ -11,7 +11,7 @@ import {
 	useMessage,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -46,7 +46,8 @@ const checkingIds = ref<ReadonlySet<string>>(new Set());
 const unlinkingIds = ref<ReadonlySet<string>>(new Set());
 const announcement = ref('');
 let announcements = 0;
-let linkedId: string | undefined;
+// The new link, kept until its dialog has left the page.
+let linked: LinkedInstanceSummary | undefined;
 
 // Until the first read ends, the page shows a skeleton instead of an empty list.
 const isFirstLoad = computed(() => !store.hasLoaded && !store.loadFailed);
@@ -68,6 +69,10 @@ function buttonIn(component: ComponentRef | null): HTMLElement | null {
 /** "Link instance" in the toolbar, or in the empty state when no row is left. */
 function linkAction(): HTMLElement | null {
 	return linkButton.value?.$el ?? buttonIn(emptyState.value);
+}
+
+function isListed(id: string): boolean {
+	return store.instances.some((instance) => instance.id === id);
 }
 
 function rowAction(id: string, action: RowAction): HTMLElement | null {
@@ -120,17 +125,15 @@ function openLinkDialog() {
 }
 
 function onLinked(summary: LinkedInstanceSummary) {
-	linkedId = summary.id;
-	announceStatus(summary);
+	linked = summary;
 }
 
-async function onLinkDialogOpenChange(open: boolean) {
-	linkDialogOpen.value = open;
-	if (open) return;
+async function onLinkDialogClosed() {
+	const summary = linked;
+	linked = undefined;
 	// After a new link, focus goes to the new row. The button that opened the dialog can be gone.
-	const id = linkedId;
-	linkedId = undefined;
-	await focus.restore(() => (id ? rowAction(id, 'check') : null));
+	await focus.restore(() => (summary ? rowAction(summary.id, 'check') : null));
+	if (summary) announceStatus(summary);
 }
 
 function openTokenDialog(instance: LinkedInstanceSummary) {
@@ -139,9 +142,10 @@ function openTokenDialog(instance: LinkedInstanceSummary) {
 	tokenDialogOpen.value = true;
 }
 
-async function onTokenDialogOpenChange(open: boolean) {
-	tokenDialogOpen.value = open;
-	if (!open) await focus.restore();
+async function onTokenDialogClosed() {
+	const id = tokenTarget.value?.id;
+	// The row is gone when the server no longer had the link. Then focus goes to "Link instance".
+	await focus.restore(() => (id !== undefined && isListed(id) ? null : linkAction()));
 }
 
 async function check(instance: LinkedInstanceSummary) {
@@ -149,7 +153,9 @@ async function check(instance: LinkedInstanceSummary) {
 	if (checkingIds.value.has(id) || unlinkingIds.value.has(id)) return;
 	checkingIds.value = toggled(checkingIds.value, id, true);
 	try {
-		announceStatus(await store.verify(id));
+		// No result when the row changed or went during the check.
+		const summary = await store.verify(id);
+		if (summary) announceStatus(summary);
 	} catch (error) {
 		// A fixed title: the toast title goes to telemetry, and the link name is user text.
 		toast.showError(error, i18n.baseText('settings.linkedInstances.check.error'));
@@ -157,7 +163,8 @@ async function check(instance: LinkedInstanceSummary) {
 		checkingIds.value = toggled(checkingIds.value, id, false);
 	}
 	// The button was disabled during the check, so the browser moved focus to the page body.
-	await focusIfLost(() => rowAction(id, 'check'));
+	// A 404 removes the row. Then focus goes to "Link instance".
+	await focusIfLost(() => rowAction(id, 'check') ?? linkAction());
 }
 
 async function confirmUnlink(instance: LinkedInstanceSummary): Promise<boolean> {
@@ -197,13 +204,20 @@ async function unlink(instance: LinkedInstanceSummary) {
 		return;
 	}
 	void announce(i18n.baseText('settings.linkedInstances.unlink.done', { interpolate: { name } }));
-	// The row and its menu are gone. Focus goes to "Link instance", also in the empty state.
-	await focus.restore(linkAction);
+	// The row and its menu are gone. Focus goes to "Link instance", also in the empty state,
+	// unless the user moved focus during the request.
+	await focusIfLost(linkAction);
 }
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.linkedInstances.title'));
 	await load();
+});
+
+// The links are per-user data. A sign-out without a page reload keeps the store, so the next
+// visit starts from the skeleton and never shows the links of the previous user.
+onBeforeUnmount(() => {
+	store.reset();
 });
 </script>
 
@@ -276,14 +290,14 @@ onMounted(async () => {
 		>
 
 		<LinkInstanceModal
-			:open="linkDialogOpen"
-			@update:open="onLinkDialogOpenChange"
+			v-model:open="linkDialogOpen"
 			@linked="onLinked"
+			@closed="onLinkDialogClosed"
 		/>
 		<ChangeTokenModal
-			:open="tokenDialogOpen"
+			v-model:open="tokenDialogOpen"
 			:instance="tokenTarget"
-			@update:open="onTokenDialogOpenChange"
+			@closed="onTokenDialogClosed"
 		/>
 	</N8nSettingsLayout>
 </template>

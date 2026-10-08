@@ -14,6 +14,7 @@ import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { CommandBar } from './components/CommandBar';
 import { DeleteSecretsProviderModal } from './components/DeleteSecretsProviderModal';
+import { ExperienceModes } from './components/experience-modes';
 import { InteractionsPage } from './components/InteractionsPage';
 import { NotificationsPage } from './components/NotificationsPage';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
@@ -125,6 +126,7 @@ export class n8nPage {
 	// Components
 	readonly projectTabs: ProjectTabsComponent;
 	readonly commandBar: CommandBar;
+	readonly experienceModes: ExperienceModes;
 	readonly workflowMenu: WorkflowMenu;
 	readonly workflowReviewControls: WorkflowReviewControls;
 
@@ -221,6 +223,7 @@ export class n8nPage {
 		// Components
 		this.projectTabs = new ProjectTabsComponent(page);
 		this.commandBar = new CommandBar(page);
+		this.experienceModes = new ExperienceModes(page);
 		this.workflowMenu = new WorkflowMenu(page);
 		this.workflowReviewControls = new WorkflowReviewControls(page);
 

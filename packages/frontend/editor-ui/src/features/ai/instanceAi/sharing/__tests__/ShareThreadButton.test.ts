@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { defineComponent, h, ref } from 'vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -56,14 +56,43 @@ const sharedThreadInfo = {
 	owner: OWNER,
 };
 
-/** The chat header: the chip next to the title and the Share button in the actions. */
+/**
+ * The chat header: the chip next to the title and the Share button in the actions. Like the
+ * thread view, it gives the focus to the chip after a share.
+ */
 const Header = defineComponent({
 	setup() {
 		const runtime = provideThread(THREAD_ID);
 		runtime.setProjectId(PROJECT_ID);
-		return () => h('div', [h(SharedThreadChip), h(ShareThreadButton)]);
+		const chip = ref<InstanceType<typeof SharedThreadChip> | null>(null);
+		return () =>
+			h('div', [
+				h(SharedThreadChip, { ref: chip }),
+				h(ShareThreadButton, { onShared: () => chip.value?.focus() }),
+			]);
 	},
 });
+
+const resizeCallbacks: ResizeObserverCallback[] = [];
+
+class ResizeObserverStub {
+	constructor(onResize: ResizeObserverCallback) {
+		resizeCallbacks.push(onResize);
+	}
+
+	observe = vi.fn();
+
+	unobserve = vi.fn();
+
+	disconnect = vi.fn();
+}
+
+/** jsdom has no layout, so a cut-off text is simulated through the two widths. */
+function setLabelWidths(label: HTMLElement, scrollWidth: number, clientWidth: number) {
+	Object.defineProperty(label, 'scrollWidth', { value: scrollWidth, configurable: true });
+	Object.defineProperty(label, 'clientWidth', { value: clientWidth, configurable: true });
+	for (const notify of [...resizeCallbacks]) notify([], {} as ResizeObserver);
+}
 
 const renderHeader = createComponentRenderer(Header);
 
@@ -113,6 +142,33 @@ describe('ShareThreadButton and SharedThreadChip', () => {
 			sharedWith: sharedThreadInfo.sharedWith,
 			owner: OWNER,
 		});
+	});
+
+	it('gives the focus to the chip after the share, as the button goes away', async () => {
+		setUpSharing();
+		const { getByTestId, findByTestId } = renderHeader();
+		getByTestId('instance-ai-share-thread').focus();
+
+		await fireEvent.click(getByTestId('instance-ai-share-thread'));
+
+		const chip = await findByTestId('instance-ai-shared-thread-chip');
+		await waitFor(() => expect(chip).toHaveFocus());
+		// Focus from code only: the chip is not a tab stop.
+		expect(chip).toHaveAttribute('tabindex', '-1');
+	});
+
+	it('keeps the focus on the button when the share fails', async () => {
+		setUpSharing();
+		vi.mocked(shareThread).mockRejectedValue(new Error('No connection'));
+		const { getByTestId } = renderHeader();
+		const button = getByTestId('instance-ai-share-thread');
+		button.focus();
+
+		await fireEvent.click(button);
+		await waitFor(() => expect(showError).toHaveBeenCalled());
+		await flushPromises();
+
+		expect(button).toHaveFocus();
 	});
 
 	it('does not share when the owner cancels', async () => {
@@ -172,6 +228,49 @@ describe('ShareThreadButton and SharedThreadChip', () => {
 			'Shared with Marketing',
 		);
 		expect(queryByTestId('instance-ai-share-thread')).not.toBeInTheDocument();
+	});
+
+	describe('with a long project name', () => {
+		const projectName = 'Customer Success Operations EMEA';
+
+		beforeEach(() => {
+			resizeCallbacks.length = 0;
+			vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		it('gives the full text in a tooltip when the header cuts the chip', async () => {
+			setUpSharing({ shared: true, projectName });
+			const { getByTestId, getByText } = renderHeader();
+			setLabelWidths(getByText(`Shared with ${projectName}`), 320, 120);
+			await flushPromises();
+
+			// Keyboard focus opens a Reka tooltip at once.
+			await fireEvent.focus(getByTestId('instance-ai-shared-thread-chip'));
+
+			await waitFor(() =>
+				expect(screen.getByTestId('tooltip-content')).toHaveTextContent(
+					`Shared with ${projectName}`,
+				),
+			);
+		});
+
+		it('adds no tooltip again once the whole text fits', async () => {
+			setUpSharing({ shared: true, projectName });
+			const { getByTestId, getByText } = renderHeader();
+			const label = getByText(`Shared with ${projectName}`);
+			setLabelWidths(label, 320, 120);
+			setLabelWidths(label, 320, 320);
+			await flushPromises();
+
+			await fireEvent.focus(getByTestId('instance-ai-shared-thread-chip'));
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			expect(screen.queryByTestId('tooltip-content')).not.toBeInTheDocument();
+		});
 	});
 
 	it('names the project "this project" when the server sent no name', () => {

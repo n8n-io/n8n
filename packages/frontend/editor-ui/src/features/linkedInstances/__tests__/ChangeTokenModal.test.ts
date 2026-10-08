@@ -94,12 +94,11 @@ describe('ChangeTokenModal', () => {
 		await userEvent.type(tokenInput(), token);
 		await userEvent.click(submitButton());
 
-		await waitFor(() => expect(emitted('updated')).toEqual([[updated]]));
+		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 		expect(api.updateLinkedInstance).toHaveBeenCalledWith(expect.anything(), instance.id, {
 			token,
 		});
 		expect(showMessage).toHaveBeenCalledWith({ title: 'Token updated', type: 'success' });
-		expect(emitted('update:open')).toEqual([[false]]);
 		expect(useLinkedInstancesStore(pinia).instances).toEqual([updated]);
 		expect(JSON.stringify(pinia.state.value)).not.toContain(token);
 	});
@@ -112,10 +111,25 @@ describe('ChangeTokenModal', () => {
 
 		await userEvent.click(submitButton());
 
-		expect(submitButton()).toHaveTextContent('Checking…');
+		expect(submitButton()).toHaveAccessibleName('Checking…');
 		expect(submitButton()).toBeDisabled();
+		// The button is a polite live region, so screen readers hear the new label.
+		expect(submitButton()).toHaveAttribute('aria-live', 'polite');
 		request.resolve(instance);
-		await waitFor(() => expect(submitButton()).toHaveTextContent('Save token'));
+		await waitFor(() => expect(submitButton()).toHaveAccessibleName('Save token'));
+	});
+
+	it('removes the row and says so when the link no longer exists', async () => {
+		const gone = 'We could not find this linked instance.';
+		api.updateLinkedInstance.mockRejectedValue(new ResponseError(gone, { httpStatusCode: 404 }));
+		const { pinia } = await setup();
+
+		await userEvent.type(tokenInput(), fakeToken());
+		await userEvent.click(submitButton());
+
+		expect(await screen.findByTestId('change-token-server-error')).toHaveTextContent(gone);
+		expect(useLinkedInstancesStore(pinia).instances).toEqual([]);
+		expect(showMessage).not.toHaveBeenCalled();
 	});
 
 	it('shows the server message inline, clears the token and stays open', async () => {
@@ -165,6 +179,16 @@ describe('ChangeTokenModal', () => {
 
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 		expect(showMessage).toHaveBeenCalledWith({ title: 'Token updated', type: 'success' });
+	});
+
+	it('tells the page when the dialog has left, so the page can move focus', async () => {
+		const { emitted, rerender } = await setup();
+		expect(emitted('closed')).toBeUndefined();
+
+		await rerender({ open: false, instance });
+
+		await waitFor(() => expect(emitted('closed')).toHaveLength(1));
+		expect(screen.queryByTestId('change-token-form')).not.toBeInTheDocument();
 	});
 
 	it('asks the page to close on Cancel', async () => {

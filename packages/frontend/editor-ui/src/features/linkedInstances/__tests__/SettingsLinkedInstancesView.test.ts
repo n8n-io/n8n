@@ -3,10 +3,12 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { defineComponent, h } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import type * as Api from '../linkedInstances.api';
+import { useLinkedInstancesStore } from '../linkedInstances.store';
 import SettingsLinkedInstancesView from '../views/SettingsLinkedInstancesView.vue';
 import { deferred, fakeToken, linkedInstance } from './linkedInstances.fixtures';
 
@@ -64,6 +66,30 @@ function rowOf(name: string): HTMLElement {
 
 const announcement = () => screen.getByTestId('linked-instances-announcement');
 
+const GONE = 'We could not find this linked instance.';
+const missingLink = () => new ResponseError(GONE, { httpStatusCode: 404 });
+
+/** Records each text of the live region and whether a dialog was open at that moment. */
+function recordAnnouncements() {
+	const texts: Array<{ text: string; dialogOpen: boolean }> = [];
+	const observer = new MutationObserver(() =>
+		texts.push({
+			text: announcement().textContent ?? '',
+			dialogOpen: screen.queryByRole('dialog') !== null,
+		}),
+	);
+	observer.observe(announcement(), { childList: true, characterData: true, subtree: true });
+	return { texts, stop: () => observer.disconnect() };
+}
+
+/** Puts focus on an element outside the row, as a keyboard user who moved on would. */
+function moveFocusElsewhere(): HTMLElement {
+	const elsewhere = screen.getByRole('heading', { name: 'Linked instances' });
+	elsewhere.setAttribute('tabindex', '-1');
+	elsewhere.focus();
+	return elsewhere;
+}
+
 async function chooseUnlink(name: string) {
 	await userEvent.click(
 		within(rowOf(name)).getByRole('button', { name: `More actions for ${name}` }),
@@ -116,6 +142,43 @@ describe('SettingsLinkedInstancesView', () => {
 			await userEvent.click(within(empty).getByRole('button', { name: 'Link instance' }));
 
 			expect(await screen.findByTestId('link-instance-form')).toBeVisible();
+		});
+
+		it('starts from the skeleton on the next visit and never shows the old rows', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			api.fetchLinkedInstances.mockResolvedValueOnce([acme]);
+			const firstVisit = renderView({ pinia });
+			await screen.findByTestId('linked-instances-list');
+			firstVisit.unmount();
+
+			// For example, another user signs in on the same tab without a page reload.
+			const read = deferred<LinkedInstanceSummary[]>();
+			api.fetchLinkedInstances.mockReturnValueOnce(read.promise);
+			renderView({ pinia });
+
+			expect(await screen.findByTestId('linked-instances-skeleton')).toBeInTheDocument();
+			expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument();
+			read.resolve([staging]);
+			await screen.findByTestId('linked-instances-list');
+			expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument();
+			expect(rowOf('Staging')).toBeVisible();
+		});
+
+		it('ignores a read of the previous visit that ends after the page closed', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const staleRead = deferred<LinkedInstanceSummary[]>();
+			api.fetchLinkedInstances.mockReturnValueOnce(staleRead.promise);
+			renderView({ pinia }).unmount();
+
+			const read = deferred<LinkedInstanceSummary[]>();
+			api.fetchLinkedInstances.mockReturnValueOnce(read.promise);
+			renderView({ pinia });
+			staleRead.resolve([acme]);
+
+			expect(await screen.findByTestId('linked-instances-skeleton')).toBeInTheDocument();
+			read.resolve([]);
+			expect(await screen.findByTestId('linked-instances-empty')).toBeVisible();
+			expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument();
 		});
 
 		it('shows an error with "Try again" that reads the list again', async () => {
@@ -192,9 +255,7 @@ describe('SettingsLinkedInstancesView', () => {
 			it('leaves focus where the user moved it while the list loaded', async () => {
 				const read = deferred<LinkedInstanceSummary[]>();
 				await pressTryAgain(read.promise);
-				const elsewhere = screen.getByRole('heading', { name: 'Linked instances' });
-				elsewhere.setAttribute('tabindex', '-1');
-				elsewhere.focus();
+				const elsewhere = moveFocusElsewhere();
 
 				read.resolve([acme]);
 
@@ -225,11 +286,16 @@ describe('SettingsLinkedInstancesView', () => {
 			).toBeVisible();
 		});
 
-		it('gives each row action the name of its row for screen readers', async () => {
+		it('gives each row action the name and the status of its row for screen readers', async () => {
 			await renderList();
 
-			const check = within(rowOf('Staging')).getByRole('button', { name: 'Check connection' });
-			expect(check).toHaveAccessibleDescription('Staging');
+			const row = within(rowOf('Staging'));
+			expect(row.getByRole('button', { name: 'Check connection' })).toHaveAccessibleDescription(
+				'Staging Offline',
+			);
+			expect(row.getByRole('button', { name: 'Change token' })).toHaveAccessibleDescription(
+				'Staging Offline',
+			);
 		});
 
 		it('lists the links with a heading for each, so screen readers can count and skip them', async () => {
@@ -318,6 +384,45 @@ describe('SettingsLinkedInstancesView', () => {
 			expect(api.verifyLinkedInstance).toHaveBeenCalledTimes(1);
 		});
 
+		it('turns off "Change token" and the row menu until the check ends', async () => {
+			const request = deferred<LinkedInstanceSummary>();
+			api.verifyLinkedInstance.mockReturnValue(request.promise);
+			await renderList();
+			const row = within(rowOf('Acme Cloud'));
+
+			await userEvent.click(row.getByRole('button', { name: 'Check connection' }));
+
+			const changeToken = row.getByRole('button', { name: 'Change token' });
+			const menu = row.getByRole('button', { name: 'More actions for Acme Cloud' });
+			expect(changeToken).toBeDisabled();
+			expect(menu).toBeDisabled();
+			await userEvent.click(menu);
+			expect(screen.queryByRole('menuitem', { name: 'Unlink' })).not.toBeInTheDocument();
+			expect(within(rowOf('Staging')).getByRole('button', { name: 'Change token' })).toBeEnabled();
+
+			request.resolve({ ...acme, status: 'offline' });
+
+			await waitFor(() => expect(changeToken).toBeEnabled());
+			expect(menu).toBeEnabled();
+			expect(row.getByTestId('linked-instance-status')).toHaveTextContent('Offline');
+		});
+
+		it('removes the row and moves focus to "Link instance" when the link no longer exists', async () => {
+			const error = missingLink();
+			api.verifyLinkedInstance.mockRejectedValue(error);
+			await renderList();
+
+			await userEvent.click(
+				within(rowOf('Acme Cloud')).getByRole('button', { name: 'Check connection' }),
+			);
+
+			await waitFor(() => expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument());
+			expect(showError).toHaveBeenCalledWith(error, "Couldn't check the connection");
+			expect(rowOf('Staging')).toBeVisible();
+			await waitFor(() => expect(screen.getByTestId('linked-instances-link-button')).toHaveFocus());
+			expect(announcement().textContent).toBe('');
+		});
+
 		it('shows the error and keeps the old status when the check request fails', async () => {
 			const error = new ResponseError('Too many requests. Try again later.', {
 				httpStatusCode: 429,
@@ -367,6 +472,36 @@ describe('SettingsLinkedInstancesView', () => {
 			await waitFor(() => expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument());
 			expect(api.unlinkInstance).toHaveBeenCalledWith(expect.anything(), acme.id);
 			expect(rowOf('Staging')).toBeVisible();
+			expect(announcement()).toHaveTextContent('Acme Cloud is unlinked.');
+			await waitFor(() => expect(screen.getByTestId('linked-instances-link-button')).toHaveFocus());
+		});
+
+		it('leaves focus where the user moved it during the request', async () => {
+			const request = deferred<void>();
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+			api.unlinkInstance.mockReturnValue(request.promise);
+			await renderList();
+
+			await chooseUnlink('Acme Cloud');
+			await waitFor(() => expect(rowOf('Acme Cloud')).toHaveAttribute('aria-busy', 'true'));
+			const elsewhere = within(rowOf('Staging')).getByRole('button', { name: 'Change token' });
+			elsewhere.focus();
+			request.resolve();
+
+			await waitFor(() => expect(announcement()).toHaveTextContent('Acme Cloud is unlinked.'));
+			expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument();
+			expect(elsewhere).toHaveFocus();
+		});
+
+		it('removes the row without an error when the link was already gone', async () => {
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+			api.unlinkInstance.mockRejectedValue(missingLink());
+			await renderList();
+
+			await chooseUnlink('Acme Cloud');
+
+			await waitFor(() => expect(screen.queryByText('Acme Cloud')).not.toBeInTheDocument());
+			expect(showError).not.toHaveBeenCalled();
 			expect(announcement()).toHaveTextContent('Acme Cloud is unlinked.');
 			await waitFor(() => expect(screen.getByTestId('linked-instances-link-button')).toHaveFocus());
 		});
@@ -427,7 +562,9 @@ describe('SettingsLinkedInstancesView', () => {
 		});
 
 		it('keeps the row, shows the error and puts focus back on its menu when the server refuses', async () => {
-			const error = new ResponseError('That link does not exist.', { httpStatusCode: 404 });
+			const error = new ResponseError('Too many requests. Try again later.', {
+				httpStatusCode: 429,
+			});
 			const request = deferred<void>();
 			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 			api.unlinkInstance.mockReturnValue(request.promise);
@@ -477,6 +614,21 @@ describe('SettingsLinkedInstancesView', () => {
 				).toHaveFocus(),
 			);
 		});
+
+		it('moves focus to "Link instance" after Cancel when the link no longer exists', async () => {
+			api.updateLinkedInstance.mockRejectedValue(missingLink());
+			await renderList();
+
+			await userEvent.click(within(rowOf('Staging')).getByRole('button', { name: 'Change token' }));
+			await userEvent.type(await screen.findByTestId('change-token-input'), fakeToken());
+			await userEvent.click(screen.getByTestId('change-token-submit'));
+
+			expect(await screen.findByTestId('change-token-server-error')).toHaveTextContent(GONE);
+			await waitFor(() => expect(screen.queryByText('Staging')).not.toBeInTheDocument());
+			await userEvent.click(screen.getByTestId('change-token-cancel'));
+
+			await waitFor(() => expect(screen.getByTestId('linked-instances-link-button')).toHaveFocus());
+		});
 	});
 
 	describe('link instance', () => {
@@ -484,6 +636,7 @@ describe('SettingsLinkedInstancesView', () => {
 			const created = linkedInstance({ id: 'link-3', name: 'Production' });
 			api.linkInstance.mockResolvedValue(created);
 			await renderList();
+			const announcements = recordAnnouncements();
 
 			await userEvent.click(screen.getByTestId('linked-instances-link-button'));
 			await screen.findByTestId('link-instance-form');
@@ -494,9 +647,65 @@ describe('SettingsLinkedInstancesView', () => {
 
 			const row = await waitFor(() => rowOf('Production'));
 			expect(screen.getAllByTestId('linked-instance-row')).toHaveLength(3);
-			expect(announcement()).toHaveTextContent('Production: Online');
+			await waitFor(() => expect(announcement()).toHaveTextContent('Production: Online'));
+			const check = within(row).getByRole('button', { name: 'Check connection' });
+			await waitFor(() => expect(check).toHaveFocus());
+			// The focused action also tells the name and the status of the new link.
+			expect(check).toHaveAccessibleDescription('Production Online');
+			announcements.stop();
+			// While a dialog is open, the rest of the page is hidden from screen readers.
+			expect(announcements.texts.filter(({ text }) => text !== '')).toEqual([
+				{ text: 'Production: Online', dialogOpen: false },
+			]);
+		});
+
+		it('announces the new link and moves focus only after the dialog has left the page', async () => {
+			const created = linkedInstance({ id: 'link-3', name: 'Production' });
+			// The real dialog leaves at once in this test environment. This one leaves when told to.
+			const DialogThatLeavesLater = defineComponent({
+				props: { open: Boolean },
+				emits: ['update:open', 'linked', 'closed'],
+				setup(props, { emit }) {
+					return () =>
+						h('div', [
+							props.open
+								? h(
+										'button',
+										{
+											type: 'button',
+											onClick: () => {
+												emit('linked', created);
+												emit('update:open', false);
+											},
+										},
+										'Finish link',
+									)
+								: null,
+							h('button', { type: 'button', onClick: () => emit('closed') }, 'Leave page'),
+						]);
+				},
+			});
+			api.fetchLinkedInstances.mockResolvedValue([acme]);
+			renderView({
+				pinia: createTestingPinia({ stubActions: false }),
+				global: { stubs: { LinkInstanceModal: DialogThatLeavesLater } },
+			});
+			await screen.findByTestId('linked-instances-list');
+			await userEvent.click(screen.getByTestId('linked-instances-link-button'));
+			// The stub sends no request, so the new row goes into the store here.
+			useLinkedInstancesStore().instances = [acme, created];
+
+			await userEvent.click(screen.getByRole('button', { name: 'Finish link' }));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(announcement().textContent).toBe('');
+
+			await userEvent.click(screen.getByRole('button', { name: 'Leave page' }));
+
+			await waitFor(() => expect(announcement()).toHaveTextContent('Production: Online'));
 			await waitFor(() =>
-				expect(within(row).getByRole('button', { name: 'Check connection' })).toHaveFocus(),
+				expect(
+					within(rowOf('Production')).getByRole('button', { name: 'Check connection' }),
+				).toHaveFocus(),
 			);
 		});
 

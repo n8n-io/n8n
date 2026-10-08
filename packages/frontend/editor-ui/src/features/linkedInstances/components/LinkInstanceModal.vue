@@ -8,6 +8,7 @@ import { useTokenRequest } from '../composables/useTokenRequest';
 import { useLinkedInstancesStore } from '../linkedInstances.store';
 import { validateLinkForm, type LinkFormField as Field } from '../linkFormValidation';
 import LinkFormField from './LinkFormField.vue';
+import StableButtonLabel from './StableButtonLabel.vue';
 
 /** Owned by the settings page. The page also restores focus after the dialog closes. */
 const props = defineProps<{ open: boolean }>();
@@ -15,6 +16,8 @@ const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{
 	'update:open': [open: boolean];
 	linked: [summary: LinkedInstanceSummary];
+	/** The dialog has left the page. */
+	closed: [];
 }>();
 
 const FIELDS: readonly Field[] = ['name', 'url', 'token'];
@@ -36,6 +39,12 @@ const fields = {
 	url: useTemplateRef<InstanceType<typeof LinkFormField>>('urlField'),
 	token: useTemplateRef<InstanceType<typeof LinkFormField>>('tokenField'),
 };
+
+// Both texts of the submit button. The longer one sets the width, so "Cancel" does not move.
+const submitLabels = computed(() => [
+	i18n.baseText('settings.linkedInstances.form.submit'),
+	i18n.baseText('settings.linkedInstances.form.checking'),
+]);
 
 const values = computed(() => ({ name: name.value, url: url.value, token: token.value }));
 const errors = computed(() => validateLinkForm(values.value));
@@ -103,8 +112,11 @@ function onOpenAutoFocus(event: Event) {
 	fields.name.value?.focus();
 }
 
+// The page stays hidden from screen readers until the dialog has left it, which ends after this
+// event. So the page moves focus and makes announcements on "closed", one task later.
 function onCloseAutoFocus(event: Event) {
 	event.preventDefault();
+	setTimeout(() => emit('closed'), 0);
 }
 </script>
 
@@ -177,13 +189,17 @@ function onCloseAutoFocus(event: Event) {
 					type="submit"
 					variant="solid"
 					:disabled="isSubmitting"
-					:label="
-						isSubmitting
-							? i18n.baseText('settings.linkedInstances.form.checking')
-							: i18n.baseText('settings.linkedInstances.form.submit')
-					"
 					data-test-id="link-instance-submit"
-				/>
+				>
+					<StableButtonLabel
+						:label="
+							isSubmitting
+								? i18n.baseText('settings.linkedInstances.form.checking')
+								: i18n.baseText('settings.linkedInstances.form.submit')
+						"
+						:labels="submitLabels"
+					/>
+				</N8nButton>
 			</N8nDialogFooter>
 		</form>
 	</N8nDialog>

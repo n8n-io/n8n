@@ -2,7 +2,8 @@
 /**
  * "Share" in the chat header. Only the owner of a chat in a team project sees it, until the
  * chat is shared. The confirm says what members get: the whole chat, and answers that run as
- * the owner.
+ * the owner. The button goes away after a share, so it emits `shared` for the header to move
+ * the focus.
  */
 import { computed, ref } from 'vue';
 import { N8nButton, useMessage } from '@n8n/design-system';
@@ -16,6 +17,10 @@ import { canShareThread } from './sharingView';
 import { shareThread } from './threadSharing.api';
 import { useThreadSharingView } from './useThreadSharing';
 import { useSharingText } from './useSharingText';
+
+const emit = defineEmits<{
+	shared: [];
+}>();
 
 const thread = useThread();
 const store = useInstanceAiStore();
@@ -55,6 +60,7 @@ async function onShare() {
 				interpolate: { project: text.project(shared.sharedWith?.projectName ?? '') },
 			}),
 		});
+		emit('shared');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.sharing.shareError'));
 		// The chat can have changed meanwhile (for example a share from another tab).

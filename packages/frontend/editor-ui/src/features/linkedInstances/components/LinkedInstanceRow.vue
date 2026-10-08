@@ -13,9 +13,11 @@ import { useI18n } from '@n8n/i18n';
 import { computed, useId } from 'vue';
 
 import { LINKED_INSTANCE_STATUS_DISPLAY } from '../linkedInstanceStatus';
+import StableButtonLabel from './StableButtonLabel.vue';
 
 const props = defineProps<{
 	instance: LinkedInstanceSummary;
+	/** The check result replaces the row, so the other actions are off until it lands. */
 	checking: boolean;
 	/** The row goes away when the request ends. Until then its actions are off. */
 	unlinking: boolean;
@@ -30,10 +32,25 @@ const emit = defineEmits<{
 const UNLINK = 'unlink';
 
 const i18n = useI18n();
-// The row actions repeat on every row, so each action names its row for screen readers.
+// The row actions repeat on every row, so each action names its row and its status for screen
+// readers. Focus on an action then also tells the result of a link, a check or a token change.
 const nameId = useId();
+const statusId = useId();
+const actionDescription = `${nameId} ${statusId}`;
 
 const status = computed(() => LINKED_INSTANCE_STATUS_DISPLAY[props.instance.status]);
+const busy = computed(() => props.checking || props.unlinking);
+
+// Both texts of the check button. The longer one sets the width of the button.
+const checkLabels = computed(() => [
+	i18n.baseText('settings.linkedInstances.row.check'),
+	i18n.baseText('settings.linkedInstances.row.checking'),
+]);
+const checkLabel = computed(() =>
+	i18n.baseText(
+		props.checking ? 'settings.linkedInstances.row.checking' : 'settings.linkedInstances.row.check',
+	),
+);
 
 const defaultProjectLine = computed(() => {
 	const project = props.instance.defaultRemoteProject;
@@ -73,9 +90,23 @@ function onMenuSelect(id: string) {
 					<N8nText :id="nameId" tag="h2" bold size="medium" color="text-dark" :class="$style.wrap">
 						{{ instance.name }}
 					</N8nText>
-					<N8nBadge :variant="status.variant" size="small" data-test-id="linked-instance-status">
+					<N8nBadge
+						:id="statusId"
+						:variant="status.variant"
+						size="small"
+						data-test-id="linked-instance-status"
+					>
 						{{ i18n.baseText(status.labelKey) }}
 					</N8nBadge>
+					<!-- Here, not next to the buttons, so the buttons do not move when it shows. -->
+					<N8nText
+						v-if="unlinking"
+						size="small"
+						color="text-base"
+						data-test-id="linked-instance-unlinking"
+					>
+						{{ i18n.baseText('settings.linkedInstances.row.unlinking') }}
+					</N8nText>
 				</div>
 				<N8nText
 					size="small"
@@ -90,40 +121,29 @@ function onMenuSelect(id: string) {
 				</N8nText>
 			</div>
 			<div :class="$style.actions">
-				<N8nText
-					v-if="unlinking"
-					size="small"
-					color="text-base"
-					data-test-id="linked-instance-unlinking"
-				>
-					{{ i18n.baseText('settings.linkedInstances.row.unlinking') }}
-				</N8nText>
 				<N8nButton
 					variant="outline"
 					size="small"
-					:disabled="checking || unlinking"
-					:label="
-						checking
-							? i18n.baseText('settings.linkedInstances.row.checking')
-							: i18n.baseText('settings.linkedInstances.row.check')
-					"
-					:aria-describedby="nameId"
+					:disabled="busy"
+					:aria-describedby="actionDescription"
 					data-action="check"
 					data-test-id="linked-instance-check"
 					@click="emit('check')"
-				/>
+				>
+					<StableButtonLabel :label="checkLabel" :labels="checkLabels" />
+				</N8nButton>
 				<N8nButton
 					variant="outline"
 					size="small"
-					:disabled="unlinking"
+					:disabled="busy"
 					:label="i18n.baseText('settings.linkedInstances.row.changeToken')"
-					:aria-describedby="nameId"
+					:aria-describedby="actionDescription"
 					data-test-id="linked-instance-change-token"
 					@click="emit('changeToken')"
 				/>
 				<N8nDropdownMenu
 					:items="menuItems"
-					:disabled="unlinking"
+					:disabled="busy"
 					placement="bottom-end"
 					@select="onMenuSelect"
 				>

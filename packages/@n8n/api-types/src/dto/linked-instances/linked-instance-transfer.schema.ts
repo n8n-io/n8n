@@ -110,7 +110,7 @@ export type LinkedInstancePushResult = {
 	/**
 	 * Credentials without a value. Ids are ids in the linked instance. The move does not publish a
 	 * copy that has them, but the import there keeps a live copy live with an empty credential that
-	 * the copy used before.
+	 * the copy used before. The workflow in this instance then stays on.
 	 */
 	credentialsNeedingSetup: LinkedInstanceCredentialNeedingSetup[];
 	/** Node types that the linked instance does not have, as "type@version". */

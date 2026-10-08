@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { binaryDiff, changesOf, unifiedDiff, type DiffFile } from './factory-pack-diffs';
 import { nodeByName } from './factory-pack-files';
 import type { TemplateRun } from './factory-pack-runtime';
 import {
@@ -46,36 +47,6 @@ const continues = (gate: string, run: TemplateRun) =>
 	isSwitch(gate) ? configured.routeOf(gate, run) === 0 : configured.passesIf(gate, run);
 const targetsOf = (gate: string) =>
 	(workflow.connections[gate]?.main ?? []).map((targets) => targets?.map((target) => target.node));
-
-/** One file of a unified diff: its added (+), deleted (-) and context lines. */
-interface DiffFile {
-	path: string;
-	lines: string[];
-}
-
-const unifiedDiff = (files: DiffFile[]) =>
-	files
-		.map(({ path, lines: body }) =>
-			[
-				`diff --git a/${path} b/${path}`,
-				'index 1111111..2222222 100644',
-				`--- a/${path}`,
-				`+++ b/${path}`,
-				`@@ -1,${body.length} +1,${body.length} @@`,
-				...body,
-				'',
-			].join('\n'),
-		)
-		.join('');
-const binaryDiff = (path: string, blob: string) =>
-	`diff --git a/${path} b/${path}\nindex 1111111..${blob} 100644\nBinary files a/${path} and b/${path} differ\n`;
-const changesOf = (files: DiffFile[]) =>
-	files.map(({ path, lines: body }) => ({
-		path,
-		status: 'M',
-		additions: body.filter((line) => line.startsWith('+')).length,
-		deletions: body.filter((line) => line.startsWith('-')).length,
-	}));
 
 const comparisonFacts = z
 	.array(
@@ -210,6 +181,14 @@ describe('software factory gates', () => {
 		});
 
 		it.each([
+			['the file name of the test', 'pnpm test a.test.ts'],
+			['the path of the test', 'pnpm test pkg/a.test.ts --run'],
+			['the path quoted', "pnpm test 'pkg/a.test.ts'"],
+		])('accepts a command that names the test file as %s', (_case, runCommand) => {
+			expect(prep(ready, testWith({ testPath: 'pkg/a.test.ts', runCommand }))).toBe(true);
+		});
+
+		it.each([
 			['the workspace is in error', { structuredContent: { phase: 'error' } }, failingTestOutput],
 			['the workspace step failed', { error: { message: 'No tool' } }, failingTestOutput],
 			[
@@ -231,6 +210,16 @@ describe('software factory gates', () => {
 			],
 			['the test path is blank', ready, testWith({ testPath: '  ', runCommand: 'pnpm test  ' })],
 			['the command does not name the test file', ready, testWith({ runCommand: 'pnpm test' })],
+			[
+				'the command names another file that ends with the same letters',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'pnpm test pkg/ba.test.ts' }),
+			],
+			[
+				'the command only mentions the file name in another word',
+				ready,
+				testWith({ testPath: 'pkg/a.test.ts', runCommand: 'true # xa.test.ts' }),
+			],
 			['the planner failed', ready, { error: 'The agent stopped.' }],
 			['the planner returned no test', ready, { structuredOutput: null }],
 		])('stops when %s', (_case, workspace, test) => {
@@ -283,8 +272,16 @@ describe('software factory gates', () => {
 			['a test that did not run', { test: 'not_started' }],
 			['a missing test result', { test: undefined }],
 			['a check that stopped', { check: 'stopped' }],
-		])('never retries %s', (_case, fields) => {
-			expect(check(fields)).toBe('fallback');
+			['a check that is still running', { check: 'running' }],
+			['a passed check without a test result', { check: 'passed', test: undefined }],
+		])('sends %s to the step failed outcome, not to a retry', (_case, fields) => {
+			expect([0, 3].map((runIndex) => check(fields, runIndex))).toEqual([NO_RESULT, NO_RESULT]);
+		});
+
+		it('names the failed check when the test did not finish', () => {
+			// A failed check is a result. The unfinished test does not hide it.
+			expect(check({ check: 'failed', test: 'running' }, 0)).toBe(1);
+			expect(check({ check: 'failed', test: 'running' }, 3)).toBe('fallback');
 		});
 
 		it.each([
@@ -297,14 +294,21 @@ describe('software factory gates', () => {
 		});
 	});
 
-	it('reviews only a change that has a diff', () => {
-		const hasDiff = (structuredContent?: IDataObject) =>
-			configured.passesIf('Has a diff?', { json: structuredContent ? { structuredContent } : {} });
+	it('reviews only a change that has a diff, and that shows every changed file', () => {
+		// "Check the diff" puts the problems of the diff in diffProblems. Any problem stops the run.
+		const hasDiff = (structuredContent?: IDataObject, diffProblems: GenericValue = []) =>
+			configured.passesIf('Has a diff?', {
+				json: { ...(structuredContent ? { structuredContent } : {}), diffProblems },
+			});
+		const diff = { diff: 'diff --git a/a.ts b/a.ts', changes: lines(1) };
 
-		expect(hasDiff({ diff: 'diff --git a/a.ts b/a.ts', changes: lines(1) })).toBe(true);
+		expect(hasDiff(diff)).toBe(true);
 		expect(hasDiff({ diff: '', changes: [] })).toBe(false);
 		expect(hasDiff({ diff: ' \n', changes: [] })).toBe(false);
 		expect(hasDiff()).toBe(false);
+		expect(hasDiff(diff, ['a.ts: missing from the diff'])).toBe(false);
+		// A check result that is not a list of problems is no result.
+		expect(hasDiff(diff, 'none')).toBe(false);
 	});
 
 	it('continues after the critic only on an explicit approval without serious findings', () => {
@@ -464,22 +468,29 @@ describe('software factory gates', () => {
 		});
 
 		it('compares a file without line changes by its header', () => {
-			const routeWith = (minimisedDiff: string) =>
+			// The list of changes names the binary file with no line counts, as coding_diff does.
+			const binary = { path: 'logo.png', status: 'M', additions: 0, deletions: 0 };
+			const routeWith = (minimisedDiff: string, changes: IDataObject[]) =>
 				readyForPr({
 					'Get diff': {
 						structuredContent: {
 							diff: unifiedDiff(approved) + binaryDiff('logo.png', '2222222'),
-							changes: changesOf(approved),
+							changes: [...changesOf(approved), binary],
 						},
 					},
 					'Re-verify': checkResult({ changes: changesOf(approved) }),
-					'Get minimised diff': { structuredContent: { diff: minimisedDiff } },
+					'Get minimised diff': { structuredContent: { diff: minimisedDiff, changes } },
 				}).route;
 
 			// The same binary file, the binary file removed, and other content in the binary file.
-			expect(routeWith(unifiedDiff(approved) + binaryDiff('logo.png', '2222222'))).toBe(READY);
-			expect(routeWith(unifiedDiff(approved))).toBe(READY);
-			expect(routeWith(unifiedDiff(approved) + binaryDiff('logo.png', '3333333'))).toBe(NOT_READY);
+			const kept = [...changesOf(approved), binary];
+			expect(routeWith(unifiedDiff(approved) + binaryDiff('logo.png', '2222222'), kept)).toBe(
+				READY,
+			);
+			expect(routeWith(unifiedDiff(approved), changesOf(approved))).toBe(READY);
+			expect(routeWith(unifiedDiff(approved) + binaryDiff('logo.png', '3333333'), kept)).toBe(
+				NOT_READY,
+			);
 		});
 
 		it('opens a pull request for any change that only removes parts of the approved change', () => {
@@ -618,7 +629,8 @@ describe('software factory gates', () => {
 				},
 			],
 			['Verify', 'Check result', { json: { structuredOutput: { summary: 'Done.' } } }],
-			['Get diff', 'Has a diff?', { json: checkResult() }],
+			// "Check the diff" failed as a whole: its input, the result of Get diff, has no problems list.
+			['Check the diff', 'Has a diff?', { json: checkResult() }],
 			[
 				'Fresh critic',
 				'Critic verdict',

@@ -19,6 +19,11 @@ vi.mock('../linkedInstances.api', () => api);
 const first = linkedInstance();
 const second = linkedInstance({ id: 'link-2', name: 'Staging', status: 'offline' });
 
+type Store = ReturnType<typeof useLinkedInstancesStore>;
+
+const GONE = 'We could not find this linked instance.';
+const missingLink = () => new ResponseError(GONE, { httpStatusCode: 404 });
+
 describe('useLinkedInstancesStore', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 
@@ -115,6 +120,7 @@ describe('useLinkedInstancesStore', () => {
 
 		it('stops reading again after three reads, so a busy list cannot loop', async () => {
 			const store = useLinkedInstancesStore();
+			store.instances = [first];
 			// Every read lands after a change that the store made.
 			api.fetchLinkedInstances.mockImplementation(async () => {
 				api.verifyLinkedInstance.mockResolvedValueOnce(first);
@@ -205,9 +211,83 @@ describe('useLinkedInstancesStore', () => {
 			const store = useLinkedInstancesStore();
 			await store.fetchInstances();
 
-			await store.verify('gone');
+			await expect(store.verify('gone')).resolves.toBeUndefined();
 
 			expect(store.instances).toEqual([first, second]);
+		});
+
+		it('keeps the newer row when the token changed during the check', async () => {
+			const check = deferred<typeof first>();
+			api.verifyLinkedInstance.mockReturnValue(check.promise);
+			const updated = {
+				...first,
+				status: 'online' as const,
+				lastVerifiedAt: '2026-10-02T10:00:00.000Z',
+			};
+			api.updateLinkedInstance.mockResolvedValue(updated);
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			const checking = store.verify(first.id);
+			await store.changeToken(first.id, fakeToken());
+			check.resolve({ ...first, status: 'unauthorised' });
+
+			await expect(checking).resolves.toBeUndefined();
+			expect(store.instances).toEqual([updated, second]);
+		});
+
+		it('records a check that started after the last change of the row', async () => {
+			api.updateLinkedInstance.mockResolvedValue({ ...first, status: 'online' });
+			const checked = { ...first, status: 'mcp-disabled' as const };
+			api.verifyLinkedInstance.mockResolvedValue(checked);
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+			await store.changeToken(first.id, fakeToken());
+
+			await expect(store.verify(first.id)).resolves.toEqual(checked);
+
+			expect(store.instances).toEqual([checked, second]);
+		});
+
+		it('keeps the result of a check when only another row changed meanwhile', async () => {
+			const check = deferred<typeof first>();
+			api.verifyLinkedInstance.mockReturnValue(check.promise);
+			api.unlinkInstance.mockResolvedValue(undefined);
+			const checked = { ...first, status: 'offline' as const };
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			const checking = store.verify(first.id);
+			await store.unlink(second.id);
+			check.resolve(checked);
+
+			await expect(checking).resolves.toEqual(checked);
+			expect(store.instances).toEqual([checked]);
+		});
+
+		it('returns no result when the row was unlinked during the check', async () => {
+			const check = deferred<typeof first>();
+			api.verifyLinkedInstance.mockReturnValue(check.promise);
+			api.unlinkInstance.mockResolvedValue(undefined);
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			const checking = store.verify(first.id);
+			await store.unlink(first.id);
+			check.resolve(first);
+
+			await expect(checking).resolves.toBeUndefined();
+			expect(store.instances).toEqual([second]);
+		});
+
+		it('removes the row and rejects when the link no longer exists', async () => {
+			api.verifyLinkedInstance.mockRejectedValue(missingLink());
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			await expect(store.verify(first.id)).rejects.toThrow(GONE);
+
+			expect(store.instances).toEqual([second]);
 		});
 
 		it('rejects and keeps the row when the check request fails', async () => {
@@ -238,12 +318,23 @@ describe('useLinkedInstancesStore', () => {
 		});
 
 		it('keeps the row when the server refuses the token', async () => {
-			api.updateLinkedInstance.mockRejectedValue(new ResponseError('Refused'));
+			api.updateLinkedInstance.mockRejectedValue(
+				new ResponseError('Refused', { httpStatusCode: 400 }),
+			);
 			const store = useLinkedInstancesStore();
 			await store.fetchInstances();
 
 			await expect(store.changeToken(first.id, fakeToken())).rejects.toThrow('Refused');
 			expect(store.instances).toEqual([first, second]);
+		});
+
+		it('removes the row and rejects when the link no longer exists', async () => {
+			api.updateLinkedInstance.mockRejectedValue(missingLink());
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			await expect(store.changeToken(first.id, fakeToken())).rejects.toThrow(GONE);
+			expect(store.instances).toEqual([second]);
 		});
 	});
 
@@ -259,12 +350,125 @@ describe('useLinkedInstancesStore', () => {
 			expect(store.instances).toEqual([second]);
 		});
 
-		it('keeps the row when the server refuses', async () => {
-			api.unlinkInstance.mockRejectedValue(new ResponseError('Not found'));
+		it.each([
+			['the server refuses', new ResponseError('Forbidden', { httpStatusCode: 403 })],
+			['the server cannot be reached', new ResponseError("Can't connect to n8n.")],
+		])('keeps the row and rejects when %s', async (_case, error) => {
+			api.unlinkInstance.mockRejectedValue(error);
 			const store = useLinkedInstancesStore();
 			await store.fetchInstances();
 
-			await expect(store.unlink(first.id)).rejects.toThrow('Not found');
+			await expect(store.unlink(first.id)).rejects.toBe(error);
+			expect(store.instances).toEqual([first, second]);
+		});
+
+		it('removes the row when the link is already gone', async () => {
+			api.unlinkInstance.mockRejectedValue(missingLink());
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			await expect(store.unlink(first.id)).resolves.toBeUndefined();
+			expect(store.instances).toEqual([second]);
+		});
+	});
+
+	describe('reset', () => {
+		it('forgets the links and the load state', async () => {
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			store.reset();
+
+			expect(store.instances).toEqual([]);
+			expect(store.hasLoaded).toBe(false);
+			expect(store.loadFailed).toBe(false);
+			expect(store.isLoading).toBe(false);
+		});
+
+		it('forgets a failed read', async () => {
+			api.fetchLinkedInstances.mockRejectedValue(new ResponseError('Server down'));
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			store.reset();
+
+			expect(store.loadFailed).toBe(false);
+		});
+
+		it('ignores a read that started before the reset, and starts a new one', async () => {
+			const staleRead = deferred<Array<typeof first>>();
+			const freshRead = deferred<Array<typeof first>>();
+			api.fetchLinkedInstances
+				.mockReturnValueOnce(staleRead.promise)
+				.mockReturnValueOnce(freshRead.promise);
+			const store = useLinkedInstancesStore();
+			const staleLoading = store.fetchInstances();
+
+			store.reset();
+			const freshLoading = store.fetchInstances();
+			staleRead.resolve([first, second]);
+			await staleLoading;
+
+			expect(api.fetchLinkedInstances).toHaveBeenCalledTimes(2);
+			expect(store.instances).toEqual([]);
+			expect(store.hasLoaded).toBe(false);
+			expect(store.isLoading).toBe(true);
+
+			freshRead.resolve([second]);
+			await freshLoading;
+			expect(store.instances).toEqual([second]);
+			expect(store.isLoading).toBe(false);
+		});
+
+		it('ignores a failed read that started before the reset', async () => {
+			const staleRead = deferred<Array<typeof first>>();
+			api.fetchLinkedInstances.mockReturnValueOnce(staleRead.promise);
+			const store = useLinkedInstancesStore();
+			const staleLoading = store.fetchInstances();
+
+			store.reset();
+			staleRead.reject(new ResponseError('Server down'));
+			await staleLoading;
+
+			expect(store.loadFailed).toBe(false);
+		});
+
+		it.each<[string, (store: Store) => Promise<unknown>]>([
+			[
+				'link',
+				async (store) =>
+					await store.link({ name: 'Acme', url: 'acme.app.n8n.cloud', token: fakeToken() }),
+			],
+			['changeToken', async (store) => await store.changeToken(first.id, fakeToken())],
+			['verify', async (store) => await store.verify(first.id)],
+		])('does not write the result of %s when it ends after the reset', async (_name, run) => {
+			const request = deferred<typeof first>();
+			api.linkInstance.mockReturnValue(request.promise);
+			api.updateLinkedInstance.mockReturnValue(request.promise);
+			api.verifyLinkedInstance.mockReturnValue(request.promise);
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			const running = run(store);
+			store.reset();
+			request.resolve(first);
+			await running;
+
+			expect(store.instances).toEqual([]);
+		});
+
+		it('does not remove rows of the next read when an old request finds the link gone', async () => {
+			const request = deferred<void>();
+			api.unlinkInstance.mockReturnValue(request.promise);
+			const store = useLinkedInstancesStore();
+			await store.fetchInstances();
+
+			const unlinking = store.unlink(first.id);
+			store.reset();
+			await store.fetchInstances();
+			request.reject(missingLink());
+			await unlinking;
+
 			expect(store.instances).toEqual([first, second]);
 		});
 	});

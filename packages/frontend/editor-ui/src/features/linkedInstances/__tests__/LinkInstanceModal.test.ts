@@ -202,11 +202,13 @@ describe('LinkInstanceModal', () => {
 
 			await userEvent.click(submitButton());
 
-			expect(submitButton()).toHaveTextContent('Checking…');
+			expect(submitButton()).toHaveAccessibleName('Checking…');
 			expect(submitButton()).toBeDisabled();
+			// The button is a polite live region, so screen readers hear the new label.
+			expect(submitButton()).toHaveAttribute('aria-live', 'polite');
 
 			request.resolve(linkedInstance());
-			await waitFor(() => expect(submitButton()).toHaveTextContent('Link instance'));
+			await waitFor(() => expect(submitButton()).toHaveAccessibleName('Link instance'));
 		});
 
 		it('sends one request when the user submits twice', async () => {
@@ -277,7 +279,7 @@ describe('LinkInstanceModal', () => {
 			await userEvent.click(submitButton());
 
 			expect(await screen.findByTestId('link-instance-server-error')).toHaveTextContent(
-				'Something went wrong. Try again.',
+				"Couldn't reach the server. Check your connection and try again.",
 			);
 		});
 
@@ -339,6 +341,16 @@ describe('LinkInstanceModal', () => {
 
 			await waitFor(() => expect(emitted('linked')).toEqual([[linkedInstance()]]));
 			expect(emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('tells the page when the dialog has left, so the page can move focus', async () => {
+			const { emitted, rerender } = await setup();
+			expect(emitted('closed')).toBeUndefined();
+
+			await rerender({ open: false });
+
+			await waitFor(() => expect(emitted('closed')).toHaveLength(1));
+			expect(screen.queryByTestId('link-instance-form')).not.toBeInTheDocument();
 		});
 
 		it('closes on Escape when no check runs', async () => {

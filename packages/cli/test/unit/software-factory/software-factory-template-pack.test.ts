@@ -217,6 +217,7 @@ describe('software factory template pack', () => {
 				[
 					'Address critic findings',
 					'Check result',
+					'Check the diff',
 					'Critic input',
 					'Critic verdict',
 					'Fix the failing check',
@@ -295,9 +296,17 @@ describe('software factory template pack', () => {
 				'check',
 			]);
 			// The settings, the ticket, the approved plan and the deterministic results only: no
-			// output of the implementer.
+			// output of the implementer. The failing test comes from the planner, and the critic
+			// gets its command and path to judge what the check ran.
 			expect(new Set(referencedNodes(input.assignments))).toEqual(
-				new Set(['Factory settings', 'Read factory ticket', 'Plan', 'Get diff', 'Verify']),
+				new Set([
+					'Factory settings',
+					'Read factory ticket',
+					'Plan',
+					'Get diff',
+					'Verify',
+					'Draft failing test',
+				]),
 			);
 			expect(referencedNodes(critic.parameters)).toEqual(['Read factory ticket']);
 		});

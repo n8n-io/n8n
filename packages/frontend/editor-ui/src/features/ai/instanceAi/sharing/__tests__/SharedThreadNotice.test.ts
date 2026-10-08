@@ -8,9 +8,15 @@ describe('SharedThreadNotice', () => {
 	it('names the owner as the only sender and says that requests can still be answered', () => {
 		const { getByRole } = renderNotice({ props: { ownerName: 'Alice Owner' } });
 
-		expect(getByRole('alert')).toHaveTextContent(
+		expect(getByRole('note')).toHaveTextContent(
 			'Only Alice Owner can send messages here. You can still answer requests.',
 		);
+	});
+
+	it('is not announced as an alert each time the chat opens', () => {
+		const { queryByRole } = renderNotice({ props: { ownerName: 'Alice Owner' } });
+
+		expect(queryByRole('alert')).not.toBeInTheDocument();
 	});
 
 	it('names "the owner" when the server sent no name', () => {

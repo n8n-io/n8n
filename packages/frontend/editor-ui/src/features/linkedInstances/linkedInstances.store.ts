@@ -1,110 +1,113 @@
 import type { LinkInstanceRequestDto, LinkedInstanceSummary } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
 
 import * as api from './linkedInstances.api';
+import {
+	useLinkedInstanceListLoad,
+	useLinkedInstanceRows,
+	type LinkedInstanceRows,
+	type RowsMark,
+} from './linkedInstances.rows';
 
-const MAX_LIST_READS = 3;
+/** The server answers 404 when the link is gone, for example after an unlink in another tab. */
+function isMissingLink(error: unknown): boolean {
+	return error instanceof ResponseError && error.httpStatusCode === 404;
+}
+
+/** The row goes when the server says that the link is gone. The error still reaches the caller. */
+async function removeWhenMissing<T>(
+	rows: LinkedInstanceRows,
+	id: string,
+	startedAt: RowsMark,
+	request: () => Promise<T>,
+): Promise<T> {
+	try {
+		return await request();
+	} catch (error) {
+		if (isMissingLink(error) && rows.isCurrent(startedAt)) rows.remove(id);
+		throw error;
+	}
+}
 
 /**
  * The links of the current user. The state holds only summaries: a token goes straight from
- * the caller to the API and is never kept here.
+ * the caller to the API and is never kept here. A sign-out without a page reload keeps this
+ * store, so the page calls reset() when it closes.
  */
 export const useLinkedInstancesStore = defineStore('linkedInstances', () => {
 	const rootStore = useRootStore();
-
-	const instances = ref<LinkedInstanceSummary[]>([]);
-	const isLoading = ref(false);
-	const loadFailed = ref(false);
-	const hasLoaded = ref(false);
-
-	let pendingLoad: Promise<void> | undefined;
-	// Counts the changes this store makes. A list read that started before a change is stale.
-	let writes = 0;
-
-	function replace(summary: LinkedInstanceSummary) {
-		writes += 1;
-		instances.value = instances.value.map((item) => (item.id === summary.id ? summary : item));
-	}
-
-	function append(summary: LinkedInstanceSummary) {
-		writes += 1;
-		const others = instances.value.filter((item) => item.id !== summary.id);
-		// The server lists the oldest link first, so a new link goes last.
-		instances.value = [...others, summary];
-	}
-
-	function remove(id: string) {
-		writes += 1;
-		instances.value = instances.value.filter((item) => item.id !== id);
-	}
-
-	/** Reads again when a change landed during the read, so the list does not undo that change. */
-	async function readCurrentList(): Promise<LinkedInstanceSummary[]> {
-		for (let attempt = 1; ; attempt++) {
-			const startedAt = writes;
-			const list = await api.fetchLinkedInstances(rootStore.restApiContext);
-			if (startedAt === writes || attempt >= MAX_LIST_READS) return list;
-		}
-	}
-
-	async function readList(): Promise<void> {
-		isLoading.value = true;
-		loadFailed.value = false;
-		try {
-			instances.value = await readCurrentList();
-			hasLoaded.value = true;
-		} catch {
-			// The page shows the failure with a way to try again.
-			loadFailed.value = true;
-		} finally {
-			isLoading.value = false;
-			pendingLoad = undefined;
-		}
-	}
-
-	/** Reads the list again. Calls that overlap share one request. Never rejects. */
-	async function fetchInstances(): Promise<void> {
-		pendingLoad ??= readList();
-		await pendingLoad;
-	}
+	const rows = useLinkedInstanceRows();
+	const list = useLinkedInstanceListLoad(
+		rows,
+		async () => await api.fetchLinkedInstances(rootStore.restApiContext),
+	);
 
 	/** @throws the server error, for example when the check of the instance fails */
 	async function link(payload: LinkInstanceRequestDto): Promise<LinkedInstanceSummary> {
+		const startedAt = rows.mark();
 		const summary = await api.linkInstance(rootStore.restApiContext, payload);
-		append(summary);
+		if (rows.isCurrent(startedAt)) rows.append(summary);
 		return summary;
 	}
 
-	/** Checks the instance again and records the new status. */
-	async function verify(id: string): Promise<LinkedInstanceSummary> {
-		const summary = await api.verifyLinkedInstance(rootStore.restApiContext, id);
-		replace(summary);
+	/**
+	 * Checks the instance again and records the new status.
+	 * @returns `undefined` when the result is out of date: the row changed or went during the check
+	 * @throws the server error. A 404 also removes the row.
+	 */
+	async function verify(id: string): Promise<LinkedInstanceSummary | undefined> {
+		const startedAt = rows.mark();
+		const summary = await removeWhenMissing(rows, id, startedAt, async () => {
+			return await api.verifyLinkedInstance(rootStore.restApiContext, id);
+		});
+		const outOfDate = !rows.isCurrent(startedAt) || rows.rowChangedSince(startedAt, id);
+		if (outOfDate || !rows.isListed(id)) return undefined;
+		rows.replace(summary);
 		return summary;
 	}
 
-	/** @throws the server error when the instance refuses the new token. The old token stays. */
+	/**
+	 * @throws the server error when the instance refuses the new token. The old token stays.
+	 * A 404 also removes the row.
+	 */
 	async function changeToken(id: string, token: string): Promise<LinkedInstanceSummary> {
-		const summary = await api.updateLinkedInstance(rootStore.restApiContext, id, { token });
-		replace(summary);
+		const startedAt = rows.mark();
+		const summary = await removeWhenMissing(rows, id, startedAt, async () => {
+			return await api.updateLinkedInstance(rootStore.restApiContext, id, { token });
+		});
+		if (rows.isCurrent(startedAt)) rows.replace(summary);
 		return summary;
 	}
 
+	/** A link that is already gone counts as unlinked, because that is the result the user wants. */
 	async function unlink(id: string): Promise<void> {
-		await api.unlinkInstance(rootStore.restApiContext, id);
-		remove(id);
+		const startedAt = rows.mark();
+		try {
+			await api.unlinkInstance(rootStore.restApiContext, id);
+		} catch (error) {
+			if (!isMissingLink(error)) throw error;
+		}
+		if (rows.isCurrent(startedAt)) rows.remove(id);
+	}
+
+	/** Forgets the links. A request that is still open changes nothing after this. */
+	function reset() {
+		rows.clear();
+		list.reset();
 	}
 
 	return {
-		instances,
-		isLoading,
-		loadFailed,
-		hasLoaded,
-		fetchInstances,
+		instances: rows.instances,
+		isLoading: list.isLoading,
+		loadFailed: list.loadFailed,
+		hasLoaded: list.hasLoaded,
+		fetchInstances: list.fetchInstances,
 		link,
 		verify,
 		changeToken,
 		unlink,
+		reset,
 	};
 });

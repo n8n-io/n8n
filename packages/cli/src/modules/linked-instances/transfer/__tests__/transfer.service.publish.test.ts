@@ -230,7 +230,10 @@ describe('TransferService.push with publish', () => {
 				missingNodeTypes: ['n8n-nodes-acme.crm@2'],
 			});
 
-			const result = await service.push(alice, linkId, { workflowId: 'wf1', deactivateLocal: true });
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				deactivateLocal: true,
+			});
 
 			expect(result).toMatchObject({ publishFailed: false, localDeactivated: false });
 			expect(result.warnings).toEqual([TRANSFER_WARNINGS.keptLocalNotReady('Cloud')]);

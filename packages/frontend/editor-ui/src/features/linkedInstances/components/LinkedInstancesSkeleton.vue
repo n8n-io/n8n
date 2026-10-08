@@ -43,6 +43,7 @@ const ROWS = 2;
 	justify-content: flex-end;
 }
 
+// No token matches the width of a button label, so the two button widths are rem values.
 .linkButton {
 	width: 7.5rem;
 	height: var(--height--md);
@@ -66,12 +67,12 @@ const ROWS = 2;
 
 .name {
 	width: 40%;
-	height: var(--spacing--md);
+	height: var(--height--2xs);
 }
 
 .line {
 	width: 60%;
-	height: var(--spacing--xs);
+	height: var(--height--4xs);
 }
 
 .short {

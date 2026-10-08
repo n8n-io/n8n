@@ -13,7 +13,13 @@ const text = useSharingText();
 </script>
 
 <template>
-	<N8nNotice theme="info" :class="$style.notice" data-test-id="instance-ai-shared-thread-notice">
+	<!-- A fixed message, read in place: "note", not the notice's default "alert". -->
+	<N8nNotice
+		theme="info"
+		role="note"
+		:class="$style.notice"
+		data-test-id="instance-ai-shared-thread-notice"
+	>
 		{{
 			i18n.baseText('instanceAi.sharing.composerNotice', {
 				interpolate: { owner: text.owner(ownerName) },

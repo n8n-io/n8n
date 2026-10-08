@@ -1,5 +1,7 @@
 import { useI18n } from '@n8n/i18n';
-import type { AnswerAuthorship, SharedRowLabel } from './sharingView';
+import type { AnswerAuthorship, ResumeFailureNotice, SharedRowLabel } from './sharingView';
+
+type AnsweredNotice = Exclude<ResumeFailureNotice, { kind: 'refused' }>;
 
 /**
  * The texts of shared chats. The server sends an empty name when it cannot find the user or
@@ -25,9 +27,15 @@ export function useSharingText() {
 		);
 	}
 
-	function alreadyAnswered(name: string | undefined): string {
-		return name
-			? i18n.baseText('instanceAi.sharing.alreadyAnsweredBy', { interpolate: { name } })
+	/** The message for a card that was already answered when the viewer's answer arrived. */
+	function alreadyAnswered(notice: AnsweredNotice): string {
+		if (notice.kind === 'answered-by-you') {
+			return i18n.baseText('instanceAi.sharing.answeredByYou');
+		}
+		return notice.name
+			? i18n.baseText('instanceAi.sharing.alreadyAnsweredBy', {
+					interpolate: { name: notice.name },
+				})
 			: i18n.baseText('instanceAi.sharing.alreadyAnswered');
 	}
 

@@ -298,42 +298,106 @@ describe('answerAuthorship', () => {
 });
 
 describe('resumeFailureNotice', () => {
-	it('names the user that the 409 names, over the history', () => {
-		expect(resumeFailureNotice({ status: 409, answeredBy: 'Alice' }, 'Bob')).toEqual({
+	const BOB = { id: 'bob-1', name: 'Bob' };
+	const shared = { viewerId: TEAMMATE_ID, isShared: true };
+	const privateChat = { viewerId: OWNER.id, isShared: false };
+
+	it('names the other user that the history records, over the 409 name', () => {
+		expect(
+			resumeFailureNotice({ status: 409, answeredBy: 'Alice' }, { ...shared, answerer: BOB }),
+		).toEqual({ kind: 'already-answered', name: 'Bob' });
+	});
+
+	it('names the other user from the history after a lost race', () => {
+		// The loser of a race gets a stream error, not a 409.
+		expect(resumeFailureNotice({}, { ...shared, answerer: BOB })).toEqual({
+			kind: 'already-answered',
+			name: 'Bob',
+		});
+		expect(resumeFailureNotice({ status: 409 }, { ...shared, answerer: BOB })).toEqual({
+			kind: 'already-answered',
+			name: 'Bob',
+		});
+	});
+
+	it('uses the 409 name when the history has no name for the other user', () => {
+		expect(
+			resumeFailureNotice(
+				{ status: 409, answeredBy: 'Bob' },
+				{ ...shared, answerer: { id: BOB.id, name: '' } },
+			),
+		).toEqual({ kind: 'already-answered', name: 'Bob' });
+		expect(resumeFailureNotice({}, { ...shared, answerer: { id: BOB.id, name: '' } })).toEqual({
+			kind: 'already-answered',
+		});
+	});
+
+	it('tells the viewer that they answered already when the history names them', () => {
+		const answerer = { id: TEAMMATE_ID, name: 'Bob Teammate' };
+		expect(
+			resumeFailureNotice({ status: 409, answeredBy: 'Bob Teammate' }, { ...shared, answerer }),
+		).toEqual({ kind: 'answered-by-you' });
+		expect(resumeFailureNotice({ status: 409 }, { ...privateChat, answerer: OWNER })).toEqual({
+			kind: 'answered-by-you',
+		});
+	});
+
+	it('adds nothing to a stream error after the viewer’s own answer', () => {
+		const answerer = { id: TEAMMATE_ID, name: 'Bob Teammate' };
+		expect(resumeFailureNotice({ message: 'The model failed' }, { ...shared, answerer })).toBe(
+			undefined,
+		);
+	});
+
+	it('takes the 409 name in a private chat as the viewer: only the owner answers there', () => {
+		expect(resumeFailureNotice({ status: 409, answeredBy: 'Alice Owner' }, privateChat)).toEqual({
+			kind: 'answered-by-you',
+		});
+	});
+
+	it('names the user that the 409 names in a shared chat without a history answerer', () => {
+		expect(resumeFailureNotice({ status: 409, answeredBy: 'Alice' }, shared)).toEqual({
 			kind: 'already-answered',
 			name: 'Alice',
 		});
 	});
 
-	it('names the user from the history when the server sent no name', () => {
-		expect(resumeFailureNotice({ status: 409 }, 'Bob')).toEqual({
+	it('names nobody for a 409 that names nobody, in a shared or a private chat', () => {
+		expect(resumeFailureNotice({ status: 409 }, shared)).toEqual({ kind: 'already-answered' });
+		expect(resumeFailureNotice({ status: 409 }, privateChat)).toEqual({
 			kind: 'already-answered',
-			name: 'Bob',
 		});
-		// The loser of a race gets a stream error, not a 409.
-		expect(resumeFailureNotice({}, 'Bob')).toEqual({ kind: 'already-answered', name: 'Bob' });
-	});
-
-	it('says that someone answered a 409 without any name', () => {
-		expect(resumeFailureNotice({ status: 409 }, undefined)).toEqual({ kind: 'already-answered' });
+		expect(resumeFailureNotice({ status: 409, answeredBy: '' }, privateChat)).toEqual({
+			kind: 'already-answered',
+		});
 	});
 
 	it('passes on the reason of any other refusal', () => {
 		expect(
 			resumeFailureNotice(
 				{ status: 403, message: 'Only editors in Marketing can approve this.' },
-				undefined,
+				shared,
 			),
 		).toEqual({ kind: 'refused', message: 'Only editors in Marketing can approve this.' });
-		expect(resumeFailureNotice({ status: 400 }, undefined)).toEqual({ kind: 'refused' });
-		expect(resumeFailureNotice({ status: 500, message: '' }, undefined)).toEqual({
+		expect(resumeFailureNotice({ status: 400 }, shared)).toEqual({ kind: 'refused' });
+		expect(resumeFailureNotice({ status: 500, message: '' }, privateChat)).toEqual({
+			kind: 'refused',
+		});
+		const answerer = { id: TEAMMATE_ID, name: 'Bob Teammate' };
+		expect(resumeFailureNotice({ status: 403 }, { ...shared, answerer })).toEqual({
 			kind: 'refused',
 		});
 	});
 
-	it('adds nothing to a stream error when nobody else answered', () => {
-		expect(resumeFailureNotice({}, undefined)).toBeUndefined();
-		expect(resumeFailureNotice({ message: 'The model failed' }, undefined)).toBeUndefined();
+	it('adds nothing to a stream error when nobody answered', () => {
+		expect(resumeFailureNotice({}, shared)).toBeUndefined();
+		expect(resumeFailureNotice({ message: 'The model failed' }, privateChat)).toBeUndefined();
+	});
+
+	it('treats a viewer without an id as another user than any answerer', () => {
+		expect(
+			resumeFailureNotice({ status: 409 }, { isShared: true, answerer: { id: '', name: 'Bob' } }),
+		).toEqual({ kind: 'already-answered', name: 'Bob' });
 	});
 });
 
