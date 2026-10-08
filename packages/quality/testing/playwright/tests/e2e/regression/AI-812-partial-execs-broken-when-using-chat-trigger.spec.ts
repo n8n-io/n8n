@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'AI-812-partial-execs-broken-when-using-chat-trigger',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'Agent' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

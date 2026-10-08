@@ -24,8 +24,35 @@ export interface ErrorResponse {
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
+/** Multer limits for a `multipart/form-data` `@Body`. Every key matches multer's own `limits` option. */
+export interface MultipartUploadLimits {
+	fieldNameSize?: number;
+	fieldSize?: number;
+	fields?: number;
+	fileSize?: number;
+	files?: number;
+	parts?: number;
+	headerPairs?: number;
+}
+
+/**
+ * Accepted options for `@Body` media type. This is where supported media types are first
+ * registered.
+ */
+export interface RequestBodyMediaOptions {
+	'application/json': object;
+	'multipart/form-data': { uploadLimits: () => MultipartUploadLimits };
+}
+
+export type RequestBodyMediaType = keyof RequestBodyMediaOptions;
+
+/** One request-body media type, tagged with `mediaType` and carrying that type's own options. */
+export type RequestBodyMedia = {
+	[K in RequestBodyMediaType]: { mediaType: K } & RequestBodyMediaOptions[K];
+}[RequestBodyMediaType];
+
 export type Arg =
-	| { type: 'body'; required?: boolean }
+	| { type: 'body'; required?: boolean; media?: RequestBodyMedia }
 	| { type: 'query' }
 	| { type: 'param'; key: string; schema?: ZodTypeAny };
 

@@ -83,6 +83,13 @@ describe('FrontendService', () => {
 		ai: { allowSendingParameterValues: true },
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
+		evaluation: {
+			collectionsEnabled: false,
+			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
+			forceAgentWorthTesting: false,
+		},
 		queue: { workerPool: { enabled: false } },
 	});
 
@@ -238,6 +245,7 @@ describe('FrontendService', () => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
@@ -278,6 +286,15 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should expose the configured health check timeout', async () => {
+			globalConfig.endpoints.frontendHealthCheckTimeoutMs = 1500;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.healthCheckTimeoutMs).toBe(1500);
 		});
 
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
@@ -545,6 +562,18 @@ describe('FrontendService', () => {
 			// Community tier would otherwise be 1; the license override lifts
 			// it to 4.
 			expect(settings.evaluationConcurrencyLimit).toBe(4);
+		});
+
+		it('surfaces the forceAgentWorthTesting operator override', async () => {
+			globalConfig.evaluation = {
+				...globalConfig.evaluation,
+				forceAgentWorthTesting: true,
+			} as GlobalConfig['evaluation'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.evaluation.forceAgentWorthTesting).toBe(true);
 		});
 
 		it('should surface whether custom OpenTelemetry span attributes are licensed', async () => {

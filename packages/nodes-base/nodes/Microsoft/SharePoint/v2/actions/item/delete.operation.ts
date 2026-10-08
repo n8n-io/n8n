@@ -1,10 +1,10 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { assertPathSegment } from '../../helpers/utils';
+import { assertPathSegment } from '../../../helpers/utils';
 import { itemRLC, untilListSelected } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
+import { listRLC, untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
 import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [

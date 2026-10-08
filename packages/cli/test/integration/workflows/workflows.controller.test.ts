@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -46,7 +46,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -63,6 +62,7 @@ import {
 	createUser,
 } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import { createWorkflowPublishHistoryItem } from '../shared/db/workflow-publish-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
@@ -142,7 +142,7 @@ beforeEach(async () => {
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
 
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
@@ -1085,6 +1085,20 @@ describe('GET /workflows/:workflowId', () => {
 			event: 'activated',
 			versionId: workflow.activeVersionId,
 		});
+	});
+
+	test('should return only the latest activation of the active version', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const activeVersion = { workflowId: workflow.id, versionId: workflow.activeVersionId! };
+		await createWorkflowPublishHistoryItem(activeVersion, { event: 'deactivated' });
+		const latest = await createWorkflowPublishHistoryItem(activeVersion);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+		const { data } = response.body as { data: { activeVersion: WorkflowHistory } };
+		expect(data.activeVersion.workflowPublishHistory).toEqual([
+			expect.objectContaining({ id: latest.id, event: 'activated' }),
+		]);
 	});
 
 	test('should return parent folder', async () => {

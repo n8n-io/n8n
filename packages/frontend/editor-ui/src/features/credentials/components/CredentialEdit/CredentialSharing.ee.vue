@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import ProjectSharingInfo from '@/features/collaboration/projects/components/ProjectSharingInfo.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -27,7 +26,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useDependencies } from '@/app/composables/useDependencies';
 
-import { N8nButton, N8nEmptyState, N8nInfoTip, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nEmptyState, N8nInfoTip, N8nText, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;
@@ -204,11 +203,61 @@ const usedInProjects = computed(() => {
 
 const usedInAccessText = computed(() =>
 	isOwnedByViewer.value
-		? i18n.baseText('credentialEdit.credentialSharing.onlyYou')
-		: i18n.baseText('credentialEdit.credentialSharing.onlyOwner', {
+		? i18n.baseText('credentialEdit.credentialSharing.availableToYou')
+		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner', {
 				interpolate: { name: credentialOwnerFirstName.value },
 			}),
 );
+
+/** A personal project is named "Name <email>"; the project row hides the email, so the copy does too. */
+function usedInProjectName(project: Pick<ProjectSharingData, 'name'>) {
+	return splitName(project.name ?? '').name;
+}
+
+function usedInShareTooltip(project: ProjectSharingData) {
+	const name = usedInProjectName(project);
+
+	if (hasInstanceWideUse(project)) {
+		return i18n.baseText('credentialEdit.credentialSharing.share.teamProjects.tooltip', {
+			interpolate: { name: name ?? '' },
+		});
+	}
+
+	return name
+		? i18n.baseText('credentialEdit.credentialSharing.share.tooltip', {
+				interpolate: { project: name },
+			})
+		: '';
+}
+
+function usedInAccessTooltip(project: Pick<ProjectSharingData, 'name'>) {
+	const projectName = project.name ?? '';
+
+	return isOwnedByViewer.value
+		? i18n.baseText('credentialEdit.credentialSharing.availableToYou.tooltip', {
+				interpolate: { project: projectName },
+			})
+		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner.tooltip', {
+				interpolate: { name: credentialOwnerFirstName.value, project: projectName },
+			});
+}
+
+const viewerHasInstanceWideUse = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).credential?.use === true,
+);
+
+/**
+ * The viewer's own personal project, when their instance role lets them use
+ * every credential: they already use this one there without a share. "Used in"
+ * lists only the viewer's projects, so this is the only personal project it shows.
+ */
+function hasInstanceWideUse(project: Pick<ProjectSharingData, 'id' | 'type'>) {
+	return (
+		viewerHasInstanceWideUse.value &&
+		project.type === ProjectTypes.Personal &&
+		project.id === projectsStore.personalProject?.id
+	);
+}
 
 function shareUsedInProject(projectId: string) {
 	const project = projectsStore.myProjects.find((p) => p.id === projectId);
@@ -285,6 +334,8 @@ function goToUpgrade() {
 				:roles="credentialRoles"
 				:role-descriptions="credentialRoleDescriptions"
 				:confirm-removal="confirmRemoval"
+				:sort-selected="isCredSharingEnabled"
+				:unshared-projects="usedInProjects"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
@@ -299,30 +350,46 @@ function goToUpgrade() {
 				:is-shared-globally="isSharedGlobally"
 				:teleported="false"
 				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
-			/>
-			<ul v-if="usedInProjects.length" :class="$style.usedIn">
-				<li
-					v-for="entry in usedInProjects"
-					:key="entry.project.id"
-					:class="$style.project"
-					data-test-id="credential-used-in-project"
-				>
-					<ProjectSharingInfo :project="entry.project" :subtitle="entry.subtitle">
-						<div :class="$style.onlyYou">
-							<N8nText :class="$style.accessText" color="text-light" :title="usedInAccessText">
+			>
+				<template #unshared-actions="{ project }">
+					<div :class="$style.onlyYou">
+						<N8nTooltip v-if="hasInstanceWideUse(project)" placement="top">
+							<template #content>
+								{{
+									i18n.baseText('credentialEdit.credentialSharing.usedIn.personalSpace.tooltip', {
+										interpolate: { name: usedInProjectName(project) ?? '' },
+									})
+								}}
+							</template>
+							<N8nText
+								:class="$style.accessText"
+								color="text-light"
+								data-test-id="credential-used-in-personal-space"
+							>
+								{{ i18n.baseText('credentialEdit.credentialSharing.usedIn.personalSpace') }}
+							</N8nText>
+						</N8nTooltip>
+						<N8nTooltip v-else :content="usedInAccessTooltip(project)" placement="top">
+							<N8nText :class="$style.accessText" color="text-light">
 								{{ usedInAccessText }}
 							</N8nText>
+						</N8nTooltip>
+						<N8nTooltip
+							:content="usedInShareTooltip(project)"
+							:disabled="!usedInShareTooltip(project)"
+							placement="top"
+						>
 							<N8nButton
 								variant="outline"
 								data-test-id="credential-used-in-project-share"
-								@click="shareUsedInProject(entry.project.id)"
+								@click="shareUsedInProject(project.id)"
 							>
 								{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
 							</N8nButton>
-						</div>
-					</ProjectSharingInfo>
-				</li>
-			</ul>
+						</N8nTooltip>
+					</div>
+				</template>
+			</ProjectSharing>
 		</div>
 	</div>
 </template>
@@ -333,27 +400,6 @@ function goToUpgrade() {
 	> * {
 		margin-bottom: var(--spacing--lg);
 	}
-}
-
-.usedIn {
-	border-top: var(--border);
-
-	li {
-		padding: 0;
-		border-bottom: var(--border);
-
-		&:last-child {
-			border-bottom: none;
-		}
-	}
-}
-
-.project {
-	display: flex;
-	width: 100%;
-	align-items: center;
-	padding: var(--spacing--2xs) 0;
-	gap: var(--spacing--2xs);
 }
 
 .onlyYou {

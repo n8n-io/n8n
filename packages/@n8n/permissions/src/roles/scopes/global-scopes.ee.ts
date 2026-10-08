@@ -58,6 +58,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'orchestration:read',
 	'orchestration:manage',
 	'saml:manage',
+	'scim:manage',
 	'securityAudit:generate',
 	'securitySettings:manage',
 	'sourceControl:pull',
@@ -196,6 +197,7 @@ export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
 
 export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'annotationTag:create',
+	'breakingChanges:list',
 	'annotationTag:read',
 	'annotationTag:update',
 	'annotationTag:delete',

@@ -38,6 +38,10 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useToast } from '@n8n/composables/useToast';
+import {
+	describeNodeTypeRestriction,
+	getNodeTypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
@@ -172,24 +176,28 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
 });
 
-const nodesWithValidationIssues = computed(
-	() => workflowDocumentStore.value.nodesWithValidationIssues,
-);
+// The nodes that actually block publishing, so the count in the message matches
+// why the button is disabled.
+const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.publishBlockingNodes);
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
 const isWorkflowPublishable = computed(() => containsTrigger.value && !hasNodeIssues.value);
 
-/** Why publishing is blocked, or '' when it is not. Same copy as the Publish tooltip. */
+/** Why publishing is blocked, or '' when it is not. Also the Publish tooltip. */
 const publishBlockedReason = computed(() => {
 	if (isWorkflowPublishable.value) return '';
+	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
 
-	return !containsTrigger.value
-		? i18n.baseText('workflows.publishModal.noTriggerMessage')
-		: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-				interpolate: { count: nodesWithValidationIssues.value.length },
-				adjustToNumber: nodesWithValidationIssues.value.length,
-			});
+	for (const node of nodesWithValidationIssues.value) {
+		const restriction = getNodeTypeRestriction(node.type);
+		if (restriction) return describeNodeTypeRestriction(node.name, restriction.scope, 'replace');
+	}
+
+	return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+		interpolate: { count: nodesWithValidationIssues.value.length },
+		adjustToNumber: nodesWithValidationIssues.value.length,
+	});
 });
 
 type WorkflowPublishState =
@@ -457,14 +465,7 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
-			tooltip: !containsTrigger.value
-				? i18n.baseText('workflows.publishModal.noTriggerMessage')
-				: hasNodeIssues.value
-					? i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: nodesWithValidationIssues.value.length },
-							adjustToNumber: nodesWithValidationIssues.value.length,
-						})
-					: '',
+			tooltip: publishBlockedReason.value,
 			showVersionInfo: false,
 		};
 	}
@@ -477,12 +478,7 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
-			tooltip: !containsTrigger.value
-				? i18n.baseText('workflows.publishModal.noTriggerMessage')
-				: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-						interpolate: { count: nodesWithValidationIssues.value.length },
-						adjustToNumber: nodesWithValidationIssues.value.length,
-					}),
+			tooltip: publishBlockedReason.value,
 			showVersionInfo: false,
 		},
 		'not-published-eligible': {
@@ -518,13 +514,7 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'error',
-			tooltip: i18n.baseText(
-				'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
-				{
-					interpolate: { count: nodesWithValidationIssues.value.length },
-					adjustToNumber: nodesWithValidationIssues.value.length,
-				},
-			),
+			tooltip: publishBlockedReason.value,
 			showVersionInfo: true,
 		},
 		'published-invalid-trigger': {

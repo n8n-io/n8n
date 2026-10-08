@@ -17,8 +17,7 @@ import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -56,6 +55,10 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
+// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
+const hasUnpublishedChanges = computed(
+	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
+);
 const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(
@@ -225,7 +228,13 @@ async function toggleMCPAccess(enabled: boolean) {
 			<div :class="$style.cardActions" @click.stop>
 				<PublicationIndicator
 					v-if="isPublished"
-					:label="locale.baseText('agents.list.published')"
+					:label="
+						locale.baseText(
+							hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+						)
+					"
+					:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
 					data-test-id="agent-card-publish-indicator"
 				/>
 				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">

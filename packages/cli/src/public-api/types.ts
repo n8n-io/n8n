@@ -1,9 +1,7 @@
 import type {
-	PublicCreateDestination,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
-	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 
@@ -20,16 +18,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace WorkflowRequest {
-	type Activate = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{ versionId?: string; name?: string; description?: string },
-		{}
-	>;
-	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
-}
-
 export declare namespace PackageRequest {
 	type Import = AuthenticatedRequest<
 		{},
@@ -125,16 +113,6 @@ export declare namespace CommunityPackageRequest {
 	type Uninstall = AuthenticatedRequest<{ name: string }>;
 }
 
-export declare namespace LogStreamingRequest {
-	type GetEventTypes = AuthenticatedRequest;
-	type GetDestinations = AuthenticatedRequest;
-	type GetDestination = AuthenticatedRequest<{ id: string }>;
-	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
-	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
-	type TestDestination = AuthenticatedRequest<{ id: string }>;
-	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
-}
-
 // ----------------------------------
 //        /settings/otel
 // ----------------------------------
@@ -151,13 +129,4 @@ export declare namespace OtelSettingsRequest {
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
-}
-
-// ----------------------------------
-//        /settings/ldap
-// ----------------------------------
-
-export declare namespace LdapRequest {
-	type GetSync = PaginatedRequest;
-	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
 }

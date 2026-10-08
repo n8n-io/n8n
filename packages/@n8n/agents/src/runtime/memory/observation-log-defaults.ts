@@ -24,6 +24,7 @@ export const DEFAULT_OBSERVATION_LOG_TAIL_LIMIT = 20;
 export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 60_000;
 export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 67_500;
 export const DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS = 30_000;
+export const DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES = 3;
 
 export const DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT = `You observe a conversation between a user and an agent. Extract only durable facts that the agent needs to continue correctly. The agent can receive your observations after the transcript is removed.
 
@@ -126,6 +127,11 @@ When durable facts exist, return only observation bullets whose lines start with
 
 export interface CreateObservationLogObserveFnOptions {
 	observerPrompt?: string;
+	/**
+	 * Retries for a transient model failure before the call fails.
+	 * Defaults to {@link DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES}.
+	 */
+	maxRetries?: number;
 	/** Called with normalized token usage after each observer LLM call. */
 	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 }
@@ -155,6 +161,7 @@ export function createObservationLogObserveFn(
 			model: createModel(model),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
+			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
