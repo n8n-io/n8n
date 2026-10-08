@@ -718,6 +718,57 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
+		describe('node contracts', () => {
+			const pin = { range: '^3.1.0', version: '3.1.0', digest: `sha256:${'a'.repeat(64)}` };
+			const stale = { range: '^3.0.0', version: '3.0.0', digest: `sha256:${'b'.repeat(64)}` };
+
+			function prepareContractWorkflow(workflowId: string) {
+				const locked = createTestNode({ name: 'Locked' });
+				const unlocked = createTestNode({ name: 'Unlocked', contract: stale });
+				const workflow = createTestWorkflow({ id: workflowId, nodes: [locked, unlocked] });
+				workflowsStore.setWorkflowId(workflowId);
+				workflowsListStore.workflowsById = { [workflowId]: workflow };
+				const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+				documentStore.hydrate(workflow);
+				const saved = {
+					...workflow,
+					checksum: 'saved-checksum',
+					nodes: [
+						{ ...locked, contract: pin },
+						{ ...unlocked, contract: undefined },
+					],
+				};
+				return { locked, unlocked, saved, documentStore };
+			}
+
+			it('copies the contract of each saved node into the store by id', async () => {
+				const { locked, unlocked, saved, documentStore } = prepareContractWorkflow('w-contract');
+				vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(saved);
+
+				const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+				await saveCurrentWorkflow({ id: 'w-contract' }, true, false, false);
+
+				expect(documentStore.getNodeById(locked.id)?.contract).toEqual(pin);
+				expect(documentStore.getNodeById(unlocked.id)?.contract).toBeUndefined();
+				expect(useUIStore().stateIsDirty).toBe(false);
+			});
+
+			it('keeps the store contracts when a node changed during the save', async () => {
+				const { locked, unlocked, saved, documentStore } = prepareContractWorkflow('w-renamed');
+				vi.spyOn(workflowsStore, 'updateWorkflow').mockImplementation(async () => {
+					documentStore.setNodeValue({ name: 'Locked', key: 'name', value: 'Renamed' });
+					return saved;
+				});
+
+				const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+				await saveCurrentWorkflow({ id: 'w-renamed' }, true, false, false);
+
+				expect(documentStore.getNodeById(locked.id)).toMatchObject({ name: 'Renamed' });
+				expect(documentStore.getNodeById(locked.id)?.contract).toBeUndefined();
+				expect(documentStore.getNodeById(unlocked.id)?.contract).toEqual(stale);
+			});
+		});
+
 		it('allows a manual save before the document is marked hydrated', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w-manual-unhydrated',

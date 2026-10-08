@@ -574,7 +574,7 @@ export { VersionQueryDto } from './instance-version-history/version-query.dto';
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
 export { PublishNextNodeVersionDto } from './next-nodes/publish-next-node-version.dto';
 export { TestNextNodeDraftDto } from './next-nodes/test-next-node-draft.dto';
-export { NextNodeActionVersionsQueryDto } from './next-nodes/next-node-action-versions-query.dto';
+export { NextNodeVersionsQueryDto } from './next-nodes/next-node-versions-query.dto';
 export {
 	ListEncryptionKeysQueryDto,
 	ENCRYPTION_KEYS_SORT_OPTIONS,

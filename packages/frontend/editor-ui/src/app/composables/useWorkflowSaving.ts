@@ -22,7 +22,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { ResponseError } from '@n8n/rest-api-client';
-import { isExpression, type IDataObject } from 'n8n-workflow';
+import { isExpression, type IDataObject, type INode } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -35,6 +35,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	deriveHomeProject,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
@@ -177,6 +178,15 @@ export function useWorkflowSaving({
 			type: 'error',
 			...(retryDelay === undefined ? {} : { duration: retryDelay }),
 		});
+	}
+
+	// The save locks the contract of each contract node. The editor must show that lock.
+	function applySavedContracts(documentStore: WorkflowDocumentStore, savedNodes: readonly INode[]) {
+		for (const { id, contract } of savedNodes) {
+			if (contract !== undefined || documentStore.getNodeById(id)?.contract !== undefined) {
+				documentStore.updateNodeById(id, { contract });
+			}
+		}
 	}
 
 	function scheduleAutoSaveRetry(retryDelay: number) {
@@ -511,6 +521,7 @@ export function useWorkflowSaving({
 
 				// Only mark state clean if no new changes were made during the save
 				if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+					applySavedContracts(workflowDocumentStore, workflowData.nodes);
 					uiStore.markStateClean();
 					// A completed manual save supersedes any scheduled autosave.
 					// Disarming it keeps the timer from firing after a
@@ -773,6 +784,7 @@ export function useWorkflowSaving({
 
 			// Only mark state clean if no new changes were made during the save
 			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
+				applySavedContracts(workflowDocumentStore, workflowData.nodes);
 				uiStore.markStateClean();
 				// A completed manual save supersedes any scheduled autosave (see
 				// the same disarm in the update path above).

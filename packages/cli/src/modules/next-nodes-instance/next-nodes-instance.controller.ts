@@ -1,5 +1,5 @@
 import {
-	NextNodeActionVersionsQueryDto,
+	NextNodeVersionsQueryDto,
 	PublishNextNodeVersionDto,
 	TestNextNodeDraftDto,
 } from '@n8n/api-types';
@@ -46,16 +46,19 @@ export class NextNodesInstanceController {
 		return await this.service.configOf(actionId);
 	}
 
-	/** The versions of an action major, for the version field of a contract node. */
-	@Get('/actions/:actionId/versions')
+	/** The versions of the action major that a node runs, for the version field of a contract node. */
+	@Get('/node-versions')
 	@GlobalScope('nodeDefinition:list')
-	async versions(
+	async nodeVersions(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('actionId') actionId: string,
-		@Query { major }: NextNodeActionVersionsQueryDto,
+		@Query { type, typeVersion, resource, operation }: NextNodeVersionsQueryDto,
 	) {
-		return await this.service.majorVersionsOf(actionId, major);
+		return await this.service.nodeVersionsOf({
+			type,
+			typeVersion,
+			parameters: { resource, operation },
+		});
 	}
 
 	@Post('/actions/:actionId/hide')

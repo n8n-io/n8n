@@ -25,6 +25,7 @@ import {
 	UnexpectedError,
 	UserError,
 	type IDataObject,
+	type INode,
 	type INodeTypes,
 } from 'n8n-workflow';
 
@@ -39,7 +40,11 @@ import {
 	parentNodes,
 	customActionCredentialTypeOf,
 } from '@/node-contracts-catalog';
-import { ContractNodeLoader, NodeContractsStore } from '@/node-contracts-registry';
+import {
+	ContractNodeLoader,
+	contractActionOf,
+	NodeContractsStore,
+} from '@/node-contracts-registry';
 import { NodeTypes } from '@/node-types';
 
 /** One run of a draft: the items, or the error. A run without an error gives its fixture. */
@@ -330,11 +335,18 @@ export class NextNodesInstanceService {
 		return { semver: newest.manifest.semver, config };
 	}
 
-	/** The versions of an action major that a save can lock, newest first, see `ContractStore.majorVersionsOf`. */
-	async majorVersionsOf(actionId: string, major: number): Promise<NextNodeActionVersion[]> {
-		const versions = await (await this.store.open()).majorVersionsOf(actionId, major);
+	/**
+	 * The versions of the action major that a node runs, which a save can lock, newest first. See
+	 * `contractActionOf` and `ContractStore.majorVersionsOf`.
+	 */
+	async nodeVersionsOf(
+		node: Pick<INode, 'type' | 'typeVersion' | 'parameters'>,
+	): Promise<NextNodeActionVersion[]> {
+		const action = contractActionOf(this.loadNodesAndCredentials.loaders, node);
+		if (!action) throw new NotFoundError(`${node.type} ${node.typeVersion} is not a contract node`);
+		const versions = await (await this.store.open()).majorVersionsOf(action.id, action.major);
 		if (versions.length === 0)
-			throw new NotFoundError(`n8n knows no version of ${actionId} ${major}.x`);
+			throw new NotFoundError(`n8n knows no version of ${action.id} ${action.major}.x`);
 		return versions;
 	}
 

@@ -6,6 +6,8 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 import type {
+	INodeContractPin,
+	INodeContractRange,
 	INodeCredentialDescription,
 	INodeParameters,
 	NodeConnectionType,
@@ -20,6 +22,7 @@ import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
+import NodeContractVersion from './NodeContractVersion.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
 import AgentNdvReferencedSummary from '@/features/ndv/agents/components/AgentNdvReferencedSummary.vue';
@@ -558,6 +561,14 @@ const onNodeExecute = () => {
 	emit('execute');
 };
 
+const onContractChange = (contract: INodeContractPin | INodeContractRange) => {
+	if (!node.value || isRestricted.value) return;
+	workflowDocumentStore?.value?.updateNodeProperties({
+		name: node.value.name,
+		properties: { contract },
+	});
+};
+
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
 	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
@@ -866,6 +877,12 @@ function handleSelectAction(params: INodeParameters) {
 					path=""
 					@value-changed="valueChanged"
 					@parameter-blur="onParameterBlur"
+				/>
+				<NodeContractVersion
+					v-if="node?.contract"
+					:node="node"
+					:read-only="isReadOnly"
+					@change="onContractChange"
 				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
