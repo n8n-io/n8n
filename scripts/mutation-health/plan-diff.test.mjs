@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { diffPlanLines, planFromDiff, runGit } from './plan.mjs';
 import { MutateError } from './targets.mjs';
@@ -85,6 +89,18 @@ describe('planFromDiff', () => {
 		assert.match(skipped[0][1], /blocked/);
 	});
 
+	// A test file sits in a vitest package and has changed lines, so only the
+	// source filter keeps it out of the targets.
+	it('never makes a changed test file a target', () => {
+		const testFile = 'packages/@n8n/instance-ai/src/utils/__tests__/model-config-id.test.ts';
+		const { git, calls } = stubGit({ names: [testFile] });
+		assert.deepEqual(planFromDiff('origin/master', { git }), { jobs: [], skipped: [] });
+		assert.equal(
+			calls.some((args) => args.includes('-U0')),
+			false,
+		);
+	});
+
 	// Diffing the merge base against the working tree also scores uncommitted edits.
 	it('uses only git commands that read the repository, from the merge base', () => {
 		const { git, calls } = stubGit({ names: [instanceAiSource] });
@@ -119,6 +135,31 @@ describe('runGit', () => {
 		assert.equal(res.status, 0);
 		assert.equal(typeof res.stdout, 'string');
 		assert.ok(res.stdout.trim().length > 0);
+	});
+
+	// A missing git is a setup problem, so it must not read as "nothing changed".
+	it('stops with a usage error that names the command when git cannot start', () => {
+		const emptyPath = mkdtempSync(path.join(tmpdir(), 'mutate-no-git-'));
+		try {
+			const planUrl = pathToFileURL(path.join(import.meta.dirname, 'plan.mjs')).href;
+			const script = [
+				`import { runGit } from '${planUrl}';`,
+				"try { runGit(['merge-base', 'origin/master', 'HEAD']); } catch (error) {",
+				'  process.stdout.write(JSON.stringify([error.name, error.exitCode, error.message]));',
+				'}',
+			].join('\n');
+			const res = spawnSync(process.execPath, ['--input-type=module', '--eval', script], {
+				encoding: 'utf8',
+				env: { PATH: emptyPath },
+				timeout: 20_000,
+			});
+			const [name, exitCode, message] = JSON.parse(res.stdout || '[]');
+			assert.equal(name, 'MutateError', res.stderr);
+			assert.equal(exitCode, 2);
+			assert.match(message, /^git merge-base failed to start: .*ENOENT/);
+		} finally {
+			rmSync(emptyPath, { recursive: true, force: true });
+		}
 	});
 });
 

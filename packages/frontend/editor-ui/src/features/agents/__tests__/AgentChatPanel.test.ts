@@ -1879,7 +1879,9 @@ describe('AgentChatPanel', () => {
 
 		it('replaces the composer with the approval and resumes the run on a decision', async () => {
 			messagesMock.value = cardOutput({
-				toolCalls: [{ tool: 'delete_file', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' }],
+				toolCalls: [
+					{ tool: 'delete_file', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+				],
 				interactive: {
 					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'tc-1',
@@ -1904,7 +1906,12 @@ describe('AgentChatPanel', () => {
 		it('answers an open question by steering, and shows Stop', async () => {
 			messagesMock.value = cardOutput({
 				toolCalls: [
-					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+					{
+						tool: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						state: 'suspended',
+					},
 				],
 				interactive: openInteractiveMessage().interactive,
 			});
