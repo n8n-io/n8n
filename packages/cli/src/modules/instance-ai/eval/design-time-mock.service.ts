@@ -47,6 +47,9 @@ export function designTimeScenarioHints(scenarios: readonly DesignTimeMockScenar
 		: text;
 }
 
+/** Notion accepts an ID with or without dashes, in either case. */
+const comparable = (value: string) => value.replaceAll('-', '').toLowerCase();
+
 /** The string values in `value`, at any depth. */
 const stringsOf = (value: unknown): string[] =>
 	typeof value === 'string'
@@ -145,13 +148,13 @@ export class EvalDesignTimeMockService {
 		if (methodType !== 'loadOptions' || this.credentialAllowlists.get(threadId) === undefined) {
 			return undefined;
 		}
-		const values = stringsOf(currentNodeParameters);
+		const values = stringsOf(currentNodeParameters).map(comparable);
 		return this.lookupsByThread
 			.get(threadId)
 			?.find(
 				({ method, resourceIds }) =>
 					method === methodName &&
-					resourceIds.every((id) => values.some((value) => value.includes(id))),
+					resourceIds.every((id) => values.some((value) => value.includes(comparable(id)))),
 			)?.fields;
 	}
 

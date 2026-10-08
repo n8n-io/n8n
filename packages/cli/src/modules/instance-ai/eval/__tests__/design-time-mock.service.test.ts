@@ -139,6 +139,18 @@ describe('EvalDesignTimeMockService', () => {
 			).toEqual(sheetFields);
 		});
 
+		it('matches a resource ID that the node writes without dashes or in another case', () => {
+			allowlists.set('thread-1', []);
+			service.setLookups('thread-1', lookups);
+
+			expect(
+				service.lookupAnswer('thread-1', {
+					...notionLookup,
+					currentNodeParameters: { database: databaseId.replaceAll('-', '').toUpperCase() },
+				}),
+			).toEqual(fields);
+		});
+
 		it('gives nothing for a lookup that the case does not declare', () => {
 			allowlists.set('thread-1', []);
 			service.setLookups('thread-1', lookups);
