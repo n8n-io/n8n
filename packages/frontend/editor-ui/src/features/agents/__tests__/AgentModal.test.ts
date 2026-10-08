@@ -54,6 +54,7 @@ vi.mock('@n8n/design-system', async () => {
 			`,
 		}),
 		N8nDialogHeader: defineComponent({ template: '<header><slot /></header>' }),
+		N8nDialogBody: defineComponent({ template: '<div><slot /></div>' }),
 		N8nDialogFooter: defineComponent({ template: '<footer><slot /></footer>' }),
 		N8nDialogTitle: defineComponent({ template: '<div><slot /></div>' }),
 		N8nButton: defineComponent({
