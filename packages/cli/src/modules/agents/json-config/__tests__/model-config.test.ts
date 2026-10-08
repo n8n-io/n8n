@@ -8,6 +8,26 @@ import {
 } from '../model-config';
 
 describe('resolveCredentialAwareModelConfig', () => {
+	// AGENT-1182: the credential URL serves a different API from the native gateway SDK.
+	it.each(['https://ai-gateway.vercel.sh/v1', 'https://ai-gateway.vercel.sh/v1/'])(
+		'uses the native Vercel SDK endpoint for the standard credential URL %s',
+		async (url) => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue({ apiKey: 'gateway-key', url });
+
+			const result = await resolveCredentialAwareModelConfig(
+				'vercel/anthropic/claude-sonnet-5.5',
+				'cred-vercel',
+				credentialProvider,
+			);
+
+			expect(result).toEqual({
+				id: 'vercel/anthropic/claude-sonnet-5.5',
+				apiKey: 'gateway-key',
+			});
+		},
+	);
+
 	it('resolves a real credential via the credential provider (unchanged path)', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockResolvedValue({

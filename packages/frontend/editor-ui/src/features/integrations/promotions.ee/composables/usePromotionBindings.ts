@@ -5,9 +5,10 @@ import type {
 	ContinueApplyPackageDto,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { continueApplyPromotion } from '../promotionsSettings.api';
+import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
 import type {
 	BlockedApplyResult,
+	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatePromotionBinding,
 	MissingPromotionBinding,
@@ -80,6 +81,7 @@ export function usePromotionBindings() {
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
 	let connectionId: string | undefined;
+	let continueTarget: ContinueTarget | undefined;
 
 	function statusOf(key: string, projectId: string): BindingStatus {
 		if (missingKeys.value.has(key)) return 'missing';
@@ -159,10 +161,11 @@ export function usePromotionBindings() {
 		);
 	}
 
-	function start(result: BlockedApplyResult) {
+	function start(result: BlockedApplyResult, target: ContinueTarget) {
 		session++;
 		originalResult.value = result;
 		connectionId = result.connectionId;
+		continueTarget = target;
 		expectedSource = { configId: result.configId, ...result.git };
 		knownBindings.value = new Map();
 		createdBindings.value = new Map();
@@ -212,15 +215,27 @@ export function usePromotionBindings() {
 	}
 
 	async function continueApply() {
-		if (!canContinue.value || !connectionId || !expectedSource) return;
+		if (!canContinue.value || !connectionId || !expectedSource || !continueTarget) return;
 		const currentSession = session;
 		isSubmitting.value = true;
 		error.value = null;
 		try {
-			const result = await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
-				expectedSource: { ...expectedSource },
-				confirmDestructiveChanges: destructiveChanges.value.length > 0 || undefined,
-			});
+			const confirmDestructiveChanges = destructiveChanges.value.length > 0 || undefined;
+			const result =
+				continueTarget.kind === 'selection'
+					? await continueApplyProjectSelection(
+							rootStore.publicApiContext,
+							continueTarget.projectId,
+							{
+								workflowIds: continueTarget.workflowIds,
+								expectedSource: { ...expectedSource },
+								confirmDestructiveChanges,
+							},
+						)
+					: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
+							expectedSource: { ...expectedSource },
+							confirmDestructiveChanges,
+						});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
 			if (result.status === 'source-changed') sourceChanged.value = true;

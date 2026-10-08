@@ -1,5 +1,5 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
-import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { WorkflowListPublicationStatus, WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -7,11 +7,14 @@ import type {
 	User,
 	ListQueryDb,
 	Project,
+	PublishHistoryScope,
 	WorkflowFolderUnionFull,
 	WorkflowHistory,
 	OperationContext,
+	WorkflowIdsQuery,
 } from '@n8n/db';
 import {
+	isStringArray,
 	SharedWorkflow,
 	WorkflowEntity,
 	FolderRepository,
@@ -46,6 +49,7 @@ import {
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
+import { RestrictedNodeTypesProviderProxy } from './restricted-node-types-provider-proxy.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -180,6 +184,7 @@ export class WorkflowService {
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
+		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 	) {}
 
 	/**
@@ -299,13 +304,16 @@ export class WorkflowService {
 			options,
 		);
 
+		const workflowIdsIn = await this.resolveRestrictedWorkflowIds(options);
+		const listOptions = workflowIdsIn === undefined ? options : { ...options, workflowIdsIn };
+
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,
 					sharingOptions,
-					options,
+					listOptions,
 					callableForParentWorkflowId,
 				);
 
@@ -314,7 +322,7 @@ export class WorkflowService {
 			({ workflows, count } = await this.workflowRepository.getManyAndCountWithSharingSubquery(
 				user,
 				sharingOptions,
-				options,
+				listOptions,
 				callableForParentWorkflowId,
 			));
 		}
@@ -387,6 +395,19 @@ export class WorkflowService {
 		);
 
 		return parentWorkflow ? parentWorkflowId : undefined;
+	}
+
+	private async resolveRestrictedWorkflowIds(
+		options?: ListQuery.Options,
+	): Promise<WorkflowIdsQuery | null | undefined> {
+		const executionBlockedBy = options?.filter?.executionBlockedBy;
+		if (
+			!isStringArray(executionBlockedBy) ||
+			!executionBlockedBy.includes('restrictedNode' satisfies WorkflowExecutionBlockCause)
+		)
+			return undefined;
+
+		return await this.restrictedNodeTypesProvider.findRestrictedWorkflowIds();
 	}
 
 	/**
@@ -898,6 +919,7 @@ export class WorkflowService {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: workflow.activeVersionId,
 				source,
+				publishHistory: 'none',
 			});
 		}
 		return updatedWorkflow;
@@ -1074,6 +1096,7 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			publishHistory?: PublishHistoryScope;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
@@ -1131,7 +1154,7 @@ export class WorkflowService {
 				workflow.id,
 				versionIdToActivate,
 				{
-					includePublishHistory: false,
+					publishHistory: 'none',
 				},
 			);
 		} catch (error) {
@@ -1321,11 +1344,13 @@ export class WorkflowService {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
-		if (updatedWorkflow.activeVersion) {
+		const publishHistory = options?.publishHistory ?? 'all';
+		if (updatedWorkflow.activeVersion && publishHistory !== 'none') {
 			updatedWorkflow.activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
 					workflowId,
 					updatedWorkflow.activeVersion.versionId,
+					publishHistory,
 				);
 		}
 
@@ -1353,7 +1378,7 @@ export class WorkflowService {
 			workflowId,
 			user,
 			['workflow:unpublish'],
-			{ includeActiveVersion: true },
+			{ includeActiveVersion: true, publishHistory: 'none' },
 		);
 
 		if (!workflow) {

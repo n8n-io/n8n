@@ -181,6 +181,7 @@ describe('GlobalConfig', () => {
 					'mcp-client-revoked': '',
 					'email-change-requested': '',
 					'email-change-completed': '',
+					'agent-budget-alert': '',
 				},
 			},
 		},
@@ -308,6 +309,7 @@ describe('GlobalConfig', () => {
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
 			health: '/healthz',
+			frontendHealthCheckTimeoutMs: 5000,
 		},
 		cache: {
 			backend: 'auto',
@@ -520,6 +522,7 @@ describe('GlobalConfig', () => {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
+			forceAgentWorthTesting: false,
 			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {

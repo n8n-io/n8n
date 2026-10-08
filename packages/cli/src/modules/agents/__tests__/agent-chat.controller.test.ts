@@ -178,6 +178,8 @@ describe('AgentChatController route access scopes', () => {
 		['getProductionChatAttachment', 'agent:execute'],
 		['getProductionQueuedMessages', 'agent:execute'],
 		['updateProductionQueuedMessage', 'agent:execute'],
+		['reorderProductionQueuedMessage', 'agent:execute'],
+		['steerProductionQueuedMessage', 'agent:execute'],
 		['removeProductionQueuedMessage', 'agent:execute'],
 		['chat', 'agent:execute'],
 		['chatResume', 'agent:execute'],
@@ -203,18 +205,28 @@ describe('AgentChatController route access scopes', () => {
 
 describe('AgentChatController queue mutations', () => {
 	it.each([
-		['updateQueuedMessage', 'updatePending', { message: 'Edited message' }],
+		['updateQueuedMessage', 'updatePending', { message: 'Edited message' }, 'preview'],
 		[
 			'reorderQueuedMessage',
 			'reorderPending',
 			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+			'preview',
 		],
-		['steerQueuedMessage', 'steer', { executionId: 'execution-1' }],
+		['steerQueuedMessage', 'steer', { executionId: 'execution-1' }, 'preview'],
+		['updateProductionQueuedMessage', 'updatePending', { message: 'Edited message' }, 'n8n_chat'],
+		[
+			'reorderProductionQueuedMessage',
+			'reorderPending',
+			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+			'n8n_chat',
+		],
+		['steerProductionQueuedMessage', 'steer', { executionId: 'execution-1' }, 'n8n_chat'],
 	] as const)(
 		'%s reads the body after the request and response arguments',
-		async (handler, operation, payload) => {
+		async (handler, operation, payload, kind) => {
 			const { controller, agentsService, messageQueue } = makeController();
 			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
 			const params = {
 				projectId: 'project-1',
 				agentId: 'agent-1',
@@ -232,7 +244,7 @@ describe('AgentChatController queue mutations', () => {
 				...params,
 				userId: 'user-1',
 				...payload,
-				...(operation === 'updatePending' ? { kind: 'preview' } : {}),
+				kind,
 			});
 		},
 	);
@@ -1217,9 +1229,14 @@ describe('AgentChatController production n8n Chat', () => {
 		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({
 				usePublishedVersion: true,
-				source: 'n8n_chat_production',
+				chatSurface: 'n8n-chat',
 				expectedMemory: { resourceId: 'n8n-chat-production:user-1' },
 			}),
+		);
+		// The controller no longer stamps the source itself; the orchestrator
+		// derives it from the chat surface.
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalledWith(
+			expect.objectContaining({ source: expect.anything() }),
 		);
 		expect(
 			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
@@ -1358,7 +1375,7 @@ describe('AgentChatController production n8n Chat', () => {
 			expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
 		});
 
-		it('resumes with the published production memory scope and source', async () => {
+		it('resumes with the published production memory scope and surface', async () => {
 			const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 			agentsService.isN8nChatPublished.mockResolvedValue(true);
 			agentExecutionOrchestratorService.resumeBackgroundForChat.mockResolvedValue(true);
@@ -1383,13 +1400,16 @@ describe('AgentChatController production n8n Chat', () => {
 					toolCallId: 'call-1',
 					resumeData: { approved: true },
 					usePublishedVersion: true,
-					source: N8N_CHAT_PRODUCTION_SOURCE,
+					chatSurface: 'n8n-chat',
 					integrationType: 'n8n_chat',
 					expectedMemory: {
 						threadId: 'thread-1',
 						resourceId: 'n8n-chat-production:user-1',
 					},
 				}),
+			);
+			expect(agentExecutionOrchestratorService.resumeBackgroundForChat).not.toHaveBeenCalledWith(
+				expect.objectContaining({ source: expect.anything() }),
 			);
 		});
 

@@ -160,6 +160,10 @@ export const isPairedItemNoConnectionError = (error: unknown): error is Expressi
 	return error instanceof ExpressionError && error.context.type === 'paired_item_no_connection';
 };
 
+export const isPairedItemNotOnBranchError = (error: unknown): error is ExpressionError => {
+	return error instanceof ExpressionError && error.context.type === 'paired_item_not_on_branch';
+};
+
 export const isInvalidPairedItemError = (error: unknown): error is ExpressionError => {
 	return error instanceof ExpressionError && error.context.type === 'paired_item_invalid_info';
 };
@@ -212,6 +216,12 @@ export const getExpressionErrorMessage = (
 
 	if (isPairedItemNoConnectionError(error)) {
 		return i18n.baseText('expressionModalInput.pairedItemConnectionError');
+	}
+
+	if (isPairedItemNotOnBranchError(error)) {
+		return i18n.baseText('expressionModalInput.pairedItemNotOnBranchError', {
+			interpolate: { node: error.context.nodeCause as string },
+		});
 	}
 
 	if (isInvalidPairedItemError(error) || isNoPairedItemError(error)) {

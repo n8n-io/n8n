@@ -21,6 +21,7 @@ import {
 	logStreamingParameterListDocs,
 	logStreamingSentryFieldDocs,
 	logStreamingSyslogFieldDocs,
+	logStreamingTestResultFieldDocs,
 	logStreamingWebhookFieldDocs,
 	logStreamingWebhookOptionsFieldDocs,
 } from './log-streaming-public.openapi';
@@ -38,6 +39,11 @@ export class LogStreamingEventTypesPublicDto extends Z.class(
 ) {
 	static schema = logStreamingEventTypesPublicSchema;
 }
+
+export class LogStreamingTestResultPublicDto extends Z.class(
+	{ success: z.boolean().openapi(logStreamingTestResultFieldDocs.success) },
+	{ strict: true },
+) {}
 
 // Only the fields the log streaming UI exposes. Credentials and auth settings stay out, so a
 // read never returns them.

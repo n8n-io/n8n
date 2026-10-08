@@ -44,8 +44,12 @@ import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
+export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
+
 // oxlint-disable-next-line typescript/no-deprecated - Waiting for debt to be payed
-type WorkflowListQueryOptions = ListQuery.Options;
+type WorkflowListQueryOptions = ListQuery.Options & {
+	workflowIdsIn?: WorkflowIdsQuery | null;
+};
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -1013,6 +1017,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				name: true,
 			},
 			filter: options.filter,
+			workflowIdsIn: options.workflowIdsIn,
 		};
 
 		// For union, we need to have the same columns, so add NULL as description for folders
@@ -1223,6 +1228,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, filtersToApply);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1329,6 +1335,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, options.filter);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1594,6 +1601,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.where('dep.dependencyType = :depType', { depType: 'nodeType' })
 			.andWhere('dep.dependencyKey IN (:...nodeTypes)', { nodeTypes })
 			.andWhere('dep.publishedVersionId IS NULL');
+	}
+
+	private applyWorkflowIdsInFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		workflowIdsIn: WorkflowIdsQuery | null | undefined,
+	): void {
+		if (workflowIdsIn === undefined) return;
+		if (workflowIdsIn === null) {
+			qb.andWhere('1 = 0');
+			return;
+		}
+
+		qb.andWhere(`workflow.id IN (${workflowIdsIn.query})`, workflowIdsIn.parameters);
 	}
 
 	private applyOwnedByRelation(

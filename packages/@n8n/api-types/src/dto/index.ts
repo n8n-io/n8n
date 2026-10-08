@@ -340,6 +340,7 @@ export {
 	LogStreamingDestinationListPublicDto,
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
+	LogStreamingTestResultPublicDto,
 	CreateLogStreamingDestinationPublicDto,
 	UpdateLogStreamingDestinationPublicDto,
 	type LogStreamingDestinationPublic,
@@ -526,6 +527,10 @@ export {
 	workflowHistoryListItemSchema,
 } from './workflow-history/workflow-history-list-item.dto';
 export { ListWorkflowHistoryQueryDto } from './workflow-history/list-workflow-history-query.dto';
+export {
+	WorkflowPublishTimelineQueryDto,
+	WORKFLOW_HISTORY_DEFAULT_TAKE,
+} from './workflow-history/workflow-publish-timeline-query.dto';
 export {
 	WorkflowVersionHistoryListPublicDto,
 	workflowVersionListItemPublicSchema,

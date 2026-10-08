@@ -14,9 +14,15 @@
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
+//
+// Routing mode (`stopBeforeTool`) checks each orchestrator tool call before it
+// runs, and ends the run when the check says so (see ../routing/grade.ts).
+// Routing cases have no tool expectations, so they call `runOrchestratorTurn`
+// and skip the check.
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
 import {
@@ -37,7 +43,14 @@ import {
 	stubMcpServerConfigs,
 	type StubMcpRegistry,
 } from './stub-mcp-registry';
-import type { DiscoveryCheckResult, DiscoveryStreamStatus, DiscoveryTestCase } from './types';
+import {
+	ORCHESTRATOR_AGENT_ID,
+	type DiscoveryCheckResult,
+	type DiscoveryScenario,
+	type DiscoveryStreamStatus,
+	type DiscoveryTestCase,
+	type PendingToolCall,
+} from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
@@ -93,6 +106,50 @@ export interface DiscoveryRunResult {
 export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
+	const turn = await runOrchestratorTurn(options);
+	const outcome = extractOutcomeFromEvents(turn.events);
+	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
+		streamStatus: turn.streamStatus,
+		timeoutMs: turn.timeoutMs,
+		...(turn.runError ? { runError: turn.runError } : {}),
+		unmatchedConfirmations: turn.unmatchedConfirmations,
+	});
+
+	return {
+		scenario: options.scenario,
+		check,
+		events: turn.events,
+		outcome,
+		durationMs: turn.durationMs,
+		streamStatus: turn.streamStatus,
+		...(turn.runError ? { runError: turn.runError } : {}),
+	};
+}
+
+export interface OrchestratorTurnOptions extends Omit<DiscoveryRunOptions, 'scenario'> {
+	scenario: DiscoveryScenario;
+	/**
+	 * Runs before each orchestrator tool call, and the call waits for it.
+	 * `true` ends the run there, before the call runs.
+	 */
+	stopBeforeTool?: (call: PendingToolCall, events: readonly InstanceAiEvent[]) => Promise<boolean>;
+}
+
+export interface OrchestratorTurnResult {
+	events: CapturedEvent[];
+	/** The same events with their schema types. */
+	instanceEvents: InstanceAiEvent[];
+	durationMs: number;
+	streamStatus: DiscoveryStreamStatus;
+	runError?: string;
+	timeoutMs: number;
+	unmatchedConfirmations: string[];
+}
+
+/** Runs one orchestrator turn and returns what it published, with no check. */
+export async function runOrchestratorTurn(
+	options: OrchestratorTurnOptions,
+): Promise<OrchestratorTurnResult> {
 	const started = Date.now();
 	// Unset by default: the orchestrator legitimately explores past any small fixed cap
 	// (data-table-workflow needs >8 iterations). Unset still lands on the SDK's own
@@ -100,10 +157,12 @@ export async function runDiscoveryScenario(
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
+	const { stopBeforeTool } = options;
 
 	const events: CapturedEvent[] = [];
+	const instanceEvents: InstanceAiEvent[] = [];
 
-	let streamStatus: DiscoveryRunResult['streamStatus'] = 'completed';
+	let streamStatus: DiscoveryStreamStatus = 'completed';
 	let runError: string | undefined;
 
 	const confirmationPolicy = buildConfirmationPolicy(options.scenario);
@@ -117,6 +176,14 @@ export async function runDiscoveryScenario(
 			abortController.abort();
 			resolve('timed-out');
 		}, timeoutMs);
+	});
+	let stopRun = () => {};
+	const routeStopped = new Promise<'stopped-on-route'>((resolve) => {
+		stopRun = () => {
+			// Resolve first, so the race ends before the abort rejects the run.
+			resolve('stopped-on-route');
+			abortController.abort();
+		};
 	});
 
 	try {
@@ -141,6 +208,7 @@ export async function runDiscoveryScenario(
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 			events.push(toCapturedEvent(event));
+			instanceEvents.push(event);
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
@@ -173,6 +241,22 @@ export async function runDiscoveryScenario(
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
+				...(stopBeforeTool
+					? {
+							guardrails: {
+								hooks: [
+									{
+										beforeTool: async ({ toolCallId, toolName, input }) => {
+											const call = { toolCallId, toolName, args: isRecord(input) ? input : {} };
+											if (!(await stopBeforeTool(call, instanceEvents))) return undefined;
+											stopRun();
+											return { action: 'stop' as const, code: 'route-picked' };
+										},
+									},
+								],
+							},
+						}
+					: {}),
 			}),
 		);
 
@@ -182,7 +266,7 @@ export async function runDiscoveryScenario(
 			context: {
 				threadId,
 				runId,
-				agentId: 'n8n-instance-agent',
+				agentId: ORCHESTRATOR_AGENT_ID,
 				eventBus,
 				signal: abortController.signal,
 				logger: silentLogger(),
@@ -197,9 +281,12 @@ export async function runDiscoveryScenario(
 			},
 		});
 		void run.catch(() => {});
-		const result = await Promise.race([run, budgetExpired]);
+		const result = await Promise.race([run, budgetExpired, routeStopped]);
 
-		streamStatus = resolveStreamStatus(result, abortController.signal.aborted);
+		streamStatus =
+			result === 'stopped-on-route'
+				? result
+				: resolveStreamStatus(result, abortController.signal.aborted);
 	} catch (error) {
 		runError = error instanceof Error ? error.message : String(error);
 		streamStatus = abortController.signal.aborted ? 'timed-out' : 'errored';
@@ -208,24 +295,15 @@ export async function runDiscoveryScenario(
 		await mcpManager?.disconnect();
 	}
 
-	const observedEvents = [...events];
-	const outcome = extractOutcomeFromEvents(observedEvents);
-	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
-		streamStatus,
-		timeoutMs,
-		...(runError ? { runError } : {}),
-		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
-	});
-
+	// An abandoned stream can still publish, so copy what the run saw at its end.
 	return {
-		scenario: options.scenario,
-		check,
-		// An abandoned stream can still publish, so hand back what the verdict saw.
 		events: [...events],
-		outcome,
+		instanceEvents: [...instanceEvents],
 		durationMs: Date.now() - started,
 		streamStatus,
 		...(runError ? { runError } : {}),
+		timeoutMs,
+		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
 	};
 }
 
@@ -235,7 +313,7 @@ export async function runDiscoveryScenario(
 
 function applyInstanceState(
 	base: InstanceAiContext,
-	scenario: DiscoveryTestCase,
+	scenario: DiscoveryScenario,
 	mcpRegistry: StubMcpRegistry | undefined,
 ): InstanceAiContext {
 	const state = scenario.instanceState;
@@ -329,7 +407,7 @@ function createStubOrchestrationContext(
 		threadId: opts.threadId,
 		runId: opts.runId,
 		userId: opts.context.userId,
-		orchestratorAgentId: 'n8n-instance-agent',
+		orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
