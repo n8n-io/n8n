@@ -24,6 +24,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 import * as agentEvalsApi from '../../agentEvals.api';
 import { useAgentEvalsStore } from '../../agentEvals.store';
 import { getAgent } from '../../composables/useAgentApi';
+import { useAgentChecksSafety } from '../../composables/useAgentChecksSafety';
 import { useAgentConfirmationModal } from '../../composables/useAgentConfirmationModal';
 import type { AgentEvalCase, AgentEvalResultRecord } from '../../agentEvals.types';
 import { isDataTableDataset, toCaseSource } from '../../utils/agentEvalCases.utils';
@@ -64,6 +65,7 @@ const PREPARED_COUNT = 8;
 const DEFAULT_COUNT = 4;
 
 const i18n = useI18n();
+const { load: loadSafety } = useAgentChecksSafety();
 const toast = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const router = useRouter();
@@ -148,8 +150,9 @@ const setFixPending = (since: string | null) => {
 		// Without storage the rerun only happens while this tab stays open.
 	}
 };
+// One primary per surface: with two or more to apply, Apply all is it and each row's Apply steps back.
 const showFixAll = computed(
-	() => counts.value.needsWork > 0 && !runInFlight.value && fixPending.value === null,
+	() => counts.value.needsWork > 1 && !runInFlight.value && fixPending.value === null,
 );
 
 function schedulePoll() {
@@ -370,7 +373,7 @@ const onEditRule = async (check: AgentCheck, rule: string, recheck = false) => {
 	} finally {
 		busy.value = false;
 	}
-	// From a thumbs-down: the rule now says what should have happened, so check again.
+	// From "Not right": the check now says what should have happened, so check again.
 	if (recheck) await startRun(check.examples.map((ex) => ex.rowId));
 };
 
@@ -569,6 +572,7 @@ watch(
 );
 
 onMounted(async () => {
+	void loadSafety(props.projectId, props.agentId);
 	await load();
 	// A fix asked for before a reload is still on its way: keep watching for the save.
 	if (fixPending.value) pollAgent();
@@ -664,6 +668,7 @@ onBeforeUnmount(() => {
 					:running="check.examples.some((ex) => ex.state === 'running')"
 					:disabled="disabled || busy || !!fixPending"
 					:can-run="canRun && !runInFlight && !fixPending"
+					:secondary-apply="showFixAll"
 					@toggle="openKey = openKey === check.key ? null : check.key"
 					@run="onRunCheck"
 					@fix="onFix"

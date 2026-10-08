@@ -7,10 +7,11 @@
  * run in a footer; once dismissed, every surface keeps a folded corner instead.
  */
 import { ref } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useAgentChecksPractice } from '../../composables/useAgentChecksPractice';
+import { useAgentChecksSafety } from '../../composables/useAgentChecksSafety';
 import type { AgentCheckExample } from '../../utils/agentChecks.utils';
 import { toolCallParts } from '../../utils/agentChecks.utils';
 import AgentClampText from './AgentClampText.vue';
@@ -19,7 +20,7 @@ import AgentReaction from './AgentReaction.vue';
 defineProps<{
 	example: AgentCheckExample;
 	verdict?: boolean;
-	/** Offer a thumbs-down next to a passing reply, for when the verdict is wrong. */
+	/** Offer "Not right" under a passing reply, for when the verdict is wrong. */
 	flaggable?: boolean;
 }>();
 
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { seen, dismiss } = useAgentChecksPractice();
+const { line: safetyLine } = useAgentChecksSafety();
 const curled = ref(false);
 
 const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
@@ -63,21 +65,8 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 					:class="$style.agentHead"
 				/>
 				<div :class="$style.answer">
-					<div :class="$style.replyRow">
-						<div :class="[$style.reply, { [$style.flagged]: example.state === 'needs_work' }]">
-							<AgentClampText :text="example.reply" markdown />
-						</div>
-						<N8nIconButton
-							v-if="flaggable && example.state === 'pass'"
-							icon="thumbs-down"
-							variant="ghost"
-							size="small"
-							:aria-label="i18n.baseText('agents.builder.agentChecks.onboarding.notRight')"
-							:title="i18n.baseText('agents.builder.agentChecks.onboarding.notRight')"
-							:class="$style.flag"
-							data-testid="agent-check-flag"
-							@click="emit('flag', example)"
-						/>
+					<div :class="[$style.reply, { [$style.flagged]: example.state === 'needs_work' }]">
+						<AgentClampText :text="example.reply" markdown />
 					</div>
 					<div
 						v-if="verdict && example.state === 'needs_work'"
@@ -88,11 +77,27 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 						{{ example.reason }}
 					</div>
 					<div
-						v-else-if="verdict && example.state === 'pass'"
-						:class="[$style.verdict, $style.verdictOk]"
-						data-testid="agent-check-verdict"
+						v-else-if="(verdict || flaggable) && example.state === 'pass'"
+						:class="$style.passRow"
 					>
-						<b>{{ i18n.baseText('agents.builder.agentChecks.verdict.follows') }}</b>
+						<div
+							v-if="verdict"
+							:class="[$style.verdict, $style.verdictOk]"
+							data-testid="agent-check-verdict"
+						>
+							<b>{{ i18n.baseText('agents.builder.agentChecks.verdict.follows') }}</b>
+						</div>
+						<!-- When the judge passed a reply you disagree with. -->
+						<N8nButton
+							v-if="flaggable"
+							variant="ghost"
+							size="small"
+							:class="$style.flag"
+							data-testid="agent-check-flag"
+							@click="emit('flag', example)"
+						>
+							{{ i18n.baseText('agents.builder.agentChecks.onboarding.notRight') }}
+						</N8nButton>
 					</div>
 				</div>
 			</div>
@@ -104,7 +109,7 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 				<div v-if="!seen" :class="$style.footer" data-testid="agent-check-practice-footer">
 					<span :class="$style.footerText">
 						<b>{{ i18n.baseText('agents.builder.agentChecks.practice.title') }}</b>
-						{{ i18n.baseText('agents.builder.agentChecks.practice.body') }}
+						{{ safetyLine }}
 					</span>
 					<N8nButton
 						variant="ghost"
@@ -132,27 +137,24 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 			<span :class="$style.fold" aria-hidden="true" />
 			<span :class="$style.tip" role="tooltip">
 				<b>{{ i18n.baseText('agents.builder.agentChecks.practice.title') }}</b>
-				{{ i18n.baseText('agents.builder.agentChecks.practice.tip') }}
+				{{ safetyLine }}
 			</span>
 		</button>
 	</div>
 </template>
 
 <style lang="scss" module>
-// The reply with its thumbs-down beside it, at the bubble's foot.
-.replyRow {
+// The verdict under the reply, and "Not right" on the same line at the right.
+.passRow {
 	display: flex;
-	align-items: flex-end;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-
-	> :first-child {
-		min-width: 0;
-	}
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
 }
 
 .flag {
 	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .thread {
@@ -237,7 +239,7 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 }
 
 .flagged {
-	border-color: var(--border-color--warning);
+	border-color: var(--callout--border-color--secondary);
 }
 
 .verdict {
@@ -252,8 +254,8 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 }
 
 .verdictBad {
-	background: var(--background--warning);
-	color: var(--text-color--warning);
+	background: var(--callout--color--background--secondary);
+	color: var(--callout--color--text--secondary);
 }
 
 .verdictOk {

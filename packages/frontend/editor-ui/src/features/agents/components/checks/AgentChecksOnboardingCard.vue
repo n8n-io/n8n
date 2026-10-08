@@ -14,7 +14,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { InstanceAiChecksFixHandoffContext } from '@n8n/api-types';
-import { N8nAiActivityStep, N8nButton, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nAiActivityStep, N8nButton, N8nIcon } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -24,6 +24,7 @@ import { useAgentEvalsStore } from '../../agentEvals.store';
 import type { AgentEvalCase, AgentEvalResultRecord } from '../../agentEvals.types';
 import { agentsEventBus, type AgentUpdatedEvent } from '../../agents.eventBus';
 import { getAgent } from '../../composables/useAgentApi';
+import { useAgentChecksSafety } from '../../composables/useAgentChecksSafety';
 import { isDataTableDataset, toCaseSource } from '../../utils/agentEvalCases.utils';
 import { runOncePerAgent } from '../../utils/agentChecksOnboarding';
 import {
@@ -66,12 +67,14 @@ const PREPARED_COUNT = 8;
 const DEFAULT_COUNT = 3;
 const POLL_MS = 3000;
 const RUN_HISTORY = 5;
-const FACES = 6;
+// A few overlapping faces stand for the run; the rest is a count.
+const FACES = 3;
 
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const store = useAgentEvalsStore();
+const { line: safetyLine, load: loadSafety } = useAgentChecksSafety();
 
 // `later` hides the offer until the agent changes. `fixRows` are the examples a fix
 // was applied for; `fixSince` is the agent's updatedAt then, so a newer save means
@@ -162,6 +165,17 @@ const batch = computed(() =>
 		: laterExamples.value,
 );
 const needWork = computed(() => batch.value.filter((ex) => ex.state === 'needs_work'));
+// What needs attention goes in front; passes stay uncoloured so the colour means something.
+const FACE_ORDER: Record<AgentCheckExample['state'], number> = {
+	needs_work: 0,
+	failed: 1,
+	running: 2,
+	not_run: 3,
+	pass: 4,
+};
+const faces = computed(() =>
+	[...batch.value].sort((a, b) => FACE_ORDER[a.state] - FACE_ORDER[b.state]).slice(0, FACES),
+);
 const passed = computed(() => batch.value.filter((ex) => ex.state === 'pass'));
 const runDone = computed(
 	() => batch.value.filter((ex) => ex.state !== 'running' && ex.state !== 'not_run').length,
@@ -502,6 +516,8 @@ const onTryTrickier = () => writeProgress({ offerOpen: true });
 // A change to the agent is the moment to offer the trickier messages again.
 const onAgentUpdated = (event?: AgentUpdatedEvent) => {
 	if (event?.agentId !== props.agentId) return;
+	// New tools or channels change what the safety line names.
+	void loadSafety(props.projectId, props.agentId, { force: true });
 	// A model was just set: try the agent right away.
 	if (noModel.value) {
 		void retryFirstTry();
@@ -638,6 +654,7 @@ onMounted(() => {
 	progress.value = readProgress();
 	clock = setInterval(() => (now.value = Date.now()), 1000);
 	agentsEventBus.on('agentUpdated', onAgentUpdated);
+	void loadSafety(props.projectId, props.agentId);
 	void load().then(() => {
 		if (progress.value.fixSince && !progress.value.fixRunning) pollAgent();
 	});
@@ -660,15 +677,14 @@ onBeforeUnmount(() => {
 		>
 			<AgentReaction :kind="reactionOf(firstTry)" size="sm" />
 			<span :class="$style.pastText">{{ firstLine }}</span>
-			<N8nIconButton
-				icon="message-square-share"
-				variant="outline"
+			<N8nButton
+				variant="ghost"
 				size="small"
-				:aria-label="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
-				:title="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
 				data-testid="agent-checks-see-first"
 				@click="seeRows([firstTry.rowId])"
-			/>
+			>
+				{{ i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation') }}
+			</N8nButton>
 		</div>
 
 		<!-- The congratulation after a fix: its own moment, before anything new is offered. -->
@@ -709,24 +725,35 @@ onBeforeUnmount(() => {
 
 		<!-- Trying the agent once. -->
 		<template v-else-if="step === 'trying'">
-			<b :class="$style.title">{{
-				i18n.baseText('agents.builder.agentChecks.onboarding.tryOnce')
-			}}</b>
+			<div :class="$style.heading">
+				<b :class="$style.title">{{
+					i18n.baseText('agents.builder.agentChecks.onboarding.tryOnce')
+				}}</b>
+				<small :class="$style.caption">{{
+					i18n.baseText('agents.builder.agentChecks.onboarding.byAssistantRunning')
+				}}</small>
+			</div>
 			<div :class="$style.status">
 				<AgentReaction kind="waiting" size="sm" />
 				{{ i18n.baseText('agents.builder.agentChecks.onboarding.trying') }}
 			</div>
+			<p :class="$style.muted" data-testid="agent-checks-safety">{{ safetyLine }}</p>
 		</template>
 
 		<!-- The first try needs work: the message, what went wrong, the fix to apply. -->
 		<template v-else-if="step === 'firstReview' && firstTry">
 			<div :class="$style.head">
 				<AgentReaction :kind="firstTry.state === 'failed' ? 'failed' : 'needs_work'" size="sm" />
-				<b :class="$style.title">{{
-					stillFailing && fixWasFirst
-						? i18n.baseText('agents.builder.agentChecks.onboarding.stillNeedsWork')
-						: i18n.baseText('agents.builder.agentChecks.onboarding.firstNeedsWork')
-				}}</b>
+				<div :class="$style.heading">
+					<b :class="$style.title">{{
+						stillFailing && fixWasFirst
+							? i18n.baseText('agents.builder.agentChecks.onboarding.stillNeedsWork')
+							: i18n.baseText('agents.builder.agentChecks.onboarding.firstNeedsWork')
+					}}</b>
+					<small :class="$style.caption">{{
+						i18n.baseText('agents.builder.agentChecks.onboarding.byAssistant')
+					}}</small>
+				</div>
 			</div>
 			<template v-if="firstTry.state === 'failed'">
 				<p :class="$style.muted">
@@ -751,17 +778,16 @@ onBeforeUnmount(() => {
 					}}</span>
 					<div :class="$style.found">
 						<span>{{
-							firstTry.reason || i18n.baseText('agents.builder.agentChecks.verdict.breaks')
+							firstTry.reason || i18n.baseText('agents.builder.agentChecks.verdict.reasonFallback')
 						}}</span>
-						<N8nIconButton
-							icon="message-square-share"
-							variant="outline"
+						<N8nButton
+							variant="ghost"
 							size="small"
-							:aria-label="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
-							:title="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
 							data-testid="agent-checks-see-first"
 							@click="seeRows([firstTry.rowId])"
-						/>
+						>
+							{{ i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation') }}
+						</N8nButton>
 					</div>
 				</div>
 				<!-- The change and the decision about it, together in one box. -->
@@ -797,9 +823,14 @@ onBeforeUnmount(() => {
 		<template v-else-if="step === 'firstPass' && firstTry">
 			<div :class="$style.head">
 				<AgentReaction kind="pass" size="sm" />
-				<b :class="$style.title">{{
-					i18n.baseText('agents.builder.agentChecks.onboarding.firstPassed')
-				}}</b>
+				<div :class="$style.heading">
+					<b :class="$style.title">{{
+						i18n.baseText('agents.builder.agentChecks.onboarding.firstPassed')
+					}}</b>
+					<small :class="$style.caption">{{
+						i18n.baseText('agents.builder.agentChecks.onboarding.byAssistant')
+					}}</small>
+				</div>
 			</div>
 			<div :class="$style.field">
 				<span :class="$style.label">{{
@@ -816,15 +847,14 @@ onBeforeUnmount(() => {
 						firstTry.reason || i18n.baseText('agents.builder.agentChecks.onboarding.passedFallback')
 					}}</span>
 					<span :class="$style.foundActs">
-						<N8nIconButton
-							icon="message-square-share"
-							variant="outline"
+						<N8nButton
+							variant="ghost"
 							size="small"
-							:aria-label="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
-							:title="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
 							data-testid="agent-checks-see-first"
 							@click="seeRows([firstTry.rowId])"
-						/>
+						>
+							{{ i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation') }}
+						</N8nButton>
 					</span>
 				</div>
 			</div>
@@ -900,8 +930,7 @@ onBeforeUnmount(() => {
 				:max="sliderMax"
 				:label="
 					i18n.baseText('agents.builder.agentChecks.onboarding.count', {
-						adjustToNumber: count,
-						interpolate: { count: String(count) },
+						interpolate: { count: String(count), max: String(sliderMax) },
 					})
 				"
 				:accessible-label="i18n.baseText('agents.builder.agentChecks.onboarding.countLabel')"
@@ -946,15 +975,14 @@ onBeforeUnmount(() => {
 			<div :class="$style.pastBody">
 				<div :class="[$style.found, $style.doneText]">
 					<span>{{ doneLine }}</span>
-					<N8nIconButton
-						icon="external-link"
-						variant="outline"
+					<N8nButton
+						variant="ghost"
 						size="small"
-						:aria-label="i18n.baseText('agents.builder.agentChecks.onboarding.seeInChecks')"
-						:title="i18n.baseText('agents.builder.agentChecks.onboarding.seeInChecks')"
 						data-testid="agent-checks-see-in-checks"
 						@click="seeRows(batch.map((ex) => ex.rowId))"
-					/>
+					>
+						{{ i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation') }}
+					</N8nButton>
 				</div>
 				<N8nButton
 					variant="solid"
@@ -978,9 +1006,10 @@ onBeforeUnmount(() => {
 			>
 				<span :class="$style.faces">
 					<AgentReaction
-						v-for="ex in batch.slice(0, FACES)"
+						v-for="ex in faces"
 						:key="ex.rowId"
 						:kind="reactionOf(ex)"
+						:quiet="ex.state === 'pass'"
 						size="sm"
 					/>
 					<span v-if="batch.length > FACES" :class="$style.facesMore"
@@ -1029,16 +1058,11 @@ onBeforeUnmount(() => {
 						<b :class="$style.failName">{{ nameOf(ex.rowId) }}</b>
 						<div :class="$style.found">
 							<span :class="$style.failReason">{{
-								ex.reason || i18n.baseText('agents.builder.agentChecks.verdict.breaks')
+								ex.reason || i18n.baseText('agents.builder.agentChecks.verdict.reasonFallback')
 							}}</span>
-							<N8nIconButton
-								icon="message-square-share"
-								variant="outline"
-								size="small"
-								:aria-label="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
-								:title="i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation')"
-								@click="seeRows([ex.rowId])"
-							/>
+							<N8nButton variant="ghost" size="small" @click="seeRows([ex.rowId])">
+								{{ i18n.baseText('agents.builder.agentChecks.onboarding.seeConversation') }}
+							</N8nButton>
 						</div>
 						<div :class="$style.proposal">
 							<span :class="$style.label">{{
@@ -1052,7 +1076,7 @@ onBeforeUnmount(() => {
 							</p>
 							<div :class="$style.acts">
 								<N8nButton
-									variant="solid"
+									:variant="needWork.length > 1 ? 'outline' : 'solid'"
 									size="small"
 									:loading="busy"
 									data-testid="agent-checks-fix-one"
@@ -1160,6 +1184,19 @@ onBeforeUnmount(() => {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	text-wrap: balance;
+}
+
+.heading {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+// Who ran it, in one quiet line under the title.
+.caption {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
 }
 
 .muted {

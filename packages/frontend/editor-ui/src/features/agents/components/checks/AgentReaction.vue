@@ -13,8 +13,10 @@ const props = withDefaults(
 		size?: 'xs' | 'row' | 'sm' | 'md';
 		/** Bob like a waiting head while keeping this face (the fixing step's worried head). */
 		moving?: boolean;
+		/** Keep the face but drop its colour, so only what needs attention stands out in a stack. */
+		quiet?: boolean;
 	}>(),
-	{ size: 'row', moving: false },
+	{ size: 'row', moving: false, quiet: false },
 );
 
 const i18n = useI18n();
@@ -49,7 +51,12 @@ const label = computed(() => {
 
 <template>
 	<span
-		:class="[$style.head, $style[kind], $style[size], { [$style.moving]: moving }]"
+		:class="[
+			$style.head,
+			quiet ? undefined : $style[kind],
+			$style[size],
+			{ [$style.moving]: moving },
+		]"
 		:style="kind === 'waiting' || moving ? motion : undefined"
 		role="img"
 		:aria-label="label"
@@ -125,10 +132,11 @@ const label = computed(() => {
 	color: var(--text-color--success);
 }
 
+// Needs work is a nudge, not an error: the purple n8n uses for waiting on you.
 .needs_work {
-	background: var(--background--warning);
-	border-color: var(--border-color--warning);
-	color: var(--text-color--warning);
+	background: var(--callout--color--background--secondary);
+	border-color: var(--callout--border-color--secondary);
+	color: var(--callout--color--text--secondary);
 }
 
 .failed {

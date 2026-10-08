@@ -21,6 +21,8 @@ const props = defineProps<{
 	running?: boolean;
 	disabled?: boolean;
 	canRun?: boolean;
+	/** The toolbar's Apply all is the primary action, so this row's Apply is outline. */
+	secondaryApply?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,7 +41,7 @@ const ruleDraft = ref('');
 const addingExample = ref(false);
 const exampleDraft = ref('');
 
-// A thumbs-down on a passing reply opens the rule to say what should have happened;
+// "Not right" on a passing reply opens the check to say what should have happened;
 // saving it then checks the example again against the new words.
 const recheckAfterSave = ref(false);
 const startRuleEdit = (recheck = false) => {
@@ -300,7 +302,7 @@ const pick = (index: number) => {
 				</p>
 				<div :class="$style.actions">
 					<N8nButton
-						variant="solid"
+						:variant="secondaryApply ? 'outline' : 'solid'"
 						size="small"
 						:disabled="disabled"
 						data-testid="agent-check-fix"
@@ -428,7 +430,8 @@ const pick = (index: number) => {
 }
 
 .bad {
-	color: var(--text-color--danger);
+	// The link token is the purple that stays readable in dark mode.
+	color: var(--link--color--secondary);
 }
 
 .good {

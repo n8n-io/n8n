@@ -4,7 +4,7 @@
  * so the grouping and status rules are testable on their own.
  */
 import { AGENT_EVAL_VERDICT_METRIC, agentEvalVerdictSchema } from '@n8n/api-types';
-import type { AgentEvalVerdict } from '@n8n/api-types';
+import type { AgentEvalVerdict, AgentJsonConfig } from '@n8n/api-types';
 
 import { formatToolNameForDisplay } from './toolDisplayName';
 import type {
@@ -219,4 +219,30 @@ export const toolCallParts = (
 		tool: formatToolNameForDisplay(call.tool),
 		detail: typeof detail === 'string' && detail.length > 0 ? detail : null,
 	};
+};
+
+const CHANNEL_NAMES: Record<string, string> = {
+	slack: 'Slack',
+	telegram: 'Telegram',
+	linear: 'Linear',
+	discord: 'Discord',
+};
+
+/**
+ * What a practice run keeps the agent from really using, by the names people know:
+ * channels first, then node tools by their node's display name. Unique, in order.
+ */
+export const connectedNames = (
+	config: Pick<AgentJsonConfig, 'integrations' | 'tools'>,
+	nodeDisplayName: (nodeType: string) => string | undefined,
+): string[] => {
+	const channels = (config.integrations ?? []).map(
+		(integration) => CHANNEL_NAMES[integration.type] ?? integration.type,
+	);
+	const tools = (config.tools ?? []).flatMap((tool) => {
+		if (tool.type !== 'node') return [];
+		const name = nodeDisplayName(tool.node.nodeType)?.replace(/\s+Tool$/, '');
+		return name ? [name] : [];
+	});
+	return [...new Set([...channels, ...tools])];
 };
