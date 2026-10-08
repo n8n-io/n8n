@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { VIEWS } from '@/app/constants';
@@ -73,6 +73,10 @@ describe('useFavoriteCommands', () => {
 		];
 	});
 
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
 	it('maps favorite items with a route to commands in the favorites section', () => {
 		expect(useFavoriteCommands().commands.value).toEqual([
 			{
@@ -105,7 +109,7 @@ describe('useFavoriteCommands', () => {
 	});
 
 	it('opens a favorite workflow with a full page load', async () => {
-		Object.defineProperty(window, 'location', { value: { href: '' }, writable: true });
+		vi.stubGlobal('location', { href: '' });
 
 		await useFavoriteCommands().commands.value[0].handler?.();
 
