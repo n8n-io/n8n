@@ -20,7 +20,7 @@ import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-eve
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
-import type { SeededStep, TriggerOutputs } from '../execution.types';
+import type { SeededSteps, TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
@@ -72,7 +72,7 @@ describe('step execution (integration)', () => {
 		}: {
 			workflowId?: string;
 			graph?: WorkflowGraph;
-			seededSteps?: SeededStep[];
+			seededSteps?: SeededSteps;
 			lifecycleEventCallback?: LifecycleEventCallback;
 			waitSweepIntervalMs?: number;
 			/**
@@ -456,13 +456,14 @@ describe('step execution (integration)', () => {
 			],
 		};
 		// Two passes over two items, then the done pass carrying what came back.
-		const seededSteps: SeededStep[] = [
-			{ nodeId: 'loop', iteration: 0, outputs: [null, [{ json: { item: 1 } }]] },
-			{ nodeId: 'loop', iteration: 1, outputs: [null, [{ json: { item: 2 } }]] },
-			{ nodeId: 'loop', iteration: 2, outputs: [[{ json: { x: 1 } }, { json: { x: 2 } }], null] },
-			{ nodeId: 'x', iteration: 0, outputs: [[{ json: { x: 1 } }]] },
-			{ nodeId: 'x', iteration: 1, outputs: [[{ json: { x: 2 } }]] },
-		];
+		const seededSteps: SeededSteps = {
+			loop: [
+				[null, [{ json: { item: 1 } }]],
+				[null, [{ json: { item: 2 } }]],
+				[[{ json: { x: 1 } }, { json: { x: 2 } }], null],
+			],
+			x: [[[{ json: { x: 1 } }]], [[{ json: { x: 2 } }]]],
+		};
 		const requests: StepExecutionRequest[] = [];
 		const executor: IStepExecutor = {
 			execute: async (request) => {

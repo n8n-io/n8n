@@ -5226,13 +5226,9 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(startExecution).toHaveBeenCalledWith(
 				objectContaining({
 					triggerOutputs: [[{ json: { from: 'earlier' } }]],
-					seededSteps: [
-						{
-							nodeId: setNode?.id,
-							iteration: 0,
-							outputs: [[{ json: { pinned: true }, pairedItem: { item: 0 } }]],
-						},
-					],
+					seededSteps: {
+						[setNode?.id ?? '']: [[[{ json: { pinned: true }, pairedItem: { item: 0 } }]]],
+					},
 				}),
 			);
 		});

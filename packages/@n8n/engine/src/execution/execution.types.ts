@@ -110,17 +110,14 @@ export type WorkflowDocument = JsonObject;
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
 
 /**
- * A step the caller already holds the outputs of, so the engine records it as
- * completed at start instead of running it: a partial manual run that reuses
- * earlier results, or a node with pinned data. Same opacity as `TriggerOutputs`.
- * A node inside a loop is seeded once per pass, with the pass as `iteration`.
+ * Steps the caller already holds the outputs of, by node id, so the engine
+ * records each as completed at start instead of running it: a partial manual
+ * run that reuses earlier results, or a node with pinned data. Same opacity as
+ * `TriggerOutputs`. Each node maps to its outputs per pass, iteration 0 first,
+ * so a node outside a loop has one entry and a loop member has one per pass.
+ * The shape leaves no room for a repeated or missing pass.
  */
-export interface SeededStep {
-	nodeId: string;
-	/** The loop pass the outputs belong to. Defaults to 0, the only pass outside a loop. */
-	iteration?: number;
-	outputs: StepSlots;
-}
+export type SeededSteps = Record<string, StepSlots[]>;
 
 /**
  * A step's declaration that it is not done: instead of outputs, it says when

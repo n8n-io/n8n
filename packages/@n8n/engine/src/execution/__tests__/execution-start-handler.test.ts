@@ -284,7 +284,7 @@ describe('ExecutionStartHandler lifecycle events', () => {
 				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
 			],
 		};
-		const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { reused: true } }]] }];
+		const seededSteps = { a: [[[{ json: { reused: true } }]]] };
 
 		it('records seeded steps as completed beside the trigger and announces each one', async () => {
 			const executionStore = makeExecutionStore({
@@ -318,17 +318,15 @@ describe('ExecutionStartHandler lifecycle events', () => {
 			});
 		});
 
-		it('records a seeded step at the iteration it names', async () => {
+		it('records one row per seeded pass, iteration 0 first', async () => {
+			const passes = [[[{ json: { pass: 0 } }]], [[{ json: { pass: 1 } }]]];
 			const executionStore = makeExecutionStore({
-				loadExecution: vi
-					.fn()
-					.mockResolvedValue(
-						record(graph, { seededSteps: [{ nodeId: 'a', iteration: 2, outputs: [] }] }),
-					),
+				loadExecution: vi.fn().mockResolvedValue(record(graph, { seededSteps: { a: passes } })),
 			});
 			const createSteps = vi.fn().mockResolvedValue([
 				{ id: 'step-trigger', nodeId: 'trigger', iteration: 0 },
-				{ id: 'step-a', nodeId: 'a', iteration: 2 },
+				{ id: 'step-a-0', nodeId: 'a', iteration: 0 },
+				{ id: 'step-a-1', nodeId: 'a', iteration: 1 },
 			]);
 			const handler = makeHandler(
 				executionStore,
@@ -340,7 +338,8 @@ describe('ExecutionStartHandler lifecycle events', () => {
 
 			expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
 				{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [] },
-				{ nodeId: 'a', iteration: 2, status: 'completed', outputs: [] },
+				{ nodeId: 'a', iteration: 0, status: 'completed', outputs: passes[0] },
+				{ nodeId: 'a', iteration: 1, status: 'completed', outputs: passes[1] },
 			]);
 		});
 

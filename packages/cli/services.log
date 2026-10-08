@@ -1,0 +1,18 @@
+$ tsx ./n8n-start-stack.ts --services-only --services postgres,redis
+
+[1m[36mStarting service containers[0m
+
+[34mℹ[0m Project: n8n-svc-z9e9gf
+[34mℹ[0m Services: postgres, redis
+[32m✓[0m Stack ready (5.43s, 2 containers, 2 services)
+[32m✓[0m Wrote 13 env vars to packages/cli/bin/.env
+
+[1m[36mServices running[0m
+
+[32m✓[0m postgres: DB_TYPE=postgresdb, DB_POSTGRESDB_HOST=localhost, DB_POSTGRESDB_PORT=55422, DB_POSTGRESDB_DATABASE=n8n_db, DB_POSTGRESDB_USER=n8n_user, DB_POSTGRESDB_PASSWORD=test_password
+[32m✓[0m redis: EXECUTIONS_MODE=queue, QUEUE_BULL_REDIS_HOST=localhost, QUEUE_BULL_REDIS_PORT=55423, N8N_CACHE_ENABLED=true, N8N_CACHE_BACKEND=redis, N8N_CACHE_REDIS_HOST=localhost, N8N_CACHE_REDIS_PORT=55423
+
+[34mℹ[0m Containers are running in the background
+[34mℹ[0m Run [1mpnpm dev[0m in another terminal to start n8n
+[34mℹ[0m Cleanup: [1mpnpm --filter n8n-containers services:clean[0m
+

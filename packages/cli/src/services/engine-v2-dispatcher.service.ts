@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { SeededStep, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
 import type {
 	INode,
 	INodeExecutionData,
@@ -25,6 +25,7 @@ import {
 import {
 	EngineV2ManualRunPlanner,
 	type ManualRunPlan,
+	type SeededNode,
 } from '@/services/engine-v2-manual-run-planner';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
@@ -41,6 +42,15 @@ type FiredTrigger = {
 
 /** A run that is ready to send to the data plane. */
 type PreparedStart = { executionId: ExecutionIdV2; request: StartExecutionRequest };
+
+/** One entry per node, its passes in iteration order; the planner numbers them from 0 without gaps. */
+function toSeededSteps(seeded: SeededNode[], toStepOutputs: ToStepOutputs): SeededSteps {
+	const byNode: SeededSteps = {};
+	for (const { nodeId, iteration, outputs } of seeded) {
+		(byNode[nodeId] ??= [])[iteration] = toStepOutputs(outputs);
+	}
+	return byNode;
+}
 
 /** Execution modes the v2 path serves today. */
 const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook', 'trigger']);
@@ -162,13 +172,9 @@ export class EngineV2Dispatcher {
 		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
 			allowNonTriggerRoot: plan !== undefined,
 		});
-		const seededSteps: SeededStep[] | undefined = plan?.seeded.map(
-			({ nodeId, iteration, outputs }) => ({
-				nodeId,
-				iteration,
-				outputs: toStepOutputs(outputs),
-			}),
-		);
+		const seededSteps: SeededSteps | undefined = plan
+			? toSeededSteps(plan.seeded, toStepOutputs)
+			: undefined;
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.

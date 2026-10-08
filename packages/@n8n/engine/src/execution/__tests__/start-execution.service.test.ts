@@ -4,7 +4,7 @@ import { AdmittanceRejectedError, type AdmittanceService } from '../../admittanc
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionStore } from '../execution-store';
-import type { WorkflowDocument } from '../execution.types';
+import type { SeededSteps, WorkflowDocument } from '../execution.types';
 import { StartExecutionService } from '../start-execution.service';
 
 const sampleGraph: WorkflowGraph = {
@@ -232,7 +232,7 @@ describe('StartExecutionService', () => {
 		it('persists the seeded steps with the execution', async () => {
 			const store = makeStore();
 			const service = new StartExecutionService(admittance, store, makeQueue());
-			const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { from: 'earlier' } }]] }];
+			const seededSteps = { a: [[[{ json: { from: 'earlier' } }]]] };
 
 			await service.start({ ...base, seededSteps });
 
@@ -248,26 +248,21 @@ describe('StartExecutionService', () => {
 			const queue = makeQueue();
 			const service = new StartExecutionService(admittance, store, queue);
 
-			await expect(
-				service.start({ ...base, seededSteps: [{ nodeId, outputs: [] }] }),
-			).rejects.toThrow(GraphValidationError);
+			await expect(service.start({ ...base, seededSteps: { [nodeId]: [[]] } })).rejects.toThrow(
+				GraphValidationError,
+			);
 			expect(store.createExecution).not.toHaveBeenCalled();
 			expect(queue.publish).not.toHaveBeenCalled();
 		});
 
-		it('rejects a node outside any loop seeded at iteration 1', async () => {
+		it.each([
+			{ name: 'no passes', passes: [], reason: /no passes/ },
+			{ name: 'two passes', passes: [[], []], reason: /outside any loop/ },
+		])('rejects a node outside any loop seeded with $name', async ({ passes, reason }) => {
 			const store = makeStore();
 			const service = new StartExecutionService(admittance, store, makeQueue());
 
-			await expect(
-				service.start({
-					...base,
-					seededSteps: [
-						{ nodeId: 'a', iteration: 0, outputs: [] },
-						{ nodeId: 'a', iteration: 1, outputs: [] },
-					],
-				}),
-			).rejects.toThrow(/outside any loop/);
+			await expect(service.start({ ...base, seededSteps: { a: passes } })).rejects.toThrow(reason);
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 
@@ -287,26 +282,16 @@ describe('StartExecutionService', () => {
 					{ from: 'loop', to: 'd', outputIndex: 0, inputIndex: 0 },
 				],
 			};
-			const looping = (iteration: number) => ({
-				nodeId: 'loop',
-				iteration,
-				outputs: [null, [{ json: { pass: iteration } }]],
-			});
-			const done = (iteration: number) => ({
-				nodeId: 'loop',
-				iteration,
-				outputs: [[{ json: { done: true } }], null],
-			});
-			const member = (iteration: number) => ({
-				nodeId: 'x',
-				iteration,
-				outputs: [[{ json: { pass: iteration } }]],
-			});
+			/** A batch node pass that fills its loop slot. */
+			const looping = (pass: number) => [null, [{ json: { pass } }]];
+			/** The batch node's last pass: the done slot fires instead. */
+			const done = [[{ json: { done: true } }], null];
+			const member = (pass: number) => [[{ json: { pass } }]];
 
 			it('accepts a loop seeded whole: the batch node on every pass and the members on all but the last', async () => {
 				const store = makeStore();
 				const service = new StartExecutionService(admittance, store, makeQueue());
-				const seededSteps = [looping(0), looping(1), done(2), member(0), member(1)];
+				const seededSteps = { loop: [looping(0), looping(1), done], x: [member(0), member(1)] };
 
 				await service.start({ ...base, graph: loopGraph, seededSteps });
 
@@ -315,38 +300,35 @@ describe('StartExecutionService', () => {
 				);
 			});
 
-			it.each([
+			const rejected: Array<{ name: string; seededSteps: SeededSteps; reason: RegExp }> = [
 				{
 					name: 'a member without its batch node',
-					seededSteps: [member(0)],
+					seededSteps: { x: [member(0)] },
 					reason: /batch node of its loop, is not/,
 				},
 				{
 					name: 'a member with fewer passes than the batch node',
-					seededSteps: [looping(0), looping(1), done(2), member(0)],
+					seededSteps: { loop: [looping(0), looping(1), done], x: [member(0)] },
 					reason: /seeded for 1 passes .* which has 2/,
 				},
 				{
 					name: 'a member with a pass for the last iteration',
-					seededSteps: [looping(0), done(1), member(0), member(1)],
+					seededSteps: { loop: [looping(0), done], x: [member(0), member(1)] },
 					reason: /seeded for 2 passes .* which has 1/,
 				},
 				{
 					name: 'a batch node whose last pass still fills its loop slot',
-					seededSteps: [looping(0), looping(1), member(0), member(1)],
+					seededSteps: { loop: [looping(0), looping(1)], x: [member(0), member(1)] },
 					reason: /has not ended/,
 				},
 				{
 					name: 'a batch node that ended the loop before its last seeded pass',
-					seededSteps: [done(0), done(1), member(0)],
+					seededSteps: { loop: [done, done], x: [member(0)] },
 					reason: /the loop ended there/,
 				},
-				{
-					name: 'a member with a gap in its iterations',
-					seededSteps: [looping(0), looping(1), done(2), member(0), member(2)],
-					reason: /at iteration 2 but not at iteration 1/,
-				},
-			])('rejects $name', async ({ seededSteps, reason }) => {
+			];
+
+			it.each(rejected)('rejects $name', async ({ seededSteps, reason }) => {
 				const store = makeStore();
 				const service = new StartExecutionService(admittance, store, makeQueue());
 
@@ -355,22 +337,6 @@ describe('StartExecutionService', () => {
 				);
 				expect(store.createExecution).not.toHaveBeenCalled();
 			});
-		});
-
-		it('rejects the same node seeded twice', async () => {
-			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
-
-			await expect(
-				service.start({
-					...base,
-					seededSteps: [
-						{ nodeId: 'a', outputs: [] },
-						{ nodeId: 'a', outputs: [] },
-					],
-				}),
-			).rejects.toThrow(GraphValidationError);
-			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 	});
 });
