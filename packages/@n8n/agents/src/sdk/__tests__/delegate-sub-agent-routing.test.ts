@@ -254,6 +254,30 @@ describe('delegate sub-agent routing', () => {
 		},
 	);
 
+	it('requires a job ID only for started background receipts', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate bounded work.')
+			.tool(
+				createDelegateSubAgentTool({
+					runBackgroundSubAgent: async () =>
+						await Promise.resolve({ status: 'started', jobId: 'job-1' }),
+				}),
+			);
+		const config = await buildAgentConfig(agent);
+		const outputSchema = config.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		)?.outputSchema;
+		if (!isZodSchema(outputSchema)) {
+			throw new Error('Expected a delegation tool with an output schema');
+		}
+
+		expect(outputSchema.safeParse({ status: 'started' }).success).toBe(false);
+		expect(outputSchema.safeParse({ status: 'started', jobId: 'job-1' }).success).toBe(true);
+		expect(outputSchema.safeParse({ status: 'limit-reached' }).success).toBe(true);
+		expect(outputSchema.safeParse({ status: 'rejected' }).success).toBe(true);
+	});
+
 	it('prefers host resume and cancellation handlers for inline delegations', async () => {
 		const hostResumeSubAgent = vi.fn().mockResolvedValue({
 			status: 'completed',

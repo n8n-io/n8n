@@ -109,11 +109,18 @@ export const delegateSubAgentOutputSchema = z.object({
 		.optional(),
 });
 
-export const delegateSubAgentBackgroundOutputSchema = z.object({
-	status: z.enum(['started', 'limit-reached', 'rejected']),
-	jobId: z.string().optional(),
-	note: z.string().optional(),
-});
+export const delegateSubAgentBackgroundOutputSchema = z.discriminatedUnion('status', [
+	z.object({
+		status: z.literal('started'),
+		jobId: z.string(),
+		note: z.string().optional(),
+	}),
+	z.object({
+		status: z.enum(['limit-reached', 'rejected']),
+		jobId: z.string().optional(),
+		note: z.string().optional(),
+	}),
+]);
 
 const delegateSubAgentContinuationSchema = z.object({
 	runId: z.string(),
