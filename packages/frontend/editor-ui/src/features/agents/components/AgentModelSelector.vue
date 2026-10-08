@@ -6,7 +6,7 @@ import {
 	type AiModelSelectorMenuItem,
 	type AiModelSelectorMenuItemData,
 } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -14,8 +14,11 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailabilityScope } from '@n8n/api-types';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/api-types';
+import {
+	SCOPE_LABEL_KEY,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
@@ -215,30 +218,23 @@ const freeOpenAiCreditsDescription = computed(() =>
 	}),
 );
 
-const SCOPE_LINE_KEY: Record<CredentialTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
-};
+function getProviderRestriction(provider: AgentModelProvider): CredentialTypeAvailability | null {
+	const availabilities = getProviderCredentialTypes(provider).map((credentialType) =>
+		typeAvailabilityPoliciesStore.getCredentialTypeAvailability(credentialType),
+	);
 
-function getProviderRestriction(
-	provider: AgentModelProvider,
-): { scope?: CredentialTypeAvailabilityScope } | null {
-	const credentialTypes = getProviderCredentialTypes(provider);
-	const unavailable = credentialTypes
-		.map((credentialType) =>
-			typeAvailabilityPoliciesStore.getCredentialTypeAvailability(credentialType),
-		)
-		.filter((availability) => !availability.available);
-
-	return unavailable.length === credentialTypes.length ? { scope: unavailable[0].scope } : null;
+	return availabilities.every((availability) => !availability.available) ? availabilities[0] : null;
 }
 
-const selectedProviderRestriction = computed(() =>
-	selectedModel ? getProviderRestriction(selectedModel.provider) : null,
+const restrictedLabel = computed(() =>
+	selectedModel && getProviderRestriction(selectedModel.provider)
+		? i18n.baseText('agents.modelSelector.restricted')
+		: undefined,
 );
 
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
+	const credentialTypes = getProviderCredentialTypes(provider);
 	const restriction = getProviderRestriction(provider);
 	if (restriction) {
 		return {
@@ -247,10 +243,8 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 			disabled: true,
 			data: {
 				provider,
-				credentialType: getProviderCredentialTypes(provider)[0],
-				restriction: {
-					label: i18n.baseText(SCOPE_LINE_KEY[restriction.scope ?? 'instance']),
-				},
+				credentialType: credentialTypes[0],
+				restrictedLabel: i18n.baseText(SCOPE_LABEL_KEY[restriction.scope ?? 'instance']),
 			},
 		};
 	}
@@ -259,7 +253,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = modelsByProvider[provider]?.models ?? [];
 	const modelsUnavailable = modelsByProvider[provider]?.unavailable === true;
-	const credentialTypes = getProviderCredentialTypes(provider);
 	const isAiGatewayManagedSelected = selectedProviderCredentialId === AI_GATEWAY_MANAGED_TAG;
 	const hasProviderCredential =
 		isAiGatewayManagedSelected ||
@@ -700,9 +693,7 @@ defineExpose({
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"
-		:restricted-label="
-			selectedProviderRestriction ? i18n.baseText('agents.modelSelector.restricted') : undefined
-		"
+		:restricted-label="restrictedLabel"
 		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
 		:disabled="disabled"
 		data-test-id="agent-model-selector"

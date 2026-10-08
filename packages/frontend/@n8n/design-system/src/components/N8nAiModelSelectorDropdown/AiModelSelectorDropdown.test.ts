@@ -152,7 +152,7 @@ describe('N8nAiModelSelectorDropdown', () => {
 						id: 'anthropic',
 						label: 'Anthropic',
 						disabled: true,
-						data: { restriction: { label: 'Restricted on this instance' } },
+						data: { restrictedLabel: 'Restricted on this instance' },
 					},
 				],
 			},

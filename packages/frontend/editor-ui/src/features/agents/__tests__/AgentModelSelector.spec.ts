@@ -29,7 +29,7 @@ type TestMenuItem = {
 		credentialType?: string;
 		provider?: string;
 		connectedLabel?: string;
-		restriction?: { label: string };
+		restrictedLabel?: string;
 	};
 };
 
@@ -101,7 +101,8 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>()),
 	useTypeAvailabilityPoliciesStore: () => ({
 		getCredentialTypeAvailability: (name: string) => {
 			const scope = restrictedCredentialTypes.value[name];
@@ -362,7 +363,7 @@ describe('AgentModelSelector', () => {
 
 		expect(getProviderItem(wrapper, 'openai')).toMatchObject({
 			disabled: true,
-			data: { restriction: { label: 'Restricted on this instance' } },
+			data: { restrictedLabel: 'Restricted on this instance' },
 		});
 		expect(getProviderItem(wrapper, 'openai')?.children).toBeUndefined();
 		expect(getProviderItem(wrapper, 'anthropic')?.children?.length).toBeGreaterThan(0);
@@ -373,9 +374,9 @@ describe('AgentModelSelector', () => {
 
 		const wrapper = await mountSelector({ anthropic: null });
 
-		expect(getProviderItem(wrapper, 'openai')?.data?.restriction).toEqual({
-			label: 'Restricted in this project',
-		});
+		expect(getProviderItem(wrapper, 'openai')?.data?.restrictedLabel).toBe(
+			'Restricted in this project',
+		);
 	});
 
 	it('keeps a multi-credential-type provider usable while one type is still allowed', async () => {

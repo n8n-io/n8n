@@ -137,7 +137,7 @@ defineExpose({
 						</N8nText>
 						<span v-if="isLoading" :class="$style.loading"></span>
 						<N8nBadge
-							v-if="restrictedLabel && !isLoading"
+							v-else-if="restrictedLabel"
 							variant="danger"
 							size="small"
 							:class="$style.credsBadge"
@@ -146,7 +146,7 @@ defineExpose({
 							{{ restrictedLabel }}
 						</N8nBadge>
 						<N8nBadge
-							v-else-if="credentialsMissing && !isLoading"
+							v-else-if="credentialsMissing"
 							variant="danger"
 							size="small"
 							:class="$style.credsBadge"
@@ -154,7 +154,7 @@ defineExpose({
 							{{ resolvedCredentialsMissingLabel }}
 						</N8nBadge>
 						<N8nText
-							v-else-if="selectedCredentialName && !isLoading"
+							v-else-if="selectedCredentialName"
 							bold
 							color="text-light"
 							:data-test-id="credentialDataTestId"
@@ -228,19 +228,19 @@ defineExpose({
 					</span>
 				</div>
 				<N8nText
-					v-if="item.data?.restriction"
+					v-if="item.data?.restrictedLabel"
 					size="small"
 					color="text-light"
 					data-test-id="ai-model-selector-restriction"
 				>
-					{{ item.data.restriction.label }}
+					{{ item.data.restrictedLabel }}
 				</N8nText>
 			</div>
 		</template>
 
 		<template #item-trailing="{ item, ui }">
 			<N8nIcon
-				v-if="item.data?.restriction"
+				v-if="item.data?.restrictedLabel"
 				icon="lock"
 				size="small"
 				color="text-light"
