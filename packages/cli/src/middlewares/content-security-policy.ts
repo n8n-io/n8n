@@ -71,17 +71,30 @@ const copyWriteHeadHeaders = (res: Response, args: unknown[]) => {
 		return;
 	}
 
+	const entries: Array<[string, number | string | string[]]> = [];
+	const collect = (name: unknown, value: unknown) => {
+		if (typeof name === 'string' && isHeaderValue(value)) entries.push([name, value]);
+	};
+
 	if (headers.every(isHeaderEntry)) {
 		// `[name, value]` pairs, the documented array form.
-		for (const [name, value] of headers) {
-			if (typeof name === 'string' && isHeaderValue(value)) res.setHeader(name, value);
-		}
+		for (const [name, value] of headers) collect(name, value);
 	} else {
 		// Alternating names and values.
-		for (let i = 0; i + 1 < headers.length; i += 2) {
-			const [name, value] = [headers[i], headers[i + 1]];
-			if (typeof name === 'string' && isHeaderValue(value)) res.setHeader(name, value);
-		}
+		for (let i = 0; i + 1 < headers.length; i += 2) collect(headers[i], headers[i + 1]);
+	}
+
+	// Group repeated names into one call with every value: the array is consumed
+	// below, so setting them one by one would drop all but the last value.
+	const valuesByName = new Map<string, { name: string; values: string[] }>();
+	for (const [name, value] of entries) {
+		const key = name.toLowerCase();
+		const group = valuesByName.get(key) ?? { name, values: [] };
+		valuesByName.set(key, group);
+		group.values.push(...[value].flat().map(String));
+	}
+	for (const { name, values } of valuesByName.values()) {
+		res.setHeader(name, values.length === 1 ? values[0] : values);
 	}
 	args[headersIndex] = {};
 };

@@ -77,6 +77,20 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.end('export {};');
 	});
 
+	app.get('/raw-cookies-array-headers', (_req, res) => {
+		res.writeHead(200, [
+			['Content-Type', 'text/html'],
+			['Set-Cookie', 'a=1'],
+			['Set-Cookie', 'b=2'],
+		]);
+		res.end('<p>cookies</p>');
+	});
+
+	app.get('/raw-cookies-flat-headers', (_req, res) => {
+		res.writeHead(200, ['Content-Type', 'text/html', 'Set-Cookie', 'a=1', 'Set-Cookie', 'b=2']);
+		res.end('<p>cookies</p>');
+	});
+
 	app.get('/typed', (req, res) => {
 		res.setHeader('Content-Type', String(req.query.type));
 		res.end('<p>typed</p>');
@@ -214,6 +228,20 @@ describe('createContentSecurityPolicyMiddleware', () => {
 
 			expect(response.headers['content-type']).toBe('application/javascript');
 			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should keep every value of a repeated array-form header', async () => {
+			const response = await request(app).get('/raw-cookies-array-headers');
+
+			expect(response.headers['set-cookie']).toEqual(['a=1', 'b=2']);
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+		});
+
+		it('should keep every value of a repeated flat-array header', async () => {
+			const response = await request(app).get('/raw-cookies-flat-headers');
+
+			expect(response.headers['set-cookie']).toEqual(['a=1', 'b=2']);
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
 		});
 
 		it('should not serve a policy when writeHead carries a 304 status', async () => {
