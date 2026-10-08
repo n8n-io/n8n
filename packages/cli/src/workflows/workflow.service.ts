@@ -35,6 +35,7 @@ import {
 	staticErrorWorkflowId,
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
@@ -135,6 +136,11 @@ export class WorkflowService {
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
+<<<<<<< HEAD
+=======
+		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 	) {}
 
 	/**
@@ -608,6 +614,14 @@ export class WorkflowService {
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 				rules,
+			);
+		}
+
+		if (hasNodesKey && nodesChanged) {
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				workflowUpdateData.nodes,
+				workflow.nodes,
+				workflow.id,
 			);
 		}
 
