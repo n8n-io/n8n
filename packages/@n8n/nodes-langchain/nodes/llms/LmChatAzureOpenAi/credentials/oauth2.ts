@@ -2,13 +2,14 @@ import { getBearerTokenProvider } from '@azure/identity';
 import { NodeOperationError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from './N8nOAuth2TokenCredential';
+import { normalizeEndpoint } from './normalizeEndpoint';
+import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type {
 	AzureEntraCognitiveServicesOAuth2ApiCredential,
 	AzureOpenAIOAuth2ModelConfig,
 } from '../types';
-import { AZURE_OPENAI_INFERENCE_AUDIENCE } from '../types';
+import { AZURE_OPENAI_INFERENCE_SCOPE } from '../types';
 
-const AZURE_OPENAI_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
 /**
  * Creates Entra ID (OAuth2) authentication for Azure OpenAI
  */
@@ -30,7 +31,10 @@ export async function setupOAuth2Authentication(
 
 		// getBearerTokenProvider caches the token across calls. It requires a scope, but the
 		// audience comes from the credential above; the v1.0 endpoint reads `resource`, not `scope`.
-		const azureADTokenProvider = getBearerTokenProvider(entraTokenCredential, AZURE_OPENAI_SCOPE);
+		const azureADTokenProvider = getBearerTokenProvider(
+			entraTokenCredential,
+			AZURE_OPENAI_INFERENCE_SCOPE,
+		);
 
 		this.logger.debug('Successfully created Azure AD Token Provider.');
 
@@ -38,9 +42,14 @@ export async function setupOAuth2Authentication(
 			azureADTokenProvider,
 			azureOpenAIApiInstanceName: deploymentDetails.resourceName,
 			azureOpenAIApiVersion: deploymentDetails.apiVersion,
-			azureOpenAIEndpoint: deploymentDetails.endpoint,
+			azureOpenAIEndpoint: normalizeEndpoint(deploymentDetails.endpoint),
 			...(deploymentDetails.endpointType === 'foundry' && deploymentDetails.foundryEndpoint
-				? { azureFoundryBaseURL: deploymentDetails.foundryEndpoint }
+				? {
+						azureFoundryBaseURL: requireFoundryEndpoint(
+							this.getNode(),
+							deploymentDetails.foundryEndpoint,
+						),
+					}
 				: {}),
 		};
 	} catch (error) {

@@ -106,13 +106,18 @@ describe('AgentWorkflowToolResumeService production n8n Chat', () => {
 		expect(orchestratorService.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({
 				usePublishedVersion: true,
-				source: 'n8n_chat_production',
+				chatSurface: 'n8n-chat',
 				user: expect.objectContaining({ id: 'user-1' }),
 				expectedMemory: {
 					threadId: previewRun.threadId,
 					resourceId: 'n8n-chat-production:user-1',
 				},
 			}),
+		);
+		// The caller no longer stamps the source itself; the orchestrator
+		// derives it from the chat surface.
+		expect(orchestratorService.resumeForChat).not.toHaveBeenCalledWith(
+			expect.objectContaining({ source: expect.anything() }),
 		);
 	});
 
@@ -411,7 +416,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 	// MCP and AI Assistant test runs are `n8n_chat` too. They must resume on the
 	// runtime they started on, without the preview chat's extra instructions.
 	it.each([
-		['the preview chat', { ...previewRun, previewChat: true }, true],
+		['the preview chat', { ...previewRun, previewChat: true }, 'preview' as const],
 		['another draft surface', previewRun, undefined],
 	])('carries the preview flag of %s into the resume', async (_label, run, expected) => {
 		const { service, userRepository, agentTestRunService } = setup();
@@ -421,7 +426,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		await service.resume(run, 'success');
 
 		expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith(
-			expect.objectContaining({ previewChat: expected }),
+			expect.objectContaining({ chatSurface: expected }),
 		);
 	});
 
@@ -497,14 +502,15 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 
 	it('settles the job with only the last node’s output serialized', async () => {
 		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('success');
 
-		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
+		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'completed',
-			result: '{"Set":[{"ok":true}]}',
-			error: null,
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
+			ctx.runData.data.resultData.runData,
+		);
 	});
 
 	it('does not settle a success callback for a run that has not finished', async () => {
@@ -524,11 +530,11 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 
 		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'failed',
-			result: null,
-			error: 'boom',
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'failed', result: null, error: 'boom' },
+			ctx.runData.data.resultData.runData,
+		);
 	});
 
 	it('does not settle while the execution is still waiting', async () => {

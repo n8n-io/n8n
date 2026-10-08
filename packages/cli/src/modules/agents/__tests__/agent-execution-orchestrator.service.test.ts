@@ -52,10 +52,13 @@ import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import { AgentBudgetAlertService } from '../agent-budget-alert.service';
+import { AgentSpendLedger } from '../budget-guardrail';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { BACKGROUND_PAUSE_USER_TURN_KEY } from '../background/sub-agent-background-state';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -239,6 +242,17 @@ function makeService(sandboxEnabled = false) {
 	const wakeService = mock<AgentWakeService>();
 	Container.set(AgentWakeService, wakeService);
 
+	// The budget guardrail resolves its ledger from the container. Stub it with
+	// an empty ledger: reads stay under every cap, and `add` reports each entry's
+	// cost as the new total so alert-crossing tests can pick a crossing amount.
+	const spendLedger = mock<AgentSpendLedger>();
+	spendLedger.read.mockResolvedValue(0);
+	spendLedger.add.mockImplementation(async (_callId, entries) =>
+		entries.map((entry) => ({ key: entry.key, totalUsd: entry.usd, previousUsd: 0 })),
+	);
+	Container.set(AgentSpendLedger, spendLedger);
+	Container.set(AgentBudgetAlertService, mock<AgentBudgetAlertService>());
+
 	executionService.canUseDraftThread.mockResolvedValue(true);
 	executionService.findThreadById.mockResolvedValue({
 		id: 'thread-1',
@@ -378,6 +392,60 @@ describe('background approvals', () => {
 				},
 			},
 		);
+	});
+
+	it('delivers a production n8n Chat approval without a bridge when the thread is still usable', async () => {
+		const { service, agentRepository, executionService, chatIntegrationService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+
+		// The production branch returns on the access check alone; it never reads the approval.
+		await service.deliverBackgroundApproval(
+			{
+				agentId,
+				projectId,
+				memory: { threadId: 'thread-1', resourceId: `n8n-chat-production:${userId}` },
+				identity: {
+					type: 'published',
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					principalHash: userPrincipalHash,
+				},
+			},
+			'Research',
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+		);
+
+		expect(executionService.canUseProductionChatThread).toHaveBeenCalledWith(
+			'thread-1',
+			projectId,
+			agentId,
+			userId,
+			'existing',
+		);
+		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
+	});
+
+	it('rejects a production n8n Chat approval delivery when the agent is no longer published', async () => {
+		const { service, agentRepository, chatIntegrationService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(false);
+
+		await expect(
+			service.deliverBackgroundApproval(
+				{
+					agentId,
+					projectId,
+					memory: { threadId: 'thread-1', resourceId: `n8n-chat-production:${userId}` },
+					identity: {
+						type: 'published',
+						integrationType: N8N_CHAT_INTEGRATION_TYPE,
+						principalHash: userPrincipalHash,
+					},
+				},
+				'Research',
+				mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			),
+		).rejects.toBeInstanceOf(UserError);
+		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -532,6 +600,170 @@ describe('background approvals', () => {
 			}),
 		);
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('resumes a production n8n Chat approval without a messageContext match or a scoped user', async () => {
+		const { service, agentRepository, executionService, backgroundJobRepository, backgroundJobs } =
+			makeService(true);
+		const runner = mock<SubAgentBackgroundRunner>();
+		Container.set(SubAgentBackgroundRunner, runner);
+		Container.set(CredentialsService, mock<CredentialsService>());
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		const job = mock<AgentBackgroundJob>({
+			id: 'job-1',
+			parentAgentId: agentId,
+			parentThreadId: 'thread-1',
+			subAgentId: 'child-1',
+			childThreadId: 'child-thread-1',
+			parentResourceId: `n8n-chat-production:${userId}`,
+			parentPrincipalHash: userPrincipalHash,
+			status: 'suspended',
+		});
+		backgroundJobRepository.findById.mockResolvedValue(job);
+		backgroundJobs.getApproval.mockResolvedValue({
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			token: 'gate-1',
+			scope: { projectId, principalHash: userPrincipalHash },
+			metadata: {
+				jobId: job.id,
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				// No reply context: n8n Chat has no platform-injected message to match.
+				messageContext: null,
+			},
+		});
+		const response = { approved: true };
+
+		expect(
+			await collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					user,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: response,
+					usePublishedVersion: true,
+					source: 'n8n_chat_production',
+					chatSurface: 'n8n-chat',
+				}),
+			),
+		).toEqual([]);
+		expect(runner.resume).toHaveBeenCalledExactlyOnceWith(
+			job,
+			{ token: 'gate-1', resumeData: response },
+			expect.objectContaining({
+				projectId,
+				parentAgentId: agentId,
+				runType: 'production',
+				workflowToolExecutionMode: 'integrated',
+				user: undefined,
+			}),
+		);
+	});
+
+	it('resumes a preview approval with the user-scoped credential and no messageContext match', async () => {
+		const { service, executionService, backgroundJobRepository, backgroundJobs } =
+			makeService(true);
+		const runner = mock<SubAgentBackgroundRunner>();
+		Container.set(SubAgentBackgroundRunner, runner);
+		Container.set(CredentialsService, mock<CredentialsService>());
+		executionService.canUseDraftThread.mockResolvedValue(true);
+		const job = mock<AgentBackgroundJob>({
+			id: 'job-1',
+			parentAgentId: agentId,
+			parentThreadId: 'thread-1',
+			subAgentId: 'child-1',
+			childThreadId: 'child-thread-1',
+			parentResourceId: `draft-chat:${userId}`,
+			parentPrincipalHash: userPrincipalHash,
+			status: 'suspended',
+		});
+		backgroundJobRepository.findById.mockResolvedValue(job);
+		backgroundJobs.getApproval.mockResolvedValue({
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			token: 'gate-1',
+			scope: { projectId, principalHash: userPrincipalHash },
+			metadata: {
+				jobId: job.id,
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				// No reply context: preview chat has no platform-injected message to match either.
+				messageContext: null,
+			},
+		});
+		const response = { approved: true };
+
+		expect(
+			await collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					user,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: response,
+					usePublishedVersion: false,
+					chatSurface: 'preview',
+				}),
+			),
+		).toEqual([]);
+		expect(runner.resume).toHaveBeenCalledExactlyOnceWith(
+			job,
+			{ token: 'gate-1', resumeData: response },
+			expect.objectContaining({
+				projectId,
+				parentAgentId: agentId,
+				runType: 'test',
+				workflowToolExecutionMode: 'manual',
+				user,
+			}),
+		);
+	});
+
+	it('rejects a production n8n Chat approval resume when the agent is no longer published', async () => {
+		const { service, agentRepository, backgroundJobRepository, backgroundJobs } = makeService(true);
+		agentRepository.isN8nChatPublished.mockResolvedValue(false);
+		const job = mock<AgentBackgroundJob>({
+			id: 'job-1',
+			parentAgentId: agentId,
+			parentThreadId: 'thread-1',
+			parentResourceId: `n8n-chat-production:${userId}`,
+			parentPrincipalHash: userPrincipalHash,
+			status: 'suspended',
+		});
+		backgroundJobRepository.findById.mockResolvedValue(job);
+		backgroundJobs.getApproval.mockResolvedValue({
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			token: 'gate-1',
+			scope: { projectId, principalHash: userPrincipalHash },
+			metadata: {
+				jobId: job.id,
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext: null,
+			},
+		});
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					user,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: { approved: true },
+					usePublishedVersion: true,
+					source: 'n8n_chat_production',
+					chatSurface: 'n8n-chat',
+				}),
+			),
+		).rejects.toThrow('This agent is not available in n8n Chat');
 	});
 });
 
@@ -689,7 +921,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							resumeData: { approved: true },
 							onExecutionRecorded,
 							...(announceExecution ? { onExecutionStarted } : {}),
-							previewChat,
+							chatSurface: previewChat ? 'preview' : undefined,
 							...(onBudgetNotice ? { onBudgetNotice } : {}),
 							automaticPreviewContinuation,
 							abortSignal,
@@ -780,6 +1012,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 				if (previewChat) expect(onBudgetNotice).toHaveBeenCalledOnce();
 				else expect(onBudgetNotice).not.toHaveBeenCalled();
+				// The email path runs for every surface. Preview only adds the card.
+				expect(
+					Container.get(AgentBudgetAlertService).notifyMonthlyThreshold,
+				).toHaveBeenCalledOnce();
+				expect(Container.get(AgentBudgetAlertService).notifyMonthlyThreshold).toHaveBeenCalledWith({
+					agentId,
+					alertThresholdPercent: 80,
+				});
 			},
 		);
 
@@ -846,7 +1086,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							runId: 'run-1',
 							toolCallId: 'tc-1',
 							resumeData: { approved: true },
-							previewChat: true,
+							chatSurface: 'preview',
 							automaticPreviewContinuation: true,
 						}),
 					);
@@ -1857,11 +2097,22 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				usePublishedVersion: true,
-				allowBackgroundTasks: false,
 				attributionUserId: user.id,
+				sandboxPrincipalHash: userPrincipalHash,
 			}),
 		);
-		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeUndefined();
+		// Background tasks have parity with Preview: no `allowBackgroundTasks: false` gate.
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+			expect.not.objectContaining({ allowBackgroundTasks: expect.anything() }),
+		);
+		// n8n Chat accepts steering, same as Preview, so the turn gets an
+		// `onInputBoundary` hook to consume mid-run steered input.
+		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeInstanceOf(Function);
+		// The resume_background_jobs tool only runs this turn when the marker is set,
+		// same as Preview.
+		expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject({
+			[BACKGROUND_PAUSE_USER_TURN_KEY]: true,
+		});
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
 			'n8n-chat-production:user-1',
@@ -1876,6 +2127,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				access: { accessScope: 'user', ownerId: user.id },
 				source: 'n8n_chat_production',
 				telemetry: expect.objectContaining({ runType: 'production', userId: user.id }),
+				previewChat: undefined,
+				acceptsSteering: true,
 			}),
 			expect.any(Date),
 		);
@@ -1935,6 +2188,59 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
+	it('rejects n8n Chat when the agent is no longer published', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(false);
+
+		await expect(
+			collect(
+				service.executeForN8nChatPublished({
+					agentId,
+					projectId,
+					user,
+					message: 'Hello',
+					memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+				}),
+			),
+		).rejects.toThrow('This agent is not available in n8n Chat');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('checks publication before the resource id on a published n8n Chat turn', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(false);
+
+		await expect(
+			collect(
+				service.executeForN8nChatPublished({
+					agentId,
+					projectId,
+					user,
+					message: 'Hello',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				}),
+			),
+		).rejects.toThrow('This agent is not available in n8n Chat');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('rejects an in-app chat turn with a foreign memory scope', async () => {
+		const { service, runtimeCacheService } = makeService();
+
+		await expect(
+			collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					user,
+					message: 'Hello',
+					memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+				}),
+			),
+		).rejects.toThrow('Session not found');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
 	it('rejects a production resume with a different sandbox principal', async () => {
 		const { service, agentRepository, checkpointStorage, executionService, runtimeCacheService } =
 			makeService();
@@ -1967,6 +2273,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					usePublishedVersion: true,
 					integrationType: N8N_CHAT_INTEGRATION_TYPE,
 					source: 'n8n_chat_production',
+					chatSurface: 'n8n-chat',
 				}),
 			),
 		).rejects.toThrow('unavailable');
@@ -2714,6 +3021,94 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.any(Date),
 		);
 		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
+		// Wake runs never set the resume_background_jobs marker, even for n8n Chat.
+		expect(
+			runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata?.[
+				BACKGROUND_PAUSE_USER_TURN_KEY
+			],
+		).toBeUndefined();
+	});
+
+	it('keeps a production n8n Chat wake connected to its lease signal after admission', async () => {
+		const { service, agentRepository, executionService, runtimeCacheService } = makeService();
+		const runtime = makeRuntime();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const lease = new AbortController();
+		let abortedDuringTurn: boolean | undefined;
+		runtime.agent.stream.mockImplementation(
+			async (_input, options: { abortSignal: AbortSignal }) => {
+				// The turn is admitted before the model stream starts.
+				lease.abort();
+				abortedDuringTurn = options.abortSignal.aborted;
+				return { runId: 'runtime-run-1', stream: makeReadableStream([]) };
+			},
+		);
+
+		await service
+			.executeForWake({
+				backgroundJobSignal,
+				agentId,
+				projectId,
+				message: 'The job is done.',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					principalHash: userPrincipalHash,
+				},
+				abortSignal: lease.signal,
+			})
+			.catch(() => {});
+
+		expect(abortedDuringTurn).toBe(true);
+	});
+
+	it('throws instead of silently dropping a production n8n Chat wake that fails its published check', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(false);
+
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal,
+				agentId,
+				projectId,
+				message: 'The job is done.',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					principalHash: userPrincipalHash,
+				},
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toBeInstanceOf(OperationalError);
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('throws instead of silently dropping a production n8n Chat wake for a thread the user can no longer use', async () => {
+		const { service, agentRepository, executionService, runtimeCacheService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(false);
+
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal,
+				agentId,
+				projectId,
+				message: 'The job is done.',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					principalHash: userPrincipalHash,
+				},
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toBeInstanceOf(OperationalError);
+		// A silent return would mark the background job results consumed and lose them.
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
 	it('rejects a wake when chat delivery fails and releases the runtime', async () => {
@@ -3586,6 +3981,61 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'unknown' }),
+		);
+	});
+
+	it('records the n8n Chat source without a suspended-run lookup when the caller passes none', async () => {
+		const {
+			service,
+			agentRepository,
+			checkpointStorage,
+			runtimeCacheService,
+			executionService,
+			agentRunTracingService,
+		} = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: {
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'n8n-chat-production:user-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({
+						projectId,
+						principalHash: userPrincipalHash,
+					}),
+				},
+			},
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				user,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				usePublishedVersion: true,
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				chatSurface: 'n8n-chat',
+			}),
+		);
+
+		expect(executionService.findLatestSuspendedRun).not.toHaveBeenCalled();
+		// The published runtime resolves tools project-wide and attributes the run to the chat user.
+		const runtimeParams = runtimeCacheService.getRuntime.mock.calls[0][0];
+		expect(runtimeParams.user).toBeUndefined();
+		expect(runtimeParams.attributionUserId).toBe(user.id);
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'n8n_chat_production' }),
+		);
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'n8n_chat_production' }),
+			expect.any(Date),
 		);
 	});
 

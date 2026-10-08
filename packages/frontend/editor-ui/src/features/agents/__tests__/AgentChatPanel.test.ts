@@ -15,6 +15,14 @@ import {
 	type AgentConfigFingerprint,
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig } from '../types';
+import AgentChatPlan from '../components/AgentChatPlan.vue';
+import { planMessage, planView } from './fixtures/agent-plan';
+
+type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+const isMacOsMock = ref(false);
+vi.mock('@n8n/composables/useDeviceSupport', () => ({
+	useDeviceSupport: () => ({ isMacOs: isMacOsMock.value }),
+}));
 
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
@@ -40,9 +48,9 @@ const isStreamingMock = ref(false);
 const isSubmittingMock = ref(false);
 const isLoadingHistoryMock = ref(false);
 const trackSubmittedMessageMock = vi.fn();
+const trackSentMessageToN8nChatAgentMock = vi.fn();
 const queuedMessagesMock = ref<AgentChatQueueItem[]>([]);
 const removeQueuedMessageMock = vi.fn();
-const updateQueuedMessageMock = vi.fn();
 const reorderQueuedMessageMock = vi.fn();
 const isReorderingQueueMock = ref(false);
 const steerQueuedMessageMock = vi.fn();
@@ -51,12 +59,19 @@ const steeringQueueIdsMock = ref(new Set<string>());
 const isCancellingMock = ref(false);
 const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
 const respondToApprovalMock = vi.fn();
+const stopAllMock = vi.fn();
+const isStoppingMock = ref(false);
 const showErrorMock = vi.fn();
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
 	useAgentBackgroundJobs: () => ({
 		jobs: backgroundJobsMock,
 		respondToApproval: respondToApprovalMock,
+		stopAll: stopAllMock,
+		isStopping: isStoppingMock,
 	}),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 
@@ -68,6 +83,10 @@ const defaultAgentConfig: AgentJsonConfig = {
 	instructions: 'Help.',
 };
 
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
+}));
+
 vi.mock('@n8n/i18n', () => {
 	const baseText = (
 		key: string,
@@ -75,7 +94,7 @@ vi.mock('@n8n/i18n', () => {
 	) => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
-			'agents.chat.queue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
+			'chat.messageQueue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -83,13 +102,17 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.backgroundTasks.finished':
 				options?.adjustToNumber === 1 ? 'Background task finished' : 'Background tasks finished',
 			'agents.chat.backgroundTasks.runningCount': `Running ${options?.interpolate?.count} background ${String(options?.interpolate?.count) === '1' ? 'task' : 'tasks'}`,
+			'agents.chat.backgroundTasks.stoppingCount': `Stopping ${options?.interpolate?.count} background ${options?.adjustToNumber === 1 ? 'task' : 'tasks'}…`,
 			'agents.chat.backgroundTasks.subagent': `Sub-agent — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.workflow': `Workflow — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.viewTrace': 'View trace',
+			'agents.chat.backgroundTasks.stopAll': 'Stop all tasks',
 			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
 			'agents.chat.backgroundTasks.status.suspended': 'Waiting for approval',
 			'agents.chat.backgroundTasks.approvalFor': `Approval for ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.status.running': 'Running',
+			'agents.chat.backgroundTasks.status.stopping': 'Stopping…',
+			'agents.chat.backgroundTasks.status.paused': 'Stopped',
 			'agents.chat.backgroundTasks.status.completed': 'Completed',
 			'agents.chat.backgroundTasks.status.failed': 'Failed',
 			'agents.chat.backgroundTasks.status.cancelled': 'Canceled',
@@ -124,12 +147,14 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nCard: { template: '<div><slot /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
+	N8nHoverCard: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
 	N8nIcon: { name: 'N8nIcon', props: ['icon', 'spin'], template: '<i />' },
 	N8nIconButton: {
 		emits: ['click'],
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
+	N8nScrollArea: { template: '<div><slot /></div>' },
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	TOOLTIP_DELAY_MS: 500,
@@ -182,7 +207,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 		default: defineComponent({
 			name: 'ChatInputBase',
 			template:
-				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><textarea ref="input" /><slot name="footer-start" /></form>',
+				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><slot name="above" /><textarea ref="input" /><slot name="footer-start" /></form>',
 			props: [
 				'modelValue',
 				'placeholder',
@@ -215,15 +240,26 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages', 'canIncreaseBudget', 'budgetIncreasePending'],
+		props: ['messages', 'messagingState', 'canIncreaseBudget', 'budgetIncreasePending'],
 		emits: ['send-to-assistant', 'increase-budget'],
 	},
 }));
 
 vi.mock('../composables/useAgentChatStream', () => ({
-	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
+	useAgentChatStream: (options: {
+		channel?: { value: 'chat' | 'n8n-chat' };
+		onHistoryLoaded: (count: number) => void;
+	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
+			capabilities: computed(() => {
+				// Mirrors the composable: every capability is off on the n8n Chat channel.
+				const isPreview = options.channel?.value !== 'n8n-chat';
+				return {
+					previewHistory: isPreview,
+					traceLinks: isPreview,
+				};
+			}),
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
@@ -234,7 +270,6 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			canSteer: canSteerMock,
 			steerQueuedMessage: steerQueuedMessageMock,
 			removeQueuedMessage: removeQueuedMessageMock,
-			updateQueuedMessage: updateQueuedMessageMock,
 			reorderQueuedMessage: reorderQueuedMessageMock,
 			isReorderingQueue: isReorderingQueueMock,
 			isCancelling: isCancellingMock,
@@ -254,7 +289,10 @@ vi.mock('../composables/useAgentChatStream', () => ({
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({ trackSubmittedMessage: trackSubmittedMessageMock }),
+	useAgentTelemetry: () => ({
+		trackSubmittedMessage: trackSubmittedMessageMock,
+		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
+	}),
 }));
 
 vi.mock('../composables/agentTelemetry.utils', () => ({
@@ -273,7 +311,8 @@ vi.mock('../composables/agentTelemetry.utils', () => ({
 describe('AgentChatPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		updateQueuedMessageMock.mockReset().mockResolvedValue('updated');
+		isMacOsMock.value = false;
+		removeQueuedMessageMock.mockReset().mockResolvedValue('removed');
 		reorderQueuedMessageMock.mockReset().mockResolvedValue(undefined);
 		isReorderingQueueMock.value = false;
 		messagesMock.value = [];
@@ -285,6 +324,8 @@ describe('AgentChatPanel', () => {
 		steeringQueueIdsMock.value = new Set();
 		isCancellingMock.value = false;
 		backgroundJobsMock.value = [];
+		stopAllMock.mockReset();
+		isStoppingMock.value = false;
 		respondToApprovalMock.mockReset().mockResolvedValue(undefined);
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
@@ -301,6 +342,9 @@ describe('AgentChatPanel', () => {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 				amount: number;
 			}) => Promise<boolean>;
+			channel: 'chat' | 'n8n-chat';
+			centerEmptyState: boolean;
+			newSession: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -328,6 +372,327 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('reports the first user message, for a title before the thread has one', async () => {
+		messagesMock.value = [
+			{ id: 'm1', role: 'assistant', content: 'Hi' } as ChatMessage,
+			{ id: 'm2', role: 'user', content: 'Review my draft' } as ChatMessage,
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(wrapper.emitted('first-user-message')?.at(-1)).toEqual(['Review my draft']);
+		wrapper.unmount();
+	});
+
+	describe('centerEmptyState', () => {
+		const isCentered = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper
+				.get('aside')
+				.classes()
+				.some((c) => c.includes('centeredEmpty'));
+
+		it('centers an empty new chat, which already carries a minted session id', () => {
+			expect(
+				isCentered(
+					mountPanel({ centerEmptyState: true, newSession: true, continueSessionId: 'minted' }),
+				),
+			).toBe(true);
+		});
+
+		it('stops centering once the chat has messages', () => {
+			messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
+		});
+
+		describe('first message preview', () => {
+			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
+				wrapper.findComponent({ name: 'AgentChatMessageList' });
+
+			it('shows the first message right away, with the waiting indicator, until the run starts', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(isCentered(wrapper)).toBe(false);
+				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ role: 'user', content: 'hello agent' }),
+				]);
+				expect(messageList(wrapper).props('messagingState')).toBe('waitingFirstChunk');
+				wrapper.unmount();
+			});
+
+			it('shows it already while history loads, for a handed-off message', async () => {
+				isLoadingHistoryMock.value = true;
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not repeat the previewed message as a pending composer row', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				// The server queues the previewed message as item '1'.
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'hello agent',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await flushPromises();
+
+				expect(wrapper.text()).not.toContain('hello agent');
+				wrapper.unmount();
+			});
+
+			it('hides only the queued copy of the previewed message, keeping a second queued message visible', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				// The server queues the previewed message as item '1'.
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'hello agent',
+						createdAt: new Date().toISOString(),
+					},
+					{
+						id: '2',
+						steeringExecutionId: null,
+						message: 'second message',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await flushPromises();
+
+				const rows = wrapper.findAll('[data-testid="chat-queued-message"]');
+				expect(rows).toHaveLength(1);
+				expect(rows[0].text()).toContain('second message');
+				wrapper.unmount();
+			});
+
+			it('blocks reordering while the preview hides a queued message', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = ['1', '2', '3'].map((id) => ({
+					id,
+					steeringExecutionId: null,
+					message: id === '1' ? 'hello agent' : `message ${id}`,
+					createdAt: new Date().toISOString(),
+				}));
+				await flushPromises();
+
+				// The hidden item would be missing from the reorder's expected ids.
+				const handles = wrapper.findAll('[data-testid="chat-queue-drag-handle"]');
+				expect(handles).toHaveLength(2);
+				for (const handle of handles) {
+					expect(handle.attributes('disabled')).toBeDefined();
+				}
+				wrapper.unmount();
+			});
+
+			it('keeps the first message as the preview bubble when a second send arrives before the first run starts', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				sendMessageMock.mockReturnValueOnce(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('message one');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+
+				// A second send lands in the gap before the first run has started.
+				const input = wrapper.findComponent({ name: 'ChatInputBase' });
+				await input.vm.$emit('update:modelValue', 'message two');
+				await input.vm.$emit('submit');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not clear the first message preview when a second, unaccepted send comes back busy', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				const secondSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				sendMessageMock.mockReturnValueOnce(secondSend.promise);
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('message one');
+				await flushPromises();
+
+				const input = wrapper.findComponent({ name: 'ChatInputBase' });
+				await input.vm.$emit('update:modelValue', 'message two');
+				await input.vm.$emit('submit');
+				await flushPromises();
+
+				secondSend.resolve('busy');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('gives way to the real messages once they arrive', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				const real = [{ id: 'm1', role: 'user', content: 'hello agent' } as ChatMessage];
+				messagesMock.value = real;
+				await flushPromises();
+				messagesMock.value = [];
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('drops the preview when the send comes back busy', async () => {
+				sendMessageMock.mockResolvedValue('busy');
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('drops the preview when the send ends without being accepted', async () => {
+				sendMessageMock.mockResolvedValue('sent');
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('keeps the preview once the send is accepted, until the run adds the messages', async () => {
+				sendMessageMock.mockImplementation(
+					async (_text: string, _files: File[] | undefined, onAccepted: () => void) => {
+						onAccepted();
+						return 'sent';
+					},
+				);
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not preview outside the n8n Chat entry page', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel();
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('ignores a stale, unaccepted send after the target has moved on to a newer hand-off', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				const wrapper = mountPanel({
+					centerEmptyState: true,
+					newSession: true,
+					continueSessionId: 's1',
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+
+				// Reused for a different session before the stale first send settles.
+				await wrapper.setProps({ continueSessionId: 's2' });
+				sendMessageMock.mockReturnValueOnce(new Promise(() => {}));
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello again');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello again' }),
+				]);
+
+				// The first send's response arrives late, never accepted.
+				firstSend.resolve('sent');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello again' }),
+				]);
+				wrapper.unmount();
+			});
+		});
+
+		it('does not center a continued thread or without the prop', () => {
+			expect(isCentered(mountPanel({ centerEmptyState: true, continueSessionId: 's1' }))).toBe(
+				false,
+			);
+			expect(isCentered(mountPanel())).toBe(false);
+		});
+	});
+
+	it('drops only a blocked hand-off own files when its target is abandoned, keeping user picks', async () => {
+		isLoadingHistoryMock.value = true;
+		const wrapper = mountPanel({ continueSessionId: 's1' });
+		const handOffFile = new File(['a'], 'hand-off.txt', { type: 'text/plain' });
+
+		(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent', [handOffFile]);
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		// Reused for a different session — the blocked hand-off is abandoned.
+		await wrapper.setProps({ continueSessionId: 's2' });
+		isLoadingHistoryMock.value = false;
+
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		const userFile = new File(['b'], 'user-picked.txt', { type: 'text/plain' });
+		input.vm.$emit('files-selected', [userFile]);
+		input.vm.$emit('update:modelValue', 'new message');
+		input.vm.$emit('submit');
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledWith('new message', [userFile], expect.any(Function));
+		wrapper.unmount();
+	});
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
 		queuedMessagesMock.value = [
@@ -359,86 +724,30 @@ describe('AgentChatPanel', () => {
 		isStreamingMock.value = true;
 		const wrapper = mountPanel({ backgroundJobsActive: true });
 		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-		expect(composer.find('[data-testid="agent-message-queue"]').exists()).toBe(true);
+		expect(composer.find('[data-testid="chat-message-queue"]').exists()).toBe(true);
 		expect(composer.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-message-queue"] [aria-expanded]').exists()).toBe(
-			false,
-		);
+		expect(wrapper.find('[data-testid="chat-message-queue"] [aria-expanded]').exists()).toBe(true);
 		expect(
 			wrapper
-				.findAll('[data-testid="agent-queued-message"]')
+				.findAll('[data-testid="chat-queued-message"]')
 				.map((row) => row.get('[title]').text()),
-		).toEqual(['Next message', 'notes.txt']);
+		).toEqual(['Next message', '']);
+		expect(wrapper.find('[aria-label="notes.txt"]').exists()).toBe(true);
 		expect(wrapper.html().indexOf('agent-background-jobs')).toBeLessThan(
-			wrapper.html().indexOf('agent-message-queue'),
+			wrapper.html().indexOf('chat-message-queue'),
 		);
 		expect(messagesMock.value).toEqual([]);
-		const removeButtons = wrapper.findAll('[aria-label="agents.chat.queue.remove"]');
-		for (const button of removeButtons) {
-			expect(button.findComponent({ name: 'N8nIcon' }).props('icon')).toBe('trash-2');
-		}
+		const removeButtons = wrapper.findAll('[aria-label="generic.delete"]');
 		await removeButtons[1].trigger('click');
 		expect(removeQueuedMessageMock).toHaveBeenCalledWith('2');
 		queuedMessagesMock.value = [];
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-message-queue"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="chat-message-queue"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
 		wrapper.unmount();
 	});
 
-	it('collapses only the third and later pending messages as the queue grows and shrinks', async () => {
-		const items = [1, 2, 3, 4].map((id) => ({
-			id: String(id),
-			steeringExecutionId: null,
-			message: `Message ${id}`,
-			createdAt: '2026-09-24T12:00:00.000Z',
-		}));
-		queuedMessagesMock.value = items.slice(0, 2);
-		const wrapper = mountPanel();
-		const queue = wrapper.get('[data-testid="agent-message-queue"]');
-		expect(queue.find('[aria-expanded]').exists()).toBe(false);
-
-		queuedMessagesMock.value = items.slice(0, 3);
-		await nextTick();
-		const toggle = queue.get('button[aria-expanded]');
-		expect(toggle.attributes('aria-expanded')).toBe('false');
-		expect(toggle.text()).toBe('1 message up next');
-		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
-			'Message 1',
-			'Message 2',
-		]);
-
-		queuedMessagesMock.value = items;
-		await nextTick();
-		expect(toggle.text()).toBe('2 messages up next');
-		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
-			'Message 1',
-			'Message 2',
-		]);
-		await toggle.trigger('click');
-		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
-			'Message 1',
-			'Message 2',
-			'Message 3',
-			'Message 4',
-		]);
-		await toggle.trigger('click');
-		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
-			'Message 1',
-			'Message 2',
-		]);
-
-		queuedMessagesMock.value = items.slice(1, 3);
-		await nextTick();
-		expect(queue.find('[aria-expanded]').exists()).toBe(false);
-		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
-			'Message 2',
-			'Message 3',
-		]);
-		wrapper.unmount();
-	});
-
-	it('drags messages across the collapsed boundary and supports keyboard moves from the handle', async () => {
+	it('drags messages across the collapsed boundary', async () => {
 		const items: AgentChatQueueItem[] = [1, 2, 3, 4].map((id) => ({
 			id: String(id),
 			message: `Message ${id}`,
@@ -449,11 +758,11 @@ describe('AgentChatPanel', () => {
 		const container = document.createElement('div');
 		document.body.append(container);
 		const wrapper = mountPanel({}, container);
-		const queue = wrapper.get('[data-testid="agent-message-queue"]');
+		const queue = wrapper.get('[data-testid="chat-message-queue"]');
 		const draggable = wrapper.getComponent(Draggable);
 		expect(
 			queue
-				.get('[data-queue-id="1"] [data-testid="agent-queue-drag-handle"]')
+				.get('[data-queue-id="1"] [data-testid="chat-queue-drag-handle"]')
 				.attributes('disabled'),
 		).toBeDefined();
 		const saved = createDeferredPromise<void>();
@@ -475,7 +784,7 @@ describe('AgentChatPanel', () => {
 		draggable.vm.$emit('end', { oldIndex: 1, newIndex: 3 });
 		await nextTick();
 		expect(reorderQueuedMessageMock).toHaveBeenCalledWith('2', '4', ['2', '3', '4']);
-		for (const button of queue.findAll('[data-testid="agent-queue-drag-handle"]')) {
+		for (const button of queue.findAll('[data-testid="chat-queue-drag-handle"]')) {
 			expect(button.attributes('disabled')).toBeDefined();
 		}
 		expect(queue.findAll('li').map((row) => row.attributes('data-queue-id'))).toEqual([
@@ -486,15 +795,9 @@ describe('AgentChatPanel', () => {
 		]);
 		saved.resolve();
 		await flushPromises();
-		const handle = queue.get('[data-queue-id="2"] [data-testid="agent-queue-drag-handle"]');
-		expect(document.activeElement).toBe(handle.element);
-		await handle.trigger('keydown', { key: 'ArrowDown' });
-		await queue
-			.get('[data-queue-id="3"] [data-testid="agent-queue-drag-handle"]')
-			.trigger('keydown', { key: 'ArrowUp' });
+		const handle = queue.get('[data-queue-id="2"] [data-testid="chat-queue-drag-handle"]');
+		expect(document.activeElement).not.toBe(handle.element);
 		expect(reorderQueuedMessageMock).toHaveBeenCalledTimes(1);
-		await handle.trigger('keydown', { key: 'ArrowUp' });
-		expect(reorderQueuedMessageMock).toHaveBeenLastCalledWith('2', '4', ['3', '4', '2']);
 		expect(stopGeneratingMock).not.toHaveBeenCalled();
 		wrapper.unmount();
 		container.remove();
@@ -522,7 +825,162 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
-	it('edits queued text inline while preserving attachments and the composer draft', async () => {
+	it('moves a queued message to the composer after removal and sends it through the normal path', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		removeQueuedMessageMock.mockImplementationOnce(async () => {
+			queuedMessagesMock.value = [];
+			return 'removed';
+		});
+		const wrapper = mountPanel();
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+		await wrapper.get('[aria-label="generic.edit"]').trigger('click');
+		await flushPromises();
+		expect(removeQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('1');
+		expect(composer.props('modelValue')).toBe('original');
+		expect(wrapper.find('[data-testid="chat-queued-message"]').exists()).toBe(false);
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		composer.vm.$emit('update:modelValue', 'updated');
+		composer.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledWith('updated', undefined, expect.any(Function));
+		wrapper.unmount();
+	});
+
+	it.each([true, false])(
+		'shows the OS shortcut while messages are queued (Mac: %s)',
+		async (isMacOs) => {
+			isMacOsMock.value = isMacOs;
+			const wrapper = mountPanel();
+			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+			const defaultPlaceholder = composer.props('placeholder');
+			queuedMessagesMock.value = [
+				{
+					id: '1',
+					steeringExecutionId: null,
+					message: 'queued',
+					createdAt: new Date().toISOString(),
+				},
+			];
+			await nextTick();
+			expect(composer.props('placeholder')).toBe(
+				isMacOs
+					? 'agents.chat.input.placeholder.withQueue.mac'
+					: 'agents.chat.input.placeholder.withQueue.other',
+			);
+			queuedMessagesMock.value = [];
+			await nextTick();
+			expect(composer.props('placeholder')).toBe(defaultPlaceholder);
+			wrapper.unmount();
+		},
+	);
+
+	it('edits the last queued message with Alt+ArrowUp from the composer', async () => {
+		queuedMessagesMock.value = ['first', 'last'].map((message, index) => ({
+			id: String(index + 1),
+			steeringExecutionId: null,
+			message,
+			createdAt: new Date().toISOString(),
+		}));
+		const wrapper = mountPanel();
+		await wrapper.get('textarea').trigger('keydown', { key: 'ArrowUp', altKey: true });
+		await flushPromises();
+		expect(removeQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('2');
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('last');
+		wrapper.unmount();
+	});
+
+	it.each([
+		{ key: 'ArrowUp' },
+		{ key: 'ArrowUp', altKey: true, shiftKey: true },
+		{ key: 'ArrowUp', altKey: true, ctrlKey: true },
+		{ key: 'ArrowUp', altKey: true, metaKey: true },
+		{ key: 'ArrowUp', altKey: true, isComposing: true },
+		{ key: 'ArrowUp', altKey: true, repeat: true },
+		{ key: 'ArrowDown', altKey: true },
+	])('ignores other composer key combinations: %j', async (keys) => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const wrapper = mountPanel();
+		await wrapper.get('textarea').trigger('keydown', keys);
+		await flushPromises();
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('does not use the shortcut when the composer has a draft or the last item is busy', async () => {
+		const item: AgentChatQueueItem = {
+			id: '1',
+			steeringExecutionId: null,
+			message: 'original',
+			createdAt: new Date().toISOString(),
+		};
+		queuedMessagesMock.value = [item];
+		const wrapper = mountPanel();
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+		composer.vm.$emit('update:modelValue', 'draft');
+		await nextTick();
+		await wrapper.get('textarea').trigger('keydown', { key: 'ArrowUp', altKey: true });
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		expect(composer.props('modelValue')).toBe('draft');
+		composer.vm.$emit('update:modelValue', '');
+		queuedMessagesMock.value = [{ ...item, steeringExecutionId: 'execution' }];
+		await nextTick();
+		await wrapper.get('textarea').trigger('keydown', { key: 'ArrowUp', altKey: true });
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('keeps an existing composer draft and disables queue editing', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const wrapper = mountPanel();
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+		composer.vm.$emit('update:modelValue', 'next draft');
+		await nextTick();
+		expect(wrapper.get('[aria-label="generic.edit"]').attributes('disabled')).toBeDefined();
+		expect(composer.props('modelValue')).toBe('next draft');
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('forwards a steering action from the queue', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				message: 'Next message',
+				createdAt: '2026-09-24T12:00:00.000Z',
+				steeringExecutionId: null,
+			},
+		];
+		canSteerMock.value = true;
+		const wrapper = mountPanel();
+
+		await wrapper.get('[aria-label="agents.chat.queue.steer"]').trigger('click');
+
+		expect(steerQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('1');
+		wrapper.unmount();
+	});
+
+	it('restores attachments before sending the edited message', async () => {
 		queuedMessagesMock.value = [
 			{
 				id: '1',
@@ -532,129 +990,169 @@ describe('AgentChatPanel', () => {
 				attachments: [{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 }],
 			},
 		];
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('notes'));
 		const wrapper = mountPanel();
-		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-		composer.vm.$emit('update:modelValue', 'next draft');
-		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
-		let editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
-		await editor.setValue('changed');
-		await editor.trigger('keydown', { key: 'Escape' });
-		expect(wrapper.find('textarea[aria-label="agents.chat.queue.edit"]').exists()).toBe(false);
-		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
-		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
-		editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
-		await editor.setValue('updated text');
-		await editor.trigger('keydown', { key: 'Enter', shiftKey: true });
-		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
-		await editor.trigger('keydown', { key: 'Enter', isComposing: true });
-		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
-		await editor.trigger('keydown', { key: 'Enter' });
+		try {
+			await wrapper.get('[aria-label="generic.edit"]').trigger('click');
+			await flushPromises();
+			expect(fetchMock).toHaveBeenCalledWith(
+				'/rest/projects/p1/agents/v2/a1/chat/attachments/file',
+				{ credentials: 'include' },
+			);
+			wrapper.findComponent({ name: 'ChatInputBase' }).vm.$emit('submit');
+			await flushPromises();
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'original',
+				[expect.any(File)],
+				expect.any(Function),
+			);
+			const files = sendMessageMock.mock.calls[0][1];
+			expect(files[0].name).toBe('notes.txt');
+			expect(files[0].type).toBe('text/plain');
+		} finally {
+			fetchMock.mockRestore();
+			wrapper.unmount();
+		}
+	});
+
+	it('does not restore a draft if queue removal fails', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		removeQueuedMessageMock.mockResolvedValueOnce('failed');
+		const wrapper = mountPanel();
+		await wrapper.get('[aria-label="generic.edit"]').trigger('click');
 		await flushPromises();
-		expect(updateQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('1', 'updated text');
-		expect(composer.props('modelValue')).toBe('next draft');
-		expect(wrapper.get('[data-testid="agent-queued-message"]').text()).toContain('notes.txt');
-		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+		expect(wrapper.get('[data-testid="chat-queued-message"]').text()).toContain('original');
 		wrapper.unmount();
 	});
 
-	it('steers an overflow message and restores its controls when a reservation returns to FIFO', async () => {
-		const items: AgentChatQueueItem[] = ['B', 'D', 'C'].map((message, index) => ({
-			id: String(index + 1),
-			message,
-			createdAt: '2026-09-24T12:00:00.000Z',
-			steeringExecutionId: null,
-		}));
-		queuedMessagesMock.value = items;
+	it('ignores a completed removal after switching sessions', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const removal = createDeferredPromise<string>();
+		removeQueuedMessageMock.mockReturnValueOnce(removal.promise);
 		const wrapper = mountPanel();
-		await wrapper.get('[data-testid="agent-message-queue"] button[aria-expanded]').trigger('click');
-		const row = wrapper.findAll('[data-testid="agent-queued-message"]')[2];
-		const steer = row.get('[aria-label="agents.chat.queue.steer"]');
-		expect(steer.attributes('disabled')).toBeDefined();
-		canSteerMock.value = true;
-		await nextTick();
-		expect(steer.attributes('disabled')).toBeUndefined();
-		expect(row.html().indexOf('aria-label="agents.chat.queue.steer"')).toBeLessThan(
-			row.html().indexOf('aria-label="agents.chat.queue.edit"'),
-		);
-		await steer.trigger('click');
-		expect(steerQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('3');
-		queuedMessagesMock.value = items.map((item) =>
-			item.id === '3' ? { ...item, steeringExecutionId: 'A' } : item,
-		);
-		await nextTick();
-		expect(row.text()).toContain('agents.chat.queue.steering');
-		for (const action of ['steer', 'edit', 'remove', 'reorder'])
+		await wrapper.get('[aria-label="generic.edit"]').trigger('click');
+		await flushPromises();
+		await wrapper.setProps({ continueSessionId: 'another-session' });
+		removal.resolve('removed');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+		wrapper.unmount();
+	});
+
+	describe('plan card', () => {
+		it('renders live plan results above the input without changing submission', async () => {
+			const wrapper = mountPanel();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			messagesMock.value = [planMessage(planView(), { state: 'running', output: undefined })];
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			messagesMock.value[0].toolCalls![0].state = 'done';
+			messagesMock.value[0].toolCalls![0].output = planView();
+			await nextTick();
+			const card = wrapper.getComponent(AgentChatPlan);
+			expect(card.props('plan').revision).toBe(1);
+			expect(wrapper.get('[data-testid="chat-input"]').findComponent(AgentChatPlan).exists()).toBe(
+				true,
+			);
+			const chatInput = wrapper.getComponent({ name: 'ChatInputBase' });
+			chatInput.vm.$emit('update:modelValue', 'Continue the research');
+			await nextTick();
+			await wrapper.get('form').trigger('submit');
+			expect(sendMessageMock).toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it('restores history, preserves expansion across updates, and clears with the conversation', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			messagesMock.value.push(planMessage(planView({ revision: 2 }), { tool: 'update_plan' }));
+			await nextTick();
+			expect(wrapper.getComponent(AgentChatPlan).props('plan').revision).toBe(2);
 			expect(
-				row.get(`[aria-label="agents.chat.queue.${action}"]`).attributes('disabled'),
-			).toBeDefined();
-		queuedMessagesMock.value = items;
-		await nextTick();
-		expect(row.text()).not.toContain('agents.chat.queue.steering');
-		expect(row.get('[aria-label="agents.chat.queue.edit"]').attributes('disabled')).toBeUndefined();
-		wrapper.unmount();
-	});
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('true');
+			messagesMock.value.push(planMessage({ error: 'conflict' }, { tool: 'update_plan' }));
+			await nextTick();
+			expect(wrapper.getComponent(AgentChatPlan).props('plan').revision).toBe(2);
+			await wrapper.setProps({ continueSessionId: 't2' });
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('false');
+			messagesMock.value = [];
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			wrapper.unmount();
+		});
 
-	it('preserves an edit draft while another client reserves and releases its message', async () => {
-		const item: AgentChatQueueItem = {
-			id: '1',
-			message: 'C',
-			createdAt: new Date().toISOString(),
-			steeringExecutionId: null,
-		};
-		queuedMessagesMock.value = [item];
-		const wrapper = mountPanel();
-		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
-		const editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
-		await editor.setValue('unsaved draft');
-		queuedMessagesMock.value = [{ ...item, steeringExecutionId: 'A' }];
-		await nextTick();
-		expect(editor.element).toHaveProperty('value', 'unsaved draft');
-		expect(
-			wrapper.get('[aria-label="agents.chat.queue.save"]').attributes('disabled'),
-		).toBeDefined();
-		expect(wrapper.text()).toContain('agents.chat.queue.editSteeringUnavailable');
-		queuedMessagesMock.value = [item];
-		await nextTick();
-		expect(
-			wrapper.get('[aria-label="agents.chat.queue.save"]').attributes('disabled'),
-		).toBeUndefined();
-		await editor.trigger('keydown', { key: 'Enter' });
-		expect(updateQueuedMessageMock).toHaveBeenCalledWith('1', 'unsaved draft');
-		wrapper.unmount();
-	});
-
-	it.each(['notification', 'conflict'])(
-		'preserves edits when a message starts before saving (%s)',
-		async (source) => {
-			queuedMessagesMock.value = [
+		it('keeps background jobs visible and independent of the plan', async () => {
+			messagesMock.value = [planMessage(planView({ closed: true }))];
+			backgroundJobsMock.value = [
 				{
-					id: '1',
-					steeringExecutionId: null,
-					message: 'original',
-					createdAt: new Date().toISOString(),
+					id: 'job-1',
+					kind: 'subagent',
+					title: 'Separate work',
+					status: 'running',
+					startedAt: '2026-09-30T10:00:00Z',
 				},
 			];
-			const wrapper = mountPanel();
-			await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
-			const editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
-			await editor.setValue('unsaved text');
-			if (source === 'notification') queuedMessagesMock.value = [];
-			else {
-				updateQueuedMessageMock.mockResolvedValueOnce('unavailable');
-				await editor.trigger('keydown', { key: 'Enter' });
-			}
-			await flushPromises();
-			expect(editor.element).toHaveProperty('value', 'unsaved text');
-			expect(editor.attributes('readonly')).toBeDefined();
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			const card = wrapper.getComponent(AgentChatPlan);
+			const job = wrapper.get('[data-testid="agent-background-jobs"]');
 			expect(
-				wrapper.get('[aria-label="agents.chat.queue.save"]').attributes('disabled'),
-			).toBeDefined();
-			expect(wrapper.text()).toContain('agents.chat.queue.editUnavailable');
-			await wrapper.get('[aria-label="agents.chat.queue.cancelEdit"]').trigger('click');
-			expect(wrapper.find('textarea[aria-label="agents.chat.queue.edit"]').exists()).toBe(false);
+				card.element.compareDocumentPosition(job.element) & Node.DOCUMENT_POSITION_PRECEDING,
+			).toBeTruthy();
+			await job.get('button').trigger('click');
+			expect(card.get('button').attributes('aria-expanded')).toBe('false');
+			expect(job.text()).toContain('Separate work');
+			messagesMock.value.push(planMessage(null, { tool: 'read_plan' }));
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
 			wrapper.unmount();
-		},
-	);
+		});
+
+		it('does not link a plan to the builder trace on the n8n Chat channel', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('links a plan to the current session trace only when the session is available', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel();
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+			await wrapper.setProps({ continueSessionId: 't1' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
+				'/projects/p1/agents/a1/sessions/t1',
+			);
+			await wrapper.setProps({ continueSessionId: 't2' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
+				'/projects/p1/agents/a1/sessions/t2',
+			);
+			wrapper.unmount();
+		});
+	});
 
 	describe('background task panel', () => {
 		afterEach(() => vi.useRealTimers());
@@ -675,6 +1173,140 @@ describe('AgentChatPanel', () => {
 				args: { to: 'team@example.com' },
 			},
 		};
+
+		it('restores composer focus when the pending stop disables the focused button', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get<HTMLButtonElement>('[data-testid="agent-background-jobs-stop"]');
+				stop.element.focus();
+				stopAllMock.mockImplementationOnce(async () => {
+					stop.element.blur();
+					backgroundJobsMock.value = [];
+				});
+				await stop.trigger('click');
+				await flushPromises();
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it('restores composer focus when workflows stop and a completed task remains', async () => {
+			const workflow: AgentBackgroundJobDto = { ...job, id: 'workflow', kind: 'workflow' };
+			const completed: AgentBackgroundJobDto = { ...job, status: 'completed' };
+			backgroundJobsMock.value = [completed, workflow];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get<HTMLButtonElement>('[data-testid="agent-background-jobs-stop"]');
+				stop.element.focus();
+				await stop.trigger('click');
+				await flushPromises();
+				expect(document.activeElement).toBe(stop.element);
+
+				backgroundJobsMock.value = [completed];
+				await flushPromises();
+				expect(wrapper.find('[data-testid="agent-background-jobs-stop"]').exists()).toBe(false);
+				expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it.each(['subagent', 'workflow'] as const)(
+			'stops a %s group and keeps failures retryable',
+			async (kind) => {
+				backgroundJobsMock.value = [{ ...job, kind }];
+				const wrapper = mountPanel({ backgroundJobsActive: true }, document.body);
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get('button[data-testid="agent-background-jobs-stop"]');
+				expect(stop.text()).toBe('Stop all tasks');
+				isStoppingMock.value = true;
+				await nextTick();
+				expect(stop.attributes('disabled')).toBeDefined();
+				expect(wrapper.text()).toContain('Stopping 1 background task…');
+				expect(wrapper.get('[aria-label="Stopping…"]').isVisible()).toBe(true);
+				isStoppingMock.value = false;
+				const error = new Error('Request failed');
+				stopAllMock.mockRejectedValueOnce(error);
+				await nextTick();
+				await stop.trigger('click');
+				await flushPromises();
+				expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.chat.backgroundTasks.stopError');
+				expect(stop.attributes('disabled')).toBeUndefined();
+				expect(wrapper.text()).toContain(job.title);
+				expect(wrapper.text()).not.toContain('Stopping');
+				wrapper.unmount();
+			},
+		);
+
+		it.each(['running', 'suspended'] as const)(
+			'keeps stopped rows visible while a %s sub-agent is still stopping',
+			async (status) => {
+				const workflow: AgentBackgroundJobDto = {
+					...job,
+					id: 'workflow',
+					kind: 'workflow',
+					pauseRequested: true,
+				};
+				const stopping = { ...job, status, pauseRequested: true };
+				const sibling = { ...job, id: 'sibling', title: 'Second task', pauseRequested: true };
+				backgroundJobsMock.value = [stopping, sibling, workflow];
+				const wrapper = mountPanel(
+					{ backgroundJobsActive: true, continueSessionId: 't1' },
+					document.body,
+				);
+				try {
+					expect(wrapper.text()).toContain('Stopping 3 background tasks…');
+					await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+					expect(wrapper.findAll('[aria-label="Stopping…"]')).toHaveLength(3);
+					expect(wrapper.get('li').text()).toContain('Stopping…');
+
+					const later = { ...job, id: 'later', title: 'Another task' };
+					backgroundJobsMock.value = [
+						stopping,
+						{ ...sibling, status: 'paused' },
+						{ ...workflow, status: 'cancelled' },
+						later,
+					];
+					await nextTick();
+					expect(wrapper.text()).toContain('Stopping 1 background task…');
+					expect(wrapper.findAll('li')).toHaveLength(4);
+					expect(wrapper.findAll('[aria-label="Stopping…"]')).toHaveLength(1);
+					expect(wrapper.findAll('[aria-label="Stopped"]')).toHaveLength(2);
+					expect(wrapper.get('[data-status="cancelled"]').attributes('aria-label')).toBe('Stopped');
+					expect(wrapper.findAll('li')[1].text()).toContain('Second task');
+					expect(wrapper.findAll('li')[1].text()).toContain('Stopped');
+					expect(wrapper.findAll('[aria-label="Running"]')).toHaveLength(1);
+
+					backgroundJobsMock.value = [later];
+					await nextTick();
+					expect(wrapper.text()).not.toContain('Stopping');
+					expect(wrapper.text()).not.toContain('Stopped');
+					expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+					backgroundJobsMock.value = [
+						job,
+						{ ...workflow, id: 'replacement', pauseRequested: false },
+						later,
+					];
+					await nextTick();
+					expect(wrapper.text()).not.toContain('Stopping');
+					expect(wrapper.findAll('[aria-label="Running"]')).toHaveLength(2);
+					expect(wrapper.get('[aria-label="Waiting"]').isVisible()).toBe(true);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
 
 		it.each([
 			{ action: 'allow-once', decision: { approved: true } },
@@ -980,6 +1612,21 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
+		it('shows the background tasks section for n8n Chat but hides the trace link', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({
+				backgroundJobsActive: true,
+				continueSessionId: 't1',
+				channel: 'n8n-chat',
+			});
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			await panel.get('button').trigger('click');
+			// `/sessions/<threadId>` is the builder's session view, which needs
+			// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
 		it.each([
 			['completed', 'Completed', 'circle-check'],
 			['failed', 'Failed', 'circle-x'],
@@ -1222,6 +1869,44 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('sends files queued with an outside message, surviving the blocked-on-history-load retry', async () => {
+		isLoadingHistoryMock.value = true;
+		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as {
+				sendMessageFromOutside: (message: string, files?: File[]) => void;
+			}
+		).sendMessageFromOutside('Test this task', [file]);
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		isLoadingHistoryMock.value = false;
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Test this task',
+			[file],
+			expect.any(Function),
+		);
+		wrapper.unmount();
+	});
+
+	it('sends an outside message that carries only files', async () => {
+		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as {
+				sendMessageFromOutside: (message: string, files?: File[]) => void;
+			}
+		).sendMessageFromOutside('', [file]);
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('', [file], expect.any(Function));
+		wrapper.unmount();
+	});
+
 	it('submits an outside message while the current stream runs', async () => {
 		const response = Promise.withResolvers<'sent'>();
 		sendMessageMock.mockReturnValueOnce(response.promise);
@@ -1444,6 +2129,92 @@ describe('AgentChatPanel', () => {
 
 		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction', expect.any(Function));
 		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('tracks a sent message to the n8n Chat channel on the normal send path, as a new thread', async () => {
+		messagesMock.value = [];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-1' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi there');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-1',
+			isNewThread: true,
+		});
+		// The preview chat metric counts only builder test messages.
+		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
+		expect(buildAgentConfigFingerprint).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('tracks a sent message to the n8n Chat channel as not-new when the thread already had messages', async () => {
+		messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi', status: 'success' }];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-2' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi again');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-2',
+			isNewThread: false,
+		});
+		wrapper.unmount();
+	});
+
+	it('tracks a sent message to the n8n Chat channel on the cancel-and-steer path', async () => {
+		messagesMock.value = [openInteractiveMessage()];
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-3' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('go another direction');
+		await flushPromises();
+		// Simulate `cancelAndSteer` accepting the message, same as `sendMessage`'s callback.
+		cancelAndSteerMock.mock.lastCall?.[1]?.();
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-3',
+			// An open interactive question means the thread already had messages.
+			isNewThread: false,
+		});
+	});
+
+	it('does not track a sent message when the channel is not n8n-chat', async () => {
+		messagesMock.value = [];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ continueSessionId: 'thread-4' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi there');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).not.toHaveBeenCalled();
+		expect(trackSubmittedMessageMock).toHaveBeenCalledOnce();
+		wrapper.unmount();
 	});
 
 	it('keeps a steering draft after a busy rejection without retrying it', async () => {
@@ -2111,6 +2882,27 @@ describe('AgentPreviewDock stream lifecycle', () => {
 			}),
 		);
 	}
+
+	it('sends dock messages through the real chat path', async () => {
+		queuedMessagesMock.value = [];
+		sendMessageMock.mockResolvedValue('sent');
+		const wrapper = mountPreviewDock();
+		try {
+			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+			expect(wrapper.find('[data-testid="chat-message-queue"]').exists()).toBe(false);
+			composer.vm.$emit('update:modelValue', 'Message from the dock');
+			await nextTick();
+			composer.vm.$emit('submit');
+			await flushPromises();
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'Message from the dock',
+				undefined,
+				expect.any(Function),
+			);
+		} finally {
+			wrapper.unmount();
+		}
+	});
 
 	it('detaches an in-flight stream when the preview starts a new session', async () => {
 		const wrapper = mountPreviewDock();

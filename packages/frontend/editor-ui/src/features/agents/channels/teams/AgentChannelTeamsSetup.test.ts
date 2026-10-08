@@ -1,4 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import * as credentialsApi from '@/features/credentials/credentials.api';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
@@ -34,6 +36,8 @@ const { showMessage, showError } = vi.hoisted(() => ({ showMessage: vi.fn(), sho
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError }),
 }));
+
+vi.mock('@/features/credentials/credentials.api');
 
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
@@ -174,6 +178,65 @@ describe('AgentChannelTeamsSetup', () => {
 
 			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalled());
 		});
+
+		const saveCredential = async (id: string) => {
+			vi.mocked(credentialsApi.updateCredential).mockResolvedValue({
+				id,
+				name: 'Entra',
+				type: 'microsoftEntraServicePrincipalApi',
+			} as Awaited<ReturnType<typeof credentialsApi.updateCredential>>);
+			await useCredentialsStore().updateCredential({ id, data: {} as never });
+		};
+
+		it('checks the credential again once it is saved with fixed details', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			vi.mocked(getTeamsSetupState).mockClear();
+
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'ok' });
+			await saveCredential('cred-1');
+
+			await waitFor(() => expect(getByTestId('teams-credential-verified')).toBeVisible());
+			expect(queryByTestId('teams-credential-problem')).toBeNull();
+			expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+		});
+
+		it('does not check again when a different credential is saved', async () => {
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalledTimes(1));
+
+			await saveCredential('cred-2');
+			await flushPromises();
+
+			expect(checkTeamsCredential).toHaveBeenCalledTimes(1);
+		});
+
+		it('stops listening for saves once the view is gone', async () => {
+			const { unmount } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalledTimes(1));
+			unmount();
+
+			await saveCredential('cred-1');
+			await flushPromises();
+
+			expect(checkTeamsCredential).toHaveBeenCalledTimes(1);
+		});
+
+		it('only reloads the setup state when the credential is saved from settings', async () => {
+			renderComponent({ props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			vi.mocked(getTeamsSetupState).mockClear();
+
+			await saveCredential('cred-1');
+
+			await waitFor(() =>
+				expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1'),
+			);
+			expect(checkTeamsCredential).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('step 3, deploy the bot', () => {
@@ -269,9 +332,28 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(false);
 		});
 
-		it('does not offer the read permissions yet', async () => {
+		it('offers each read permission, off, only while its surface is on', async () => {
 			withBot();
 			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await openAvailability(getByTestId);
+			expect(queryByTestId('teams-read-channels')).toBeNull();
+			expect(queryByTestId('teams-read-groups')).toBeNull();
+
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
+			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(false);
+			expect(queryByTestId('teams-read-groups')).toBeNull();
+
+			await fireEvent.click(getByTestId('teams-scope-groups'));
+			await waitFor(() => expect(getByTestId('teams-read-groups')).toBeVisible());
+			expect(checkedSwitch(getByTestId('teams-read-groups'))).toBe(false);
+		});
+
+		it('says what reading every message costs, and who approves it', async () => {
+			withBot();
+			const { getByTestId, getByText } = renderComponent({
 				props: props({ modelValue: 'cred-1' }),
 			});
 			await openAvailability(getByTestId);
@@ -279,9 +361,14 @@ describe('AgentChannelTeamsSetup', () => {
 			await fireEvent.click(getByTestId('teams-scope-channels'));
 			await fireEvent.click(getByTestId('teams-scope-groups'));
 
-			await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(true));
-			expect(queryByTestId('teams-read-channels')).toBeNull();
-			expect(queryByTestId('teams-read-groups')).toBeNull();
+			await waitFor(() =>
+				expect(
+					getByText('agents.channels.teams.setup.availability.readAllChannelMessagesHint'),
+				).toBeVisible(),
+			);
+			expect(
+				getByText('agents.channels.teams.setup.availability.readAllGroupMessagesHint'),
+			).toBeVisible();
 		});
 
 		it('summarises each choice, so the collapsed panel says what it is set to', async () => {
@@ -311,6 +398,7 @@ describe('AgentChannelTeamsSetup', () => {
 
 			await openAvailability(getByTestId);
 			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
+			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
 	});
 
@@ -785,7 +873,7 @@ describe('AgentChannelTeamsSetup', () => {
 				expect(savedSettings(getByTestId)).not.toHaveProperty('displayName');
 			});
 
-			it('turns off a read permission that this view no longer offers', async () => {
+			it('keeps a saved read permission on', async () => {
 				const { getByTestId } = renderHost({
 					props: {
 						viewProps: settingsProps({
@@ -800,8 +888,26 @@ describe('AgentChannelTeamsSetup', () => {
 				await waitFor(() => expect(getByTestId('saved-settings')).not.toBeEmptyDOMElement());
 				expect(savedSettings(getByTestId)).toMatchObject({
 					teamChannels: true,
-					readAllChannelMessages: false,
+					readAllChannelMessages: true,
 				});
+			});
+
+			it.each([
+				['on', { teamChannels: true }],
+				['off', { teamChannels: true, readAllChannelMessages: true }],
+			])('treats turning a read permission %s as an app change', async (_label, saved) => {
+				const { getByTestId } = renderHost({
+					props: { viewProps: settingsProps({ savedSettings: saved }) },
+				});
+
+				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+				expect(getByTestId('save-label')).toHaveTextContent('');
+				await openAvailability(getByTestId);
+				await fireEvent.click(getByTestId('teams-read-channels'));
+
+				expect(getByTestId('save-label')).toHaveTextContent(
+					'agents.channels.teams.settings.saveAndDownload',
+				);
 			});
 
 			it('keeps the save when the package cannot be built, and says the download failed', async () => {

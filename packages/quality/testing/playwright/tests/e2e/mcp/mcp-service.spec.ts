@@ -49,7 +49,7 @@ async function activateAndWaitForPublishedVersion(
 test.describe(
 	'MCP Service',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
 		// Run tests serially - n8n only supports one MCP API key at a time,

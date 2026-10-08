@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
@@ -32,7 +33,8 @@ import type {
 } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
-import { createBudgetGuardrail, InMemorySpendLedger } from '../guardrails/budget-guardrail';
+import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
+import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
@@ -1629,7 +1631,7 @@ describe('AgentRuntime — guardrails', () => {
 		});
 		const runtime = createRuntimeWithEchoTool(async () => ({ ok: true }));
 		const hook = createBudgetGuardrail({
-			ledger: new InMemorySpendLedger(),
+			ledger: spendLedger(),
 			sessionId: 'session-1',
 			sessionCostCapUsd: 1,
 		});
@@ -8480,12 +8482,14 @@ describe('AgentRuntime — mid-run observation', () => {
 			deferredTools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
+			instructionProviderOptions?: ProviderOptions;
 		},
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
 			model: extra?.model ?? 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
+			instructionProviderOptions: extra?.instructionProviderOptions,
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
 			deferredTools: extra?.deferredTools,
@@ -8603,8 +8607,46 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
 
+	it('keeps the base instructions unchanged when compaction moves a skill into the system prompt', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			model: 'anthropic/claude-sonnet-4-5',
+			instructionProviderOptions: cacheOptions,
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const before = capturedCall(0).instructions;
+		const after = capturedCall(1).instructions;
+		if (Array.isArray(before) || !Array.isArray(after)) throw new Error('Unexpected system shape');
+		expect(after[0]).toEqual(before);
+		expect(after[1]).toEqual({
+			role: 'system',
+			content: expect.stringContaining('Wait for a real execution'),
+			providerOptions: cacheOptions,
+		});
+		expect(after[2].content).toContain('Mid-run observation captured.');
+		expect(after[2]).not.toHaveProperty('providerOptions');
+	});
+
 	it.each(['load_skill', 'inspect_node'])(
-		'activates skill tool dependencies after %s and restores them on the next turn',
+		'keeps skill tool dependencies in the tool list before and after %s',
 		async (activationTool) => {
 			const source = createRuntimeSkillSource([
 				{
@@ -8642,8 +8684,9 @@ describe('AgentRuntime — mid-run observation', () => {
 			await runtime.generate('Build it', { persistence: PERSISTENCE });
 			await runtime.dispose();
 
-			expect(capturedCall(0).tools).not.toHaveProperty('catalog');
-			expect(capturedCall(1).tools).toHaveProperty('catalog');
+			// The tool list must not change when the skill activates, or the cached prompt is rewritten.
+			expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
+			expect(capturedCall(0).tools).toHaveProperty('catalog');
 			expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
 			expect(flattenInstructions(capturedCall(1).instructions)).toContain(
 				'Choose a model from the catalog.',
@@ -11225,5 +11268,106 @@ describe('AgentRuntime — MCP tool provenance', () => {
 				expect.objectContaining({ type: 'tool-result', toolCallId, mcpServerName: 'Genie' }),
 			]),
 		);
+	});
+});
+
+describe('AgentRuntime — tools that end the turn', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function silenceTool(endsTurn: (output: unknown) => boolean): BuiltTool {
+		return {
+			...makeMockTool('silence', async () => ({ silent: true })),
+			endsTurn,
+		};
+	}
+
+	it('stops after the call, without asking the model again', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true)], 1);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+		);
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
+	});
+
+	it('stops after the call when streaming', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true)], 1);
+		streamText.mockReturnValue(
+			makeStreamWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+		);
+
+		const chunks = await collectChunks(
+			(await runtime.stream('say nothing', { maxIterations: 5 })).stream,
+		);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
+	it('stops after a batch that mixes the call with another tool', async () => {
+		const other = makeMockTool('other', async () => ({ ok: true }));
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true), other], 2);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'other', args: {} },
+				{ toolCallId: 'tc-2', toolName: 'silence', args: {} },
+			]),
+		);
+
+		await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops after resuming a call that suspended next to it', async () => {
+		const { runtime } = createRuntimeWithTools(
+			[silenceTool(() => true), makeInterruptibleTool()],
+			2,
+		);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+				{ toolCallId: 'tc-2', toolName: 'silence', args: {} },
+			]),
+		);
+
+		const first = await runtime.generate('say nothing', { maxIterations: 5 });
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(resumed.finishReason).toBe('stop');
+	});
+
+	it('keeps going when the output does not end the turn', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => false)], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+	});
+});
+
+describe('Tool builder — ending the turn', () => {
+	it('rejects a tool that ends the turn and transforms its model output', () => {
+		const tool = new Tool('silence')
+			.description('Stay silent')
+			.input(z.object({}))
+			.handler(async () => ({ silent: true }))
+			.endsTurnWhen(() => true)
+			.toModelOutput((output) => output);
+
+		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
 	});
 });

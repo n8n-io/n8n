@@ -39,6 +39,7 @@ export class PrometheusSchedulerMetricsService
 	private orphanedJobsDeleted!: promClient.Counter;
 	private jobsRevived!: promClient.Counter;
 	private tasksLeaseLost!: promClient.Counter<'task_type'>;
+	private leaseRenewals!: promClient.Counter<'task_type' | 'result'>;
 	private dispatchLagSeconds!: promClient.Histogram<'task_type'>;
 
 	constructor(
@@ -138,6 +139,12 @@ export class PrometheusSchedulerMetricsService
 			name: `${prefix}scheduler_tasks_lease_lost_total`,
 			help: 'Total number of scheduler tasks whose handler finished after the lease was reclaimed, so another instance may have run the same occurrence concurrently, by task type.',
 			labelNames: ['task_type'],
+		});
+
+		this.leaseRenewals = new promClient.Counter({
+			name: `${prefix}scheduler_lease_renewals_total`,
+			help: 'Total number of lease renewals of running scheduler tasks by task type and result: renewed, lost when a renewal found the claim gone, or expired when no renewal succeeded for a whole lease.',
+			labelNames: ['task_type', 'result'],
 		});
 
 		this.dispatchLagSeconds = new promClient.Histogram({
@@ -240,6 +247,12 @@ export class PrometheusSchedulerMetricsService
 	recordLeaseLost(taskType: string) {
 		if (this.initialized) {
 			this.tasksLeaseLost.inc({ task_type: taskType }, 1);
+		}
+	}
+
+	recordLeaseRenewal(taskType: string, result: 'renewed' | 'lost' | 'expired') {
+		if (this.initialized) {
+			this.leaseRenewals.inc({ task_type: taskType, result }, 1);
 		}
 	}
 

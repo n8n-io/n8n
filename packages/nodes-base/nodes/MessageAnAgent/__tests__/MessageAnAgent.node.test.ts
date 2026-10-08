@@ -1043,6 +1043,16 @@ describe('MessageAnAgent versioning', () => {
 		expect(Object.keys(versioned.nodeVersions)).toEqual(['1', '2', '3', '3.1']);
 	});
 
+	// `hidden` marks a node as retired for the AI builder, the editor and the website.
+	// The node panel hides this node only while agents are disabled.
+	it('is not hidden in any version', () => {
+		const versioned = new MessageAnAgent();
+
+		for (const version of Object.values(versioned.nodeVersions)) {
+			expect(version.description.hidden).toBeUndefined();
+		}
+	});
+
 	it('keeps the original resourceLocator picker on v1 (non-breaking) with the listAgents method', () => {
 		const v1 = new MessageAnAgentV1(baseDescription);
 		const agentId = v1.description.properties.find((p) => p.name === 'agentId');

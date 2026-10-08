@@ -10,4 +10,4 @@ test.use({
 	},
 });
 
-runMemoryBaseline({ name: 'no-mcp-registry', owner: 'AI' });
+runMemoryBaseline({ name: 'no-mcp-registry', owner: 'NODES' });
