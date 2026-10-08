@@ -207,12 +207,14 @@ describe('useThreadLastViewed', () => {
 	});
 
 	describe(`the limit of ${MAX_LAST_VIEWED_ENTRIES} entries`, () => {
+		// `thread-0` is the newest view. The map lists the oldest view first, so that only a
+		// sort by time (not the order of the stored keys) finds the views to keep.
 		const olderViews = (count: number) =>
 			Object.fromEntries(
 				Array.from({ length: count }, (_, index) => [
 					`thread-${index}`,
 					secondsAfterNow(-index - 1),
-				]),
+				]).reverse(),
 			);
 
 		it('drops the oldest view when a new chat is marked', () => {
@@ -270,8 +272,11 @@ describe('useThreadLastViewed', () => {
 		window.dispatchEvent(new StorageEvent('storage', { key: keyFor('user-1') }));
 		expect(shown.value).toBe(NOW);
 
+		// A key of another feature, with the same length and the same user ID at the end.
 		storage.clear();
-		window.dispatchEvent(new StorageEvent('storage', { key: 'some-other-key' }));
+		window.dispatchEvent(
+			new StorageEvent('storage', { key: 'n8n:instance-ai:other-thing:user-1' }),
+		);
 		expect(shown.value).toBe(NOW);
 
 		window.dispatchEvent(new StorageEvent('storage', { key: null }));
@@ -317,15 +322,17 @@ describe('useMarkThreadViewed', () => {
 
 	it('marks the chat again when new activity arrives while it is open', async () => {
 		const store = useInstanceAiStore();
-		store.threads = [thread('thread-a', NOW)];
+		const otherChat = thread('thread-other', secondsAfterNow(600));
+		store.threads = [otherChat, thread('thread-a', NOW)];
 		const view = mountView('thread-a', false);
 		const { lastViewedAt } = useThreadLastViewed();
 
 		// The server clock is ahead: the activity time is later than this clock.
-		store.threads = [thread('thread-a', secondsAfterNow(120))];
+		store.threads = [otherChat, thread('thread-a', secondsAfterNow(120))];
 		await nextTick();
 
 		expect(lastViewedAt('thread-a')).toBe(secondsAfterNow(120));
+		expect(lastViewedAt('thread-other')).toBeUndefined();
 		view.stop();
 	});
 
