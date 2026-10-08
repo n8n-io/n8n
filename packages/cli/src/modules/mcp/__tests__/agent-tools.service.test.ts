@@ -774,45 +774,55 @@ describe('McpAgentToolsService', () => {
 			const storedAgent = agentEntity({ tools: {}, skills: {} });
 			const lifecycleTelemetry = useRealCustomToolPersistence(storedAgent);
 			agentSecureRuntime.describeToolSecurely.mockResolvedValue(descriptor as never);
-			const stored = {
-				...composedConfig,
-				tools: [{ type: 'custom' as const, id: 'my_tool' }],
-			};
 
 			const result = await callTool(
 				'mutate_agent',
 				mutateInput({ type: 'customTool.upsert', code: 'export default new Tool("my_tool")' }),
 			);
 
-			expect(storedAgent.tools.my_tool).toEqual({
+			const [toolId] = Object.keys(storedAgent.tools);
+			expect(toolId).toMatch(/^[A-Za-z0-9]{16}$/);
+			expect(storedAgent.tools[toolId]).toEqual({
 				code: 'export default new Tool("my_tool")',
 				descriptor,
 			});
-			expect(storedAgent.schema?.tools).toEqual([{ type: 'custom', id: 'my_tool' }]);
+			expect(storedAgent.schema?.tools).toEqual([{ type: 'custom', id: toolId }]);
 			expect(lifecycleTelemetry.track).toHaveBeenCalledTimes(1);
 			expect(lifecycleTelemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
 				expect.objectContaining({ changed_parts: ['tools'], tool_count: 1 }),
 			);
 			expect(result.structuredContent).toMatchObject({
-				resource: { type: 'customTool', id: 'my_tool' },
-				configHash: getAgentConfigHash(stored),
+				ok: true,
+				resource: { type: 'customTool', id: toolId },
+				configHash: getAgentConfigHash({
+					...composedConfig,
+					tools: [{ type: 'custom', id: toolId }],
+				}),
 			});
 		});
 
-		it('emits one lifecycle event for an attached custom-tool body change', async () => {
+		it('keeps the attached tool ID after a concurrent rename', async () => {
+			const toolId = 'Tool000000000001';
 			const configWithTool = {
 				...composedConfig,
-				tools: [{ type: 'custom' as const, id: 'my_tool' }],
+				tools: [{ type: 'custom' as const, id: toolId }],
 			};
 			const descriptor = { name: 'my_tool' };
 			const storedAgent = agentEntity({
 				schema: { ...baseConfig, tools: configWithTool.tools },
-				tools: { my_tool: { code: 'old code', descriptor } },
+				tools: { [toolId]: { code: 'old code', descriptor } },
 				skills: {},
 			});
 			const lifecycleTelemetry = useRealCustomToolPersistence(storedAgent);
-			agentSecureRuntime.describeToolSecurely.mockResolvedValue(descriptor as never);
+			agentsService.findByIdForUser.mockResolvedValueOnce(structuredClone(storedAgent));
+			agentSecureRuntime.describeToolSecurely.mockImplementationOnce(async () => {
+				storedAgent.tools[toolId] = {
+					code: 'renamed code',
+					descriptor: { ...storedAgent.tools[toolId].descriptor, name: 'renamed_tool' },
+				};
+				return descriptor as never;
+			});
 
 			const result = await callTool(
 				'mutate_agent',
@@ -822,8 +832,8 @@ describe('McpAgentToolsService', () => {
 				),
 			);
 
-			expect(storedAgent.tools.my_tool.code).toBe('new code');
-			expect(storedAgent.schema?.tools).toEqual([{ type: 'custom', id: 'my_tool' }]);
+			expect(storedAgent.tools).toEqual({ [toolId]: { code: 'new code', descriptor } });
+			expect(storedAgent.schema?.tools).toEqual([{ type: 'custom', id: toolId }]);
 			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
 			expect(lifecycleTelemetry.track).toHaveBeenCalledTimes(1);
 			expect(lifecycleTelemetry.track).toHaveBeenCalledWith(
@@ -832,6 +842,7 @@ describe('McpAgentToolsService', () => {
 			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
+				resource: { type: 'customTool', id: toolId },
 				configHash: getAgentConfigHash(configWithTool),
 			});
 		});

@@ -165,7 +165,7 @@ describe('AgentConfigService', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('validateConfig', () => {
+	describe('config validation', () => {
 		it('rejects unsafe node tool schemas before deeper validation', async () => {
 			const { service } = makeService();
 
@@ -188,11 +188,20 @@ describe('AgentConfigService', () => {
 		});
 
 		it('rejects a vector store whose derived tool name collides with a configured tool', async () => {
-			const { service } = makeService();
-
-			const result = await service.validateConfig({
+			const { service, agentRepository } = makeService();
+			const toolId = '0Ab9ZkLm3Pq7Xy2N';
+			const agent = makeAgent({
+				tools: {
+					[toolId]: {
+						...storedCustomTool.tool_1,
+						descriptor: { ...storedCustomTool.tool_1.descriptor, name: 'search_product_docs' },
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const config = {
 				...baseConfig,
-				tools: [{ type: 'custom', id: 'search_product_docs' }],
+				tools: [{ type: 'custom', id: toolId }],
 				vectorStores: [
 					{
 						provider: 'qdrant',
@@ -203,12 +212,14 @@ describe('AgentConfigService', () => {
 						collectionName: 'product-docs',
 					},
 				],
-			});
+			};
 
-			expect(result).toEqual({
-				valid: false,
-				error: 'Vector store tool name collides with an existing tool: search_product_docs',
-			});
+			await expect(
+				service.updateConfig(agentId, projectId, config, user, fencedOn(agent)),
+			).rejects.toThrow(
+				'Vector store tool name collides with an existing tool: search_product_docs',
+			);
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		});
 
 		it('accepts draft credentials that are not checked until update sanitization', async () => {

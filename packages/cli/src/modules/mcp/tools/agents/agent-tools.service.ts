@@ -699,7 +699,7 @@ export class McpAgentToolsService {
 
 						let mutation: Awaited<ReturnType<typeof this.applyMutation>>;
 						try {
-							mutation = await this.applyMutation(user, input, config, projectId, configHash);
+							mutation = await this.applyMutation(user, input, config, agent, configHash);
 						} catch (error) {
 							if (!(error instanceof ConflictError)) throw error;
 							const latestConfigHash = await this.fetchConfigHash(projectId, input.agentId);
@@ -1367,10 +1367,11 @@ export class McpAgentToolsService {
 		user: User,
 		input: MutateAgentInput,
 		config: AgentJsonConfig,
-		projectId: string,
+		agent: Agent,
 		baseConfigHash: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
 		const { agentId, operation } = input;
+		const { projectId } = agent;
 		const telemetryContext = { user, modifiedBy: 'mcp' as const };
 		switch (operation.type) {
 			case 'config.replace': {
@@ -1483,8 +1484,11 @@ export class McpAgentToolsService {
 				return { resource: { type: 'task', id: operation.taskId } };
 			case 'customTool.upsert': {
 				const descriptor = await this.agentSecureRuntime.describeToolSecurely(operation.code);
+				const existingToolId = Object.entries(agent.tools ?? {}).find(
+					([, tool]) => tool.descriptor?.name === descriptor.name,
+				)?.[0];
 				const isAttached = (config.tools ?? []).some(
-					(tool) => tool.type === 'custom' && tool.id === descriptor.name,
+					(tool) => tool.type === 'custom' && tool.id === existingToolId,
 				);
 				const built = await this.agentCustomToolsService.buildCustomTool(
 					agentId,
@@ -1492,7 +1496,7 @@ export class McpAgentToolsService {
 					operation.code,
 					descriptor,
 					telemetryContext,
-					{ recordTelemetry: isAttached },
+					{ recordTelemetry: isAttached, toolId: existingToolId },
 				);
 				if (isAttached) {
 					return { resource: { type: 'customTool', id: built.id }, config };

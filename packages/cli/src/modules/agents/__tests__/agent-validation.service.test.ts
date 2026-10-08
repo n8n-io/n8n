@@ -1044,7 +1044,7 @@ describe('AgentValidationService — structured issues', () => {
 			makeAgent(
 				{
 					...runnableConfig,
-					tools: [{ type: 'custom', id: 'search_product_docs' }],
+					tools: [{ type: 'custom', id: '0Ab9ZkLm3Pq7Xy2N' }],
 					vectorStores: [
 						{
 							provider: 'qdrant',
@@ -1062,7 +1062,7 @@ describe('AgentValidationService — structured issues', () => {
 				{},
 				{
 					tools: {
-						search_product_docs: {
+						'0Ab9ZkLm3Pq7Xy2N': {
 							code: '',
 							descriptor: { name: 'search_product_docs' },
 						},

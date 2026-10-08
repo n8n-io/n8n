@@ -1538,49 +1538,53 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool without returning the full descriptor', async () => {
-			const { service, agentsService, secureRuntime } = makeService();
-			const descriptor = {
-				name: 'seo_analyzer',
-				description: 'Analyze SEO issues',
-				systemInstruction: null,
-				inputSchema: null,
-				outputSchema: null,
-				hasSuspend: false,
-				hasResume: false,
-				hasToMessage: false,
-				requireApproval: false,
-				providerOptions: null,
-			};
-			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
-			agentsService.buildCustomTool.mockResolvedValue({
-				ok: true,
-				id: 'seo_analyzer',
-				descriptor,
-				changed: true,
-			});
+		it.each([undefined, '0Ab9ZkLm3Pq7Xy2N'])(
+			'stores a custom tool with target ID %s without returning the full descriptor',
+			async (toolId) => {
+				const { service, agentsService, secureRuntime } = makeService();
+				const descriptor = {
+					name: 'seo_analyzer',
+					description: 'Analyze SEO issues',
+					systemInstruction: null,
+					inputSchema: null,
+					outputSchema: null,
+					hasSuspend: false,
+					hasResume: false,
+					hasToMessage: false,
+					requireApproval: false,
+					providerOptions: null,
+				};
+				secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
+				agentsService.buildCustomTool.mockResolvedValue({
+					ok: true,
+					id: '0Ab9ZkLm3Pq7Xy2N',
+					descriptor,
+					changed: true,
+				});
 
-			const result = await getBuildCustomTool(service).handler!(
-				{ code: 'export default new Tool("seo_analyzer")' },
-				ctx,
-			);
+				const result = await getBuildCustomTool(service).handler!(
+					{ code: 'export default new Tool("seo_analyzer")', toolId },
+					ctx,
+				);
 
-			expect(agentsService.buildCustomTool).toHaveBeenCalledWith(
-				agentId,
-				projectId,
-				'export default new Tool("seo_analyzer")',
-				descriptor,
-				{ user, modifiedBy: 'builder' },
-			);
-			expect(result).toEqual({
-				ok: true,
-				id: 'seo_analyzer',
-				name: 'seo_analyzer',
-				changed: true,
-				configMutated: true,
-				agentId,
-			});
-		});
+				expect(agentsService.buildCustomTool).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					'export default new Tool("seo_analyzer")',
+					descriptor,
+					{ user, modifiedBy: 'builder' },
+					{ toolId },
+				);
+				expect(result).toEqual({
+					ok: true,
+					id: '0Ab9ZkLm3Pq7Xy2N',
+					name: 'seo_analyzer',
+					changed: true,
+					configMutated: true,
+					agentId,
+				});
+			},
+		);
 
 		it('soft-fails on a build error but rethrows when the run was aborted', async () => {
 			const { service, secureRuntime } = makeService();

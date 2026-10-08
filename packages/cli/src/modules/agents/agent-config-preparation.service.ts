@@ -13,6 +13,7 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
+import type { Agent } from './entities/agent.entity';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
@@ -31,7 +32,12 @@ export class AgentConfigPreparationService {
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 	) {}
 
-	async prepareConfig(config: unknown, projectId: string, user: User) {
+	async prepareConfig(
+		config: unknown,
+		projectId: string,
+		user: User,
+		customTools: Agent['tools'] = {},
+	) {
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
@@ -47,7 +53,7 @@ export class AgentConfigPreparationService {
 			accessibleCredentialIds,
 		);
 
-		const result = await this.validateConfig(sanitizedConfig);
+		const result = await this.validateConfig(sanitizedConfig, customTools);
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
@@ -69,6 +75,7 @@ export class AgentConfigPreparationService {
 	/** Validate the config shape and the node tool schemas. */
 	async validateConfig(
 		raw: unknown,
+		customTools: Agent['tools'] = {},
 	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
 		if (hasNodeToolInputSchema(raw)) {
 			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
@@ -81,7 +88,7 @@ export class AgentConfigPreparationService {
 
 		const config = parsed.data;
 
-		const toolNameCollisions = findVectorStoreToolNameCollisions(config);
+		const toolNameCollisions = findVectorStoreToolNameCollisions(config, customTools);
 		if (toolNameCollisions.length > 0) {
 			return {
 				valid: false,

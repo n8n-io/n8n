@@ -640,6 +640,7 @@ export function tryParseConfigJson(
  */
 export function findVectorStoreToolNameCollisions(
 	config: Pick<AgentJsonConfig, 'tools' | 'vectorStores'>,
+	customTools: Record<string, { descriptor: { name: string } }> = {},
 ): string[] {
 	if (!config.vectorStores?.length) return [];
 
@@ -649,7 +650,7 @@ export function findVectorStoreToolNameCollisions(
 			.map((tool) => {
 				switch (tool.type) {
 					case 'custom':
-						return tool.id;
+						return customTools[tool.id]?.descriptor?.name;
 					case 'workflow':
 						return tool.name ?? tool.workflow;
 					case 'node':

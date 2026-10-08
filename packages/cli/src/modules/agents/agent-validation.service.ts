@@ -288,7 +288,7 @@ export class AgentValidationService {
 		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
-		this.collectVectorStoreIssues(config, issues);
+		this.collectVectorStoreIssues(config, ctx.customTools, issues);
 		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
@@ -478,8 +478,12 @@ export class AgentValidationService {
 	 * re-check covers configs that reached the entity through other paths
 	 * (e.g. history restore).
 	 */
-	private collectVectorStoreIssues(config: AgentJsonConfig, issues: AgentConfigValidationIssue[]) {
-		const collisions = new Set(findVectorStoreToolNameCollisions(config));
+	private collectVectorStoreIssues(
+		config: AgentJsonConfig,
+		customTools: CustomToolEntries,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const collisions = new Set(findVectorStoreToolNameCollisions(config, customTools));
 		const stores = config.vectorStores ?? [];
 		for (let index = 0; index < stores.length; index++) {
 			const store = stores[index];

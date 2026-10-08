@@ -540,10 +540,13 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 		it.each([undefined, true, false])(
 			'checks active custom tool collisions with enabled=%s',
 			(enabled) => {
-				const collisions = findVectorStoreToolNameCollisions({
-					tools: [{ type: 'custom', id: 'search_product_docs', enabled }],
-					vectorStores: [vectorStore],
-				});
+				const collisions = findVectorStoreToolNameCollisions(
+					{
+						tools: [{ type: 'custom', id: '0Ab9ZkLm3Pq7Xy2N', enabled }],
+						vectorStores: [vectorStore],
+					},
+					{ '0Ab9ZkLm3Pq7Xy2N': { descriptor: { name: 'search_product_docs' } } },
+				);
 				expect(collisions).toEqual(enabled === false ? [] : ['search_product_docs']);
 			},
 		);
@@ -557,18 +560,24 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 		});
 
 		it('accounts for hyphen-to-underscore sanitization', () => {
-			const collisions = findVectorStoreToolNameCollisions({
-				tools: [{ type: 'custom', id: 'search_docs_a' }],
-				vectorStores: [{ ...vectorStore, name: 'docs-a' }],
-			});
+			const collisions = findVectorStoreToolNameCollisions(
+				{
+					tools: [{ type: 'custom', id: '0Ab9ZkLm3Pq7Xy2N' }],
+					vectorStores: [{ ...vectorStore, name: 'docs-a' }],
+				},
+				{ '0Ab9ZkLm3Pq7Xy2N': { descriptor: { name: 'search_docs_a' } } },
+			);
 			expect(collisions).toEqual(['search_docs_a']);
 		});
 
 		it('returns no collisions when tool names differ', () => {
-			const collisions = findVectorStoreToolNameCollisions({
-				tools: [{ type: 'custom', id: 'unrelated_tool' }],
-				vectorStores: [vectorStore],
-			});
+			const collisions = findVectorStoreToolNameCollisions(
+				{
+					tools: [{ type: 'custom', id: 'search_product_docs' }],
+					vectorStores: [vectorStore],
+				},
+				{ search_product_docs: { descriptor: { name: 'unrelated_tool' } } },
+			);
 			expect(collisions).toEqual([]);
 		});
 

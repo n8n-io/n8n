@@ -3,6 +3,7 @@ import {
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 	CUSTOM_TOOL_ID_REGEX,
+	findVectorStoreToolNameCollisions,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -18,6 +19,7 @@ import {
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -42,7 +44,7 @@ export class AgentCustomToolsService {
 		code: string,
 		descriptor: ToolDescriptor,
 		context: AgentMutationTelemetryContext,
-		options: { recordTelemetry?: boolean } = {},
+		options: { recordTelemetry?: boolean; toolId?: string } = {},
 	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor; changed: boolean }> {
 		const entity = await getAgentOrThrow(
 			this.agentRepository,
@@ -57,18 +59,36 @@ export class AgentCustomToolsService {
 			);
 		}
 
-		const toolId = descriptor.name;
+		const tools = entity.tools ?? {};
+		const existingToolId = Object.keys(tools).find(
+			(id) => tools[id]?.descriptor?.name === descriptor.name,
+		);
+		if (options.toolId !== undefined && !Object.hasOwn(tools, options.toolId)) {
+			throw new UserError(`Custom tool "${options.toolId}" not found`);
+		}
+		if (options.toolId && existingToolId && existingToolId !== options.toolId) {
+			throw new UserError(`A custom tool named "${descriptor.name}" already exists`);
+		}
+
+		const toolId = options.toolId ?? existingToolId ?? generateAgentResourceId(Object.keys(tools));
 		const nextEntry = { code, descriptor };
 		if (isEqual(entity.tools?.[toolId], nextEntry)) {
 			return { ok: true, id: toolId, descriptor, changed: false };
 		}
 
-		const previous = captureAgentMutation(entity);
-
-		entity.tools = {
-			...entity.tools,
+		const nextTools = {
+			...tools,
 			[toolId]: nextEntry,
 		};
+		const toolNameCollisions = findVectorStoreToolNameCollisions(entity.schema ?? {}, nextTools);
+		if (toolNameCollisions.length > 0) {
+			throw new UserError(
+				`Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
+			);
+		}
+
+		const previous = captureAgentMutation(entity);
+		entity.tools = nextTools;
 
 		await this.saveToolChanges(entity, projectId, context, previous, options.recordTelemetry);
 

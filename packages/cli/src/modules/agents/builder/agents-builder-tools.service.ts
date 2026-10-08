@@ -1199,10 +1199,10 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Compile and store a custom tool. Pass the complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
-					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
+					'sandbox and saved against the agent. The returned `id` is independent of the ' +
+					'tool name. Pass `toolId` to update or rename an existing tool. ' +
 					'This does NOT register the tool in the agent config — follow up with ' +
-					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
+					'patch_config (or write_config) to add `{ type: "custom", id: "<returned id>" }` ' +
 					'to `tools`.' +
 					'Returns { ok: true, id, name } or { ok: false, errors }.',
 			)
@@ -1211,9 +1211,10 @@ export class AgentsBuilderToolsService {
 					code: z
 						.string()
 						.describe('Complete TypeScript source using export default new Tool(...)'),
+					toolId: z.string().min(1).optional().describe('Existing tool ID to update or rename'),
 				}),
 			)
-			.handler(async ({ code }: { code: string }, ctx) => {
+			.handler(async ({ code, toolId }: { code: string; toolId?: string }, ctx) => {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
 				try {
@@ -1224,6 +1225,7 @@ export class AgentsBuilderToolsService {
 						code,
 						descriptor,
 						{ user, modifiedBy: 'builder' },
+						{ toolId },
 					);
 					return { ok: true, id: built.id, name: descriptor.name, changed: built.changed };
 				} catch (e) {

@@ -131,7 +131,9 @@ personalisation, and config. Integrations are not part of this config (see below
 
 Tool references use these forms:
 
-- Custom tool: { "type": "custom", "id": "tool_name" }
+- Custom tool: { "type": "custom", "id": "<tool_id>" }
+  Replace \`<tool_id>\` with \`resource.id\` from customTool.upsert or the matching
+  \`customTools[].id\` from get_agent. Custom tool IDs are independent of tool names.
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
   A workflow tool must start with a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger
   (${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}) and must be published before the published Agent can

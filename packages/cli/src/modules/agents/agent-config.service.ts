@@ -119,6 +119,7 @@ export class AgentConfigService {
 			config,
 			projectId,
 			user,
+			entity.tools,
 		);
 		const existingTaskIds = await this.reconcileConfigReferences(
 			entity,
