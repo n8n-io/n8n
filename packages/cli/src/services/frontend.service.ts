@@ -263,8 +263,7 @@ export class FrontendService {
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
-				// oxlint-disable-next-line typescript/no-deprecated
-				quota: this.license.getUsersLimit(),
+				quota: this.licenseState.getMaxUsers(),
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
@@ -485,8 +484,7 @@ export class FrontendService {
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
-			// oxlint-disable-next-line typescript/no-deprecated
-			quota: this.license.getUsersLimit(),
+			quota: this.licenseState.getMaxUsers(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 		});
@@ -538,8 +536,7 @@ export class FrontendService {
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
-			// oxlint-disable-next-line typescript/no-deprecated
-			sharing: this.license.isSharingEnabled(),
+			sharing: this.licenseState.isSharingLicensed(),
 			// oxlint-disable-next-line typescript/no-deprecated
 			logStreaming: this.license.isLogStreamingEnabled(),
 			// oxlint-disable-next-line typescript/no-deprecated
@@ -659,11 +656,9 @@ export class FrontendService {
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
+		this.settings.enterprise.projects.team.limit = this.licenseState.getMaxTeamProjects();
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		this.settings.folders.enabled = this.license.isFoldersEnabled();
+		this.settings.folders.enabled = this.licenseState.isFoldersLicensed();
 
 		// Refresh evaluation settings
 		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();

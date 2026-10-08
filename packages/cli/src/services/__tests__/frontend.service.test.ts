@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -122,10 +123,8 @@ describe('FrontendService', () => {
 	});
 
 	const license = mock<License>({
-		getUsersLimit: vi.fn().mockReturnValue(100),
 		getPlanName: vi.fn().mockReturnValue('Community'),
 		getConsumerId: vi.fn().mockReturnValue('test-consumer'),
-		isSharingEnabled: vi.fn().mockReturnValue(false),
 		isLogStreamingEnabled: vi.fn().mockReturnValue(false),
 		isLdapEnabled: vi.fn().mockReturnValue(false),
 		isSamlEnabled: vi.fn().mockReturnValue(false),
@@ -139,13 +138,11 @@ describe('FrontendService', () => {
 		isAdvancedPermissionsLicensed: vi.fn().mockReturnValue(false),
 
 		getVariablesLimit: vi.fn().mockReturnValue(0),
-		getTeamProjectLimit: vi.fn().mockReturnValue(0),
 		isBinaryDataS3Licensed: vi.fn().mockReturnValue(false),
 		isAiAssistantEnabled: vi.fn().mockReturnValue(false),
 		isAskAiEnabled: vi.fn().mockReturnValue(false),
 		isAiCreditsEnabled: vi.fn().mockReturnValue(false),
 		getAiCredits: vi.fn().mockReturnValue(0),
-		isFoldersEnabled: vi.fn().mockReturnValue(false),
 	});
 
 	const mailer = mock<UserManagementMailer>({
@@ -168,6 +165,10 @@ describe('FrontendService', () => {
 	});
 
 	const licenseState = mock<LicenseState>({
+		getMaxUsers: vi.fn().mockReturnValue(100),
+		getMaxTeamProjects: vi.fn().mockReturnValue(0),
+		isSharingLicensed: vi.fn().mockReturnValue(false),
+		isFoldersLicensed: vi.fn().mockReturnValue(false),
 		isOidcLicensed: vi.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: vi.fn().mockReturnValue(false),
 		isOtelCustomSpanAttributesLicensed: vi.fn().mockReturnValue(false),
@@ -237,6 +238,10 @@ describe('FrontendService', () => {
 	beforeEach(() => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
+		licenseState.getMaxUsers.mockReturnValue(100);
+		licenseState.getMaxTeamProjects.mockReturnValue(0);
+		licenseState.isSharingLicensed.mockReturnValue(false);
+		licenseState.isFoldersLicensed.mockReturnValue(false);
 		globalConfig.diagnostics.enabled = false;
 		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
@@ -270,6 +275,39 @@ describe('FrontendService', () => {
 	});
 
 	describe('getSettings', () => {
+		it.each([
+			{
+				state: 'unlicensed',
+				users: UNLIMITED_LICENSE_QUOTA,
+				team: 0,
+				sharing: false,
+				folders: false,
+			},
+			{ state: 'licensed', users: 25, team: 5, sharing: true, folders: false },
+			{
+				state: 'unlimited',
+				users: UNLIMITED_LICENSE_QUOTA,
+				team: UNLIMITED_LICENSE_QUOTA,
+				sharing: false,
+				folders: true,
+			},
+		])('should surface $state license settings', async ({ users, team, sharing, folders }) => {
+			licenseState.getMaxUsers.mockReturnValue(users);
+			licenseState.getMaxTeamProjects.mockReturnValue(team);
+			licenseState.isSharingLicensed.mockReturnValue(sharing);
+			licenseState.isFoldersLicensed.mockReturnValue(folders);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.userManagement.quota).toBe(users);
+			expect(settings.enterprise.projects.team.limit).toBe(team);
+			expect(settings.enterprise.sharing).toBe(sharing);
+			expect(settings.folders.enabled).toBe(folders);
+			expect(license.getUsersLimit).not.toHaveBeenCalled();
+			expect(license.getTeamProjectLimit).not.toHaveBeenCalled();
+		});
+
 		it('should return frontend settings', async () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();
