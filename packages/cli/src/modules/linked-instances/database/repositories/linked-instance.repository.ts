@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { LinkedInstanceStatus } from '@n8n/api-types';
 import {
 	BaseRepository,
 	isUniqueConstraintError,
@@ -9,7 +10,6 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import type { LinkedInstanceStatus } from '../../linked-instances.types';
 import { LinkedInstance } from '../entities/linked-instance.entity';
 
 export type NewLinkedInstance = {
@@ -19,7 +19,22 @@ export type NewLinkedInstance = {
 	tokenEncrypted: string;
 	status: LinkedInstanceStatus;
 	lastVerifiedAt: Date | null;
+	defaultRemoteProjectId?: string | null;
+	defaultRemoteProjectName?: string | null;
 };
+
+/** The columns that a user can change on their link. A column that is left out keeps its value. */
+export type LinkedInstanceUpdate = Partial<
+	Pick<
+		LinkedInstance,
+		| 'name'
+		| 'tokenEncrypted'
+		| 'status'
+		| 'lastVerifiedAt'
+		| 'defaultRemoteProjectId'
+		| 'defaultRemoteProjectName'
+	>
+>;
 
 /** Every query filters by `userId`, so a user can only reach their own links. */
 @Service()
@@ -70,14 +85,11 @@ export class LinkedInstanceRepository extends BaseRepository<LinkedInstance> {
 		return (affected ?? 0) > 0;
 	}
 
-	/** Returns `false` when the user has no link with this id. */
-	async updateStatus(
-		userId: string,
-		id: string,
-		status: LinkedInstanceStatus,
-		verifiedAt: Date,
-	): Promise<boolean> {
-		const { affected } = await this.update({ id, userId }, { status, lastVerifiedAt: verifiedAt });
+	/** Sets the given columns in one statement. Returns `false` when the user has no link with this id. */
+	async updateForUser(userId: string, id: string, update: LinkedInstanceUpdate): Promise<boolean> {
+		// TypeORM rejects an update without values.
+		if (Object.keys(update).length === 0) return await this.existsBy({ id, userId });
+		const { affected } = await this.update({ id, userId }, update);
 		return (affected ?? 0) > 0;
 	}
 }

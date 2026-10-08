@@ -5,7 +5,7 @@ import { BackendModule } from '@n8n/decorators';
 @BackendModule({ name: 'linked-instances', instanceTypes: ['main'] })
 export class LinkedInstancesModule implements ModuleInterface {
 	async init() {
-		// The REST endpoints come in a later change. The services load on first use.
+		await import('./linked-instances.controller.js');
 	}
 
 	async entities() {

@@ -1,5 +1,11 @@
+import {
+	LINKED_INSTANCE_INPUT_MESSAGES,
+	linkedInstanceNameSchema,
+	linkedInstanceRemoteProjectIdSchema,
+	linkedInstanceTokenSchema,
+	linkedInstanceUrlSchema,
+} from '@n8n/api-types';
 import { BadRequestError } from '@n8n/errors';
-import { z } from 'zod';
 
 import { normaliseInstanceAddress, type InstanceAddressError } from './instance-address';
 
@@ -7,25 +13,18 @@ export type LinkInstanceInput = { name: string; address: string; token: string }
 
 export type ParsedLinkInput = { name: string; origin: string; token: string };
 
-// The name shows in prompts and in the UI, so it has no markup or line breaks.
-const NAME_PATTERN = /^[\p{L}\p{N} ._()-]+$/u;
-// A header value can hold only visible ASCII characters.
-const TOKEN_PATTERN = /^[\x21-\x7E]+$/;
-const MAX_ADDRESS_LENGTH = 2048;
-
-const nameSchema = z.string().trim().min(1).max(64).regex(NAME_PATTERN);
-const tokenSchema = z.string().trim().min(1).max(4096).regex(TOKEN_PATTERN);
-const addressSchema = z.string().max(MAX_ADDRESS_LENGTH);
+export type LinkUpdateInput = { name?: string; token?: string; defaultRemoteProjectId?: string };
 
 export const LINK_INPUT_MESSAGES = {
-	name: 'Enter a name of 1 to 64 characters. Use only letters, digits, spaces and these characters: - _ . ( )',
-	token:
-		'Enter an access token of 1 to 4096 characters. Use only the letters A to Z, digits and symbols, without spaces or accented characters.',
+	name: LINKED_INSTANCE_INPUT_MESSAGES.name,
+	token: LINKED_INSTANCE_INPUT_MESSAGES.token,
+	defaultRemoteProjectId: LINKED_INSTANCE_INPUT_MESSAGES.defaultRemoteProjectId,
+	noChange: 'Change the name, the access token or the default project.',
 } as const;
 
 export const ADDRESS_ERROR_MESSAGES: Record<InstanceAddressError, string> = {
 	empty: 'Enter the address of the n8n instance.',
-	invalid: 'That address is not valid. Check it and try again.',
+	invalid: LINKED_INSTANCE_INPUT_MESSAGES.url,
 	'unsupported-protocol': 'Enter an address that starts with https://',
 	'insecure-http':
 		'Use https:// for this address. Plain http:// works only for an instance on this computer.',
@@ -33,11 +32,25 @@ export const ADDRESS_ERROR_MESSAGES: Record<InstanceAddressError, string> = {
 };
 
 function parseOrigin(address: unknown): string {
-	const parsed = addressSchema.safeParse(address);
+	const parsed = linkedInstanceUrlSchema.safeParse(address);
 	if (!parsed.success) throw new BadRequestError(ADDRESS_ERROR_MESSAGES.invalid);
 	const result = normaliseInstanceAddress(parsed.data);
 	if (!result.ok) throw new BadRequestError(ADDRESS_ERROR_MESSAGES[result.error]);
 	return result.origin;
+}
+
+/** @throws {BadRequestError} */
+export function parseLinkName(name: unknown): string {
+	const parsed = linkedInstanceNameSchema.safeParse(name);
+	if (!parsed.success) throw new BadRequestError(LINK_INPUT_MESSAGES.name);
+	return parsed.data;
+}
+
+/** @throws {BadRequestError} with a message that never repeats the token */
+export function parseLinkToken(token: unknown): string {
+	const parsed = linkedInstanceTokenSchema.safeParse(token);
+	if (!parsed.success) throw new BadRequestError(LINK_INPUT_MESSAGES.token);
+	return parsed.data;
 }
 
 /**
@@ -46,10 +59,25 @@ function parseOrigin(address: unknown): string {
  * @throws {BadRequestError}
  */
 export function parseLinkInput(input: LinkInstanceInput): ParsedLinkInput {
-	const name = nameSchema.safeParse(input.name);
-	if (!name.success) throw new BadRequestError(LINK_INPUT_MESSAGES.name);
+	const name = parseLinkName(input.name);
 	const origin = parseOrigin(input.address);
-	const token = tokenSchema.safeParse(input.token);
-	if (!token.success) throw new BadRequestError(LINK_INPUT_MESSAGES.token);
-	return { name: name.data, origin, token: token.data };
+	const token = parseLinkToken(input.token);
+	return { name, origin, token };
+}
+
+/**
+ * Checks a change to a link. Leaves out the fields that the user did not send.
+ * @throws {BadRequestError} when a field is not valid or nothing changes
+ */
+export function parseLinkUpdate(input: LinkUpdateInput): LinkUpdateInput {
+	const update: LinkUpdateInput = {};
+	if (input.name !== undefined) update.name = parseLinkName(input.name);
+	if (input.token !== undefined) update.token = parseLinkToken(input.token);
+	if (input.defaultRemoteProjectId !== undefined) {
+		const projectId = linkedInstanceRemoteProjectIdSchema.safeParse(input.defaultRemoteProjectId);
+		if (!projectId.success) throw new BadRequestError(LINK_INPUT_MESSAGES.defaultRemoteProjectId);
+		update.defaultRemoteProjectId = projectId.data;
+	}
+	if (Object.keys(update).length === 0) throw new BadRequestError(LINK_INPUT_MESSAGES.noChange);
+	return update;
 }

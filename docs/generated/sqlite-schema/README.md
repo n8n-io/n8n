@@ -87,7 +87,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
-| [linked_instance](linked_instance.md) | 9 |  | table |
+| [linked_instance](linked_instance.md) | 11 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
@@ -1168,6 +1168,8 @@ erDiagram
 "linked_instance" {
   varchar_2048_ baseUrl
   datetime_3_ createdAt
+  varchar_36_ defaultRemoteProjectId
+  varchar_255_ defaultRemoteProjectName
   varchar id PK
   datetime_3_ lastVerifiedAt
   varchar_64_ name

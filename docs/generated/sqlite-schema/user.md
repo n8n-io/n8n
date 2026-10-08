@@ -280,6 +280,8 @@ erDiagram
 "linked_instance" {
   varchar_2048_ baseUrl
   datetime_3_ createdAt
+  varchar_36_ defaultRemoteProjectId
+  varchar_255_ defaultRemoteProjectName
   varchar id PK
   datetime_3_ lastVerifiedAt
   varchar_64_ name
