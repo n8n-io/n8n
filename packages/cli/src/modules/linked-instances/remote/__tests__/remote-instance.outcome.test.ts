@@ -4,6 +4,8 @@ import {
 	StreamableHTTPError,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { truncate } from '@n8n/utils/string/truncate';
+import fc from 'fast-check';
 import { randomUUID } from 'node:crypto';
 
 import { RemoteInstanceError } from '../remote-instance.errors';
@@ -148,6 +150,62 @@ describe('remoteText', () => {
 
 	it('returns undefined for text with characters without width only', () => {
 		expect(remoteText('\u200B \u202E', token)).toBeUndefined();
+	});
+
+	describe('properties', () => {
+		// "[REDACTED]" and "..." have no character of this set, so no copy of a token can form
+		// across a replacement or the cut.
+		const tokenArb = fc.stringMatching(/^[a-z0-9-]{20,80}$/);
+		const markArb = fc.constantFrom('\u200B', '\u200D', '\u202E', '\u2066', '\uFEFF', '\u00AD');
+
+		/** The token with characters without width at random places in it. */
+		const splitTokenArb = (value: string) =>
+			fc
+				.array(fc.tuple(fc.nat({ max: value.length }), markArb), { maxLength: 4 })
+				.map((marks) =>
+					[...marks]
+						.sort(([a], [b]) => b - a)
+						.reduce((text, [at, mark]) => `${text.slice(0, at)}${mark}${text.slice(at)}`, value),
+				);
+
+		const textWithTokenArb = tokenArb.chain((value) =>
+			fc.tuple(
+				fc.constant(value),
+				fc
+					.array(fc.oneof(fc.string({ unit: 'binary', maxLength: 300 }), splitTokenArb(value)), {
+						maxLength: 6,
+					})
+					.map((parts) => parts.join('')),
+			),
+		);
+
+		it('never returns the token or a format character, and never more than 503 characters', () => {
+			fc.assert(
+				fc.property(textWithTokenArb, ([value, remote]) => {
+					const result = remoteText(remote, value) ?? '';
+
+					expect(result).not.toContain(value);
+					expect(result).not.toMatch(/\p{Cf}/u);
+					expect(result.length).toBeLessThanOrEqual(503);
+				}),
+			);
+		});
+
+		it('replaces each copy of the token, also a split one, with one marker', () => {
+			fc.assert(
+				fc.property(
+					tokenArb,
+					fc.array(fc.stringMatching(/^[A-Z .]{0,20}$/), { minLength: 1, maxLength: 5 }),
+					(value, gaps) => {
+						const remote = gaps.join(`${value.slice(0, 10)}\u200B${value.slice(10)}`);
+
+						expect(remoteText(`x${remote}`, value)).toBe(
+							truncate(`x${gaps.join('[REDACTED]')}`, 500),
+						);
+					},
+				),
+			);
+		});
 	});
 });
 

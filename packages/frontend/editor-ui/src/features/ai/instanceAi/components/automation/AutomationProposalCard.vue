@@ -4,31 +4,35 @@
  * who can see it. Each button sends a `capabilityDecision` with values that the card offered.
  */
 import { computed, ref, useId } from 'vue';
-import lowerFirst from 'lodash/lowerFirst';
 import type { AutomationProposalCard, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nText, type ButtonVariant } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { describeSchedule } from '@/features/agents/utils/scheduleBuilder';
+import { capabilityDecisionOf } from '@/features/ai/shared/agentsChat/resolvedCards';
 import ConfirmationFooter from '../ConfirmationFooter.vue';
 import AutomationProposalPlace from './AutomationProposalPlace.vue';
+import AutomationProposalResolved from './AutomationProposalResolved.vue';
 import AutomationProposalSteps from './AutomationProposalSteps.vue';
 import {
+	actionOf,
 	activationNoteKey,
 	cardActions,
 	decisionFor,
 	hiddenStepCount,
 	liveStatusKey,
-	timezoneLabel,
 	titleKey,
-	triggerLineKey,
 	visibleSteps,
 	type AutomationAction,
 	type AutomationCardAction,
 } from './automationProposal';
+import { triggerText as describeTrigger } from './automationText';
 
 const props = defineProps<{
 	proposal: AutomationProposalCard;
 	disabled?: boolean;
+	/** The answer of a resolved card. With it, the card shows what happened. */
+	resolvedValue?: unknown;
+	/** The tool call behind the card. The answered card reads its result. */
+	toolCallId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -59,17 +63,12 @@ const hiddenSteps = computed(() => hiddenStepCount(props.proposal));
 const statusKey = computed(() => liveStatusKey(props.proposal));
 const noteKey = computed(() => activationNoteKey(props.proposal));
 
-const triggerText = computed(() => {
-	const line = triggerLineKey(props.proposal.trigger);
-	if (!line) return undefined;
-	if (!('cron' in line)) return i18n.baseText(line.key);
-	const description = describeSchedule(line.cron);
-	if (!description) return i18n.baseText(line.fallbackKey);
-	const timezone = line.timezone === undefined ? '' : timezoneLabel(line.timezone, i18n.locale);
-	// cronstrue starts with a capital ("At 08:00"), and the copy puts it mid-sentence.
-	return i18n.baseText(line.key, {
-		interpolate: { description: lowerFirst(description), timezone },
-	});
+const triggerText = computed(() => describeTrigger(props.proposal.trigger));
+
+/** The button that the answer stands for. Only a capability answer resolves the card. */
+const answeredAction = computed(() => {
+	const decision = capabilityDecisionOf(props.resolvedValue);
+	return decision === undefined ? undefined : actionOf(decision);
 });
 
 function choose(action: AutomationAction) {
@@ -80,7 +79,16 @@ function choose(action: AutomationAction) {
 </script>
 
 <template>
+	<!-- The answer of this card moves focus to the outcome, because its buttons go away. -->
+	<AutomationProposalResolved
+		v-if="answeredAction"
+		:proposal="proposal"
+		:action="answeredAction"
+		:tool-call-id="toolCallId"
+		:takes-focus="submitted"
+	/>
 	<N8nCard
+		v-else
 		:class="$style.card"
 		role="group"
 		:aria-labelledby="titleId"

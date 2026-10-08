@@ -1,5 +1,5 @@
 import type { CredentialsEntity } from '@n8n/db';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { exportWorkflowPackage } from '@/modules/n8n-packages/capabilities/workflow-package-export';
@@ -184,7 +184,48 @@ describe('TransferPreflightService', () => {
 			expect(remote.callsOf('search_projects')).toEqual([{ type: 'personal', limit: 1 }]);
 			expect(remote.callsOf('list_credentials')).toEqual([
 				{ limit: 200, projectId: REMOTE_PERSONAL_PROJECT_ID },
+				{ limit: 200, onlySharedWithMe: true },
 			]);
+		});
+
+		it('matches a credential that another user shared with the token user, as the import does', async () => {
+			const { preflightService, alice, linkId, remote } = await personalSetup();
+			remote.handlers.list_credentials = (args) => ({
+				data:
+					args.onlySharedWithMe === true ? [{ id: 'c9', name: 'Team Slack', type: 'slackApi' }] : [],
+			});
+
+			const { credentials } = await preflightService.preflight(alice, linkId, 'wf1');
+
+			expect(credentials).toEqual([{ name: 'Team Slack', type: 'slackApi', status: 'matched' }]);
+		});
+
+		it('gives unknown, not needs-set-up, when the list of shared credentials is partial', async () => {
+			const { preflightService, alice, linkId, remote } = await personalSetup();
+			remote.handlers.list_credentials = (args) => ({
+				data:
+					args.onlySharedWithMe === true
+						? Array.from({ length: 200 }, (_, i) => ({ name: `Key ${i}`, type: 'apiKey' }))
+						: [],
+			});
+
+			const { credentials } = await preflightService.preflight(alice, linkId, 'wf1');
+
+			expect(credentials).toEqual([{ name: 'Team Slack', type: 'slackApi', status: 'unknown' }]);
+		});
+
+		it('asks for no project when the token cannot list credentials', async () => {
+			const { preflightService, alice, linkId, client, remote } = await personalSetup();
+			client.probe.mockResolvedValue({
+				ok: true,
+				toolNames: ['import_workflow_package', 'search_projects'],
+			});
+
+			const { credentials } = await preflightService.preflight(alice, linkId, 'wf1');
+
+			expect(credentials).toEqual([{ name: 'Team Slack', type: 'slackApi', status: 'unknown' }]);
+			expect(client.callTool).not.toHaveBeenCalled();
+			expect(remote.callsOf('search_projects')).toEqual([]);
 		});
 
 		it('gives unknown, and lists nothing, when the token cannot list projects', async () => {
@@ -251,6 +292,21 @@ describe('TransferPreflightService', () => {
 		await preflightService.preflight(alice, linkId, 'wf1');
 
 		expect(workflowFinder.findWorkflowsByIdsForUser).not.toHaveBeenCalled();
+	});
+
+	it('answers 403 before any request when the user can read the workflow but cannot export it', async () => {
+		const { preflightService, alice, linkId, workflowFinder, clientFactory } =
+			await preflightSetup();
+		workflowFinder.findWorkflowForUser.mockImplementation(async (_id, _user, scopes) =>
+			scopes.includes('workflow:export') ? null : workflowEntity(),
+		);
+
+		await expectRejection(
+			preflightService.preflight(alice, linkId, 'wf1'),
+			ForbiddenError,
+			TRANSFER_MESSAGES.cannotExport,
+		);
+		expect(clientFactory.create).not.toHaveBeenCalled();
 	});
 
 	it('answers 404 for a link of another user and for a workflow that the user cannot read', async () => {

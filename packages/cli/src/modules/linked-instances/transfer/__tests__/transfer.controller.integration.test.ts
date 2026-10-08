@@ -15,7 +15,8 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { saveCredential } from '@test-integration/db/credentials';
+import { saveCredential, shareCredentialWithUsers } from '@test-integration/db/credentials';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createChatUser, createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -117,6 +118,7 @@ async function callRemoteTool(name: string, args: Record<string, unknown>): Prom
 		return await listCredentials(remoteUser, Container.get(CredentialsService), {
 			limit: 200,
 			projectId,
+			onlySharedWithMe: args.onlySharedWithMe === true,
 		});
 	}
 	if (name === 'publish_workflow') {
@@ -290,11 +292,32 @@ describe('POST /linked-instances/:id/transfer/preflight', () => {
 		});
 		expect(toolCalls('list_credentials')).toEqual([
 			{ limit: 200, projectId: (await personalProjectOf(remoteUser)).id },
+			{ limit: 200, onlySharedWithMe: true },
 		]);
 		expect(move.body.data).toMatchObject({
 			targetProject: null,
 			credentialsNeedingSetup: [expect.objectContaining({ name: 'Stripe' })],
 		});
+	});
+
+	it('matches a credential that another user shared with the token user, and the move uses it', async () => {
+		await linkWithoutDefaultProject();
+		const shared = await headerCredential('Twilio', await personalProjectOf(bob));
+		await shareCredentialWithUsers(shared, [remoteUser]);
+		const twilio = await headerCredential('Twilio', await personalProjectOf(alice));
+		const workflow = await createWorkflow({ name: 'Text', nodes: [httpNode(twilio)] }, alice);
+
+		const preflight = await post(aliceAgent, '/transfer/preflight', { workflowId: workflow.id });
+		const move = await post(aliceAgent, '/transfer', { workflowId: workflow.id });
+
+		expect(preflight.body.data.credentials).toEqual([
+			{ name: 'Twilio', type: 'httpHeaderAuth', status: 'matched' },
+		]);
+		expect(move.body.data).toMatchObject({ targetProject: null, credentialsNeedingSetup: [] });
+		const copy = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: move.body.data.remoteWorkflowId,
+		});
+		expect(copy.nodes[0].credentials?.httpHeaderAuth?.id).toBe(shared.id);
 	});
 });
 
@@ -445,6 +468,25 @@ describe('POST /linked-instances/:id/transfer', () => {
 		expect(await workflowCountIn(cloudProject)).toBe(1);
 	});
 
+	it('answers 403 and asks nothing when the user can read the workflow but cannot export it', async () => {
+		const readOnly = await createCustomRoleWithScopeSlugs(
+			['project:read', 'project:list', 'workflow:read', 'workflow:list'],
+			{ roleType: 'project' },
+		);
+		const audit = await createTeamProject('Audit', bob);
+		await linkUserToProject(alice, audit, readOnly.slug);
+		const workflow = await createWorkflow({ name: 'Audit report', nodes: [] }, audit);
+
+		const preflight = await post(aliceAgent, '/transfer/preflight', { workflowId: workflow.id });
+		const move = await post(aliceAgent, '/transfer', { workflowId: workflow.id });
+
+		for (const response of [preflight, move]) {
+			expect(response.status).toBe(403);
+			expect(response.body.message).toBe(TRANSFER_MESSAGES.cannotExport);
+		}
+		expect(clientFactory.create).not.toHaveBeenCalled();
+	});
+
 	it('answers 404 for a workflow that the user cannot read', async () => {
 		const workflow = await createWorkflow({ name: 'Bob only', nodes: [] }, bob);
 
@@ -526,6 +568,27 @@ describe('POST /linked-instances/:id/pull', () => {
 		expect(response.body.message).toBe(TRANSFER_MESSAGES.cannotCreateInProject);
 		expect(clientFactory.create).not.toHaveBeenCalled();
 		expect(await workflowCountIn(salesProject)).toBe(0);
+	});
+
+	it('answers 403 before any request when the user can create workflows in the project but cannot change them', async () => {
+		const createOnly = await createCustomRoleWithScopeSlugs(
+			['project:read', 'project:list', 'workflow:read', 'workflow:list', 'workflow:create', 'workflow:import'],
+			{ roleType: 'project' },
+		);
+		const inbox = await createTeamProject('Inbox', bob);
+		await linkUserToProject(alice, inbox, createOnly.slug);
+		const source = await remoteWorkflow();
+
+		const response = await post(aliceAgent, '/pull', {
+			remoteWorkflowId: source.id,
+			projectId: inbox.id,
+		});
+
+		// The steps after the import write as an update, for example the MCP access of the copy.
+		expect(response.status).toBe(403);
+		expect(response.body.message).toBe(TRANSFER_MESSAGES.cannotCreateInProject);
+		expect(clientFactory.create).not.toHaveBeenCalled();
+		expect(await workflowCountIn(inbox)).toBe(0);
 	});
 
 	describe('MCP access of the workflow here', () => {

@@ -108,3 +108,39 @@ describe('summariseToolCall — n8n_chat_action', () => {
 		expect(summariseToolCall(N8N_CHAT_ACTION_TOOL_NAME, { ok: true }, cardInput)).toBeUndefined();
 	});
 });
+
+describe('summariseToolCall — propose_automation', () => {
+	const kept = { workflowId: 'wf-1', url: 'http://localhost:5678/workflow/wf-1', kept: true };
+	const toolInput = { workflowId: 'wf-1', title: 'Morning digest', why: ['Every weekday'] };
+
+	it.each([
+		['a workflow that is on', { ...kept, active: true }, "It's on"],
+		['a saved workflow that is off', { ...kept, active: false }, 'Saved, switched off'],
+		['a declined or blocked answer', { denied: true, message: 'Declined' }, 'Not automated'],
+		[
+			'a workflow that could not be turned on',
+			{ ...kept, active: false, error: 'Saved, but could not turn it on' },
+			"Saved, couldn't turn it on",
+		],
+	])('shows the outcome of %s from the tool result', (_name, output, label) => {
+		expect(summariseToolCall('propose_automation', output, toolInput)).toBe(label);
+	});
+
+	it('shows nothing while the output is the answer, before the result arrives', () => {
+		const answer = { kind: 'capabilityDecision', approved: true, values: { activate: true } };
+
+		expect(summariseToolCall('propose_automation', answer, toolInput)).toBeUndefined();
+	});
+
+	it('never says it is on when the result does not say active', () => {
+		expect(summariseToolCall('propose_automation', { active: true }, toolInput)).toBeUndefined();
+		expect(
+			summariseToolCall('propose_automation', { ...kept, active: 'true' }, toolInput),
+		).toBeUndefined();
+	});
+
+	it('keeps other tools without a summary for the same output', () => {
+		expect(summariseToolCall('build-workflow', { ...kept, active: true })).toBeUndefined();
+		expect(summariseToolCall('search_nodes', { denied: true })).toBeUndefined();
+	});
+});

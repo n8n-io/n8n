@@ -1,6 +1,11 @@
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 
+import {
+	PROPOSE_AUTOMATION_TOOL_NAME,
+	summariseAutomationResult,
+} from '@/features/ai/instanceAi/components/automation/automationResolved';
 import {
 	cardChoiceLabel,
 	n8nChatResumeValueSchema,
@@ -35,6 +40,13 @@ export function summariseToolCall(
 		const parsed = parseN8nChatActionInput(input);
 		if (!parsed) return resume.data.value;
 		return cardChoiceLabel(parsed.card, resume.data);
+	}
+
+	if (toolName === PROPOSE_AUTOMATION_TOOL_NAME) {
+		// The tool result says what happened. Right after the answer, the output is the answer
+		// itself, which has no summary until the result arrives.
+		const key = summariseAutomationResult(output);
+		return key === undefined ? undefined : useI18n().baseText(key);
 	}
 
 	return undefined;

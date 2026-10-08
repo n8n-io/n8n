@@ -54,18 +54,18 @@ flowchart LR
 
 ## The steps
 
-| #   | Step         | Nodes                                                                                                | What the step does                                                                                                                                                                                                                                                                                                                                                               |
-| --- | ------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Intake       | Linear Trigger, Factory settings, Read factory ticket, Critic is separate?, Has acceptance criteria? | A run starts when an issue gets the `factory` label. The run stops when the critic is also an author. It also stops when the ticket has no acceptance criteria. The step reads the criteria and the diff budget.                                                                                                                                                                 |
-| 2   | Plan         | Plan, Plan ready?                                                                                    | The planner reads the code of the repository at the base branch with read-only GitHub tools. It returns a structured plan: summary, steps, files, tests, risks and an estimate of changed lines. A plan without a summary or steps stops the run.                                                                                                                                |
-| 3   | Approval     | Ask for plan approval, Plan decision, Revise plan                                                    | Slack sends the plan to a person and waits up to 3 days. The person approves the plan, asks for changes or rejects the ticket. "Change the plan" sends the feedback back to the planner in the same session.                                                                                                                                                                     |
-| 4   | Prep         | Draft failing test, Prepare workspace, Repro and workspace done, Prep ready?                         | The planner drafts one failing test and the command that runs it. The coding_prepare tool clones the repository and runs the setup command. The run continues only when both are ready and the workspace holds the repository of the pull request. n8n runs the two branches one after the other. With a background setup job, the setup runs while the planner writes the test. |
-| 5   | Implement    | Implementation request, Implement                                                                    | The implementer adds the failing test and confirms that it fails. Then it makes the smallest change that makes the test pass.                                                                                                                                                                                                                                                    |
-| 6   | Verify       | Verify, Check result, Fix the failing check                                                          | A deterministic step runs the check command of the coding config and the command of the failing test. Both must pass. When one fails, the implementer gets the end of the log. Only the first 3 checks of a run can get a retry.                                                                                                                                                 |
-| 7   | Fresh critic | Get diff, Has a diff?, Critic input, Fresh critic, Critic verdict, Address critic findings           | A different agent reviews the diff in a new session. Its input is only the repository and its base branch, the ticket, the acceptance criteria, the plan, the diff and the verify result. It returns `{ verdict, findings[{ path, line, severity, body }], scopeCreep[] }`. "request_changes" goes back to the implementer, at most 2 times.                                     |
-| 8   | Minimise     | Minimise, Re-verify, Get minimised diff, Compare with approved change, Ready for PR?                 | The implementer removes scope creep and changes that the criteria do not need. The check and the failing test run again. Then a Code node compares the new diff with the diff that the critic approved. The change must pass, must not be empty and must stay inside the diff budget. Each changed file and line must be in the approved diff.                                   |
-| 9   | Pull request | Push branch, Branch pushed?, Open draft PR, PR opened?                                               | The coding_push tool commits the change and pushes the branch of the run. A gate confirms the push. Then the GitHub node opens a **draft** pull request. A second gate confirms its link. A person reviews and merges it. CI runs on the pull request.                                                                                                                           |
-| 10  | Report       | Outcome nodes, Run record, Report on ticket, Ensure factory_runs table, Record run                   | Every run ends in one outcome. The outcome goes to the ticket as a Linear comment and to one row in the `factory_runs` data table.                                                                                                                                                                                                                                               |
+| #   | Step         | Nodes                                                                                                | What the step does                                                                                                                                                                                                                                                                                                                                                                 |
+| --- | ------------ | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Intake       | Linear Trigger, Factory settings, Read factory ticket, Critic is separate?, Has acceptance criteria? | A run starts when an issue gets the `factory` label. The run stops when the critic is also an author. It also stops when the ticket has no acceptance criteria. The step reads the criteria and the diff budget.                                                                                                                                                                   |
+| 2   | Plan         | Plan, Plan ready?                                                                                    | The planner reads the code of the repository at the base branch with read-only GitHub tools. It returns a structured plan: summary, steps, files, tests, risks and an estimate of changed lines. A plan without a summary or steps stops the run.                                                                                                                                  |
+| 3   | Approval     | Ask for plan approval, Plan decision, Revise plan                                                    | Slack sends the plan to a person and waits up to 3 days. The person approves the plan, asks for changes or rejects the ticket. "Change the plan" sends the feedback back to the planner in the same session.                                                                                                                                                                       |
+| 4   | Prep         | Draft failing test, Prepare workspace, Repro and workspace done, Prep ready?                         | The planner drafts one failing test and the command that runs it. The `coding_prepare` tool clones the repository and runs the setup command. The run continues only when both are ready and the workspace holds the repository of the pull request. n8n runs the two branches one after the other. With a background setup job, the setup runs while the planner writes the test. |
+| 5   | Implement    | Implementation request, Implement                                                                    | The implementer adds the failing test and confirms that it fails. Then it makes the smallest change that makes the test pass.                                                                                                                                                                                                                                                      |
+| 6   | Verify       | Verify, Check result, Fix the failing check                                                          | A deterministic step runs the check command of the coding config and the command of the failing test. Both must pass. When one fails, the implementer gets the end of the log. Only the first 3 checks of a run can get a retry.                                                                                                                                                   |
+| 7   | Fresh critic | Get diff, Has a diff?, Critic input, Fresh critic, Critic verdict, Address critic findings           | A different agent reviews the diff in a new session. Its input is only the repository and its base branch, the ticket, the acceptance criteria, the plan, the diff and the verify result. It returns `{ verdict, findings[{ path, line, severity, body }], scopeCreep[] }`. "request_changes" goes back to the implementer, at most 2 times.                                       |
+| 8   | Minimise     | Minimise, Re-verify, Get minimised diff, Compare with approved change, Ready for PR?                 | The implementer removes scope creep and changes that the criteria do not need. The check and the failing test run again. Then a Code node compares the new diff with the diff that the critic approved. The change must pass, must not be empty and must stay inside the diff budget. Each changed file and line must be in the approved diff.                                     |
+| 9   | Pull request | Push branch, Branch pushed?, Open draft PR, PR opened?                                               | The `coding_push` tool commits the change and pushes the branch of the run. A gate confirms the push. Then the GitHub node opens a **draft** pull request. A second gate confirms its link. A person reviews and merges it. CI runs on the pull request.                                                                                                                           |
+| 10  | Report       | Outcome nodes, Run record, Report on ticket, Ensure factory_runs table, Record run                   | Every run ends in one outcome. The outcome goes to the ticket as a Linear comment and to one row in the `factory_runs` data table.                                                                                                                                                                                                                                                 |
 
 The critic findings use the `path:line (new version)` format of the review
 comments in the coding view. So the implementer reads them the same way.
@@ -83,7 +83,7 @@ comments in the coding view. So the implementer reads them the same way.
   failing test. Only a `passed` result of both continues. An agent cannot
   report its own result.
 - **Critic fails closed.** Only an explicit `approve` opens a pull request. The
-  review must have no blocker or major findings, and the diff must not be
+  review can have only minor and nit findings, and the diff must not be
   empty. A critic error, a missing verdict, `block` or a third request for
   changes stops the run.
 - **Author and critic are separate.** The critic is a different agent. At the
@@ -101,11 +101,11 @@ comments in the coding view. So the implementer reads them the same way.
   - A file without line changes, for example a binary file, must have the same
     header, which holds the hash of its content.
 
-  The comparison cannot find two things. Minimise can move approved lines
+  The comparison does not find two things. Minimise can move approved lines
   inside one file. A removal can also change what the code does, for example
-  the removal of a guard condition. For these reasons, the check and the failing test run
-  again after Minimise, and a person reviews the draft pull request. The pull
-  request also lists the remaining critic findings.
+  the removal of a guard condition. For these reasons, the check and the failing
+  test run again after Minimise, and a person reviews the draft pull request.
+  The pull request also lists the remaining critic findings.
 
 - **Repair caps.** Only the first 3 checks of a run can get a retry. Checks
   that pass and checks after critic rounds also count. So a run has at most 3
@@ -136,8 +136,8 @@ agent.
 A gate also compares only values of the expected type. A strict If or Switch
 node stops the execution when it gets a value of another type, for example the
 text `"true"` in place of the value `true`. Then the run gets no outcome and no
-record. So each gate converts the values first, and a value of another type
-sends the run to an outcome.
+record. So the expression of each gate checks the type of each value first. A
+value of another type sends the run to an outcome.
 
 ## Import the pack
 
@@ -185,8 +185,8 @@ id, the name and the rest of the file as `config`.
    - **Fresh critic**: Factory critic. Never choose the implementer here. The
      gate **Critic is separate?** stops each run when you do.
 
-   The coding nodes (Prepare workspace, Verify, Get diff, Re-verify, Push
-   branch) use the agent of the **Implement** node.
+   The coding nodes (Prepare workspace, Verify, Get diff, Re-verify, Get
+   minimised diff, Push branch) use the agent of the **Implement** node.
 
 4. Choose the credentials. Each node names the credential that it needs:
    - `Linear account`: Linear Trigger and Report on ticket. The trigger needs

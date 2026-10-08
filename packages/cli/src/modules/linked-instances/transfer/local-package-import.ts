@@ -79,8 +79,11 @@ export class LocalPackageImport {
 	}
 
 	/**
-	 * The import checks the same scopes. This check comes before any request to the linked instance.
-	 * @throws {ForbiddenError} when the user cannot import workflows into the project
+	 * The import checks create and import. The steps after the import write through the normal
+	 * workflow update, for example the MCP access, so the check asks for update too: without it,
+	 * a pulled workflow could stay available in MCP against the setting of this instance. This
+	 * check comes before any request to the linked instance.
+	 * @throws {ForbiddenError} when the user cannot import and change workflows in the project
 	 */
 	async assertCanImportInto(user: User, projectId: string | undefined): Promise<void> {
 		// The personal project of the user is the default, and its owner can import into it.
@@ -88,6 +91,7 @@ export class LocalPackageImport {
 		const project = await this.projectService.getProjectWithScope(user, projectId, [
 			'workflow:import',
 			'workflow:create',
+			'workflow:update',
 		]);
 		if (!project) throw new ForbiddenError(TRANSFER_MESSAGES.cannotCreateInProject);
 	}

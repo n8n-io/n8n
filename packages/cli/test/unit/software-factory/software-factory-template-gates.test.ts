@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import type { IDataObject } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { nodeByName } from './factory-pack-files';
@@ -189,7 +189,7 @@ describe('software factory gates', () => {
 				},
 				json: test,
 			});
-		const workspaceOn = (repositoryUrl: unknown) => ({
+		const workspaceOn = (repositoryUrl: GenericValue) => ({
 			structuredContent: { phase: 'ready', repositoryUrl },
 		});
 		const ready = workspaceOn('https://github.com/acme/factory');
@@ -318,7 +318,7 @@ describe('software factory gates', () => {
 				runIndex: options.runIndex ?? 0,
 			});
 		const finding = (severity?: string) => ({ path: 'a.ts', line: 1, severity, body: 'Fix it' });
-		const approval = (findings: unknown) =>
+		const approval = (findings: GenericValue) =>
 			review({ verdict: 'approve', findings, scopeCreep: [] });
 
 		expect(approval([finding('minor'), finding('nit')])).toBe(0);

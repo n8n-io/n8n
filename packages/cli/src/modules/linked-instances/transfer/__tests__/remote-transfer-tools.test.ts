@@ -5,6 +5,7 @@ import {
 	exportFromRemote,
 	findRemotePersonalProjectId,
 	importOnRemote,
+	listPersonalRemoteCredentials,
 	listRemoteCredentials,
 	publishOnRemote,
 } from '../remote-transfer-tools';
@@ -359,6 +360,79 @@ describe('listRemoteCredentials', () => {
 			remote.handlers.list_credentials = () => ({ error: 'Forbidden' });
 
 			expect(await catchError(listRemoteCredentials(session, 'p1'))).toHaveProperty(
+				'reason',
+				'tool-error',
+			);
+		});
+	});
+});
+
+describe('listPersonalRemoteCredentials', () => {
+	/** The credentials of the personal project, and the ones that other users shared with its owner. */
+	const listing =
+		(owned: unknown[], shared: unknown[]) =>
+		(args: Record<string, unknown>): unknown => ({
+			data: args.onlySharedWithMe === true ? shared : owned,
+		});
+	const named = (count: number, prefix: string) =>
+		Array.from({ length: count }, (_, i) => ({ name: `${prefix}${i}`, type: 't' }));
+
+	it('adds the credentials that other users shared with the token user, because the import uses them', async () => {
+		await inSession(async (session, { remote }) => {
+			remote.handlers.list_credentials = listing(
+				[{ id: 'c1', name: 'Stripe', type: 'httpHeaderAuth' }],
+				[{ id: 'c2', name: 'Twilio', type: 'twilioApi' }],
+			);
+
+			expect(await listPersonalRemoteCredentials(session, 'p1')).toEqual({
+				credentials: [
+					{ name: 'Stripe', type: 'httpHeaderAuth' },
+					{ name: 'Twilio', type: 'twilioApi' },
+				],
+				complete: true,
+			});
+			expect(remote.callsOf('list_credentials')).toEqual([
+				{ limit: 200, projectId: 'p1' },
+				{ limit: 200, onlySharedWithMe: true },
+			]);
+		});
+	});
+
+	it.each([
+		[199, 199, true],
+		[200, 0, false],
+		[0, 200, false],
+		[200, 200, false],
+	])(
+		'is complete only when both lists are (%i own, %i shared: %s)',
+		async (owned, shared, complete) => {
+			await inSession(async (session, { remote }) => {
+				remote.handlers.list_credentials = listing(named(owned, 'o'), named(shared, 's'));
+
+				const list = await listPersonalRemoteCredentials(session, 'p1');
+
+				expect(list?.complete).toBe(complete);
+				expect(list?.credentials).toHaveLength(owned + shared);
+			});
+		},
+	);
+
+	it('returns null and asks nothing without the tool', async () => {
+		await inSession(
+			async (session, { client }) => {
+				expect(await listPersonalRemoteCredentials(session, 'p1')).toBeNull();
+				expect(client.callTool).not.toHaveBeenCalled();
+			},
+			['import_workflow_package', 'search_projects'],
+		);
+	});
+
+	it('throws a tool error when the list of shared credentials has an unknown format', async () => {
+		await inSession(async (session, { remote }) => {
+			remote.handlers.list_credentials = (args) =>
+				args.onlySharedWithMe === true ? { error: 'Forbidden' } : { data: [] };
+
+			expect(await catchError(listPersonalRemoteCredentials(session, 'p1'))).toHaveProperty(
 				'reason',
 				'tool-error',
 			);

@@ -5,18 +5,13 @@
 			"parameters": {
 				"authentication": "apiToken",
 				"teamId": "",
-				"resources": [
-					"issue"
-				]
+				"resources": ["issue"]
 			},
 			"id": "e01a3f6e-31b3-4109-add7-ea7534f63162",
 			"name": "Linear Trigger",
 			"type": "n8n-nodes-base.linearTrigger",
 			"typeVersion": 1,
-			"position": [
-				0,
-				0
-			],
+			"position": [0, 0],
 			"credentials": {
 				"linearApi": {
 					"id": null,
@@ -72,10 +67,7 @@
 			"name": "Factory settings",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				220,
-				0
-			],
+			"position": [220, 0],
 			"notes": "Set these values once after import.",
 			"notesInFlow": true
 		},
@@ -87,10 +79,7 @@
 			"name": "Read factory ticket",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [
-				440,
-				0
-			]
+			"position": [440, 0]
 		},
 		{
 			"parameters": {
@@ -131,10 +120,7 @@
 			"name": "Critic is separate?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [
-				660,
-				0
-			],
+			"position": [660, 0],
 			"notes": "Stops the run when the critic is also an author: Plan, Draft failing test, Implement or Minimise.",
 			"notesInFlow": true
 		},
@@ -166,10 +152,7 @@
 			"name": "Has acceptance criteria?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [
-				880,
-				0
-			]
+			"position": [880, 0]
 		},
 		{
 			"parameters": {
@@ -196,10 +179,7 @@
 			"name": "Plan",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [
-				1120,
-				0
-			],
+			"position": [1120, 0],
 			"notes": "Choose the agent that you imported from agents/planner.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -242,10 +222,7 @@
 			"name": "Plan ready?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [
-				1340,
-				0
-			]
+			"position": [1340, 0]
 		},
 		{
 			"parameters": {
@@ -307,10 +284,7 @@
 			"name": "Ask for plan approval",
 			"type": "n8n-nodes-base.slack",
 			"typeVersion": 2.7,
-			"position": [
-				1560,
-				0
-			],
+			"position": [1560, 0],
 			"credentials": {
 				"slackApi": {
 					"id": null,
@@ -385,10 +359,7 @@
 			"name": "Plan decision",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 3.4,
-			"position": [
-				1800,
-				0
-			]
+			"position": [1800, 0]
 		},
 		{
 			"parameters": {
@@ -408,10 +379,7 @@
 			"name": "Revise plan",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				1560,
-				-260
-			]
+			"position": [1560, -260]
 		},
 		{
 			"parameters": {
@@ -438,10 +406,7 @@
 			"name": "Draft failing test",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [
-				2040,
-				-120
-			],
+			"position": [2040, -120],
 			"notes": "Choose the agent that you imported from agents/planner.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueRegularOutput"
@@ -465,10 +430,7 @@
 			"name": "Prepare workspace",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [
-				2040,
-				80
-			],
+			"position": [2040, 80],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -487,10 +449,7 @@
 			"name": "Repro and workspace done",
 			"type": "n8n-nodes-base.merge",
 			"typeVersion": 3.2,
-			"position": [
-				2280,
-				0
-			],
+			"position": [2280, 0],
 			"notes": "Waits for the failing test and the workspace.",
 			"notesInFlow": true
 		},
@@ -543,10 +502,7 @@
 			"name": "Prep ready?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [
-				2500,
-				0
-			]
+			"position": [2500, 0]
 		},
 		{
 			"parameters": {
@@ -566,10 +522,7 @@
 			"name": "Implementation request",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				2720,
-				0
-			]
+			"position": [2720, 0]
 		},
 		{
 			"parameters": {
@@ -596,10 +549,7 @@
 			"name": "Implement",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [
-				2960,
-				0
-			],
+			"position": [2960, 0],
 			"notes": "Choose the agent that you imported from agents/implementer.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -623,10 +573,7 @@
 			"name": "Verify",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [
-				3200,
-				0
-			],
+			"position": [3200, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -747,10 +694,7 @@
 			"name": "Check result",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 3.4,
-			"position": [
-				3420,
-				0
-			],
+			"position": [3420, 0],
 			"notes": "Only the first 3 checks of a run can get a retry. Checks that pass and checks after critic rounds also count.",
 			"notesInFlow": true
 		},
@@ -772,10 +716,7 @@
 			"name": "Fix the failing check",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				3200,
-				-260
-			]
+			"position": [3200, -260]
 		},
 		{
 			"parameters": {
@@ -796,10 +737,7 @@
 			"name": "Get diff",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [
-				3660,
-				0
-			],
+			"position": [3660, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -839,10 +777,7 @@
 			"name": "Has a diff?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [
-				3880,
-				0
-			]
+			"position": [3880, 0]
 		},
 		{
 			"parameters": {
@@ -904,10 +839,7 @@
 			"name": "Critic input",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				4100,
-				0
-			],
+			"position": [4100, 0],
 			"notes": "The critic gets only these fields. It never sees the implementer conversation.",
 			"notesInFlow": true
 		},
@@ -938,10 +870,7 @@
 			"name": "Fresh critic",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [
-				4340,
-				0
-			],
+			"position": [4340, 0],
 			"notes": "Choose the agent that you imported from agents/critic.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -1041,10 +970,7 @@
 			"name": "Critic verdict",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 3.4,
-			"position": [
-				4580,
-				0
-			]
+			"position": [4580, 0]
 		},
 		{
 			"parameters": {
@@ -1064,10 +990,7 @@
 			"name": "Address critic findings",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				4340,
-				-260
-			]
+			"position": [4340, -260]
 		},
 		{
 			"parameters": {
@@ -1094,10 +1017,7 @@
 			"name": "Minimise",
 			"type": "n8n-nodes-base.messageAnAgent",
 			"typeVersion": 3.1,
-			"position": [
-				4820,
-				0
-			],
+			"position": [4820, 0],
 			"notes": "Choose the agent that you imported from agents/implementer.agent.json.",
 			"notesInFlow": true,
 			"onError": "continueErrorOutput"
@@ -1121,10 +1041,7 @@
 			"name": "Re-verify",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [
-				5060,
-				0
-			],
+			"position": [5060, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -1154,10 +1071,7 @@
 			"name": "Get minimised diff",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [
-				5280,
-				0
-			],
+			"position": [5280, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -1170,16 +1084,13 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "// Facts for the gate \"Ready for PR?\". Minimise may only remove changes. So each file and each\n// changed line after Minimise must also be in the change that the critic approved.\nconst checked = $('Re-verify').last().json.structuredContent;\nconst minimised = $('Get minimised diff').last().json.structuredContent;\nconst approved = $('Get diff').last().json.structuredContent;\n\nconst changesOf = (content) => (Array.isArray(content?.changes) ? content.changes : []);\nconst countOf = (value) => Number(value) || 0;\nconst linesOf = (changes) =>\n\tchanges.reduce((total, change) => total + countOf(change?.additions) + countOf(change?.deletions), 0);\n\n// Each added or deleted line of a unified diff, as \"path: +line\" or \"path: -line\". A file without\n// hunks (a binary file, a mode change or a rename) is one change: its header lines.\nconst changedLinesOf = (diff) => {\n\tconst result = [];\n\tlet header = [];\n\tlet path = '';\n\tlet inHunk = false;\n\tconst endFile = () => {\n\t\tif (header.length > 0 && !inHunk) result.push(header.join(' '));\n\t};\n\tfor (const line of String(diff ?? '').split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\tendFile();\n\t\t\theader = [line];\n\t\t\tpath = '';\n\t\t\tinHunk = false;\n\t\t} else if (inHunk) {\n\t\t\tif (/^[+-]/.test(line)) result.push(path + ': ' + line);\n\t\t} else if (line.startsWith('@@')) {\n\t\t\tinHunk = true;\n\t\t} else if (line !== '') {\n\t\t\theader.push(line);\n\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+)$/.exec(line)?.[1];\n\t\t\tif (name !== undefined && name !== '/dev/null') path = name;\n\t\t}\n\t}\n\tendFile();\n\treturn result;\n};\n\n// The entries of `entries` that `reviewed` does not hold. A repeated entry needs as many copies.\nconst notReviewed = (entries, reviewed) => {\n\tconst left = new Map();\n\tfor (const entry of reviewed) left.set(entry, (left.get(entry) ?? 0) + 1);\n\treturn entries.filter((entry) => {\n\t\tconst count = left.get(entry) ?? 0;\n\t\tleft.set(entry, count - 1);\n\t\treturn count < 1;\n\t});\n};\n\nconst approvedFiles = new Map(changesOf(approved).map((change) => [String(change?.path), change]));\nconst fileProblems = changesOf(checked).flatMap((change) => {\n\tconst path = String(change?.path);\n\tconst before = approvedFiles.get(path);\n\tif (!before) return [path + ': a file that the critic did not review'];\n\tconst grew =\n\t\tcountOf(change.additions) > countOf(before.additions) ||\n\t\tcountOf(change.deletions) > countOf(before.deletions);\n\treturn grew ? [path + ': more changed lines than the critic reviewed'] : [];\n});\n\nreturn [\n\t{\n\t\tjson: {\n\t\t\thasResult: typeof checked?.check === 'string' && typeof minimised?.diff === 'string',\n\t\t\tcheck: typeof checked?.check === 'string' ? checked.check : '',\n\t\t\ttest: typeof checked?.test === 'string' ? checked.test : '',\n\t\t\tchangedLines: linesOf(changesOf(checked)),\n\t\t\tapprovedLines: linesOf(changesOf(approved)),\n\t\t\tdiffBudget: Number($('Read factory ticket').first().json.diffBudget),\n\t\t\tunreviewed: [\n\t\t\t\t\n\t\t\t\t...notReviewed(changedLinesOf(minimised?.diff), changedLinesOf(approved?.diff)),\n\t\t\t],\n\t\t},\n\t},\n];\n"
+				"jsCode": "// Facts for the gate \"Ready for PR?\". Minimise may only remove changes. So each file and each\n// changed line after Minimise must also be in the change that the critic approved.\nconst checked = $('Re-verify').last().json.structuredContent;\nconst minimised = $('Get minimised diff').last().json.structuredContent;\nconst approved = $('Get diff').last().json.structuredContent;\n\nconst changesOf = (content) => (Array.isArray(content?.changes) ? content.changes : []);\nconst countOf = (value) => Number(value) || 0;\nconst linesOf = (changes) =>\n\tchanges.reduce((total, change) => total + countOf(change?.additions) + countOf(change?.deletions), 0);\n\n// Each added or deleted line of a unified diff, as \"path: +line\" or \"path: -line\". A file without\n// hunks (a binary file, a mode change or a rename) is one change: its header lines.\nconst changedLinesOf = (diff) => {\n\tconst result = [];\n\tlet header = [];\n\tlet path = '';\n\tlet inHunk = false;\n\tconst endFile = () => {\n\t\tif (header.length > 0 && !inHunk) result.push(header.join(' '));\n\t};\n\tfor (const line of String(diff ?? '').split('\\n')) {\n\t\tif (line.startsWith('diff --git ')) {\n\t\t\tendFile();\n\t\t\theader = [line];\n\t\t\tpath = '';\n\t\t\tinHunk = false;\n\t\t} else if (inHunk) {\n\t\t\tif (/^[+-]/.test(line)) result.push(path + ': ' + line);\n\t\t} else if (line.startsWith('@@')) {\n\t\t\tinHunk = true;\n\t\t} else if (line !== '') {\n\t\t\theader.push(line);\n\t\t\tconst name = /^(?:---|\\+\\+\\+) (?:[ab]\\/)?(.+)$/.exec(line)?.[1];\n\t\t\tif (name !== undefined && name !== '/dev/null') path = name;\n\t\t}\n\t}\n\tendFile();\n\treturn result;\n};\n\n// The entries of `entries` that `reviewed` does not hold. A repeated entry needs as many copies.\nconst notReviewed = (entries, reviewed) => {\n\tconst left = new Map();\n\tfor (const entry of reviewed) left.set(entry, (left.get(entry) ?? 0) + 1);\n\treturn entries.filter((entry) => {\n\t\tconst count = left.get(entry) ?? 0;\n\t\tleft.set(entry, count - 1);\n\t\treturn count < 1;\n\t});\n};\n\nconst approvedFiles = new Map(changesOf(approved).map((change) => [String(change?.path), change]));\nconst fileProblems = changesOf(checked).flatMap((change) => {\n\tconst path = String(change?.path);\n\tconst before = approvedFiles.get(path);\n\tif (!before) return [path + ': a file that the critic did not review'];\n\tconst grew =\n\t\tcountOf(change.additions) > countOf(before.additions) ||\n\t\tcountOf(change.deletions) > countOf(before.deletions);\n\treturn grew ? [path + ': more changed lines than the critic reviewed'] : [];\n});\n\nreturn [\n\t{\n\t\tjson: {\n\t\t\thasResult: typeof checked?.check === 'string' && typeof minimised?.diff === 'string',\n\t\t\tcheck: typeof checked?.check === 'string' ? checked.check : '',\n\t\t\ttest: typeof checked?.test === 'string' ? checked.test : '',\n\t\t\tchangedLines: linesOf(changesOf(checked)),\n\t\t\tapprovedLines: linesOf(changesOf(approved)),\n\t\t\tdiffBudget: Number($('Read factory ticket').first().json.diffBudget),\n\t\t\tunreviewed: [\n\t\t\t\t...fileProblems,\n\t\t\t\t...notReviewed(changedLinesOf(minimised?.diff), changedLinesOf(approved?.diff)),\n\t\t\t],\n\t\t},\n\t},\n];\n"
 			},
 			"id": "7af4dab4-c2a4-4217-9892-db4962f0d90e",
 			"name": "Compare with approved change",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [
-				5500,
-				0
-			],
+			"position": [5500, 0],
 			"notes": "Minimise may only remove changes. This node lists each file and line that the critic did not review.",
 			"notesInFlow": true,
 			"onError": "continueRegularOutput"
@@ -1295,11 +1206,8 @@
 			"name": "Ready for PR?",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 3.4,
-			"position": [
-				5720,
-				0
-			],
-			"notes": "Opens a pull request only for a passing change that has only changes that the critic reviewed.",
+			"position": [5720, 0],
+			"notes": "Continues only when the change passes, fits the budget and holds only lines that the critic reviewed.",
 			"notesInFlow": true
 		},
 		{
@@ -1321,10 +1229,7 @@
 			"name": "Push branch",
 			"type": "@n8n/n8n-nodes-langchain.mcpClient",
 			"typeVersion": 1.1,
-			"position": [
-				5940,
-				0
-			],
+			"position": [5940, 0],
 			"credentials": {
 				"httpBearerAuth": {
 					"id": null,
@@ -1384,10 +1289,7 @@
 			"name": "Branch pushed?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [
-				6160,
-				0
-			],
+			"position": [6160, 0],
 			"notes": "When a node fails as a whole, n8n sends its input to the success output. So this gate reads the result of Push branch.",
 			"notesInFlow": true
 		},
@@ -1416,10 +1318,7 @@
 			"name": "Open draft PR",
 			"type": "n8n-nodes-base.github",
 			"typeVersion": 1.1,
-			"position": [
-				6380,
-				0
-			],
+			"position": [6380, 0],
 			"credentials": {
 				"githubApi": {
 					"id": null,
@@ -1457,10 +1356,7 @@
 			"name": "PR opened?",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.3,
-			"position": [
-				6600,
-				0
-			]
+			"position": [6600, 0]
 		},
 		{
 			"parameters": {
@@ -1486,10 +1382,7 @@
 			"name": "Outcome: setup error",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				660,
-				420
-			]
+			"position": [660, 420]
 		},
 		{
 			"parameters": {
@@ -1515,10 +1408,7 @@
 			"name": "Outcome: missing acceptance criteria",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				880,
-				420
-			]
+			"position": [880, 420]
 		},
 		{
 			"parameters": {
@@ -1544,10 +1434,7 @@
 			"name": "Outcome: plan not approved",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				2040,
-				420
-			]
+			"position": [2040, 420]
 		},
 		{
 			"parameters": {
@@ -1573,10 +1460,7 @@
 			"name": "Outcome: prep failed",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				2500,
-				420
-			]
+			"position": [2500, 420]
 		},
 		{
 			"parameters": {
@@ -1602,10 +1486,7 @@
 			"name": "Outcome: step failed",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				2960,
-				420
-			]
+			"position": [2960, 420]
 		},
 		{
 			"parameters": {
@@ -1631,10 +1512,7 @@
 			"name": "Outcome: check failed",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				3660,
-				420
-			]
+			"position": [3660, 420]
 		},
 		{
 			"parameters": {
@@ -1660,10 +1538,7 @@
 			"name": "Outcome: critic blocked",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				4580,
-				420
-			]
+			"position": [4580, 420]
 		},
 		{
 			"parameters": {
@@ -1689,10 +1564,7 @@
 			"name": "Outcome: not ready for PR",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				5720,
-				420
-			]
+			"position": [5720, 420]
 		},
 		{
 			"parameters": {
@@ -1724,10 +1596,7 @@
 			"name": "Outcome: draft PR opened",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [
-				6820,
-				0
-			]
+			"position": [6820, 0]
 		},
 		{
 			"parameters": {
@@ -1737,10 +1606,7 @@
 			"name": "Run record",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [
-				2960,
-				700
-			]
+			"position": [2960, 700]
 		},
 		{
 			"parameters": {
@@ -1748,17 +1614,14 @@
 				"resource": "comment",
 				"operation": "addComment",
 				"issueId": "={{ $('Read factory ticket').first().json.ticketId }}",
-				"comment": "=**n8n software factory**: {{ $json.status.replaceAll('_', ' ') }}\n\n{{ $json.summary }}\n{{ $json.prUrl ? '\\nDraft pull request: ' + $json.prUrl : '' }}\n\nExecution {{ $json.executionId }} \u00b7 {{ $json.linesChanged }} changed lines \u00b7 critic verdict: {{ $json.criticVerdict || 'none' }}",
+				"comment": "=**n8n software factory**: {{ $json.status.replaceAll('_', ' ') }}\n\n{{ $json.summary }}\n{{ $json.prUrl ? '\\nDraft pull request: ' + $json.prUrl : '' }}\n\nExecution {{ $json.executionId }} · {{ $json.linesChanged }} changed lines · critic verdict: {{ $json.criticVerdict || 'none' }}",
 				"additionalFields": {}
 			},
 			"id": "f3346f38-1ec3-415e-a511-a4195f9c8183",
 			"name": "Report on ticket",
 			"type": "n8n-nodes-base.linear",
 			"typeVersion": 1.1,
-			"position": [
-				3180,
-				700
-			],
+			"position": [3180, 700],
 			"credentials": {
 				"linearApi": {
 					"id": null,
@@ -1820,10 +1683,7 @@
 			"name": "Ensure factory_runs table",
 			"type": "n8n-nodes-base.dataTable",
 			"typeVersion": 1.1,
-			"position": [
-				3400,
-				700
-			]
+			"position": [3400, 700]
 		},
 		{
 			"parameters": {
@@ -1949,14 +1809,11 @@
 			"name": "Record run",
 			"type": "n8n-nodes-base.dataTable",
 			"typeVersion": 1.1,
-			"position": [
-				3620,
-				700
-			]
+			"position": [3620, 700]
 		},
 		{
 			"parameters": {
-				"content": "## Software factory\nOne run for each Linear ticket that gets the **factory** label:\nticket \u2192 plan \u2192 approval \u2192 (failing test \u2225 workspace) \u2192 implement \u2192 verify \u2192 fresh critic \u2192 minimise \u2192 draft PR \u2192 Linear comment and a **factory_runs** row.\n\n**Set up**\n1. Import the three agents from `agents/` and publish them.\n2. Fill in **Factory settings**.\n3. Pick the agent on each Message an Agent node.\n4. Choose the credentials on each node.\n5. Publish this workflow.\n\n**Today** the coding steps call MCP tools that do not exist yet, so a run stops at \"Outcome: prep failed\" before a PR. See the README.",
+				"content": "## Software factory\nOne run for each Linear ticket that gets the **factory** label:\nticket → plan → approval → (failing test ∥ workspace) → implement → verify → fresh critic → minimise → draft PR → Linear comment and a **factory_runs** row.\n\n**Set up**\n1. Import the three agents from `agents/` and publish them.\n2. Fill in **Factory settings**.\n3. Pick the agent on each Message an Agent node.\n4. Choose the credentials on each node.\n5. Publish this workflow.\n\n**Today** the coding steps call MCP tools that do not exist yet, so a run stops at \"Outcome: prep failed\" before a PR. See the README.",
 				"height": 980,
 				"width": 400,
 				"color": 4
@@ -1965,10 +1822,7 @@
 			"name": "Note: read me",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				-480,
-				-360
-			]
+			"position": [-480, -360]
 		},
 		{
 			"parameters": {
@@ -1980,10 +1834,7 @@
 			"name": "Note: intake",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				-40,
-				-360
-			]
+			"position": [-40, -360]
 		},
 		{
 			"parameters": {
@@ -1995,10 +1846,7 @@
 			"name": "Note: plan",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				1080,
-				-360
-			]
+			"position": [1080, -360]
 		},
 		{
 			"parameters": {
@@ -2010,10 +1858,7 @@
 			"name": "Note: prep",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				1960,
-				-360
-			]
+			"position": [1960, -360]
 		},
 		{
 			"parameters": {
@@ -2025,10 +1870,7 @@
 			"name": "Note: implement",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				2660,
-				-360
-			]
+			"position": [2660, -360]
 		},
 		{
 			"parameters": {
@@ -2040,10 +1882,7 @@
 			"name": "Note: critic",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				3580,
-				-360
-			]
+			"position": [3580, -360]
 		},
 		{
 			"parameters": {
@@ -2055,10 +1894,7 @@
 			"name": "Note: minimise",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				4740,
-				-360
-			]
+			"position": [4740, -360]
 		},
 		{
 			"parameters": {
@@ -2070,10 +1906,7 @@
 			"name": "Note: pr",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				5880,
-				-360
-			]
+			"position": [5880, -360]
 		},
 		{
 			"parameters": {
@@ -2085,10 +1918,7 @@
 			"name": "Note: report",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [
-				2940,
-				600
-			]
+			"position": [2940, 600]
 		}
 	],
 	"connections": {

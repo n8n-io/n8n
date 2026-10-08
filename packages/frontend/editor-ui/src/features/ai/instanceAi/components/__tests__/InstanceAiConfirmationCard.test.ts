@@ -240,6 +240,24 @@ describe('InstanceAiConfirmationCard', () => {
 		expect(getByTestId('automation-proposal-not-now')).toBeDisabled();
 	});
 
+	it('shows the outcome of an answered automation card in place of its buttons', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-auto-3',
+					message: 'Want "Morning digest" to run automatically?',
+					automationProposal: makeProposal(),
+				},
+				disabled: true,
+				resolvedValue: { kind: 'capabilityDecision', approved: false },
+				toolCallId: 'tc-auto',
+			},
+		});
+
+		expect(getByTestId('automation-proposal-resolved')).toHaveTextContent('Not automated.');
+		expect(queryByTestId('automation-proposal-not-now')).not.toBeInTheDocument();
+	});
+
 	it('renders the approval card when no card field is set', () => {
 		const { getByTestId } = renderComponent({
 			props: {

@@ -567,4 +567,69 @@ export class InstanceAiPage extends BasePage {
 		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });
 		await this.getPlanApproveButton().click();
 	}
+
+	// ── Simple and Power modes ────────────────────────────────────────
+
+	/** The Interface switch in the expanded sidebar. */
+	getModeSwitch(): Locator {
+		return this.page.getByTestId('experience-mode-switch');
+	}
+
+	/** One option of the Interface switch, by its visible label. */
+	getModeOption(name: 'Simple' | 'Power'): Locator {
+		return this.getModeSwitch().getByRole('radio', { name, exact: true });
+	}
+
+	/** The one-button mode switch of the collapsed sidebar. Its label names the mode it switches to. */
+	getCollapsedModeToggle(): Locator {
+		return this.page.getByTestId('experience-mode-toggle');
+	}
+
+	/** The button that collapses and expands the main sidebar. */
+	getMainSidebarToggle(): Locator {
+		return this.page.locator('#toggle-sidebar-button');
+	}
+
+	/** A sidebar entry by its test id, for example `project-personal-menu-item`. */
+	getSidebarEntry(testId: string): Locator {
+		return this.page.getByTestId(testId);
+	}
+
+	/** The Workspace heading of Simple mode. Its button shows `aria-expanded`. */
+	getWorkspaceToggle(): Locator {
+		return this.page
+			.getByTestId('simple-workspace')
+			.getByRole('button', { name: 'Workspace', exact: true });
+	}
+
+	getChatsSection(): Locator {
+		return this.page.getByTestId('instance-ai-sidebar-chats');
+	}
+
+	getAutomationsSection(): Locator {
+		return this.page.getByTestId('assistant-automations');
+	}
+
+	/** One group of the chat list in Power mode. */
+	getChatGroup(group: 'needs-you' | 'working' | 'ready' | 'done'): Locator {
+		return this.page.getByTestId(`assistant-chat-group-${group}`);
+	}
+
+	/** The state mark of a chat row in Simple mode. A chat that is done has none. */
+	getChatStateMark(threadId: string): Locator {
+		return this.page.getByTestId(`instance-ai-thread-state-${threadId}`);
+	}
+
+	/** The + button of the composer. */
+	getInputMenuTrigger(): Locator {
+		return this.page.getByRole('button', {
+			name: 'Add context with connectors, files and more',
+			exact: true,
+		});
+	}
+
+	/** The open + menu. Its items have the menu item role. */
+	getInputMenu(): Locator {
+		return this.page.getByRole('menu');
+	}
 }

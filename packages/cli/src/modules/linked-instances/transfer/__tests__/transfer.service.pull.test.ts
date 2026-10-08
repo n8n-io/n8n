@@ -71,15 +71,17 @@ describe('TransferService.pull', () => {
 		expect(client.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('imports into a project where the user can create workflows', async () => {
+	it('imports into a project where the user can create and change workflows', async () => {
 		const { service, alice, linkId, projectService } = await pullSetup();
 		projectService.getProjectWithScope.mockResolvedValue(mock<Project>({ id: 'p1' }));
 
 		await service.pull(alice, linkId, { remoteWorkflowId: 'r1', projectId: 'p1' });
 
+		// The steps after the import, for example the MCP access, write as an update.
 		expect(projectService.getProjectWithScope).toHaveBeenCalledWith(alice, 'p1', [
 			'workflow:import',
 			'workflow:create',
+			'workflow:update',
 		]);
 		expect(importWorkflowPackage).toHaveBeenCalledWith(
 			expect.objectContaining({ projectId: 'p1', sourceWorkflowId: 'r1' }),

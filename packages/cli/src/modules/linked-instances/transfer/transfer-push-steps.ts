@@ -87,6 +87,16 @@ export function publishBlockers(name: string, imported: RemoteImportResult): str
 }
 
 /**
+ * True when the import put the new version live by itself, but that version uses credentials
+ * without a value or node types that the linked instance does not have. It cannot run as it
+ * should until someone sets it up there.
+ */
+export function liveCopyNeedsSetUp(imported: RemoteImportResult): boolean {
+	if (imported.newVersionLive !== true) return false;
+	return imported.missingNodeTypes.length > 0 || imported.credentialsNeedingSetup.length > 0;
+}
+
+/**
  * Puts the new version of the copy live, when nothing blocks it. A failure is a warning, and an
  * earlier version can stay live: `published` then stays `true`.
  */

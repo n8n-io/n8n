@@ -1,11 +1,19 @@
-import type { User } from '@n8n/api-types';
+import { experienceModeSchema, type ExperienceMode, type User } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
+import { z } from 'zod';
 
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
+
+// Only the settings field that the experience-mode helpers read.
+const currentUserResponseSchema = z.object({
+	data: z.object({
+		settings: z.object({ experienceMode: experienceModeSchema.optional() }).passthrough().optional(),
+	}),
+});
 
 export interface TestUser {
 	id: string;

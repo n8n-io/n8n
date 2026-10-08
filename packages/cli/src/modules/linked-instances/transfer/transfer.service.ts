@@ -23,7 +23,12 @@ import {
 	TRANSFER_WARNINGS,
 } from './transfer-errors';
 import { TransferLocalWorkflows } from './transfer-local-workflows';
-import { importWithFallback, publishCopy, type RemoteOutcome } from './transfer-push-steps';
+import {
+	importWithFallback,
+	liveCopyNeedsSetUp,
+	publishCopy,
+	type RemoteOutcome,
+} from './transfer-push-steps';
 import type { TransferDirection } from './transfer.types';
 
 export type PushInput = {
@@ -47,6 +52,8 @@ type TurnOffStep = {
 	requested: boolean;
 	/** The move asked to publish the copy, and the new version did not go live there. */
 	publishFailed: boolean;
+	/** The new version is live there, but it needs set-up before it can run. */
+	liveCopyNeedsSetUp: boolean;
 	options: TurnOffOptions;
 };
 
@@ -60,6 +67,16 @@ type TransferFailure = {
 
 /** The RBAC check and the turn-off read the same snapshot, so they agree. */
 const isLive = (workflow: WorkflowEntity) => workflow.activeVersionId !== null;
+
+/**
+ * Why the workflow here stays on, or `undefined` when it can turn off. Without a copy there that
+ * runs the new version as it should, a turn-off would stop the automation or let it fail.
+ */
+function reasonToKeepLocalLive(name: string, step: TurnOffStep): string | undefined {
+	if (step.publishFailed) return TRANSFER_WARNINGS.keptLocalLive(name);
+	if (step.liveCopyNeedsSetUp) return TRANSFER_WARNINGS.keptLocalNotReady(name);
+	return undefined;
+}
 
 /** Opens the copy in the editor of the linked instance. */
 export function remoteWorkflowUrl(baseUrl: string, workflowId: string): string {
@@ -87,12 +104,13 @@ export class TransferService {
 	/**
 	 * Exports the workflow here and imports it into the default project of the link. A repeated
 	 * move updates the same copy. Then puts the copy live and turns off the workflow here, when
-	 * asked. The workflow here stays on when the new version did not go live there. A failure
-	 * after the import is a warning in the result.
+	 * asked. The workflow here stays on when the new version did not go live there, or is live but
+	 * needs set-up there. A failure after the import is a warning in the result.
 	 * @throws {NotFoundError} when the user has no such link or cannot read the workflow
-	 * @throws {ForbiddenError} when `deactivateLocal` is set, the workflow is on here, and the user
-	 *   cannot turn it off
-	 * @throws {BadRequestError} when the linked instance cannot be used or refuses the workflow
+	 * @throws {ForbiddenError} when the user cannot export the workflow, or `deactivateLocal` is
+	 *   set, the workflow is on here, and the user cannot turn it off
+	 * @throws {BadRequestError} when the workflow calls other workflows by ID, or the linked
+	 *   instance cannot be used or refuses the workflow
 	 */
 	async push(
 		user: User,
@@ -192,8 +210,9 @@ export class TransferService {
 		options: TurnOffOptions,
 	): Promise<LinkedInstancePushResult> {
 		const workflow = await this.local.findMovable(user, input.workflowId);
-		// Before any request to the linked instance, so that a refusal moves nothing. A workflow
-		// that is not on here has nothing to turn off, so the move needs no right for it.
+		// The checks come before any request to the linked instance, so that a refusal moves nothing.
+		await this.local.assertNoSubWorkflowCalls(user, workflow);
+		// A workflow that is not on here has nothing to turn off, so the move needs no right for it.
 		if (input.deactivateLocal && isLive(workflow)) {
 			await this.local.assertCanTurnOff(user, workflow.id);
 		}
@@ -206,6 +225,7 @@ export class TransferService {
 		const localStep = await this.turnOffLocalCopy(user, link.summary, workflow, {
 			requested: input.deactivateLocal === true,
 			publishFailed: remote.publishFailed,
+			liveCopyNeedsSetUp: liveCopyNeedsSetUp(remote.imported),
 			options,
 		});
 		return toPushResult(link.summary, remote, localStep);
@@ -247,11 +267,9 @@ export class TransferService {
 		if (!step.requested || !isLive(workflow)) {
 			return { localDeactivated: false, warnings: [] };
 		}
-		// The user asked for the new version to run there instead. Without it, the automation would
-		// stop or run an earlier version, so the workflow here stays on.
-		if (step.publishFailed) {
-			return { localDeactivated: false, warnings: [TRANSFER_WARNINGS.keptLocalLive(link.name)] };
-		}
+		// The user asked for the new version to run there instead.
+		const keepReason = reasonToKeepLocalLive(link.name, step);
+		if (keepReason !== undefined) return { localDeactivated: false, warnings: [keepReason] };
 		try {
 			return {
 				localDeactivated: await this.local.turnOff(user, workflow.id, step.options),

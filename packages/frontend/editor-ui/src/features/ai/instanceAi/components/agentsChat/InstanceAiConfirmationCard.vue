@@ -36,6 +36,9 @@ import { resolvePlanTasksFromConfirmation } from '../../planReview.utils';
 const props = defineProps<{
 	input: AssistantConfirmationInput;
 	disabled?: boolean;
+	/** The answer of a resolved card, and its tool call: the automation card shows the outcome. */
+	resolvedValue?: unknown;
+	toolCallId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -423,6 +426,8 @@ function onApprovalSelect(key: string) {
 		v-else-if="variant === 'automation-proposal' && input.automationProposal"
 		:proposal="input.automationProposal"
 		:disabled="isInactive"
+		:resolved-value="resolvedValue"
+		:tool-call-id="toolCallId"
 		@submit="submit"
 	/>
 

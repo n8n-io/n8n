@@ -10,6 +10,7 @@ import { RemoteInstanceError } from '../../remote/remote-instance.errors';
 import { TRANSFER_MESSAGES, TRANSFER_WARNINGS } from '../transfer-errors';
 import {
 	importReturns,
+	node,
 	OPS,
 	PACKAGE,
 	pushSetup,
@@ -66,8 +67,10 @@ describe('TransferService.push', () => {
 
 		await service.push(alice, linkId, { workflowId: 'wf1' });
 
+		// The export checks `workflow:export` too.
 		expect(workflowFinder.findWorkflowForUser).toHaveBeenCalledWith('wf1', alice, [
 			'workflow:read',
+			'workflow:export',
 		]);
 		expect(exportWorkflowPackage).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -424,6 +427,52 @@ describe('TransferService.push', () => {
 				TRANSFER_MESSAGES.workflowNotFound,
 			);
 			expect(clientFactory.create).not.toHaveBeenCalled();
+		});
+
+		it('answers 403 before any request when the user can read the workflow but cannot export it', async () => {
+			const { service, alice, linkId, workflowFinder, clientFactory, eventService } =
+				await pushSetup();
+			workflowFinder.findWorkflowForUser.mockImplementation(async (_id, _user, scopes) =>
+				scopes.includes('workflow:export') ? null : workflowEntity(),
+			);
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				ForbiddenError,
+				TRANSFER_MESSAGES.cannotExport,
+			);
+			expect(clientFactory.create).not.toHaveBeenCalled();
+			expect(exportWorkflowPackage).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'linked-instance-workflow-transfer-failed',
+				expect.objectContaining({ direction: 'push', workflowId: 'wf1', reason: 'refused' }),
+			);
+		});
+
+		it('refuses a workflow that calls other workflows by ID before any request, and names them', async () => {
+			const { service, alice, linkId, workflowFinder, clientFactory } = await pushSetup();
+			const callNode = (id: string) =>
+				node({
+					id: `call-${id}`,
+					name: `Call ${id}`,
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1.2,
+					parameters: { workflowId: { __rl: true, mode: 'list', value: id } },
+				});
+			workflowFinder.findWorkflowForUser.mockResolvedValue(
+				workflowEntity({ nodes: [callNode('wf-3'), callNode('wf-2')] }),
+			);
+			workflowFinder.findWorkflowsByIdsForUser.mockResolvedValue([
+				workflowEntity({ id: 'wf-2', name: 'Send invoice' }),
+			]);
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				TRANSFER_MESSAGES.subWorkflowCalls('"Send invoice" (wf-2), "wf-3"'),
+			);
+			expect(clientFactory.create).not.toHaveBeenCalled();
+			expect(exportWorkflowPackage).not.toHaveBeenCalled();
 		});
 
 		it('refuses an archived workflow', async () => {

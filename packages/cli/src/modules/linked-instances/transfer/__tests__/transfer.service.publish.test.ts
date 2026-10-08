@@ -205,7 +205,7 @@ describe('TransferService.push with publish', () => {
 			expect(deactivator.turnOff).toHaveBeenCalledTimes(1);
 		});
 
-		it('turns off the workflow here when the live new version uses an empty credential that the copy used before', async () => {
+		it('keeps the workflow on here when the live new version uses an empty credential that the copy used before', async () => {
 			const { service, alice, linkId, remote, deactivator } = await repushSetup({
 				newVersionLive: true,
 				credentialsNeedingSetup: [STUB_CREDENTIAL],
@@ -214,13 +214,38 @@ describe('TransferService.push with publish', () => {
 			const result = await service.push(alice, linkId, moveAndTurnOff);
 
 			expect(result).toMatchObject({
+				published: true,
 				publishFailed: false,
-				localDeactivated: true,
+				localDeactivated: false,
 				credentialsNeedingSetup: [STUB_CREDENTIAL],
 			});
-			expect(result.warnings).toEqual([]);
+			expect(result.warnings).toEqual([TRANSFER_WARNINGS.keptLocalNotReady('Cloud')]);
 			expect(remote.callsOf('publish_workflow')).toEqual([]);
-			expect(deactivator.turnOff).toHaveBeenCalledTimes(1);
+			expect(deactivator.turnOff).not.toHaveBeenCalled();
+		});
+
+		it('keeps the workflow on here also without a publish, when the live new version needs set-up', async () => {
+			const { service, alice, linkId, deactivator } = await repushSetup({
+				newVersionLive: true,
+				missingNodeTypes: ['n8n-nodes-acme.crm@2'],
+			});
+
+			const result = await service.push(alice, linkId, { workflowId: 'wf1', deactivateLocal: true });
+
+			expect(result).toMatchObject({ publishFailed: false, localDeactivated: false });
+			expect(result.warnings).toEqual([TRANSFER_WARNINGS.keptLocalNotReady('Cloud')]);
+			expect(deactivator.turnOff).not.toHaveBeenCalled();
+		});
+
+		it('says nothing about set-up when the move does not ask to turn off the workflow here', async () => {
+			const { service, alice, linkId } = await repushSetup({
+				newVersionLive: true,
+				credentialsNeedingSetup: [STUB_CREDENTIAL],
+			});
+
+			const result = await service.push(alice, linkId, { workflowId: 'wf1', publish: true });
+
+			expect(result).toMatchObject({ publishFailed: false, localDeactivated: false, warnings: [] });
 		});
 
 		it('keeps the workflow on here when an earlier version stays live there and the publish fails', async () => {

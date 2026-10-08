@@ -27,10 +27,14 @@ export type TransferErrorContext = {
 export const TRANSFER_MESSAGES = {
 	workflowNotFound: 'We could not find this workflow, or you do not have permission to see it.',
 	archived: 'This workflow is archived. Restore it, then move it.',
+	cannotExport:
+		'You do not have permission to export this workflow, so you cannot move it. Ask its owner for access.',
+	subWorkflowCalls: (labels: string) =>
+		`This workflow calls other workflows by ID: ${labels}. A move copies one workflow only, so the copy could not call them. You cannot move this workflow yet.`,
 	cannotTurnOff:
 		'You do not have permission to turn off this workflow here. Move it without turning it off, or ask its owner.',
 	cannotCreateInProject:
-		'You do not have permission to create workflows in this project. Choose another project.',
+		'You do not have permission to create and edit workflows in this project. Choose another project.',
 	archivedLocalCopy: (workflowName: string) =>
 		`The workflow "${workflowName}" in this project came from the same workflow before, but it is archived. Restore it, then try again.`,
 	sameIdLocalWorkflow: (workflowName: string) =>
@@ -77,6 +81,8 @@ export const TRANSFER_WARNINGS = {
 			: `The workflow is in ${name}, but ${count} credentials that it uses there have no value, so the move did not publish it. Set them up, then publish the workflow in ${name}.`,
 	keptLocalLive: (name: string) =>
 		`The workflow stays turned on here, because the new version is not live in ${name}.`,
+	keptLocalNotReady: (name: string) =>
+		`The workflow stays turned on here, because the new version that is live in ${name} uses credentials without a value or node types that ${name} does not have. Set them up in ${name}, then turn off the workflow here.`,
 	turnOffFailed: (reason: string) =>
 		`The workflow is still turned on here: ${withoutFullStop(reason)}. Turn it off in the editor.`,
 	mcpAccessNotSet:

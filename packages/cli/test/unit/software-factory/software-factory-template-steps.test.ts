@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { jsonParse, type IDataObject } from 'n8n-workflow';
+import { jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { nodeByName, readPackText } from './factory-pack-files';
@@ -530,7 +530,7 @@ describe('outcomes', () => {
 				'Draft failing test': test,
 			},
 		});
-		const workspaceOn = (repositoryUrl: unknown, phase: unknown = 'ready') => ({
+		const workspaceOn = (repositoryUrl: GenericValue, phase: GenericValue = 'ready') => ({
 			structuredContent: { phase, repositoryUrl },
 		});
 		const testWith = (fields: IDataObject) => ({
@@ -586,8 +586,8 @@ describe('outcomes', () => {
 				fc.record({ error: fc.constantFrom('No tool', { message: 'Timeout' }) }),
 				fc
 					.tuple(
-						fc.constantFrom<unknown>('ready', 'error', undefined, ['ready']),
-						fc.constantFrom<unknown>(
+						fc.constantFrom<GenericValue>('ready', 'error', undefined, ['ready']),
+						fc.constantFrom<GenericValue>(
 							repository,
 							'https://github.com/ACME/factory.git/',
 							'https://github.com/acme/factory-old',
@@ -603,7 +603,7 @@ describe('outcomes', () => {
 				fc.constant({ structuredOutput: null }),
 				fc
 					.tuple(
-						fc.constantFrom<unknown>(
+						fc.constantFrom<GenericValue>(
 							'a/run.test.ts',
 							' a/run.test.ts',
 							'a/',
@@ -612,7 +612,7 @@ describe('outcomes', () => {
 							7,
 							undefined,
 						),
-						fc.constantFrom<unknown>(
+						fc.constantFrom<GenericValue>(
 							'pnpm test a/run.test.ts',
 							'pnpm test',
 							'pnpm test 7',

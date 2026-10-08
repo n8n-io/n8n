@@ -7,6 +7,7 @@ import {
 	type InstanceAiConfirmRequest,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import type { CapabilityDecision } from '@/features/ai/shared/agentsChat/resolvedCards';
 
 /**
  * Pure rules for the card of `propose_automation`. The component only renders what these
@@ -31,6 +32,12 @@ export type AutomationTriggerLine =
 	| { key: BaseTextKey }
 	| { key: BaseTextKey; cron: string; timezone?: string; fallbackKey: BaseTextKey };
 
+/**
+ * A full line for the open card ("Runs at 08:00"), or a clause that goes after "runs" in the
+ * sentence of an answered card ("at 08:00").
+ */
+export type AutomationTriggerForm = 'line' | 'clause';
+
 /** Where the workflow runs after the answer, and why the card recommends that place. */
 export interface AutomationPlace {
 	/** True when the workflow runs on a linked instance, not on this computer. */
@@ -44,13 +51,37 @@ export interface AutomationPlace {
 
 export const LOCAL_CAVEAT_KEY: BaseTextKey = 'instanceAi.automation.place.localCaveat';
 
-const TRIGGER_KEYS: Record<Exclude<AutomationTriggerKind, 'manual'>, BaseTextKey> = {
-	schedule: 'instanceAi.automation.trigger.schedule',
-	webhook: 'instanceAi.automation.trigger.webhook',
-	form: 'instanceAi.automation.trigger.form',
-	chat: 'instanceAi.automation.trigger.chat',
-	'app-event': 'instanceAi.automation.trigger.appEvent',
-	other: 'instanceAi.automation.trigger.other',
+interface TriggerKeys {
+	kinds: Record<Exclude<AutomationTriggerKind, 'manual'>, BaseTextKey>;
+	cron: BaseTextKey;
+	cronWithTimezone: BaseTextKey;
+}
+
+const TRIGGER_KEYS: Record<AutomationTriggerForm, TriggerKeys> = {
+	line: {
+		kinds: {
+			schedule: 'instanceAi.automation.trigger.schedule',
+			webhook: 'instanceAi.automation.trigger.webhook',
+			form: 'instanceAi.automation.trigger.form',
+			chat: 'instanceAi.automation.trigger.chat',
+			'app-event': 'instanceAi.automation.trigger.appEvent',
+			other: 'instanceAi.automation.trigger.other',
+		},
+		cron: 'instanceAi.automation.trigger.cron',
+		cronWithTimezone: 'instanceAi.automation.trigger.cronWithTimezone',
+	},
+	clause: {
+		kinds: {
+			schedule: 'instanceAi.automation.resolved.trigger.schedule',
+			webhook: 'instanceAi.automation.resolved.trigger.webhook',
+			form: 'instanceAi.automation.resolved.trigger.form',
+			chat: 'instanceAi.automation.resolved.trigger.chat',
+			'app-event': 'instanceAi.automation.resolved.trigger.appEvent',
+			other: 'instanceAi.automation.resolved.trigger.other',
+		},
+		cron: 'instanceAi.automation.resolved.trigger.cron',
+		cronWithTimezone: 'instanceAi.automation.resolved.trigger.cronWithTimezone',
+	},
 };
 
 /** Reasons that explain a local place. The other reasons add nothing that the user can act on. */
@@ -70,16 +101,20 @@ const ALWAYS_ON_KINDS: ReadonlySet<AutomationTriggerKind> = new Set([
 	'app-event',
 ]);
 
-/** The trigger line. A manual workflow has none. */
-export function triggerLineKey(trigger: Trigger): AutomationTriggerLine | undefined {
+/** The trigger line, or the trigger clause. A manual workflow has none. */
+export function triggerLineKey(
+	trigger: Trigger,
+	form: AutomationTriggerForm = 'line',
+): AutomationTriggerLine | undefined {
 	if (trigger.kind === 'manual') return undefined;
-	const kindKey = TRIGGER_KEYS[trigger.kind];
+	const keys = TRIGGER_KEYS[form];
+	const kindKey = keys.kinds[trigger.kind];
 	if (trigger.cron === undefined) return { key: kindKey };
 	if (trigger.timezone === undefined) {
-		return { key: 'instanceAi.automation.trigger.cron', cron: trigger.cron, fallbackKey: kindKey };
+		return { key: keys.cron, cron: trigger.cron, fallbackKey: kindKey };
 	}
 	return {
-		key: 'instanceAi.automation.trigger.cronWithTimezone',
+		key: keys.cronWithTimezone,
 		cron: trigger.cron,
 		timezone: trigger.timezone,
 		fallbackKey: kindKey,
@@ -274,6 +309,15 @@ export function decisionFor(
 		approved: true,
 		values: { ...(target !== undefined && { target }), activate: action === 'activate' },
 	};
+}
+
+/**
+ * The button behind an answer: the inverse of `decisionFor`. As on the server, only
+ * `activate: true` turns the workflow on, so an approval without it saves the workflow.
+ */
+export function actionOf(decision: CapabilityDecision): AutomationAction {
+	if (!decision.approved) return 'decline';
+	return decision.values?.activate === true ? 'activate' : 'save';
 }
 
 /** The steps that get an icon. The schema already limits them; the cap keeps the row short. */

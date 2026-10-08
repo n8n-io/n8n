@@ -6,7 +6,12 @@ import { RemoteInstanceError } from '../../remote/remote-instance.errors';
 import { textCleaner, type RemoteSession } from '../linked-instance-sessions';
 import type { RemoteImportResult } from '../remote-transfer-tools';
 import { RemoteImportError, TRANSFER_WARNINGS } from '../transfer-errors';
-import { importWithFallback, publishBlockers, publishCopy } from '../transfer-push-steps';
+import {
+	importWithFallback,
+	liveCopyNeedsSetUp,
+	publishBlockers,
+	publishCopy,
+} from '../transfer-push-steps';
 import { ALL_TOOLS, OPS } from './transfer.test-helpers';
 
 const LINK: LinkedInstanceSummary = {
@@ -174,6 +179,54 @@ describe('publishBlockers', () => {
 					if (credentialCount > 0) {
 						expect(blockers.at(-1)).toContain(`${credentialCount} credential`);
 					}
+				},
+			),
+		);
+	});
+});
+
+describe('liveCopyNeedsSetUp', () => {
+	it.each([
+		[true, 0, 0, false],
+		[true, 1, 0, true],
+		[true, 0, 1, true],
+		[false, 1, 1, false],
+		[undefined, 1, 1, false],
+	])(
+		'with newVersionLive %s, %i missing node types and %i empty credentials, gives %s',
+		(newVersionLive, nodeTypes, credentialCount, expected) => {
+			const imported = reimported({
+				newVersionLive,
+				missingNodeTypes: Array.from({ length: nodeTypes }, (_, i) => `n8n-nodes-acme.n${i}@1`),
+				credentialsNeedingSetup: Array.from({ length: credentialCount }, (_, i) => ({
+					...STUB_CREDENTIAL,
+					id: `c${i}`,
+				})),
+			});
+
+			expect(liveCopyNeedsSetUp(imported)).toBe(expected);
+		},
+	);
+
+	it('is true exactly when the new version is live and something blocks a publish', () => {
+		fc.assert(
+			fc.property(
+				fc.constantFrom(true, false, undefined),
+				fc.array(fc.string(), { maxLength: 3 }),
+				fc.nat({ max: 3 }),
+				(newVersionLive, missingNodeTypes, credentialCount) => {
+					const imported = reimported({
+						newVersionLive,
+						missingNodeTypes,
+						credentialsNeedingSetup: Array.from({ length: credentialCount }, (_, i) => ({
+							...STUB_CREDENTIAL,
+							id: `c${i}`,
+						})),
+					});
+
+					expect(liveCopyNeedsSetUp(imported)).toBe(
+						newVersionLive === true && publishBlockers('Cloud', imported).length > 0,
+					);
 				},
 			),
 		);

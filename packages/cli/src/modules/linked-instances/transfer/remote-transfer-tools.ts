@@ -214,11 +214,31 @@ export async function findRemotePersonalProjectId(
 	return parseRemoteProjects(result).projects.find(({ type }) => type === 'personal')?.id;
 }
 
+type ListCredentialsArgs = { projectId: string } | { onlySharedWithMe: true };
+
+async function callListCredentials(
+	session: RemoteSession,
+	args: ListCredentialsArgs,
+): Promise<RemoteCredentialList> {
+	const result = await session.callTool(
+		LIST_CREDENTIALS_TOOL,
+		{ limit: MAX_CREDENTIALS, ...args },
+		{ timeoutMs: LIST_TIMEOUT_MS },
+	);
+	const { data } = parseOrThrow(credentialListSchema, result, UNKNOWN_FORMAT.credentials);
+	const credentials = data.flatMap((item) => {
+		const parsed = nameAndTypeSchema.safeParse(item);
+		return parsed.success ? [parsed.data] : [];
+	});
+	return { credentials, complete: data.length < MAX_CREDENTIALS };
+}
+
 /**
- * The credentials that the token's user can use in the project, by name and type: the credentials
- * that the project owns or that are shared with it, and the global ones. The import matches the
- * same credentials. Without a project, the tool would list every credential that the user can
- * use, also those of other projects, so the project is necessary.
+ * The credentials of the project, by name and type, and the global ones. For a team project, the
+ * tool lists the credentials that the project owns or that are shared with it. For a personal
+ * project, it lists only the credentials that the project owns: see
+ * {@link listPersonalRemoteCredentials}. Without a project, the tool would list every credential
+ * that the user can use, also those of other projects, so the project is necessary.
  * @returns `null` when the access token cannot list credentials
  * @throws {RemoteInstanceError}
  */
@@ -227,14 +247,44 @@ export async function listRemoteCredentials(
 	projectId: string,
 ): Promise<RemoteCredentialList | null> {
 	if (!session.toolNames.has(LIST_CREDENTIALS_TOOL)) return null;
-	const args = { limit: MAX_CREDENTIALS, projectId };
-	const result = await session.callTool(LIST_CREDENTIALS_TOOL, args, {
-		timeoutMs: LIST_TIMEOUT_MS,
-	});
-	const { data } = parseOrThrow(credentialListSchema, result, UNKNOWN_FORMAT.credentials);
-	const credentials = data.flatMap((item) => {
-		const parsed = nameAndTypeSchema.safeParse(item);
-		return parsed.success ? [parsed.data] : [];
-	});
-	return { credentials, complete: data.length < MAX_CREDENTIALS };
+	return await callListCredentials(session, { projectId });
+}
+
+/**
+ * The credentials that an import into the personal project of the token's user can use: the
+ * credentials that the project owns, the global ones, and the ones that other users shared with
+ * the user. The tool lists the shared ones only on a separate request.
+ * @returns `null` when the access token cannot list credentials
+ * @throws {RemoteInstanceError}
+ */
+export async function listPersonalRemoteCredentials(
+	session: RemoteSession,
+	personalProjectId: string,
+): Promise<RemoteCredentialList | null> {
+	const owned = await listRemoteCredentials(session, personalProjectId);
+	if (owned === null) return null;
+	const shared = await callListCredentials(session, { onlySharedWithMe: true });
+	return {
+		credentials: [...owned.credentials, ...shared.credentials],
+		complete: owned.complete && shared.complete,
+	};
+}
+
+/**
+ * The credentials that the import can use in the project that a move goes to: the default
+ * project of the link, else the personal project of the token's user.
+ * @returns `null` when the access token cannot list credentials or projects, or the linked
+ *   instance lists no personal project
+ * @throws {RemoteInstanceError}
+ */
+export async function listTargetCredentials(
+	session: RemoteSession,
+): Promise<RemoteCredentialList | null> {
+	const project = session.link.defaultRemoteProject;
+	if (project) return await listRemoteCredentials(session, project.id);
+	if (!session.toolNames.has(LIST_CREDENTIALS_TOOL)) return null;
+	const personalProjectId = await findRemotePersonalProjectId(session);
+	return personalProjectId === undefined
+		? null
+		: await listPersonalRemoteCredentials(session, personalProjectId);
 }

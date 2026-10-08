@@ -68,7 +68,13 @@ const interactiveRenderers = [
 		matches: (payload) => payload.toolName === ASSISTANT_CONFIRMATION_TOOL_NAME,
 		getProps: (payload) => {
 			if (payload.toolName !== ASSISTANT_CONFIRMATION_TOOL_NAME) return {};
-			return { input: payload.input, call: payload.call };
+			return {
+				input: payload.input,
+				call: payload.call,
+				// An answered automation card stays and reads the result of its tool call.
+				resolvedValue: payload.resolvedValue,
+				toolCallId: payload.toolCallId,
+			};
 		},
 	},
 ] satisfies AgentsChatInteractionRenderer[];

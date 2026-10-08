@@ -95,7 +95,10 @@ describe('SamlOnboarding', () => {
 
 			await submitName();
 
-			expect(usersStore.updateUserName).toHaveBeenCalledWith({ firstName: 'Jane', lastName: 'Doe' });
+			expect(usersStore.updateUserName).toHaveBeenCalledWith({
+				firstName: 'Jane',
+				lastName: 'Doe',
+			});
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 		});
