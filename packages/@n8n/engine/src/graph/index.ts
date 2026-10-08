@@ -5,6 +5,8 @@ export type {
 	GraphNode,
 	StepConfig,
 	StepType,
+	StoredGraphNode,
+	StoredWorkflowGraph,
 	WorkflowGraph,
 } from './workflow-graph';
 export {
