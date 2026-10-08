@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { AgentExecutionStatus } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
@@ -53,7 +54,16 @@ describe('n8n Chat page HTTP routes', () => {
 		return agent;
 	}
 
-	async function createN8nChatThread(agentId: string, projectId: string, ownerId: string) {
+	async function createN8nChatThread(
+		agentId: string,
+		projectId: string,
+		ownerId: string,
+		title: string | null = 'My chat',
+		{
+			source = 'n8n_chat_production',
+			status = 'success',
+		}: { source?: string; status?: AgentExecutionStatus } = {},
+	) {
 		const threadRepository = Container.get(AgentExecutionThreadRepository);
 		const thread = await threadRepository.save(
 			threadRepository.create({
@@ -63,7 +73,7 @@ describe('n8n Chat page HTTP routes', () => {
 				projectId,
 				accessScope: 'user',
 				ownerId,
-				title: 'My chat',
+				title,
 				sessionNumber: 1,
 			}),
 		);
@@ -72,9 +82,9 @@ describe('n8n Chat page HTTP routes', () => {
 			executionRepository.create({
 				id: randomUUID(),
 				threadId: thread.id,
-				status: 'success',
+				status,
 				userMessage: 'Hello',
-				source: 'n8n_chat_production',
+				source,
 			}),
 		);
 		return thread;
@@ -165,6 +175,20 @@ describe('n8n Chat page HTTP routes', () => {
 		});
 	});
 
+	it('finds a thread by a case-insensitive, partial title search', async () => {
+		const { chatUser, project, agent } = await setup();
+		const thread = await createN8nChatThread(agent.id, project.id, chatUser.id, 'Refund status');
+		await createN8nChatThread(agent.id, project.id, chatUser.id, 'Unrelated topic');
+
+		const response = await server
+			.authAgentFor(chatUser)
+			.get('/agents/v2/n8n-chat/threads')
+			.query({ search: 'REFUND' })
+			.expect(200);
+
+		expect(response.body).toMatchObject({ data: [{ id: thread.id }], nextCursor: null });
+	});
+
 	it('returns one of the own n8n Chat threads by id', async () => {
 		const { chatUser, project, agent } = await setup();
 		const thread = await createN8nChatThread(agent.id, project.id, chatUser.id);
@@ -213,5 +237,57 @@ describe('n8n Chat page HTTP routes', () => {
 			.authAgentFor(chatUser)
 			.get(`/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}/messages`)
 			.expect(200);
+	});
+
+	describe('deleting an own n8n Chat thread', () => {
+		it('lets a chat-only member delete their own thread, and it drops from the thread list', async () => {
+			const { chatUser, project, agent } = await setup();
+			const thread = await createN8nChatThread(agent.id, project.id, chatUser.id);
+
+			await server
+				.authAgentFor(chatUser)
+				.delete(`/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}`)
+				.expect(200, { data: { success: true } });
+
+			const response = await server
+				.authAgentFor(chatUser)
+				.get('/agents/v2/n8n-chat/threads')
+				.expect(200);
+			expect(response.body.data).toEqual([]);
+		});
+
+		it("returns 404 for another user's thread", async () => {
+			const { owner, chatUser, project, agent } = await setup();
+			const thread = await createN8nChatThread(agent.id, project.id, owner.id);
+
+			await server
+				.authAgentFor(chatUser)
+				.delete(`/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}`)
+				.expect(404);
+		});
+
+		it('returns 404 for a preview (non n8n-chat) thread', async () => {
+			const { chatUser, project, agent } = await setup();
+			const thread = await createN8nChatThread(agent.id, project.id, chatUser.id, 'Preview chat', {
+				source: 'chat',
+			});
+
+			await server
+				.authAgentFor(chatUser)
+				.delete(`/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}`)
+				.expect(404);
+		});
+
+		it('returns 409 for a thread with running work', async () => {
+			const { chatUser, project, agent } = await setup();
+			const thread = await createN8nChatThread(agent.id, project.id, chatUser.id, 'Busy chat', {
+				status: 'running',
+			});
+
+			await server
+				.authAgentFor(chatUser)
+				.delete(`/projects/${project.id}/agents/v2/${agent.id}/n8n-chat/${thread.id}`)
+				.expect(409);
+		});
 	});
 });

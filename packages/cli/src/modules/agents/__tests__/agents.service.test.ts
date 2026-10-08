@@ -928,6 +928,7 @@ describe('AgentsService', () => {
 			const result = await service.findN8nChatThreadsForUser(user, {
 				limit: 20,
 				cursor: 'cursor-1',
+				search: 'refund',
 			});
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:execute']);
@@ -935,8 +936,7 @@ describe('AgentsService', () => {
 			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith(
 				'user-1',
 				['agent-1'],
-				20,
-				'cursor-1',
+				{ limit: 20, cursor: 'cursor-1', search: 'refund' },
 			);
 			expect(result).toBe(response);
 		});
@@ -956,12 +956,9 @@ describe('AgentsService', () => {
 
 			await service.findN8nChatThreadsForUser(user, { limit: 20 });
 
-			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith(
-				'user-1',
-				[],
-				20,
-				undefined,
-			);
+			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith('user-1', [], {
+				limit: 20,
+			});
 		});
 
 		it('narrows to one agent when agentId is reachable', async () => {
@@ -981,8 +978,7 @@ describe('AgentsService', () => {
 			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith(
 				'user-1',
 				['agent-2'],
-				20,
-				undefined,
+				{ limit: 20, agentId: 'agent-2' },
 			);
 		});
 
@@ -998,12 +994,10 @@ describe('AgentsService', () => {
 
 			await service.findN8nChatThreadsForUser(user, { limit: 20, agentId: 'agent-unreachable' });
 
-			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith(
-				'user-1',
-				[],
-				20,
-				undefined,
-			);
+			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith('user-1', [], {
+				limit: 20,
+				agentId: 'agent-unreachable',
+			});
 		});
 	});
 
