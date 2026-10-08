@@ -169,6 +169,13 @@ describe('claimForExecution', () => {
 		await expect(manager.claimForExecution(tempFileId, executionId)).resolves.toBe(claimedFileId);
 		expect(byteStore.rename).toHaveBeenCalledWith(tempFileId, claimedFileId);
 	});
+
+	it('leaves a custom file ID containing a temp segment unchanged', async () => {
+		const customFileId = 'chat-hub/sessions/temp/binary_data/uuid';
+
+		await expect(manager.claimForExecution(customFileId, executionId)).resolves.toBe(customFileId);
+		expect(byteStore.rename).not.toHaveBeenCalled();
+	});
 });
 
 describe('deletion', () => {
