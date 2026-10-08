@@ -1,8 +1,9 @@
-import { googleServiceAccountProperties } from 'n8n-nodes-base/google-service-account';
 import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class GoogleVertexAiApi implements ICredentialType {
 	name = 'googleVertexAiApi';
+
+	extends = ['googleApi'];
 
 	displayName = 'Google Vertex AI';
 
@@ -11,7 +12,6 @@ export class GoogleVertexAiApi implements ICredentialType {
 	icon: Icon = 'file:icons/google.svg';
 
 	properties: INodeProperties[] = [
-		...googleServiceAccountProperties,
 		{
 			displayName: 'Project ID',
 			name: 'projectId',
