@@ -537,6 +537,16 @@ describe('agent-sse-stream — toChatErrorEvent', () => {
 	});
 });
 
+it('scrubs secrets from the error message it sends to the client', () => {
+	const event = toChatErrorEvent(
+		new Error('Request failed: Authorization: Bearer sk-abcdef1234567890abcdef1234567890'),
+		'fallback',
+	);
+	expect(event.type === 'error' && event.message).not.toContain(
+		'sk-abcdef1234567890abcdef1234567890',
+	);
+});
+
 describe('agent-sse-stream — subagent-chunk', () => {
 	it('forwards allowlisted subagent-chunk events with parentToolCallId', async () => {
 		const events = await collectEvents([

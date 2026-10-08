@@ -83,7 +83,7 @@ export function toChatErrorEvent(error: unknown, fallbackMessage: string): Agent
 				: undefined;
 	return {
 		type: 'error',
-		message: error instanceof Error ? error.message : fallbackMessage,
+		message: scrubSecretsInText(error instanceof Error ? error.message : fallbackMessage),
 		...(errorCode && { errorCode }),
 	};
 }
