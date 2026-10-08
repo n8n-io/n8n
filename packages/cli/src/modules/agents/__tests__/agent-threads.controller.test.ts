@@ -6,6 +6,8 @@ import type { AgentSessionLangSmithExportService } from '../agent-session-langsm
 import { AgentThreadsController } from '../agent-threads.controller';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
@@ -46,6 +48,7 @@ describe('AgentThreadsController route access scopes', () => {
 		const controller = new AgentThreadsController(
 			agentExecutionService,
 			mock<AgentSessionLangSmithExportService>(),
+			new SystemAgentRegistry(),
 		);
 		agentExecutionService.getThreadDetail.mockResolvedValue({
 			thread: mock<AgentExecutionThread>({
@@ -85,6 +88,7 @@ describe('AgentThreadsController session details', () => {
 			const controller = new AgentThreadsController(
 				service,
 				mock<AgentSessionLangSmithExportService>(),
+				new SystemAgentRegistry(),
 			);
 			service.getThreadDetail.mockResolvedValue({
 				thread: mock<AgentExecutionThread>({
@@ -111,4 +115,58 @@ describe('AgentThreadsController session details', () => {
 			expect(result.thread).not.toHaveProperty('accessScope');
 		},
 	);
+});
+
+describe('AgentThreadsController instance agent sessions', () => {
+	function setup(authorized: boolean) {
+		const service = mock<AgentExecutionService>();
+		const registry = new SystemAgentRegistry();
+		const provider = mock<SystemAgentProvider>({ agentId: 'n8n-assistant', name: 'Assistant' });
+		provider.authorize.mockResolvedValue(authorized);
+		registry.register(provider);
+		const controller = new AgentThreadsController(
+			service,
+			mock<AgentSessionLangSmithExportService>(),
+			registry,
+		);
+		const user = mock<User>({ id: 'user-1' });
+		const request = (threadId?: string) =>
+			mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
+				params: { projectId: 'project-1', agentId: 'n8n-assistant', threadId: threadId ?? '' },
+				user,
+			});
+		return { service, controller, provider, user, request };
+	}
+
+	it('answers 404 to a user who cannot use the instance agent in the project', async () => {
+		const { service, controller, provider, user, request } = setup(false);
+
+		await expect(controller.listThreads(request(), mock(), {})).rejects.toThrow(
+			'Agent "n8n-assistant" not found',
+		);
+		await expect(controller.getThread(request('thread-1'))).rejects.toThrow(
+			'Agent "n8n-assistant" not found',
+		);
+		expect(provider.authorize).toHaveBeenCalledWith(user, 'project-1');
+		expect(service.getThreads).not.toHaveBeenCalled();
+		expect(service.getThreadDetail).not.toHaveBeenCalled();
+	});
+
+	it('lists the sessions for a user who can use the instance agent', async () => {
+		const { service, controller, request } = setup(true);
+		service.getThreads.mockResolvedValue({ threads: [], nextCursor: null });
+
+		await expect(controller.listThreads(request(), mock(), {})).resolves.toEqual({
+			threads: [],
+			nextCursor: null,
+		});
+		expect(service.getThreads).toHaveBeenCalledWith(
+			'project-1',
+			'n8n-assistant',
+			'user-1',
+			20,
+			undefined,
+			{},
+		);
+	});
 });

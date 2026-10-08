@@ -36,7 +36,7 @@ function suspendedState(toolCallId = 'tc-1', status = 'suspended') {
 			[toolCallId]: {
 				toolCallId,
 				toolName: 'deploy_workflow',
-				input: {},
+				input: { workflowId: 'workflow-1' },
 				suspended: true,
 				suspendPayload: {},
 				resumeSchema: {},
@@ -205,9 +205,12 @@ describe('SystemAgentThreadGuard.checkAnswer', () => {
 
 		const answer = await guard.checkAnswer(answerFrom(teammate));
 
-		expect(sharing.authorizeAnswer).toHaveBeenCalledWith(teammate, thread, 'deploy_workflow', {
-			approved: true,
-		});
+		expect(sharing.authorizeAnswer).toHaveBeenCalledWith(
+			teammate,
+			thread,
+			{ toolName: 'deploy_workflow', input: { workflowId: 'workflow-1' } },
+			{ approved: true },
+		);
 		expect(users.findByIdWithRole).toHaveBeenCalledWith('owner-1');
 		expect(provider.authorize).toHaveBeenCalledWith(owner, 'project-1');
 		expect(answer).toMatchObject({

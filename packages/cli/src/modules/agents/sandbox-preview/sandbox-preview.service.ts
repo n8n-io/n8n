@@ -19,6 +19,9 @@ export const SANDBOX_PREVIEW_TTL_SECONDS = 60 * 60;
 /** A live preview URL is given out again while at least this much of its life is left. */
 const REUSE_MIN_REMAINING_MS = (SANDBOX_PREVIEW_TTL_SECONDS * 1000) / 2;
 
+/** How long the proxy reuses the service API key, so that a rotated key reaches open previews soon. */
+const API_KEY_CACHE_MS = 30_000;
+
 const tokenClaimsSchema = z.object({ sub: z.string().min(1), jti: z.string().min(1) });
 
 /** One preview URL and the sandbox port that it reaches. */
@@ -34,7 +37,6 @@ export interface SandboxPreviewEntry {
 	serviceUrl: string;
 	/** `/sandboxes/<id>/ports/<port>` on the service. */
 	path: string;
-	apiKey?: string;
 	/** Epoch milliseconds; the same instant as the token's `exp`. */
 	expiresAt: number;
 }
@@ -54,6 +56,8 @@ export interface SandboxPreviewRequest {
 export class SandboxPreviewService {
 	private readonly entries = new Map<string, SandboxPreviewEntry>();
 
+	private apiKeyCache?: { apiKey: Promise<string | undefined>; until: number };
+
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly sandboxSettingsService: SandboxSettingsService,
@@ -70,7 +74,7 @@ export class SandboxPreviewService {
 		await this.portCapability.assertSupported(route.serviceUrl);
 		this.pruneExpired();
 		const scope = JSON.stringify([request.userId, request.projectId, route.serviceUrl, route.path]);
-		const entry = this.reusableEntry(scope) ?? (await this.createEntry(request, route, scope));
+		const entry = this.reusableEntry(scope) ?? this.createEntry(request, route, scope);
 		const basePath = this.globalConfig.path.replace(/\/+$/, '');
 		return { url: `${basePath}${SANDBOX_PREVIEW_PATH_PREFIX}/${entry.token}/` };
 	}
@@ -87,9 +91,30 @@ export class SandboxPreviewService {
 		return entry?.userId === claims.sub ? entry : undefined;
 	}
 
-	/** The sandbox restarted, and the app on the port with it; the next `open` makes a new URL. */
+	/** The sandbox restarted, or the user lost access; the next `open` makes a new URL. */
 	markDead(entry: SandboxPreviewEntry): void {
 		if (this.entries.get(entry.jti) === entry) this.entries.delete(entry.jti);
+	}
+
+	/**
+	 * The current API key of the sandbox service. The proxy reads it for each
+	 * request and not when it makes an entry, so open previews keep working
+	 * after an admin rotates the key.
+	 */
+	async serviceApiKey(): Promise<string | undefined> {
+		const now = Date.now();
+		if (!this.apiKeyCache || this.apiKeyCache.until <= now) {
+			const apiKey = this.sandboxSettingsService
+				.resolveN8nSandboxConfig()
+				.then((config) => config.apiKey);
+			const cache = { apiKey, until: now + API_KEY_CACHE_MS };
+			this.apiKeyCache = cache;
+			// A failed read is not reused.
+			void apiKey.catch(() => {
+				if (this.apiKeyCache === cache) this.apiKeyCache = undefined;
+			});
+		}
+		return await this.apiKeyCache.apiKey;
 	}
 
 	private reusableEntry(scope: string): SandboxPreviewEntry | undefined {
@@ -100,12 +125,11 @@ export class SandboxPreviewService {
 		return undefined;
 	}
 
-	private async createEntry(
+	private createEntry(
 		request: SandboxPreviewRequest,
 		route: SandboxPortRoute,
 		scope: string,
-	): Promise<SandboxPreviewEntry> {
-		const { apiKey } = await this.sandboxSettingsService.resolveN8nSandboxConfig();
+	): SandboxPreviewEntry {
 		const jti = randomUUID();
 		// An explicit `iat` makes the entry expire at the same second as the token.
 		const issuedAt = Math.floor(Date.now() / 1000);
@@ -122,7 +146,6 @@ export class SandboxPreviewService {
 			scope,
 			serviceUrl: route.serviceUrl,
 			path: route.path,
-			apiKey,
 			expiresAt: (issuedAt + SANDBOX_PREVIEW_TTL_SECONDS) * 1000,
 		};
 		this.entries.set(jti, entry);

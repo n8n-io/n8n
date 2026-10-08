@@ -30,7 +30,7 @@ import {
 	type AssistantTurnDefaults,
 } from './assistant-turn-options';
 import { InstanceAiService } from './instance-ai.service';
-import { ThreadSharingService } from './sharing/thread-sharing.service';
+import { SharedThreadPolicy } from './sharing/shared-thread-policy';
 
 /**
  * The n8n Assistant as an instance agent. The Agents runtime runs it; this
@@ -50,7 +50,7 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 
 	/** What teammates can do in a chat that its owner shared with the team project. */
 	get sharing(): SystemAgentSharingPolicy {
-		return Container.get(ThreadSharingService);
+		return Container.get(SharedThreadPolicy);
 	}
 
 	async authorize(user: User, projectId: string): Promise<boolean> {

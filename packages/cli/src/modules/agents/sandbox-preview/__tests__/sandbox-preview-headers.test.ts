@@ -53,10 +53,12 @@ const ORIGIN_WIDE = [
 	'alt-svc',
 	'clear-site-data',
 	'nel',
+	'proxy-authenticate',
 	'report-to',
 	'reporting-endpoints',
 	'service-worker-allowed',
 	'strict-transport-security',
+	'www-authenticate',
 ];
 
 const headerNameArb = fc.stringMatching(/^[a-z][a-z0-9-]{0,24}$/);
@@ -140,13 +142,16 @@ describe('hardenResponseHeaders', () => {
 		expect(headers).toEqual({ 'content-type': 'text/html', ...previewAnswerHeaders() });
 	});
 
-	it.each(ORIGIN_WIDE)('removes %s, which would act on the whole n8n origin', (name) => {
-		const headers: IncomingHttpHeaders = { [name]: 'value' };
+	it.each(ORIGIN_WIDE)(
+		'removes %s, which would act on the whole n8n origin or prompt for its credentials',
+		(name) => {
+			const headers: IncomingHttpHeaders = { [name]: 'value' };
 
-		hardenResponseHeaders(headers);
+			hardenResponseHeaders(headers);
 
-		expect(headers).not.toHaveProperty(name);
-	});
+			expect(headers).not.toHaveProperty(name);
+		},
+	);
 
 	it('keeps every other header of the app as it is', () => {
 		const managed = new Set([

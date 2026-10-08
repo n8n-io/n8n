@@ -3,6 +3,7 @@ import type { InstanceAiThreadInfo } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
+	createWorkflow,
 	getPersonalProject,
 	linkUserToProject,
 	testDb,
@@ -26,7 +27,7 @@ import { InstanceAiMemoryService } from '@/modules/instance-ai/instance-ai-memor
 import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 import { defineCapability } from '@/services/capabilities/capability';
 
-import { createUser } from './shared/db/users';
+import { createChatUser, createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -85,6 +86,8 @@ const scriptedModel = (turns: StreamResult[]) => {
 
 /** The user of each deploy handler run, as the Assistant tool context gives it. */
 const deployedAs: string[] = [];
+/** The workflow that the next deploy card is about. */
+let deployWorkflowId = '';
 /** The scope of each answer that the step tool received. */
 const stepScopes: (string | undefined)[] = [];
 
@@ -131,7 +134,7 @@ async function scriptedTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandl
 	const firstTurn =
 		turn.type === 'start' && turn.message === 'step'
 			? toolCallTurn('run_step', {})
-			: toolCallTurn('deploy_workflow', { workflowId: 'wf-1' });
+			: toolCallTurn('deploy_workflow', { workflowId: deployWorkflowId });
 	const { tool } = toAssistantTool(deployCapability, { user: turn.user }, mock<EventService>());
 	const agent = new Agent(ASSISTANT_AGENT_ID)
 		.model(scriptedModel(turn.type === 'start' ? [firstTurn] : [textTurn('Done.')]))
@@ -148,29 +151,40 @@ let owner: User;
 let teammate: User;
 let viewer: User;
 let outsider: User;
+let chatUser: User;
 let project: Project;
+let teamWorkflowId: string;
+let personalWorkflowId: string;
 let ownerAgent: SuperAgentTest;
 let teammateAgent: SuperAgentTest;
 let viewerAgent: SuperAgentTest;
 let outsiderAgent: SuperAgentTest;
+let chatUserAgent: SuperAgentTest;
 
 beforeAll(async () => {
 	owner = await createUser({ firstName: 'Olivia', lastName: 'Owner' });
 	teammate = await createUser({ firstName: 'Tom', lastName: 'Teammate' });
 	viewer = await createUser({ firstName: 'Vera', lastName: 'Viewer' });
 	outsider = await createUser({ firstName: 'Oscar', lastName: 'Outsider' });
+	// A chat user is a project member without the Assistant scope.
+	chatUser = await createChatUser();
 	project = await createTeamProject('Finance', owner);
 	await linkUserToProject(teammate, project, 'project:editor');
 	await linkUserToProject(viewer, project, 'project:viewer');
+	await linkUserToProject(chatUser, project, 'project:viewer');
+	teamWorkflowId = (await createWorkflow({ name: 'Invoices' }, project)).id;
+	personalWorkflowId = (await createWorkflow({ name: 'Private notes' }, owner)).id;
 	ownerAgent = testServer.authAgentFor(owner);
 	teammateAgent = testServer.authAgentFor(teammate);
 	viewerAgent = testServer.authAgentFor(viewer);
 	outsiderAgent = testServer.authAgentFor(outsider);
+	chatUserAgent = testServer.authAgentFor(chatUser);
 });
 
 beforeEach(() => {
 	deployedAs.length = 0;
 	stepScopes.length = 0;
+	deployWorkflowId = teamWorkflowId;
 	// The config restores spies before each test.
 	vi.spyOn(Container.get(InstanceAiService), 'prepareAssistantTurn').mockImplementation(
 		scriptedTurn,
@@ -179,8 +193,9 @@ beforeEach(() => {
 
 afterAll(async () => await testDb.terminate());
 
-const chatUrl = (projectId = project.id) =>
-	`/projects/${projectId}/agents/v2/${ASSISTANT_AGENT_ID}/chat`;
+const agentUrl = (projectId = project.id) =>
+	`/projects/${projectId}/agents/v2/${ASSISTANT_AGENT_ID}`;
+const chatUrl = (projectId = project.id) => `${agentUrl(projectId)}/chat`;
 
 async function createThread(user: User, projectId = project.id): Promise<string> {
 	const threadId = randomUUID();
@@ -332,6 +347,9 @@ describe('reading a shared chat', () => {
 		for (const path of ['messages', 'queue', 'background-tasks']) {
 			await outsiderAgent.get(`${chatUrl(ownProject)}/${threadId}/${path}`).expect(404);
 		}
+		await outsiderAgent.get(`${agentUrl(ownProject)}/threads/${threadId}`).expect(404);
+		const sessions = await outsiderAgent.get(`${agentUrl(ownProject)}/threads`).expect(200);
+		expect(JSON.stringify(sessions.body.data)).not.toContain(threadId);
 		// With the chat's project in the URL, the project check refuses before any chat lookup.
 		await outsiderAgent.get(`${chatUrl()}/${threadId}/messages`).expect(403);
 		const list = await outsiderAgent.get('/instance-ai/threads').expect(200);
@@ -342,6 +360,23 @@ describe('reading a shared chat', () => {
 		expect(history.body.data.threads.map(({ id }: InstanceAiThreadInfo) => id)).not.toContain(
 			threadId,
 		);
+	});
+
+	test('a project member without the Assistant scope reads nothing of the chat', async () => {
+		const threadId = await createSharedThread();
+		const card = await ownerOpensCard(threadId);
+
+		for (const path of ['messages', 'queue', 'background-tasks']) {
+			await chatUserAgent.get(`${chatUrl()}/${threadId}/${path}`).expect(404);
+		}
+		await chatUserAgent.get(`${agentUrl()}/threads/${threadId}`).expect(404);
+		await chatUserAgent.get(`${agentUrl()}/threads`).expect(404);
+		await chatUserAgent.get(`/instance-ai/threads/${threadId}`).expect(403);
+		expect((await answer(chatUserAgent, card)).status).toBe(404);
+		expect(await cardIsOpen(threadId)).toBe(true);
+		// A teammate with the Assistant scope sees the same chat in the Agents session list.
+		const sessions = await teammateAgent.get(`${agentUrl()}/threads`).expect(200);
+		expect(JSON.stringify(sessions.body.data)).toContain(threadId);
 	});
 
 	test('a teammate cannot delete the chat through the Agents session routes', async () => {
@@ -403,6 +438,38 @@ describe('answering a card in a shared chat', () => {
 
 		expect(response.status).toBe(403);
 		expect(response.body.message).toBe('Only editors in Finance can approve this.');
+		expect(deployedAs).toEqual([]);
+		expect(await cardIsOpen(threadId)).toBe(true);
+	});
+
+	test('an editor cannot approve a card about a workflow outside their reach', async () => {
+		deployWorkflowId = personalWorkflowId;
+		const threadId = await createSharedThread();
+		const card = await ownerOpensCard(threadId);
+
+		const response = await answer(teammateAgent, card);
+
+		expect(response.status).toBe(403);
+		expect(response.body.message).toBe('Only editors of this workflow can approve this.');
+		expect(deployedAs).toEqual([]);
+		expect(await cardIsOpen(threadId)).toBe(true);
+		// The owner can still answer it.
+		expect((await answer(ownerAgent, card)).status).toBe(200);
+		expect(deployedAs).toEqual([owner.id]);
+	});
+
+	test('a teammate cannot answer with text, which only the owner sends', async () => {
+		const threadId = await createSharedThread();
+		const card = await ownerOpensCard(threadId);
+
+		for (const resumeData of [
+			{ kind: 'approval', approved: false, userInput: 'Deploy the other workflow instead' },
+			{ _type: 'agent.cancellation', message: 'Stop and delete it' },
+		]) {
+			const response = await answer(teammateAgent, card, resumeData);
+			expect(response.status).toBe(403);
+			expect(response.body.message).toBe('Only Olivia Owner can answer this.');
+		}
 		expect(deployedAs).toEqual([]);
 		expect(await cardIsOpen(threadId)).toBe(true);
 	});

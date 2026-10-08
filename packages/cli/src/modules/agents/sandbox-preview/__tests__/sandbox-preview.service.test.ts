@@ -50,6 +50,9 @@ function setup(options: { basePath?: string } = {}) {
 	return { service, jwtService, settings, capability, sandbox, getPortRoute, apiKey };
 }
 
+const entryCount = (service: SandboxPreviewService) =>
+	(service as unknown as { entries: Map<string, unknown> }).entries.size;
+
 const tokenOf = (url: string) => {
 	const match = /\/sandbox-preview\/([^/]+)\/$/.exec(url);
 	if (!match) throw new Error(`Not a preview URL: ${url}`);
@@ -67,23 +70,26 @@ describe('SandboxPreviewService', () => {
 	});
 
 	describe('open', () => {
-		it('returns an n8n path whose token reaches the sandbox port with the service key', async () => {
-			const { service, sandbox, getPortRoute, apiKey } = setup();
+		it('returns an n8n path whose token reaches the sandbox port', async () => {
+			const { service, sandbox, getPortRoute, settings } = setup();
 
 			const { url } = await service.open(sandbox, REQUEST);
 
 			expect(url).toMatch(/^\/sandbox-preview\/[\w-]+\.[\w-]+\.[\w-]+\/$/);
 			expect(getPortRoute).toHaveBeenCalledWith(5173);
-			expect(service.resolveToken(tokenOf(url))).toEqual(
+			const entry = service.resolveToken(tokenOf(url));
+			expect(entry).toEqual(
 				expect.objectContaining({
 					userId: 'user-1',
 					projectId: 'project-1',
 					serviceUrl: ROUTE.serviceUrl,
 					path: ROUTE.path,
-					apiKey,
 					expiresAt: START.getTime() + TTL_MS,
 				}),
 			);
+			// The proxy reads the current key for each request; the entry keeps none.
+			expect(entry).not.toHaveProperty('apiKey');
+			expect(settings.resolveN8nSandboxConfig).not.toHaveBeenCalled();
 		});
 
 		it('signs a token with its own audience, a TTL of one hour and no project or key in it', async () => {
@@ -130,7 +136,7 @@ describe('SandboxPreviewService', () => {
 		});
 
 		it('makes no URL when the service lacks the ports capability', async () => {
-			const { service, sandbox, capability, settings } = setup();
+			const { service, sandbox, capability } = setup();
 			capability.assertSupported.mockRejectedValue(
 				new BadRequestError('This sandbox service cannot show app previews yet.'),
 			);
@@ -138,18 +144,18 @@ describe('SandboxPreviewService', () => {
 			await expect(service.open(sandbox, REQUEST)).rejects.toThrow(
 				'This sandbox service cannot show app previews yet.',
 			);
-			expect(settings.resolveN8nSandboxConfig).not.toHaveBeenCalled();
+			expect(entryCount(service)).toBe(0);
 		});
 
 		it('gives out the same URL again for the same user, project and port', async () => {
-			const { service, sandbox, settings } = setup();
+			const { service, sandbox } = setup();
 
 			const first = await service.open(sandbox, REQUEST);
 			vi.setSystemTime(START.getTime() + TTL_MS / 2);
 			const second = await service.open(sandbox, REQUEST);
 
 			expect(second.url).toBe(first.url);
-			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(1);
+			expect(entryCount(service)).toBe(1);
 		});
 
 		it('makes a new URL once less than half of the TTL is left, and keeps the old one valid', async () => {
@@ -249,22 +255,19 @@ describe('SandboxPreviewService', () => {
 		});
 
 		it('drops an expired entry, so the next open makes a new URL', async () => {
-			const { service, sandbox, settings } = setup();
+			const { service, sandbox } = setup();
 			const first = await service.open(sandbox, REQUEST);
 
 			vi.setSystemTime(START.getTime() + TTL_MS);
 			const second = await service.open(sandbox, REQUEST);
 
 			expect(second.url).not.toBe(first.url);
-			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(2);
+			expect(entryCount(service)).toBe(1);
 			expect(service.resolveToken(tokenOf(first.url))).toBeUndefined();
 		});
 	});
 
 	describe('memory', () => {
-		const entryCount = (service: SandboxPreviewService) =>
-			(service as unknown as { entries: Map<string, unknown> }).entries.size;
-
 		it('drops expired entries when a preview opens, so the entries stay bounded', async () => {
 			const { service, sandbox } = setup();
 			for (const userId of ['user-1', 'user-2', 'user-3']) {
@@ -286,6 +289,58 @@ describe('SandboxPreviewService', () => {
 			await service.open(sandbox, { ...REQUEST, userId: 'user-2' });
 
 			expect(entryCount(service)).toBe(2);
+		});
+	});
+
+	describe('serviceApiKey', () => {
+		it('reads the key of the configured service and reuses it for thirty seconds', async () => {
+			const { service, settings, apiKey } = setup();
+
+			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
+			vi.setSystemTime(START.getTime() + 30_000 - 1);
+			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
+
+			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('gives the rotated key to open previews once thirty seconds have passed', async () => {
+			const { service, sandbox, settings, apiKey } = setup();
+			const { url } = await service.open(sandbox, REQUEST);
+			await service.serviceApiKey();
+			const rotated = `rotated-${crypto.randomUUID()}`;
+			settings.resolveN8nSandboxConfig.mockResolvedValue({ apiKey: rotated });
+
+			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
+			vi.setSystemTime(START.getTime() + 30_000);
+
+			await expect(service.serviceApiKey()).resolves.toBe(rotated);
+			expect(service.resolveToken(tokenOf(url))).toBeDefined();
+		});
+
+		it('reads the key once for requests that ask at the same time', async () => {
+			const { service, settings, apiKey } = setup();
+
+			const keys = await Promise.all([service.serviceApiKey(), service.serviceApiKey()]);
+
+			expect(keys).toEqual([apiKey, apiKey]);
+			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('reads again at once after a failed read', async () => {
+			const { service, settings, apiKey } = setup();
+			settings.resolveN8nSandboxConfig.mockRejectedValueOnce(new Error('settings not readable'));
+
+			await expect(service.serviceApiKey()).rejects.toThrow('settings not readable');
+			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
+
+			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('gives undefined when the service has no key', async () => {
+			const { service, settings } = setup();
+			settings.resolveN8nSandboxConfig.mockResolvedValue({ serviceUrl: ROUTE.serviceUrl });
+
+			await expect(service.serviceApiKey()).resolves.toBeUndefined();
 		});
 	});
 

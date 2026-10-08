@@ -14,7 +14,7 @@ import {
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -95,6 +95,12 @@ export class AgentChatController {
 	private async findChatAgent(agentId: string, projectId: string): Promise<{ id: string } | null> {
 		if (this.systemAgents.has(agentId)) return { id: agentId };
 		return await this.agentsService.findById(agentId, projectId);
+	}
+
+	/** For reads: the threads of an instance agent are only for users who can use it in the project. */
+	private async findReadableChatAgent(agentId: string, projectId: string, user: User) {
+		if (!(await this.systemAgents.allows(agentId, user, projectId))) return null;
+		return await this.findChatAgent(agentId, projectId);
 	}
 
 	private createChatExecution(res: FlushableResponse) {
@@ -716,7 +722,8 @@ export class AgentChatController {
 	async getQueuedMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatQueueResponse> {
-		const agent = await this.findChatAgent(req.params.agentId, req.params.projectId);
+		const { agentId, projectId } = req.params;
+		const agent = await this.findReadableChatAgent(agentId, projectId, req.user);
 		if (!agent) throw new NotFoundError('Agent not found');
 		return await this.messageQueue.listPending({
 			...req.params,
@@ -816,7 +823,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentBackgroundJobsResponse> {
 		const { projectId, agentId, threadId } = req.params;
-		const agent = await this.findChatAgent(agentId, projectId);
+		const agent = await this.findReadableChatAgent(agentId, projectId, req.user);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
 
@@ -928,7 +935,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
-		const agent = await this.findChatAgent(agentId, projectId);
+		const agent = await this.findReadableChatAgent(agentId, projectId, req.user);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
 		if (thread && !threadBelongsTo(thread, projectId, agentId, req.user.id)) {
@@ -1024,7 +1031,7 @@ export class AgentChatController {
 		res: Response,
 	) {
 		const { projectId, agentId, attachmentId } = req.params;
-		const agent = await this.findChatAgent(agentId, projectId);
+		const agent = await this.findReadableChatAgent(agentId, projectId, req.user);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		const attachment = await this.agentChatAttachmentService.getForAgent(attachmentId, {

@@ -2,7 +2,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { CredentialsEntity, User } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, INode } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
@@ -138,8 +138,9 @@ describe('credentialsWithoutValue', () => {
 		finder.findCredentialForUser.mockImplementation(async (id) =>
 			id === 'unreadable' ? null : credential(id),
 		);
-		credentials.decrypt.mockImplementation(async ({ id }) =>
-			id === 'filled' ? { value: 'set' } : {},
+		credentials.decrypt.mockImplementation(
+			async ({ id }): Promise<ICredentialDataDecryptedObject> =>
+				id === 'filled' ? { value: 'set' } : {},
 		);
 	});
 

@@ -1,12 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { SandboxPortCapability } from '../sandbox-port-capability.service';
 
 const SERVICE_URL = 'http://sandbox-service.internal:8080';
 const NOT_SUPPORTED = 'This sandbox service cannot show app previews yet.';
+const UNREACHABLE =
+	'Could not reach the sandbox service to open the app preview. Try again in a moment.';
 
 function setup(routes: Route[]) {
 	const fake = createFakeOutboundHttp(
@@ -46,8 +48,18 @@ describe('SandboxPortCapability', () => {
 				url: `${SERVICE_URL}/healthz`,
 				json: true,
 				timeout: 3_000,
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
 			}),
 		);
+	});
+
+	it('accepts a supported answer that has more fields than it reads', async () => {
+		const { capability } = setup([
+			healthz({ status: 'ok', version: '2.0.0', capabilities: ['ports'], uptime: 10 }),
+		]);
+
+		await expect(capability.assertSupported(SERVICE_URL)).resolves.toBeUndefined();
 	});
 
 	it.each([
@@ -67,17 +79,62 @@ describe('SandboxPortCapability', () => {
 	});
 
 	it.each([
-		['answers with an error status', healthz({ capabilities: ['ports'] }, 503)],
-		['cannot be reached', { pathname: '/healthz', networkError: 'ECONNREFUSED' } as Route],
-	])('refuses and logs a service that %s', async (_case, route) => {
-		const { capability, logger } = setup([route]);
+		['has no /healthz route (404)', 404],
+		['refuses the request (403)', 403],
+		['answers 499, the last client error', 499],
+	])('refuses a service that %s, without a fault', async (_case, status) => {
+		const { capability, logger } = setup([healthz({ capabilities: ['ports'] }, status)]);
 
 		await expect(capability.assertSupported(SERVICE_URL)).rejects.toThrow(NOT_SUPPORTED);
 
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['answers 500', healthz({ capabilities: ['ports'] }, 500)],
+		['answers 503', healthz({ capabilities: ['ports'] }, 503)],
+		['cannot be reached', { pathname: '/healthz', networkError: 'ECONNREFUSED' } as Route],
+	])('answers 503 and logs when the service %s', async (_case, route) => {
+		const { capability, logger } = setup([route]);
+
+		const error = await capability.assertSupported(SERVICE_URL).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(ServiceUnavailableError);
+		expect(error).toHaveProperty('message', UNREACHABLE);
+		expect(error).toHaveProperty('httpStatusCode', 503);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Could not read the sandbox service capabilities',
 			expect.objectContaining({ error: expect.any(String) }),
 		);
+	});
+
+	it('does not keep a fault, so the next preview asks the service again', async () => {
+		const { capability, httpRequest } = setup([
+			{ pathname: '/healthz', networkError: 'ECONNREFUSED' },
+			healthz({ capabilities: ['ports'] }, 503),
+			healthz({ capabilities: ['ports'] }),
+		]);
+
+		await expect(capability.assertSupported(SERVICE_URL)).rejects.toThrow(UNREACHABLE);
+		await expect(capability.assertSupported(SERVICE_URL)).rejects.toThrow(UNREACHABLE);
+		await expect(capability.assertSupported(SERVICE_URL)).resolves.toBeUndefined();
+
+		expect(httpRequest).toHaveBeenCalledTimes(3);
+	});
+
+	it('keeps a 4xx answer like a missing capability, for thirty seconds', async () => {
+		const { capability, httpRequest } = setup([
+			healthz({}, 404),
+			healthz({ capabilities: ['ports'] }),
+		]);
+
+		await expect(capability.assertSupported(SERVICE_URL)).rejects.toThrow(NOT_SUPPORTED);
+		vi.advanceTimersByTime(30_000 - 1);
+		await expect(capability.assertSupported(SERVICE_URL)).rejects.toThrow(NOT_SUPPORTED);
+		expect(httpRequest).toHaveBeenCalledTimes(1);
+
+		vi.advanceTimersByTime(1);
+		await expect(capability.assertSupported(SERVICE_URL)).resolves.toBeUndefined();
 	});
 
 	it('trusts a supported answer for ten minutes', async () => {

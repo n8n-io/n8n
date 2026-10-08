@@ -226,6 +226,7 @@ import type {
 	SystemAgentTurnHandle,
 	SystemAgentTurnOutcome,
 } from '../agents/system-agents/system-agent.types';
+import { isSharedThread } from '../agents/utils/agent-thread-access';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { isStreamTransportError } from './stream-transport-error';
@@ -1479,8 +1480,9 @@ export class InstanceAiService {
 		const memory = this.agentMemory;
 		const session = await this.systemAgents.findThread(threadId);
 		const boundProjectId = session?.projectId;
-		// A shared chat runs as its owner without the owner's computer, browser and past chats.
-		const sharedThread = session?.accessScope === 'project';
+		// A shared chat runs as its owner without the owner's personal integrations: computer,
+		// browser, MCP connections and past chats.
+		const sharedThread = !!session && isSharedThread(session);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
 				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
@@ -1490,7 +1492,7 @@ export class InstanceAiService {
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
-		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
+		const mcpConnectionsAvailable = !sharedThread && this.areMcpConnectionsAvailable();
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -1859,6 +1861,7 @@ export class InstanceAiService {
 			orchestrationContext,
 			conversationHistory,
 			aiPreferencesEnabled,
+			sharedThread,
 			// Reuse the gate results so a rollout change cannot split this turn.
 			instanceContextEnabled,
 			nodeUsageEnabled,
@@ -3640,28 +3643,33 @@ export class InstanceAiService {
 		await this.schedulePlannedTasks(user, threadId);
 	}
 
+	/** `personalConnections`: add the user's own MCP connections, which a shared chat leaves out. */
 	private async buildMcpServers(
 		user: User,
 		threadId: string,
 		runId: string,
 		tracing: InstanceAiTraceContext | undefined,
-		messageGroupId?: string,
+		{
+			messageGroupId,
+			personalConnections,
+		}: { messageGroupId?: string; personalConnections: boolean },
 	): Promise<McpServerConfig[]> {
 		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-		const registryMcpServers = this.settingsService.isMcpAccessEnabled()
-			? await this.instanceAiErrorReporter.withBoundary(
-					'instance-ai-mcp-setup',
-					{
-						threadId,
-						runId,
-						tracing,
-						agentId: orchestratorAgentId(runId),
-						userId: user.id,
-						messageGroupId,
-					},
-					async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-				)
-			: [];
+		const registryMcpServers =
+			personalConnections && this.settingsService.isMcpAccessEnabled()
+				? await this.instanceAiErrorReporter.withBoundary(
+						'instance-ai-mcp-setup',
+						{
+							threadId,
+							runId,
+							tracing,
+							agentId: orchestratorAgentId(runId),
+							userId: user.id,
+							messageGroupId,
+						},
+						async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+					)
+				: [];
 		return [...staticMcpServers, ...registryMcpServers];
 	}
 
@@ -3677,13 +3685,10 @@ export class InstanceAiService {
 		}
 		await this.bindAgentContextReader(environment.context, user);
 		await this.bindAgentPreviewSession(environment.context, user);
-		const mcpServers = await this.buildMcpServers(
-			user,
-			threadId,
-			runId,
-			tracing,
-			environment.orchestrationContext.messageGroupId,
-		);
+		const mcpServers = await this.buildMcpServers(user, threadId, runId, tracing, {
+			messageGroupId: environment.orchestrationContext.messageGroupId,
+			personalConnections: !environment.sharedThread,
+		});
 		const { agent, mcpConnectionFailures } = await createInstanceAgent({
 			modelId: environment.modelId,
 			context: environment.context,

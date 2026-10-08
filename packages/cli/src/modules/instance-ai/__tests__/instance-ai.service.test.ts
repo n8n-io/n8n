@@ -3261,8 +3261,9 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 		const forContext = vi.fn(() => ({ search: vi.fn() }));
 		const findMcpServer = vi.fn(() => browser);
 		const createContext = vi.fn(() => context);
+		const areMcpConnectionsAvailable = vi.fn(() => true);
 		Object.assign(service, {
-			areMcpConnectionsAvailable: vi.fn(() => false),
+			areMcpConnectionsAvailable,
 			settingsService: {
 				getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, browserUseEnabled })),
 				getSandboxStatus: vi.fn(() => ({
@@ -3329,7 +3330,14 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 			aiUsageService: { isParameterValueSharingAllowed: vi.fn(async () => true) },
 			creditService: { claimRunUsage: vi.fn(), ensureQuotaLockApplied: vi.fn(async () => {}) },
 		});
-		return { service, context, forContext, findMcpServer, createContext };
+		return {
+			service,
+			context,
+			forContext,
+			findMcpServer,
+			createContext,
+			areMcpConnectionsAvailable,
+		};
 	}
 
 	const start = async (service: EnvironmentService) =>
@@ -3340,11 +3348,16 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 			new AbortController().signal,
 		);
 
-	it('gives a private thread the computer, the browser and the past chats of its owner', async () => {
+	it('gives a private thread the computer, the browser, the MCP connections and the past chats of its owner', async () => {
 		const withGateway = makeService('user', false);
-		await start(withGateway.service);
+		const environment = await start(withGateway.service);
 		expect(withGateway.context.localMcpServer).toBe(gateway);
 		expect(withGateway.forContext).toHaveBeenCalledWith('user-1', 'project-1', 'thread-1');
+		expect(withGateway.createContext).toHaveBeenCalledWith(
+			fakeUser,
+			expect.objectContaining({ mcpConnectionsAvailable: true }),
+		);
+		expect(environment).toMatchObject({ sharedThread: false });
 
 		const withBrowser = makeService('user', true);
 		withBrowser.service.gatewayService = { findGateway: vi.fn(), applyToolPolicy: vi.fn() };
@@ -3352,20 +3365,95 @@ describe('InstanceAiService — personal integrations in a shared thread', () =>
 		expect(withBrowser.context.localMcpServer).toBe(browser);
 	});
 
-	it('runs a shared thread without the computer, the browser or the past chats of its owner', async () => {
+	it('runs a shared thread without the computer, the browser, the MCP connections or the past chats of its owner', async () => {
 		const { service, context, forContext, findMcpServer, createContext } = makeService(
 			'project',
 			true,
 		);
 
-		await start(service);
+		const environment = await start(service);
 
 		expect(context.localMcpServer).toBeUndefined();
 		expect(findMcpServer).not.toHaveBeenCalled();
 		expect(forContext).not.toHaveBeenCalled();
 		expect(createContext).toHaveBeenCalledWith(
 			fakeUser,
-			expect.objectContaining({ projectId: 'project-1', conversationHistory: undefined }),
+			expect.objectContaining({
+				projectId: 'project-1',
+				conversationHistory: undefined,
+				mcpConnectionsAvailable: false,
+			}),
 		);
+		expect(environment).toMatchObject({ sharedThread: true });
+	});
+
+	it('treats a project thread without an owner as not shared', async () => {
+		const { service, createContext } = makeService('project', false);
+		Object.assign(service, {
+			systemAgents: {
+				findThread: vi.fn(async () => ({
+					projectId: 'project-1',
+					accessScope: 'project',
+					ownerId: null,
+				})),
+			},
+		});
+
+		await expect(start(service)).resolves.toMatchObject({ sharedThread: false });
+		expect(createContext).toHaveBeenCalledWith(
+			fakeUser,
+			expect.objectContaining({ mcpConnectionsAvailable: true }),
+		);
+	});
+});
+
+describe('InstanceAiService — MCP servers of a run', () => {
+	type McpService = {
+		buildMcpServers: (
+			user: User,
+			threadId: string,
+			runId: string,
+			tracing: undefined,
+			options: { messageGroupId?: string; personalConnections: boolean },
+		) => Promise<{ name: string }[]>;
+	} & Record<string, unknown>;
+
+	function makeService() {
+		const service = Object.create(InstanceAiService.prototype) as McpService;
+		const getRegistryMcpServers = vi.fn(async () => [{ name: 'personal-notion' }]);
+		Object.assign(service, {
+			instanceAiConfig: { mcpServers: '' },
+			parseMcpServers: vi.fn(() => [{ name: 'instance-docs' }]),
+			settingsService: { isMcpAccessEnabled: vi.fn(() => true) },
+			mcpRegistryService: { getRegistryMcpServers },
+			instanceAiErrorReporter: {
+				withBoundary: vi.fn(
+					async (_name: string, _context: unknown, run: () => Promise<unknown>) => await run(),
+				),
+			},
+		});
+		return { service, getRegistryMcpServers };
+	}
+
+	it("adds the user's own MCP connections to the instance servers", async () => {
+		const { service, getRegistryMcpServers } = makeService();
+
+		const servers = await service.buildMcpServers(fakeUser, 'thread-1', 'run-1', undefined, {
+			personalConnections: true,
+		});
+
+		expect(servers).toEqual([{ name: 'instance-docs' }, { name: 'personal-notion' }]);
+		expect(getRegistryMcpServers).toHaveBeenCalledWith(fakeUser);
+	});
+
+	it("leaves out the user's own MCP connections when the chat is shared", async () => {
+		const { service, getRegistryMcpServers } = makeService();
+
+		const servers = await service.buildMcpServers(fakeUser, 'thread-1', 'run-1', undefined, {
+			personalConnections: false,
+		});
+
+		expect(servers).toEqual([{ name: 'instance-docs' }]);
+		expect(getRegistryMcpServers).not.toHaveBeenCalled();
 	});
 });

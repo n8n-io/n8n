@@ -11,7 +11,11 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { renderAuthor } from '../repositories/agent-history.repository';
 import { SystemAgentRegistry } from './system-agent-registry';
-import type { SystemAgentProvider, SystemAgentSharingPolicy } from './system-agent.types';
+import type {
+	SystemAgentPendingCall,
+	SystemAgentProvider,
+	SystemAgentSharingPolicy,
+} from './system-agent.types';
 
 /** An answer to a card that passed every check. The continuation runs as `runAs`. */
 export interface CheckedAnswer {
@@ -115,7 +119,7 @@ export class SystemAgentThreadGuard {
 			threadId: thread.id,
 			runId: request.runId,
 			toolCallId,
-			...(await this.answerAs(provider, thread, pending.toolName, request)),
+			...(await this.answerAs(provider, thread, pending, request)),
 			answeredBy: { id: user.id, name: renderAuthor(user) },
 		};
 	}
@@ -135,7 +139,7 @@ export class SystemAgentThreadGuard {
 	private async answerAs(
 		provider: SystemAgentProvider,
 		thread: AgentExecutionThread,
-		toolName: string,
+		call: SystemAgentPendingCall,
 		request: AnswerRequest,
 	): Promise<Pick<CheckedAnswer, 'resumeData' | 'runAs'>> {
 		if (thread.ownerId === request.user.id) {
@@ -146,7 +150,7 @@ export class SystemAgentThreadGuard {
 		const resumeData = await sharing.authorizeAnswer(
 			request.user,
 			thread,
-			toolName,
+			{ toolName: call.toolName, input: call.input },
 			request.resumeData,
 		);
 		return { resumeData, runAs: await this.loadOwner(provider, thread) };

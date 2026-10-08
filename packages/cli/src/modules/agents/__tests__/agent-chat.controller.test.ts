@@ -1422,3 +1422,72 @@ describe('AgentChatController instance agent checks before the stream', () => {
 		expect(guard.checkAnswer).not.toHaveBeenCalled();
 	});
 });
+
+describe('AgentChatController instance agent reads', () => {
+	const AGENT_ID = 'test-assistant';
+	const user = { id: 'reader-1' };
+	const params = { projectId: 'project-1', agentId: AGENT_ID, threadId: 'thread-1' };
+
+	function makeReadController(authorized: boolean) {
+		const registry = new SystemAgentRegistry();
+		const provider = mock<SystemAgentProvider>({ agentId: AGENT_ID, name: 'Test Assistant' });
+		provider.authorize.mockResolvedValue(authorized);
+		registry.register(provider);
+		return { ...makeController(registry), provider };
+	}
+
+	it('answers 404 on every read route to a user who cannot use the instance agent', async () => {
+		const {
+			controller,
+			provider,
+			messageQueue,
+			agentExecutionService,
+			agentChatAttachmentService,
+		} = makeReadController(false);
+		const request = { params, user } as never;
+
+		await expect(controller.getChatMessages(request)).rejects.toThrow(NotFoundError);
+		await expect(controller.getQueuedMessages(request)).rejects.toThrow(NotFoundError);
+		await expect(controller.getBackgroundJobs(request)).rejects.toThrow(NotFoundError);
+		await expect(
+			controller.getChatAttachment(
+				{ params: { ...params, attachmentId: 'att-1' }, user } as never,
+				mock<FlushableResponse>(),
+			),
+		).rejects.toThrow(NotFoundError);
+
+		expect(provider.authorize).toHaveBeenCalledWith(user, 'project-1');
+		expect(agentExecutionService.findThreadById).not.toHaveBeenCalled();
+		expect(messageQueue.listPending).not.toHaveBeenCalled();
+		expect(agentChatAttachmentService.getForAgent).not.toHaveBeenCalled();
+	});
+
+	it('reads the queue for a user who can use the instance agent', async () => {
+		const { controller, messageQueue } = makeReadController(true);
+		messageQueue.listPending.mockResolvedValue({ items: [], steerableExecutionId: null });
+
+		await expect(controller.getQueuedMessages({ params, user } as never)).resolves.toEqual({
+			items: [],
+			steerableExecutionId: null,
+		});
+		expect(messageQueue.listPending).toHaveBeenCalledWith({
+			...params,
+			userId: 'reader-1',
+			kind: 'preview',
+		});
+	});
+
+	it('asks no instance agent rule for a project agent', async () => {
+		const { controller, provider, messageQueue, agentsService } = makeReadController(false);
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		messageQueue.listPending.mockResolvedValue({ items: [], steerableExecutionId: null });
+
+		await controller.getQueuedMessages({
+			params: { ...params, agentId: 'agent-1' },
+			user,
+		} as never);
+
+		expect(provider.authorize).not.toHaveBeenCalled();
+		expect(messageQueue.listPending).toHaveBeenCalled();
+	});
+});

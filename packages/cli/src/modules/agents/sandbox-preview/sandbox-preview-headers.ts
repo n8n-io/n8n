@@ -25,7 +25,8 @@ export const PAGE_REQUEST_HEADERS: readonly string[] = [
  * n8n session, `Authorization`, and identity headers that a reverse proxy in
  * front of n8n adds. `if-none-match` and `if-modified-since` are left out
  * because the sandbox service refuses every 3xx from its runner, so a 304
- * would fail. `host` and `connection` belong to the hop from n8n to the service.
+ * would fail. The proxy sets `host` and `connection` for the hop from n8n to
+ * the service.
  */
 const FORWARDED_REQUEST_HEADERS: ReadonlySet<string> = new Set([
 	...PAGE_REQUEST_HEADERS,
@@ -61,7 +62,9 @@ export const previewAnswerHeaders = (): Record<string, string> => ({
 
 /**
  * Upstream headers that n8n replaces, or that act on the whole n8n origin and
- * not only on one answer.
+ * not only on one answer. The browser shows a credential prompt for the n8n
+ * origin for an authentication challenge, and the proxy never forwards
+ * `authorization`, so the challenge headers go too.
  */
 const DROPPED_RESPONSE_HEADERS: readonly string[] = [
 	'access-control-allow-credentials',
@@ -69,11 +72,13 @@ const DROPPED_RESPONSE_HEADERS: readonly string[] = [
 	'clear-site-data',
 	'content-security-policy-report-only',
 	'nel',
+	'proxy-authenticate',
 	'report-to',
 	'reporting-endpoints',
 	'service-worker-allowed',
 	'set-cookie',
 	'strict-transport-security',
+	'www-authenticate',
 	'x-frame-options',
 ];
 

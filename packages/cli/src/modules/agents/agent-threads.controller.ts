@@ -7,6 +7,7 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -14,7 +15,18 @@ export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
+
+	/** The threads of an instance agent are only for users who can use it in the project. */
+	private async assertCanReadThreads(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<void> {
+		const { agentId, projectId } = req.params;
+		if (!(await this.systemAgents.allows(agentId, req.user, projectId))) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+	}
 
 	@Get('/:agentId/threads')
 	@ProjectScope('agent:read')
@@ -23,6 +35,7 @@ export class AgentThreadsController {
 		_res: Response,
 		@Query query: ListAgentSessionsQueryDto,
 	) {
+		await this.assertCanReadThreads(req);
 		const { cursor, limit: requestedLimit, ...filters } = query;
 		const limit = Math.min(Math.max(Number(requestedLimit) || 20, 1), 100);
 
@@ -41,6 +54,7 @@ export class AgentThreadsController {
 	async getThread(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
+		await this.assertCanReadThreads(req);
 		const result = await this.agentExecutionService.getThreadDetail(
 			req.params.threadId,
 			req.params.projectId,

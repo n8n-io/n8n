@@ -5,11 +5,14 @@ import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentExecutionThread } from '../../../agents/entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadRepository } from '../../../agents/repositories/agent-execution-thread.repository';
 import { ASSISTANT_AGENT_ID } from '../../assistant-turn-options';
 import type { InstanceAiMemoryService } from '../../instance-ai-memory.service';
+import { SharedThreadFields } from '../shared-thread-fields';
+import { SharedThreadPolicy } from '../shared-thread-policy';
 import { ThreadSharingService } from '../thread-sharing.service';
 
 const READER: Scope[] = ['instanceAi:message', 'project:read'];
@@ -58,7 +61,10 @@ function setup() {
 	const projectService = mock<ProjectService>();
 	const users = mock<UserRepository>();
 	const memory = mock<InstanceAiMemoryService>();
-	const service = new ThreadSharingService(threads, projectService, users, memory);
+	// The real policy and fields, so that these tests cover the rules end to end.
+	const policy = new SharedThreadPolicy(projectService, users, mock<WorkflowFinderService>());
+	const fields = new SharedThreadFields(threads, projectService, users);
+	const service = new ThreadSharingService(threads, memory, policy, fields);
 
 	projectService.findProject.mockImplementation(
 		async (id) => [teamProject, personalProject].find((project) => project.id === id) ?? null,
@@ -324,97 +330,6 @@ describe('ThreadSharingService', () => {
 				'project-1',
 			]);
 			expect(result.threads).toEqual([{ ...info('shared'), ...SHARED_FIELDS }]);
-		});
-	});
-
-	describe('sendError', () => {
-		it('names the owner', async () => {
-			const { service } = setup();
-
-			const error = await service.sendError(teammate, makeThread({ accessScope: 'project' }));
-
-			expect(error).toBeInstanceOf(ForbiddenError);
-			expect(error.message).toBe('Only Ada Lovelace can send messages here.');
-		});
-
-		it('falls back to "the owner" when the owner is gone', async () => {
-			const { service, users } = setup();
-			users.findOneBy.mockResolvedValue(null);
-
-			const error = await service.sendError(teammate, makeThread({ accessScope: 'project' }));
-
-			expect(error.message).toBe('Only the owner can send messages here.');
-		});
-	});
-
-	describe('authorizeAnswer', () => {
-		const shared = makeThread({ accessScope: 'project' });
-
-		it('returns the answer of an editor without "always allow"', async () => {
-			const { service } = setup();
-
-			await expect(
-				service.authorizeAnswer(teammate, shared, 'deploy_workflow', {
-					kind: 'approval',
-					approved: true,
-					scope: 'session',
-				}),
-			).resolves.toEqual({ kind: 'approval', approved: true, scope: 'once' });
-		});
-
-		it('refuses a viewer with the project name', async () => {
-			const { service, projectService } = setup();
-			projectService.getProjectScopesForUser.mockResolvedValue(READER);
-
-			const answer = service.authorizeAnswer(teammate, shared, 'deploy_workflow', {
-				approved: true,
-			});
-			await expect(answer).rejects.toThrow(ForbiddenError);
-			await expect(answer).rejects.toThrow('Only editors in Finance can approve this.');
-		});
-
-		it('needs publish to answer an automation proposal', async () => {
-			const { service, projectService } = setup();
-			projectService.getProjectScopesForUser.mockResolvedValue([...READER, 'workflow:update']);
-
-			await expect(
-				service.authorizeAnswer(teammate, shared, 'propose_automation', { approved: true }),
-			).rejects.toThrow(ForbiddenError);
-			await expect(
-				service.authorizeAnswer(teammate, shared, 'deploy_workflow', { approved: true }),
-			).resolves.toEqual({ approved: true });
-		});
-
-		it('keeps the answer of the owner as it is', async () => {
-			const { service, projectService } = setup();
-			projectService.getProjectScopesForUser.mockResolvedValue([]);
-			const answer = { kind: 'approval', approved: true, scope: 'session' };
-
-			await expect(service.authorizeAnswer(owner, shared, 'deploy_workflow', answer)).resolves.toBe(
-				answer,
-			);
-		});
-	});
-
-	describe('canRead', () => {
-		it('answers for the owner and for private threads without a scope lookup', async () => {
-			const { service, projectService } = setup();
-
-			await expect(service.canRead(owner, makeThread({ accessScope: 'project' }))).resolves.toBe(
-				true,
-			);
-			await expect(service.canRead(teammate, makeThread())).resolves.toBe(false);
-			expect(projectService.getProjectScopesForUser).not.toHaveBeenCalled();
-		});
-
-		it('checks the scopes of a teammate in the thread project', async () => {
-			const { service, projectService } = setup();
-			projectService.getProjectScopesForUser.mockResolvedValue(['project:read']);
-
-			await expect(service.canRead(teammate, makeThread({ accessScope: 'project' }))).resolves.toBe(
-				false,
-			);
-			expect(projectService.getProjectScopesForUser).toHaveBeenCalledWith(teammate, 'project-1');
 		});
 	});
 });

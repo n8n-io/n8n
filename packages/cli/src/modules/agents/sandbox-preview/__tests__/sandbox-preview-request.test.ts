@@ -32,6 +32,16 @@ const climbingSegmentArb = fc.oneof(
 	fc.tuple(dotDotArb, separatorArb, safeSegmentArb).map((parts) => parts.join('')),
 );
 
+/** Text that decodes once to a malformed escape (`%zz`, a lone `%`), which strict decoders refuse. */
+const badAfterDecodeArb = fc.constantFrom('%25zz', '%25', '%25g1', '%25%25', 'x%25zz');
+
+/** A climbing segment with an escape that a decode makes malformed, before or after the `..`. */
+const noisyClimbingSegmentArb = fc
+	.tuple(badAfterDecodeArb, separatorArb, dotDotArb, fc.boolean())
+	.map(([noise, separator, dotDot, noiseFirst]) =>
+		noiseFirst ? `${noise}${separator}${dotDot}` : `${dotDot}${separator}${noise}`,
+	);
+
 const queryArb = fc.oneof(
 	fc.constant(''),
 	fc.webQueryParameters().map((query) => `?${query}`),
@@ -62,6 +72,9 @@ describe('parsePreviewUrl', () => {
 		['/.../..foo/foo..', '/.../..foo/foo..'],
 		['/src?next=../../x', '/src?next=../../x'],
 		['/%252525', '/%252525'],
+		['/img/100%25.png', '/img/100%25.png'],
+		['/a%25zz/b', '/a%25zz/b'],
+		['/caf%C3%A9/menu', '/caf%C3%A9/menu'],
 	])('forwards %s after the token as %s', (suffix, forwardPath) => {
 		expect(parsePreviewUrl(`/${TOKEN}${suffix}`)).toEqual({
 			kind: 'forward',
@@ -84,6 +97,9 @@ describe('parsePreviewUrl', () => {
 		'/%25252e%25252e/x',
 		'/%zz',
 		'/%2525252525',
+		'/%252e%252e%252fx%25zz',
+		'/a%25zz%252f..%252fb',
+		'/%25zz%5c%252e%252e',
 	])('refuses %s after the token', (suffix) => {
 		expect(parsePreviewUrl(`/${TOKEN}${suffix}`)).toEqual({ kind: 'invalid' });
 	});
@@ -126,20 +142,58 @@ describe('parsePreviewUrl', () => {
 	});
 });
 
+describe('parsePreviewUrl with escapes that a decode makes malformed', () => {
+	it('refuses a `..` segment that only a lenient second decode reveals', () => {
+		fc.assert(
+			fc.property(
+				fc.array(safeSegmentArb, { maxLength: 3 }),
+				noisyClimbingSegmentArb,
+				fc.array(safeSegmentArb, { maxLength: 3 }),
+				(before, climbing, after) => {
+					const path = ['', TOKEN, ...before, climbing, ...after].join('/');
+
+					expect(parsePreviewUrl(path)).toEqual({ kind: 'invalid' });
+				},
+			),
+		);
+	});
+});
+
 describe('segmentClimbsOut', () => {
-	it.each(['..', '%2e%2e', 'a%2f..', '..%5cb', '%252e%252e', '%zz'])(
+	it.each([
+		'..',
+		'%2e%2e',
+		'a%2f..',
+		'..%5cb',
+		'%252e%252e',
+		'%zz',
+		'%252e%252e%252fx%25zz',
+		'a%25zz%252f..%252fb',
+		'%25zz%252f%252e%252e',
+	])(
 		'is true for %s',
 		(segment) => {
 			expect(segmentClimbsOut(segment)).toBe(true);
 		},
 	);
 
-	it.each(['', '.', '...', 'a..b', '100%25', '%252525', 'main.ts'])(
+	it.each(['', '.', '...', 'a..b', '100%25', '%252525', 'main.ts', 'a%25zz', '100%25.png', '%25%2e'])(
 		'is false for %j',
 		(segment) => {
 			expect(segmentClimbsOut(segment)).toBe(false);
 		},
 	);
+
+	it('keeps checking after a decode leaves a malformed escape', () => {
+		// Round two of `%252e%252e%252f%25zz` is `%2e%2e%2f%zz`, which `decodeURIComponent` refuses.
+		expect(segmentClimbsOut('%252e%252e%252f%25zz')).toBe(true);
+		expect(segmentClimbsOut('%252e%252e%25zz')).toBe(false);
+	});
+
+	it('decodes a run of escapes as UTF-8 bytes in later rounds', () => {
+		// `%25C3%25A9` decodes to `%C3%A9` and then to `é`; no round names a parent.
+		expect(segmentClimbsOut('%25C3%25A9%25zz')).toBe(false);
+	});
 
 	it('refuses a segment that still decodes after four rounds', () => {
 		expect(segmentClimbsOut('%25252525')).toBe(true);
@@ -163,6 +217,9 @@ describe('isDocumentRequest', () => {
 		['GET', { accept: 'text/html,application/xhtml+xml' }],
 		['GET', { 'sec-fetch-dest': 'document' }],
 		['GET', { 'sec-fetch-dest': 'iframe', accept: '*/*' }],
+		['HEAD', { accept: 'text/html' }],
+		['POST', { accept: 'text/html', 'sec-fetch-dest': 'document' }],
+		['POST', { 'sec-fetch-dest': 'iframe' }],
 	])('is true for %s %j', (method, headers) => {
 		expect(isDocumentRequest(method, headers)).toBe(true);
 	});
@@ -171,8 +228,9 @@ describe('isDocumentRequest', () => {
 		['GET', { accept: '*/*' }],
 		['GET', { 'sec-fetch-dest': 'script', accept: '*/*' }],
 		['GET', {}],
-		['POST', { accept: 'text/html', 'sec-fetch-dest': 'document' }],
-		['HEAD', { accept: 'text/html' }],
+		['POST', { accept: 'text/html' }],
+		['POST', { accept: 'text/html', 'sec-fetch-dest': 'empty' }],
+		['PUT', { accept: 'text/html,application/xhtml+xml' }],
 		[undefined, { accept: 'text/html' }],
 	])('is false for %s %j', (method, headers) => {
 		expect(isDocumentRequest(method, headers)).toBe(false);

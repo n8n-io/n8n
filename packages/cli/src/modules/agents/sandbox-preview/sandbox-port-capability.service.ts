@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError, ServiceUnavailableError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { z } from 'zod';
 
@@ -13,6 +13,8 @@ const UNSUPPORTED_CACHE_MS = 30_000;
 
 /** Older services leave out `capabilities`; they have no port route. */
 const healthzSchema = z.object({ capabilities: z.array(z.string()).optional() });
+
+const healthzResponseSchema = z.object({ statusCode: z.number(), body: z.unknown() });
 
 /**
  * Whether a sandbox service can serve a sandbox port over HTTP. The service
@@ -40,30 +42,42 @@ export class SandboxPortCapability {
 	private async supportsPorts(serviceUrl: string): Promise<boolean> {
 		const cached = this.answers.get(serviceUrl);
 		if (cached && Date.now() < cached.until) return cached.supported;
-		const supported = await this.readCapability(serviceUrl);
+		// A fault is not cached, because it can pass soon.
+		const supported = await this.readCapability(serviceUrl).catch((error: unknown) => {
+			this.logger.warn('Could not read the sandbox service capabilities', {
+				error: ensureError(error).message,
+			});
+			throw new ServiceUnavailableError(
+				'Could not reach the sandbox service to open the app preview. Try again in a moment.',
+			);
+		});
 		const ttl = supported ? SUPPORTED_CACHE_MS : UNSUPPORTED_CACHE_MS;
 		this.answers.set(serviceUrl, { supported, until: Date.now() + ttl });
 		return supported;
 	}
 
+	/**
+	 * A 4xx answer means that the service has no such route, so no previews. A
+	 * 5xx answer or no answer is a fault that can pass, so it throws.
+	 */
 	private async readCapability(serviceUrl: string): Promise<boolean> {
-		try {
-			const body = await this.outboundHttp
-				// The sandbox service URL is admin-configured and is often an internal host.
-				.requests({ useDefaultSsrfPolicy: 'unsafe' })
-				.request<unknown>({
-					method: 'GET',
-					url: `${serviceUrl}/healthz`,
-					json: true,
-					timeout: HEALTHZ_TIMEOUT_MS,
-				});
-			const parsed = healthzSchema.safeParse(body);
-			return parsed.success && (parsed.data.capabilities?.includes('ports') ?? false);
-		} catch (error) {
-			this.logger.warn('Could not read the sandbox service capabilities', {
-				error: ensureError(error).message,
+		const response = await this.outboundHttp
+			// The sandbox service URL is admin-configured and is often an internal host.
+			.requests({ useDefaultSsrfPolicy: 'unsafe' })
+			.request<unknown>({
+				method: 'GET',
+				url: `${serviceUrl}/healthz`,
+				json: true,
+				timeout: HEALTHZ_TIMEOUT_MS,
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
 			});
-			return false;
+		const { statusCode, body } = healthzResponseSchema.parse(response);
+		if (statusCode >= 500) {
+			throw new OperationalError(`The sandbox service answered /healthz with ${statusCode}`);
 		}
+		if (statusCode >= 300) return false;
+		const parsed = healthzSchema.safeParse(body);
+		return parsed.success && (parsed.data.capabilities?.includes('ports') ?? false);
 	}
 }

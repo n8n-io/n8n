@@ -5,6 +5,7 @@ import type {
 	Message,
 	ResumeOptions,
 	RunOptions,
+	SerializableAgentState,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
 
@@ -78,16 +79,22 @@ export interface SystemAgentSharingPolicy {
 	/** The error for a reader who tries to send a message to the thread. */
 	sendError(user: User, thread: AgentExecutionThread): Promise<Error>;
 	/**
-	 * Check that a reader may answer the pending call of `toolName`. Throws when the reader
-	 * may not. Returns the answer to resume with, which can differ from `resumeData`.
+	 * Check that a reader may answer the pending `call`. Throws when the reader may not.
+	 * Returns the answer to resume with, which can differ from `resumeData`.
 	 */
 	authorizeAnswer(
 		user: User,
 		thread: AgentExecutionThread,
-		toolName: string,
+		call: SystemAgentPendingCall,
 		resumeData: unknown,
 	): Promise<unknown>;
 }
+
+/** The suspended tool call that an answer resumes. The input is what the model sent. */
+export type SystemAgentPendingCall = Pick<
+	SerializableAgentState['pendingToolCalls'][string],
+	'toolName' | 'input'
+>;
 
 /**
  * A code-defined, instance-level agent. The Agents runtime owns the queue,
