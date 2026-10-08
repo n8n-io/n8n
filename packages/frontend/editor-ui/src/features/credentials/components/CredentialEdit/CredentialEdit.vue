@@ -65,6 +65,7 @@ import {
 	N8nCallout,
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIconButton,
@@ -1614,197 +1615,207 @@ const { width } = useElementSize(credNameRef);
 			:open="modalOpen"
 			size="fit"
 			:stacked="appendToBody"
+			:container-class="$style.dialogShell"
 			:aria-label="loading ? i18n.baseText('credentials.heading') : undefined"
 			@update:open="onDialogOpenUpdate"
 		>
-			<div :class="$style.credentialDialog" data-test-id="editCredential-modal">
-				<template v-if="!loading">
-					<N8nDialogHeader :class="$style.header">
-						<N8nDialogTitle as-child>
-							<div :class="$style.credInfo">
-								<div :class="$style.credIcon">
-									<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
-								</div>
-								<div ref="credNameRef" :class="$style.credName">
-									<div :class="$style.credNameRow">
-										<N8nInlineTextEdit
-											v-if="credentialName"
-											data-test-id="credential-name"
-											:model-value="credentialName"
-											:max-width="width - 10"
-											:readonly="
-												!(
-													(credentialPermissions.create && props.mode === 'new') ||
-													credentialPermissions.update
-												) ||
-												!credentialType ||
-												isEditingManagedCredential
-											"
-											@update:model-value="onNameEdit"
-										/>
-										<span
-											v-if="isResolvable"
-											:class="$style.dynamicTag"
-											data-test-id="credential-dynamic-tag"
-										>
-											<PrivateCredentialIcon
-												:tooltip-title="i18n.baseText('credentials.private.tooltipTitle')"
-												:tooltip-text="i18n.baseText('credentials.private.tooltip')"
-											/>
-										</span>
-									</div>
-									<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
-										credentialType.displayName
-									}}</N8nText>
-								</div>
+			<N8nDialogHeader v-if="!loading" :class="$style.header">
+				<N8nDialogTitle as-child>
+					<div :class="$style.credInfo">
+						<div :class="$style.credIcon">
+							<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
+						</div>
+						<div ref="credNameRef" :class="$style.credName">
+							<div :class="$style.credNameRow">
+								<N8nInlineTextEdit
+									v-if="credentialName"
+									data-test-id="credential-name"
+									:model-value="credentialName"
+									:max-width="width - 10"
+									:readonly="
+										!(
+											(credentialPermissions.create && props.mode === 'new') ||
+											credentialPermissions.update
+										) ||
+										!credentialType ||
+										isEditingManagedCredential
+									"
+									@update:model-value="onNameEdit"
+								/>
+								<span
+									v-if="isResolvable"
+									:class="$style.dynamicTag"
+									data-test-id="credential-dynamic-tag"
+								>
+									<PrivateCredentialIcon
+										:tooltip-title="i18n.baseText('credentials.private.tooltipTitle')"
+										:tooltip-text="i18n.baseText('credentials.private.tooltip')"
+									/>
+								</span>
 							</div>
-						</N8nDialogTitle>
-						<div :class="$style.credActions">
-							<SaveButton
-								v-if="showHeaderSaveButton"
-								:class="$style.saveButton"
-								:disabled="
-									isSaving ||
-									savedCredentialNeedsLoad ||
-									(!isNewCredential && !hasUnsavedChanges && !isTesting) ||
-									!requiredPropertiesFilled
-								"
-								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
-								:is-saving="isSaving || isTesting"
-								:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
-								:saving-label="
-									isTesting
-										? i18n.baseText('credentialEdit.credentialEdit.testing')
-										: i18n.baseText('credentialEdit.credentialEdit.saving')
-								"
-								data-test-id="credential-save-button"
-								@click="saveCredential"
-							/>
-							<N8nIconButton
-								variant="subtle"
-								v-if="
-									currentCredential &&
-									!modalOptions?.destination &&
-									credentialPermissions.delete &&
-									(!isResolvable || credentialPermissions.createEndUser)
-								"
-								:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
-								icon="trash-2"
-								:disabled="isSaving"
-								:loading="isDeleting"
-								data-test-id="credential-delete-button"
-								@click="deleteCredential"
-							/>
-						</div>
-					</N8nDialogHeader>
-					<div :class="$style.container" data-test-id="credential-edit-dialog">
-						<div
-							v-if="credentialDescriptionsEnabled || !isEditingManagedCredential"
-							:class="$style.sidebar"
-						>
-							<N8nMenuItem
-								v-for="item in sidebarItems"
-								:key="item.id"
-								:item="item"
-								:active="activeTab === item.id"
-								@click="() => onTabSelect(item.id)"
-							/>
-						</div>
-						<div
-							v-if="activeTab === 'connection' && credentialType"
-							ref="contentRef"
-							:class="$style.mainContent"
-						>
-							<N8nText v-if="modalOptions?.destination" tag="p">
-								{{
-									homeProject?.name ??
-									(modalOptions.destination.kind === 'pending' ? modalOptions.destination.name : '')
-								}}
-							</N8nText>
-							<N8nCallout v-if="modalOptions?.notice" theme="info">{{
-								modalOptions.notice()
-							}}</N8nCallout>
-							<N8nCallout v-if="savedCredentialNeedsLoad" theme="warning">
-								{{ i18n.baseText('credentialEdit.savedLoadFailed') }}
-								<template #actions>
-									<N8nButton :disabled="isSaving" @click="retrySavedCredentialLoad">
-										{{ i18n.baseText('generic.retry') }}
-									</N8nButton>
-								</template>
-							</N8nCallout>
-							<CredentialConfig
-								:credential-type="credentialType"
-								:credential-properties="credentialProperties"
-								:credential-data="credentialData"
-								:credential-id="credentialId"
-								:is-managed="isEditingManagedCredential"
-								:show-validation-warning="showValidationWarning"
-								:auth-error="authError"
-								:tested-successfully="testedSuccessfully"
-								:is-o-auth-type="isOAuthType"
-								:is-o-auth-connected="isOAuthConnected"
-								:is-retesting="isRetesting"
-								:parent-types="parentTypes"
-								:required-properties-filled="requiredPropertiesFilled"
-								:credential-permissions="credentialPermissions"
-								:mode="mode"
-								:selected-credential="selectedCredential"
-								:is-private-credentials-enabled="
-									isPrivateCredentialsEnabled && !isInstanceCredential && !modalOptions?.destination
-								"
-								:is-resolvable="isResolvable"
-								:connected-by-me="connectedByMe"
-								:connected-account-identifier="connectedAccountIdentifier"
-								:is-new-credential="isNewCredential"
-								:new-credential-project-type="homeProject?.type"
-								:managed-oauth-available="managedOAuthAvailable"
-								:use-custom-oauth="useCustomOAuth"
-								:is-quick-connect-mode="isQuickConnectMode"
-								:context-node="contextNode"
-								:show-ai-gateway-error-nudge="showAiGatewayErrorNudge"
-								:ai-gateway-credits-are-free="
-									aiGateway.creditsLabelKey.value === 'generic.freeCredits'
-								"
-								:hide-ask-assistant="hideAskAssistant"
-								:instance-ai-credential-help="instanceAiCredentialHelp"
-								@update="onDataChange"
-								@oauth="oAuthCredentialAuthorize"
-								@disconnect="onDisconnectMyConnection"
-								@quick-connect="onQuickConnect"
-								@retest="retestCredential"
-								@scroll-to-top="scrollToTop"
-								@auth-type-changed="onAuthTypeChanged"
-								@claimed="closeDialog"
-								@use-gateway-credits="useGatewayCredits"
-								@update:is-resolvable="onResolvableChange"
-							/>
-						</div>
-						<div v-else-if="showSharingContent" :class="$style.mainContent">
-							<CredentialSharing
-								:credential="currentCredential"
-								:credential-data="credentialData"
-								:credential-id="credentialId"
-								:credential-permissions="credentialPermissions"
-								:is-shared-globally="isSharedGlobally"
-								:modal-bus="modalBus"
-								@update:model-value="onChangeSharedWith"
-								@update:share-with-all-users="onShareWithAllUsersUpdate"
-							/>
-						</div>
-						<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
-							<CredentialInfo
-								:current-credential="currentCredential"
-								:description="credentialDescription"
-								:readonly="!canEditDescription"
-								@update:description="onDescriptionEdit"
-							/>
+							<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
+								credentialType.displayName
+							}}</N8nText>
 						</div>
 					</div>
-				</template>
-				<div v-else :class="$style.loader">
-					<N8nSpinner />
+				</N8nDialogTitle>
+				<div :class="$style.credActions">
+					<SaveButton
+						v-if="showHeaderSaveButton"
+						:class="$style.saveButton"
+						:disabled="
+							isSaving ||
+							savedCredentialNeedsLoad ||
+							(!isNewCredential && !hasUnsavedChanges && !isTesting) ||
+							!requiredPropertiesFilled
+						"
+						:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
+						:is-saving="isSaving || isTesting"
+						:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
+						:saving-label="
+							isTesting
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
+						"
+						data-test-id="credential-save-button"
+						@click="saveCredential"
+					/>
+					<N8nIconButton
+						variant="subtle"
+						v-if="
+							currentCredential &&
+							!modalOptions?.destination &&
+							credentialPermissions.delete &&
+							(!isResolvable || credentialPermissions.createEndUser)
+						"
+						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
+						icon="trash-2"
+						:disabled="isSaving"
+						:loading="isDeleting"
+						data-test-id="credential-delete-button"
+						@click="deleteCredential"
+					/>
 				</div>
-			</div>
+			</N8nDialogHeader>
+			<N8nDialogBody>
+				<div :class="$style.credentialDialog" data-test-id="editCredential-modal">
+					<template v-if="!loading">
+						<div :class="$style.container" data-test-id="credential-edit-dialog">
+							<div
+								v-if="credentialDescriptionsEnabled || !isEditingManagedCredential"
+								:class="$style.sidebar"
+							>
+								<N8nMenuItem
+									v-for="item in sidebarItems"
+									:key="item.id"
+									:item="item"
+									:active="activeTab === item.id"
+									@click="() => onTabSelect(item.id)"
+								/>
+							</div>
+							<div
+								v-if="activeTab === 'connection' && credentialType"
+								ref="contentRef"
+								:class="$style.mainContent"
+							>
+								<N8nText v-if="modalOptions?.destination" tag="p">
+									{{
+										homeProject?.name ??
+										(modalOptions.destination.kind === 'pending'
+											? modalOptions.destination.name
+											: '')
+									}}
+								</N8nText>
+								<N8nCallout v-if="modalOptions?.notice" theme="info">{{
+									modalOptions.notice()
+								}}</N8nCallout>
+								<N8nCallout v-if="savedCredentialNeedsLoad" theme="warning">
+									{{ i18n.baseText('credentialEdit.savedLoadFailed') }}
+									<template #actions>
+										<N8nButton :disabled="isSaving" @click="retrySavedCredentialLoad">
+											{{ i18n.baseText('generic.retry') }}
+										</N8nButton>
+									</template>
+								</N8nCallout>
+								<CredentialConfig
+									:credential-type="credentialType"
+									:credential-properties="credentialProperties"
+									:credential-data="credentialData"
+									:credential-id="credentialId"
+									:is-managed="isEditingManagedCredential"
+									:show-validation-warning="showValidationWarning"
+									:auth-error="authError"
+									:tested-successfully="testedSuccessfully"
+									:is-o-auth-type="isOAuthType"
+									:is-o-auth-connected="isOAuthConnected"
+									:is-retesting="isRetesting"
+									:parent-types="parentTypes"
+									:required-properties-filled="requiredPropertiesFilled"
+									:credential-permissions="credentialPermissions"
+									:mode="mode"
+									:selected-credential="selectedCredential"
+									:is-private-credentials-enabled="
+										isPrivateCredentialsEnabled &&
+										!isInstanceCredential &&
+										!modalOptions?.destination
+									"
+									:is-resolvable="isResolvable"
+									:connected-by-me="connectedByMe"
+									:connected-account-identifier="connectedAccountIdentifier"
+									:is-new-credential="isNewCredential"
+									:new-credential-project-type="homeProject?.type"
+									:managed-oauth-available="managedOAuthAvailable"
+									:use-custom-oauth="useCustomOAuth"
+									:is-quick-connect-mode="isQuickConnectMode"
+									:context-node="contextNode"
+									:show-ai-gateway-error-nudge="showAiGatewayErrorNudge"
+									:ai-gateway-credits-are-free="
+										aiGateway.creditsLabelKey.value === 'generic.freeCredits'
+									"
+									:hide-ask-assistant="hideAskAssistant"
+									:instance-ai-credential-help="instanceAiCredentialHelp"
+									@update="onDataChange"
+									@oauth="oAuthCredentialAuthorize"
+									@disconnect="onDisconnectMyConnection"
+									@quick-connect="onQuickConnect"
+									@retest="retestCredential"
+									@scroll-to-top="scrollToTop"
+									@auth-type-changed="onAuthTypeChanged"
+									@claimed="closeDialog"
+									@use-gateway-credits="useGatewayCredits"
+									@update:is-resolvable="onResolvableChange"
+								/>
+							</div>
+							<div v-else-if="showSharingContent" :class="$style.mainContent">
+								<CredentialSharing
+									:credential="currentCredential"
+									:credential-data="credentialData"
+									:credential-id="credentialId"
+									:credential-permissions="credentialPermissions"
+									:is-shared-globally="isSharedGlobally"
+									:modal-bus="modalBus"
+									@update:model-value="onChangeSharedWith"
+									@update:share-with-all-users="onShareWithAllUsersUpdate"
+								/>
+							</div>
+							<div
+								v-else-if="activeTab === 'details' && credentialType"
+								:class="$style.mainContent"
+							>
+								<CredentialInfo
+									:current-credential="currentCredential"
+									:description="credentialDescription"
+									:readonly="!canEditDescription"
+									@update:description="onDescriptionEdit"
+								/>
+							</div>
+						</div>
+					</template>
+					<div v-else :class="$style.loader">
+						<N8nSpinner />
+					</div>
+				</div>
+			</N8nDialogBody>
 		</N8nDialog>
 		<TypeToConfirmDialog
 			v-if="typeToConfirmDialog"
@@ -1823,8 +1834,7 @@ const { width } = useElementSize(credNameRef);
 <style module lang="scss">
 .credentialDialog {
 	width: min(70dvw, calc(var(--spacing--5xl) * 4 + var(--spacing--4xl) + var(--spacing--2xl)));
-	height: 80dvh;
-	max-height: calc(var(--height--5xl) * 8);
+	flex: 1 1 auto;
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
@@ -1867,14 +1877,21 @@ const { width } = useElementSize(credNameRef);
 	}
 }
 
+.dialogShell {
+	--n8n-dialog-content--padding: 0;
+	/* Match the header padding. Region padding is 0, so the default inset would sit in the corner. */
+	--n8n-dialog-close--inset-block-start: var(--spacing--md);
+	--n8n-dialog-close--inset-inline-end: var(--spacing--lg);
+	height: 80dvh;
+	max-height: calc(var(--height--5xl) * 8);
+}
+
 .header {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	flex-shrink: 0;
-	margin: calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1) 0;
 	padding: var(--spacing--md) var(--spacing--lg);
-	border-bottom: var(--border);
 }
 
 .container {
@@ -1896,7 +1913,6 @@ const { width } = useElementSize(credNameRef);
 	flex-direction: row;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	margin-right: var(--spacing--xl);
 	flex-shrink: 0;
 }
 
