@@ -47,7 +47,7 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 	};
 });
 
-// Covered in workflow-build-telemetry.test.ts; kept out of the trace child-run counts here.
+// Metric spans would change the trace child-run counts that these tests assert.
 vi.mock('../../../tracing/builder-metric-event', () => ({
 	emitBuilderMetric: vi.fn(async () => await Promise.resolve()),
 }));

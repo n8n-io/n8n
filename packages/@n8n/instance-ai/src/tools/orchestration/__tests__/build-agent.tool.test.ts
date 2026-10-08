@@ -31,7 +31,6 @@ import {
 import { createBuildAgentTool } from '../build-agent.tool';
 import type { BuilderRequiredArtifact } from '../builder-required-artifact';
 
-// Covered in agent-build-metrics.test.ts; kept out of the trace child-run counts here.
 vi.mock('../agent-build-metrics', () => ({
 	emitAgentBuildMetrics: vi.fn(async () => await Promise.resolve()),
 	withAgentStreamMetrics: vi.fn((_context: unknown, turn: unknown) => turn),

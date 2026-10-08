@@ -1,8 +1,7 @@
 /**
  * Trace-only builder metric events. Each event records the outcome of one build
  * or verification step with a `success` flag, so trace queries can count
- * successful and failed steps for each thread and model. `first_response` marks
- * the first text token that the user sees in a turn. The event inherits
+ * successful and failed steps for each thread and model. The event inherits
  * `thread_id`, `run_id` and `model_id` from its parent span.
  */
 

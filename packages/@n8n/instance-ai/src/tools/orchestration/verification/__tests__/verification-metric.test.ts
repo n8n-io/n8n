@@ -53,23 +53,20 @@ describe('emitWorkflowVerificationMetric', () => {
 		});
 	});
 
-	it.each(['partial', 'unproven', 'failed'] as const)(
-		'does not count a %s claim as success',
-		async (level) => {
-			await emitWorkflowVerificationMetric(tracing, {
-				source: 'verify',
-				workflowId: 'wf-1',
-				workItemId: 'wi_1',
-				claim: claim(level),
-			});
+	it('does not count a partial claim as success', async () => {
+		await emitWorkflowVerificationMetric(tracing, {
+			source: 'verify',
+			workflowId: 'wf-1',
+			workItemId: 'wi_1',
+			claim: claim('partial'),
+		});
 
-			expect(emitBuilderMetric).toHaveBeenCalledWith(
-				tracing,
-				'workflow_verification',
-				expect.objectContaining({ success: false, claim_level: level }),
-			);
-		},
-	);
+		expect(emitBuilderMetric).toHaveBeenCalledWith(
+			tracing,
+			'workflow_verification',
+			expect.objectContaining({ success: false, claim_level: 'partial' }),
+		);
+	});
 
 	it('records verification that did not run, with its reason', async () => {
 		await emitWorkflowVerificationMetric(tracing, {

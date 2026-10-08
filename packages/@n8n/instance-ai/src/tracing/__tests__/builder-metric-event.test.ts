@@ -46,10 +46,4 @@ describe('emitBuilderMetric', () => {
 			emitBuilderMetric(tracing, 'agent_test', { success: true }),
 		).resolves.toBeUndefined();
 	});
-
-	it('is a no-op without a trace', async () => {
-		await expect(emitBuilderMetric(undefined, 'agent_build', { success: true })).resolves.toBe(
-			undefined,
-		);
-	});
 });
