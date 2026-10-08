@@ -19,6 +19,7 @@ export { default as Braces } from './custom/brand/brackets-curly--outline-16.svg
 export { default as Brain } from './custom/brand/brain--outline-16.svg';
 export { default as Briefcase } from './custom/brand/briefcase--outline-16.svg';
 export { default as Bug } from './custom/brand/bug--outline-16.svg';
+export { default as Broom } from './custom/brand/broom--outline-16.svg';
 export { default as Calendar } from './custom/brand/calendar--outline-16.svg';
 export { default as ChartColumnDecreasing } from './custom/brand/chart-bars--outline-16.svg';
 export { default as Check } from './custom/brand/check--outline-16.svg';
@@ -64,6 +65,7 @@ export { default as FileInput } from './custom/brand/file-arrow-in--outline-16.s
 export { default as Files } from './custom/brand/files--outline-16.svg';
 export { default as FileText } from './custom/brand/file-text--outline-16.svg';
 export { default as FlaskConical } from './custom/brand/flask--outline-16.svg';
+export { default as Flow } from './custom/brand/flow--outline-16.svg';
 export { default as Folder } from './custom/brand/folder--outline-16.svg';
 export { default as FolderOpen } from './custom/brand/folder-open--outline-16.svg';
 export { default as FolderPlus } from './custom/brand/folder-plus--outline-16.svg';
@@ -126,6 +128,7 @@ export { default as Quote } from './custom/brand/quotes--outline-16.svg';
 export { default as Redo2 } from './custom/brand/arrow-u-up-right--outline-16.svg';
 export { default as RefreshCw } from './custom/brand/arrows-cw--outline-16.svg';
 export { default as Robot } from './custom/brand/robot--outline-16.svg';
+export { default as Robot12 } from './custom/brand/robot--outline-12.svg';
 export { default as Rss } from './custom/brand/rss--outline-16.svg';
 export { default as SatelliteDish } from './custom/brand/satellite-dish--outline-16.svg';
 export { default as Search } from './custom/brand/magnifying-glass--outline-16.svg';

@@ -597,7 +597,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'git-branch',
+					icon: 'flow',
 					sections: [
 						{
 							key: 'popular',

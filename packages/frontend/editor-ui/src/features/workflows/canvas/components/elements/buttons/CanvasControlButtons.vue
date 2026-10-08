@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import TidyUpIcon from '@/app/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
-import { N8nButton, N8nButtonList, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nButtonList, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
@@ -127,17 +126,16 @@ function handleClickCollapseAll() {
 				:label="i18n.baseText('nodeView.tidyUp')"
 				:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
 			>
-				<N8nButton
+				<N8nIconButton
 					variant="ghost"
 					iconOnly
 					size="large"
+					:class="$style.iconButton"
+					icon="broom"
 					:aria-label="i18n.baseText('nodeView.tidyUp')"
 					data-test-id="tidy-up-button"
-					:class="$style.iconButton"
 					@click="onTidyUp"
-				>
-					<TidyUpIcon />
-				</N8nButton>
+					/>
 			</KeyboardShortcutTooltip>
 			<N8nTooltip
 				v-if="isExperimentalNdvActive"
