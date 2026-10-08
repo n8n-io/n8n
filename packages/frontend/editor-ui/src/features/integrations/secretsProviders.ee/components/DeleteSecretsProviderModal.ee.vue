@@ -4,14 +4,21 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { getAllCredentials } from '@/features/credentials/credentials.api';
 import {
 	deleteSecretProviderConnection,
 	deleteProjectSecretProviderConnection,
 } from '@n8n/rest-api-client';
-import Modal from '@/app/components/Modal.vue';
-import { N8nButton, N8nInput, N8nLink, N8nInputLabel, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInput,
+	N8nLink,
+	N8nInputLabel,
+	N8nText,
+} from '@n8n/design-system';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
 
 interface Props {
@@ -31,7 +38,7 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const confirmationText = ref('');
 const isDeleting = ref(false);
@@ -123,23 +130,31 @@ async function onConfirmDelete() {
 	}
 }
 
-function onCancel() {
+function closeDialog() {
 	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
+function onCancel() {
+	closeDialog();
 }
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:title="
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="
 			i18n.baseText('settings.secretsProviderConnections.delete.title', {
 				interpolate: { name: data.providerName },
 			})
 		"
-		:event-bus="modalBus"
-		width="540px"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<div v-if="shouldShowConfirmation" :class="$style.content">
 				<N8nText size="medium" color="text-base">
 					{{
@@ -190,9 +205,9 @@ function onCancel() {
 					{{ i18n.baseText('settings.secretsProviderConnections.delete.description.noImpact') }}
 				</N8nText>
 			</div>
-		</template>
+		</N8nDialogBody>
 
-		<template #footer>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
@@ -207,8 +222,8 @@ function onCancel() {
 					{{ i18n.baseText('generic.delete') }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -232,5 +247,6 @@ function onCancel() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
+	width: 100%;
 }
 </style>
