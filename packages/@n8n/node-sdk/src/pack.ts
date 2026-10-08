@@ -243,6 +243,47 @@ const sdkSourcePlugin: Plugin = {
 	},
 };
 
+/** A credential type with a version and a scheme that n8n runs, so it has a credential manifest. */
+const isManifestCredentialType = (value: unknown): value is AnyCredentialType =>
+	isRecord(value) &&
+	typeof value.id === 'string' &&
+	typeof value.semver === 'string' &&
+	isRecord(value.scheme) &&
+	value.scheme.kind !== 'compat';
+
+/**
+ * Puts `credentialOf(<id>)` of the host in place of each `credentials.ts` module whose exports are
+ * all credential types with a credential manifest, so a credential change does not change an
+ * action bundle. `types` gets each type of such a module by id.
+ */
+const credentialModulesPlugin = (types: Map<string, AnyCredentialType>): Plugin => ({
+	name: 'credential-modules',
+	setup(bundler) {
+		bundler.onLoad({ filter: /[\\/]credentials\.ts$/ }, async ({ path: file }) => {
+			const { require: tsxRequire } = await import('tsx/cjs/api');
+			const module: unknown = tsxRequire(file, __filename);
+			const exported = isRecord(module) ? Object.entries(module) : [];
+			const typed = exported.flatMap(
+				([name, value]): Array<[string, AnyCredentialType]> =>
+					isManifestCredentialType(value) ? [[name, value]] : [],
+			);
+			if (typed.length === 0 || typed.length < exported.length) return undefined;
+			for (const [, type] of typed) types.set(type.id, type);
+			// A pure call drops out of the bundle when the action does not use its export.
+			const stubs = typed.map(
+				([name, { id }]) =>
+					`export const ${name} = /* @__PURE__ */ credentialOf(${JSON.stringify(id)});`,
+			);
+			return {
+				contents: ["import { credentialOf } from '@n8n/node-sdk/credentials';", ...stubs].join(
+					'\n',
+				),
+				loader: 'js',
+			};
+		});
+	},
+});
+
 /** The modules that a build leaves to the host. */
 const externalsOf = ({ metafile }: BuildResult<{ metafile: true }>) => [
 	...new Set(
@@ -300,6 +341,8 @@ const semverOf = (source: Action | Trigger) => source.semver ?? `${source.versio
  * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
  * same bytes, so a release build reproduces the HEAD bundle the registry holds. The bundle imports
  * the SDK from the host, and its manifest pins `sdk`. Default: the SDK runtime of this source.
+ * Each credential type with a credential manifest must come from a `credentials.ts` module: the
+ * bundle holds only its id.
  */
 export async function packAction(
 	entryFile: string,
@@ -307,6 +350,7 @@ export async function packAction(
 	sdk?: PackedSdkRuntime,
 ): Promise<PackedAction> {
 	const { build } = await import('esbuild');
+	const types = new Map<string, AnyCredentialType>();
 	const result = await build({
 		...BUILD_OPTIONS,
 		stdin: {
@@ -316,7 +360,7 @@ export async function packAction(
 		},
 		// The host provides `n8n-workflow` and the SDK runtime.
 		external: ['n8n-workflow', 'node:*', ...SDK_MODULES],
-		plugins: [sdkSourcePlugin],
+		plugins: [sdkSourcePlugin, credentialModulesPlugin(types)],
 	});
 	const bundle = result.outputFiles[0]?.text ?? '';
 	const imported = externalsOf(result);
@@ -328,7 +372,17 @@ export async function packAction(
 	}
 	const usesSdk = imported.some((module) => SDK_MODULES.includes(module));
 	const runtimeSdk = usesSdk ? (sdk ?? (await packSdkRuntime())) : undefined;
-	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION, runtimeSdk?.bundle);
+	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION, runtimeSdk?.bundle, (id) =>
+		types.get(id),
+	);
+	const inlined = (action.node.credential?.types ?? []).filter(
+		(type) => isManifestCredentialType(type) && !types.has(type.id),
+	);
+	if (inlined.length > 0) {
+		throw new UserError(
+			`${exportName} in ${entryFile} holds the credential types ${inlined.map(({ id }) => id).join(', ')}. Move each one to a credentials.ts module that exports only credential types.`,
+		);
+	}
 	const runtime = 'runtime' in action ? action.runtime : undefined;
 	// A tag can point to other bytes later, so only a digest pins what the version runs.
 	if (runtime && !/@sha256:[0-9a-f]{64}$/.test(runtime.image)) {

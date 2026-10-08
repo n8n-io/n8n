@@ -14,7 +14,7 @@ import {
 	firstPartyVersionsOf as versionsOf,
 	fixturesFileOf,
 } from '../src/__tests__/first-party';
-import { escapeProbes } from '../src/__tests__/escape-probes';
+import { escapeProbeCredentials, escapeProbes } from '../src/__tests__/escape-probes';
 import { compat, defineCredential, field } from '../src/credentials';
 import { packAction } from '../src/pack';
 import { replayFixtures } from '../src/publish';
@@ -294,6 +294,7 @@ async function main() {
 	const port = typeof address === 'object' && address ? address.port : 0;
 	const probesFile = path.join(workDir, 'probes.ts');
 	writeFileSync(probesFile, escapeProbes(`http://127.0.0.1:${port}/`));
+	writeFileSync(path.join(workDir, 'credentials.ts'), escapeProbeCredentials);
 	process.env.SANDBOX_CANARY = 'secret';
 	const probeRuns = await Promise.all(
 		CHECKS.map(async (check) => {

@@ -46,6 +46,7 @@ import {
 	plainFieldsOf,
 	redactedValue,
 	secretRedactorOf,
+	typeOfManifest,
 	type AnyCredentialType,
 } from './credentials';
 import {
@@ -2735,13 +2736,28 @@ function defaultExportOf(code: string, modules: Readonly<Record<string, unknown>
 	return isRecord(module.exports) ? module.exports.default : undefined;
 }
 
-/** The modules of `SDK_MODULES` from a new evaluation of an SDK runtime bundle. */
-function sdkModulesOf(sdk: string): Record<string, unknown> {
+/** The credential type of an id that a bundle names with `credentialOf`, if the host has it. */
+export type CredentialOf = (id: string) => AnyCredentialType | undefined;
+
+/**
+ * The modules of `SDK_MODULES` from a new evaluation of an SDK runtime bundle. The credentials
+ * module gets the `credentialOf` of the host, so a bundle gets the credential types of the host.
+ */
+function sdkModulesOf(sdk: string, credentialOf: CredentialOf): Record<string, unknown> {
 	const runtime = defaultExportOf(sdk, HOST_MODULES);
 	if (!isRecord(runtime) || !isRecord(runtime.root) || !isRecord(runtime.credentials)) {
 		throw new UnexpectedError('The SDK runtime does not export root and credentials');
 	}
-	return { '@n8n/node-sdk': runtime.root, '@n8n/node-sdk/credentials': runtime.credentials };
+	const hostCredentialOf = (id: string) => {
+		const type = credentialOf(id);
+		if (!type)
+			throw new UserError(`The bundle uses the credential ${id}, which the host does not have`);
+		return { ...type, range: (versionRange: string) => ({ ...type, versionRange }) };
+	};
+	return {
+		'@n8n/node-sdk': runtime.root,
+		'@n8n/node-sdk/credentials': { ...runtime.credentials, credentialOf: hostCredentialOf },
+	};
 }
 
 const isContract = (value: unknown): value is Action | Trigger =>
@@ -2757,19 +2773,22 @@ const isContract = (value: unknown): value is Action | Trigger =>
 
 /**
  * Runs a CommonJS bundle from `packAction` and returns the action or trigger it exports. `sdk` is
- * the SDK runtime that the manifest pins. A self-contained bundle has none.
+ * the SDK runtime that the manifest pins. A self-contained bundle has none. `credentialOf` gives
+ * the credential type of each id that the bundle names.
  */
 export function evaluateBundle(
 	code: string,
 	nodeContract: NodeContractVersion,
 	sdk?: string,
+	credentialOf: CredentialOf = () => undefined,
 ): Action | Trigger {
 	if (!implementsNodeContract(nodeContract)) {
 		throw new UserError(
 			`This host cannot run Node Contract ${nodeContract}. It implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
 		);
 	}
-	const modules = sdk === undefined ? HOST_MODULES : { ...HOST_MODULES, ...sdkModulesOf(sdk) };
+	const modules =
+		sdk === undefined ? HOST_MODULES : { ...HOST_MODULES, ...sdkModulesOf(sdk, credentialOf) };
 	const exported = defaultExportOf(code, modules);
 	if (!isContract(exported)) throw new UnexpectedError('The bundle does not export a contract');
 	return exported;
@@ -2823,24 +2842,45 @@ export function evaluateHttpGuestConfig(code: string, manifest: VersionManifest)
 
 /**
  * The contract of a bundle: JS code, or the config of the guest that its manifest names. `sdk` is
- * the SDK runtime that the manifest pins.
+ * the SDK runtime that the manifest pins, see `evaluateBundle` for `credentialOf`.
  */
 export function evaluateVersion(
 	code: string,
 	manifest: VersionManifest,
 	sdk?: string,
+	credentialOf?: CredentialOf,
 ): Action | Trigger {
 	if (manifest.guest === 'http') return evaluateHttpGuestConfig(code, manifest);
-	return evaluateBundle(code, manifest.nodeContract, sdk);
+	return evaluateBundle(code, manifest.nodeContract, sdk, credentialOf);
 }
 
-/** The bundle of a packed version, after its Node Contract version and its hash are checked. */
+/** The `credentialOf` of the credential manifests of a bundle: by id, rebuilt from each manifest. */
+export const credentialOfManifests =
+	(manifests: ReadonlyArray<CredentialManifest | undefined>): CredentialOf =>
+	(id) => {
+		const manifest = manifests.find((each) => each?.id === id);
+		return manifest && typeOfManifest(manifest);
+	};
+
+/**
+ * The bundle of a packed version, after its Node Contract version and its hash are checked. The
+ * credential types that it names come from the credential manifest of each name of its contract.
+ */
 export async function verifiedBundleOf(
 	packed: PackedVersion,
 	range: NodeContractRange,
+	credentialManifestOf: CredentialManifestOf = async () => undefined,
 ): Promise<Action | Trigger> {
 	const code = await verifiedCodeOf(packed, range);
-	return evaluateVersion(code, packed.manifest, await verifiedSdkOf(packed));
+	const manifests = await Promise.all(
+		packed.manifest.contract.credentials.map(async (name) => await credentialManifestOf(name)),
+	);
+	return evaluateVersion(
+		code,
+		packed.manifest,
+		await verifiedSdkOf(packed),
+		credentialOfManifests(manifests),
+	);
 }
 
 /** The executor of the action interface for one node execution. */
@@ -2902,7 +2942,11 @@ export function assertManifestPermissions(
  * credential manifests. `loadTriggerExecutor` loads a trigger version.
  */
 export async function loadExecutor(packed: PackedVersion, runtime: HostRuntime): Promise<Executor> {
-	const exported = await verifiedBundleOf(packed, runtime.nodeContractRange);
+	const exported = await verifiedBundleOf(
+		packed,
+		runtime.nodeContractRange,
+		runtime.credentialManifestOf,
+	);
 	if ('kind' in exported) throw new UnexpectedError(`${exported.id} is a trigger, not an action`);
 	assertManifestPermissions(packed.manifest, exported, runtime.reportRefusal);
 	const { errorOf } = packed.manifest;

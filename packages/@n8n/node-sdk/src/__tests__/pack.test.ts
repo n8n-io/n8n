@@ -117,7 +117,7 @@ describe('packSdkRuntime', () => {
 });
 
 describe('packAction', () => {
-	const dirs = { root: '' };
+	const dirs = { root: '', package: '' };
 	const pack = async (value: string, header?: string, spec?: string) => {
 		const entry = path.join(dirs.root, `${Math.random().toString(36).slice(2)}.ts`);
 		await writeFile(entry, probeSource(value, header, spec));
@@ -153,32 +153,62 @@ describe('packAction', () => {
 		);
 	});
 
-	it('pins each credential type at ^<version> or at its .range(), since Node Contract 2.12.0', async () => {
-		const header = `import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
-const token = defineCredential({ id: 'probe.token', version: '1.2.0', displayName: 'Probe', fields: { token: field.secret('Token') }, auth: (a) => a.bearer('token') });`;
+	describe('with a credentials.ts module', () => {
+		const credentialSource = `import { defineCredential, field } from '@n8n/node-sdk/credentials';
+export const token = defineCredential({ id: 'probe.token', version: '1.2.0', displayName: 'Probe Token', fields: { token: field.secret('Token') }, auth: (a) => a.bearer('token') });`;
 		const credentialOf = (types: string) => `credential: credential({ types: [${types}] }),`;
-		const packWith = async (types: string) => {
-			const entry = path.join(dirs.root, `${Math.random().toString(36).slice(2)}.ts`);
-			const source = probeSource("'x'", header).replace(
-				"displayName: 'Probe' }",
-				`displayName: 'Probe', ${credentialOf(types)} }`,
-			);
+		const packWith = async (types: string, header = "import { token } from './credentials';") => {
+			const entry = path.join(dirs.package, `${Math.random().toString(36).slice(2)}.ts`);
+			const source = probeSource(
+				"'x'",
+				`import { credential } from '@n8n/node-sdk/credentials';\n${header}`,
+			).replace("displayName: 'Probe' }", `displayName: 'Probe', ${credentialOf(types)} }`);
 			await writeFile(entry, source);
-			return (await packAction(entry, 'probeAction')).manifest;
+			return await packAction(entry, 'probeAction');
 		};
-		expect(await packWith('token')).toMatchObject({
-			nodeContract: '2.12.0',
-			credentials: { 'probe.token': '^1.2.0' },
+
+		beforeAll(async () => {
+			// Inside this package, so tsx resolves @n8n/node-sdk when pack loads credentials.ts.
+			dirs.package = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+			await writeFile(path.join(dirs.package, 'credentials.ts'), credentialSource);
 		});
-		expect((await packWith("token.range('>=1.1 <3')")).credentials).toEqual({
-			'probe.token': '>=1.1 <3',
+
+		afterAll(async () => {
+			await rm(dirs.package, { recursive: true, force: true });
 		});
-		await expect(packWith("token.range('one')")).rejects.toThrow(
-			'The range one of the credential probe.token is not valid',
-		);
-		await expect(packWith('{ ...token, semver: undefined }')).rejects.toThrow(
-			'The credential probe.token has no version',
-		);
+
+		it('pins each credential type at ^<version> or at its .range(), since Node Contract 2.12.0', async () => {
+			const { manifest, bundle, action } = await packWith('token');
+			expect(manifest).toMatchObject({
+				nodeContract: '2.12.0',
+				credentials: { 'probe.token': '^1.2.0' },
+			});
+			expect(manifest.contract.credentials).toEqual(['probe.token']);
+			expect((await packWith("token.range('>=1.1 <3')")).manifest.credentials).toEqual({
+				'probe.token': '>=1.1 <3',
+			});
+			await expect(packWith("token.range('one')")).rejects.toThrow(
+				'The range one of the credential probe.token is not valid',
+			);
+			await expect(packWith('{ ...token, semver: undefined }')).rejects.toThrow(
+				'The credential probe.token has no version',
+			);
+			// The bundle holds only the id. Pack evaluates it with the source type.
+			expect(bundle).toContain('credentialOf)("probe.token")');
+			expect(bundle).not.toContain('Probe Token');
+			expect(action.node.credential?.types[0]).toMatchObject({
+				id: 'probe.token',
+				displayName: 'Probe Token',
+				semver: '1.2.0',
+			});
+		});
+
+		it('refuses a credential type that is not in a credentials.ts module', async () => {
+			const inline = credentialSource.replace('export const', 'const');
+			await expect(packWith('token', inline)).rejects.toThrow(
+				'holds the credential types probe.token. Move each one to a credentials.ts module',
+			);
+		});
 	});
 
 	it('refuses to pack a credential type without a version', () => {
@@ -539,17 +569,22 @@ describe('the manifest of a trigger as the permission source', () => {
 });
 
 describe('packPackage with a registry', () => {
-	const passSource = (run: string, input = '{}') => `
-import { defineNode, t } from '@n8n/node-sdk';
-import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+	const credentialsSource = `
+import { defineCredential, field } from '@n8n/node-sdk/credentials';
 
-const token = defineCredential({
+export const token = defineCredential({
 	id: 'demo.token',
 	version: '1.0.0',
 	displayName: 'Demo',
 	fields: { token: field.secret('Token') },
 	auth: (a) => a.none(),
 });
+`;
+	const passSource = (run: string, input = '{}') => `
+import { defineNode, t } from '@n8n/node-sdk';
+import { credential } from '@n8n/node-sdk/credentials';
+
+import { token } from '../credentials';
 
 export const pass = defineNode({
 	id: 'demo',
@@ -575,6 +610,10 @@ export const pass = defineNode({
 		state.pkg = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
 		state.entry = path.join(state.pkg, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
 		await mkdir(path.dirname(state.entry), { recursive: true });
+		await writeFile(
+			path.join(state.pkg, 'src', 'nodes', 'demo', 'credentials.ts'),
+			credentialsSource,
+		);
 		state.registry = await fakeNpmRegistry();
 	});
 

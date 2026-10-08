@@ -1154,6 +1154,21 @@ export function defineCredential<
 }
 
 /**
+ * The credential type of an id in a packed bundle. Pack puts a call of it in place of each
+ * `credentials.ts` module, so a bundle holds only the ids. A host that runs the bundle in its own
+ * process gives its own `credentialOf`, with the type from the credential manifest. A sandbox
+ * guest has no host type, so the type here holds only the id: the sandbox host takes the types
+ * from the credential manifests.
+ */
+export function credentialOf(id: string): AnyCredentialType & {
+	/** The type for an action that takes the versions of `range`. */
+	range(range: string): AnyCredentialType;
+} {
+	const type: AnyCredentialType = { id, name: id, displayName: id, scheme: { kind: 'compat' } };
+	return { ...type, range: (versionRange) => ({ ...type, versionRange }) };
+}
+
+/**
  * An existing n8n credential type, by name, e.g. `gmailOAuth2`. Saved credentials keep working
  * because the legacy class still defines the type. `fields` declares what code reads; the
  * runtime checks them when it reads the credential.
@@ -1893,14 +1908,18 @@ export const compatTypeOfManifest = (manifest: CredentialManifest): AnyCredentia
 	scheme: { kind: 'compat' },
 });
 
-/** The n8n credential type of a credential manifest: the host reads only data, never author code. */
-export function credentialTypeOfManifest(manifest: CredentialManifest): ICredentialType {
+/** The credential type of a credential manifest. A `custom` scheme needs a credential bundle. */
+export function typeOfManifest(manifest: CredentialManifest): AnyCredentialType {
 	const { scheme } = manifest;
 	if (scheme.kind === 'custom') {
 		throw new UserError(`Credential ${manifest.id}: a custom scheme needs a credential bundle`);
 	}
-	const type: AnyCredentialType = { ...manifest, fields: shapeOf(manifest.fields), scheme };
-	const projected = toCredentialType(type);
+	return { ...manifest, fields: shapeOf(manifest.fields), scheme };
+}
+
+/** The n8n credential type of a credential manifest: the host reads only data, never author code. */
+export function credentialTypeOfManifest(manifest: CredentialManifest): ICredentialType {
+	const projected = toCredentialType(typeOfManifest(manifest));
 	if (!projected) throw new UserError(`Credential ${manifest.id} has no n8n credential type`);
 	return projected;
 }

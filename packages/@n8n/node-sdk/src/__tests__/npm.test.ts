@@ -357,19 +357,23 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 		executions: [{ name: 'pass', params: {}, items: [{ a: 1 }], output: [{ a: 1 }] }],
 	};
 
-	const tokenPass = pass
-		.replace(
-			"t } from '@n8n/node-sdk';",
-			`t } from '@n8n/node-sdk';
-import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+	const tokenModule = `import { defineCredential, field } from '@n8n/node-sdk/credentials';
 
-const token = defineCredential({
+export const token = defineCredential({
 	id: 'demo.token',
 	version: '1.0.0',
 	displayName: 'Demo',
 	fields: { token: field.secret('Token') },
 	auth: (a) => a.none(),
-});`,
+});
+`;
+	const tokenPass = pass
+		.replace(
+			"t } from '@n8n/node-sdk';",
+			`t } from '@n8n/node-sdk';
+import { credential } from '@n8n/node-sdk/credentials';
+
+import { token } from '../credentials';`,
 		)
 		.replace(
 			"displayName: 'Demo' }",
@@ -384,6 +388,7 @@ const token = defineCredential({
 		await mkdir(path.dirname(entryFile), { recursive: true });
 		await mkdir(path.join(dir, 'fixtures'));
 		await writeFile(entryFile, source);
+		await writeFile(path.join(dir, 'src', 'nodes', 'demo', 'credentials.ts'), tokenModule);
 		await writeFile(path.join(dir, 'fixtures', 'demo.pass.json'), JSON.stringify(fixtures));
 		await writeFile(path.join(dir, 'package.json'), JSON.stringify({ license: 'MIT' }));
 		// The package.json ends the self-reference of @n8n/node-sdk, so a link resolves it.

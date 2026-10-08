@@ -592,7 +592,12 @@ export class ContractNodeLoader implements NodeLoader {
 		});
 		const exported = await Promise.all(
 			newest.map(
-				async (version) => await verifiedBundleOf(version, this.runtime.nodeContractRange),
+				async (version) =>
+					await verifiedBundleOf(
+						version,
+						this.runtime.nodeContractRange,
+						this.runtime.credentialManifestOf,
+					),
 			),
 		);
 		const { setPublishedActions } = await import('@n8n/instance-ai');

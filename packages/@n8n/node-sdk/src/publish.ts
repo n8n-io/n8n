@@ -38,6 +38,7 @@ import {
 	isDataTableRows,
 } from './host-imports';
 import {
+	credentialOfManifests,
 	evaluateVersion,
 	executorOf,
 	nodeDescriptionOf,
@@ -221,10 +222,18 @@ async function callResults(capability: unknown, calls: ExecutionFixture['calls']
 /**
  * Replays fixtures through the current host executor: execution fixtures against the bundle,
  * migration pairs against its `migrate`. An executor change that alters an old version fails.
- * A trigger replays only its migration pairs.
+ * A trigger replays only its migration pairs. The bundle gets the credential types that it names
+ * from `credentials`.
  */
 export async function replayFixtures(
-	{ manifest, bundle, sdk }: Pick<PackedAction, 'manifest' | 'bundle' | 'sdk'>,
+	{
+		manifest,
+		bundle,
+		sdk,
+		credentials = [],
+	}: Pick<PackedAction, 'manifest' | 'bundle' | 'sdk'> & {
+		readonly credentials?: readonly CredentialManifest[];
+	},
 	fixtures: ContractFixtures,
 	/** The action, its executor and its `migrate`, e.g. in the sandbox. The default runs the bundle here. */
 	loaded?: {
@@ -239,7 +248,8 @@ export async function replayFixtures(
 		) => Promise<Record<string, unknown>>;
 	},
 ): Promise<string[]> {
-	const contract = loaded?.contract ?? evaluateVersion(bundle, manifest, sdk);
+	const contract =
+		loaded?.contract ?? evaluateVersion(bundle, manifest, sdk, credentialOfManifests(credentials));
 	const migrate =
 		loaded?.migrate ??
 		(async (fromMajor: number, params: Readonly<Record<string, unknown>>) => {
@@ -455,7 +465,8 @@ export async function checkPublish(
 	}
 	const untitled = missingTitlesOf(manifest.contract);
 	if (untitled.length > 0) throw new UserError(`${at} needs field titles: ${untitled.join('; ')}`);
-	const issues = await replayFixtures(packed, fixtures);
+	const credentials = credentialTypesOf([action]).flatMap((type) => packCredential(type) ?? []);
+	const issues = await replayFixtures({ ...packed, credentials }, fixtures);
 	if (issues.length > 0) throw new UserError(`${at} fails its fixtures: ${issues.join('; ')}`);
 	return checked?.diff;
 }

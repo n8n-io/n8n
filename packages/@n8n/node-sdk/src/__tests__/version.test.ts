@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
 import {
+	credentialTypesOf,
 	packAction,
 	packCredential,
 	packPackage,
@@ -860,18 +861,26 @@ export const ping = demo.trigger('ping', {
 	});
 
 	it('replays with the credential fields of a fixture and refuses a secret there', async () => {
-		const entry = path.join(dirs.root, 'server.ts');
+		// Inside this package, so tsx resolves @n8n/node-sdk when pack loads credentials.ts.
+		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		const entry = path.join(dir, 'server.ts');
+		await writeFile(
+			path.join(dir, 'credentials.ts'),
+			`import { t } from '@n8n/node-sdk';
+import { defineCredential, field } from '@n8n/node-sdk/credentials';
+export const demoToken = defineCredential({ id: 'demo.token', version: '1.0.0', legacyName: 'demoApi', displayName: 'Demo', fields: { server: t.str(), token: field.secret('Token') }, baseUrl: '{server}', auth: (a) => a.bearer('token') });
+`,
+		);
 		await writeFile(
 			entry,
 			`import { defineNode, path, t } from '@n8n/node-sdk';
-import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+import { credential } from '@n8n/node-sdk/credentials';
+import { demoToken } from './credentials';
 const { obj, str } = t;
 const demo = defineNode({
 	id: 'demo',
 	displayName: 'Demo',
-	credential: credential({
-		types: [defineCredential({ id: 'demo.token', version: '1.0.0', legacyName: 'demoApi', displayName: 'Demo', fields: { server: str(), token: field.secret('Token') }, baseUrl: '{server}', auth: (a) => a.bearer('token') })],
-	}),
+	credential: credential({ types: [demoToken] }),
 });
 export const read = demo.action('read', {
 	action: 'Read',
@@ -885,7 +894,13 @@ export const read = demo.action('read', {
 });
 `,
 		);
-		const packed = await packAction(entry, 'read');
+		const read = await packAction(entry, 'read').finally(
+			async () => await rm(dir, { recursive: true, force: true }),
+		);
+		const packed = {
+			...read,
+			credentials: credentialTypesOf([read.action]).flatMap((type) => packCredential(type) ?? []),
+		};
 		const fixture = (credential?: Record<string, unknown>) => ({
 			executions: [
 				{

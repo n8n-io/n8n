@@ -567,7 +567,11 @@ export async function loadTriggerExecutor(
 	packed: PackedVersion,
 	runtime: HostRuntime,
 ): Promise<Executor> {
-	const exported = await verifiedBundleOf(packed, runtime.nodeContractRange);
+	const exported = await verifiedBundleOf(
+		packed,
+		runtime.nodeContractRange,
+		runtime.credentialManifestOf,
+	);
 	if (!('kind' in exported))
 		throw new UnexpectedError(`${exported.id} is an action, not a trigger`);
 	assertManifestPermissions(packed.manifest, exported, runtime.reportRefusal);

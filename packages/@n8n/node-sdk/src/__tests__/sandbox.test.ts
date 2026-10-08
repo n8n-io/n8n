@@ -11,7 +11,7 @@ import type { IDataObject, IHttpRequestOptions, INode, INodeType } from 'n8n-wor
 
 import { compat, defineCredential, field } from '../credentials';
 import type { PermissionRefusal } from '../egress';
-import { escapeProbes } from './escape-probes';
+import { escapeProbeCredentials, escapeProbes } from './escape-probes';
 import { packAction } from '../pack';
 import { defineNode, t } from '../index';
 import { runRecorder } from '../profile';
@@ -199,7 +199,8 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	) => (await outputOf(name, host, sandbox, runtime))?.json.value;
 
 	beforeAll(async () => {
-		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-sandbox-'));
+		// Inside this package, so tsx resolves @n8n/node-sdk when pack loads credentials.ts.
+		dirs.root = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
 		canary.server = createServer((_request, response) => {
 			canary.hits += 1;
 			response.end('reached');
@@ -207,6 +208,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		await new Promise<void>((resolve) => canary.server?.listen(0, '127.0.0.1', resolve));
 		const { port } = canary.server.address() as AddressInfo;
 		await writeFile(path.join(dirs.root, 'probes.ts'), escapeProbes(`http://127.0.0.1:${port}/`));
+		await writeFile(path.join(dirs.root, 'credentials.ts'), escapeProbeCredentials);
 		process.env.SANDBOX_CANARY = 'secret';
 	});
 

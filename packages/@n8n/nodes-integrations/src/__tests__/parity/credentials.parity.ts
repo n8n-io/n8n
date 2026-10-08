@@ -31,23 +31,23 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { anthropicKey } from '../../nodes/anthropic/anthropic.node';
-import { facebookApp, facebookAppOAuth2 } from '../../nodes/facebook-trigger/facebook-trigger.node';
-import { gmailOAuth2 } from '../../nodes/gmail/gmail.node';
-import { googleDocsOAuth2 } from '../../nodes/google-docs/google-docs.node';
-import { googleDriveOAuth2 } from '../../nodes/google-drive/google-drive.node';
-import { googleSheetsOAuth2 } from '../../nodes/google-sheets/google-sheets.node';
-import { googleSheetsTriggerOAuth2 } from '../../nodes/google-sheets-trigger/google-sheets-trigger.node';
-import { githubToken } from '../../nodes/github/github.node';
-import { geminiKey } from '../../nodes/google-gemini/google-gemini.node';
-import { minimaxKey } from '../../nodes/minimax/minimax.node';
+import { anthropicKey } from '../../nodes/anthropic/credentials';
+import { facebookApp, facebookAppOAuth2 } from '../../nodes/facebook-trigger/credentials';
+import { gmailOAuth2 } from '../../nodes/gmail/credentials';
+import { googleDocsOAuth2 } from '../../nodes/google-docs/credentials';
+import { googleDriveOAuth2 } from '../../nodes/google-drive/credentials';
+import { googleSheetsOAuth2 } from '../../nodes/google-sheets/credentials';
+import { googleSheetsTriggerOAuth2 } from '../../nodes/google-sheets-trigger/credentials';
+import { githubToken } from '../../nodes/github/credentials';
+import { geminiKey } from '../../nodes/google-gemini/credentials';
+import { minimaxKey } from '../../nodes/minimax/credentials';
 import { notionOAuth2, notionToken } from '../../nodes/notion/credentials';
-import { openAiKey } from '../../nodes/open-ai/open-ai.node';
-import { slackToken } from '../../nodes/slack/slack.node';
-import { supabaseKey } from '../../nodes/supabase/supabase.node';
-import { whatsAppToken } from '../../nodes/whats-app/whats-app.node';
-import { whatsAppApp } from '../../nodes/whats-app-trigger/whats-app-trigger.node';
-import { xAiKey } from '../../nodes/x-ai/x-ai.node';
+import { openAiKey } from '../../nodes/open-ai/credentials';
+import { slackToken } from '../../nodes/slack/credentials';
+import { supabaseKey } from '../../nodes/supabase/credentials';
+import { whatsAppToken } from '../../nodes/whats-app/credentials';
+import { whatsAppApp } from '../../nodes/whats-app-trigger/credentials';
+import { xAiKey } from '../../nodes/x-ai/credentials';
 import {
 	differences,
 	explained,

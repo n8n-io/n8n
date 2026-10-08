@@ -9,7 +9,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { AnyCredentialType } from './credentials';
 import { isToolContract, type Action, type Trigger } from './define';
 import type { NativeManifest } from './manifest';
-import { evaluateBundle, nodeNameOf, type PackedVersion } from './runtime';
+import { credentialOfManifests, evaluateBundle, nodeNameOf, type PackedVersion } from './runtime';
 import {
 	embeddedStoreDirOf,
 	isVersionManifest,
@@ -191,6 +191,9 @@ export function contractCatalogOf(packages: readonly SourcePackage[]): ContractC
 			read(`sha256:${manifest.bundleHash}`, 'bundle'),
 			manifest.nodeContract,
 			typeof sdk === 'object' ? read(sdk.digest, 'SDK runtime') : undefined,
+			credentialOfManifests(
+				bundledCredentialsOf(embeddedStoreDirOf(pkg)).map((each) => each.manifest),
+			),
 		);
 	};
 	return {

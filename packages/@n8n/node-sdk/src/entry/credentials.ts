@@ -1,6 +1,7 @@
 export {
 	compat,
 	credential,
+	credentialOf,
 	defineCredential,
 	field,
 	type AnyCredentialType,

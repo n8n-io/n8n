@@ -103,11 +103,10 @@ const pingCalled = defineNode({
 	native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
 });
 
-const pingSource = `
-import { defineNode, t } from '@n8n/node-sdk';
-import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+const pingCredentialsSource = `
+import { defineCredential, field } from '@n8n/node-sdk/credentials';
 
-const pingToken = defineCredential({
+export const pingToken = defineCredential({
 	id: 'ping.token',
 	version: '1.0.0',
 	legacyName: 'pingApi',
@@ -116,6 +115,13 @@ const pingToken = defineCredential({
 	auth: (a) => a.bearer('token'),
 	baseUrl: 'https://api.ping.test',
 });
+`;
+
+const pingSource = `
+import { defineNode, t } from '@n8n/node-sdk';
+import { credential } from '@n8n/node-sdk/credentials';
+
+import { pingToken } from './credentials';
 
 export const pinged = defineNode({
 	id: 'ping',
@@ -1188,8 +1194,20 @@ describe('importContractStore and exportContractStore', () => {
 });
 
 describe('contractStore with triggers and credentials', () => {
+	const pingDir = { path: '' };
+
+	beforeAll(async () => {
+		// Inside this package, so tsx resolves @n8n/node-sdk when pack loads credentials.ts.
+		pingDir.path = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		await writeFile(path.join(pingDir.path, 'credentials.ts'), pingCredentialsSource);
+	});
+
+	afterAll(async () => {
+		await rm(pingDir.path, { recursive: true, force: true });
+	});
+
 	const ping = async () => {
-		const entry = path.join(dirs.root, 'ping.ts');
+		const entry = path.join(pingDir.path, 'ping.ts');
 		await writeFile(entry, pingSource);
 		const credential = packCredential(pingToken);
 		if (!credential) throw new Error('ping.token has no manifest');
@@ -1307,7 +1325,7 @@ describe('contractStore with triggers and credentials', () => {
 				rowOf(tokenOf(installed)),
 				rowOf({ ...packNative(pingCalled), credentials: { 'ping.token': range } }),
 			]);
-			const entry = path.join(dirs.root, 'ranged.ts');
+			const entry = path.join(pingDir.path, 'ranged.ts');
 			await writeFile(
 				entry,
 				pingSource.replace('types: [pingToken]', `types: [pingToken.range('${pinned}')]`),
