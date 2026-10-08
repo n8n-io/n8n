@@ -6,6 +6,7 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -349,5 +350,57 @@ describe('POST /n8n-packages/import-selection', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toStrictEqual({ message: 'Unexpected form field "projectId"' });
+	});
+
+	it('rejects a second file with 413', async () => {
+		const project = await createTeamProject('Target', owner);
+		const tarBuffer = await buildProjectPackage(project.id);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.attach('package', tarBuffer, 'import.n8np')
+			.attach('package', tarBuffer, 'second.n8np');
+
+		expect(response.statusCode).toBe(413);
+		expect(response.body).toStrictEqual({ message: 'Too many files' });
+	});
+
+	it('rejects a package file larger than the payload size limit with 413', async () => {
+		const project = await createTeamProject('Target', owner);
+		const tarBuffer = await buildProjectPackage(project.id);
+		const endpoints = Container.get(GlobalConfig).endpoints;
+		const payloadSizeMax = endpoints.payloadSizeMax;
+		endpoints.payloadSizeMax = 1 / 1024 / 1024;
+
+		try {
+			const response = await authOwnerAgent
+				.post('/n8n-packages/import-selection')
+				.field('selectedProjectId', project.id)
+				.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+				.attach('package', tarBuffer, 'import.n8np');
+
+			expect(response.statusCode).toBe(413);
+			expect(response.body).toStrictEqual({ message: 'File too large' });
+		} finally {
+			endpoints.payloadSizeMax = payloadSizeMax;
+		}
+	});
+
+	it('rejects a package file sent under another field name', async () => {
+		const project = await createTeamProject('Target', owner);
+		const tarBuffer = await buildProjectPackage(project.id);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.attach('file', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toStrictEqual({
+			message: "request/body must have required property 'package'",
+		});
 	});
 });
