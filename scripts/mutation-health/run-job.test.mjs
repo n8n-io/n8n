@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { runJob } from './mutate.mjs';
 import { COMPAT_RUNNER_PLUGIN, NO_TSCONFIG_REWRITE } from './stryker.mjs';
-import { MutateError, repoRoot } from './targets.mjs';
+import { MutateError, repoRoot, toPosix } from './targets.mjs';
 import {
 	FAKE_STRYKER_BIN,
 	IN_PLACE_KEY,
@@ -48,10 +48,14 @@ const RAW_REPORT = {
 let root;
 let pkgRoot;
 const SIBLING = 'packages/@n8n/sib/x.ts';
+// The package dir in the temp repo, the way the planner gives it.
+const PACKAGE_DIR = 'packages/@n8n/pkg';
+// A test file path as a user types it, and as `--diff` plans it: from the repo root.
+const repoRel = (file) => toPosix(path.join(PACKAGE_DIR, file));
 
 beforeEach(() => {
 	root = mkdtempSync(path.join(tmpdir(), 'mutate-job-'));
-	pkgRoot = path.join(root, 'packages/@n8n/pkg');
+	pkgRoot = path.join(root, PACKAGE_DIR);
 	mkdirSync(path.join(pkgRoot, 'src'), { recursive: true });
 	writeFileSync(
 		path.join(pkgRoot, 'package.json'),
@@ -71,16 +75,25 @@ const reportFile = (name) => path.join(pkgRoot, 'reports/mutation', name);
 // Run one job with a fake Stryker. `stryker` gets the fake child, the spawn
 // call and the stand-in process, and decides what the run writes, prints and
 // returns.
-// `inRepo` makes the temp repo the repo that the sandbox mirror copies.
-function runFakeJob({ args = {}, stryker, inRepo = false, jobFields = {} } = {}) {
+// `inRepo` makes the temp repo the repo of the run: the job's package dir is
+// relative to it, and the sandbox mirror copies it.
+// `onPrint` gets each text that the run prints to stderr, and the stand-in process.
+function runFakeJob({ args = {}, stryker, inRepo = false, jobFields = {}, onPrint } = {}) {
 	const p = fakeProcess();
 	const stderr = sink();
+	if (onPrint) {
+		const write = stderr.write;
+		stderr.write = (chunk) => {
+			write(chunk);
+			onPrint(String(chunk), p);
+		};
+	}
 	const doubles = fakeSpawn({
 		onSpawn: (child, call) => setImmediate(() => stryker(child, call, p)),
 	});
 	const job = {
 		pkgRoot,
-		packageDir: path.relative(repoRoot, pkgRoot),
+		packageDir: path.relative(inRepo ? root : repoRoot, pkgRoot),
 		targets: ['src/a.ts'],
 		...jobFields,
 	};
@@ -118,6 +131,19 @@ describe('runJob with the default runner', () => {
 		assert.equal(options.cwd, pkgRoot);
 	});
 
+	// Stryker runs in the package dir, so it matches test files from there.
+	it('gives Stryker the --test-files relative to the package dir', async () => {
+		const testFiles = [repoRel('src/a.test.ts'), `./${repoRel('src/b.test.ts')}`];
+		await runFakeJob({ inRepo: true, args: { testFiles }, stryker: writesReport }).promise;
+		assert.deepEqual(runConfig().testFiles, ['src/a.test.ts', 'src/b.test.ts']);
+	});
+
+	it('passes package-relative --test-files and globs through unchanged', async () => {
+		const testFiles = ['src/a.test.ts', 'src/**/*.test.ts'];
+		await runFakeJob({ inRepo: true, args: { testFiles }, stryker: writesReport }).promise;
+		assert.deepEqual(runConfig().testFiles, testFiles);
+	});
+
 	it('gives Stryker a sandbox config with the vitest-compat runner and the test files', async () => {
 		const run = runFakeJob({ args: { testFiles: ['src/a.test.ts'] }, stryker: writesReport });
 		await run.promise;
@@ -136,22 +162,25 @@ describe('runJob with the default runner', () => {
 		assert.match(run.stderr.text(), /^ {2}testFiles: src\/a\.test\.ts$/m);
 	});
 
-	// --diff gives a packages/cli job the cli tests that the patch changed.
+	// --diff gives a packages/cli job the cli tests that the patch changed, as
+	// paths from the repo root.
 	it('runs the test files that the plan gave the job when --test-files is absent', async () => {
-		const jobFields = { testFiles: ['src/a.test.ts', 'src/b.test.ts'] };
-		const run = runFakeJob({ jobFields, stryker: writesReport });
+		const jobFields = { testFiles: [repoRel('src/a.test.ts'), repoRel('src/b.test.ts')] };
+		const run = runFakeJob({ inRepo: true, jobFields, stryker: writesReport });
 		await run.promise;
 		assert.deepEqual(runConfig().testFiles, ['src/a.test.ts', 'src/b.test.ts']);
 		assert.match(run.stderr.text(), /^ {2}testFiles: src\/a\.test\.ts, src\/b\.test\.ts$/m);
 	});
 
 	it('runs the --test-files instead of the test files of the plan', async () => {
-		const jobFields = { testFiles: ['src/a.test.ts'] };
-		const args = { testFiles: ['src/c.test.ts'] };
-		await runFakeJob({ args, jobFields, stryker: writesReport }).promise;
+		const jobFields = { testFiles: [repoRel('src/a.test.ts')] };
+		const args = { testFiles: [repoRel('src/c.test.ts')] };
+		await runFakeJob({ inRepo: true, args, jobFields, stryker: writesReport }).promise;
 		assert.deepEqual(runConfig().testFiles, ['src/c.test.ts']);
 	});
+});
 
+describe('runJob results', () => {
 	it("writes the summary from this run's report and keeps the gate", async () => {
 		const run = runFakeJob({ stryker: writesReport });
 		const result = await run.promise;
@@ -194,9 +223,11 @@ describe('runJob with the default runner', () => {
 });
 
 describe('runJob with a test command', () => {
+	// The command runs in the package dir, so it gets package-relative paths.
 	it('gives Stryker the command runner with the test files on the command', async () => {
 		const run = runFakeJob({
-			args: { testFiles: ['src/a.test.ts'], testCommand: 'pnpm exec vitest run' },
+			inRepo: true,
+			args: { testFiles: [repoRel('src/a.test.ts')], testCommand: 'pnpm exec vitest run' },
 			stryker: writesReport,
 		});
 		const result = await run.promise;
@@ -210,16 +241,27 @@ describe('runJob with a test command', () => {
 });
 
 describe('runJob guards and cancellation', () => {
-	it('refuses a config that turns on in place mode before Stryker starts', async () => {
-		const configArg = path.join(root, 'working-tree-mode.json');
-		writeFileSync(configArg, JSON.stringify({ [IN_PLACE_KEY]: true }));
-		const run = runFakeJob({ args: { configArg }, stryker: writesReport });
-		await assert.rejects(
-			run.promise,
-			(error) => error instanceof MutateError && error.exitCode === 2,
-		);
-		assert.equal(run.calls.length, 0);
-	});
+	const refusedConfigs = {
+		'turns on in place mode': { [IN_PLACE_KEY]: true },
+		'uses the TypeScript checker': { checkers: ['typescript'] },
+	};
+	for (const [what, base] of Object.entries(refusedConfigs)) {
+		it(`refuses a config that ${what} before it writes anything`, async () => {
+			const configArg = path.join(root, 'refused.json');
+			writeFileSync(configArg, JSON.stringify(base));
+			const run = runFakeJob({ inRepo: true, args: { configArg }, stryker: writesReport });
+			await assert.rejects(
+				run.promise,
+				(error) =>
+					error instanceof MutateError &&
+					error.exitCode === 2 &&
+					error.message.startsWith('refused.json '),
+			);
+			assert.equal(run.calls.length, 0);
+			assert.equal(existsSync(path.join(pkgRoot, 'reports')), false);
+			assert.equal(existsSync(path.join(root, '.stryker-tmp')), false);
+		});
+	}
 
 	it('exits with the signal code when the run is cancelled', async () => {
 		const run = runFakeJob({ stryker: cancels });
@@ -315,4 +357,78 @@ describe('runJob in a repo, with the sandbox in a mirror', () => {
 			assert.ok(existsSync(path.join(pkgRoot, 'src/a.ts')));
 		});
 	}
+});
+
+// An exit on a signal or a crash skips every `finally`, so the handlers must
+// remove the mirror before they exit. The stand-in `exit` only records the
+// code, so each test records the state at the moment of the exit.
+describe('runJob exits on a signal or a crash, with the sandbox in a mirror', () => {
+	const mirrorParent = () => path.join(root, '.stryker-tmp');
+	const atExit = (p) => ({ exits: [...p.exits], mirrorExists: existsSync(mirrorParent()) });
+	const handlerCounts = (p) =>
+		['SIGINT', 'SIGTERM', 'uncaughtException'].map((event) => p.proc.listenerCount(event));
+
+	const events = { SIGINT: 130, SIGTERM: 143, uncaughtException: 3 };
+	const windows = {
+		'before Stryker starts': { printed: /Running Stryker/, stryker: writesReport },
+		'after Stryker closed': { printed: /without producing/, stryker: (child) => child.finish(1) },
+	};
+
+	for (const [when, { printed, stryker }] of Object.entries(windows)) {
+		for (const [event, code] of Object.entries(events)) {
+			it(`removes the mirror, then exits ${code}, on ${event} ${when}`, async () => {
+				const seen = {};
+				const onPrint = (text, p) => {
+					if (seen.exits || !printed.test(text)) return;
+					p.proc.emit(event, new Error('boom'));
+					Object.assign(seen, atExit(p));
+				};
+				await runFakeJob({ inRepo: true, onPrint, stryker }).promise;
+				assert.deepEqual(seen, { exits: [code], mirrorExists: false });
+			});
+		}
+	}
+
+	it('removes the mirror, then exits, on a signal after Stryker exited and before it closed', async () => {
+		const seen = {};
+		const stryker = (child, _call, p) => {
+			child.exitCode = 0;
+			p.proc.emit('SIGTERM');
+			Object.assign(seen, atExit(p), { kills: [...child.kills] });
+			child.finish(0);
+		};
+		await runFakeJob({ inRepo: true, stryker }).promise;
+		assert.deepEqual(seen, { exits: [143], mirrorExists: false, kills: [] });
+	});
+
+	it('stops a live Stryker and removes the mirror, then exits 3, on a crash', async () => {
+		const seen = {};
+		const stryker = (child, _call, p) => {
+			p.proc.emit('uncaughtException', new Error('boom'));
+			Object.assign(seen, atExit(p), { kills: [...child.kills] });
+			child.finish(130);
+		};
+		await runFakeJob({ inRepo: true, stryker }).promise;
+		assert.deepEqual(seen, { exits: [3], mirrorExists: false, kills: ['SIGINT'] });
+	});
+
+	// Two sets would both act on one signal: one would exit while Stryker still
+	// removes its sandbox.
+	it('listens with one set of handlers at a time, and with none after the job', async () => {
+		const counts = [];
+		const onPrint = (text, p) => {
+			if (/Running Stryker/.test(text)) counts.push(handlerCounts(p));
+		};
+		const stryker = (child, call, p) => {
+			counts.push(handlerCounts(p));
+			writesReport(child, call, p);
+		};
+		const run = runFakeJob({ inRepo: true, onPrint, stryker });
+		await run.promise;
+		assert.deepEqual(counts, [
+			[1, 1, 1],
+			[1, 1, 1],
+		]);
+		assert.deepEqual(handlerCounts(run), [0, 0, 0]);
+	});
 });

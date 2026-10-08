@@ -1,13 +1,20 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { USAGE, main, reportResults } from './mutate.mjs';
 import { buildSummary } from './summary.mjs';
 import { MutateError } from './targets.mjs';
-import { fakeProcess, fakeSpawn, resolveFakeStrykerBin, sink } from './test-doubles.mjs';
+import {
+	SAMPLE_REPO,
+	fakeProcess,
+	fakeSpawn,
+	resolveFakeStrykerBin,
+	sink,
+	writeTree,
+} from './test-doubles.mjs';
 
 const SOURCE = 'export const a = 1 + 2;\n';
 
@@ -29,7 +36,10 @@ function report(statuses) {
 	};
 }
 
+// `pkgRoot` sits in a temp dir. A test that plans from the repo root seeds
+// SAMPLE_REPO in that dir and passes it as `repoRoot`.
 let pkgRoot;
+const tempRepo = () => path.dirname(pkgRoot);
 
 beforeEach(() => {
 	pkgRoot = path.join(mkdtempSync(path.join(tmpdir(), 'mutate-main-')), 'pkg');
@@ -52,6 +62,7 @@ async function runMain({
 	exitCode = 0,
 	argv = ['src/a.ts', '--package-dir', pkgRoot],
 	git,
+	repoRoot,
 } = {}) {
 	const doubles = fakeSpawn({
 		onSpawn: (child, { options }) =>
@@ -67,6 +78,7 @@ async function runMain({
 	const stdout = sink();
 	const io = {
 		git,
+		repoRoot,
 		resolveStrykerBin: resolveFakeStrykerBin,
 		spawn: doubles.spawn,
 		stdout,
@@ -113,7 +125,7 @@ describe('main', () => {
 		assert.match(run.stderr, /\nGate: ERROR — at least one Stryker run produced no report\.\n$/);
 	});
 
-	// The playwright package has only a `test:unit` script (BACKLOG Q02).
+	// The playwright package has only a `test:unit` script.
 	it('scores a package without a vitest test script through its test command', async () => {
 		writeFileSync(path.join(pkgRoot, 'package.json'), '{ "name": "pkg", "scripts": {} }');
 		const run = await runMain({
@@ -144,9 +156,10 @@ describe('main', () => {
 	});
 
 	it('refuses a cli target without test files before Stryker starts', async () => {
+		writeTree(tempRepo(), SAMPLE_REPO);
 		const target = 'packages/cli/src/credentials/external-secrets.utils.ts';
 		await assert.rejects(
-			runMain({ argv: [target] }),
+			runMain({ argv: [target], repoRoot: tempRepo() }),
 			(error) =>
 				error.exitCode === 2 && /^Mutating packages\/cli needs --test-files\./.test(error.message),
 		);
@@ -154,11 +167,12 @@ describe('main', () => {
 });
 
 describe('main --diff', () => {
-	// A git stand-in for a branch that changed the files in `names`.
-	const gitChanged = (names) => (args) =>
-		args[0] === 'merge-base'
-			? { status: 0, stdout: 'abc123\n', stderr: '' }
-			: { status: 0, stdout: `${names.join('\n')}\n`, stderr: '' };
+	// A git stand-in for a branch that added lines 2-4 to each file in `names`.
+	const gitChanged = (names) => (args) => {
+		if (args[0] === 'merge-base') return { status: 0, stdout: 'abc123\n', stderr: '' };
+		if (args.includes('-U0')) return { status: 0, stdout: '@@ -1,0 +2,3 @@\n+x\n', stderr: '' };
+		return { status: 0, stdout: `${names.join('\n')}\n`, stderr: '' };
+	};
 
 	it('exits 0 and says so when the branch changed no mutable source', async () => {
 		const run = await runMain({ argv: ['--diff'], git: gitChanged(['README.md']) });
@@ -168,15 +182,44 @@ describe('main --diff', () => {
 	});
 
 	it('names each changed file that it skips, and starts no run', async () => {
+		writeTree(tempRepo(), SAMPLE_REPO);
 		const blocked = 'packages/@n8n/expression-runtime/src/index.ts';
 		const run = await runMain({
 			argv: ['--diff', '--base', 'upstream/master'],
 			git: gitChanged([blocked]),
+			repoRoot: tempRepo(),
 		});
 		assert.equal(run.code, 0);
 		assert.match(run.stderr, /^ {2}skipped packages\/@n8n\/expression-runtime\/src\/index\.ts — /);
 		assert.match(run.stderr, /\nNothing mutable changed vs upstream\/master\.\n$/);
 		assert.deepEqual(run.calls, []);
+	});
+
+	// The plan, the run and the sandbox mirror all use the repo that main gets.
+	it('runs the changed lines of each package of the repo it is given', async () => {
+		writeTree(tempRepo(), SAMPLE_REPO);
+		const source = 'packages/@n8n/instance-ai/src/utils/model-config-id.ts';
+		const run = await runMain({
+			raw: report(['Killed']),
+			argv: ['--diff'],
+			git: gitChanged([source]),
+			repoRoot: tempRepo(),
+		});
+		assert.equal(run.code, 0);
+		assert.equal(run.calls.length, 1);
+		const pkgDir = path.join(tempRepo(), 'packages/@n8n/instance-ai');
+		assert.equal(run.calls[0].options.cwd, pkgDir);
+		const config = JSON.parse(
+			readFileSync(path.join(pkgDir, 'reports/mutation/stryker.run.json'), 'utf8'),
+		);
+		assert.deepEqual(config.mutate, [`${path.join('src', 'utils', 'model-config-id.ts')}:2-4`]);
+		const mirrorParent = path.join(tempRepo(), '.stryker-tmp');
+		assert.match(path.relative(mirrorParent, config.tempDirName), /^mirror-[^/]+\/packages\/@n8n$/);
+		assert.equal(existsSync(mirrorParent), false);
+		assert.match(
+			run.stderr,
+			/\n {2}summary: packages\/@n8n\/instance-ai\/reports\/mutation\/summary\.json\n/,
+		);
 	});
 });
 

@@ -1218,7 +1218,7 @@ describe('InstanceAiInput', () => {
 		await fireEvent.keyDown(textbox, { key: 'Enter' });
 
 		await waitFor(() => {
-			expect(emitted().submit?.[0]?.[0]).toBe('Also add error handling');
+			expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Also add error handling');
 		});
 		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
 	});

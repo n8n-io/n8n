@@ -66,11 +66,9 @@ describe('AutomationTemporaryMarker', () => {
 	])(
 		'still removes the marker and logs a warning when %s',
 		async (_label, failingStep, failure) => {
-			const fail = async () => {
-				throw failure;
-			};
-			if (failingStep === 'record') provenance.record.mockImplementation(fail);
-			else temporaryWorkflows.findThreadIdForWorkflow.mockImplementation(fail);
+			// The read rejects with a value that is not an Error, to cover its string form.
+			if (failingStep === 'record') provenance.record.mockRejectedValue(failure);
+			else temporaryWorkflows.findThreadIdForWorkflow.mockRejectedValue(failure);
 
 			await expect(marker.clear(user, 'wf-1')).resolves.toBeUndefined();
 

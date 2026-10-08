@@ -199,12 +199,12 @@ describe('propose_automation over MCP', () => {
 			expect(world.nothingChanged()).toBe(true);
 		});
 
-		it('warns about a cron that it ignored', async () => {
+		it('warns about a cron that it ignored, and says that it is not valid', async () => {
 			const result = await call({ workflowId: 'wf-1', title: 'Digest', cron: 'every day' });
 
 			expect(result.structuredContent).toMatchObject({
 				warnings: [
-					'Ignored the cron expression "every day", because the schedule trigger uses the cron expression "0 8 * * 1-5".',
+					'Ignored the cron expression "every day", because the schedule trigger uses the cron expression "0 8 * * 1-5". The cron expression "every day" is not a valid five-field cron expression.',
 				],
 			});
 		});

@@ -1,12 +1,14 @@
 /**
  * Test doubles shared by the mutate.mjs unit tests: a `spawn` that starts no
  * process and records each call, a stand-in process for signal handlers, a
- * writable sink and a Stryker binary resolver.
+ * writable sink, a Stryker binary resolver and a small repo to plan in.
  *
  * CI runs these tests in a checkout without the root node_modules (the job
  * installs only `.github/scripts`), so no test may need Stryker installed.
  */
 import { EventEmitter } from 'node:events';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 /**
  * A `spawn` stand-in. Each call returns a fake child with `stdout`, `stderr`,
@@ -86,3 +88,31 @@ export const SAFETY_GREP = new RegExp(
 		['checkout', '--'].join(' '),
 	].join('|'),
 );
+
+/** Write each file of `files` (path: content) under `root`. An object is written as JSON. */
+export function writeTree(root, files) {
+	for (const [file, content] of Object.entries(files)) {
+		const abs = path.join(root, file);
+		mkdirSync(path.dirname(abs), { recursive: true });
+		writeFileSync(abs, typeof content === 'string' ? content : JSON.stringify(content));
+	}
+}
+
+const vitestPackage = (name) => ({ name, scripts: { test: 'vitest run' } });
+
+// A repo for the planners, with the package kinds that a plan treats apart.
+// It has no package.json at its root, so a file outside the packages has no
+// enclosing package.
+export const SAMPLE_REPO = {
+	'packages/@n8n/instance-ai/package.json': vitestPackage('@n8n/instance-ai'),
+	'packages/@n8n/instance-ai/src/utils/model-config-id.ts': 'export const id = 1;\n',
+	'packages/@n8n/instance-ai/src/utils/__tests__/model-config-id.test.ts': 'it("a", () => {});\n',
+	'packages/cli/package.json': vitestPackage('n8n'),
+	'packages/cli/src/credentials/external-secrets.utils.ts': 'export const a = 1;\n',
+	'packages/cli/src/credentials/__tests__/external-secrets.utils.test.ts': 'it("a", () => {});\n',
+	'packages/@n8n/expression-runtime/package.json': vitestPackage('@n8n/expression-runtime'),
+	'packages/@n8n/expression-runtime/src/index.ts': 'export const b = 1;\n',
+	'packages/jest-pkg/package.json': { name: 'jest-pkg', scripts: { test: 'jest' } },
+	'packages/jest-pkg/src/a.ts': 'export const c = 1;\n',
+	'scripts/loose.ts': 'export const d = 1;\n',
+};

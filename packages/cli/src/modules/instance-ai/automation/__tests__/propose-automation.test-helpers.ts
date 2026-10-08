@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
 import { type AiBuilderTemporaryWorkflowRepository, User, type WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -10,6 +11,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { WorkflowProvenanceService } from '../../provenance/workflow-provenance.service';
+import { AutomationInstanceInfo } from '../automation-instance-info';
 import { AutomationProposalService } from '../automation-proposal.service';
 import { AutomationTemporaryMarker } from '../automation-temporary-marker';
 import { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
@@ -21,6 +23,9 @@ export const SLACK = 'n8n-nodes-base.slack';
 export const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
 
 export const BASE_URL = 'http://n8n.local';
+
+/** The default time zone of the instance in these tests. */
+export const INSTANCE_TIMEZONE = 'Europe/London';
 
 /** The thread that built the temporary workflow, as its marker names it. */
 export const THREAD_ID = 'thread-1';
@@ -79,12 +84,14 @@ export function createAutomationWorld() {
 	const collaborationService = mock<CollaborationService>();
 	const urlService = mock<UrlService>();
 	const logger = mock<Logger>();
+	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_TIMEZONE } });
 	const marker = new AutomationTemporaryMarker(temporaryWorkflows, provenance, logger);
 	const keeper = new AutomationWorkflowKeeper(workflowService, marker, writeAccess);
-	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService);
+	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService, logger);
+	const instance = new AutomationInstanceInfo(urlService, globalConfig);
 	Container.set(
 		AutomationProposalService,
-		new AutomationProposalService(finder, keeper, publisher, urlService),
+		new AutomationProposalService(finder, keeper, publisher, instance),
 	);
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */

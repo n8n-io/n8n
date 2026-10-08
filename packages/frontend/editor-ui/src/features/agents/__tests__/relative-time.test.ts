@@ -148,8 +148,8 @@ describe('formatChatDividerTimestamp', () => {
 
 	it("uses the browser's locale when no locale is given", () => {
 		const today = new Date('2026-04-26T10:20:00');
-		expect(formatChatDividerTimestamp(today, dividerI18n, NOW)).toBe(
-			`Today at ${formatChatTime(today)}`,
-		);
+		const browserTime = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(today);
+
+		expect(formatChatDividerTimestamp(today, dividerI18n, NOW)).toBe(`Today at ${browserTime}`);
 	});
 });

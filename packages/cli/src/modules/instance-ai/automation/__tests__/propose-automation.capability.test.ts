@@ -37,6 +37,7 @@ import {
 	BASE_URL,
 	createAutomationWorld,
 	HTTP_REQUEST,
+	INSTANCE_TIMEZONE,
 	makeUser,
 	manualNodes,
 	RESTORED_VERSION_ID,
@@ -168,7 +169,7 @@ describe('propose_automation on the n8n Assistant', () => {
 				versionId: 'v-1',
 				title: 'Morning digest',
 				why: ['You asked for it every weekday'],
-				trigger: { kind: 'schedule', cron: '0 8 * * 1-5' },
+				trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: INSTANCE_TIMEZONE },
 				steps: [
 					{ name: 'Every weekday', type: 'n8n-nodes-base.scheduleTrigger' },
 					{ name: 'Send digest', type: 'n8n-nodes-base.slack' },

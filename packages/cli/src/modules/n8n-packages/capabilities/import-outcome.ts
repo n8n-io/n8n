@@ -102,10 +102,39 @@ const UNUSABLE_ERROR_WORKFLOW: Record<ErrorWorkflowProblem['reason'], string> = 
 	'caller-policy': 'it does not let this workflow call it',
 };
 
-/** The warning for an error workflow link that the import removed. */
-export function removedErrorWorkflowWarning(
-	label: string,
-	reason: ErrorWorkflowProblem['reason'],
+/** Why the user cannot link the copy to an error workflow, as the end of a sentence. */
+export function errorWorkflowProblemText(reason: ErrorWorkflowProblem['reason']): string {
+	return UNUSABLE_ERROR_WORKFLOW[reason];
+}
+
+/** The warning for an error workflow link that the import removed, with the reason. */
+export function removedErrorWorkflowWarning(label: string, because: string): string {
+	return `The import removed the link to the error workflow ${label}, because ${because}. Choose an error workflow in the workflow settings.`;
+}
+
+/** The warning for a link that the import removed, because a step to check it failed. */
+export function uncheckedErrorWorkflowRemovedWarning(reason: string): string {
+	return `The import removed the error workflow link of the copy, because it could not check the link: ${reason}. Choose an error workflow in the workflow settings.`;
+}
+
+/** The warning for a link that the import could neither check nor remove. */
+export function uncheckedErrorWorkflowWarning(reason: string): string {
+	return `The import could not check the error workflow of the copy: ${reason}. Check it in the workflow settings.`;
+}
+
+function tableNames(tables: ReadonlyArray<{ name: string }>): string {
+	return [...new Set(tables.map(({ name }) => name))].sort().join(', ');
+}
+
+/** The warning for the data tables that a re-import kept in the copy. */
+export function keptDataTablesWarning(replacedTables: ReadonlyArray<{ name: string }>): string {
+	return `The copy keeps the data tables that it used in place of ${replacedTables.length} data table(s) of the package that this project does not have: ${tableNames(replacedTables)}.`;
+}
+
+/** The warning for the data tables of the copy that a re-import could not keep. */
+export function dataTablesNotKeptWarning(
+	replacedTables: ReadonlyArray<{ name: string }>,
+	reason: string,
 ): string {
-	return `The import removed the link to the error workflow ${label}, because ${UNUSABLE_ERROR_WORKFLOW[reason]}. Choose an error workflow in the workflow settings.`;
+	return `The import could not keep the data tables that the copy used in place of ${replacedTables.length} data table(s) of the package that this project does not have (${tableNames(replacedTables)}), because ${reason}. Check the data tables in the workflow before it runs.`;
 }

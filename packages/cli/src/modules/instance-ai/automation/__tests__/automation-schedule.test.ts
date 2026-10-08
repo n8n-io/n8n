@@ -1,9 +1,15 @@
 import fc from 'fast-check';
 
+import { automationProposalCardSchema } from '@n8n/api-types';
+
 import {
 	chooseCron,
 	isFiveFieldCron,
+	readTriggerSchedule,
+	type ScheduleGap,
 	type ScheduleNode,
+	scheduleTimezoneOf,
+	type TriggerSchedule,
 	triggerCronOf,
 } from '../automation-schedule';
 import type { AutomationTrigger } from '../automation-trigger';
@@ -39,14 +45,26 @@ const scheduleNode = (
 
 const cronOf = (parameters: unknown) => triggerCronOf([scheduleNode(parameters)], scheduleTrigger);
 
+const LONDON = 'Europe/London';
+const NEW_YORK = 'America/New_York';
+
 const differs = (given: string, used: string) =>
 	`Ignored the cron expression "${given}", because the schedule trigger uses the cron expression "${used}".`;
 
 const unreadable = (given: string) =>
 	`Ignored the cron expression "${given}". The card shows only a schedule that it reads from the trigger, and no single five-field cron expression says when this schedule trigger runs.`;
 
-const NOT_A_SCHEDULE =
-	'Ignored the cron expression, because the workflow does not start with a schedule trigger.';
+const notASchedule = (given: string) =>
+	`Ignored the cron expression "${given}", because the workflow does not start with a schedule trigger.`;
+
+const otherStarters = (given: string) =>
+	`Ignored the cron expression "${given}", because another trigger also starts the workflow. The card shows a schedule only when the schedule trigger alone starts the workflow.`;
+
+const invalidZone = (given: string) =>
+	`Ignored the cron expression "${given}", because the time zone in the workflow settings is not valid.`;
+
+const notValid = (given: string) =>
+	` The cron expression "${given}" is not a valid five-field cron expression.`;
 
 // Valid five-field crons of exactly 100 and 101 characters, at the limit of the card.
 const MINUTES = Array.from({ length: 34 }, (_, minute) => minute).join(',');
@@ -111,11 +129,20 @@ describe('triggerCronOf', () => {
 		it.each([
 			['no parameters', undefined],
 			['empty parameters', {}],
-			['an empty rule', { rule: {} }],
 			['an empty interval', { rule: { interval: [{}] } }],
 			['a rule of days without values', intervalRule({ field: 'days' })],
 		])('runs every day at midnight with %s', (_label, parameters) => {
 			expect(cronOf(parameters)).toBe('0 0 * * *');
+		});
+
+		// The editor stores `rule: {}` when the user deletes the last rule. n8n adds no defaults
+		// to it, and takes the hour and the minute from the ids of the workflow and the node.
+		it.each([
+			['a rule without an interval', { rule: {} }],
+			['an interval that is not set', { rule: { interval: undefined } }],
+			['an interval of null', { rule: { interval: null } }],
+		])('returns nothing for %s, which n8n runs at a time of its own', (_label, parameters) => {
+			expect(cronOf(parameters)).toBeUndefined();
 		});
 	});
 
@@ -148,6 +175,16 @@ describe('triggerCronOf', () => {
 				{ field: 'weeks', triggerAtDay: [], triggerAtHour: 9 },
 				'0 9 * * *',
 			],
+			[
+				'chosen days in order, each one time',
+				{ field: 'weeks', triggerAtDay: [5, 1, 3, 1, 5], triggerAtHour: 9 },
+				'0 9 * * 1,3,5',
+			],
+			[
+				'days that sort by number, not by text',
+				{ field: 'weeks', triggerAtDay: [6, 0, 2] },
+				'0 0 * * 0,2,6',
+			],
 			['the first day of each month by default', { field: 'months' }, '0 0 1 * *'],
 			[
 				'every 3 months on day 15 at 7:45',
@@ -163,6 +200,14 @@ describe('triggerCronOf', () => {
 			['once a year', { field: 'months', monthsInterval: 12 }, '0 0 1 */12 *'],
 		])('reads %s', (_label, rule, cron) => {
 			expect(cronOf(intervalRule(rule))).toBe(cron);
+		});
+
+		it('reads a week rule that repeats one day many times as a short cron the card accepts', () => {
+			const cron = cronOf(intervalRule({ field: 'weeks', triggerAtDay: Array(60).fill(1) }));
+
+			expect(cron).toBe('0 0 * * 1');
+			const trigger = { kind: 'schedule', cron, timezone: LONDON };
+			expect(automationProposalCardSchema.shape.trigger.safeParse(trigger).success).toBe(true);
 		});
 
 		it.each([
@@ -273,90 +318,192 @@ describe('triggerCronOf', () => {
 	});
 });
 
+describe('scheduleTimezoneOf', () => {
+	it('takes the time zone of the workflow settings', () => {
+		expect(scheduleTimezoneOf({ timezone: LONDON }, NEW_YORK)).toBe(LONDON);
+	});
+
+	it.each([
+		['no settings', undefined],
+		['settings without a time zone', { availableInMCP: true }],
+		['the default marker', { timezone: 'DEFAULT' }],
+		['an empty time zone', { timezone: '' }],
+		['a time zone that is not text', { timezone: 1 }],
+		['settings that are not an object', 'Europe/London'],
+	])('takes the default time zone of the instance for %s', (_label, settings) => {
+		expect(scheduleTimezoneOf(settings, NEW_YORK)).toBe(NEW_YORK);
+	});
+
+	it.each([
+		['a workflow', { timezone: 'Mars/Olympus_Mons' }, NEW_YORK],
+		['the instance', {}, 'Not/A_Zone'],
+	])('returns nothing for a time zone of %s that does not exist', (_label, settings, zone) => {
+		expect(scheduleTimezoneOf(settings, zone)).toBeUndefined();
+	});
+});
+
+describe('readTriggerSchedule', () => {
+	const read = (nodes: ScheduleNode[], settings?: unknown, trigger = scheduleTrigger) =>
+		readTriggerSchedule({ nodes, settings }, trigger, NEW_YORK);
+
+	it('reads the cron of the trigger and the time zone of the workflow', () => {
+		const schedule = read([scheduleNode(cronRule('0 8 * * 1-5'))], { timezone: LONDON });
+
+		expect(schedule).toStrictEqual({ cron: '0 8 * * 1-5', timezone: LONDON });
+	});
+
+	it('uses the default time zone of the instance when the workflow sets none', () => {
+		expect(read([scheduleNode(cronRule('0 8 * * 1-5'))])).toStrictEqual({
+			cron: '0 8 * * 1-5',
+			timezone: NEW_YORK,
+		});
+	});
+
+	it.each<[string, ScheduleNode[], AutomationTrigger, TriggerSchedule]>([
+		[
+			'a trigger that is not a schedule',
+			[{ name: 'Hook', type: WEBHOOK }],
+			{ kind: 'webhook', node: { name: 'Hook', type: WEBHOOK }, canActivate: true },
+			{ gap: 'not-schedule' },
+		],
+		[
+			'a schedule node behind a trigger of another kind',
+			[scheduleNode(cronRule('0 8 * * *'))],
+			{ kind: 'webhook', node: { name: 'Every weekday', type: SCHEDULE }, canActivate: true },
+			{ gap: 'not-schedule' },
+		],
+		[
+			'a second trigger',
+			[scheduleNode(cronRule('0 8 * * 1-5')), { name: 'Hook', type: WEBHOOK }],
+			scheduleTrigger,
+			{ gap: 'other-starters' },
+		],
+		[
+			'a second trigger and two rules',
+			[
+				scheduleNode({ rule: { interval: [{ field: 'days' }, { field: 'weeks' }] } }),
+				{ name: 'Hook', type: WEBHOOK },
+			],
+			scheduleTrigger,
+			{ gap: 'other-starters' },
+		],
+		[
+			'two rules',
+			[scheduleNode({ rule: { interval: [{ field: 'days' }, { field: 'weeks' }] } })],
+			scheduleTrigger,
+			{ gap: 'unreadable' },
+		],
+		[
+			'the legacy cron node',
+			[scheduleNode(cronRule('0 8 * * *'), { type: CRON_NODE })],
+			{ kind: 'schedule', node: { name: 'Every weekday', type: CRON_NODE }, canActivate: true },
+			{ gap: 'unreadable' },
+		],
+	])('says why it shows no schedule for %s', (_label, nodes, trigger, gap) => {
+		expect(read(nodes, { timezone: LONDON }, trigger)).toStrictEqual(gap);
+	});
+
+	it('shows no schedule when the time zone of the workflow does not exist', () => {
+		const schedule = read([scheduleNode(cronRule('0 8 * * 1-5'))], {
+			timezone: 'Mars/Olympus_Mons',
+		});
+
+		expect(schedule).toStrictEqual({ gap: 'invalid-timezone' });
+	});
+});
+
 describe('chooseCron', () => {
-	describe('with a cron that the server read from the trigger', () => {
-		it('shows the cron of the trigger', () => {
-			expect(chooseCron(scheduleTrigger, undefined, '0 8 * * 1-5')).toStrictEqual({
-				cron: '0 8 * * 1-5',
+	const weekdays: TriggerSchedule = { cron: '0 8 * * 1-5', timezone: LONDON };
+
+	describe('with a schedule that the server read from the workflow', () => {
+		it('shows the schedule of the trigger', () => {
+			expect(chooseCron(undefined, weekdays)).toStrictEqual({ shown: weekdays });
+		});
+
+		it('shows the schedule without a warning when the model gives the same cron', () => {
+			expect(chooseCron(' 0 8  * * 1-5', weekdays)).toStrictEqual({ shown: weekdays });
+		});
+
+		it('shows the schedule of the trigger and warns when the model gives another cron', () => {
+			expect(chooseCron('0 9 * * *', weekdays)).toStrictEqual({
+				shown: weekdays,
+				warning: differs('0 9 * * *', '0 8 * * 1-5'),
 			});
 		});
 
-		it('shows the cron without a warning when the model gives the same cron', () => {
-			expect(chooseCron(scheduleTrigger, ' 0 8  * * 1-5', '0 8 * * 1-5')).toStrictEqual({
-				cron: '0 8 * * 1-5',
-			});
-		});
-
-		it.each(['0 9 * * *', 'every day at 9', '0 0 8 * * 1-5'])(
-			'shows the cron of the trigger and warns when the model gives %j',
+		it.each(['every day at 9', '0 0 8 * * 1-5', '0 25 * * *'])(
+			'also says that the cron %j of the model is not valid',
 			(given) => {
-				expect(chooseCron(scheduleTrigger, given, '0 8 * * 1-5')).toStrictEqual({
-					cron: '0 8 * * 1-5',
-					warning: differs(given, '0 8 * * 1-5'),
+				expect(chooseCron(given, weekdays)).toStrictEqual({
+					shown: weekdays,
+					warning: differs(given, '0 8 * * 1-5') + notValid(given),
 				});
 			},
 		);
 	});
 
-	describe('without a cron from the trigger', () => {
+	describe('without a schedule from the workflow', () => {
 		it.each([
 			['no cron', undefined],
 			['an empty cron', ''],
 			['a blank cron', '   '],
 		])('shows nothing and says nothing for %s', (_label, cron) => {
-			expect(chooseCron(scheduleTrigger, cron, undefined)).toStrictEqual({});
+			expect(chooseCron(cron, { gap: 'unreadable' })).toStrictEqual({});
 		});
 
-		it.each(['0 8 * * 1-5', 'every weekday at 8', '@daily'])(
-			'never shows the cron %j of the model, and warns',
+		it.each<[ScheduleGap, (given: string) => string]>([
+			['not-schedule', notASchedule],
+			['other-starters', otherStarters],
+			['unreadable', unreadable],
+			['invalid-timezone', invalidZone],
+		])('never shows the cron of the model, and says why for the gap %s', (gap, warning) => {
+			expect(chooseCron('0 8 * * 1-5', { gap })).toStrictEqual({
+				warning: warning('0 8 * * 1-5'),
+			});
+		});
+
+		it.each(['every weekday at 8', '@daily'])(
+			'also says that the cron %j of the model is not valid',
 			(given) => {
-				expect(chooseCron(scheduleTrigger, given, undefined)).toStrictEqual({
-					warning: unreadable(given),
+				expect(chooseCron(given, { gap: 'unreadable' })).toStrictEqual({
+					warning: unreadable(given) + notValid(given),
 				});
 			},
 		);
 
 		it('puts the cron of the model in the warning with one space between its fields', () => {
-			expect(chooseCron(scheduleTrigger, ' 0  8 * * 1-5 ', undefined)).toStrictEqual({
+			expect(chooseCron(' 0  8 * * 1-5 ', { gap: 'unreadable' })).toStrictEqual({
 				warning: unreadable('0 8 * * 1-5'),
 			});
 		});
 	});
 
-	describe('for a trigger that is not a schedule', () => {
-		it.each<AutomationTrigger>([
-			manualTrigger,
-			{ kind: 'webhook', canActivate: true },
-			{ kind: 'app-event', canActivate: true },
-		])('ignores a cron of a $kind trigger, with a warning', (trigger) => {
-			expect(chooseCron(trigger, '0 8 * * 1-5', undefined)).toStrictEqual({
-				warning: NOT_A_SCHEDULE,
-			});
-		});
-
-		it('says nothing when the model gives no cron', () => {
-			expect(chooseCron(manualTrigger, '  ', undefined)).toStrictEqual({});
-		});
-	});
-
-	it('shows only the cron of the trigger, and warns exactly when the model differs (property)', () => {
+	it('shows only the schedule of the workflow, and warns exactly when the model differs (property)', () => {
 		const cronArb = fc.oneof(
 			fc.constantFrom('0 8 * * 1-5', '0 0 8 * * 1-5', '@daily', ' 5 4 * * * ', ''),
 			fc.string({ maxLength: 20 }),
 		);
+		const scheduleArb = fc.constantFrom<TriggerSchedule>(
+			{ cron: '0 8 * * 1-5', timezone: LONDON },
+			{ cron: '*/5 * * * *', timezone: NEW_YORK },
+			{ gap: 'not-schedule' },
+			{ gap: 'other-starters' },
+			{ gap: 'unreadable' },
+			{ gap: 'invalid-timezone' },
+		);
 		fc.assert(
-			fc.property(
-				fc.option(cronArb, { nil: undefined }),
-				fc.option(fc.constantFrom('0 8 * * 1-5', '*/5 * * * *'), { nil: undefined }),
-				(given, triggerCron) => {
-					const choice = chooseCron(scheduleTrigger, given, triggerCron);
-					const normalised = (given ?? '').trim().split(/\s+/).join(' ');
-					const differsFromTrigger = normalised !== '' && normalised !== triggerCron;
+			fc.property(fc.option(cronArb, { nil: undefined }), scheduleArb, (given, schedule) => {
+				const choice = chooseCron(given, schedule);
+				const shown = 'cron' in schedule ? schedule : undefined;
+				const normalised = (given ?? '').trim().split(/\s+/).join(' ');
+				const differsFromTrigger = normalised !== '' && normalised !== shown?.cron;
 
-					expect(choice.cron).toBe(triggerCron);
-					expect(choice.warning !== undefined).toBe(differsFromTrigger);
-				},
-			),
+				expect(choice.shown).toStrictEqual(shown);
+				expect(choice.warning !== undefined).toBe(differsFromTrigger);
+				if (choice.warning !== undefined) {
+					expect(choice.warning.endsWith(notValid(normalised))).toBe(!isFiveFieldCron(normalised));
+				}
+			}),
 			{ numRuns: 300 },
 		);
 	});

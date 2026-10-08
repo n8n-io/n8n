@@ -4,18 +4,16 @@ import {
 	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
-	createWorkflowHistory,
 	linkUserToProject,
 	mockInstance,
-	setActiveVersion,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import { WorkflowPublishedVersionRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode, IWorkflowSettings } from 'n8n-workflow';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
@@ -34,6 +32,8 @@ import {
 	httpNode,
 	importTool,
 	imported,
+	publish,
+	saveNewVersion,
 	storedWorkflow,
 	textOf,
 } from './workflow-package-test-helpers';
@@ -131,22 +131,6 @@ const createPublishedSource = async (extraNodes: INode[] = []) => {
 	return await storedWorkflow(source.id);
 };
 
-/** Saves new nodes as a new draft version, as the editor does. */
-async function saveNewVersion(workflow: WorkflowEntity, nodes: INode[]): Promise<string> {
-	const versionId = randomUUID();
-	await Container.get(WorkflowRepository).update({ id: workflow.id }, { nodes, versionId });
-	await createWorkflowHistory({ ...workflow, nodes, versionId });
-	return versionId;
-}
-
-/** Puts a version live, as a publish does. */
-async function publish(workflowId: string, versionId: string): Promise<void> {
-	await setActiveVersion(workflowId, versionId);
-	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
-		workflowId,
-		versionId,
-	);
-}
 
 /** Exports the source, imports it as the member, and publishes the copy. */
 async function createPublishedCopy(source: WorkflowEntity) {
@@ -243,9 +227,18 @@ describe('import_workflow_package and the live version of a published copy', () 
 });
 
 describe('import_workflow_package and the error workflow link', () => {
-	const createErrorWorkflow = async (project: Project, name: string) =>
+	const createErrorWorkflow = async (
+		project: Project,
+		name: string,
+		settings: IWorkflowSettings = mcpSettings,
+	) =>
 		await createActiveWorkflow(
-			{ name, nodes: [errorTriggerNode], connections: {}, settings: { callerPolicy: 'any' } },
+			{
+				name,
+				nodes: [errorTriggerNode],
+				connections: {},
+				settings: { callerPolicy: 'any', ...settings },
+			},
 			project,
 		);
 
@@ -272,6 +265,20 @@ describe('import_workflow_package and the error workflow link', () => {
 
 		expect(output.warnings).toEqual([]);
 		expect((await storedWorkflow(output.workflowId)).settings?.errorWorkflow).toBe(handler.id);
+	});
+
+	it('removes the link to an error workflow that is not available in MCP, as update_workflow does', async () => {
+		const handler = await createErrorWorkflow(sourceProject, 'Alert the team', {});
+		const packageBase64 = await exportWithErrorWorkflow(handler.id);
+
+		const output = imported(
+			await importTool(owner, { packageBase64, projectId: targetProject.id }),
+		);
+
+		expect(output.warnings).toEqual([
+			`The import removed the link to the error workflow "Alert the team" (${handler.id}), because it is not available in MCP. Choose an error workflow in the workflow settings.`,
+		]);
+		expect((await storedWorkflow(output.workflowId)).settings?.errorWorkflow).toBeUndefined();
 	});
 
 	it('removes the link to an error workflow that is not published, and says why', async () => {
@@ -417,7 +424,7 @@ describe('steps after the import', () => {
 
 		expect(imported(result).created).toBe(true);
 		expect(imported(result).warnings).toEqual([
-			'Could not turn on MCP access: Database is locked. The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
+			'Could not turn on MCP access: an internal error occurred. The server log has the details. The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
 		]);
 		expect(emit).toHaveBeenCalledWith('n8n-package-imported', expect.anything());
 		expect(emit).not.toHaveBeenCalledWith('n8n-package-import-failed', expect.anything());
@@ -440,7 +447,7 @@ describe('steps after the import', () => {
 
 		expect(output.created).toBe(true);
 		expect(output.warnings).toEqual([
-			'The workflow was imported, but a last step failed: Service is not ready',
+			'The workflow was imported, but a last step failed: an internal error occurred. The server log has the details',
 		]);
 		expect(emit).not.toHaveBeenCalledWith('n8n-package-import-failed', expect.anything());
 	});

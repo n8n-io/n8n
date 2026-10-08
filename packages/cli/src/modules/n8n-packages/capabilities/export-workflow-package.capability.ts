@@ -43,6 +43,8 @@ const outputSchema = {
 		.describe('What the package does not copy, for example the error workflow and variable values'),
 } satisfies z.ZodRawShape;
 
+type Output = z.infer<z.ZodObject<typeof outputSchema>>;
+
 /** Finds the workflow as the MCP tools do: readable, available in MCP and not archived. */
 async function findMcpWorkflow(user: User, workflowId: string): Promise<PackageSourceWorkflow> {
 	return await getMcpWorkflow(
@@ -88,9 +90,11 @@ function exportWorkflowPackageTool(
 					classifyFailure: classifyMcpWorkflowAccessFailure,
 					limit,
 				});
+				// Fails to compile when the result and the output schema drift apart.
+				const structuredContent: Output = output;
 				return {
 					content: [{ type: 'text', text: describeExport(output) }],
-					structuredContent: output,
+					structuredContent,
 				};
 			} catch (error) {
 				const result = packageToolError(error);

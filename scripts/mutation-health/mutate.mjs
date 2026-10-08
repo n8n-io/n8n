@@ -24,7 +24,9 @@
  *
  * Every run uses Stryker's sandbox: Stryker mutates a copy of the package
  * under `.stryker-tmp/`, never the working tree, so nothing is restored after
- * a run and other work in the tree is safe while a run is in flight.
+ * a run and other work in the tree is safe while a run is in flight. The
+ * sandbox sits in a mirror of the repo (see sandbox-mirror.mjs). The tool
+ * removes the mirror after each run, also when a signal or a crash stops it.
  *
  * Stryker config resolution (first match wins):
  *   1. --config <path>                    explicit override
@@ -70,6 +72,7 @@ import {
 	RAW_REPORT,
 	buildStrykerConfig,
 	exitCodeForSignal,
+	guardOutsideStryker,
 	loadBaseConfig,
 	resolveConfig,
 	resolveStrykerBin,
@@ -206,21 +209,23 @@ function selectedTestFiles(job, args) {
 	return args.testFiles.length > 0 ? args.testFiles : (job.testFiles ?? []);
 }
 
-function planJobs(args, { log, git }) {
+function planJobs(args, { log, git, repoRoot: root }) {
 	if (!args.diffMode) {
 		const customTestCommand = args.testCommand !== undefined;
-		return [planFromTarget(args.targetArg, args.packageDirArg, { customTestCommand })];
+		return [
+			planFromTarget(args.targetArg, args.packageDirArg, { customTestCommand, repoRoot: root }),
+		];
 	}
-	const plan = planFromDiff(args.baseArg, { git });
+	const plan = planFromDiff(args.baseArg, { git, repoRoot: root });
 	for (const line of diffPlanLines(plan, args.baseArg)) log(line);
 	return plan.jobs;
 }
 
 // Check the config and collect what the run needs. Nothing is written yet.
-async function prepareRun(job, args, resolveBin) {
+async function prepareRun(job, args, { resolveBin, root }) {
 	const { pkgRoot, packageDir } = job;
-	const configPath = resolveConfig(pkgRoot, args.configArg);
-	const configLabel = path.relative(repoRoot, configPath);
+	const configPath = resolveConfig(pkgRoot, args.configArg, root);
+	const configLabel = path.relative(root, configPath);
 	const base = await loadBaseConfig(configPath);
 	const configError = sandboxConfigError(base, configLabel);
 	if (configError) throw new MutateError(2, configError);
@@ -238,18 +243,18 @@ function describeRun({ packageDir, targets }, { config, configLabel }) {
 	return lines;
 }
 
-async function summariseRun(job, { config, run, rawJsonPath, summaryJsonPath }, log) {
+async function summariseRun(job, { config, run, rawJsonPath, summaryJsonPath, root }, log) {
 	const { packageDir, targets } = job;
 	const outcome = classifyRun({
 		exitCode: run.exitCode,
 		output: run.output,
 		hasReport: existsSync(rawJsonPath),
 	});
-	const result = { packageDir, summaryPath: path.relative(repoRoot, summaryJsonPath) };
+	const result = { packageDir, summaryPath: path.relative(root, summaryJsonPath) };
 	if (outcome === 'failed') {
 		log(
 			`✗ ${packageDir}: Stryker exited ${run.exitCode} without producing ` +
-				`${path.relative(repoRoot, rawJsonPath)}`,
+				`${path.relative(root, rawJsonPath)}`,
 		);
 		return { ...result, failed: true };
 	}
@@ -271,7 +276,8 @@ async function summariseRun(job, { config, run, rawJsonPath, summaryJsonPath }, 
 }
 
 // Clear the earlier reports, write the run config and run Stryker to the end.
-async function startRun(job, { config, strykerBin }, io) {
+// runStryker handles signals while Stryker runs, so the guard steps aside.
+async function startRun(job, { config, strykerBin, guard }, io) {
 	const rawJsonPath = path.join(job.pkgRoot, RAW_REPORT);
 	const reportDir = path.dirname(rawJsonPath);
 	const summaryJsonPath = path.join(reportDir, 'summary.json');
@@ -284,7 +290,8 @@ async function startRun(job, { config, strykerBin }, io) {
 	const runConfigPath = await writeRunConfig(reportDir, config);
 
 	const argv = strykerRunArgv(strykerBin, runConfigPath);
-	const run = await runStryker({ argv, cwd: job.pkgRoot }, io);
+	guard.release();
+	const run = await runStryker({ argv, cwd: job.pkgRoot }, io).finally(() => guard.hold());
 	if (run.cancelledBy) {
 		throw new MutateError(
 			exitCodeForSignal(run.cancelledBy),
@@ -298,22 +305,26 @@ async function startRun(job, { config, strykerBin }, io) {
  * Run Stryker for one planned job and summarise the result. `io` holds what the
  * run uses outside this file, so the unit tests can run a job without Stryker:
  *   - `resolveStrykerBin`: finds Stryker's binary (default: resolveStrykerBin).
- *   - `repoRoot`: the repo that the sandbox mirror copies (default: this repo).
+ *   - `repoRoot`: the repo that the config lookup, the printed paths and the
+ *     sandbox mirror use (default: this repo).
  *   - everything else (`spawn`, the output streams, the signal-handling
  *     stand-ins) goes on to runStryker.
  */
 export async function runJob(job, args, io = {}) {
 	const {
 		resolveStrykerBin: resolveBin = resolveStrykerBin,
-		repoRoot: mirrorRoot = repoRoot,
+		repoRoot: root = repoRoot,
 		...runIo
 	} = io;
 	const log = (line) => (runIo.stderr ?? process.stderr).write(`${line}\n`);
-	const prepared = await prepareRun(job, args, resolveBin);
+	const prepared = await prepareRun(job, args, { resolveBin, root });
 	const mirror = createSandboxMirror(job.pkgRoot, {
-		repoRoot: mirrorRoot,
-		parentDir: mirrorParentFor(mirrorRoot),
+		repoRoot: root,
+		parentDir: mirrorParentFor(root),
 	});
+	// An exit on a signal or a crash skips `finally`, so the handlers remove the mirror.
+	const strykerIo = { ...runIo, onExit: () => mirror?.dispose() };
+	const guard = guardOutsideStryker(strykerIo);
 	try {
 		const config = buildStrykerConfig({
 			base: prepared.base,
@@ -323,9 +334,11 @@ export async function runJob(job, args, io = {}) {
 			tempDir: mirror?.tempDir,
 		});
 		for (const line of describeRun(job, { config, configLabel: prepared.configLabel })) log(line);
-		const finished = await startRun(job, { config, strykerBin: prepared.strykerBin }, runIo);
-		return await summariseRun(job, { config, ...finished }, log);
+		const run = { config, strykerBin: prepared.strykerBin, guard };
+		const finished = await startRun(job, run, strykerIo);
+		return await summariseRun(job, { config, root, ...finished }, log);
 	} finally {
+		guard.release();
 		mirror?.dispose();
 	}
 }
@@ -350,7 +363,9 @@ export function reportResults(results, log) {
 
 /**
  * The whole command. Returns the exit code, or throws a MutateError. `io.git`
- * runs git for --diff (default: runGit), and the rest of `io` goes to runJob.
+ * runs git for --diff (default: runGit). `io.repoRoot` is the repo that the
+ * plan reads (default: this repo). The rest of `io`, with `repoRoot`, goes to
+ * runJob.
  */
 export async function main(argv, { git, ...io } = {}) {
 	const log = (line) => (io.stderr ?? process.stderr).write(`${line}\n`);
@@ -362,7 +377,7 @@ export async function main(argv, { git, ...io } = {}) {
 	const problem = usageError(args);
 	if (problem) throw new MutateError(2, problem, { showUsage: true });
 
-	const jobs = planJobs(args, { log, git });
+	const jobs = planJobs(args, { log, git, repoRoot: io.repoRoot });
 	if (jobs.length === 0) {
 		log(`\nNothing mutable changed vs ${args.baseArg}.`);
 		return 0;

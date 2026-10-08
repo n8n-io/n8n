@@ -353,7 +353,8 @@ describe('export_workflow_package errors', () => {
 
 		expect(result.isError).toBe(true);
 		expect(textOf(result)).toBe("Workflow not found or you don't have permission to access it.");
-		expect(result.structuredContent).toEqual({ error: textOf(result) });
+		// MCP clients check structured content against the output schema of a success.
+		expect(result.structuredContent).toBeUndefined();
 		expect(emit).toHaveBeenCalledWith('n8n-package-export-failed', {
 			user: member,
 			reason: 'entity-not-found',

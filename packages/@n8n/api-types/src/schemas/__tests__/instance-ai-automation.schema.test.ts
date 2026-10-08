@@ -17,7 +17,7 @@ function makeCard(overrides: Partial<AutomationProposalCard> = {}): AutomationPr
 		versionId: 'v-1',
 		title: 'Morning digest',
 		why: ['You asked for this every weekday'],
-		trigger: { kind: 'schedule', cron: '0 8 * * 1-5' },
+		trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 		steps: [
 			{ name: 'Every weekday', type: 'n8n-nodes-base.scheduleTrigger' },
 			{ name: 'Send digest', type: 'n8n-nodes-base.slack' },
@@ -88,6 +88,15 @@ describe('automationProposalCardSchema', () => {
 		expect(automationProposalCardSchema.parse(card)).toEqual(card);
 	});
 
+	it.each(['UTC', 'America/Argentina/Buenos_Aires', 'Etc/GMT+5'])(
+		'accepts the time zone %s of a schedule',
+		(timezone) => {
+			const card = makeCard({ trigger: { kind: 'schedule', cron: '0 8 * * *', timezone } });
+
+			expect(automationProposalCardSchema.parse(card)).toEqual(card);
+		},
+	);
+
 	it('accepts a linked target with a label for later slices', () => {
 		const card = makeCard({
 			targets: [
@@ -113,6 +122,15 @@ describe('automationProposalCardSchema', () => {
 		['an unknown trigger kind', { trigger: { kind: 'email' } }],
 		['an empty cron', { trigger: { kind: 'schedule', cron: '' } }],
 		['a cron over 100 characters', { trigger: { kind: 'schedule', cron: '0'.repeat(101) } }],
+		[
+			'a time zone that does not exist',
+			{ trigger: { kind: 'schedule', cron: '0 8 * * *', timezone: 'Mars/Olympus_Mons' } },
+		],
+		['an empty time zone', { trigger: { kind: 'schedule', cron: '0 8 * * *', timezone: '' } }],
+		[
+			'a time zone that is not a name',
+			{ trigger: { kind: 'schedule', cron: '0 8 * * *', timezone: 'Europe/London; x' } },
+		],
 		[
 			'a recommendation without reasons',
 			{ recommended: { targetId: 'local', kind: 'local', reasons: [] } },

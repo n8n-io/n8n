@@ -44,11 +44,16 @@ const IN_PLACE_OPTION = /^inplace$/i;
 
 const unique = (items) => [...new Set(items)];
 
-export function resolveConfig(pkgRoot, configArg) {
-	if (configArg) return path.resolve(repoRoot, configArg);
+/**
+ * The config file for a run: `--config`, then the package's own config, then
+ * the shared config for the package. `root` is the repo that a relative
+ * `--config` and the package dir are read from.
+ */
+export function resolveConfig(pkgRoot, configArg, root = repoRoot) {
+	if (configArg) return path.resolve(root, configArg);
 	const local = path.join(pkgRoot, 'stryker.config.mjs');
 	if (existsSync(local)) return local;
-	return path.join(import.meta.dirname, defaultConfigNameFor(path.relative(repoRoot, pkgRoot)));
+	return path.join(import.meta.dirname, defaultConfigNameFor(path.relative(root, pkgRoot)));
 }
 
 // Try the package's own copy first, then the root devDep. A package that pins
@@ -83,14 +88,30 @@ export async function loadBaseConfig(configPath) {
 	}
 }
 
-/** Why a config cannot run, or null when it can. `configLabel` names the file. */
-export function sandboxConfigError(base, configLabel) {
+function workingTreeModeError(base, configLabel) {
 	const option = Object.keys(base).find((key) => IN_PLACE_OPTION.test(key));
 	if (!option || !base[option]) return null;
 	return (
 		`${configLabel} sets "${option}", which makes Stryker write mutants into the working tree.\n` +
 		'mutate.mjs runs Stryker only in its sandbox copy of the package. Remove the option.'
 	);
+}
+
+// The TypeScript checker type-checks with the file that `tsconfigFile` names.
+// A run in the mirror sets that option to a file that does not exist (see
+// NO_TSCONFIG_REWRITE), so the checker cannot work there.
+function typescriptCheckerError(base, configLabel) {
+	if (!Array.isArray(base.checkers) || !base.checkers.includes('typescript')) return null;
+	return (
+		`${configLabel} uses the "typescript" checker, which mutate.mjs does not support.\n` +
+		"mutate.mjs turns off Stryker's tsconfig rewrite (tsconfigFile), and the checker needs that " +
+		'file. Remove "typescript" from "checkers".'
+	);
+}
+
+/** Why a config cannot run, or null when it can. `configLabel` names the file. */
+export function sandboxConfigError(base, configLabel) {
+	return workingTreeModeError(base, configLabel) ?? typescriptCheckerError(base, configLabel);
 }
 
 function shellQuote(arg) {
@@ -209,28 +230,41 @@ export function exitCodeForSignal(signal) {
 }
 
 /**
- * Handle a crash and a cancellation while Stryker runs.
+ * Handle a crash and a cancellation during a run.
  *
  * `onSignal` gets first refusal on SIGINT and SIGTERM. It returns true when it
  * told a live Stryker to stop: Stryker then removes its sandbox, and the run
  * exits once Stryker is gone. Otherwise this handler exits at once.
+ *
+ * `onExit` runs before each exit that these handlers make. An exit skips every
+ * `finally` block, so `onExit` does the cleanup that a `finally` would do. A
+ * failed cleanup is printed and the exit code stays the same.
  *
  * `proc`, `exit` and `write` are injected so the unit tests can drive the
  * handlers without signalling or ending the test runner.
  */
 export function registerSignalHandlers({
 	onSignal,
+	onExit,
 	proc = process,
 	exit = (code) => process.exit(code),
 	write = (msg) => process.stderr.write(msg),
 }) {
+	const leave = (code) => {
+		try {
+			onExit?.();
+		} catch (error) {
+			write(`\n✗ Cleanup before exit failed: ${error?.message ?? error}\n`);
+		}
+		exit(code);
+	};
 	const handleUncaught = (err) => {
 		write(`\n✗ mutate.mjs crashed: ${err?.stack ?? err}\n`);
-		exit(3);
+		leave(3);
 	};
 	const handleSignal = (signal) => {
 		if (onSignal?.(signal)) return;
-		exit(exitCodeForSignal(signal));
+		leave(exitCodeForSignal(signal));
 	};
 	const handleSigint = () => handleSignal('SIGINT');
 	const handleSigterm = () => handleSignal('SIGTERM');
@@ -248,6 +282,26 @@ export function registerSignalHandlers({
 	};
 }
 
+/**
+ * Handlers for the parts of a job before and after Stryker runs. There, a
+ * signal or a crash exits at once, after `io.onExit`. While Stryker runs,
+ * runStryker has its own handlers: call `release` just before runStryker and
+ * `hold` once it settles, so only one set of handlers listens at a time.
+ * `io` takes the same fields as registerSignalHandlers.
+ */
+export function guardOutsideStryker(io) {
+	let handlers = registerSignalHandlers(io);
+	return {
+		hold() {
+			handlers ??= registerSignalHandlers(io);
+		},
+		release() {
+			handlers?.dispose();
+			handlers = null;
+		},
+	};
+}
+
 function isRunning(child) {
 	return child.exitCode === null && child.signalCode === null;
 }
@@ -257,9 +311,17 @@ function isRunning(child) {
  * also kept, so the caller can classify the run. `cancelledBy` names the
  * signal that stopped the run, or is null. `spawn` and the streams are
  * injected so the unit tests can check the command without starting Stryker.
+ * `onExit` is the caller's cleanup for an exit while Stryker runs (see
+ * registerSignalHandlers).
  */
 export function runStryker({ argv, cwd }, io = {}) {
-	const { spawn = nodeSpawn, stdout = process.stdout, stderr = process.stderr, ...handlerIo } = io;
+	const {
+		spawn = nodeSpawn,
+		stdout = process.stdout,
+		stderr = process.stderr,
+		onExit,
+		...handlerIo
+	} = io;
 	return new Promise((resolve, reject) => {
 		const chunks = [];
 		let cancelledBy = null;
@@ -271,6 +333,12 @@ export function runStryker({ argv, cwd }, io = {}) {
 				cancelledBy = signal;
 				child.kill('SIGINT');
 				return true;
+			},
+			// After a crash the process exits at once. Stop a live Stryker first,
+			// so that it does not keep running without the tool.
+			onExit: () => {
+				if (isRunning(child)) child.kill('SIGINT');
+				onExit?.();
 			},
 		});
 		const keep = (sink) => (chunk) => {

@@ -2,7 +2,14 @@ import { UnexpectedError } from '@n8n/errors';
 
 import type { ImportedWorkflowSummary, ImportResult } from '../../n8n-packages.types';
 import type { PackageRequirements } from '../../spec/requirements.schema';
-import { credentialsNeedingSetup, importWarnings, summariseImport } from '../import-summary';
+import {
+	type CopyOutcome,
+	credentialsNeedingSetup,
+	importWarnings,
+	matchedCredentialIds,
+	NEW_COPY,
+	summariseImport,
+} from '../import-summary';
 
 const credential = (id: string, name: string, type: string) => ({
 	id,
@@ -90,6 +97,54 @@ describe('credentialsNeedingSetup', () => {
 
 		expect(credentialsNeedingSetup(result, requirements)).toEqual([]);
 		expect(credentialsNeedingSetup(result, undefined)).toEqual([]);
+	});
+});
+
+describe('credentialsNeedingSetup after a re-import', () => {
+	const requirements: PackageRequirements = {
+		credentials: [
+			credential('src-stripe', 'Stripe API', 'httpHeaderAuth'),
+			credential('src-slack', 'Slack', 'slackApi'),
+			credential('src-mail', 'Mail', 'smtp'),
+		],
+	};
+
+	const result = importResult({
+		credentials: { matched: ['src-slack', 'src-stripe'], stubbed: ['src-mail'] },
+		bindings: {
+			workflows: {},
+			credentials: {
+				'src-stripe': 'stub-stripe',
+				'src-slack': 'own-slack',
+				'src-mail': 'new-mail',
+			},
+		},
+	});
+
+	it('lists the existing credentials without a value after the stubs of this import', () => {
+		const copy: CopyOutcome = { ...NEW_COPY, emptyCredentialIds: new Set(['stub-stripe']) };
+
+		expect(credentialsNeedingSetup(result, requirements, copy)).toEqual([
+			{ name: 'Mail', type: 'smtp', id: 'new-mail' },
+			{ name: 'Stripe API', type: 'httpHeaderAuth', id: 'stub-stripe' },
+		]);
+	});
+
+	it('lists only the stubs when every existing credential holds a value', () => {
+		expect(credentialsNeedingSetup(result, requirements, NEW_COPY)).toEqual([
+			{ name: 'Mail', type: 'smtp', id: 'new-mail' },
+		]);
+	});
+});
+
+describe('matchedCredentialIds', () => {
+	it('gives the ids on this instance of the matched credentials that have a binding', () => {
+		const result = importResult({
+			credentials: { matched: ['src-slack', 'src-unbound'], stubbed: ['src-mail'] },
+			bindings: { workflows: {}, credentials: { 'src-slack': 'own-slack', 'src-mail': 'new' } },
+		});
+
+		expect(matchedCredentialIds(result)).toEqual(['own-slack']);
 	});
 });
 
@@ -205,6 +260,72 @@ describe('importWarnings', () => {
 		).toEqual([]);
 	});
 
+	it('leaves out the credentials that the copy used and the ones without a value', () => {
+		const result = outcome({
+			credentials: { matched: ['src-slack', 'src-header', 'src-stripe'], stubbed: [] },
+			bindings: {
+				workflows: {},
+				credentials: {
+					'src-slack': 'own-slack',
+					'src-header': 'own-header',
+					'src-stripe': 'stub-stripe',
+				},
+			},
+		});
+		const requirements = {
+			credentials: [
+				credential('src-stripe', 'Stripe API', 'httpHeaderAuth'),
+				credential('src-slack', 'Slack', 'slackApi'),
+				credential('src-header', 'Header Auth account', 'httpHeaderAuth'),
+			],
+		};
+		const copy: CopyOutcome = {
+			...NEW_COPY,
+			keptCredentialSourceIds: ['src-slack'],
+			emptyCredentialIds: new Set(['stub-stripe']),
+		};
+
+		expect(importWarnings(result, requirements, copy)).toEqual([
+			'The workflow now uses 1 credential(s) that this instance already had with the same name and type: Header Auth account (httpHeaderAuth, ID own-header). Make sure that they are the right ones before the workflow runs.',
+		]);
+	});
+
+	it('names the credentials for which the copy used different credentials in different nodes', () => {
+		const copy: CopyOutcome = {
+			...NEW_COPY,
+			conflictingCredentialSourceIds: ['src-stripe', 'src-unknown', 'src-slack'],
+		};
+		const requirements = {
+			credentials: [
+				credential('src-slack', 'Slack', 'slackApi'),
+				credential('src-stripe', 'Stripe API', 'httpHeaderAuth'),
+			],
+		};
+
+		expect(importWarnings(outcome(), requirements, copy)).toEqual([
+			'The copy used different credentials in different nodes in place of 2 credential(s) of the package: Stripe API (httpHeaderAuth), Slack (slackApi). The import can keep only one credential for each, so it matched them by name and type again. Check the credentials in the workflow.',
+		]);
+		expect(importWarnings(outcome(), undefined, copy)).toEqual([]);
+	});
+
+	it('does not count a data table in whose place the copy uses a table of this project', () => {
+		const requirements = {
+			dataTables: [dataTable('dt-2', 'Orders'), dataTable('dt-1', 'Leads')],
+		};
+
+		expect(
+			importWarnings(outcome(), requirements, { ...NEW_COPY, keptDataTableIds: ['dt-1'] }),
+		).toEqual([
+			'1 of the 1 data table(s) that the workflow uses are not in the target project, and the import did not create them. The workflow uses: Orders. Create the missing tables, then select them in the workflow.',
+		]);
+		expect(
+			importWarnings(outcome(), requirements, {
+				...NEW_COPY,
+				keptDataTableIds: ['dt-1', 'dt-2'],
+			}),
+		).toEqual([]);
+	});
+
 	it('gives the warnings in a fixed order', () => {
 		expect(
 			importWarnings(
@@ -304,6 +425,33 @@ describe('summariseImport', () => {
 			publishing,
 			activeVersionId: 'v-1',
 		});
+	});
+
+	it('reports what a re-import kept of the copy', () => {
+		const output = summariseImport({
+			result: importResult({
+				workflows: [importedWorkflow({ status: 'updated' })],
+				credentials: { matched: ['src-stripe'], stubbed: [] },
+				bindings: { workflows: {}, credentials: { 'src-stripe': 'stub-stripe' } },
+			}),
+			sourceWorkflowId: 'wf-source',
+			requirements: {
+				credentials: [credential('src-stripe', 'Stripe API', 'httpHeaderAuth')],
+				dataTables: [{ id: 'dt-1', name: 'Leads', usedByWorkflows: ['wf-source'] }],
+			},
+			missingNodeTypes: [],
+			copy: {
+				keptCredentialSourceIds: ['src-stripe'],
+				conflictingCredentialSourceIds: [],
+				keptDataTableIds: ['dt-1'],
+				emptyCredentialIds: new Set(['stub-stripe']),
+			},
+		});
+
+		expect(output.credentialsNeedingSetup).toEqual([
+			{ name: 'Stripe API', type: 'httpHeaderAuth', id: 'stub-stripe' },
+		]);
+		expect(output.warnings).toEqual([]);
 	});
 
 	it('fails when the import result does not include the workflow of the package', () => {

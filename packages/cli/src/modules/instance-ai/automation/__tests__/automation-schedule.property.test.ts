@@ -1,3 +1,4 @@
+import { automationProposalCardSchema } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { CronTime } from 'cron';
 import fc from 'fast-check';
@@ -11,6 +12,7 @@ import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.n
 import type {
 	IRecurrenceRule,
 	RawScheduleInterval,
+	ScheduleInterval,
 } from 'n8n-nodes-base/nodes/Schedule/SchedulerInterface';
 import { type INodeParameters, NodeHelpers } from 'n8n-workflow';
 
@@ -50,10 +52,39 @@ function skipsRuns(expression: string, recurrence: IRecurrenceRule): boolean {
 }
 
 /**
+ * True when the node takes a minute, an hour or a day of the month from the ids of the workflow
+ * and the node, because the rule does not set it. The card cannot know these values.
+ */
+function usesValuesOfTheNode(interval: ScheduleInterval): boolean {
+	switch (interval.field) {
+		case 'hours':
+			return interval.triggerAtMinute === undefined;
+		case 'days':
+		case 'weeks':
+			return interval.triggerAtMinute === undefined || interval.triggerAtHour === undefined;
+		case 'months':
+			return (
+				interval.triggerAtMinute === undefined ||
+				interval.triggerAtHour === undefined ||
+				interval.triggerAtDayOfMonth === undefined
+			);
+		default:
+			return false;
+	}
+}
+
+/** The days of the week in order, each one time. Order and repeats do not change the cron. */
+function sortedWeekdays(field: string): string {
+	if (field === '*') return field;
+	return [...new Set(field.split(',').map(Number))].sort((a, b) => a - b).join(',');
+}
+
+/**
  * The cron that the Schedule Trigger node registers when n8n runs the workflow, without its
- * seconds. Undefined when the node runs more than once a minute, or skips runs of its cron,
- * because then no five-field cron says when it runs. This is the code of the node, so the test
- * compares the card with what really runs.
+ * seconds. Undefined when the node runs more than once a minute, skips runs of its cron, or
+ * takes a time from the ids of the workflow and the node, because then no five-field cron that
+ * the card can know says when it runs. This is the code of the node, so the test compares the
+ * card with what really runs.
  */
 function cronThatRuns(parameters: INodeParameters): string | undefined {
 	// n8n adds the defaults of the node when it loads the workflow to run it.
@@ -70,10 +101,11 @@ function cronThatRuns(parameters: INodeParameters): string | undefined {
 	const raw: unknown[] = isRecord(rule) && Array.isArray(rule.interval) ? rule.interval : [{}];
 	if (raw.length !== 1 || !isRawInterval(raw[0])) return undefined;
 	const interval = withIntervalDefaults(raw[0]);
-	if (interval.field === 'seconds') return undefined;
+	if (interval.field === 'seconds' || usesValuesOfTheNode(interval)) return undefined;
 	const expression = toCronExpression(interval, 'workflow:node');
 	if (skipsRuns(expression, intervalToRecurrence(interval, 0))) return undefined;
 	const fields = expression.split(' ').slice(1);
+	if (interval.field === 'weeks') fields[4] = sortedWeekdays(fields[4]);
 	// The node writes a step of one as "*/1". The card writes "*", which means the same.
 	return fields.map((field) => (field === '*/1' ? '*' : field)).join(' ');
 }
@@ -88,12 +120,23 @@ const ruleArb = fc.record(
 		daysInterval: fc.integer({ min: 1, max: 31 }),
 		weeksInterval: fc.integer({ min: 1, max: 4 }),
 		monthsInterval: fc.integer({ min: 1, max: 14 }),
-		triggerAtDay: fc.uniqueArray(fc.integer({ min: 0, max: 6 }), { maxLength: 7 }),
+		// Days in any order and with repeats, as an API client or the model can store them.
+		triggerAtDay: fc.array(fc.integer({ min: 0, max: 6 }), { maxLength: 60 }),
 		triggerAtDayOfMonth: fc.integer({ min: 1, max: 31 }),
 		triggerAtHour: fc.integer({ min: 0, max: 23 }),
 		triggerAtMinute: fc.integer({ min: 0, max: 59 }),
 	},
 	{ requiredKeys: [] },
+);
+
+// Stored parameters: no rules, a rule without an interval (the editor stores it when the user
+// deletes the last rule), no intervals, one interval, or two.
+const parametersArb: fc.Arbitrary<INodeParameters> = fc.oneof(
+	fc.constant({}),
+	fc.constant({ rule: {} }),
+	fc.constant({ rule: { interval: [] } }),
+	ruleArb.map((rule) => ({ rule: { interval: [rule] } })),
+	fc.tuple(ruleArb, ruleArb).map((rules) => ({ rule: { interval: rules } })),
 );
 
 describe('triggerCronOf against the Schedule Trigger node (property)', () => {
@@ -108,16 +151,42 @@ describe('triggerCronOf against the Schedule Trigger node (property)', () => {
 	// Each case steps the clock through up to thirty runs of the node, so allow more time.
 	it('shows the cron that the node runs, or nothing when no cron says when it runs', () => {
 		fc.assert(
-			fc.property(ruleArb, (rule) => {
-				const parameters: INodeParameters = { rule: { interval: [rule] } };
+			fc.property(parametersArb, (parameters) => {
 				const shown = triggerCronOf([{ name: 'Schedule', type: SCHEDULE, parameters }], trigger);
 
 				expect(shown).toBe(cronThatRuns(parameters));
-				if (shown !== undefined) expect(isFiveFieldCron(shown)).toBe(true);
+				if (shown === undefined) return;
+				expect(isFiveFieldCron(shown)).toBe(true);
+				const cardTrigger = { kind: 'schedule', cron: shown, timezone: 'Europe/London' };
+				expect(automationProposalCardSchema.shape.trigger.safeParse(cardTrigger).success).toBe(
+					true,
+				);
 			}),
 			{ numRuns: 500 },
 		);
 	}, 30_000);
+
+	it('shows nothing for a rule without an interval, which runs at a time that the node picks', () => {
+		const parameters = { rule: {} };
+		// n8n adds no defaults to this rule, so the node takes the time from its ids.
+		const filled = NodeHelpers.getNodeParameters(
+			description.properties,
+			parameters,
+			true,
+			false,
+			{ typeVersion: 1.2 },
+			description,
+		);
+		const interval = withIntervalDefaults({});
+
+		expect(filled?.rule).toEqual({});
+		expect(toCronExpression(interval, 'wf-1:node-1')).not.toBe(
+			toCronExpression(interval, 'wf-2:node-9'),
+		);
+		expect(
+			triggerCronOf([{ name: 'Schedule', type: SCHEDULE, parameters }], trigger),
+		).toBeUndefined();
+	});
 
 	it('agrees with the node about the defaults of a workflow without rules', () => {
 		expect(triggerCronOf([{ name: 'Schedule', type: SCHEDULE, parameters: {} }], trigger)).toBe(

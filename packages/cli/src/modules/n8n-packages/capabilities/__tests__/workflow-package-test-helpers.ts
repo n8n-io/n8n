@@ -1,8 +1,14 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import type { CredentialsEntity, Project, User } from '@n8n/db';
-import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import { createWorkflowHistory, setActiveVersion } from '@n8n/backend-test-utils';
+import type { CredentialsEntity, Project, User, WorkflowEntity } from '@n8n/db';
+import {
+	SharedWorkflowRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 import type z from 'zod';
 
 import type { RegisterToolFn, ToolDefinition, ToolHandlerResult } from '@/modules/mcp/mcp.types';
@@ -79,3 +85,30 @@ export const workflowCountIn = async (project: Project) =>
 
 export const storedWorkflow = async (workflowId: string) =>
 	await Container.get(WorkflowRepository).findOneByOrFail({ id: workflowId });
+
+/** Saves new nodes as a new draft version, as the editor does. */
+export async function saveNewVersion(workflow: WorkflowEntity, nodes: INode[]): Promise<string> {
+	const versionId = randomUUID();
+	await Container.get(WorkflowRepository).update({ id: workflow.id }, { nodes, versionId });
+	await createWorkflowHistory({ ...workflow, nodes, versionId });
+	return versionId;
+}
+
+/** Puts a version live, as a publish does. */
+export async function publish(workflowId: string, versionId: string): Promise<void> {
+	await setActiveVersion(workflowId, versionId);
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflowId,
+		versionId,
+	);
+}
+
+/** The nodes of the version that is live. */
+export async function liveNodes(workflowId: string): Promise<INode[]> {
+	const workflow = await Container.get(WorkflowRepository).findOneOrFail({
+		where: { id: workflowId },
+		relations: { activeVersion: true },
+	});
+	if (!workflow.activeVersion) throw new Error(`Workflow ${workflowId} has no live version`);
+	return workflow.activeVersion.nodes;
+}

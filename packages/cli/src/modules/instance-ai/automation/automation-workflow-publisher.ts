@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
@@ -17,6 +19,7 @@ export class AutomationWorkflowPublisher {
 	constructor(
 		private readonly workflowService: WorkflowService,
 		private readonly collaborationService: CollaborationService,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -37,10 +40,19 @@ export class AutomationWorkflowPublisher {
 		// The lock can appear after the check that ran before the first change.
 		await this.assertEditable(workflowId);
 		const workflow = await this.workflowService.activateWorkflow(user, workflowId, options);
-		// The workflow is live already, so a failed notification must not report a failure.
-		await this.collaborationService
-			.broadcastWorkflowUpdate(workflowId, user.id)
-			.catch(() => undefined);
+		await this.notifyEditors(workflowId, user);
 		return workflow.activeVersionId !== null;
+	}
+
+	/** The workflow is live already, so a failed notification is only logged. */
+	private async notifyEditors(workflowId: string, user: User): Promise<void> {
+		try {
+			await this.collaborationService.broadcastWorkflowUpdate(workflowId, user.id);
+		} catch (error) {
+			this.logger.warn('Failed to tell open editors that an automation was turned on', {
+				workflowId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 }

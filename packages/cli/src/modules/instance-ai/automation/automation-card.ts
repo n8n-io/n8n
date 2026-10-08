@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import { isTriggerNodeType, STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 
+import type { ShownSchedule } from './automation-schedule';
 import {
 	type AutomationNode,
 	type AutomationTrigger,
@@ -111,8 +112,8 @@ export type AutomationCardInput = {
 	workflow: ProposalWorkflow;
 	request: ProposalRequest;
 	trigger: AutomationTrigger;
-	/** The cron that `chooseCron` kept. */
-	cron?: string;
+	/** The schedule that `chooseCron` kept. */
+	schedule?: ShownSchedule;
 	recommendation: ProposalRecommendation;
 	/** False when the trigger, the scopes of the user or an admin do not allow turning it on. */
 	canActivate: boolean;
@@ -120,14 +121,14 @@ export type AutomationCardInput = {
 
 /** The `automationProposal` field of the card. `offered` lists the only answers it accepts. */
 export function buildAutomationCard(input: AutomationCardInput): AutomationProposalCard {
-	const { workflow, request, trigger, cron, recommendation, canActivate } = input;
+	const { workflow, request, trigger, schedule, recommendation, canActivate } = input;
 	const active = workflow.activeVersionId !== null;
 	return {
 		workflowId: workflow.id,
 		versionId: workflow.versionId,
 		title: request.title,
 		why: request.why,
-		trigger: cron === undefined ? { kind: trigger.kind } : { kind: trigger.kind, cron },
+		trigger: { kind: trigger.kind, ...schedule },
 		steps: automationSteps(workflow.nodes),
 		stepCount: stepNodes(workflow.nodes).length,
 		recommended: {

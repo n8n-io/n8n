@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { parseArgs, usageError } from './mutate.mjs';
+import { CLI_PACKAGE_DIR, isMutableSource, repoRoot } from './targets.mjs';
 import { SAFETY_GREP } from './test-doubles.mjs';
 
 describe('parseArgs', () => {
@@ -160,7 +161,12 @@ function withTempPackage(packageJson, body) {
 }
 
 describe('the cli end to end', () => {
-	const cliTarget = 'packages/cli/src/credentials/external-secrets.utils.ts:32-68';
+	// The command plans in this repo, so the target must exist. Any source file
+	// of packages/cli does: the run stops at the scope check, before Stryker.
+	const cliSource = readdirSync(path.join(repoRoot, CLI_PACKAGE_DIR, 'src'))
+		.map((name) => `${CLI_PACKAGE_DIR}/src/${name}`)
+		.find(isMutableSource);
+	const cliTarget = `${cliSource}:1-2`;
 
 	// The message shows how to name the test files, so the usage text is not needed.
 	it('exits 2 and names the flag when a cli target has no --test-files', () => {

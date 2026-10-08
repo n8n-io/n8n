@@ -2,7 +2,8 @@
  * Plan the Stryker runs: one job per package, with the targets to mutate and
  * the test files to run. The planners read the file system and git. Git is
  * injected so the unit tests can check which git commands a plan uses: only
- * `merge-base` and `diff`, never one that writes.
+ * `merge-base` and `diff`, never one that writes. The repo root is also a
+ * parameter (default: this repo), so the unit tests plan in a temp repo.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -52,9 +53,12 @@ function readPackageJson(pkgRoot) {
  * run vitest. A custom test command replaces that script, so only the blocked
  * list applies then.
  */
-export function ineligibleReason(pkgRoot, { customTestCommand = false } = {}) {
+export function ineligibleReason(
+	pkgRoot,
+	{ customTestCommand = false, repoRoot: root = repoRoot } = {},
+) {
 	const pkg = readPackageJson(pkgRoot);
-	const pkgName = pkg.name || path.relative(repoRoot, pkgRoot);
+	const pkgName = pkg.name || path.relative(root, pkgRoot);
 	if (BLOCKED_PACKAGES.has(pkg.name)) {
 		return {
 			code: 'blocked',
@@ -65,10 +69,10 @@ export function ineligibleReason(pkgRoot, { customTestCommand = false } = {}) {
 	return { code: 'not-vitest', message: `${pkgName} is not a vitest package` };
 }
 
-// Walk up from a path to the nearest enclosing package.json (bounded by repoRoot).
-export function findPackageRoot(fromAbs) {
+// Walk up from a path to the nearest enclosing package.json (bounded by `root`).
+export function findPackageRoot(fromAbs, root = repoRoot) {
 	let dir = path.dirname(fromAbs);
-	while (dir === repoRoot || dir.startsWith(`${repoRoot}${path.sep}`)) {
+	while (dir === root || dir.startsWith(`${root}${path.sep}`)) {
 		if (existsSync(path.join(dir, 'package.json'))) return dir;
 		const parent = path.dirname(dir);
 		if (parent === dir) break;
@@ -101,17 +105,17 @@ function changedFilesSince(base, git) {
 }
 
 // Add one changed file to its package's job, or record why it was skipped.
-function planChangedFile(file, { from, git, byPackage, skipped }) {
+function planChangedFile(file, { from, git, root, byPackage, skipped }) {
 	if (!isMutableSource(file)) return;
-	const abs = path.resolve(repoRoot, file);
+	const abs = path.resolve(root, file);
 	if (!existsSync(abs)) return; // the branch deleted the file
 
-	const pkgRoot = findPackageRoot(abs);
+	const pkgRoot = findPackageRoot(abs, root);
 	if (!pkgRoot) {
 		skipped.push([file, 'no enclosing package']);
 		return;
 	}
-	const reason = ineligibleReason(pkgRoot);
+	const reason = ineligibleReason(pkgRoot, { repoRoot: root });
 	if (reason) {
 		skipped.push([file, reason.message]);
 		return;
@@ -121,7 +125,7 @@ function planChangedFile(file, { from, git, byPackage, skipped }) {
 	if (ranges.length === 0) return;
 
 	const rel = path.relative(pkgRoot, abs);
-	const packageDir = path.relative(repoRoot, pkgRoot);
+	const packageDir = path.relative(root, pkgRoot);
 	const job = byPackage.get(pkgRoot) ?? { pkgRoot, packageDir, targets: [] };
 	for (const r of ranges) job.targets.push(`${rel}:${r.start}-${r.end}`);
 	byPackage.set(pkgRoot, job);
@@ -131,15 +135,15 @@ function planChangedFile(file, { from, git, byPackage, skipped }) {
  * One job per package for every line this branch changed. `packages/cli` jobs
  * also get the cli test files the patch changed, as their explicit test list.
  */
-export function planFromDiff(base, { git = runGit } = {}) {
+export function planFromDiff(base, { git = runGit, repoRoot: root = repoRoot } = {}) {
 	const { from, files } = changedFilesSince(base, git);
 	const byPackage = new Map();
 	const skipped = [];
-	for (const file of files) planChangedFile(file, { from, git, byPackage, skipped });
+	for (const file of files) planChangedFile(file, { from, git, root, byPackage, skipped });
 	for (const job of byPackage.values()) {
 		if (toPosix(job.packageDir) === CLI_PACKAGE_DIR) {
 			job.testFiles = changedTestFilesForPackage(files, job.packageDir).filter((file) =>
-				existsSync(path.resolve(repoRoot, file)),
+				existsSync(path.resolve(root, file)),
 			);
 		}
 	}
@@ -156,15 +160,15 @@ export function diffPlanLines({ jobs, skipped }, base) {
 }
 
 // The package and the package-relative path of a named target.
-function locateTarget(file, packageDirArg) {
+function locateTarget(file, packageDirArg, root) {
 	if (packageDirArg) {
-		const pkgRoot = path.resolve(repoRoot, packageDirArg);
+		const pkgRoot = path.resolve(root, packageDirArg);
 		if (!existsSync(pkgRoot)) throw new MutateError(2, `Package dir not found: ${pkgRoot}`);
 		return { pkgRoot, rel: path.isAbsolute(file) ? path.relative(pkgRoot, file) : file };
 	}
-	const abs = path.resolve(repoRoot, file);
+	const abs = path.resolve(root, file);
 	if (!existsSync(abs)) throw new MutateError(2, `Target not found: ${abs}`, { showUsage: true });
-	const pkgRoot = findPackageRoot(abs);
+	const pkgRoot = findPackageRoot(abs, root);
 	if (!pkgRoot) {
 		throw new MutateError(2, `Could not infer the package for ${file} — pass --package-dir.`, {
 			showUsage: true,
@@ -173,11 +177,8 @@ function locateTarget(file, packageDirArg) {
 	return { pkgRoot, rel: path.relative(pkgRoot, abs) };
 }
 
-/** The single job for a named target, or a MutateError that says what to fix. */
-export function planFromTarget(targetArg, packageDirArg, { customTestCommand = false } = {}) {
-	const { file, range } = splitRange(targetArg);
-	const { pkgRoot, rel } = locateTarget(file, packageDirArg);
-
+// Stop unless `rel` is a mutable source file inside the package.
+function assertMutableTarget(pkgRoot, rel) {
 	if (rel.startsWith('..') || path.isAbsolute(rel)) {
 		throw new MutateError(2, `Target must live inside the package. Got: ${rel}`);
 	}
@@ -190,9 +191,20 @@ export function planFromTarget(targetArg, packageDirArg, { customTestCommand = f
 			`Not a mutable source file (test/declaration/config/build output): ${rel}`,
 		);
 	}
+}
+
+/** The single job for a named target, or a MutateError that says what to fix. */
+export function planFromTarget(
+	targetArg,
+	packageDirArg,
+	{ customTestCommand = false, repoRoot: root = repoRoot } = {},
+) {
+	const { file, range } = splitRange(targetArg);
+	const { pkgRoot, rel } = locateTarget(file, packageDirArg, root);
+	assertMutableTarget(pkgRoot, rel);
 	// --diff skips an ineligible package. A named target must refuse for the same
 	// reason, or it starts a run that is known to crash.
-	const reason = ineligibleReason(pkgRoot, { customTestCommand });
+	const reason = ineligibleReason(pkgRoot, { customTestCommand, repoRoot: root });
 	if (reason) {
 		const hint = reason.code === 'not-vitest' ? `\n${TEST_COMMAND_HINT}` : '';
 		throw new MutateError(2, `Cannot mutate ${rel}: ${reason.message}${hint}`);
@@ -200,7 +212,7 @@ export function planFromTarget(targetArg, packageDirArg, { customTestCommand = f
 
 	return {
 		pkgRoot,
-		packageDir: path.relative(repoRoot, pkgRoot),
+		packageDir: path.relative(root, pkgRoot),
 		targets: [range ? `${rel}:${range}` : rel],
 	};
 }

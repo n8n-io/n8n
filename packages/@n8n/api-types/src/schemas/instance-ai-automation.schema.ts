@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
 import { projectTypeSchema } from './project.schema';
+import { StrictTimeZoneSchema } from './timezone.schema';
 
-/** The run target of this n8n instance. B05 offers only this target. */
+/** The run target of this n8n instance. Only this target is offered for now. */
 export const AUTOMATION_LOCAL_TARGET_ID = 'local';
 
 export const AUTOMATION_PROPOSAL_LIMITS = {
@@ -90,6 +91,11 @@ export const automationProposalCardSchema = z.object({
 		 * runs.
 		 */
 		cron: z.string().min(1).max(AUTOMATION_PROPOSAL_LIMITS.cronLength).optional(),
+		/**
+		 * IANA time zone that n8n runs `cron` in: the zone of the workflow settings, else the
+		 * default zone of the instance. Present together with `cron`.
+		 */
+		timezone: StrictTimeZoneSchema.optional(),
 	}),
 	/**
 	 * The first running nodes of the workflow in their order, for the node icons. Sticky notes and

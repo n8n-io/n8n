@@ -1,4 +1,5 @@
-import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import fc from 'fast-check';
+import { N8N_CHAT_ACTION_TOOL_NAME, type AgentPersistedMessageContentPart } from '@n8n/api-types';
 
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../delegateTool';
 import {
@@ -137,6 +138,105 @@ describe('toolCallFromPersistedPart', () => {
 		);
 
 		expect(call.displaySummary).toBe('Approve & Send');
+	});
+});
+
+describe('toolCallFromPersistedPart properties', () => {
+	const FAILED_DELEGATION = { status: 'failed', error: 'No access' };
+
+	const partArb = fc.record(
+		{
+			type: fc.constant('tool-call'),
+			state: fc.constantFrom('resolved', 'rejected', 'running', 'suspended', undefined),
+			canceled: fc.constantFrom(true, false, undefined),
+			output: fc.oneof(
+				fc.constant(undefined),
+				fc.constant(FAILED_DELEGATION),
+				fc.constant({ status: 'completed', answer: 'Done' }),
+				// Other outputs never read as a delegation status.
+				fc.jsonValue().filter((value) => !JSON.stringify(value).includes('"status"')),
+			),
+			error: fc.option(fc.string(), { nil: undefined }),
+		},
+		{ requiredKeys: ['type'] },
+	);
+	const toolNameArb = fc.constantFrom(DELEGATE_SUB_AGENT_TOOL_NAME, 'read_file');
+
+	/** The state table, written out without the helpers of the mapper. */
+	function expectedState(part: AgentPersistedMessageContentPart, toolName: string, failed: boolean) {
+		if (part.state === 'resolved') {
+			if (part.canceled === true) return 'cancelled';
+			const failedDelegation =
+				toolName === DELEGATE_SUB_AGENT_TOOL_NAME && part.output === FAILED_DELEGATION;
+			return failedDelegation ? 'error' : 'done';
+		}
+		return part.state === 'rejected' || failed ? 'error' : 'running';
+	}
+
+	it('follows the state table for every state, cancel flag, run outcome and output', () => {
+		fc.assert(
+			fc.property(partArb, toolNameArb, fc.boolean(), (part, toolName, failed) => {
+				expect(toolCallFromPersistedPart(part, toolName, failed).state).toBe(
+					expectedState(part, toolName, failed),
+				);
+			}),
+		);
+	});
+
+	it('never maps a resolved call to running, whatever the run outcome', () => {
+		fc.assert(
+			fc.property(partArb, toolNameArb, fc.boolean(), (part, toolName, failed) => {
+				const resolved = { ...part, state: 'resolved' };
+				const call = toolCallFromPersistedPart(resolved, toolName, failed);
+
+				expect(call.state).not.toBe('running');
+				expect(call.state).toBe(toolCallFromPersistedPart(resolved, toolName, !failed).state);
+			}),
+		);
+	});
+
+	it('gives a running call no output, and takes the output of a settled call from the part', () => {
+		fc.assert(
+			fc.property(partArb, toolNameArb, fc.boolean(), (part, toolName, failed) => {
+				const call = toolCallFromPersistedPart(part, toolName, failed);
+				const source = part.state === 'resolved' ? part.output : part.error;
+
+				if (call.state === 'running') {
+					expect(call).not.toHaveProperty('output');
+				} else if (source === undefined) {
+					expect(call).not.toHaveProperty('output');
+				} else {
+					expect(call.output).toBe(source);
+				}
+			}),
+		);
+	});
+
+	it('marks a call as cancelled exactly when the part carries the cancel flag', () => {
+		fc.assert(
+			fc.property(partArb, toolNameArb, fc.boolean(), (part, toolName, failed) => {
+				const call = toolCallFromPersistedPart(part, toolName, failed);
+
+				expect(call.canceled === true).toBe(part.canceled === true);
+				expect(call.state === 'cancelled').toBe(
+					part.state === 'resolved' && part.canceled === true,
+				);
+			}),
+		);
+	});
+
+	it('maps an unfinished call of a failed run to the error state with the recorded error', () => {
+		const unfinishedArb = partArb.filter(
+			(part) => part.state !== 'resolved' && part.state !== 'rejected',
+		);
+		fc.assert(
+			fc.property(unfinishedArb, toolNameArb, (part, toolName) => {
+				const call = toolCallFromPersistedPart(part, toolName, true);
+
+				expect(call.state).toBe('error');
+				expect(call.output).toBe(part.error);
+			}),
+		);
 	});
 });
 

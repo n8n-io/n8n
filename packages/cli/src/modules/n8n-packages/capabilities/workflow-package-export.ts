@@ -3,6 +3,7 @@ import type { User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { collectWithinLimit, type PackageSizeLimit } from './base64-limits';
+import { EntryLimitedPackageWriter } from './package-entry-limits';
 import {
 	assertNoSubWorkflowCalls,
 	notCopiedVariablesWarning,
@@ -15,6 +16,7 @@ import {
 	type SurfaceFailureClassifier,
 } from './workflow-package-failure';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
+import { PackageImportConfig } from '../n8n-packages.config';
 import { N8nPackagesService } from '../n8n-packages.service';
 import {
 	CredentialExportPolicy,
@@ -87,9 +89,10 @@ async function writeWorkflowPackage(
 	const workflow = await request.findWorkflow(request.workflowId);
 	assertNoSubWorkflowCalls(workflow);
 	const writer = new TarPackageWriter();
+	// The import of this instance reads the package with these limits, so the export applies them.
 	const { manifest, counts } = await Container.get(N8nPackagesService).exportPackageToWriter(
 		{ user, workflowIds: [workflow.id], ...WORKFLOW_PACKAGE_EXPORT_OPTIONS },
-		writer,
+		new EntryLimitedPackageWriter(writer, Container.get(PackageImportConfig)),
 	);
 	const buffer = await collectWithinLimit(writer.finalize(), limit);
 	// After the size check, so that a package over the limit logs a failure only.

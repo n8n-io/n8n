@@ -1,4 +1,5 @@
-import { AUTOMATION_PROPOSAL_LIMITS } from '@n8n/api-types';
+import { AUTOMATION_PROPOSAL_LIMITS, StrictTimeZoneSchema } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import z from 'zod';
 
@@ -13,7 +14,19 @@ import {
 /** A workflow node with the parameters that the schedule reads. */
 export type ScheduleNode = AutomationNode & { parameters?: unknown };
 
-export type CronChoice = { cron?: string; warning?: string };
+/** The fields of a stored workflow that the schedule reads. */
+export type ScheduleWorkflow = { nodes: readonly ScheduleNode[]; settings?: unknown };
+
+/** Why the card shows no schedule. */
+export type ScheduleGap = 'not-schedule' | 'other-starters' | 'unreadable' | 'invalid-timezone';
+
+/** A schedule that the card shows: the cron and the time zone that n8n runs it in. */
+export type ShownSchedule = { cron: string; timezone: string };
+
+/** What the server reads from the workflow: the schedule, or why the card shows none. */
+export type TriggerSchedule = ShownSchedule | { gap: ScheduleGap };
+
+export type CronChoice = { shown?: ShownSchedule; warning?: string };
 
 /**
  * One rule of a Schedule Trigger, with the defaults that n8n adds when it runs the workflow.
@@ -36,9 +49,14 @@ const scheduleRuleSchema = z.object({
 });
 type ScheduleRule = z.infer<typeof scheduleRuleSchema>;
 
-/** Without rules, n8n runs a Schedule Trigger with one rule of the defaults. */
+/**
+ * The rules of a Schedule Trigger. Without `rule`, n8n runs one rule of the defaults. A `rule`
+ * without `interval` (the editor stores it when the user deletes the last rule) gets no defaults:
+ * n8n then takes the hour and the minute from the ids of the workflow and the node, so the parse
+ * fails and the card shows no schedule.
+ */
 const scheduleParametersSchema = z.object({
-	rule: z.object({ interval: z.array(z.unknown()).default([{}]) }).default({}),
+	rule: z.object({ interval: z.array(z.unknown()) }).default({ interval: [{}] }),
 });
 
 /** The cron expression with one space between its fields. */
@@ -53,10 +71,10 @@ export function isFiveFieldCron(expression: string): boolean {
 }
 
 /**
- * The cron of a cron rule when the card can show it. A rule with seconds, an expression (text
- * that starts with "=") and text that is not a cron fail the check.
+ * The cron when the card can show it. A cron with seconds, an expression (text that starts with
+ * "=") and text that is not a cron fail the check, and so does a cron that the card cannot hold.
  */
-function cronOfExpression(expression: string): string | undefined {
+function cardCron(expression: string): string | undefined {
 	const cron = normaliseCron(expression);
 	const fits = cron.length <= AUTOMATION_PROPOSAL_LIMITS.cronLength && isFiveFieldCron(cron);
 	return fits ? cron : undefined;
@@ -67,13 +85,18 @@ function everyStep(step: number): string {
 	return step === 1 ? '*' : `*/${step}`;
 }
 
+/** The days of the week in order, each one time. Order and repeats do not change the cron. */
+function weekdaysField(days: readonly number[]): string {
+	return [...new Set(days)].sort((a, b) => a - b).join(',') || '*';
+}
+
 /**
  * The cron of each kind of rule, without the second that n8n adds. Undefined when no cron says
  * when the rule runs. For such a rule n8n runs a cron more often and skips runs until the
  * interval has passed. A step that divides its cycle evenly needs no skips.
  */
 const CRON_OF_RULE: Record<ScheduleRule['field'], (rule: ScheduleRule) => string | undefined> = {
-	cronExpression: (rule) => cronOfExpression(rule.expression),
+	cronExpression: (rule) => rule.expression,
 	minutes: ({ minutesInterval: step }) =>
 		60 % step === 0 ? `${everyStep(step)} * * * *` : undefined,
 	hours: ({ hoursInterval: step, triggerAtMinute }) =>
@@ -82,7 +105,7 @@ const CRON_OF_RULE: Record<ScheduleRule['field'], (rule: ScheduleRule) => string
 		daysInterval === 1 ? `${triggerAtMinute} ${triggerAtHour} * * *` : undefined,
 	weeks: ({ weeksInterval, triggerAtMinute, triggerAtHour, triggerAtDay }) =>
 		weeksInterval === 1
-			? `${triggerAtMinute} ${triggerAtHour} * * ${triggerAtDay.join(',') || '*'}`
+			? `${triggerAtMinute} ${triggerAtHour} * * ${weekdaysField(triggerAtDay)}`
 			: undefined,
 	months: ({ monthsInterval: step, triggerAtMinute, triggerAtHour, triggerAtDayOfMonth }) =>
 		12 % step === 0
@@ -90,9 +113,30 @@ const CRON_OF_RULE: Record<ScheduleRule['field'], (rule: ScheduleRule) => string
 			: undefined,
 };
 
-/** True when more than one enabled node starts the workflow, so no one schedule says when. */
-function hasOtherStarters(nodes: readonly ScheduleNode[]): boolean {
-	return nodes.filter((node) => node.disabled !== true && canStartAutomation(node.type)).length > 1;
+/**
+ * The cron of a Schedule Trigger node with exactly one rule that a cron can say, before the check
+ * that the card can show it. Undefined for other nodes.
+ */
+function cronOfScheduleNode(node: ScheduleNode | undefined): string | undefined {
+	if (node?.type !== SCHEDULE_TRIGGER_NODE_TYPE) return undefined;
+	const parsed = scheduleParametersSchema.safeParse(node.parameters ?? {});
+	if (!parsed.success || parsed.data.rule.interval.length !== 1) return undefined;
+	const rule = scheduleRuleSchema.safeParse(parsed.data.rule.interval[0]);
+	return rule.success ? CRON_OF_RULE[rule.data.field](rule.data) : undefined;
+}
+
+/** The cron of the trigger, or why there is none. */
+function readTriggerCron(
+	nodes: readonly ScheduleNode[],
+	trigger: AutomationTrigger,
+): { cron: string } | { gap: ScheduleGap } {
+	if (trigger.kind !== 'schedule') return { gap: 'not-schedule' };
+	// When more than one enabled node starts the workflow, no one schedule says when it runs.
+	const starters = nodes.filter((node) => node.disabled !== true && canStartAutomation(node.type));
+	if (starters.length > 1) return { gap: 'other-starters' };
+	const raw = cronOfScheduleNode(nodes.find((node) => node.name === trigger.node?.name));
+	const cron = raw === undefined ? undefined : cardCron(raw);
+	return cron === undefined ? { gap: 'unreadable' } : { cron };
 }
 
 /**
@@ -105,44 +149,73 @@ export function triggerCronOf(
 	nodes: readonly ScheduleNode[],
 	trigger: AutomationTrigger,
 ): string | undefined {
-	const node = nodes.find((candidate) => candidate.name === trigger.node?.name);
-	if (node?.type !== SCHEDULE_TRIGGER_NODE_TYPE || hasOtherStarters(nodes)) return undefined;
-	const parameters = scheduleParametersSchema.safeParse(node.parameters ?? {});
-	if (!parameters.success || parameters.data.rule.interval.length !== 1) return undefined;
-	const rule = scheduleRuleSchema.safeParse(parameters.data.rule.interval[0]);
-	return rule.success ? CRON_OF_RULE[rule.data.field](rule.data) : undefined;
-}
-
-/** Tells the model why the card does not show its cron, so that it can correct itself. */
-function ignoredCronWarning(
-	trigger: AutomationTrigger,
-	given: string,
-	triggerCron: string | undefined,
-): string {
-	if (trigger.kind !== 'schedule') {
-		return 'Ignored the cron expression, because the workflow does not start with a schedule trigger.';
-	}
-	if (triggerCron !== undefined) {
-		return `Ignored the cron expression "${given}", because the schedule trigger uses the cron expression "${triggerCron}".`;
-	}
-	return `Ignored the cron expression "${given}". The card shows only a schedule that it reads from the trigger, and no single five-field cron expression says when this schedule trigger runs.`;
+	const read = readTriggerCron(nodes, trigger);
+	return 'cron' in read ? read.cron : undefined;
 }
 
 /**
- * What the card says about the schedule. The card shows only the cron that the server read
- * from the trigger, because the user agrees to what the card shows. The tool reports a cron of
+ * The time zone that n8n runs the schedule in: the zone of the workflow settings, else the
+ * default zone of the instance. As for the scheduler, an empty zone and "DEFAULT" mean the
+ * default zone. Undefined for a zone that is not valid.
+ */
+export function scheduleTimezoneOf(settings: unknown, defaultTimezone: string): string | undefined {
+	const stored = isRecord(settings) ? settings.timezone : undefined;
+	const zone =
+		typeof stored === 'string' && stored !== '' && stored !== 'DEFAULT' ? stored : defaultTimezone;
+	const parsed = StrictTimeZoneSchema.safeParse(zone);
+	return parsed.success ? parsed.data : undefined;
+}
+
+/**
+ * The schedule of the workflow, as the server reads it from the Schedule Trigger and the
+ * workflow settings, or why the card shows none.
+ *
+ * @param defaultTimezone The default time zone of this n8n instance.
+ */
+export function readTriggerSchedule(
+	workflow: ScheduleWorkflow,
+	trigger: AutomationTrigger,
+	defaultTimezone: string,
+): TriggerSchedule {
+	const read = readTriggerCron(workflow.nodes, trigger);
+	if (!('cron' in read)) return read;
+	const timezone = scheduleTimezoneOf(workflow.settings, defaultTimezone);
+	return timezone === undefined ? { gap: 'invalid-timezone' } : { cron: read.cron, timezone };
+}
+
+/** Why the card does not show the cron of the model, for each gap. */
+const GAP_WARNING: Record<ScheduleGap, (given: string) => string> = {
+	'not-schedule': (given) =>
+		`Ignored the cron expression "${given}", because the workflow does not start with a schedule trigger.`,
+	'other-starters': (given) =>
+		`Ignored the cron expression "${given}", because another trigger also starts the workflow. The card shows a schedule only when the schedule trigger alone starts the workflow.`,
+	unreadable: (given) =>
+		`Ignored the cron expression "${given}". The card shows only a schedule that it reads from the trigger, and no single five-field cron expression says when this schedule trigger runs.`,
+	'invalid-timezone': (given) =>
+		`Ignored the cron expression "${given}", because the time zone in the workflow settings is not valid.`,
+};
+
+/** Tells the model why the card does not show its cron, so that it can correct itself. */
+function ignoredCronWarning(given: string, schedule: TriggerSchedule): string {
+	const reason =
+		'cron' in schedule
+			? `Ignored the cron expression "${given}", because the schedule trigger uses the cron expression "${schedule.cron}".`
+			: GAP_WARNING[schedule.gap](given);
+	if (isFiveFieldCron(given)) return reason;
+	return `${reason} The cron expression "${given}" is not a valid five-field cron expression.`;
+}
+
+/**
+ * What the card says about the schedule. The card shows only the schedule that the server read
+ * from the workflow, because the user agrees to what the card shows. The tool reports a cron of
  * the model that differs in a warning.
  *
  * @param given The cron expression from the model.
- * @param triggerCron The cron of the trigger, from `triggerCronOf`.
+ * @param schedule The schedule of the workflow, from `readTriggerSchedule`.
  */
-export function chooseCron(
-	trigger: AutomationTrigger,
-	given: string | undefined,
-	triggerCron: string | undefined,
-): CronChoice {
+export function chooseCron(given: string | undefined, schedule: TriggerSchedule): CronChoice {
 	const expression = normaliseCron(given ?? '');
-	const shown: CronChoice = triggerCron === undefined ? {} : { cron: triggerCron };
-	if (expression === '' || expression === triggerCron) return shown;
-	return { ...shown, warning: ignoredCronWarning(trigger, expression, triggerCron) };
+	const shown: CronChoice = 'cron' in schedule ? { shown: schedule } : {};
+	if (expression === '' || expression === shown.shown?.cron) return shown;
+	return { ...shown, warning: ignoredCronWarning(expression, schedule) };
 }

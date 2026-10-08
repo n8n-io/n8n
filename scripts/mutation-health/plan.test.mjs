@@ -5,8 +5,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { findPackageRoot, ineligibleReason, planFromTarget } from './plan.mjs';
-import { MutateError, repoRoot } from './targets.mjs';
+import { MutateError } from './targets.mjs';
+import { SAMPLE_REPO, writeTree } from './test-doubles.mjs';
 
+// Each test plans in this temp repo, so no test depends on the files of this repo.
 let root;
 
 beforeEach(() => {
@@ -58,11 +60,12 @@ describe('ineligibleReason', () => {
 
 	it('refuses a package without scripts, or without a readable package.json', () => {
 		assert.equal(ineligibleReason(seedPackage({ name: 'pkg' })).code, 'not-vitest');
-		const bare = path.join(root, 'bare');
-		mkdirSync(bare);
-		assert.deepEqual(ineligibleReason(bare), {
+		const bare = path.join(root, 'packages/bare');
+		mkdirSync(bare, { recursive: true });
+		// A package without a name is named by its dir in the repo.
+		assert.deepEqual(ineligibleReason(bare, { repoRoot: root }), {
 			code: 'not-vitest',
-			message: `${path.relative(repoRoot, bare)} is not a vitest package`,
+			message: 'packages/bare is not a vitest package',
 		});
 	});
 
@@ -87,10 +90,20 @@ describe('planFromTarget', () => {
 		assert.deepEqual(job.targets, ['src/a.ts:3-9']);
 	});
 
+	it('reads a relative --package-dir from the repo root', () => {
+		const pkgRoot = seedPackage({ name: 'pkg', scripts: { test: 'vitest run' } });
+		const job = planFromTarget('src/a.ts', 'pkg', { repoRoot: root });
+		assert.equal(job.pkgRoot, pkgRoot);
+		assert.equal(job.packageDir, 'pkg');
+	});
+
 	it('infers the package of a repo-relative target', () => {
-		const job = planFromTarget('packages/@n8n/instance-ai/src/utils/model-config-id.ts');
+		writeTree(root, SAMPLE_REPO);
+		const target = 'packages/@n8n/instance-ai/src/utils/model-config-id.ts:4-9';
+		const job = planFromTarget(target, undefined, { repoRoot: root });
+		assert.equal(job.pkgRoot, path.join(root, 'packages/@n8n/instance-ai'));
 		assert.equal(job.packageDir, path.join('packages', '@n8n', 'instance-ai'));
-		assert.deepEqual(job.targets, [path.join('src', 'utils', 'model-config-id.ts')]);
+		assert.deepEqual(job.targets, [`${path.join('src', 'utils', 'model-config-id.ts')}:4-9`]);
 	});
 
 	it('refuses a package without a vitest test script and names --test-command', () => {
@@ -127,7 +140,9 @@ describe('planFromTarget', () => {
 		const job = planFromTarget('src/a.ts', pkgRoot, { customTestCommand: true });
 		assert.deepEqual(job.targets, ['src/a.ts']);
 	});
+});
 
+describe('planFromTarget refusals', () => {
 	it('refuses a target outside the package, a missing one and a test file', () => {
 		const pkgRoot = seedPackage({ name: 'pkg', scripts: { test: 'vitest run' } });
 		assertMutateError(() => planFromTarget('../other.ts', pkgRoot), 2, /inside the package/);
@@ -146,7 +161,7 @@ describe('planFromTarget', () => {
 	it('asks for --package-dir when no package holds the target', () => {
 		writeFileSync(path.join(root, 'loose.ts'), 'export const a = 1;\n');
 		assert.throws(
-			() => planFromTarget(path.join(root, 'loose.ts')),
+			() => planFromTarget(path.join(root, 'loose.ts'), undefined, { repoRoot: root }),
 			(error) =>
 				error.exitCode === 2 &&
 				error.showUsage === true &&
@@ -156,7 +171,7 @@ describe('planFromTarget', () => {
 
 	it('asks for the usage text when it cannot find the target to infer a package', () => {
 		assert.throws(
-			() => planFromTarget('packages/no-such-package/src/a.ts'),
+			() => planFromTarget('packages/no-such-package/src/a.ts', undefined, { repoRoot: root }),
 			(error) =>
 				error.exitCode === 2 &&
 				error.showUsage === true &&
@@ -166,18 +181,27 @@ describe('planFromTarget', () => {
 });
 
 describe('findPackageRoot', () => {
+	beforeEach(() => writeTree(root, SAMPLE_REPO));
+
 	it('finds the nearest package.json above a file', () => {
-		const file = path.join(repoRoot, 'packages/@n8n/instance-ai/src/utils/model-config-id.ts');
-		assert.equal(findPackageRoot(file), path.join(repoRoot, 'packages/@n8n/instance-ai'));
+		const file = path.join(root, 'packages/@n8n/instance-ai/src/utils/__tests__/a.test.ts');
+		assert.equal(findPackageRoot(file, root), path.join(root, 'packages/@n8n/instance-ai'));
 	});
 
 	it('finds the repo root for a file at the top of the repo', () => {
-		assert.equal(findPackageRoot(path.join(repoRoot, 'knip.ts')), repoRoot);
+		writeTree(root, { 'package.json': { name: 'repo' } });
+		assert.equal(findPackageRoot(path.join(root, 'knip.ts'), root), root);
+	});
+
+	it('finds no package for a file outside every package', () => {
+		assert.equal(findPackageRoot(path.join(root, 'scripts/loose.ts'), root), null);
 	});
 
 	// A package outside the repo is never planned.
-	it('does not look outside the repo', () => {
-		seedPackage({ name: 'pkg', scripts: { test: 'vitest run' } });
-		assert.equal(findPackageRoot(path.join(root, 'pkg/src/a.ts')), null);
+	it('does not look above the repo root', () => {
+		const file = path.join(root, 'packages/cli/src/credentials/a.ts');
+		assert.equal(findPackageRoot(file, path.join(root, 'packages/cli/src')), null);
+		// The default repo is this one, and the temp repo lies outside it.
+		assert.equal(findPackageRoot(file), null);
 	});
 });

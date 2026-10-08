@@ -2,6 +2,7 @@
 vi.mock('@/workflows/workflow.service', () => ({ WorkflowService: class {} }));
 vi.mock('@/collaboration/collaboration.service', () => ({ CollaborationService: class {} }));
 
+import type { Logger } from '@n8n/backend-common';
 import { User, type WorkflowEntity } from '@n8n/db';
 import { BadRequestError, LockedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -17,7 +18,8 @@ const options = { source: 'n8n-ai', versionId: 'v-2' } as const;
 describe('AutomationWorkflowPublisher', () => {
 	const workflowService = mock<WorkflowService>();
 	const collaborationService = mock<CollaborationService>();
-	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService);
+	const logger = mock<Logger>();
+	const publisher = new AutomationWorkflowPublisher(workflowService, collaborationService, logger);
 	let calls: string[];
 
 	beforeEach(() => {
@@ -92,9 +94,21 @@ describe('AutomationWorkflowPublisher', () => {
 		});
 	});
 
-	it('reports a live workflow also when the editors cannot be told', async () => {
+	it('reports a live workflow also when the editors cannot be told, and logs why', async () => {
 		collaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
 
 		await expect(publisher.activate(user, 'wf-1', options)).resolves.toBe(true);
+
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to tell open editors that an automation was turned on',
+			{ workflowId: 'wf-1', error: 'push is down' },
+		);
+	});
+
+	it('logs nothing when the editors are told', async () => {
+		await publisher.activate(user, 'wf-1', options);
+
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });

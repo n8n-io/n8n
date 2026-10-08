@@ -31,7 +31,8 @@ export default {
 	// static ones is an acceptable trade. Scores tick up slightly on
 	// static-heavy files (smaller denominator) — expected, not a regression.
 	ignoreStatic: true,
-	// Empty — mutate.mjs always passes --mutate <file>.
+	// Empty: mutate.mjs sets `mutate` to the run's targets in the run config
+	// that it gives Stryker (reports/mutation/stryker.run.json).
 	mutate: [],
 	htmlReporter: { fileName: 'reports/mutation/raw.html' },
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },

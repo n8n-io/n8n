@@ -85,6 +85,32 @@ describe('useComposerFocus', () => {
 		expect(document.activeElement).toBe(composer);
 	});
 
+	it('takes the focus from the control that had it when the request came during the send', async () => {
+		const { api, composer, other } = mountHost();
+		other.focus();
+		await startSend(api, composer);
+
+		api.focus();
+		expect(document.activeElement).toBe(other);
+		await finishSend(api);
+
+		expect(document.activeElement).toBe(composer);
+	});
+
+	it('keeps the focus on a control that the user moved to after the request', async () => {
+		const { api, composer, other } = mountHost();
+		const later = document.createElement('button');
+		wrapper?.element.appendChild(later);
+		other.focus();
+		await startSend(api, composer);
+
+		api.focus();
+		later.focus();
+		await finishSend(api);
+
+		expect(document.activeElement).toBe(later);
+	});
+
 	it('keeps the focus on a control that the user moved to during the send', async () => {
 		const { api, composer, other } = mountHost();
 		composer.focus();
@@ -115,6 +141,19 @@ describe('useComposerFocus', () => {
 		api.isSending = false;
 		api.focus();
 		expect(composer.disabled).toBe(true);
+		await nextTick();
+
+		expect(document.activeElement).toBe(composer);
+	});
+
+	it('takes the focus from the requesting control when the request comes before the render enables the composer', async () => {
+		const { api, composer, other } = mountHost();
+		other.focus();
+		await startSend(api, composer);
+
+		api.isSending = false;
+		api.focus();
+		expect(document.activeElement).toBe(other);
 		await nextTick();
 
 		expect(document.activeElement).toBe(composer);

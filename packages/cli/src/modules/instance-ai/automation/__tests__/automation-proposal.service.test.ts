@@ -9,6 +9,7 @@ import {
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
 import type { UrlService } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
 import { User, type WorkflowEntity } from '@n8n/db';
 import { BadRequestError, LockedError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
@@ -20,6 +21,7 @@ import type { CapabilityContext, CapabilitySurface } from '@/services/capabiliti
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AutomationBlockedError } from '../automation-errors';
+import { AutomationInstanceInfo } from '../automation-instance-info';
 import { AutomationProposalService } from '../automation-proposal.service';
 import type { AutomationWorkflowKeeper } from '../automation-workflow-keeper';
 import type { AutomationWorkflowPublisher } from '../automation-workflow-publisher';
@@ -29,6 +31,7 @@ const MANUAL = 'n8n-nodes-base.manualTrigger';
 const MANUAL_CHAT = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 const EVALUATION = 'n8n-nodes-base.evaluationTrigger';
 const SLACK = 'n8n-nodes-base.slack';
+const WEBHOOK = 'n8n-nodes-base.webhook';
 const READ_WRITE_FILE = 'n8n-nodes-base.readWriteFile';
 
 const scheduleWith = (rule: Record<string, unknown>) => ({
@@ -39,6 +42,9 @@ const scheduleWith = (rule: Record<string, unknown>) => ({
 const WEEKDAYS_AT_8 = scheduleWith({ field: 'cronExpression', expression: '0 8 * * 1-5' });
 
 const user = Object.assign(new User(), { id: 'user-1' });
+
+/** The default time zone of the instance in this test. */
+const INSTANCE_ZONE = 'America/New_York';
 
 const storedWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
 	({
@@ -63,6 +69,8 @@ const scheduleNodes = (rule: Record<string, unknown>) =>
 
 const cronRuleNodes = (expression: string) =>
 	scheduleNodes({ field: 'cronExpression', expression });
+
+const webhookNode = { name: 'Hook', type: WEBHOOK } as WorkflowEntity['nodes'][number];
 
 /** Two rules, so no single cron says when the workflow runs. */
 const twoRuleNodes = [
@@ -103,7 +111,9 @@ describe('AutomationProposalService', () => {
 	const keeper = mock<AutomationWorkflowKeeper>();
 	const publisher = mock<AutomationWorkflowPublisher>();
 	const urlService = mock<UrlService>();
-	const service = new AutomationProposalService(finder, keeper, publisher, urlService);
+	const globalConfig = mock<GlobalConfig>({ generic: { timezone: INSTANCE_ZONE } });
+	const instance = new AutomationInstanceInfo(urlService, globalConfig);
+	const service = new AutomationProposalService(finder, keeper, publisher, instance);
 	const assistant: CapabilityContext = { user, surface: 'assistant' };
 
 	/** Access as stored: the workflow for the scopes that the user holds, null otherwise. */
@@ -152,7 +162,7 @@ describe('AutomationProposalService', () => {
 				versionId: 'v-2',
 				title: 'Morning digest',
 				why: ['Every weekday'],
-				trigger: { kind: 'schedule', cron: '0 8 * * 1-5' },
+				trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: INSTANCE_ZONE },
 				recommended: {
 					targetId: 'local',
 					kind: 'local',
@@ -174,7 +184,31 @@ describe('AutomationProposalService', () => {
 
 			const { card } = await service.propose({ ...request, cron: '0 8 * * 1-5' }, assistant);
 
-			expect(card.trigger).toEqual({ kind: 'schedule', cron: '0 7 * * *' });
+			expect(card.trigger).toEqual({
+				kind: 'schedule',
+				cron: '0 7 * * *',
+				timezone: INSTANCE_ZONE,
+			});
+		});
+
+		it('shows the time zone of the workflow settings with the schedule', async () => {
+			grant(storedWorkflow({ settings: { timezone: 'Asia/Kolkata' } }));
+
+			const { card } = await service.propose(request, assistant);
+
+			expect(card.trigger).toEqual({
+				kind: 'schedule',
+				cron: '0 8 * * 1-5',
+				timezone: 'Asia/Kolkata',
+			});
+		});
+
+		it('shows no schedule when the time zone of the workflow does not exist', async () => {
+			grant(storedWorkflow({ settings: { timezone: 'Mars/Olympus_Mons' } }));
+
+			const { card } = await service.propose(request, assistant);
+
+			expect(card.trigger).toEqual({ kind: 'schedule' });
 		});
 
 		it.each([
@@ -188,7 +222,7 @@ describe('AutomationProposalService', () => {
 
 				const { card } = await service.propose({ ...request, cron: given }, assistant);
 
-				expect(card.trigger).toEqual({ kind: 'schedule', cron: shown });
+				expect(card.trigger).toEqual({ kind: 'schedule', cron: shown, timezone: INSTANCE_ZONE });
 			},
 		);
 
@@ -445,6 +479,35 @@ describe('AutomationProposalService', () => {
 				expect(result).toMatchObject({ kept: true, active: false });
 				expect(keeper.keep).toHaveBeenCalledTimes(1);
 			});
+
+			// Archiving saves a new version, so only a card that showed the archive has its version.
+			it.each([true, false])(
+				'refuses to restore a workflow archived after the card (activate: %s) and changes nothing',
+				async (activate) => {
+					grant(storedWorkflow({ isArchived: true, versionId: 'v-3' }));
+
+					const result = service.apply({ ...request, activate, versionId: 'v-2' }, assistant);
+
+					await expect(result).rejects.toThrow(UserError);
+					await expect(result).rejects.toThrow(
+						'"Digest builder" was archived or changed after the automation was proposed, so it was not restored. Nothing was changed. Propose it again to keep it.',
+					);
+					expect(nothingChanged()).toBe(true);
+				},
+			);
+
+			it('restores a workflow that was archived when the card showed it', async () => {
+				const workflow = storedWorkflow({ isArchived: true, versionId: 'v-2' });
+				grant(workflow);
+
+				const result = await service.apply(
+					{ ...request, activate: false, versionId: 'v-2' },
+					assistant,
+				);
+
+				expect(result).toMatchObject({ kept: true });
+				expect(keeper.keep).toHaveBeenCalledWith(user, workflow);
+			});
 		});
 
 		it('checks the editor lock before the first change and changes nothing', async () => {
@@ -606,7 +669,19 @@ describe('AutomationProposalService', () => {
 				'a cron that is not valid',
 				storedWorkflow(),
 				'0 25 * * *',
-				differs('0 25 * * *', '0 8 * * 1-5'),
+				`${differs('0 25 * * *', '0 8 * * 1-5')} The cron expression "0 25 * * *" is not a valid five-field cron expression.`,
+			],
+			[
+				'a cron for a schedule that another trigger shares',
+				storedWorkflow({ nodes: [...cronRuleNodes('0 7 * * *'), webhookNode] }),
+				'0 7 * * *',
+				'Ignored the cron expression "0 7 * * *", because another trigger also starts the workflow. The card shows a schedule only when the schedule trigger alone starts the workflow.',
+			],
+			[
+				'a cron for a workflow with a time zone that does not exist',
+				storedWorkflow({ settings: { timezone: 'Mars/Olympus_Mons' } }),
+				'0 8 * * 1-5',
+				'Ignored the cron expression "0 8 * * 1-5", because the time zone in the workflow settings is not valid.',
 			],
 			[
 				'a cron that differs from the schedule rule',

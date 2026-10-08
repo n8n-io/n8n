@@ -18,9 +18,21 @@ export function classifyMcpWorkflowAccessFailure(error: unknown): PackageFailure
 	return 'entity-not-found';
 }
 
-function isClientError(error: unknown): error is UserError | ResponseError {
+/** An error that the user can fix, so its message can go to the MCP client as is. */
+export function isClientError(error: unknown): error is UserError | ResponseError {
 	if (error instanceof UserError) return true;
 	return error instanceof ResponseError && error.httpStatusCode < 500;
+}
+
+const INTERNAL_ERROR = 'an internal error occurred. The server log has the details';
+
+/**
+ * The reason of a failed step in words for the MCP client, without a final full stop, so that a
+ * sentence can contain it. The message of another error can hold internal details, for example
+ * table names, so it goes to the server log only.
+ */
+export function reasonForClient(error: unknown): string {
+	return isClientError(error) ? error.message.replace(/\.$/, '') : INTERNAL_ERROR;
 }
 
 /** The blocking issues that an import error carries, for example credential type mismatches. */
@@ -33,6 +45,10 @@ function blockingIssues(error: UserError | ResponseError): unknown[] | undefined
  * The MCP SDK keeps only the message of an error that a handler throws. Package errors that the
  * user can fix keep their details in `description` or in blocking issues, so this result keeps
  * them too. Returns undefined for other errors, which the caller throws again.
+ *
+ * The result has no structured content. MCP clients check structured content against the
+ * output schema of the tool even when `isError` is set, and that schema describes a success.
+ * Structured content here would turn the real message into a schema mismatch error.
  */
 export function packageToolError(error: unknown): CallToolResult | undefined {
 	if (!isClientError(error)) return undefined;
@@ -44,9 +60,5 @@ export function packageToolError(error: unknown): CallToolResult | undefined {
 	]
 		.filter((part) => typeof part === 'string' && part.length > 0)
 		.join(' ');
-	return {
-		content: [{ type: 'text', text }],
-		structuredContent: { error: error.message, ...(issues ? { issues } : {}) },
-		isError: true,
-	};
+	return { content: [{ type: 'text', text }], isError: true };
 }

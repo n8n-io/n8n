@@ -283,19 +283,51 @@ describe('compatPlugins', () => {
 	});
 });
 
-// CI runs these tests without the root node_modules, so this check needs them.
+// CI runs these tests without the root node_modules, so these checks need them.
+function unlessRunnerMissing(error) {
+	if (
+		error.code === 'ERR_MODULE_NOT_FOUND' &&
+		/'@stryker-mutator\/vitest-runner'/.test(error.message)
+	) {
+		return null;
+	}
+	throw error;
+}
 const installedPlugins = await import('./vitest-compat-runner.mjs').then(
 	(module) => module.strykerPlugins,
-	(error) => {
-		if (
-			error.code === 'ERR_MODULE_NOT_FOUND' &&
-			/'@stryker-mutator\/vitest-runner'/.test(error.message)
-		) {
-			return null;
-		}
-		throw error;
-	},
+	unlessRunnerMissing,
 );
+const installedRunnerPlugins = await import('@stryker-mutator/vitest-runner').then(
+	(module) => module.strykerPlugins,
+	unlessRunnerMissing,
+);
+
+// The injector that Stryker gives the runner's factory, with the runner options.
+function injectorFor(options) {
+	return {
+		provideValue() {
+			return this;
+		},
+		injectClass(RunnerClass) {
+			return new RunnerClass(options, {}, '__stryker__');
+		},
+	};
+}
+
+// A stand-in for the Vitest context that the runner's `init` makes. `start`
+// records the files and the test name pattern of each test run.
+function fakeVitest(started) {
+	const projects = [{ config: {} }];
+	return {
+		projects,
+		config: {},
+		provide() {},
+		state: { filesMap: new Map(), getFiles: () => [], errorsSet: new Set() },
+		async start(files) {
+			started.push({ files, pattern: projects[0].config.testNamePattern });
+		},
+	};
+}
 
 describe('the vitest-compat plugin file', () => {
 	const skip = !installedPlugins && '@stryker-mutator/vitest-runner is not installed';
@@ -304,18 +336,46 @@ describe('the vitest-compat plugin file', () => {
 		const [plugin] = installedPlugins;
 		assert.equal(plugin.name, COMPAT_RUNNER_NAME);
 		assert.deepEqual(plugin.factory.inject, ['$injector']);
-		const injector = {
-			provideValue() {
-				return this;
-			},
-			injectClass(RunnerClass) {
-				return new RunnerClass({ vitest: {} }, {}, '__stryker__');
-			},
-		};
-		const runner = plugin.factory(injector);
+		const runner = plugin.factory(injectorFor({ vitest: {} }));
 		// Both fixes sit on the runner instance.
 		assert.equal(Object.hasOwn(runner, 'init'), true);
 		assert.equal(Object.hasOwn(runner, 'dryRun'), true);
 		assert.equal(runner.constructor.name, 'VitestTestRunner');
+	});
+
+	// The runner's own mutant run, with Vitest replaced by a stand-in. A runner
+	// upgrade that selects tests in another way fails here, and not as a run
+	// that kills no mutant.
+	it('makes the installed runner select a nested test for a mutant', { skip }, async () => {
+		const vitestRunner = installedRunnerPlugins.find(
+			(plugin) => plugin.kind === 'TestRunner' && plugin.name === 'vitest',
+		);
+		const started = [];
+		function withFakeVitest(injector) {
+			const runner = vitestRunner.factory(injector);
+			// Only the start of Vitest is replaced. The fixes wrap this `init`.
+			runner.init = async () => {
+				runner.ctx = fakeVitest(started);
+			};
+			return runner;
+		}
+		withFakeVitest.inject = vitestRunner.factory.inject;
+		const [plugin] = compatPlugins([
+			{ kind: vitestRunner.kind, name: 'vitest', factory: withFakeVitest },
+		]);
+		const runner = plugin.factory(injectorFor({ vitest: { related: true } }));
+		await runner.init();
+		await runner.mutantRun({
+			activeMutant: { id: '1' },
+			testFilter: ['/pkg/a.test.ts#suite reads x'],
+			sandboxFileName: '/pkg/src/a.ts',
+			mutantActivation: 'runtime',
+		});
+		assert.equal(started.length, 1);
+		const [{ files, pattern }] = started;
+		assert.deepEqual(files, ['/pkg/a.test.ts']);
+		assert.equal(pattern.test('suite > reads x'), true);
+		assert.equal(pattern.test('suite reads x'), true);
+		assert.equal(pattern.test('suite > reads y'), false);
 	});
 });

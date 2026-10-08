@@ -2,10 +2,15 @@ import fc from 'fast-check';
 
 import type { WorkflowPublishingOutcome } from '../../n8n-packages.types';
 import {
+	dataTablesNotKeptWarning,
 	type ErrorWorkflowLinkInput,
+	errorWorkflowProblemText,
+	keptDataTablesWarning,
 	planErrorWorkflowLink,
 	publishingWarning,
 	removedErrorWorkflowWarning,
+	uncheckedErrorWorkflowRemovedWarning,
+	uncheckedErrorWorkflowWarning,
 } from '../import-outcome';
 
 describe('publishingWarning', () => {
@@ -235,15 +240,55 @@ describe('planErrorWorkflowLink', () => {
 	});
 });
 
-describe('removedErrorWorkflowWarning', () => {
+describe('errorWorkflowProblemText', () => {
 	it.each([
 		['not-found', 'it is not on this instance or you cannot open it'],
 		['not-published', 'it is not published'],
 		['no-error-trigger', 'its published version has no active Error Trigger node'],
 		['caller-policy', 'it does not let this workflow call it'],
 	] as const)('gives the reason "%s" in words', (reason, text) => {
-		expect(removedErrorWorkflowWarning('"Alert the team" (wf-err)', reason)).toBe(
-			`The import removed the link to the error workflow "Alert the team" (wf-err), because ${text}. Choose an error workflow in the workflow settings.`,
+		expect(errorWorkflowProblemText(reason)).toBe(text);
+	});
+});
+
+describe('error workflow link warnings', () => {
+	it('names the error workflow and why the import removed the link', () => {
+		expect(
+			removedErrorWorkflowWarning('"Alert the team" (wf-err)', 'it is not available in MCP'),
+		).toBe(
+			'The import removed the link to the error workflow "Alert the team" (wf-err), because it is not available in MCP. Choose an error workflow in the workflow settings.',
+		);
+	});
+
+	it('says that the import removed a link that it could not check', () => {
+		expect(uncheckedErrorWorkflowRemovedWarning('the workflow could not be read')).toBe(
+			'The import removed the error workflow link of the copy, because it could not check the link: the workflow could not be read. Choose an error workflow in the workflow settings.',
+		);
+	});
+
+	it('says that a link stays unchecked when the import could not remove it', () => {
+		expect(uncheckedErrorWorkflowWarning('Database is locked')).toBe(
+			'The import could not check the error workflow of the copy: Database is locked. Check it in the workflow settings.',
+		);
+	});
+});
+
+describe('data table warnings', () => {
+	const tables = [
+		{ id: 'dt-2', name: 'Orders' },
+		{ id: 'dt-1', name: 'Customers' },
+		{ id: 'dt-3', name: 'Orders' },
+	];
+
+	it('counts the replaced tables and names them sorted and once each', () => {
+		expect(keptDataTablesWarning(tables)).toBe(
+			'The copy keeps the data tables that it used in place of 3 data table(s) of the package that this project does not have: Customers, Orders.',
+		);
+	});
+
+	it('says which tables the import could not keep, and why', () => {
+		expect(dataTablesNotKeptWarning([tables[1]], 'you cannot update the workflow')).toBe(
+			'The import could not keep the data tables that the copy used in place of 1 data table(s) of the package that this project does not have (Customers), because you cannot update the workflow. Check the data tables in the workflow before it runs.',
 		);
 	});
 });

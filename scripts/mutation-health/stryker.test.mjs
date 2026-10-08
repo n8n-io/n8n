@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import {
 	existsSync,
 	mkdirSync,
@@ -27,7 +28,8 @@ import {
 	toCommandLine,
 	writeRunConfig,
 } from './stryker.mjs';
-import { MutateError } from './targets.mjs';
+import defaultConfig from './stryker.default.mjs';
+import { MutateError, repoRoot } from './targets.mjs';
 import { IN_PLACE_KEY, namesInPlaceMode } from './test-doubles.mjs';
 
 const VITEST_PLUGIN = '@stryker-mutator/vitest-runner';
@@ -199,10 +201,18 @@ describe('buildStrykerConfig defaults', () => {
 		]);
 	});
 
-	// A tsconfig name that matches no file turns Stryker's rewrite off.
+	// A tsconfig name that matches no file turns Stryker's rewrite off. Stryker
+	// reads the name from the package dir, so no dir of the repo may hold it.
 	it('names a tsconfig file that no package has', () => {
 		assert.match(NO_TSCONFIG_REWRITE, /^[\w.-]+\.json$/);
-		assert.equal(existsSync(path.join(import.meta.dirname, '../..', NO_TSCONFIG_REWRITE)), false);
+		// In a git pathspec `*` also matches `/`, so this finds the file at any depth.
+		const res = spawnSync(
+			'git',
+			['ls-files', '--cached', '--others', '--exclude-standard', '--', `*${NO_TSCONFIG_REWRITE}`],
+			{ cwd: repoRoot, encoding: 'utf8' },
+		);
+		assert.equal(res.status, 0, res.stderr);
+		assert.equal(res.stdout, '');
 	});
 
 	it('keeps large artefact folders out of the sandbox copy, on top of the config list', () => {
@@ -262,6 +272,27 @@ describe('sandboxConfigError', () => {
 	it('accepts a config that leaves in place mode off', () => {
 		assert.equal(sandboxConfigError({ [IN_PLACE_KEY]: false }, 'a.mjs'), null);
 		assert.equal(sandboxConfigError(SHARED_DEFAULT, 'a.mjs'), null);
+	});
+
+	// The run sets `tsconfigFile` to a file that does not exist, and the
+	// TypeScript checker type-checks with that file.
+	it('refuses a config that uses the TypeScript checker, and says what to do', () => {
+		const error = sandboxConfigError(
+			{ checkers: ['other', 'typescript'] },
+			'packages/pkg/stryker.config.mjs',
+		);
+		assert.match(
+			error,
+			/^packages\/pkg\/stryker\.config\.mjs uses the "typescript" checker, which mutate\.mjs does not support\.\n/,
+		);
+		assert.match(error, /\(tsconfigFile\)/);
+		assert.match(error, /Remove "typescript" from "checkers"\.$/);
+	});
+
+	it('accepts a config with no checker or with only other checkers', () => {
+		for (const checkers of [undefined, [], ['other']]) {
+			assert.equal(sandboxConfigError({ checkers }, 'a.mjs'), null);
+		}
 	});
 });
 
@@ -339,6 +370,26 @@ describe('loadBaseConfig and resolveConfig', () => {
 		writeFileSync(path.join(pkgRoot, 'stryker.config.mjs'), 'export default {};');
 		assert.equal(resolveConfig(pkgRoot), path.join(pkgRoot, 'stryker.config.mjs'));
 		assert.equal(resolveConfig(pkgRoot, path.join(root, 'x.mjs')), path.join(root, 'x.mjs'));
+	});
+
+	it('reads a relative --config from the repo root', () => {
+		const pkgRoot = path.join(root, 'pkg');
+		assert.equal(resolveConfig(pkgRoot, 'cfg/x.mjs', root), path.join(root, 'cfg/x.mjs'));
+	});
+
+	// Related-test discovery in packages/cli outlives any usable timeout.
+	it('gives packages/cli the cli config, with related-test discovery off', async () => {
+		const cliRoot = path.join(root, 'packages/cli');
+		mkdirSync(cliRoot, { recursive: true });
+		const cliConfig = path.join(import.meta.dirname, 'stryker.cli.mjs');
+		assert.equal(resolveConfig(cliRoot, undefined, root), cliConfig);
+		// From another repo root the same dir is not packages/cli.
+		assert.equal(resolveConfig(cliRoot), path.join(import.meta.dirname, 'stryker.default.mjs'));
+		const { vitest, ...rest } = await loadBaseConfig(cliConfig);
+		assert.deepEqual(vitest, { related: false });
+		assert.deepEqual(rest, defaultConfig);
+		writeFileSync(path.join(cliRoot, 'stryker.config.mjs'), 'export default {};');
+		assert.equal(resolveConfig(cliRoot, undefined, root), path.join(cliRoot, 'stryker.config.mjs'));
 	});
 });
 

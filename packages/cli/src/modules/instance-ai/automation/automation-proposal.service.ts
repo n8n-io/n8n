@@ -3,7 +3,6 @@ import type {
 	AutomationProposalResult,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
-import { UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type * as InstanceAi from '@n8n/instance-ai';
@@ -28,7 +27,8 @@ import {
 	recommendationNodeTypes,
 } from './automation-card';
 import { AutomationBlockedError, isExpectedFailure } from './automation-errors';
-import { chooseCron, type CronChoice, triggerCronOf } from './automation-schedule';
+import { AutomationInstanceInfo } from './automation-instance-info';
+import { chooseCron, readTriggerSchedule } from './automation-schedule';
 import { type AutomationTrigger, classifyAutomationTrigger } from './automation-trigger';
 import { AutomationWorkflowKeeper } from './automation-workflow-keeper';
 import { AutomationWorkflowPublisher } from './automation-workflow-publisher';
@@ -52,10 +52,10 @@ const ACTION_SOURCE: Record<CapabilitySurface, WorkflowActionSource> = {
 	mcp: 'n8n-mcp',
 };
 
-/** Recommends where the workflow runs. B05 knows only this instance. */
+/** Recommends where the workflow runs. Only this n8n instance is a run target for now. */
 async function recommendLocal(nodeTypes: string[]): Promise<ProposalRecommendation> {
 	// Loaded at the first call, so that MCP requests do not load the Assistant package at boot.
-	// The first call still loads the whole package. BACKLOG Q10: import a subpath of it.
+	// The first call still loads the whole package.
 	const { recommendRunTarget } = await lazyImport<typeof InstanceAi>(
 		async () => await import('@n8n/instance-ai'),
 	);
@@ -72,15 +72,22 @@ function isBlockedByAdmin(context: CapabilityContext, key: keyof InstanceAiPermi
 	);
 }
 
-function cronFor(workflow: FoundWorkflow, trigger: AutomationTrigger, cron?: string): CronChoice {
-	return chooseCron(trigger, cron, triggerCronOf(workflow.nodes, trigger));
-}
-
 /** Refuses to turn on a version that the user did not agree to. */
 function assertAgreedVersion(workflow: FoundWorkflow, versionId: string | undefined): void {
 	if (versionId === undefined || versionId === workflow.versionId) return;
 	throw new UserError(
 		`"${workflow.name}" changed after the automation was proposed, so it was not turned on. Nothing was changed. Propose it again to turn on the current version.`,
+	);
+}
+
+/**
+ * Refuses to restore a workflow that was archived after the card was shown. Archiving saves a new
+ * version, so the version of the card tells if the card showed the archived workflow.
+ */
+function assertArchivedOnCard(workflow: FoundWorkflow, versionId: string | undefined): void {
+	if (versionId === undefined || versionId === workflow.versionId) return;
+	throw new UserError(
+		`"${workflow.name}" was archived or changed after the automation was proposed, so it was not restored. Nothing was changed. Propose it again to keep it.`,
 	);
 }
 
@@ -94,7 +101,7 @@ export class AutomationProposalService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly keeper: AutomationWorkflowKeeper,
 		private readonly publisher: AutomationWorkflowPublisher,
-		private readonly urlService: UrlService,
+		private readonly instance: AutomationInstanceInfo,
 	) {}
 
 	/**
@@ -120,7 +127,10 @@ export class AutomationProposalService {
 			workflow,
 			request,
 			trigger,
-			cron: cronFor(workflow, trigger, request.cron).cron,
+			schedule: chooseCron(
+				request.cron,
+				readTriggerSchedule(workflow, trigger, this.instance.defaultTimezone),
+			).shown,
 			recommendation,
 			canActivate,
 		});
@@ -147,9 +157,13 @@ export class AutomationProposalService {
 			);
 		}
 		const workflow = await this.findWorkflow(request.workflowId, context);
+		if (workflow.isArchived) assertArchivedOnCard(workflow, request.versionId);
 		await this.assertCanRestore(workflow, context);
 		const trigger = classifyAutomationTrigger(workflow.nodes);
-		const { warning } = cronFor(workflow, trigger, request.cron);
+		const { warning } = chooseCron(
+			request.cron,
+			readTriggerSchedule(workflow, trigger, this.instance.defaultTimezone),
+		);
 		if (wantsOn) assertAgreedVersion(workflow, request.versionId);
 		const turnOn = wantsOn && !isSavedVersionLive(workflow);
 		if (turnOn) await this.assertCanTurnOn(workflow, trigger, context.user);
@@ -158,7 +172,7 @@ export class AutomationProposalService {
 
 		const result: AutomationProposalResult = {
 			workflowId: workflow.id,
-			url: `${this.urlService.getInstanceBaseUrl()}/workflow/${encodeURIComponent(workflow.id)}`,
+			url: this.instance.workflowUrl(workflow.id),
 			active: workflow.activeVersionId !== null,
 			kept: true,
 			...(warning ? { warnings: [warning] } : {}),

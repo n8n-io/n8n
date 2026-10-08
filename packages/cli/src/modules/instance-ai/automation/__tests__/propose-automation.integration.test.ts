@@ -11,6 +11,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { CacheService } from '@n8n/backend-services';
 import type { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ProjectRepository,
@@ -31,6 +32,7 @@ import { CollaborationState } from '@/collaboration/collaboration.state';
 import { License } from '@/license';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
@@ -67,9 +69,10 @@ const SCHEDULE_CONNECTIONS = {
 };
 
 /**
- * `propose_automation` on real services: the Assistant adapter keeps the workflow, the workflow
- * service publishes it, and the provenance and temporary-marker tables change in SQLite. Only
- * trigger registration (ActiveWorkflowManager), telemetry and push are stubbed.
+ * `propose_automation` on real services in SQLite: AutomationWorkflowKeeper and
+ * AutomationTemporaryMarker keep the workflow (restore, provenance row, marker removed), and
+ * WorkflowService publishes it. Only trigger registration (ActiveWorkflowManager), telemetry and
+ * push are stubbed.
  */
 describe('propose_automation (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
@@ -202,7 +205,11 @@ describe('propose_automation (integration)', () => {
 		expect(card).toMatchObject({
 			workflowId: workflow.id,
 			versionId: workflow.versionId,
-			trigger: { kind: 'schedule', cron: '0 8 * * 1-5' },
+			trigger: {
+				kind: 'schedule',
+				cron: '0 8 * * 1-5',
+				timezone: Container.get(GlobalConfig).generic.timezone,
+			},
 			stepCount: 2,
 			canActivate: true,
 			archived: false,
@@ -273,6 +280,7 @@ describe('propose_automation (integration)', () => {
 		const dailyAt8 = { rule: { interval: [{ field: 'days', triggerAtHour: 8 }] } };
 		const workflow = await createTemporaryWorkflow({
 			nodes: [{ ...scheduleNode, parameters: dailyAt8 }, ...otherNodes],
+			settings: { timezone: 'Asia/Kolkata' },
 		});
 
 		const { card, output } = await proposeAndAnswer(workflow.id, {
@@ -281,13 +289,32 @@ describe('propose_automation (integration)', () => {
 			values: { target: 'local', activate: false },
 		});
 
-		expect(card.trigger).toEqual({ kind: 'schedule', cron: '0 8 * * *' });
+		expect(card.trigger).toEqual({ kind: 'schedule', cron: '0 8 * * *', timezone: 'Asia/Kolkata' });
 		expect(output).toMatchObject({
 			kept: true,
 			warnings: [
 				'Ignored the cron expression "0 8 * * 1-5", because the schedule trigger uses the cron expression "0 8 * * *".',
 			],
 		});
+	});
+
+	it('does not restore a workflow that was archived after the card, and changes nothing', async () => {
+		const workflow = await createTemporaryWorkflow();
+
+		const result = proposeAndAnswer(
+			workflow.id,
+			{ kind: 'capabilityDecision', approved: true, values: { target: 'local', activate: false } },
+			async () => {
+				await Container.get(WorkflowService).archive(owner, workflow.id);
+			},
+		);
+
+		await expect(result).rejects.toThrow(
+			'was archived or changed after the automation was proposed',
+		);
+		expect((await stored(workflow.id)).isArchived).toBe(true);
+		expect(await provenance.findForWorkflow(workflow.id)).toBeNull();
+		expect(await temporaryWorkflows.existsForWorkflow(workflow.id)).toBe(true);
 	});
 
 	it('keeps nothing when "Turn it on" meets a workflow that someone edits', async () => {

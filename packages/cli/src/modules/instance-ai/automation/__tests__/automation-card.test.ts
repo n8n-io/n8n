@@ -52,7 +52,7 @@ const cardInput = (overrides: Partial<AutomationCardInput> = {}): AutomationCard
 	workflow: workflow(),
 	request: { title: 'Morning digest', why: ['You asked for it every weekday'] },
 	trigger: scheduleTrigger,
-	cron: '0 8 * * 1-5',
+	schedule: { cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 	recommendation: {
 		targetId: 'local',
 		kind: 'local',
@@ -247,7 +247,7 @@ describe('buildAutomationCard', () => {
 			versionId: 'v-2',
 			title: 'Morning digest',
 			why: ['You asked for it every weekday'],
-			trigger: { kind: 'schedule', cron: '0 8 * * 1-5' },
+			trigger: { kind: 'schedule', cron: '0 8 * * 1-5', timezone: 'Europe/London' },
 			steps: [
 				{ name: 'Every weekday', type: SCHEDULE },
 				{ name: 'Send digest', type: SLACK },
@@ -272,7 +272,7 @@ describe('buildAutomationCard', () => {
 
 	it('offers only saving when the workflow cannot be turned on', () => {
 		const card = buildAutomationCard(
-			cardInput({ trigger: manualTrigger, cron: undefined, canActivate: false }),
+			cardInput({ trigger: manualTrigger, schedule: undefined, canActivate: false }),
 		);
 
 		expect(card.trigger).toStrictEqual({ kind: 'manual' });
@@ -359,16 +359,22 @@ describe('buildAutomationCard', () => {
 				fc.record({
 					nodes: fc.array(nodeArb, { maxLength: 30 }),
 					canActivate: fc.boolean(),
-					cron: fc.option(fc.constantFrom('0 8 * * 1-5', '*/5 * * * *'), { nil: undefined }),
+					schedule: fc.option(
+						fc.record({
+							cron: fc.constantFrom('0 8 * * 1-5', '*/5 * * * *'),
+							timezone: fc.constantFrom('UTC', 'Europe/London', 'Asia/Kolkata'),
+						}),
+						{ nil: undefined },
+					),
 					reasons: fc.array(reasonArb, { minLength: 1, maxLength: 3 }),
 					sharings: fc.array(sharingArb, { maxLength: 15 }),
 				}),
-				({ nodes, canActivate, cron, reasons, sharings }) => {
+				({ nodes, canActivate, schedule, reasons, sharings }) => {
 					const shared = [{ role: 'workflow:owner', project: teamProject }, ...sharings];
 					const card = buildAutomationCard(
 						cardInput({
 							workflow: workflow({ nodes, shared }),
-							cron,
+							schedule,
 							canActivate,
 							recommendation: { targetId: 'local', kind: 'local', reasons },
 						}),

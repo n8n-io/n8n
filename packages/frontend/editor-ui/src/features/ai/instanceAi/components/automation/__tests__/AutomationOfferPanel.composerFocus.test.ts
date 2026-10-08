@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, ref } from 'vue';
+import { Transition, defineComponent, h, nextTick, ref } from 'vue';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -73,9 +73,9 @@ vi.mock('@/features/agents/components/AgentChatEmptyState.vue', () => ({
 const PROMPT = 'Make "Daily report" automatic';
 
 /**
- * The inline offer as the thread view wires it: a choice hides the offer, asks
- * for the composer focus on the next tick, and "Make it automatic" sends the
- * prompt through the chat.
+ * The inline offer as the thread view wires it: the offer sits in a leave
+ * transition, a choice hides the offer, asks for the composer focus on the
+ * next tick, and "Make it automatic" sends the prompt through the chat.
  */
 const OfferInChat = defineComponent({
 	setup() {
@@ -103,13 +103,15 @@ const OfferInChat = defineComponent({
 				},
 				{
 					'inline-offers': () =>
-						isOfferShown.value
-							? h(AutomationOfferPanel, {
-									workflowName: 'Daily report',
-									onAccept: () => settle(PROMPT),
-									onDismiss: () => settle(),
-								})
-							: null,
+						h(Transition, { name: 'confirmation-slide' }, () =>
+							isOfferShown.value
+								? h(AutomationOfferPanel, {
+										workflowName: 'Daily report',
+										onAccept: () => settle(PROMPT),
+										onDismiss: () => settle(),
+									})
+								: null,
+						),
 				},
 			);
 	},
@@ -125,10 +127,17 @@ async function mountOfferInChat() {
 	await router.push('/');
 	wrapper = mount(OfferInChat, {
 		attachTo: document.body,
-		global: { plugins: [createTestingPinia(), router] },
+		// The real transition keeps the leaving offer, and its focused button, in the DOM for some frames.
+		global: { plugins: [createTestingPinia(), router], stubs: { transition: false } },
 	});
 	await flushPromises();
 	return wrapper;
+}
+
+async function waitForOfferToLeave(chat: VueWrapper) {
+	await vi.waitFor(() => {
+		expect(chat.find('[data-test-id="automation-offer-panel"]').exists()).toBe(false);
+	});
 }
 
 function composerTextarea(): HTMLTextAreaElement {
@@ -164,9 +173,9 @@ describe('AutomationOfferPanel in the chat', () => {
 		await flushPromises();
 
 		expect(sendMessage).toHaveBeenCalledWith(PROMPT, undefined, expect.any(Function));
-		expect(chat.find('[data-test-id="automation-offer-panel"]').exists()).toBe(false);
 		sent.resolve('sent');
 		await flushPromises();
+		await waitForOfferToLeave(chat);
 
 		expect(composerTextarea().disabled).toBe(false);
 		expect(document.activeElement).toBe(composerTextarea());
@@ -179,8 +188,8 @@ describe('AutomationOfferPanel in the chat', () => {
 
 		await user.keyboard('{Enter}');
 		await flushPromises();
+		await waitForOfferToLeave(chat);
 
-		expect(chat.find('[data-test-id="automation-offer-panel"]').exists()).toBe(false);
 		expect(sendMessage).not.toHaveBeenCalled();
 		expect(document.activeElement).toBe(composerTextarea());
 	});

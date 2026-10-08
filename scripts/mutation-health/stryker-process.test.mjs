@@ -4,7 +4,12 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { exitCodeForSignal, registerSignalHandlers, runStryker } from './stryker.mjs';
+import {
+	exitCodeForSignal,
+	guardOutsideStryker,
+	registerSignalHandlers,
+	runStryker,
+} from './stryker.mjs';
 import { MutateError } from './targets.mjs';
 import { fakeProcess, fakeSpawn, namesInPlaceMode, sink } from './test-doubles.mjs';
 
@@ -15,18 +20,20 @@ describe('exitCodeForSignal', () => {
 	});
 });
 
-describe('registerSignalHandlers', () => {
-	function harness(onSignal) {
-		const p = fakeProcess();
-		const handlers = registerSignalHandlers({
-			onSignal,
-			proc: p.proc,
-			exit: p.exit,
-			write: p.write,
-		});
-		return { ...p, handlers };
-	}
+// Handlers on a stand-in process, which record each exit and each message.
+function harness(onSignal, onExit) {
+	const p = fakeProcess();
+	const handlers = registerSignalHandlers({
+		onSignal,
+		onExit,
+		proc: p.proc,
+		exit: p.exit,
+		write: p.write,
+	});
+	return { ...p, handlers };
+}
 
+describe('registerSignalHandlers', () => {
 	it('exits 130 on SIGINT and 143 on SIGTERM when no run is alive', () => {
 		const h = harness(() => false);
 		h.proc.emit('SIGINT');
@@ -72,6 +79,51 @@ describe('registerSignalHandlers', () => {
 		h.proc.emit('SIGINT');
 		assert.deepEqual(h.exits, [130]);
 	});
+});
+
+describe('registerSignalHandlers cleanup', () => {
+	// An exit skips every `finally`, so the cleanup must run before it.
+	it('runs onExit before each exit it makes', () => {
+		const steps = [];
+		const p = fakeProcess();
+		registerSignalHandlers({
+			onSignal: () => false,
+			onExit: () => steps.push('cleanup'),
+			proc: p.proc,
+			exit: (code) => steps.push(`exit ${code}`),
+			write: p.write,
+		});
+		p.proc.emit('SIGINT');
+		p.proc.emit('SIGTERM');
+		p.proc.emit('uncaughtException', new Error('boom'));
+		assert.deepEqual(steps, ['cleanup', 'exit 130', 'cleanup', 'exit 143', 'cleanup', 'exit 3']);
+	});
+
+	it('runs onExit only when it exits, not when a live run takes the signal', () => {
+		let cleanups = 0;
+		const h = harness(
+			() => true,
+			() => cleanups++,
+		);
+		h.proc.emit('SIGINT');
+		assert.equal(cleanups, 0);
+		assert.deepEqual(h.exits, []);
+	});
+
+	// The exit code contract holds even when the cleanup fails.
+	it('still exits with the same code when onExit throws, and prints why', () => {
+		const h = harness(
+			() => false,
+			() => {
+				throw new Error('EBUSY');
+			},
+		);
+		h.proc.emit('SIGTERM');
+		h.proc.emit('uncaughtException', new Error('boom'));
+		assert.deepEqual(h.exits, [143, 3]);
+		const printed = h.writes.join('');
+		assert.equal(printed.match(/\n✗ Cleanup before exit failed: EBUSY\n/g).length, 2);
+	});
 
 	it('stops listening after dispose, so the next job owns its own handlers', () => {
 		const h = harness(() => false);
@@ -83,6 +135,51 @@ describe('registerSignalHandlers', () => {
 		for (const event of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
 			assert.equal(h.proc.listenerCount(event), 0);
 		}
+	});
+});
+
+describe('guardOutsideStryker', () => {
+	const events = ['SIGINT', 'SIGTERM', 'uncaughtException'];
+	const counts = (p) => events.map((event) => p.proc.listenerCount(event));
+
+	function guarded() {
+		const p = fakeProcess();
+		let cleanups = 0;
+		const guard = guardOutsideStryker({
+			onExit: () => cleanups++,
+			proc: p.proc,
+			exit: p.exit,
+			write: p.write,
+		});
+		return { ...p, guard, cleanups: () => cleanups };
+	}
+
+	it('listens from the start, and runs the cleanup before it exits', () => {
+		const h = guarded();
+		assert.deepEqual(counts(h), [1, 1, 1]);
+		h.proc.emit('SIGINT');
+		assert.deepEqual(h.exits, [130]);
+		assert.equal(h.cleanups(), 1);
+	});
+
+	it('stops listening on release and listens once more on hold', () => {
+		const h = guarded();
+		h.guard.release();
+		assert.deepEqual(counts(h), [0, 0, 0]);
+		h.proc.emit('SIGTERM');
+		assert.deepEqual(h.exits, []);
+		h.guard.hold();
+		h.guard.hold();
+		assert.deepEqual(counts(h), [1, 1, 1]);
+		h.proc.emit('SIGTERM');
+		assert.deepEqual(h.exits, [143]);
+	});
+
+	it('can release twice', () => {
+		const h = guarded();
+		h.guard.release();
+		h.guard.release();
+		assert.deepEqual(counts(h), [0, 0, 0]);
 	});
 });
 
@@ -120,7 +217,7 @@ describe('registerSignalHandlers in a real process', () => {
 // Start runStryker with a fake spawn and a stand-in process.
 const argv = ['/bin/stryker.js', 'run', '/pkg/reports/mutation/stryker.run.json'];
 
-function start(onSpawn) {
+function start(onSpawn, { onExit } = {}) {
 	const doubles = fakeSpawn({ onSpawn });
 	const p = fakeProcess();
 	const out = sink();
@@ -129,6 +226,7 @@ function start(onSpawn) {
 		spawn: doubles.spawn,
 		stdout: out,
 		stderr: err,
+		onExit,
 		proc: p.proc,
 		exit: p.exit,
 		write: p.write,
@@ -212,13 +310,37 @@ describe('runStryker signals and start errors', () => {
 		await run.promise;
 	});
 
-	it('exits at once on a signal that comes after Stryker is gone', async () => {
-		const run = start();
+	it('runs the cleanup, then exits at once, on a signal that comes after Stryker is gone', async () => {
+		let cleanups = 0;
+		const run = start(undefined, { onExit: () => cleanups++ });
 		run.children[0].exitCode = 0;
 		run.proc.emit('SIGTERM');
 		assert.deepEqual(run.exits, [143]);
+		assert.equal(cleanups, 1);
 		assert.deepEqual(run.children[0].kills, []);
 		run.children[0].emit('close', 0);
+		await run.promise;
+	});
+
+	// The tool exits at once after a crash. A live Stryker must not outlive it.
+	it('stops a live Stryker and runs the cleanup, then exits 3, on a crash', async () => {
+		const steps = [];
+		const run = start(undefined, { onExit: () => steps.push('cleanup') });
+		run.children[0].kill = (signal) => steps.push(`kill ${signal}`);
+		run.proc.emit('uncaughtException', new Error('boom'));
+		assert.deepEqual(steps, ['kill SIGINT', 'cleanup']);
+		assert.deepEqual(run.exits, [3]);
+		run.children[0].finish(130);
+		await run.promise;
+	});
+
+	it('does not stop a Stryker that is already gone on a crash', async () => {
+		const run = start();
+		run.children[0].exitCode = 1;
+		run.proc.emit('uncaughtException', new Error('boom'));
+		assert.deepEqual(run.children[0].kills, []);
+		assert.deepEqual(run.exits, [3]);
+		run.children[0].emit('close', 1);
 		await run.promise;
 	});
 

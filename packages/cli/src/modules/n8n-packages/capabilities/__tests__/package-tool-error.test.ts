@@ -12,7 +12,11 @@ import {
 import { WorkflowAccessError } from '@/modules/mcp/mcp.errors';
 
 import { PackageExportBlockedError } from '../../entities/package-export.errors';
-import { classifyMcpWorkflowAccessFailure, packageToolError } from '../package-tool-error';
+import {
+	classifyMcpWorkflowAccessFailure,
+	packageToolError,
+	reasonForClient,
+} from '../package-tool-error';
 
 const issue = {
 	type: 'credential-unresolved',
@@ -35,9 +39,6 @@ describe('packageToolError', () => {
 					text: '1 workflow dependency not included in the package. Export aborted. Workflow IDs not included in the package: wf-sub',
 				},
 			],
-			structuredContent: {
-				error: '1 workflow dependency not included in the package. Export aborted.',
-			},
 			isError: true,
 		});
 	});
@@ -46,7 +47,7 @@ describe('packageToolError', () => {
 		const result = packageToolError(new UserError('Workflow not found'));
 
 		expect(result?.content).toEqual([{ type: 'text', text: 'Workflow not found' }]);
-		expect(result?.structuredContent).toEqual({ error: 'Workflow not found' });
+		expect(result?.isError).toBe(true);
 	});
 
 	it('adds no space for an empty description', () => {
@@ -67,13 +68,11 @@ describe('packageToolError', () => {
 	])('lists the blocking issues of %s', (_case, error) => {
 		const result = packageToolError(error);
 
-		expect(result?.isError).toBe(true);
-		expect(result?.content).toEqual([
-			{ type: 'text', text: `Import blocked: 1 issue(s). Issues: ${JSON.stringify([issue])}` },
-		]);
-		expect(result?.structuredContent).toEqual({
-			error: 'Import blocked: 1 issue(s).',
-			issues: [issue],
+		expect(result).toEqual({
+			content: [
+				{ type: 'text', text: `Import blocked: 1 issue(s). Issues: ${JSON.stringify([issue])}` },
+			],
+			isError: true,
 		});
 	});
 
@@ -82,8 +81,7 @@ describe('packageToolError', () => {
 			new ConflictError('Conflict', undefined, { issues: 'not a list' }),
 		);
 
-		expect(result?.structuredContent).toEqual({ error: 'Conflict' });
-		expect(result?.content).toEqual([{ type: 'text', text: 'Conflict' }]);
+		expect(result).toEqual({ content: [{ type: 'text', text: 'Conflict' }], isError: true });
 	});
 
 	it.each([
@@ -95,7 +93,6 @@ describe('packageToolError', () => {
 	])('gives a tool error for %s', (_case, error) => {
 		expect(packageToolError(error)).toEqual({
 			content: [{ type: 'text', text: error.message }],
-			structuredContent: { error: error.message },
 			isError: true,
 		});
 	});
@@ -108,6 +105,35 @@ describe('packageToolError', () => {
 		['a thrown string', 'failed'],
 	])('leaves %s to the MCP SDK', (_case, error) => {
 		expect(packageToolError(error)).toBeUndefined();
+	});
+});
+
+describe('reasonForClient', () => {
+	it.each([
+		['a user error', new UserError('The project is archived')],
+		['a client response error', new ForbiddenError('You cannot import into this project')],
+		['a workflow access error', new WorkflowAccessError('Workflow is archived', 'workflow_archived')],
+	])('gives the message of %s', (_case, error) => {
+		expect(reasonForClient(error)).toBe(error.message);
+	});
+
+	it('leaves out the final full stop of the message, so that a sentence can hold it', () => {
+		expect(reasonForClient(new UserError('You cannot update the workflow.'))).toBe(
+			'You cannot update the workflow',
+		);
+		expect(reasonForClient(new UserError('Version 1.2 is too old'))).toBe('Version 1.2 is too old');
+	});
+
+	it.each([
+		['a server error', new InternalServerError('SQLITE_BUSY: database table "workflow_entity"')],
+		['an unexpected error', new UnexpectedError('Bug in step 3')],
+		['an operational error', new OperationalError('Timeout of pool "db"')],
+		['a plain error', new Error('relation "credentials_entity" does not exist')],
+		['a thrown string', 'failed'],
+	])('gives a general reason instead of the message of %s', (_case, error) => {
+		expect(reasonForClient(error)).toBe(
+			'an internal error occurred. The server log has the details',
+		);
 	});
 });
 

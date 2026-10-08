@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 
 import { diffPlanLines, planFromDiff, runGit } from './plan.mjs';
 import { MutateError } from './targets.mjs';
+import { SAMPLE_REPO, writeTree } from './test-doubles.mjs';
 
 const instanceAiSource = 'packages/@n8n/instance-ai/src/utils/model-config-id.ts';
 const cliSource = 'packages/cli/src/credentials/external-secrets.utils.ts';
@@ -35,6 +36,20 @@ function stubGit({ mergeBaseStatus = 0, namesStatus = 0, names = [], hunks = {} 
 	return { git, calls };
 }
 
+// Each plan reads a temp copy of SAMPLE_REPO, so no test depends on the files of this repo.
+let root;
+
+beforeEach(() => {
+	root = mkdtempSync(path.join(tmpdir(), 'mutate-diff-'));
+	writeTree(root, SAMPLE_REPO);
+});
+
+afterEach(() => {
+	rmSync(root, { recursive: true, force: true });
+});
+
+const plan = (base, git) => planFromDiff(base, { git, repoRoot: root });
+
 function assertMutateError(fn, pattern) {
 	assert.throws(fn, (error) => {
 		assert.ok(error instanceof MutateError);
@@ -47,10 +62,11 @@ function assertMutateError(fn, pattern) {
 describe('planFromDiff', () => {
 	it('plans one job per package from the changed line ranges', () => {
 		const { git } = stubGit({ names: [instanceAiSource, cliSource, cliTest] });
-		const { jobs, skipped } = planFromDiff('origin/master', { git });
+		const { jobs, skipped } = plan('origin/master', git);
 		assert.deepEqual(skipped, []);
 		const byDir = Object.fromEntries(jobs.map((job) => [job.packageDir, job]));
 		const instanceAi = byDir[path.join('packages', '@n8n', 'instance-ai')];
+		assert.equal(instanceAi.pkgRoot, path.join(root, 'packages/@n8n/instance-ai'));
 		assert.deepEqual(instanceAi.targets, [
 			`${path.join('src', 'utils', 'model-config-id.ts')}:2-4`,
 		]);
@@ -62,13 +78,13 @@ describe('planFromDiff', () => {
 	it('leaves a deleted cli test out of the test list', () => {
 		const deleted = 'packages/cli/src/credentials/__tests__/gone.test.ts';
 		const { git } = stubGit({ names: [cliSource, cliTest, deleted] });
-		const [job] = planFromDiff('origin/master', { git }).jobs;
+		const [job] = plan('origin/master', git).jobs;
 		assert.deepEqual(job.testFiles, [cliTest]);
 	});
 
 	it('reads file names with spaces around them', () => {
 		const { git } = stubGit({ names: [`  ${instanceAiSource}  `, ''] });
-		assert.equal(planFromDiff('origin/master', { git }).jobs.length, 1);
+		assert.equal(plan('origin/master', git).jobs.length, 1);
 	});
 
 	it('plans nothing for a changed file with no added lines', () => {
@@ -76,25 +92,38 @@ describe('planFromDiff', () => {
 			names: [instanceAiSource],
 			hunks: { [instanceAiSource]: '@@ -4,2 +3,0 @@\n' },
 		});
-		assert.deepEqual(planFromDiff('origin/master', { git }).jobs, []);
+		assert.deepEqual(plan('origin/master', git).jobs, []);
 	});
 
-	it('skips deleted files, non-source files and blocked packages', () => {
+	it('skips deleted files and non-source files without a word', () => {
+		const { git } = stubGit({ names: ['packages/gone/src/deleted.ts', 'README.md'] });
+		assert.deepEqual(plan('origin/master', git), { jobs: [], skipped: [] });
+	});
+
+	it('names each source file that it skips, and why', () => {
 		const blocked = 'packages/@n8n/expression-runtime/src/index.ts';
-		const { git } = stubGit({ names: ['packages/gone/src/deleted.ts', 'README.md', blocked] });
-		const { jobs, skipped } = planFromDiff('origin/master', { git });
+		const jest = 'packages/jest-pkg/src/a.ts';
+		const loose = 'scripts/loose.ts';
+		const { git } = stubGit({ names: [blocked, jest, loose] });
+		const { jobs, skipped } = plan('origin/master', git);
 		assert.deepEqual(jobs, []);
-		assert.equal(skipped.length, 1);
+		assert.equal(skipped.length, 3);
 		assert.equal(skipped[0][0], blocked);
-		assert.match(skipped[0][1], /blocked/);
+		assert.match(skipped[0][1], /^@n8n\/expression-runtime is blocked: .*DEVP-257/);
+		assert.deepEqual(skipped.slice(1), [
+			[jest, 'jest-pkg is not a vitest package'],
+			[loose, 'no enclosing package'],
+		]);
 	});
+});
 
+describe('planFromDiff git use', () => {
 	// A test file sits in a vitest package and has changed lines, so only the
 	// source filter keeps it out of the targets.
 	it('never makes a changed test file a target', () => {
 		const testFile = 'packages/@n8n/instance-ai/src/utils/__tests__/model-config-id.test.ts';
 		const { git, calls } = stubGit({ names: [testFile] });
-		assert.deepEqual(planFromDiff('origin/master', { git }), { jobs: [], skipped: [] });
+		assert.deepEqual(plan('origin/master', git), { jobs: [], skipped: [] });
 		assert.equal(
 			calls.some((args) => args.includes('-U0')),
 			false,
@@ -104,7 +133,7 @@ describe('planFromDiff', () => {
 	// Diffing the merge base against the working tree also scores uncommitted edits.
 	it('uses only git commands that read the repository, from the merge base', () => {
 		const { git, calls } = stubGit({ names: [instanceAiSource] });
-		planFromDiff('upstream/master', { git });
+		plan('upstream/master', git);
 		assert.deepEqual(calls, [
 			['merge-base', 'upstream/master', 'HEAD'],
 			['diff', '--name-only', 'abc123'],
@@ -115,7 +144,7 @@ describe('planFromDiff', () => {
 	it('stops with a usage error when the base ref has no merge base', () => {
 		const { git } = stubGit({ mergeBaseStatus: 1 });
 		assertMutateError(
-			() => planFromDiff('upstream/missing', { git }),
+			() => plan('upstream/missing', git),
 			/^No merge base with 'upstream\/missing' — is the ref fetched\?\nfatal: no such ref$/,
 		);
 	});
@@ -123,7 +152,7 @@ describe('planFromDiff', () => {
 	it('stops with a usage error when git cannot list the changed files', () => {
 		const { git } = stubGit({ namesStatus: 128 });
 		assertMutateError(
-			() => planFromDiff('origin/master', { git }),
+			() => plan('origin/master', git),
 			/^git diff against 'origin\/master' failed\.\nfatal: bad object$/,
 		);
 	});

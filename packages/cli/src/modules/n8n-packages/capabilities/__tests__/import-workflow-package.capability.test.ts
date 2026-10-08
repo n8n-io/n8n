@@ -1,9 +1,11 @@
 import { UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowEntity } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 
 import { WorkflowAccessError } from '@/modules/mcp/mcp.errors';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { MCP_IMPORT_RULES } from '../import-workflow-package.capability';
 
@@ -113,16 +115,70 @@ describe('MCP_IMPORT_RULES.afterImport', () => {
 	});
 
 	// The workflow is already written, so the import must not report a failure.
-	it('gives a warning, not an error, when turning on MCP access fails', async () => {
+	it('gives a warning without internal details when turning on MCP access fails', async () => {
 		const settings = mockInstance(McpSettingsService, {
-			bulkSetAvailableInMCP: vi.fn().mockRejectedValue(new Error('Database is locked')),
+			bulkSetAvailableInMCP: vi
+				.fn()
+				.mockRejectedValue(new Error('SQLITE_BUSY: table "workflow_entity" is locked')),
 			broadcastWorkflowMCPAvailabilityChanged: vi.fn().mockResolvedValue(undefined),
 		});
 
 		expect(await MCP_IMPORT_RULES.afterImport?.(user, 'wf-1')).toEqual([
-			'Could not turn on MCP access: Database is locked. The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
+			'Could not turn on MCP access: an internal error occurred. The server log has the details. The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
 		]);
 		expect(settings.broadcastWorkflowMCPAvailabilityChanged).not.toHaveBeenCalled();
+	});
+
+	it('gives the message of an error that the user can fix', async () => {
+		mockInstance(McpSettingsService, {
+			bulkSetAvailableInMCP: vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('You cannot change this workflow.')),
+			broadcastWorkflowMCPAvailabilityChanged: vi.fn().mockResolvedValue(undefined),
+		});
+
+		expect(await MCP_IMPORT_RULES.afterImport?.(user, 'wf-1')).toEqual([
+			'Could not turn on MCP access: You cannot change this workflow. The workflow is not available in MCP, so MCP clients cannot change it. Turn on MCP access in its workflow settings.',
+		]);
+	});
+});
+
+describe('MCP_IMPORT_RULES.errorWorkflowRule', () => {
+	let finder: ReturnType<typeof mockInstance<WorkflowFinderService>>;
+
+	beforeEach(() => {
+		mockInstance(UrlService, { getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.test') });
+		finder = mockInstance(WorkflowFinderService);
+	});
+
+	const rule = async () => await MCP_IMPORT_RULES.errorWorkflowRule?.(user, 'wf-err');
+
+	it('accepts an error workflow that is available in MCP and not archived', async () => {
+		finder.findWorkflowForUser.mockResolvedValue(workflow({ id: 'wf-err' }));
+
+		expect(await rule()).toBeUndefined();
+		expect(finder.findWorkflowForUser).toHaveBeenCalledWith('wf-err', user, ['workflow:read']);
+	});
+
+	it.each([
+		['not available in MCP', { settings: {} }, 'it is not available in MCP'],
+		['archived', { isArchived: true }, 'it is archived'],
+	])('gives why an error workflow that is %s is not usable', async (_case, overrides, text) => {
+		finder.findWorkflowForUser.mockResolvedValue(workflow({ id: 'wf-err', ...overrides }));
+
+		expect(await rule()).toBe(text);
+	});
+
+	it('says the same for an error workflow that the user cannot read as for a missing one', async () => {
+		finder.findWorkflowForUser.mockResolvedValue(null);
+
+		expect(await rule()).toBe('it is not on this instance or you cannot open it');
+	});
+
+	it('gives the error of a failed lookup to the caller', async () => {
+		finder.findWorkflowForUser.mockRejectedValue(new Error('Connection lost'));
+
+		await expect(rule()).rejects.toThrow('Connection lost');
 	});
 });
 

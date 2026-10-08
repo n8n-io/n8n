@@ -60,7 +60,7 @@ That divergence is exactly why this project exists.
 | `sandbox-mirror.mjs` | Where the sandbox goes. See [Sandbox runs](#sandbox-runs). |
 | `summary.mjs` | Scoring, the gate and `summary.json`. |
 | `vitest-compat.mjs`, `vitest-compat-runner.mjs` | The `vitest-compat` Stryker test runner. See [Vitest 5](#vitest-5). |
-| `*.test.mjs`, `test-doubles.mjs` | Unit tests (`node --test scripts/mutation-health/*.test.mjs`). They start no Stryker run. CI runs them in the "Workflow scripts" job, which installs only `.github/scripts`, so a test must not need a root dependency such as Stryker. Inject a stand-in, or skip the test when the dependency is missing. |
+| `*.test.mjs`, `test-doubles.mjs`, `samples.mjs` | Unit tests (`node --test scripts/mutation-health/*.test.mjs`). They start no Stryker run. CI runs them in the "Workflow scripts" job, which installs only `.github/scripts`, so a test must not need a root dependency such as Stryker or fast-check. Inject a stand-in, or skip the test when the dependency is missing. `properties.test.mjs` checks the pure helpers with seeded generated inputs from `samples.mjs`. |
 | `stryker.default.mjs` | Shared Stryker config for any vitest package. A package that needs special handling ships its own `stryker.config.mjs`, which `mutate.mjs` prefers. |
 | `stryker.cli.mjs` | The default plus `vitest.related: false`, used for `packages/cli` targets. See [Scoping the tests](#scoping-the-tests-with---test-files). |
 
@@ -243,11 +243,18 @@ from the sandbox reaches the same files as `..` from the package. Stryker's tsco
 turned off for these runs, because the paths are already right.
 
 After each run Stryker removes its sandbox and the tool removes the mirror. The removal unlinks
-each link and never follows one, so it never deletes a real file. A crash can leave a
-`.stryker-tmp/mirror-*` directory behind: it holds only directories and links, and you can delete
-it.
+each link and never follows one, so it never deletes a real file. The tool also removes the mirror
+before it exits on `SIGINT`, `SIGTERM` or a crash. On a crash while Stryker runs, the tool first
+tells Stryker to stop, so Stryker does not keep running without it. Only a stop that the tool
+cannot handle, such as `SIGKILL`, leaves a `.stryker-tmp/mirror-*` directory behind. It holds only
+directories and links, and you can delete it.
 
-The tool refuses a config that turns on Stryker's in place mode, with exit `2`.
+The tool refuses these configs with exit `2`:
+
+- A config that turns on Stryker's in place mode.
+- A config that uses the TypeScript checker (`checkers: ['typescript']`). The checker
+  type-checks with the file that `tsconfigFile` names, and the tool sets that option to a file
+  that does not exist to turn the tsconfig correction off.
 
 Results that Stryker keeps for `incremental` runs go to a file for each runner (for example
 `stryker-incremental.vitest-compat.json`). The runners name tests differently, so their results do
