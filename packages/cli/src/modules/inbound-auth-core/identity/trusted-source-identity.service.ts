@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { principalFromUser, TransactionRunner, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -49,6 +50,8 @@ export class TrustedSourceIdentityService extends IdentityService {
 		private readonly identities: TrustedSourceIdentityRepository,
 		private readonly users: UserRepository,
 		private readonly txRunner: TransactionRunner,
+		private readonly eventService: EventService,
+		private readonly roleService: RoleService,
 	) {
 		super();
 	}

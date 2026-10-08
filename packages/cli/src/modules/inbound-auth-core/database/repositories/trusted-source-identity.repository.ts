@@ -1,6 +1,7 @@
-import { BaseRepository, OperationContext, TransactionRunner } from '@n8n/db';
+import { BaseRepository, OperationContext, TransactionRunner, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type DeepPartial } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	TrustedSourceIdentityEntity,
@@ -21,7 +22,11 @@ class TrustedSourceIdentityStore extends BaseRepository<TrustedSourceIdentityEnt
 export class TrustedSourceIdentityRepository {
 	private readonly store: TrustedSourceIdentityStore;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly users: UserRepository,
+	) {
 		this.store = new TrustedSourceIdentityStore(dataSource, transactionRunner);
 	}
 
@@ -68,5 +73,25 @@ export class TrustedSourceIdentityRepository {
 		await this.store
 			.managerFor(ctx)
 			.update(TrustedSourceIdentityEntity, { sourceId, subject }, { lastSeenAt: seenAt });
+	}
+
+	/** Writes the binding unless one exists for `(sourceId, subject)`; an existing row wins silently. */
+	async insertIfAbsent(
+		_row: Pick<
+			TrustedSourceIdentityEntity,
+			'sourceId' | 'subject' | 'userId' | 'provenance' | 'status'
+		>,
+		_ctx: OperationContext = {},
+	): Promise<void> {
+		throw new UnexpectedError('not implemented');
+	}
+
+	/** Creates the user with its personal project and the binding in one unit of work. */
+	async createUserWithBinding(
+		_ctx: OperationContext,
+		_user: DeepPartial<User>,
+		_binding: Pick<TrustedSourceIdentityEntity, 'sourceId' | 'subject' | 'provenance' | 'status'>,
+	): Promise<User> {
+		throw new UnexpectedError('not implemented');
 	}
 }
