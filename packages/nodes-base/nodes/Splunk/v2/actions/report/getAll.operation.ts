@@ -71,7 +71,7 @@ export async function execute(
 	const options = this.getNodeParameter('options', i);
 
 	populate(options, qs);
-	setReturnAllOrLimit.call(this, qs);
+	setReturnAllOrLimit.call(this, qs, i);
 
 	const endpoint = '/services/saved/searches';
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);
