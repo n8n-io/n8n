@@ -44,6 +44,7 @@ const thread = {
 	projectId: 'project-1',
 	accessScope: 'user',
 	ownerId: 'user-1',
+	parentThreadId: null,
 } as AgentExecutionThread;
 
 /** The checkpoint of a turn that waits for the answer to one tool call. */
@@ -1143,6 +1144,40 @@ describe('SystemAgentExecutionService', () => {
 					threadId: 'thread-1',
 				}),
 			).rejects.toThrow(NotFoundError);
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses to create a session with the id of a child session of the user', async () => {
+			const { service, threadRepository, txRunner } = setup();
+			threadRepository.findOneBy.mockResolvedValue({
+				...thread,
+				id: 'ia-builder:thread-1:agent-a',
+				parentThreadId: 'thread-1',
+			} as never);
+
+			await expect(
+				service.createThread({
+					agentId: AGENT_ID,
+					user,
+					projectId: 'project-1',
+					threadId: 'ia-builder:thread-1:agent-a',
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('returns an existing top-level session of the user', async () => {
+			const { service, threadRepository, txRunner } = setup();
+			threadRepository.findOneBy.mockResolvedValue(thread);
+
+			await expect(
+				service.createThread({
+					agentId: AGENT_ID,
+					user,
+					projectId: 'project-1',
+					threadId: 'thread-1',
+				}),
+			).resolves.toBe(thread);
 			expect(txRunner.run).not.toHaveBeenCalled();
 		});
 	});

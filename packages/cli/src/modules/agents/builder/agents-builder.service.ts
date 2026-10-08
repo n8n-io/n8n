@@ -40,7 +40,10 @@ import {
 	AgentExecutionRepository,
 	type AgentExecutionLinks,
 } from '../repositories/agent-execution.repository';
-import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import {
+	EXECUTION_METADATA_KEY,
+	type AgentExecutionAdmission,
+} from '../types/agent-queued-message';
 import { bindExecutionInput } from '../utils/execution-input';
 import { modelStreamStallOptions } from '../model-stream-stall-options';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
@@ -225,7 +228,15 @@ export class AgentsBuilderService {
 
 		yield* this.streamRecordedTurn(
 			{ agentId, user, session, parentExecution, userMessage: message },
-			async ({ executionId, inputMessageIds, markStarted }) => {
+			async (turn) => {
+				if (!turn) {
+					return await builder.stream(message, {
+						persistence: { threadId: session.threadId, resourceId },
+						...options,
+						...executionCounterOption(parentExecution),
+					});
+				}
+				const { executionId, inputMessageIds, markStarted } = turn;
 				markStarted();
 				return await builder.stream(bindExecutionInput(message, inputMessageIds), {
 					persistence: {
@@ -310,8 +321,15 @@ export class AgentsBuilderService {
 
 		yield* this.streamRecordedTurn(
 			{ agentId, user, session, parentExecution, userMessage: null, resumeRunId: runId },
-			async ({ executionId, recorder, markStarted }) =>
-				await builder.resume('stream', resumeData, {
+			async (turn) => {
+				if (!turn) {
+					return await builder.resume('stream', resumeData, {
+						...options,
+						...executionCounterOption(parentExecution),
+					});
+				}
+				const { executionId, recorder, markStarted } = turn;
+				return await builder.resume('stream', resumeData, {
 					...options,
 					...executionCounterOption(parentExecution),
 					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
@@ -319,7 +337,8 @@ export class AgentsBuilderService {
 						markStarted();
 						recorder.recordHitlResponse(toolCallId, resumeData);
 					},
-				}),
+				});
+			},
 		);
 	}
 
@@ -436,10 +455,15 @@ export class AgentsBuilderService {
 	 * and memory belong to the same agent (see `getBuilderStateOwnerAgentId`),
 	 * so the admission finds them without an override. The memory thread keeps
 	 * the built agent id as information.
+	 *
+	 * Recording is best-effort. When the record cannot start, the turn runs
+	 * without one (`openStream` gets `undefined`). When the record cannot
+	 * finalize, the turn result does not change. Failures of the turn itself
+	 * still go to the caller.
 	 */
 	private async *streamRecordedTurn(
 		scope: BuilderTurnScope,
-		openStream: (turn: RecordedBuilderTurn) => Promise<StreamResult>,
+		openStream: (turn: RecordedBuilderTurn | undefined) => Promise<StreamResult>,
 	): AsyncGenerator<StreamChunk> {
 		const { session, parentExecution } = scope;
 		const executionLinks = await this.resolveExecutionLinks(scope);
@@ -469,12 +493,12 @@ export class AgentsBuilderService {
 			recording,
 		);
 		session.abortSignal.throwIfAborted();
-		await this.n8nMemory.getImplementation(parentExecution.agentId).saveThread({
-			id: session.threadId,
-			resourceId: scope.user.id,
-			metadata: { [BUILT_AGENT_ID_METADATA_KEY]: scope.agentId },
-		});
-		const admission = await this.turnExecutionService.startExecution(recording, recorder.startedAt);
+		const admission = await this.startBuilderRecord(scope, recording, recorder.startedAt);
+		if (!admission) {
+			session.abortSignal.throwIfAborted();
+			yield* this.streamFromAgent(await openStream(undefined));
+			return;
+		}
 		const { executionId } = admission;
 		let executionStarted = false;
 		let executionError: unknown;
@@ -503,18 +527,56 @@ export class AgentsBuilderService {
 			let hitlStatus: 'suspended' | 'resumed' | undefined;
 			if (recorder.suspended) hitlStatus = 'suspended';
 			else if (scope.resumeRunId !== undefined && executionStarted) hitlStatus = 'resumed';
-			await this.turnExecutionService.finalizeExecution({
-				executionId,
-				executionStarted,
-				executionError,
-				params: {
-					...recording,
-					record: session.abortSignal.aborted
-						? { ...record, finishReason: 'cancelled', error: null }
-						: record,
-					hitlStatus,
-				},
+			try {
+				await this.turnExecutionService.finalizeExecution({
+					executionId,
+					executionStarted,
+					executionError,
+					params: {
+						...recording,
+						record: session.abortSignal.aborted
+							? { ...record, finishReason: 'cancelled', error: null }
+							: record,
+						hitlStatus,
+					},
+				});
+			} catch (error) {
+				// A throw here would replace the turn result or the turn error.
+				this.logger.warn('Failed to finalize the builder execution record', {
+					agentId: scope.agentId,
+					threadId: session.threadId,
+					executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+	}
+
+	/**
+	 * Store the built agent id on the memory thread and admit the execution.
+	 * Returns `undefined` and logs a warning when this fails, for example when
+	 * another turn already runs on the thread.
+	 */
+	private async startBuilderRecord(
+		scope: BuilderTurnScope,
+		recording: StartExecutionParams,
+		startedAt: Date,
+	): Promise<AgentExecutionAdmission | undefined> {
+		const { threadId } = scope.session;
+		try {
+			await this.n8nMemory.getImplementation(scope.parentExecution.agentId).saveThread({
+				id: threadId,
+				resourceId: scope.user.id,
+				metadata: { [BUILT_AGENT_ID_METADATA_KEY]: scope.agentId },
 			});
+			return await this.turnExecutionService.startExecution(recording, startedAt);
+		} catch (error) {
+			this.logger.warn('Failed to start the builder execution record, running without it', {
+				agentId: scope.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
 		}
 	}
 
