@@ -5,10 +5,12 @@ import {
 } from 'n8n-nodes-base/google-service-account';
 import {
 	NodeOperationError,
+	type ICredentialDataDecryptedObject,
 	type ICredentialsDecrypted,
 	type ICredentialTestFunctions,
 	type INodeCredentialDescription,
 	type INodeCredentialTestResult,
+	type INodeListSearchResult,
 	type INodeProperties,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
@@ -112,5 +114,38 @@ export async function googleVertexAiCredentialTest(
 			status: 'Error',
 			message: `Could not connect to Vertex AI. Check the service account details, project ID, and Vertex AI permissions. ${getErrorMessage(error)}`,
 		};
+	}
+}
+
+export async function searchGoogleProjects(
+	credentials: ICredentialDataDecryptedObject,
+	_filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { ProjectsClient } = await import('@google-cloud/resource-manager');
+	const client = new ProjectsClient({
+		credentials: getGoogleServiceAccountCredentials(credentials),
+	});
+	try {
+		const [projects, nextPage] = await client.searchProjects(
+			{ pageToken: paginationToken },
+			{ autoPaginate: false },
+		);
+		return {
+			results: projects.flatMap((project) => {
+				if (!project.projectId) return [];
+				return [
+					{
+						name: project.displayName
+							? `${project.displayName} (${project.projectId})`
+							: project.projectId,
+						value: project.projectId,
+					},
+				];
+			}),
+			paginationToken: nextPage?.pageToken ?? undefined,
+		};
+	} finally {
+		await client.close();
 	}
 }

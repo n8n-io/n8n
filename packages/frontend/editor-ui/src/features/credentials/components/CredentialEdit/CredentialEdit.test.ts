@@ -1794,6 +1794,68 @@ describe('CredentialEdit', () => {
 			);
 		});
 
+		test('saves a manually entered project ID without a credential test', async () => {
+			const credentialType: ICredentialType = {
+				name: 'googleVertexAiApi',
+				displayName: 'Google Vertex AI',
+				properties: [
+					{
+						name: 'email',
+						displayName: 'Service Account Email',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+					{
+						name: 'privateKey',
+						displayName: 'Private Key',
+						type: 'string',
+						default: '',
+						required: true,
+						typeOptions: { password: true },
+					},
+					{
+						name: 'projectId',
+						displayName: 'Project ID',
+						type: 'string',
+						required: true,
+						default: '',
+						typeOptions: { loadOptionsMethod: 'projects' },
+					},
+				],
+			};
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+				initialData: { email: 'service@example.com', privateKey: 'draft-key' },
+				closeOnSave: true,
+			});
+			const view = renderComponent({
+				props: { activeId: credentialType.name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				pinia,
+			});
+			const saveButton = await view.findByRole('button', { name: 'Save' });
+			expect(saveButton).toBeDisabled();
+			expect(credentialsStore.createNewCredential).not.toHaveBeenCalled();
+			await userEvent.type(view.getByLabelText('Project ID'), 'target-project');
+			await waitFor(() => expect(saveButton).toBeEnabled());
+			await userEvent.click(saveButton);
+			await waitFor(() =>
+				expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'googleVertexAiApi',
+						data: {
+							email: 'service@example.com',
+							privateKey: 'draft-key',
+							projectId: 'target-project',
+						},
+					}),
+					'personal-project',
+					undefined,
+				),
+			);
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+			expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+		});
+
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {
 				name: 'testApi',

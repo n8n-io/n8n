@@ -5,6 +5,8 @@ import {
 	oAuth1CredentialAuthorize,
 	oAuth2CredentialAuthorize,
 	searchCredentials,
+	getCredentialOptions,
+	type CredentialOptionsDestination,
 } from './credentials.api';
 import type { ICredentialsResponse } from './credentials.types';
 
@@ -15,6 +17,29 @@ vi.mock('@n8n/rest-api-client', () => ({
 const makeRestApiRequestMock = vi.mocked(makeRestApiRequest);
 
 const context: IRestApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
+
+describe('credentials.api resource locator', () => {
+	it.each<{ destination: CredentialOptionsDestination; path: string }>([
+		{
+			destination: { kind: 'project', projectId: 'project-id' },
+			path: '/credentials/options/projects/project-id',
+		},
+		{ destination: { kind: 'instance' }, path: '/credentials/options/instance' },
+		{
+			destination: { kind: 'stored', credentialId: 'credential-id' },
+			path: '/credentials/credential-id/options',
+		},
+	])('sends the draft in a POST body to $path', async ({ destination, path }) => {
+		const data = {
+			type: 'googleVertexAiApi',
+			propertyName: 'projectId',
+			data: { email: 'service@example.com', privateKey: 'draft-key' },
+			paginationToken: 'next-page',
+		};
+		await getCredentialOptions(context, destination, data);
+		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'POST', path, data);
+	});
+});
 
 // A credential as returned by the list/edit endpoints, carrying the large fields
 // (homeProject, scopes, sharedWithProjects) that previously bloated the auth GET URL.

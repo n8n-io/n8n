@@ -67,6 +67,8 @@ type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
 	credentialId?: string;
+	n8nProjectId?: string;
+	isInstanceCredential?: boolean;
 	credentialPermissions: PermissionsRecord['credential'];
 	parentTypes?: string[];
 	showValidationWarning?: boolean;
@@ -783,6 +785,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				/>
 				<CredentialInputs
 					v-else-if="credentialType && canWrite"
+					:credential-type="credentialType.name"
+					:credential-id="credentialId"
+					:n8n-project-id="n8nProjectId"
+					:is-instance-credential="isInstanceCredential"
 					:credential-data="credentialData"
 					:credential-properties="credentialProperties"
 					:documentation-url="documentationUrl"
