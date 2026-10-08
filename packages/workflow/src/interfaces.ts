@@ -2850,10 +2850,11 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
-	 * Marks the node (or a specific version of it) as deprecated. The backend
-	 * refuses to add new instances of a deprecated node to workflows, and refuses
-	 * to modify existing instances — but workflows that already contain such
-	 * nodes keep running unchanged. Set this only for nodes that pose an active
+	 * Marks the node (or a specific version of it) as deprecated. While
+	 * `N8N_DEPRECATED_NODES_BLOCK` is on (the default), the backend refuses to add
+	 * new instances of a deprecated node to workflows, and refuses to modify
+	 * existing instances — but workflows that already contain such nodes keep
+	 * running unchanged. Set this only for nodes that pose an active
 	 * risk (e.g. legacy nodes using insecure sandboxing); use `hidden` for nodes
 	 * that are merely superseded.
 	 *

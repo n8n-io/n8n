@@ -9,8 +9,8 @@ export type DeprecatedNodeViolation = {
 /**
  * Thrown when a workflow save would introduce, or modify in place, a node
  * whose type is marked `deprecated: true`. Carries the full list of offending
- * nodes in `meta.violations` so the frontend can highlight them on the canvas
- * rather than parsing the error message.
+ * nodes in `meta.violations` so callers can act on them without parsing the
+ * error message.
  */
 export class DeprecatedNodesError extends ResponseError {
 	constructor(
