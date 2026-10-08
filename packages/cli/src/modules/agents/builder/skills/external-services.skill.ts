@@ -133,10 +133,13 @@ The \`integrations\` array controls how the target agent is triggered.
   agent; do not follow up with \`patch_config\`/\`write_config\` to write the
   credential.
 - ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
-  \`agent-context({ type: "integrations" })\` returns the matching type,
-  \`patch_config\` (with the \`configHash\` from your latest config read or write) adding \`{ "type": "<integrationType>", "credentialId": "" }\`
-  to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
-  telegram) so the channel appears in the agent panel as needing setup. Pass
+  \`agent-context({ type: "integrations" })\` returns the matching type, add
+  \`{ "type": "<integrationType>", "credentialId": "" }\` to \`integrations\`
+  in your single initial config write (include a minimal valid draft
+  \`settings\` object for telegram) so the channel appears in the agent panel
+  as needing setup. If the config is already written, \`patch_config\` (with
+  the \`configHash\` from your latest config read or write) adding it to
+  \`/integrations/-\` instead. Pass
   the same \`integrationType\` in the trailing \`finish_setup\` call's
   \`channels\` array — its card configures or skips the channel itself. Do not
   call \`configure_channel\` again after \`finish_setup\` handles the card. If
@@ -227,8 +230,10 @@ Follow these steps for the selected MCP result:
    credential is already persisted.
 
 ${INITIAL_BUILD_NOTE} For MCP that means: pick the best candidate as an
-assumption (above), then \`patch_config\` (with the \`configHash\` from your latest config read or write) a draft
-\`/mcpServers/-\` entry using \`name\`, \`url\`, \`transport\`,
+assumption (above), then add a draft \`mcpServers\` entry to your single
+initial config write (or \`patch_config\` it to \`/mcpServers/-\`, with the
+\`configHash\` from your latest config read or write, if the config is
+already written) using \`name\`, \`url\`, \`transport\`,
 \`authentication\`, and \`metadata.nodeTypeName\` from \`selectedResult\` with
 \`credential\` omitted, and skip \`verify_mcp_server\` — there is nothing to
 authenticate yet. Include the credential in the trailing \`finish_setup\` call;

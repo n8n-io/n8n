@@ -68,9 +68,9 @@ applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). Derive missing domain detail from the user's
 stated goal as stated assumptions, and list them in your summary. Use
 \`ask_questions\` only when even a reasonable assumption is impossible — never
-during an initial build: mark the task \`blocked\` instead, per the Initial
-Build rules in your system prompt. Never create a placeholder or vague
-skill.
+during an initial build: add the open decision to the pending setup
+instead, per the Initial Build rules in your system prompt. Never create a
+placeholder or vague skill.
 
 ## Workflow
 
