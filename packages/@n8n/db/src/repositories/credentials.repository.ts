@@ -319,24 +319,21 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	}
 
 	/**
-	 * Deletes a project credential that has no `shared_credentials` row. Such a credential has no
-	 * owner, so the project-scoped lookups cannot find it. Returns the deleted credential, or `null`
-	 * if the credential does not exist or still has an owner.
+	 * Finds a project credential that has no `shared_credentials` row at all. Such a credential has
+	 * no owner, so the project-scoped lookups cannot find it. Returns `null` if the credential does
+	 * not exist or still has any `shared_credentials` row — even a non-owner share keeps the
+	 * credential reachable through the regular, access-checked delete path, so it is not orphaned.
 	 */
-	async deleteProjectCredentialWithoutOwner(
+	async findProjectCredentialWithoutOwner(
 		credentialId: string,
 		ctx: OperationContext = {},
 	): Promise<CredentialsEntity | null> {
-		return await this.runInTransaction(ctx, async (manager) => {
-			const credential = await manager.findOne(CredentialsEntity, {
-				where: { id: credentialId, usageScope: 'project' },
-				relations: { shared: true },
-			});
-			if (!credential || credential.shared.length > 0) return null;
-
-			await manager.delete(CredentialsEntity, { id: credentialId, usageScope: 'project' });
-			return credential;
+		const credential = await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id: credentialId, usageScope: 'project' },
+			relations: { shared: true },
 		});
+		if (!credential || credential.shared.length > 0) return null;
+		return credential;
 	}
 
 	async deleteInstanceCredentialIfUnassigned(

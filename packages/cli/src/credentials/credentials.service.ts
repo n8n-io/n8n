@@ -1476,10 +1476,8 @@ export class CredentialsService {
 	}
 
 	/**
-	 * Deletes a project credential that has no owner project. `delete()` cannot find such a
-	 * credential, because its lookup goes through the owner. Only an instance-wide
-	 * `credential:delete` covers a credential without a project. Does nothing if the
-	 * credential does not exist or still has an owner.
+	 * Deletes a project credential that belongs to no project, which `delete()` cannot find.
+	 * Does nothing if any project still owns it or has it shared.
 	 */
 	async deleteUnowned(user: User, credentialId: string) {
 		if (!hasGlobalScope(user, 'credential:delete')) {
@@ -1487,10 +1485,12 @@ export class CredentialsService {
 		}
 
 		const credential =
-			await this.credentialsRepository.deleteProjectCredentialWithoutOwner(credentialId);
+			await this.credentialsRepository.findProjectCredentialWithoutOwner(credentialId);
 		if (!credential) return;
 
 		await this.externalHooks.run('credentials.delete', [credentialId]);
+		// `delete()` rather than `remove()`: `remove()` clears the entity id, which the event needs.
+		await this.credentialsRepository.delete({ id: credential.id });
 		this.emitCredentialDeleted(user, credential, undefined);
 	}
 

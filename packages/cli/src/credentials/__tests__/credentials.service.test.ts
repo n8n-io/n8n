@@ -1695,13 +1695,11 @@ describe('CredentialsService', () => {
 				type: 'openAiApi',
 				isResolvable: false,
 			});
-			credentialsRepository.deleteProjectCredentialWithoutOwner.mockResolvedValue(credential);
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(credential);
 
 			await service.deleteUnowned(ownerUser, credential.id);
 
-			expect(credentialsRepository.deleteProjectCredentialWithoutOwner).toHaveBeenCalledWith(
-				credential.id,
-			);
+			expect(credentialsRepository.delete).toHaveBeenCalledWith({ id: credential.id });
 			expect(externalHooks.run).toHaveBeenCalledWith('credentials.delete', [credential.id]);
 			expect(eventService.emit).toHaveBeenCalledWith('credentials-deleted', {
 				user: ownerUser,
@@ -1714,13 +1712,39 @@ describe('CredentialsService', () => {
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
 		});
 
+		it('runs the external hook before it deletes the credential', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'unowned-credential' }),
+			);
+
+			await service.deleteUnowned(ownerUser, 'unowned-credential');
+
+			expect(externalHooks.run.mock.invocationCallOrder[0]).toBeLessThan(
+				credentialsRepository.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the credential when the external hook throws', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'unowned-credential' }),
+			);
+			externalHooks.run.mockRejectedValueOnce(new Error('Hook failed'));
+
+			await expect(service.deleteUnowned(ownerUser, 'unowned-credential')).rejects.toThrow(
+				'Hook failed',
+			);
+
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('reports the deletion of an end-user credential', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: 'unowned-credential',
 				type: 'openAiApi',
 				isResolvable: true,
 			});
-			credentialsRepository.deleteProjectCredentialWithoutOwner.mockResolvedValue(credential);
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(credential);
 
 			await service.deleteUnowned(ownerUser, credential.id);
 
@@ -1732,11 +1756,12 @@ describe('CredentialsService', () => {
 		});
 
 		it('does nothing when the credential does not exist or still has an owner', async () => {
-			credentialsRepository.deleteProjectCredentialWithoutOwner.mockResolvedValue(null);
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(null);
 
 			await service.deleteUnowned(ownerUser, 'credential-id');
 
 			expect(externalHooks.run).not.toHaveBeenCalled();
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
@@ -1745,7 +1770,8 @@ describe('CredentialsService', () => {
 				ForbiddenError,
 			);
 
-			expect(credentialsRepository.deleteProjectCredentialWithoutOwner).not.toHaveBeenCalled();
+			expect(credentialsRepository.findProjectCredentialWithoutOwner).not.toHaveBeenCalled();
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
 		});
 	});
 

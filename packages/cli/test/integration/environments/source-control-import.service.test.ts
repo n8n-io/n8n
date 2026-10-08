@@ -56,7 +56,11 @@ import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createVariable } from '@test-integration/db/variables';
 
-import { createCredentials, saveCredential } from '../shared/db/credentials';
+import {
+	createCredentials,
+	saveCredential,
+	shareCredentialWithProjects,
+} from '../shared/db/credentials';
 import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
 
 vi.mock('fast-glob');
@@ -2219,6 +2223,35 @@ describe('SourceControlImportService', () => {
 			await Container.get(CredentialsService).deleteUnowned(owner, credential.id);
 
 			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.not.toBeNull();
+		});
+
+		it('keeps a credential that is only shared, not owned, when deleting credentials without an owner', async () => {
+			const owner = await getGlobalOwner();
+			const ownerProject = await createTeamProject();
+			const otherProject = await createTeamProject();
+			const credential = await createCredentials(credentialAttributes(), ownerProject);
+			await shareCredentialWithProjects(credential, [otherProject]);
+			await projectRepository.delete({ id: ownerProject.id });
+
+			await Container.get(CredentialsService).deleteUnowned(owner, credential.id);
+
+			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.not.toBeNull();
+		});
+
+		it('deletes a credential whose owner project is gone but that is still shared into another project', async () => {
+			const owner = await getGlobalOwner();
+			const ownerProject = await createTeamProject();
+			const otherProject = await createTeamProject();
+			const credential = await createCredentials(credentialAttributes(), ownerProject);
+			await shareCredentialWithProjects(credential, [otherProject]);
+			await projectRepository.delete({ id: ownerProject.id });
+
+			// The remaining non-owner share is enough for the regular, access-checked delete.
+			await pullService.deleteCredentialsNotInWorkfolder(owner, [
+				mock<SourceControlledFile>({ id: credential.id }),
+			]);
+
+			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.toBeNull();
 		});
 	});
 });
