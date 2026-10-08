@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
-import { N8nButton, N8nDialog, N8nDialogFooter } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
@@ -59,10 +59,6 @@ function onConfirm() {
 		void save();
 	}
 }
-
-function preventOutsideClose(event: Event) {
-	event.preventDefault();
-}
 </script>
 
 <template>
@@ -70,17 +66,19 @@ function preventOutsideClose(event: Event) {
 		v-model:open="open"
 		size="xlarge"
 		:header="i18n.baseText('settings.mcp.connectWorkflows.modalTitle')"
+		:close-on-overlay-click="false"
 		data-test-id="mcp-connect-workflows-dialog"
-		@interact-outside="preventOutsideClose"
 	>
-		<MCPWorkflowsSelect
-			ref="selectRef"
-			v-model="selectedWorkflowIds"
-			:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
-			:disabled="isSaving"
-			@ready="onSelectReady"
-			@confirm="onConfirm"
-		/>
+		<N8nDialogBody>
+			<MCPWorkflowsSelect
+				ref="selectRef"
+				v-model="selectedWorkflowIds"
+				:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
+				:disabled="isSaving"
+				@ready="onSelectReady"
+				@confirm="onConfirm"
+			/>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
 				variant="subtle"
