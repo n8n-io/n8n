@@ -1878,6 +1878,7 @@ describe('CredentialEdit', () => {
 					await userEvent.click(projectSelect);
 					await userEvent.click(await view.findByText('Target project'));
 					expect(view.queryByText('Project ID')).toBeNull();
+					expect(projectIdInput).not.toBeInTheDocument();
 				}
 				await waitFor(() => expect(saveButton).toBeEnabled());
 				await userEvent.click(saveButton);
