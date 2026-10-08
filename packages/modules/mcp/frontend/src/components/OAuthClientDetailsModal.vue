@@ -5,6 +5,7 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -63,7 +64,7 @@ function onRevoke() {
 
 <template>
 	<N8nDialog :open="open" size="medium" @update:open="emit('update:open', $event)">
-		<div v-if="client" :class="$style.container" data-test-id="mcp-client-details-modal">
+		<template v-if="client">
 			<N8nDialogHeader>
 				<N8nDialogTitle>
 					<span :class="$style.title">
@@ -77,42 +78,44 @@ function onRevoke() {
 				<N8nDialogDescription>{{ subtitle }}</N8nDialogDescription>
 			</N8nDialogHeader>
 
-			<div :class="$style.details">
-				<template v-if="ownerLabel">
+			<N8nDialogBody>
+				<div :class="$style.details" data-test-id="mcp-client-details-modal">
+					<template v-if="ownerLabel">
+						<N8nText color="text-light" size="small">
+							{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedBy') }}
+						</N8nText>
+						<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-by">
+							{{ ownerLabel }}
+						</N8nText>
+					</template>
+
 					<N8nText color="text-light" size="small">
-						{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedBy') }}
+						{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedOn') }}
 					</N8nText>
-					<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-by">
-						{{ ownerLabel }}
+					<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-on">
+						<N8nTimeAgo
+							:date="new Date(client.grantedAt).toISOString()"
+							capitalize
+							:locale="rootStore.defaultLocale"
+						/>
 					</N8nText>
-				</template>
 
-				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedOn') }}
-				</N8nText>
-				<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-on">
-					<N8nTimeAgo
-						:date="new Date(client.grantedAt).toISOString()"
-						capitalize
-						:locale="rootStore.defaultLocale"
-					/>
-				</N8nText>
-
-				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('settings.mcp.oAuthClients.details.access') }}
-				</N8nText>
-				<div :class="$style.access" data-test-id="mcp-client-details-access">
-					<N8nText
-						v-for="scope in grantedScopes"
-						:key="scope"
-						color="text-dark"
-						size="small"
-						:data-test-id="`mcp-client-details-scope-${scope}`"
-					>
-						{{ scopeLabel(i18n, scope) }}
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.mcp.oAuthClients.details.access') }}
 					</N8nText>
+					<div :class="$style.access" data-test-id="mcp-client-details-access">
+						<N8nText
+							v-for="scope in grantedScopes"
+							:key="scope"
+							color="text-dark"
+							size="small"
+							:data-test-id="`mcp-client-details-scope-${scope}`"
+						>
+							{{ scopeLabel(i18n, scope) }}
+						</N8nText>
+					</div>
 				</div>
-			</div>
+			</N8nDialogBody>
 
 			<N8nDialogFooter>
 				<N8nButton
@@ -126,17 +129,11 @@ function onRevoke() {
 					{{ i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess') }}
 				</N8nButton>
 			</N8nDialogFooter>
-		</div>
+		</template>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-}
-
 .title {
 	display: inline-flex;
 	align-items: center;
