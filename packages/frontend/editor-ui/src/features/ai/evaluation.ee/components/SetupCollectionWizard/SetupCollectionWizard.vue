@@ -2,6 +2,9 @@
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
+	N8nDialogFooter,
 	N8nIcon,
 	N8nInput,
 	N8nOption,
@@ -267,143 +270,146 @@ const onSubmit = async () => {
 		size="2xlarge"
 		:show-close-button="true"
 		:header="i18n.baseText('evaluation.setup.title')"
-		:description="i18n.baseText('evaluation.setup.subtitle')"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.body" data-test-id="setup-collection-wizard">
-			<div :class="$style.field">
-				<N8nText size="small" color="text-base" bold>
-					{{ i18n.baseText('evaluation.setup.collectionName') }}
-				</N8nText>
-				<N8nInput
-					v-model="name"
-					:placeholder="i18n.baseText('evaluation.setup.collectionName.placeholder')"
-					size="medium"
-					data-test-id="setup-collection-wizard-name"
-				/>
-			</div>
-
-			<div :class="$style.field">
-				<div :class="$style.labelRow">
+		<N8nDialogBody>
+			<div :class="$style.body" data-test-id="setup-collection-wizard">
+				<N8nDialogDescription>
+					{{ i18n.baseText('evaluation.setup.subtitle') }}
+				</N8nDialogDescription>
+				<div :class="$style.field">
 					<N8nText size="small" color="text-base" bold>
-						{{ i18n.baseText('evaluation.setup.dataset') }}
+						{{ i18n.baseText('evaluation.setup.collectionName') }}
 					</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('evaluation.setup.dataset.helper') }}
-					</N8nText>
-				</div>
-				<DatasetPicker
-					:options="configs.map((c) => ({ id: c.id, label: c.name }))"
-					:selected-id="selectedConfigId"
-					:matching-versions-count="allVersions.length"
-					:has-selection="selectedConfigId !== null && state !== 'versionsLoading'"
-					@update:selected-id="onSelectConfig"
-				/>
-			</div>
-
-			<div v-if="selectedConfigId" :class="$style.field">
-				<div :class="$style.labelRow">
-					<N8nText size="small" color="text-base" bold>
-						{{ i18n.baseText('evaluation.setup.versions') }}
-					</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('evaluation.setup.versions.helper') }}
-					</N8nText>
+					<N8nInput
+						v-model="name"
+						:placeholder="i18n.baseText('evaluation.setup.collectionName.placeholder')"
+						size="medium"
+						data-test-id="setup-collection-wizard-name"
+					/>
 				</div>
 
-				<div :class="$style.tableControls">
-					<div :class="$style.controlChip">
-						<N8nText size="xsmall" color="text-light">
-							{{ i18n.baseText('evaluation.setup.versions.filter.source') }}
+				<div :class="$style.field">
+					<div :class="$style.labelRow">
+						<N8nText size="small" color="text-base" bold>
+							{{ i18n.baseText('evaluation.setup.dataset') }}
 						</N8nText>
-						<N8nSelect
-							:model-value="sourceFilter"
-							size="small"
-							:class="$style.controlSelect"
-							@update:model-value="onSourceChange"
-						>
-							<N8nOption
-								v-for="opt in sourceOptions"
-								:key="opt.value"
-								:value="opt.value"
-								:label="opt.label"
-							/>
-						</N8nSelect>
-					</div>
-					<div :class="$style.controlChip">
 						<N8nText size="xsmall" color="text-light">
-							{{ i18n.baseText('evaluation.setup.versions.sort.label') }}
+							{{ i18n.baseText('evaluation.setup.dataset.helper') }}
 						</N8nText>
-						<N8nSelect
-							:model-value="sortOrder"
-							size="small"
-							:class="$style.controlSelect"
-							@update:model-value="onSortChange"
+					</div>
+					<DatasetPicker
+						:options="configs.map((c) => ({ id: c.id, label: c.name }))"
+						:selected-id="selectedConfigId"
+						:matching-versions-count="allVersions.length"
+						:has-selection="selectedConfigId !== null && state !== 'versionsLoading'"
+						@update:selected-id="onSelectConfig"
+					/>
+				</div>
+
+				<div v-if="selectedConfigId" :class="$style.field">
+					<div :class="$style.labelRow">
+						<N8nText size="small" color="text-base" bold>
+							{{ i18n.baseText('evaluation.setup.versions') }}
+						</N8nText>
+						<N8nText size="xsmall" color="text-light">
+							{{ i18n.baseText('evaluation.setup.versions.helper') }}
+						</N8nText>
+					</div>
+
+					<div :class="$style.tableControls">
+						<div :class="$style.controlChip">
+							<N8nText size="xsmall" color="text-light">
+								{{ i18n.baseText('evaluation.setup.versions.filter.source') }}
+							</N8nText>
+							<N8nSelect
+								:model-value="sourceFilter"
+								size="small"
+								:class="$style.controlSelect"
+								@update:model-value="onSourceChange"
+							>
+								<N8nOption
+									v-for="opt in sourceOptions"
+									:key="opt.value"
+									:value="opt.value"
+									:label="opt.label"
+								/>
+							</N8nSelect>
+						</div>
+						<div :class="$style.controlChip">
+							<N8nText size="xsmall" color="text-light">
+								{{ i18n.baseText('evaluation.setup.versions.sort.label') }}
+							</N8nText>
+							<N8nSelect
+								:model-value="sortOrder"
+								size="small"
+								:class="$style.controlSelect"
+								@update:model-value="onSortChange"
+							>
+								<N8nOption
+									value="recent"
+									:label="i18n.baseText('evaluation.setup.versions.sort.recent')"
+								/>
+								<N8nOption
+									value="oldest"
+									:label="i18n.baseText('evaluation.setup.versions.sort.oldest')"
+								/>
+							</N8nSelect>
+						</div>
+					</div>
+
+					<VersionsTable
+						:versions="visibleVersions"
+						:selected-version-ids="selectedVersionKeys"
+						:dataset-label="datasetLabel"
+						:workflow-id="workflowId"
+						:color-index-by-key="versionColorByKey"
+						@toggle-version="onToggleVersion"
+					/>
+				</div>
+
+				<div v-if="selectedConfigId" :class="$style.field">
+					<div :class="$style.labelRow">
+						<N8nText size="small" color="text-base" bold>
+							{{ i18n.baseText('evaluation.setup.metrics') }}
+						</N8nText>
+						<N8nText size="xsmall" color="text-light">
+							{{ i18n.baseText('evaluation.setup.metrics.helper') }}
+						</N8nText>
+					</div>
+					<div :class="$style.metricsRow">
+						<span
+							v-for="metric in allMetricNames"
+							:key="metric"
+							:class="[$style.metricPill, $style.metricPill_static]"
+							data-test-id="setup-collection-wizard-metric"
 						>
-							<N8nOption
-								value="recent"
-								:label="i18n.baseText('evaluation.setup.versions.sort.recent')"
-							/>
-							<N8nOption
-								value="oldest"
-								:label="i18n.baseText('evaluation.setup.versions.sort.oldest')"
-							/>
-						</N8nSelect>
+							<N8nIcon icon="check" size="xsmall" />
+							<span>{{ metric }}</span>
+						</span>
+						<N8nTooltip
+							v-if="allMetricNames.length > 0"
+							placement="top"
+							:content="i18n.baseText('evaluation.setup.metrics.addComingSoon')"
+						>
+							<button
+								type="button"
+								disabled
+								:class="[$style.metricPill, $style.metricPill_add]"
+								data-test-id="setup-collection-wizard-add-metric"
+							>
+								<N8nIcon icon="plus" size="xsmall" />
+								<span>{{ i18n.baseText('evaluation.setup.metrics.addMetric') }}</span>
+							</button>
+						</N8nTooltip>
+						<N8nText v-if="allMetricNames.length === 0" size="xsmall" color="text-light">
+							{{ i18n.baseText('evaluation.setup.metrics.empty') }}
+						</N8nText>
 					</div>
 				</div>
-
-				<VersionsTable
-					:versions="visibleVersions"
-					:selected-version-ids="selectedVersionKeys"
-					:dataset-label="datasetLabel"
-					:workflow-id="workflowId"
-					:color-index-by-key="versionColorByKey"
-					@toggle-version="onToggleVersion"
-				/>
 			</div>
-
-			<div v-if="selectedConfigId" :class="$style.field">
-				<div :class="$style.labelRow">
-					<N8nText size="small" color="text-base" bold>
-						{{ i18n.baseText('evaluation.setup.metrics') }}
-					</N8nText>
-					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('evaluation.setup.metrics.helper') }}
-					</N8nText>
-				</div>
-				<div :class="$style.metricsRow">
-					<span
-						v-for="metric in allMetricNames"
-						:key="metric"
-						:class="[$style.metricPill, $style.metricPill_static]"
-						data-test-id="setup-collection-wizard-metric"
-					>
-						<N8nIcon icon="check" size="xsmall" />
-						<span>{{ metric }}</span>
-					</span>
-					<N8nTooltip
-						v-if="allMetricNames.length > 0"
-						placement="top"
-						:content="i18n.baseText('evaluation.setup.metrics.addComingSoon')"
-					>
-						<button
-							type="button"
-							disabled
-							:class="[$style.metricPill, $style.metricPill_add]"
-							data-test-id="setup-collection-wizard-add-metric"
-						>
-							<N8nIcon icon="plus" size="xsmall" />
-							<span>{{ i18n.baseText('evaluation.setup.metrics.addMetric') }}</span>
-						</button>
-					</N8nTooltip>
-					<N8nText v-if="allMetricNames.length === 0" size="xsmall" color="text-light">
-						{{ i18n.baseText('evaluation.setup.metrics.empty') }}
-					</N8nText>
-				</div>
-			</div>
-		</div>
-
-		<footer :class="$style.footer">
+		</N8nDialogBody>
+		<N8nDialogFooter :class="$style.footer">
 			<div :class="$style.footerSummary">
 				<N8nText size="small" color="text-base" bold>{{ footerSummaryText }}</N8nText>
 				<N8nText v-if="footerExplainText" size="xsmall" color="text-light">
@@ -426,7 +432,7 @@ const onSubmit = async () => {
 					@click="onSubmit"
 				/>
 			</div>
-		</footer>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
@@ -435,7 +441,6 @@ const onSubmit = async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0;
 	// N8nDialog has no intrinsic max-height, so a tall table pushes the footer off-screen.
 	// Cap and scroll the body, leaving room for the dialog chrome so the CTA stays visible.
 	max-height: calc(100dvh - 16rem);
@@ -511,9 +516,7 @@ const onSubmit = async () => {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--md);
-	padding-top: var(--spacing--sm);
-	border-top: 1px solid var(--border-color--subtle);
-	margin-top: var(--spacing--sm);
+	border-top: var(--border);
 }
 
 .footerSummary {
