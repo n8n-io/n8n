@@ -108,9 +108,9 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 			// passes and assert the wiring instead of driving the popup.
 			N8nTooltip: {
 				name: 'N8nTooltip',
-				props: ['disabled', 'content'],
+				props: ['disabled', 'content', 'placement'],
 				template:
-					'<div :data-tooltip-disabled="disabled" :data-tooltip-content="content"><slot /></div>',
+					'<div :data-tooltip-disabled="disabled" :data-tooltip-content="content" :data-tooltip-placement="placement"><slot /></div>',
 			},
 		},
 		plugins: [router],
@@ -175,6 +175,30 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('stop-execution')).toBeDisabled();
+	});
+
+	it('provides a positioned tooltip for Retry on a failed execution (LIGO-1252)', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:update'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'error', retrySuccessId: null } },
+		});
+		const retryButton = getByTestId('execution-preview-retry-button');
+
+		expect(retryButton).toBeEnabled();
+		// The browser positions native title tooltips separately from the retry menu.
+		expect(retryButton.closest('[data-tooltip-content]')).toHaveAttribute(
+			'data-tooltip-content',
+			'Retry execution',
+		);
+		expect(retryButton.closest('[data-tooltip-content]')).toHaveAttribute(
+			'data-tooltip-placement',
+			'top',
+		);
+		expect(retryButton).not.toHaveAttribute('title');
 	});
 
 	it('shows the add-to-dataset button for a successful non-evaluation execution', () => {
