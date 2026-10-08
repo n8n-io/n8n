@@ -103,8 +103,8 @@ catalog:
   '@langchain/anthropic': 1.5.6
   '@langchain/community': 1.1.27
   '@langchain/core': 1.2.8
-  '@langchain/langgraph': 1.0.2
-  '@langchain/langgraph-checkpoint': 1.0.0
+  '@langchain/langgraph': 1.4.12
+  '@langchain/langgraph-checkpoint': 1.1.5
   '@langchain/openai': 1.4.4
   '@lezer/common': 1.5.0
   '@lezer/generator': 1.8.0
@@ -484,6 +484,9 @@ overrides:
   source-map-js: 1.2.2
   '@grpc/grpc-js@<1.14.5': 1.14.5
   'prosemirror-view@<1.42.3': 1.42.3
+  # Keep the copies that langchain brings in on the catalog version.
+  '@langchain/langgraph': 'catalog:'
+  '@langchain/langgraph-checkpoint': 'catalog:'
 
 patchedDependencies:
   bull@4.16.4: patches/bull@4.16.4.patch
