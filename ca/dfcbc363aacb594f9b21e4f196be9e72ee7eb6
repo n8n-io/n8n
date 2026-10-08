@@ -1,0 +1,49 @@
+packages/cli/src/modules/promotions.ee/__tests__/diff-package-files.test.ts
+  s_8987b8017e49de::t_17a273495825f3 1-62
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8987b8017e49de::t_c86d837cc48d76 76,385-386,416-418,431,433-434,438-441,446-448
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_8987b8017e49de::t_42af915144baec 19-20
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_8987b8017e49de::t_9f075e94a529fc 289-291
+  s_8987b8017e49de::t_7c8a90c6a532a8 74-75,130-140,171,175,183,235,288,292,504,515,528-529
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8987b8017e49de::t_c86d837cc48d76 31,1020,1029-1035
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_8987b8017e49de::t_bda8080f9c6ca3 218,222-224
+  s_8987b8017e49de::t_bf21d1288d1382 217,219
+packages/cli/src/modules/promotions.ee/diff-package-files.ts
+  s_8987b8017e49de::t_b06dd3fb3c3189 7,12-13,16,20
+  s_8987b8017e49de::t_e943c7eb34e860 22,26
+  s_8987b8017e49de::t_7f48e8fb0742ca 14-15,24,27-29,40-41,47-48,52
+  s_8987b8017e49de::t_9f075e94a529fc 49-51
+  s_8987b8017e49de::t_a273a421a1595c 39
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8987b8017e49de::t_907c1bd776dce4 77,2029,2040,2042,2048-2055,2057,2073,2079,2163,2170-2171
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_8987b8017e49de::t_53ba9a9be54813 19-23
+  s_8987b8017e49de::t_c3021640a7e8c2 61,71-75
+  s_8987b8017e49de::t_cd0074f629cf79 95
+packages/cli/src/modules/promotions.ee/__tests__/diff-package-files.integration.test.ts
+  s_8987b8017e49de::t_9f075e94a529fc 30-39,53-55,62,69-72,92,107,110,115
+packages/@n8n/cli/src/client.ts
+  s_8987b8017e49de::t_42af915144baec 166-173
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8987b8017e49de::t_42af915144baec 9248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cadfcbc363aacb594f9b21e4f196be9e72ee7eb6",
+  "prompts": {},
+  "sessions": {
+    "s_8987b8017e49de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce582f0f-6915-4be7-93ac-a2ac38c09dc8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
