@@ -137,16 +137,6 @@ const groupedExecutionErrors = computed(() => {
 		</N8nTooltip>
 	</div>
 	<div
-		v-else-if="isDeprecated"
-		:class="[...commonClasses, $style.deprecated]"
-		data-test-id="canvas-node-status-deprecated"
-	>
-		<N8nTooltip :show-after="500" placement="bottom">
-			<template #content> {{ deprecatedTooltip }} </template>
-			<N8nIcon icon="triangle-alert" :size="size" />
-		</N8nTooltip>
-	</div>
-	<div
 		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-not-installed"
@@ -169,6 +159,16 @@ const groupedExecutionErrors = computed(() => {
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="groupedExecutionErrors" />
 			</template>
 			<CanvasNodeStatusMark status="error" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="isDeprecated"
+		:class="[...commonClasses, $style.deprecated]"
+		data-test-id="canvas-node-status-deprecated"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> {{ deprecatedTooltip }} </template>
+			<N8nIcon icon="triangle-alert" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div
