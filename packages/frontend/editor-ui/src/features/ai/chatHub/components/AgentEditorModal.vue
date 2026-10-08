@@ -7,7 +7,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { fetchChatModelsApi, fetchAgentApi } from '@/features/ai/chatHub/chat.api';
-import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	emptyChatModelsResponse,
@@ -21,12 +20,17 @@ import {
 } from '@n8n/api-types';
 import {
 	N8nButton,
-	N8nHeading,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIconPicker,
 	N8nInput,
 	N8nInputLabel,
+	N8nSpinner,
 	N8nText,
-	N8nCallout,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -153,8 +157,14 @@ const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
 
-function closeDialog() {
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+async function closeDialog() {
 	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
 }
 
 // If the agent doesn't support tools anymore, reset toolIds
@@ -467,243 +477,252 @@ watch(documentVisibility, (visibility) => {
 </script>
 
 <template>
-	<Modal :name="modalName" width="640px" :loading="isLoadingAgent">
-		<template #header>
-			<div :class="$style.header">
-				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
-				<N8nButton
-					v-if="isEditMode"
-					variant="subtle"
-					icon="trash-2"
-					:class="$style.deleteButton"
-					:disabled="isDeleting"
-					:loading="isDeleting"
-					@click="onDelete"
-				/>
-			</div>
-		</template>
-		<template #content>
-			<div :class="$style.contentWrapper">
-				<div
-					v-if="isSemanticSearchEnabled && fileDrop.isDragging.value"
-					:class="$style.dropOverlay"
-				>
-					<N8nText v-if="fileDrop.isDraggingUnsupported.value" size="large" color="text-dark">{{
-						i18n.baseText('chatHub.agent.editor.dropOverlay.unsupportedFileType')
-					}}</N8nText>
-					<N8nText v-else size="large" color="text-dark">{{
-						i18n.baseText('chatHub.agent.editor.dropOverlay.addFile')
-					}}</N8nText>
+	<N8nDialog :open="modalOpen" size="xlarge" @update:open="onDialogOpenUpdate">
+		<template v-if="!isLoadingAgent">
+			<N8nDialogHeader>
+				<div :class="$style.header">
+					<N8nDialogTitle>{{ title }}</N8nDialogTitle>
+					<N8nButton
+						v-if="isEditMode"
+						variant="subtle"
+						icon="trash-2"
+						:class="$style.deleteButton"
+						:disabled="isDeleting"
+						:loading="isDeleting"
+						@click="onDelete"
+					/>
 				</div>
-				<div
-					:class="[
-						$style.content,
-						{ [$style.isDraggingFile]: isSemanticSearchEnabled && fileDrop.isDragging.value },
-					]"
-					@dragenter="
-						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDragEnter($event) : undefined
-					"
-					@dragleave="
-						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDragLeave($event) : undefined
-					"
-					@dragover="
-						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDragOver($event) : undefined
-					"
-					@drop="
-						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDrop($event) : undefined
-					"
-				>
-					<N8nInputLabel
-						input-name="agent-name"
-						:label="i18n.baseText('chatHub.agent.editor.name.label')"
-						:required="true"
+			</N8nDialogHeader>
+			<N8nDialogBody>
+				<div :class="$style.contentWrapper">
+					<div
+						v-if="isSemanticSearchEnabled && fileDrop.isDragging.value"
+						:class="$style.dropOverlay"
 					>
-						<div :class="$style.agentName">
-							<N8nIconPicker
-								v-model="icon as IconOrEmoji"
-								:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
-							/>
-							<N8nInput
-								id="agent-name"
-								ref="nameInput"
-								v-model="name"
-								:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
-								:maxlength="128"
-								:class="$style.agentNameInput"
-							/>
-						</div>
-					</N8nInputLabel>
-
-					<N8nInputLabel
-						input-name="agent-description"
-						:label="i18n.baseText('chatHub.agent.editor.description.label')"
+						<N8nText v-if="fileDrop.isDraggingUnsupported.value" size="large" color="text-dark">{{
+							i18n.baseText('chatHub.agent.editor.dropOverlay.unsupportedFileType')
+						}}</N8nText>
+						<N8nText v-else size="large" color="text-dark">{{
+							i18n.baseText('chatHub.agent.editor.dropOverlay.addFile')
+						}}</N8nText>
+					</div>
+					<div
+						:class="[
+							$style.content,
+							{ [$style.isDraggingFile]: isSemanticSearchEnabled && fileDrop.isDragging.value },
+						]"
+						@dragenter="
+							isSemanticSearchEnabled && canUploadFiles
+								? fileDrop.handleDragEnter($event)
+								: undefined
+						"
+						@dragleave="
+							isSemanticSearchEnabled && canUploadFiles
+								? fileDrop.handleDragLeave($event)
+								: undefined
+						"
+						@dragover="
+							isSemanticSearchEnabled && canUploadFiles
+								? fileDrop.handleDragOver($event)
+								: undefined
+						"
+						@drop="
+							isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDrop($event) : undefined
+						"
 					>
-						<N8nInput
-							id="agent-description"
-							v-model="description"
-							type="textarea"
-							:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
-							:maxlength="512"
-							:rows="3"
-							:class="$style.input"
-						/>
-					</N8nInputLabel>
-
-					<N8nInputLabel
-						input-name="agent-system-prompt"
-						:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
-					>
-						<N8nInput
-							id="agent-system-prompt"
-							v-model="systemPrompt"
-							type="textarea"
-							:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
-							:rows="6"
-							:class="$style.input"
-						/>
-					</N8nInputLabel>
-
-					<N8nInputLabel
-						input-name="agent-suggested-prompts"
-						:label="i18n.baseText('chatHub.agent.editor.suggestedPrompts.label')"
-						:tooltip-text="i18n.baseText('chatHub.agent.editor.suggestedPrompts.tooltip')"
-						:show-tooltip="true"
-					>
-						<SuggestedPromptsEditor v-model="suggestedPrompts" />
-					</N8nInputLabel>
-
-					<div :class="$style.row">
 						<N8nInputLabel
-							input-name="agent-model"
-							:class="$style.input"
-							:label="i18n.baseText('chatHub.agent.editor.model.label')"
+							input-name="agent-name"
+							:label="i18n.baseText('chatHub.agent.editor.name.label')"
 							:required="true"
 						>
-							<ModelSelector
-								:selected-agent="selectedAgent"
-								:include-custom-agents="false"
-								:credentials="agentMergedCredentials"
-								:agents="agents"
-								:is-loading="isLoadingAgents"
-								:class="$style.modelSelector"
-								warn-missing-credentials
-								@change="onModelChange"
-								@select-credential="onCredentialSelected"
-							/>
-						</N8nInputLabel>
-
-						<N8nInputLabel
-							input-name="agent-tool"
-							:class="$style.input"
-							:label="i18n.baseText('chatHub.agent.editor.tools.label')"
-							:required="false"
-						>
-							<div>
-								<ToolsSelector
-									:disabled="!canSelectTools"
-									:disabled-tooltip="
-										canSelectTools
-											? undefined
-											: selectedModel
-												? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
-												: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
-									"
-									:checked-tool-ids="toolIds"
-									@toggle="handleToggleAgentTool"
+							<div :class="$style.agentName">
+								<N8nIconPicker
+									v-model="icon as IconOrEmoji"
+									:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
+								/>
+								<N8nInput
+									id="agent-name"
+									ref="nameInput"
+									v-model="name"
+									:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
+									:maxlength="128"
+									:class="$style.agentNameInput"
 								/>
 							</div>
 						</N8nInputLabel>
-					</div>
 
-					<N8nInputLabel
-						v-if="isSemanticSearchEnabled"
-						input-name="agent-files"
-						:label="i18n.baseText('chatHub.agent.editor.files.label')"
-						:required="false"
-					>
-						<input
-							ref="fileInput"
-							type="file"
-							:class="$style.fileInput"
-							accept="application/pdf"
-							multiple
-							@change="handleFileSelect"
-						/>
-						<N8nCallout
-							v-if="!canUploadFiles"
-							theme="info"
-							icon="info"
-							:class="$style.vectorStoreCallout"
+						<N8nInputLabel
+							input-name="agent-description"
+							:label="i18n.baseText('chatHub.agent.editor.description.label')"
 						>
-							<I18nT
-								:keypath="
-									canConfigureVectorStore
-										? 'chatHub.agent.editor.semanticSearch.notReady.canConfigure'
-										: 'chatHub.agent.editor.semanticSearch.notReady'
-								"
-								tag="span"
-								scope="global"
-							>
-								<template #settingsLink>
-									<RouterLink
-										:to="{ name: CHAT_SETTINGS_VIEW }"
-										target="_blank"
-										:class="$style.settingsLink"
-										>{{
-											i18n.baseText('chatHub.agent.editor.semanticSearch.settingsLink')
-										}}</RouterLink
-									>
-								</template>
-							</I18nT>
-						</N8nCallout>
-						<div v-if="allFiles.length > 0" :class="$style.fileList">
-							<AgentEditorModalFileRow
-								v-for="item in allFiles"
-								:key="item.id"
-								:item="item"
-								:semantic-search-ready="canUploadFiles"
-								:current-embedding-provider="currentEmbeddingProvider"
-								@remove="removeFile(item)"
+							<N8nInput
+								id="agent-description"
+								v-model="description"
+								type="textarea"
+								:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
+								:maxlength="512"
+								:rows="3"
+								:class="$style.input"
 							/>
-						</div>
-						<N8nButton
-							icon="plus"
-							variant="subtle"
-							:class="$style.addFileButton"
-							:disabled="!canUploadFiles"
-							@click="handleClickUploadArea"
-						>
-							Add file
-						</N8nButton>
-					</N8nInputLabel>
-				</div>
-			</div>
-		</template>
+						</N8nInputLabel>
 
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="closeDialog">
-					{{ i18n.baseText('chatHub.tools.editor.cancel') }}
-				</N8nButton>
-				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
-					{{ saveButtonLabel }}
-				</N8nButton>
-			</div>
+						<N8nInputLabel
+							input-name="agent-system-prompt"
+							:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
+						>
+							<N8nInput
+								id="agent-system-prompt"
+								v-model="systemPrompt"
+								type="textarea"
+								:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
+								:rows="6"
+								:class="$style.input"
+							/>
+						</N8nInputLabel>
+
+						<N8nInputLabel
+							input-name="agent-suggested-prompts"
+							:label="i18n.baseText('chatHub.agent.editor.suggestedPrompts.label')"
+							:tooltip-text="i18n.baseText('chatHub.agent.editor.suggestedPrompts.tooltip')"
+							:show-tooltip="true"
+						>
+							<SuggestedPromptsEditor v-model="suggestedPrompts" />
+						</N8nInputLabel>
+
+						<div :class="$style.row">
+							<N8nInputLabel
+								input-name="agent-model"
+								:class="$style.input"
+								:label="i18n.baseText('chatHub.agent.editor.model.label')"
+								:required="true"
+							>
+								<ModelSelector
+									:selected-agent="selectedAgent"
+									:include-custom-agents="false"
+									:credentials="agentMergedCredentials"
+									:agents="agents"
+									:is-loading="isLoadingAgents"
+									:class="$style.modelSelector"
+									warn-missing-credentials
+									@change="onModelChange"
+									@select-credential="onCredentialSelected"
+								/>
+							</N8nInputLabel>
+
+							<N8nInputLabel
+								input-name="agent-tool"
+								:class="$style.input"
+								:label="i18n.baseText('chatHub.agent.editor.tools.label')"
+								:required="false"
+							>
+								<div>
+									<ToolsSelector
+										:disabled="!canSelectTools"
+										:disabled-tooltip="
+											canSelectTools
+												? undefined
+												: selectedModel
+													? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+													: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
+										"
+										:checked-tool-ids="toolIds"
+										@toggle="handleToggleAgentTool"
+									/>
+								</div>
+							</N8nInputLabel>
+						</div>
+
+						<N8nInputLabel
+							v-if="isSemanticSearchEnabled"
+							input-name="agent-files"
+							:label="i18n.baseText('chatHub.agent.editor.files.label')"
+							:required="false"
+						>
+							<input
+								ref="fileInput"
+								type="file"
+								:class="$style.fileInput"
+								accept="application/pdf"
+								multiple
+								@change="handleFileSelect"
+							/>
+							<N8nCallout
+								v-if="!canUploadFiles"
+								theme="info"
+								icon="info"
+								:class="$style.vectorStoreCallout"
+							>
+								<I18nT
+									:keypath="
+										canConfigureVectorStore
+											? 'chatHub.agent.editor.semanticSearch.notReady.canConfigure'
+											: 'chatHub.agent.editor.semanticSearch.notReady'
+									"
+									tag="span"
+									scope="global"
+								>
+									<template #settingsLink>
+										<RouterLink
+											:to="{ name: CHAT_SETTINGS_VIEW }"
+											target="_blank"
+											:class="$style.settingsLink"
+											>{{
+												i18n.baseText('chatHub.agent.editor.semanticSearch.settingsLink')
+											}}</RouterLink
+										>
+									</template>
+								</I18nT>
+							</N8nCallout>
+							<div v-if="allFiles.length > 0" :class="$style.fileList">
+								<AgentEditorModalFileRow
+									v-for="item in allFiles"
+									:key="item.id"
+									:item="item"
+									:semantic-search-ready="canUploadFiles"
+									:current-embedding-provider="currentEmbeddingProvider"
+									@remove="removeFile(item)"
+								/>
+							</div>
+							<N8nButton
+								icon="plus"
+								variant="subtle"
+								:class="$style.addFileButton"
+								:disabled="!canUploadFiles"
+								@click="handleClickUploadArea"
+							>
+								Add file
+							</N8nButton>
+						</N8nInputLabel>
+					</div>
+				</div>
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<div :class="$style.footer">
+					<N8nButton variant="subtle" @click="closeDialog">
+						{{ i18n.baseText('chatHub.tools.editor.cancel') }}
+					</N8nButton>
+					<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
+						{{ saveButtonLabel }}
+					</N8nButton>
+				</div>
+			</N8nDialogFooter>
 		</template>
-	</Modal>
+		<N8nDialogBody v-else>
+			<div :class="$style.loader">
+				<N8nSpinner />
+			</div>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
 .header {
 	display: flex;
+	flex: 1;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--s);
-	padding-right: var(--spacing--xl);
-}
-
-.deleteButton {
-	margin-top: calc(-1 * var(--spacing--xs));
+	min-width: 0;
 }
 
 .contentWrapper {
@@ -791,6 +810,14 @@ watch(documentVisibility, (visibility) => {
 	border: var(--border);
 	border-radius: var(--radius);
 	overflow: hidden;
+}
+
+.loader {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: var(--height--5xl);
+	padding: var(--spacing--xl);
 }
 
 .credentialPickerRow {
