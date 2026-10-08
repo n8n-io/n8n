@@ -128,7 +128,7 @@ function handleSubmenuOpenChange(open: boolean) {
 					<slot name="item-trailing" v-bind="slotProps" />
 				</template>
 			</ContextMenuItemContent>
-			<Icon icon="chevron-right" :class="$style.subIndicator" :color="iconColor" size="large" />
+			<Icon icon="chevron-right-12" :class="$style.subIndicator" :color="iconColor" :size="12" />
 		</ContextMenuSubTrigger>
 		<ContextMenuPortal>
 			<ContextMenuSubContent
