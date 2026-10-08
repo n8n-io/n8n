@@ -72,4 +72,5 @@ export type InstrumentToolAdditionalData = NonNullable<
  */
 export type PrepareWorkflowAgentForEval = (
 	config: AgentJsonConfig,
+	context?: { hasChatIntegrations?: boolean },
 ) => Promise<{ config: AgentJsonConfig; instrumentation: AgentRuntimeInstrumentation }>;

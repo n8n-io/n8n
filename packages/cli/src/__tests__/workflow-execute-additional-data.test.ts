@@ -1815,8 +1815,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					undefined,
 					undefined,
 					executionSandboxScope,
-					undefined,
-					prepareForEval,
+					{ streamObserver: undefined, prepareForEval },
 				);
 			});
 
@@ -1849,8 +1848,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					'test',
 					undefined,
 					undefined,
-					undefined,
-					prepareForEval,
+					{ streamObserver: undefined, prepareForEval },
 				);
 			});
 
@@ -2129,7 +2127,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[9]).toEqual(
 				executionSandboxScope,
 			);
-			const streamObserver = agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10];
+			const streamObserver =
+				agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10]?.streamObserver;
 			expect(streamObserver).toEqual(expect.any(Function));
 
 			await streamObserver?.({ type: 'response-delta', delta: 'hello' });

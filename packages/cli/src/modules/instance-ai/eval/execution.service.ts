@@ -1103,8 +1103,11 @@ export class EvalExecutionService {
 			const warning = `"${callingNode}" calls an Agent; the eval turned off its ${feature}: ${reason}`;
 			if (!run.hints.warnings.includes(warning)) run.hints.warnings.push(warning);
 		};
-		return async (original: AgentJsonConfig) => {
+		return async (original: AgentJsonConfig, { hasChatIntegrations } = {}) => {
 			const { config, skippedFeatures } = pruneConfigForEval(original);
+			if (hasChatIntegrations) {
+				warn('chat integrations', 'an eval run cannot fake the chat SDKs they post through.');
+			}
 			for (const { feature, reason } of skippedFeatures) {
 				// Memory matters only to a call that continues an earlier session of this run.
 				if (feature !== 'memory') warn(feature, reason);

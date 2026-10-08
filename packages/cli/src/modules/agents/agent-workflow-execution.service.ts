@@ -127,6 +127,12 @@ interface WorkflowExecutionContext {
 	streamObserver?: WorkflowAgentStreamObserver;
 }
 
+/** Optional hooks for one workflow agent run. */
+export interface WorkflowAgentRunOptions {
+	streamObserver?: WorkflowAgentStreamObserver;
+	prepareForEval?: PrepareWorkflowAgentForEval;
+}
+
 interface StoredWorkflowExecutionContext extends WorkflowExecutionContext {
 	agentId: string;
 	useDraftVersion?: boolean;
@@ -630,8 +636,7 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
 		sandboxScope?: WorkflowSandboxScope,
-		streamObserver?: WorkflowAgentStreamObserver,
-		prepareForEval?: PrepareWorkflowAgentForEval,
+		{ streamObserver, prepareForEval }: WorkflowAgentRunOptions = {},
 	): Promise<ExecuteAgentData> {
 		return await this.executeForWorkflowInternal({
 			agentId,
@@ -752,7 +757,9 @@ export class AgentWorkflowExecutionService {
 	/** Chat integrations post through chat SDKs, which an eval cannot fake, so eval runs drop them. */
 	private async applyEvalSetup(agent: Agent, prepareForEval?: PrepareWorkflowAgentForEval) {
 		if (!prepareForEval || !agent.schema) return undefined;
-		const { config, instrumentation } = await prepareForEval(agent.schema);
+		const { config, instrumentation } = await prepareForEval(agent.schema, {
+			hasChatIntegrations: (agent.integrations ?? []).length > 0,
+		});
 		agent.schema = config;
 		agent.integrations = [];
 		return instrumentation;
@@ -818,8 +825,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType = 'production',
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
-		streamObserver?: WorkflowAgentStreamObserver,
-		prepareForEval?: PrepareWorkflowAgentForEval,
+		{ streamObserver, prepareForEval }: WorkflowAgentRunOptions = {},
 	): Promise<ExecuteAgentData> {
 		await this.settingsService.assertEnabled();
 		const { runtimeConfig, skills, credentialProvider } = await this.prepareInlineRuntime(

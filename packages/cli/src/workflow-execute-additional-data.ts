@@ -52,10 +52,8 @@ import {
 } from 'n8n-workflow';
 
 import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
-import {
-	createWorkflowAgentStreamObserver,
-	type WorkflowAgentStreamObserver,
-} from './modules/agents/workflow-agent-stream';
+import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
+import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -442,10 +440,8 @@ export async function executeAgent(
 				invocation: invocationContext,
 			})
 		: undefined;
-	const trailingArguments: [
-		streamObserver?: WorkflowAgentStreamObserver,
-		prepareForEval?: PrepareWorkflowAgentForEval,
-	] = prepareForEval ? [streamObserver, prepareForEval] : streamObserver ? [streamObserver] : [];
+	const runOptions: [] | [WorkflowAgentRunOptions] =
+		streamObserver || prepareForEval ? [{ streamObserver, prepareForEval }] : [];
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
@@ -465,7 +461,7 @@ export async function executeAgent(
 			useDraftVersion ? 'test' : 'production',
 			outputSchema,
 			workflowContext,
-			...trailingArguments,
+			...runOptions,
 		);
 	}
 
@@ -498,7 +494,7 @@ export async function executeAgent(
 		outputSchema,
 		workflowContext,
 		sandboxScope,
-		...trailingArguments,
+		...runOptions,
 	);
 
 	// Callers see the session id they supplied (or the derived per-call id), so

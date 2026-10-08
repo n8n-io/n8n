@@ -2195,6 +2195,20 @@ describe('EvalExecutionService', () => {
 			]);
 		});
 
+		it('flags the chat integrations that the eval drops from a called agent', async () => {
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				await (args[9] as PrepareWorkflowAgentForEval)(agentConfig, { hasChatIntegrations: true });
+				return { response: 'done' };
+			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.hints.warnings).toContainEqual(
+				expect.stringContaining('turned off its chat integrations'),
+			);
+		});
+
 		it("flags sub-agent features and mocks agents that the called agent's tools call", async () => {
 			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
 				const { instrumentation } = await (args[9] as PrepareWorkflowAgentForEval)(agentConfig);

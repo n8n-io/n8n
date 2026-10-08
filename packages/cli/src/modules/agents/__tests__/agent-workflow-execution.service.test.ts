@@ -923,7 +923,7 @@ describe('AgentWorkflowExecutionService', () => {
 				'production',
 				undefined,
 				workflowContext,
-				streamObserver,
+				{ streamObserver },
 			);
 
 			// No entity lookup — the embedded config is the source of truth.
@@ -1304,7 +1304,7 @@ describe('AgentWorkflowExecutionService', () => {
 				undefined,
 				undefined,
 				undefined,
-				streamObserver,
+				{ streamObserver },
 			);
 			await expect(execution).rejects.toMatchObject({
 				message: 'reader failed while consuming stream',
@@ -1342,7 +1342,7 @@ describe('AgentWorkflowExecutionService', () => {
 				undefined,
 				undefined,
 				undefined,
-				streamObserver,
+				{ streamObserver },
 			);
 
 			await expect(execution).rejects.toMatchObject({
@@ -1492,11 +1492,10 @@ describe('AgentWorkflowExecutionService', () => {
 				undefined,
 				undefined,
 				undefined,
-				undefined,
-				prepareForEval,
+				{ prepareForEval },
 			);
 
-			expect(prepareForEval).toHaveBeenCalledWith(schema);
+			expect(prepareForEval).toHaveBeenCalledWith(schema, { hasChatIntegrations: true });
 			const [entity, , , , , passedInstrumentation] =
 				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
 			expect(entity.schema).toEqual(evalConfig);
@@ -1535,8 +1534,7 @@ describe('AgentWorkflowExecutionService', () => {
 				'test',
 				undefined,
 				undefined,
-				undefined,
-				prepareForEval,
+				{ prepareForEval },
 			);
 
 			expect(prepareForEval).toHaveBeenCalledWith(
