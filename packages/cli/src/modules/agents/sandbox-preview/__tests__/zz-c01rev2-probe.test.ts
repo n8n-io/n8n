@@ -1,3 +1,4 @@
+import { appendFileSync } from 'node:fs';
 import { createServer, request } from 'node:http';
 import type { Socket } from 'node:net';
 
@@ -39,8 +40,11 @@ describe('probe', () => {
 			serviceUrl: `http://127.0.0.1:${port}`,
 			path: '/sandboxes/sb-9/ports/3000',
 		});
-		const answer = await watch(h.servers.port, `${url}src/main.ts`);
-		console.log(kind, JSON.stringify(answer));
+		const answer = await Promise.race([
+			watch(h.servers.port, `${url}src/main.ts`),
+			new Promise((r) => setTimeout(() => r('hung after 8s'), 8000)),
+		]);
+		appendFileSync('/tmp/claude-0/-home-user/6e9c8a53-634c-5bee-999d-92b947b56009/scratchpad/c01rev/probe-out.txt', `${kind} ${JSON.stringify(answer)} warn=${JSON.stringify(h.logger.warn.mock.calls)}\n`);
 		await close(upstream);
-	});
+	}, 15_000);
 });
