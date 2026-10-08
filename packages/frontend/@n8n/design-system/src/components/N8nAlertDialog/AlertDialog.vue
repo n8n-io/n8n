@@ -6,6 +6,7 @@ import N8nDialogContent from '../N8nDialog/DialogContent.vue';
 import N8nDialogDescription from '../N8nDialog/DialogDescription.vue';
 import N8nDialogFooter from '../N8nDialog/DialogFooter.vue';
 import N8nDialogHeader from '../N8nDialog/DialogHeader.vue';
+import N8nDialogBody from '../N8nDialog/DialogBody.vue';
 import N8nDialogOverlay from '../N8nDialog/DialogOverlay.vue';
 import N8nDialogTitle from '../N8nDialog/DialogTitle.vue';
 
@@ -55,6 +56,10 @@ export interface AlertDialogProps {
 	 * @default 'small'
 	 */
 	size?: AlertDialogSize;
+	/**
+	 * Render above another open dialog
+	 */
+	stacked?: boolean;
 }
 
 export interface AlertDialogEmits {
@@ -69,6 +74,7 @@ withDefaults(defineProps<AlertDialogProps>(), {
 	cancelLabel: 'Cancel',
 	loading: false,
 	size: 'small',
+	stacked: false,
 });
 
 const emit = defineEmits<AlertDialogEmits>();
@@ -97,8 +103,8 @@ const handleCancel = () => {
 <template>
 	<DialogRoot :open="open" :default-open="defaultOpen" @update:open="handleOpenChange">
 		<DialogPortal>
-			<N8nDialogOverlay />
-			<N8nDialogContent :size="size" :show-close-button="false">
+			<N8nDialogOverlay :stacked="stacked" />
+			<N8nDialogContent :size="size" :show-close-button="false" :stacked="stacked">
 				<N8nDialogHeader>
 					<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 					<N8nDialogDescription v-if="description">
@@ -106,7 +112,9 @@ const handleCancel = () => {
 					</N8nDialogDescription>
 				</N8nDialogHeader>
 
-				<slot />
+				<N8nDialogBody v-if="$slots.default">
+					<slot />
+				</N8nDialogBody>
 
 				<N8nDialogFooter>
 					<N8nButton variant="subtle" :label="cancelLabel" @click="handleCancel" />
