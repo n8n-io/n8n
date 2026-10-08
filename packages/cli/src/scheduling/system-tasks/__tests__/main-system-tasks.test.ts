@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import { PendingAuthorizationCleanupTask } from '@/credentials/pending-authorization-cleanup.task';
 import { LicenseRenewalTask } from '@/license/license-renewal.task';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
+import { ExecutionPruningHardDeleteTask } from '@/services/pruning/execution-pruning-hard-delete.task';
 import { ExecutionPruningSoftDeleteTask } from '@/services/pruning/execution-pruning-soft-delete.task';
 import { WorkflowHistoryCompactionOptimizeTask } from '@/services/pruning/workflow-history-compaction-optimize.task';
 import { WorkflowHistoryCompactionTrimTask } from '@/services/pruning/workflow-history-compaction-trim.task';
@@ -41,6 +42,7 @@ it('should return every main task when all features are on', async () => {
 		PendingAuthorizationCleanupTask,
 		WorkflowHistoryCompactionTrimTask,
 		ExecutionPruningSoftDeleteTask,
+		ExecutionPruningHardDeleteTask,
 		TelemetryPulseTask,
 		WorkflowPublicationOutboxCleanupTask,
 		WorkflowStatisticsRollupTask,
@@ -53,10 +55,11 @@ it('should leave out the telemetry pulse when diagnostics are off', async () => 
 	expect(tasks).not.toContain(TelemetryPulseTask);
 });
 
-it('should leave out execution pruning soft delete when pruning is off', async () => {
+it('should leave out execution pruning when pruning is off', async () => {
 	const tasks = await mainSystemTasks(configWith({ pruneData: false }));
 
 	expect(tasks).not.toContain(ExecutionPruningSoftDeleteTask);
+	expect(tasks).not.toContain(ExecutionPruningHardDeleteTask);
 	expect(tasks).toContain(WorkflowPublicationOutboxCleanupTask);
 });
 

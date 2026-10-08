@@ -1,188 +1,115 @@
-import { mockLogger } from '@n8n/backend-test-utils';
-import type { ExecutionsConfig } from '@n8n/config';
-import type { DbConnection } from '@n8n/db';
-import type { InstanceSettings } from 'n8n-core';
+import type { Logger } from '@n8n/backend-common';
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
+
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExecutionsPruningService } from '../executions-pruning.service';
 
-describe('PruningService', () => {
-	const dbConnection = mock<DbConnection>({
-		connectionState: { migrated: true },
-	});
+type SoftDeletedRef = Awaited<ReturnType<ExecutionRepository['findSoftDeletedExecutions']>>[number];
 
-	describe('init', () => {
-		it('should start pruning on main instance that is the leader', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock(),
-			);
-			const startPruningSpy = vi.spyOn(pruningService, 'startPruning');
+const BATCH_SIZE = 100;
 
-			pruningService.init();
+describe('ExecutionsPruningService', () => {
+	const makeService = () => {
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		const executionRepository = mock<ExecutionRepository>({ hardDeletionBatchSize: BATCH_SIZE });
+		const executionPersistence = mock<ExecutionPersistence>();
+		const service = new ExecutionsPruningService(logger, executionRepository, executionPersistence);
+		return { service, executionRepository, executionPersistence };
+	};
 
-			expect(startPruningSpy).toHaveBeenCalled();
-		});
+	const batchOf = (size: number): SoftDeletedRef[] =>
+		Array.from({ length: size }, (_, i) => ({
+			executionId: `exec-${i}`,
+			workflowId: 'wf-1',
+			storedAt: 'db' as const,
+		}));
 
-		it('should not start pruning on main instance that is a follower', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock(),
-			);
-			const startPruningSpy = vi.spyOn(pruningService, 'startPruning');
-
-			pruningService.init();
-
-			expect(startPruningSpy).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('isEnabled', () => {
-		it('should return `true` based on config if leader main', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			expect(pruningService.isEnabled).toBe(true);
-		});
-
-		it('should return `false` based on config if leader main', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: false }),
-			);
-
-			expect(pruningService.isEnabled).toBe(false);
-		});
-
-		it('should return `false` if non-main even if config is enabled', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			expect(pruningService.isEnabled).toBe(false);
-		});
-
-		it('should return `false` if follower main even if config is enabled', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({
-					isLeader: false,
-					isFollower: true,
-					instanceType: 'main',
-					isMultiMain: true,
-				}),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			expect(pruningService.isEnabled).toBe(false);
-		});
-	});
-
-	describe('startPruning', () => {
-		it('should not start pruning if service is disabled', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: false }),
-			);
-
-			const scheduleNextHardDeletionSpy = vi.spyOn(pruningService, 'scheduleNextHardDeletion');
-
-			pruningService.startPruning();
-
-			expect(scheduleNextHardDeletionSpy).not.toHaveBeenCalled();
-		});
-
-		it('should start pruning if service is enabled and DB is migrated', () => {
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({ pruneData: true }),
-			);
-
-			const scheduleNextHardDeletionSpy = vi
-				.spyOn(pruningService, 'scheduleNextHardDeletion')
-				.mockImplementation((() => {}) as never);
-
-			pruningService.startPruning();
-
-			expect(scheduleNextHardDeletionSpy).toHaveBeenCalled();
-		});
-	});
-
-	describe('stopPruning', () => {
-		afterEach(() => vi.restoreAllMocks());
-
-		it('should stop pruning when instance loses leadership', () => {
-			// arrange
-
-			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-
-			let isLeader = true;
-			const instanceSettings = mock<InstanceSettings>({
-				instanceType: 'main',
-				isMultiMain: true,
-			});
-			Object.defineProperty(instanceSettings, 'isLeader', { get: () => isLeader });
-			instanceSettings.markAsFollower.mockImplementation(() => {
-				isLeader = false;
+	describe('softDelete', () => {
+		it('should soft-delete prunable executions', async () => {
+			const { service, executionRepository } = makeService();
+			executionRepository.softDeletePrunableExecutions.mockResolvedValue({
+				affected: 3,
+				raw: {},
+				generatedMaps: [],
 			});
 
-			const pruningService = new ExecutionsPruningService(
-				mockLogger(),
-				instanceSettings,
-				dbConnection,
-				mock(),
-				mock(),
-				mock<ExecutionsConfig>({
-					pruneData: true,
-					pruneDataIntervals: { softDelete: 60, hardDelete: 15 },
-				}),
+			await service.softDelete();
+
+			expect(executionRepository.softDeletePrunableExecutions).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('hardDelete', () => {
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
+
+		it('should delete batches until one comes back short', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const batches = [batchOf(BATCH_SIZE), batchOf(BATCH_SIZE), batchOf(30)];
+			for (const batch of batches) {
+				executionRepository.findSoftDeletedExecutions.mockResolvedValueOnce(batch);
+			}
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(executionPersistence.hardDelete.mock.calls).toEqual(batches.map((batch) => [batch]));
+		});
+
+		it('should stop after an empty batch', async () => {
+			const { service, executionRepository } = makeService();
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue([]);
+
+			await service.hardDelete(new AbortController().signal);
+
+			expect(executionRepository.findSoftDeletedExecutions).toHaveBeenCalledTimes(1);
+		});
+
+		it('should pause one second between full batches', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			executionRepository.findSoftDeletedExecutions
+				.mockResolvedValueOnce(batchOf(BATCH_SIZE))
+				.mockResolvedValueOnce(batchOf(BATCH_SIZE))
+				.mockResolvedValueOnce([]);
+
+			const run = service.hardDelete(new AbortController().signal);
+			await vi.advanceTimersByTimeAsync(999);
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(2);
+
+			await vi.advanceTimersByTimeAsync(1000);
+			await run;
+		});
+
+		it('should stop at the pause when the signal aborts', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batchOf(BATCH_SIZE));
+			const controller = new AbortController();
+
+			const run = service.hardDelete(controller.signal);
+			await vi.advanceTimersByTimeAsync(0);
+			controller.abort();
+
+			await expect(run).resolves.toBeUndefined();
+			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1);
+		});
+
+		it('should reject when a batch fails and select no further batch', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			executionRepository.findSoftDeletedExecutions.mockResolvedValue(batchOf(BATCH_SIZE));
+			executionPersistence.hardDelete.mockRejectedValue(new Error('blob store down'));
+
+			await expect(service.hardDelete(new AbortController().signal)).rejects.toThrow(
+				'blob store down',
 			);
 
-			pruningService.startPruning();
-
-			// act
-
-			instanceSettings.markAsFollower();
-			pruningService.stopPruning();
-
-			// assert
-
-			expect(isLeader).toBe(false);
-			expect(clearTimeoutSpy).toHaveBeenCalled();
+			expect(executionRepository.findSoftDeletedExecutions).toHaveBeenCalledTimes(1);
 		});
 	});
 });

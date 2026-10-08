@@ -315,13 +315,6 @@ export default defineConfig(
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
 	{
-		// Shrink-only ratchet: periodic leader timers not yet migrated to system
-		// tasks. NEVER add to this list — new periodic leader work must be a
-		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
-		files: ['./src/services/pruning/executions-pruning.service.ts'],
-		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
-	},
-	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'off',

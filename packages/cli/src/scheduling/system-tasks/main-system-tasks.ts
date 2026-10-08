@@ -39,7 +39,10 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		const { ExecutionPruningSoftDeleteTask } = await import(
 			'@/services/pruning/execution-pruning-soft-delete.task.js'
 		);
-		tasks.push(ExecutionPruningSoftDeleteTask);
+		const { ExecutionPruningHardDeleteTask } = await import(
+			'@/services/pruning/execution-pruning-hard-delete.task.js'
+		);
+		tasks.push(ExecutionPruningSoftDeleteTask, ExecutionPruningHardDeleteTask);
 	}
 
 	if (globalConfig.diagnostics.enabled) {
