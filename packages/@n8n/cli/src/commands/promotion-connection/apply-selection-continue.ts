@@ -24,7 +24,8 @@ export default class PromotionConnectionApplySelectionContinue extends Promotion
 		}),
 		...expectedSourceFlags({ required: true }),
 		confirmDestructiveChanges: Flags.boolean({
-			description: 'Also apply data table changes that remove, rename, or retype columns',
+			description:
+				'Also apply data table changes that remove, rename, or retype columns. The values in those columns are removed.',
 			aliases: ['confirm-destructive-changes'],
 		}),
 	};

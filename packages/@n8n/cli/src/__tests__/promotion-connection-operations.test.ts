@@ -215,7 +215,7 @@ describe('promotion-connection apply command', () => {
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
 			`n8n-cli promotion-connection apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}\n` +
-				'To also apply destructive data table changes, add --confirm-destructive-changes. Rows are kept.',
+				'To also apply data table changes that remove, rename, or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
