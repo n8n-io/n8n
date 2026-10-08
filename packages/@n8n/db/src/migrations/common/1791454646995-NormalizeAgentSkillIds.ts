@@ -1,9 +1,11 @@
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 type IdMap = Map<string, string>;
+type IdVisitor = (id: string) => string;
 type JsonRow = Record<string, unknown>;
 type JsonVisitor = (values: JsonRow) => void;
 
@@ -31,7 +33,7 @@ function unusedId(reserved: Set<string>): string {
 		const id = generateNanoId();
 		if (!reserved.has(id)) return id;
 	}
-	throw new Error('Could not generate a unique agent resource ID');
+	throw new UnexpectedError('Could not generate a unique agent resource ID');
 }
 
 function allocateSkillIds(ids: IdMap): IdMap {
@@ -47,19 +49,19 @@ function allocateSkillIds(ids: IdMap): IdMap {
 	return changes;
 }
 
-function replaceId(value: unknown, ids: IdMap): unknown {
-	return typeof value === 'string' ? (ids.get(value) ?? value) : value;
+function visitId(value: unknown, visit: IdVisitor): unknown {
+	return typeof value === 'string' ? visit(value) : value;
 }
 
-function replaceKeys(value: unknown, ids: IdMap): unknown {
+function visitKeys(value: unknown, visit: IdVisitor): unknown {
 	if (!isRecord(value)) return value;
-	return Object.fromEntries(Object.entries(value).map(([id, body]) => [ids.get(id) ?? id, body]));
+	return Object.fromEntries(Object.entries(value).map(([id, body]) => [visit(id), body]));
 }
 
-function replaceRefs(config: unknown, property: string, type: string, ids: IdMap) {
+function visitRefs(config: unknown, property: string, type: string, visit: IdVisitor) {
 	if (!isRecord(config) || !Array.isArray(config[property])) return;
 	for (const ref of config[property]) {
-		if (isRecord(ref) && ref.type === type) ref.id = replaceId(ref.id, ids);
+		if (isRecord(ref) && ref.type === type) ref.id = visitId(ref.id, visit);
 	}
 }
 
@@ -122,16 +124,26 @@ async function visitJsonRows(
 	visit: JsonVisitor,
 	where = '',
 ) {
-	const { escape, runInBatches } = ctx;
+	const { escape, runQuery } = ctx;
 	const columns = [key, ...jsonColumns].map(escape.columnName).join(', ');
-	await runInBatches<JsonRow>(
-		`SELECT ${columns} FROM ${escape.tableName(table)} ${where} ORDER BY ${escape.columnName(key)}`,
-		async (rows) => {
-			for (const row of rows) {
-				await visitJsonRow(ctx, table, key, jsonColumns, visit, row);
-			}
-		},
-	);
+	const keyColumn = escape.columnName(key);
+	const batchSize = 100;
+	let lastKey: unknown;
+	while (true) {
+		let pageWhere = where;
+		if (lastKey !== undefined) {
+			pageWhere += `${where ? ' AND' : ' WHERE'} ${keyColumn} > :lastKey`;
+		}
+		const rows = await runQuery<JsonRow[]>(
+			`SELECT ${columns} FROM ${escape.tableName(table)} ${pageWhere} ORDER BY ${keyColumn} LIMIT ${batchSize}`,
+			{ lastKey },
+		);
+		for (const row of rows) {
+			await visitJsonRow(ctx, table, key, jsonColumns, visit, row);
+		}
+		if (rows.length < batchSize) return;
+		lastKey = rows[rows.length - 1][key];
+	}
 }
 
 async function visitAgents(ctx: MigrationContext, visit: JsonVisitor) {
@@ -166,21 +178,13 @@ function visitInlineNodes(ctx: MigrationContext, nodes: unknown, visit: (inline:
 
 async function visitInlineAgents(ctx: MigrationContext, visit: (inline: JsonRow) => void) {
 	const { escape } = ctx;
-	const inlineNodes = `WHERE CAST(${escape.columnName('nodes')} AS TEXT) LIKE '%n8n-nodes-base.messageAnAgent%'`;
 	for (const [table, key] of [
 		['workflow_entity', 'id'],
 		['workflow_history', 'versionId'],
 	]) {
-		await visitJsonRows(
-			ctx,
-			table,
-			key,
-			['nodes'],
-			(values) => {
-				visitInlineNodes(ctx, values.nodes, visit);
-			},
-			inlineNodes,
-		);
+		await visitJsonRows(ctx, table, key, ['nodes'], (values) => {
+			visitInlineNodes(ctx, values.nodes, visit);
+		});
 	}
 	// Waiting executions resume from their own workflow snapshot.
 	await visitJsonRows(
@@ -198,33 +202,31 @@ async function visitInlineAgents(ctx: MigrationContext, visit: (inline: JsonRow)
 	);
 }
 
-function replaceSkillCall(call: unknown, skills: IdMap) {
+function visitSkillCall(call: unknown, visit: IdVisitor) {
 	if (!isRecord(call)) return;
 	if (Array.isArray(call.activatedSkillIds)) {
-		call.activatedSkillIds = call.activatedSkillIds.map((id) => replaceId(id, skills));
+		call.activatedSkillIds = call.activatedSkillIds.map((id) => visitId(id, visit));
 	}
 	if (call.toolName !== 'load_skill') return;
-	if (isRecord(call.input)) {
-		for (const field of ['skillId', 'name']) {
-			if (field in call.input) call.input[field] = replaceId(call.input[field], skills);
-		}
+	if (isRecord(call.input) && 'skillId' in call.input) {
+		call.input.skillId = visitId(call.input.skillId, visit);
 	}
 	if (isRecord(call.output) && 'skillId' in call.output) {
-		call.output.skillId = replaceId(call.output.skillId, skills);
+		call.output.skillId = visitId(call.output.skillId, visit);
 	}
 }
 
-function replaceMessageSkills(message: unknown, skills: IdMap) {
+function visitMessageSkills(message: unknown, visit: IdVisitor) {
 	if (!isRecord(message) || !Array.isArray(message.content)) return;
 	for (const part of message.content) {
-		if (isRecord(part) && part.type === 'tool-call') replaceSkillCall(part, skills);
+		if (isRecord(part) && part.type === 'tool-call') visitSkillCall(part, visit);
 	}
 }
 
-function replaceBackgroundSnapshotSkills(
+function visitBackgroundSnapshotSkills(
 	ctx: MigrationContext,
 	persistence: unknown,
-	skills: IdMap,
+	visit: IdVisitor,
 ) {
 	if (!isRecord(persistence) || !isRecord(persistence.hostMetadata)) return;
 	const metadata = persistence.hostMetadata.n8nBackgroundSubAgent;
@@ -238,34 +240,34 @@ function replaceBackgroundSnapshotSkills(
 	}
 	if (!isRecord(snapshot)) return;
 	const before = JSON.stringify(snapshot);
-	snapshot.skills = replaceKeys(snapshot.skills, skills);
+	snapshot.skills = visitKeys(snapshot.skills, visit);
 	if (isRecord(snapshot.source)) {
-		replaceRefs(snapshot.source.config, 'skills', 'skill', skills);
+		visitRefs(snapshot.source.config, 'skills', 'skill', visit);
 	}
 	const after = JSON.stringify(snapshot);
 	if (after !== before) metadata.runtimeSnapshot = after;
 }
 
-async function migrateSkillRuntimeState(ctx: MigrationContext, skills: IdMap) {
+async function visitSkillRuntimeState(ctx: MigrationContext, visit: IdVisitor) {
 	await visitJsonRows(ctx, 'agent_checkpoints', 'runId', ['state'], ({ state }) => {
 		if (!isRecord(state)) return;
-		replaceBackgroundSnapshotSkills(ctx, state.persistence, skills);
+		visitBackgroundSnapshotSkills(ctx, state.persistence, visit);
 		if (isRecord(state.messageList)) {
 			if (Array.isArray(state.messageList.activeSkillIds)) {
 				state.messageList.activeSkillIds = state.messageList.activeSkillIds.map((id) =>
-					replaceId(id, skills),
+					visitId(id, visit),
 				);
 			}
 			if (Array.isArray(state.messageList.messages)) {
-				for (const message of state.messageList.messages) replaceMessageSkills(message, skills);
+				for (const message of state.messageList.messages) visitMessageSkills(message, visit);
 			}
 		}
 		if (isRecord(state.pendingToolCalls)) {
-			for (const call of Object.values(state.pendingToolCalls)) replaceSkillCall(call, skills);
+			for (const call of Object.values(state.pendingToolCalls)) visitSkillCall(call, visit);
 		}
 	});
 	await visitJsonRows(ctx, 'agents_messages', 'id', ['content', 'modelContent'], (values) => {
-		for (const message of Object.values(values)) replaceMessageSkills(message, skills);
+		for (const message of Object.values(values)) visitMessageSkills(message, visit);
 	});
 }
 
@@ -279,23 +281,31 @@ async function collectSkillIds(ctx: MigrationContext): Promise<IdMap> {
 	await visitInlineAgents(ctx, (inline) => {
 		collectIds(skills, [...keys(inline.skills), ...referenceIds(inline.config, 'skills', 'skill')]);
 	});
+	await visitSkillRuntimeState(ctx, (id) => {
+		skills.set(id, id);
+		return id;
+	});
 	return allocateSkillIds(skills);
 }
 
-/** Keep existing task IDs because they also identify retained sandboxes. */
+/**
+ * The migration discards the skill ID mapping, so it cannot reverse normalization or random collision replacements.
+ * Keep existing task IDs because they also identify retained sandboxes.
+ */
 export class NormalizeAgentSkillIds1791454646995 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
 		const skills = await collectSkillIds(ctx);
 		if (skills.size === 0) return;
+		const normalizeId: IdVisitor = (id) => skills.get(id) ?? id;
 
 		await visitAgents(ctx, (values) => {
-			values.skills = replaceKeys(values.skills, skills);
-			replaceRefs(values.schema, 'skills', 'skill', skills);
+			values.skills = visitKeys(values.skills, normalizeId);
+			visitRefs(values.schema, 'skills', 'skill', normalizeId);
 		});
 		await visitInlineAgents(ctx, (inline) => {
-			inline.skills = replaceKeys(inline.skills, skills);
-			replaceRefs(inline.config, 'skills', 'skill', skills);
+			inline.skills = visitKeys(inline.skills, normalizeId);
+			visitRefs(inline.config, 'skills', 'skill', normalizeId);
 		});
-		await migrateSkillRuntimeState(ctx, skills);
+		await visitSkillRuntimeState(ctx, normalizeId);
 	}
 }

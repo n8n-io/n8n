@@ -196,7 +196,13 @@ describe('NormalizeAgentSkillIds migration', () => {
 		});
 	}
 
-	async function seedMemory() {
+	async function seedMemory(
+		runtimeSource: Omit<typeof backgroundRuntimeSnapshot, 'skills'> & {
+			skills: Record<string, typeof skill>;
+		} = backgroundRuntimeSnapshot,
+		skillInput: Record<string, string> = { skillId },
+		pendingSkillInput: Record<string, string> = { skillId, name: skillId },
+	) {
 		const resourceId = `task:${taskId}`;
 		const message = {
 			role: 'assistant',
@@ -206,7 +212,7 @@ describe('NormalizeAgentSkillIds migration', () => {
 					type: 'tool-call',
 					toolName: 'load_skill',
 					toolCallId: 'load-1',
-					input: { skillId },
+					input: skillInput,
 					output: { success: true, skillId },
 					activatedSkillIds: [skillId],
 					state: 'resolved',
@@ -296,7 +302,7 @@ describe('NormalizeAgentSkillIds migration', () => {
 			updatedAt: now,
 		});
 		for (const [runId, runtimeSnapshot] of [
-			['run-1', JSON.stringify(backgroundRuntimeSnapshot)],
+			['run-1', JSON.stringify(runtimeSource)],
 			['invalid-background', '{'],
 		]) {
 			await insert('agent_checkpoints', {
@@ -329,7 +335,13 @@ describe('NormalizeAgentSkillIds migration', () => {
 						inputIds: [],
 						responseIds: [],
 					},
-					pendingToolCalls: { 'load-2': { toolName: 'load_skill', input: { skillId } } },
+					pendingToolCalls: {
+						'load-2': {
+							toolName: 'load_skill',
+							input: pendingSkillInput,
+							activatedSkillIds: [skillId],
+						},
+					},
 				}),
 			});
 		}
@@ -354,27 +366,34 @@ describe('NormalizeAgentSkillIds migration', () => {
 			type: 'n8n-nodes-base.messageAnAgent',
 			parameters: { agentSource: 'inline', inlineAgent },
 		};
-		await insert('workflow_entity', {
-			id: workflowId,
-			name: 'Workflow',
-			nodes: JSON.stringify([node]),
-			connections: '{}',
-			active: false,
-			versionId: randomUUID(),
-			createdAt: now,
-			updatedAt: now,
-		});
-		await insert('workflow_history', {
-			versionId: randomUUID(),
-			workflowId,
-			authors: 'Test',
-			connections: '{}',
-			nodes: JSON.stringify([
-				{ ...node, parameters: { ...node.parameters, inlineAgent: JSON.stringify(inlineAgent) } },
-			]),
-			createdAt: now,
-			updatedAt: now,
-		});
+		const historyNode = {
+			...node,
+			parameters: { ...node.parameters, inlineAgent: JSON.stringify(inlineAgent) },
+		};
+		const unrelatedNode = { ...node, type: 'n8n-nodes-base.noOp' };
+		for (let index = 1; index <= 101; index++) {
+			const id = `Workflow${String(index).padStart(8, '0')}`;
+			const hasInlineAgent = index === 1 || index === 101;
+			await insert('workflow_entity', {
+				id,
+				name: 'Workflow',
+				nodes: JSON.stringify([hasInlineAgent ? node : unrelatedNode]),
+				connections: '{}',
+				active: false,
+				versionId: randomUUID(),
+				createdAt: now,
+				updatedAt: now,
+			});
+			await insert('workflow_history', {
+				versionId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+				workflowId: id,
+				authors: 'Test',
+				connections: '{}',
+				nodes: JSON.stringify([hasInlineAgent ? historyNode : unrelatedNode]),
+				createdAt: now,
+				updatedAt: now,
+			});
+		}
 		for (const [id, status] of [
 			[1, 'waiting'],
 			[2, 'success'],
@@ -393,6 +412,7 @@ describe('NormalizeAgentSkillIds migration', () => {
 				workflowData: JSON.stringify({ nodes: [node] }),
 			});
 		}
+		return unrelatedNode;
 	}
 
 	it('normalizes skills across batches and preserves task IDs and runtime state', async () => {
@@ -419,7 +439,7 @@ describe('NormalizeAgentSkillIds migration', () => {
 		);
 		await seedTask(versionIds[0]);
 		await seedMemory();
-		await seedInlineAgent();
+		const unrelatedNode = await seedInlineAgent();
 
 		await runSingleMigration(migration);
 
@@ -486,7 +506,9 @@ describe('NormalizeAgentSkillIds migration', () => {
 			status: 'suspended',
 			persistence: { resourceId: `task:${taskId}`, threadId: 'task-session' },
 			messageList: { activeSkillIds: ['1111111111111111'] },
-			pendingToolCalls: { 'load-2': { input: { skillId: '1111111111111111' } } },
+			pendingToolCalls: {
+				'load-2': { input: { skillId: '1111111111111111', name: skillId } },
+			},
 		});
 		expect(
 			parse(checkpoint.persistence.hostMetadata.n8nBackgroundSubAgent.runtimeSnapshot),
@@ -537,9 +559,17 @@ describe('NormalizeAgentSkillIds migration', () => {
 			skills: { '3333333333333333': skill },
 		};
 		for (const table of ['workflow_entity', 'workflow_history']) {
-			const [workflow] = await rows(table);
-			const [node] = parse<Array<{ parameters: { inlineAgent: unknown } }>>(workflow.nodes);
-			expect(parse(node.parameters.inlineAgent)).toEqual(expectedInline);
+			const workflows = await rows(table);
+			expect(workflows).toHaveLength(101);
+			for (const workflow of workflows) {
+				const id = table === 'workflow_entity' ? workflow.id : workflow.workflowId;
+				if (id !== 'Workflow00000001' && id !== 'Workflow00000101') {
+					expect(parse(workflow.nodes)).toEqual([unrelatedNode]);
+					continue;
+				}
+				const [node] = parse<Array<{ parameters: { inlineAgent: unknown } }>>(workflow.nodes);
+				expect(parse(node.parameters.inlineAgent)).toEqual(expectedInline);
+			}
 		}
 		const executions = await rows('execution_data');
 		const waiting = executions.find((row) => Number(row.executionId) === 1)!;
@@ -552,51 +582,171 @@ describe('NormalizeAgentSkillIds migration', () => {
 		});
 	});
 
-	it('preserves existing plain IDs and separates resources when removing a prefix would collide', async () => {
-		const plainSkillId = skillId.slice('skill_'.length);
-		const plainTaskId = taskId.slice('task_'.length);
-		const collisionSchema = {
-			...schema,
-			skills: [...schema.skills, { type: 'skill', id: plainSkillId }],
-			tasks: [...schema.tasks, { type: 'task', id: plainTaskId, enabled: false }],
-		};
+	it('normalizes skills retained only in checkpoints and messages', async () => {
+		const otherRetainedSkillId = 'skill_4444444444444444';
+		const retainedSkill = { ...skill, name: otherRetainedSkillId };
+		const otherRetainedSkill = { ...skill, name: 'Another retained skill' };
 		await insertAgent(agentId, {
-			schema: JSON.stringify(collisionSchema),
-			skills: JSON.stringify({
-				[skillId]: skill,
-				[plainSkillId]: { ...skill, name: 'Another skill' },
-			}),
+			schema: JSON.stringify({ ...schema, skills: [] }),
+			skills: '{}',
 		});
-		for (const id of [taskId, plainTaskId]) {
-			await insert('agent_task_definition', {
-				id,
-				agentId,
-				name: id,
-				objective: id,
-				cronExpression: '0 9 * * *',
-				createdAt: now,
-				updatedAt: now,
-			});
-		}
+		await seedMemory(
+			{
+				...backgroundRuntimeSnapshot,
+				source: {
+					...backgroundRuntimeSnapshot.source,
+					config: {
+						...backgroundRuntimeSnapshot.source.config,
+						skills: [
+							...backgroundRuntimeSnapshot.source.config.skills,
+							{ type: 'skill', id: otherRetainedSkillId },
+						],
+					},
+				},
+				skills: { [skillId]: retainedSkill, [otherRetainedSkillId]: otherRetainedSkill },
+			},
+			{ name: retainedSkill.name },
+			{ name: retainedSkill.name },
+		);
 
 		await runSingleMigration(migration);
 
 		const [agent] = await rows('agents');
-		const config = parse<AgentConfig>(agent.schema);
-		const newSkillId = config.skills[0].id;
-		expect(newSkillId).toMatch(/^[A-Za-z0-9]{16}$/);
-		expect(newSkillId).not.toBe(plainSkillId);
-		expect(config.skills[1].id).toBe(plainSkillId);
-		expect(parse(agent.skills)).toEqual({
-			[newSkillId]: skill,
-			[plainSkillId]: { ...skill, name: 'Another skill' },
-		});
-		expect(config.tasks).toEqual(collisionSchema.tasks);
-		expect(await rows('agent_task_definition')).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ id: taskId, objective: taskId }),
-				expect.objectContaining({ id: plainTaskId, objective: plainTaskId }),
-			]),
+		expect(parse(agent.schema)).toEqual({ ...schema, skills: [] });
+		expect(parse(agent.skills)).toEqual({});
+		const checkpoint = parse<CheckpointState>(
+			(await rows('agent_checkpoints')).find((row) => row.runId === 'run-1')?.state,
 		);
+		const expectedCall = expect.objectContaining({
+			toolName: 'load_skill',
+			input: { name: retainedSkill.name },
+			output: { success: true, skillId: '1111111111111111' },
+			activatedSkillIds: ['1111111111111111'],
+		});
+		const expectedMessage = {
+			role: 'assistant',
+			content: [
+				expect.objectContaining({ type: 'text' }),
+				expectedCall,
+				expect.objectContaining({ toolName: 'lookup_customer', input: { skillId } }),
+			],
+		};
+		expect(checkpoint).toMatchObject({
+			messageList: { activeSkillIds: ['1111111111111111'], messages: [expectedMessage] },
+			pendingToolCalls: {
+				'load-2': {
+					input: { name: retainedSkill.name },
+					activatedSkillIds: ['1111111111111111'],
+				},
+			},
+		});
+		const runtimeSnapshot =
+			checkpoint.persistence.hostMetadata.n8nBackgroundSubAgent.runtimeSnapshot;
+		expect(runtimeSnapshot).toEqual(expect.any(String));
+		expect(parse(runtimeSnapshot)).toMatchObject({
+			source: {
+				config: {
+					skills: [
+						{ type: 'skill', id: '1111111111111111' },
+						{ type: 'skill', id: '4444444444444444' },
+					],
+				},
+			},
+			skills: {
+				'1111111111111111': retainedSkill,
+				'4444444444444444': otherRetainedSkill,
+			},
+		});
+		const [message] = await rows('agents_messages');
+		for (const column of ['content', 'modelContent']) {
+			expect(parse(message[column])).toEqual(expectedMessage);
+		}
 	});
+
+	it.each(['configuration', 'retained snapshot'])(
+		'preserves plain IDs from %s when removing a prefix would collide',
+		async (location) => {
+			const plainSkillId = skillId.slice('skill_'.length);
+			const plainTaskId = taskId.slice('task_'.length);
+			const collisionSchema = {
+				...schema,
+				skills: [...schema.skills, { type: 'skill', id: plainSkillId }],
+				tasks: [...schema.tasks, { type: 'task', id: plainTaskId, enabled: false }],
+			};
+			const collisionSkills = {
+				[skillId]: skill,
+				[plainSkillId]: { ...skill, name: 'Another skill' },
+			};
+			await insertAgent(agentId, {
+				schema: JSON.stringify({
+					...collisionSchema,
+					skills: location === 'configuration' ? collisionSchema.skills : schema.skills,
+				}),
+				skills: JSON.stringify(
+					location === 'configuration' ? collisionSkills : { [skillId]: skill },
+				),
+			});
+			for (const id of [taskId, plainTaskId]) {
+				await insert('agent_task_definition', {
+					id,
+					agentId,
+					name: id,
+					objective: id,
+					cronExpression: '0 9 * * *',
+					createdAt: now,
+					updatedAt: now,
+				});
+			}
+			await seedMemory({
+				...backgroundRuntimeSnapshot,
+				source: {
+					...backgroundRuntimeSnapshot.source,
+					config: { ...backgroundRuntimeSnapshot.source.config, skills: collisionSchema.skills },
+				},
+				skills: collisionSkills,
+			});
+
+			await runSingleMigration(migration);
+
+			const [agent] = await rows('agents');
+			const config = parse<AgentConfig>(agent.schema);
+			const newSkillId = config.skills[0].id;
+			expect(newSkillId).toMatch(/^[A-Za-z0-9]{16}$/);
+			expect(newSkillId).not.toBe(plainSkillId);
+			const expectedSkills = {
+				[newSkillId]: skill,
+				[plainSkillId]: { ...skill, name: 'Another skill' },
+			};
+			if (location === 'configuration') {
+				expect(config.skills[1].id).toBe(plainSkillId);
+				expect(parse(agent.skills)).toEqual(expectedSkills);
+			} else {
+				expect(config.skills).toEqual([{ type: 'skill', id: newSkillId }]);
+				expect(parse(agent.skills)).toEqual({ [newSkillId]: skill });
+			}
+			const checkpoint = parse<CheckpointState>(
+				(await rows('agent_checkpoints')).find((row) => row.runId === 'run-1')?.state,
+			);
+			expect(
+				parse(checkpoint.persistence.hostMetadata.n8nBackgroundSubAgent.runtimeSnapshot),
+			).toMatchObject({
+				source: {
+					config: {
+						skills: [
+							{ type: 'skill', id: newSkillId },
+							{ type: 'skill', id: plainSkillId },
+						],
+					},
+				},
+				skills: expectedSkills,
+			});
+			expect(config.tasks).toEqual(collisionSchema.tasks);
+			expect(await rows('agent_task_definition')).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: taskId, objective: taskId }),
+					expect.objectContaining({ id: plainTaskId, objective: plainTaskId }),
+				]),
+			);
+		},
+	);
 });
