@@ -614,23 +614,7 @@ describe('ParameterInput.vue', () => {
 		);
 	});
 
-	test('shows the value of a resource locator held by a string parameter', async () => {
-		const { container } = renderComponent({
-			props: {
-				path: 'channelId',
-				parameter: createTestNodeProperties({
-					displayName: 'Channel',
-					name: 'channelId',
-					type: 'string',
-				}),
-				modelValue: { __rl: true, mode: 'list', value: 'C0123' },
-			},
-		});
-
-		await waitFor(() => expect(container.querySelector('input')).toHaveValue('C0123'));
-	});
-
-	test('shows an issue when a string parameter holds an object', async () => {
+	test('shows an object held by a string parameter as JSON with an issue', async () => {
 		const { container, getByTestId } = renderComponent({
 			props: {
 				path: 'channelId',
@@ -639,52 +623,16 @@ describe('ParameterInput.vue', () => {
 					name: 'channelId',
 					type: 'string',
 				}),
-				modelValue: { __rl: true, mode: 'list', value: 'C0123' },
+				modelValue: { __rl: true, mode: 'id', value: 'C0123' },
 			},
 		});
 
-		await waitFor(() => expect(container.querySelector('.has-issues')).toBeInTheDocument());
+		await waitFor(() =>
+			expect(container.querySelector('input')).toHaveValue(
+				'{"__rl":true,"mode":"id","value":"C0123"}',
+			),
+		);
 		expect(getByTestId('parameter-issues')).toBeInTheDocument();
-	});
-
-	test('shows other objects held by a string parameter as JSON', async () => {
-		const { container } = renderComponent({
-			props: {
-				path: 'prompt',
-				parameter: createTestNodeProperties({
-					displayName: 'Prompt',
-					name: 'prompt',
-					type: 'string',
-				}),
-				modelValue: { messages: [{ role: 'user' }] },
-			},
-		});
-
-		await waitFor(() =>
-			expect(container.querySelector('input')).toHaveValue('{"messages":[{"role":"user"}]}'),
-		);
-	});
-
-	test('adds the value shape of the parameter to updates', async () => {
-		const { container, emitted } = renderComponent({
-			props: {
-				path: 'tag',
-				parameter: createTestNodeProperties({
-					displayName: 'Tag',
-					name: 'tag',
-					type: 'string',
-				}),
-				modelValue: '',
-			},
-		});
-
-		await userEvent.type(container.querySelector('input') as HTMLInputElement, 'foo');
-
-		await waitFor(() =>
-			expect(emitted('update')).toContainEqual([
-				expect.objectContaining({ value: 'foo', valueShape: 'string' }),
-			]),
-		);
 	});
 
 	test('should normalize a numeric string and emit numbers from a credential number parameter', async () => {

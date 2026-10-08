@@ -25,8 +25,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { computed, inject, ref, shallowRef, type ShallowRef } from 'vue';
-import type { ParameterValueStash } from './ndv.utils';
+import { computed, inject, ref, type ShallowRef } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
@@ -395,13 +394,6 @@ function defineNDVStore(id: NDVStoreId) {
 			focusedInputPath.value = path;
 		};
 
-		// Editor session memory only, never saved with the workflow
-		const parameterValueStash = shallowRef<ParameterValueStash>(new Map());
-
-		const setParameterValueStash = (stash: ParameterValueStash) => {
-			parameterValueStash.value = stash;
-		};
-
 		return {
 			activeNode,
 			ndvInputData,
@@ -466,8 +458,6 @@ function defineNDVStore(id: NDVStoreId) {
 			setAutocompleteOnboarded,
 			setHighlightDraggables,
 			updateNodeParameterIssues,
-			parameterValueStash,
-			setParameterValueStash,
 			setFocusedInputPath,
 		};
 	});

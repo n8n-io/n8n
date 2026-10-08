@@ -24,8 +24,7 @@ import {
 	collectParametersByTab,
 	createCommonNodeSettings,
 	removeMismatchedOptionValues,
-	stashLateWriteOfOtherShape,
-	swapValuesByShape,
+	resetValuesOfChangedShape,
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
@@ -232,23 +231,10 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 		return;
 	}
 
-	const lateWriteStash = stashLateWriteOfOtherShape(
-		nodeType,
-		node.value,
-		updateData.name,
-		updateData.valueShape,
-		updateData.value,
-		toolNdvStore.parameterValueStash,
-	);
-	if (lateWriteStash) {
-		toolNdvStore.setParameterValueStash(lateWriteStash);
-		return;
-	}
-
 	// Re-derive parameters the same way the NDV does (see
 	// `useNodeSettingsParameters.updateNodeParameter`): strip to user-set values,
-	// apply the change, drop options that no longer match, swap same-named values
-	// by shape, then refill defaults.
+	// apply the change, drop options and same-named values that no longer match,
+	// then refill defaults.
 	// This resets a dependent param (e.g. `operation`) to the new resource's
 	// default when `resource` changes, instead of keeping a stale selection.
 	let parameters =
@@ -272,17 +258,7 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 		});
 	}
 
-	const swapped = swapValuesByShape(
-		nodeType,
-		node.value,
-		parameters,
-		updateData.name,
-		toolNdvStore.parameterValueStash,
-	);
-	if (swapped) {
-		parameters = swapped.parameters;
-		toolNdvStore.setParameterValueStash(swapped.stash);
-	}
+	parameters = resetValuesOfChangedShape(nodeType, node.value, parameters, [updateData.name]);
 
 	const newParameters =
 		NodeHelpers.getNodeParameters(

@@ -62,7 +62,6 @@ import {
 	formatAsExpression,
 	getParameterTypeOption,
 	isResourceLocatorParameterType,
-	getParameterValueShape,
 	isObjectInPlainParameter,
 	isValidParameterOption,
 	parseFromExpression,
@@ -515,9 +514,7 @@ const displayValue = computed(() => {
 		returnValue = isResourceLocatorValue(props.modelValue) ? props.modelValue.value : '';
 	} else if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
 		// Saved workflows can still hold a value carried over from a same-named parameter
-		returnValue = isResourceLocatorValue(props.modelValue)
-			? String(props.modelValue.value ?? '')
-			: JSON.stringify(props.modelValue);
+		returnValue = JSON.stringify(props.modelValue);
 	} else {
 		returnValue = props.modelValue;
 	}
@@ -1204,7 +1201,6 @@ function valueChanged(untypedValue: unknown) {
 		node: node.value ? node.value.name : nodeName.value,
 		name: props.path,
 		value,
-		valueShape: getParameterValueShape(props.parameter),
 	};
 
 	emit('update', parameterData);

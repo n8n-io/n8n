@@ -18,9 +18,8 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
+	resetValuesOfChangedShape,
 	setValue,
-	stashLateWriteOfOtherShape,
-	swapValuesByShape,
 	updateDynamicConnections,
 	updateParameterByPath,
 } from '@/features/ndv/shared/ndv.utils';
@@ -82,19 +81,6 @@ export function useNodeSettingsParameters() {
 			return;
 		}
 
-		const lateWriteStash = stashLateWriteOfOtherShape(
-			nodeTypeDescription,
-			node,
-			parameterData.name.slice('parameters.'.length),
-			parameterData.valueShape,
-			newValue,
-			ndvStore.value.parameterValueStash,
-		);
-		if (lateWriteStash) {
-			ndvStore.value.setParameterValueStash(lateWriteStash);
-			return;
-		}
-
 		// Get only the parameters which are different to the defaults
 		let nodeParameters = NodeHelpers.getNodeParameters(
 			nodeTypeDescription.properties,
@@ -119,18 +105,10 @@ export function useNodeSettingsParameters() {
 			node.typeVersion,
 		);
 
-		const swapped =
-			nodeParameters &&
-			swapValuesByShape(
-				nodeTypeDescription,
-				node,
-				nodeParameters,
+		if (nodeParameters) {
+			nodeParameters = resetValuesOfChangedShape(nodeTypeDescription, node, nodeParameters, [
 				parameterPath,
-				ndvStore.value.parameterValueStash,
-			);
-		if (swapped) {
-			nodeParameters = swapped.parameters;
-			ndvStore.value.setParameterValueStash(swapped.stash);
+			]);
 		}
 
 		// Get the parameters with the now new defaults according to the

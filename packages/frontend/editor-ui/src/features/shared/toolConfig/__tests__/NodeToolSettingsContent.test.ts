@@ -840,10 +840,6 @@ describe('NodeToolSettingsContent', () => {
 									data-test-id="to-create"
 									@click="$emit('value-changed', { name: 'operation', value: 'create' })"
 								/>
-								<button
-									data-test-id="to-get"
-									@click="$emit('value-changed', { name: 'operation', value: 'get' })"
-								/>
 							</div>
 						`,
 					}),
@@ -871,9 +867,6 @@ describe('NodeToolSettingsContent', () => {
 
 			getAllByTestId('to-create')[0].click();
 			await waitFor(() => expect(latestParameters()?.channelId).toBe(''));
-
-			getAllByTestId('to-get')[0].click();
-			await waitFor(() => expect(latestParameters()?.channelId).toEqual(picked));
 		});
 	});
 

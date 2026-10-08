@@ -59,6 +59,7 @@ import {
 	createCommonNodeSettings,
 	getNodeSettingsInitialValues,
 	nameIsParameter,
+	resetValuesOfChangedShape,
 } from '../../shared/ndv.utils';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -424,6 +425,15 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 					parameters: parameters.value,
 					oldNodeParameters,
 				});
+			}
+
+			if (nodeParameters) {
+				nodeParameters = resetValuesOfChangedShape(
+					_nodeType,
+					_node,
+					nodeParameters,
+					Object.keys(parameterData.value),
+				);
 			}
 		}
 
