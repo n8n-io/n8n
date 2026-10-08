@@ -16,11 +16,13 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import { useApplyAgentEvalSuggestions } from '@/features/agents/composables/useApplyAgentEvalSuggestions';
 import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
 import {
 	readAgentAnswer,
 	readErrorMessage,
 	readVerdictReasoning,
+	readVerdictSuggestion,
 	toAvatarKind,
 } from '@/features/agents/utils/agent-eval-review';
 import { toDisplayToolCalls } from '@/features/agents/utils/agent-eval-tool-calls';
@@ -59,6 +61,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
+const { applyingIds: applyingSuggestionIds, applySuggestions } = useApplyAgentEvalSuggestions(
+	() => props.target,
+);
 
 type Phase =
 	| 'generating-preview'
@@ -142,6 +147,10 @@ const firstCheckPassed = computed(
 const firstCheckFailed = computed(
 	() => previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'fail',
 );
+// The confirmed try's own state in the examples panel. A try that was never graded
+// reads as a pass there, except a judge error, which `toAvatarKind` keeps as needs work.
+const previewStatus = computed(() => toAvatarKind('success', previewVerdict.value));
+const previewReasoning = computed(() => readVerdictReasoning(previewVerdict.value));
 const findings = computed(() => {
 	const verdict = previewVerdict.value;
 	if (verdict?.status === 'completed' && verdict.reasoning) return verdict.reasoning;
@@ -190,6 +199,7 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 			// same row (a case that errored is never judged), so either reader
 			// filling this in is unambiguous.
 			errorMessage: readErrorMessage(result.errorDetails) ?? readVerdictReasoning(result.verdict),
+			fixSuggestion: readVerdictSuggestion(result.verdict),
 		};
 	});
 });
@@ -689,18 +699,22 @@ function onDontCreateEvals() {
 				:preview-input="previewInput"
 				:preview-output="previewOutput ?? ''"
 				:preview-scenario="previewScenario"
+				:preview-status="previewStatus"
+				:preview-reasoning="previewReasoning"
 				:project-id="target.projectId"
 				:examples="suiteCases"
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
 				:stopping-run="stoppingSuiteRun"
 				:run-failed="suiteRunFailed"
+				:applying-suggestion-ids="applyingSuggestionIds"
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
 				@stop-run="onStopSuiteRun"
 				@retry-run="onRetrySuiteRun"
 				@try-agent="emit('try-agent')"
 				@open-case="emit('open-evals', $event)"
+				@apply-suggestion="applySuggestions([$event])"
 			/>
 		</template>
 	</div>

@@ -1471,6 +1471,111 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 	});
 
+	describe('applying a suggestion from the examples panel', () => {
+		const GRADED_FAIL_REVIEW = {
+			run: { status: 'completed' } as never,
+			results: [
+				{
+					id: 'res-1',
+					sourceRowId: '1',
+					status: 'success',
+					input: { input: 'Can I pay by invoice?', criteria: 'Must always refuse.' },
+					output: { finalText: 'Sure, invoice payment works for this order.' },
+					verdict: {
+						status: 'completed',
+						outcome: 'fail',
+						reasoning: 'The agent agreed to invoice payment instead of refusing.',
+						suggestion: 'Refuse invoice payments politely.',
+					},
+				} as never,
+			],
+			resultsCount: 1,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		};
+
+		async function openSettledSuite() {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store);
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [
+					{ input: 'Can I pay by invoice?', whatToCheck: 'Must always refuse.', scenario: 'Vague' },
+				],
+			});
+			mockCommit(store, {
+				rows: [{ rowId: 1, input: 'Can I pay by invoice?', whatToCheck: 'Must always refuse.' }],
+			});
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue(GRADED_FAIL_REVIEW);
+
+			const user = userEvent.setup();
+			const view = renderComponent();
+			await waitFor(() =>
+				expect(view.getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
+			);
+			await user.click(view.getByTestId('instance-ai-test-agent-preview-check-harder'));
+			await view.findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(view.getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await view.findByText('0 of 1 went well, 1 need work');
+			await user.click(view.getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			return { store, user, ...view };
+		}
+
+		it('shows the suggestion of a failed case and applies it for that result', async () => {
+			const { store, user, findByTestId } = await openSettledSuite();
+			vi.spyOn(store, 'applySuggestions').mockResolvedValue({ configHash: 'h', results: [] });
+
+			const card = await findByTestId('instance-ai-test-agent-examples-case-1-suggestion');
+			expect(card).toHaveTextContent('Refuse invoice payments politely.');
+			await user.click(
+				within(card).getByTestId('instance-ai-test-agent-examples-case-1-suggestion-apply'),
+			);
+
+			await waitFor(() =>
+				expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['res-1']),
+			);
+		});
+
+		it('toasts when applying the suggestion fails', async () => {
+			const { store, user, findByTestId } = await openSettledSuite();
+			vi.spyOn(store, 'applySuggestions').mockRejectedValue(new Error('boom'));
+
+			const card = await findByTestId('instance-ai-test-agent-examples-case-1-suggestion');
+			await user.click(
+				within(card).getByTestId('instance-ai-test-agent-examples-case-1-suggestion-apply'),
+			);
+
+			await waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(
+					expect.any(Error),
+					"Couldn't apply the suggestion",
+				),
+			);
+		});
+	});
+
+	it('shows the confirmed try as needing work, not passing, when the judge could not grade it', async () => {
+		const store = useAgentEvalsStore();
+		mockPreviewRun(store, { verdict: UNGRADED_VERDICT });
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+		});
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
+
+		const row = await findByTestId('instance-ai-test-agent-examples-try');
+		expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
+		expect(within(row).queryByRole('img', { name: /Passed/ })).not.toBeInTheDocument();
+	});
+
 	describe('automated grading', () => {
 		// A case whose rule says "always fail": the agent's execution succeeds
 		// (status: 'success'), but the judge graded the output against that rule

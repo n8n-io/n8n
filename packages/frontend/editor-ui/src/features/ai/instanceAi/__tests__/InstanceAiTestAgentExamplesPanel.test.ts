@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -303,6 +303,111 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 			expect(queryByTestId('instance-ai-test-agent-examples-run-summary')).not.toBeInTheDocument();
 			expect(getByTestId('instance-ai-test-agent-examples-try')).toBeInTheDocument();
+		});
+	});
+
+	describe('the confirmed try', () => {
+		it('reads as a pass by default', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(
+				within(getByTestId('instance-ai-test-agent-examples-try')).getByRole('img', {
+					name: /Passed/,
+				}),
+			).toBeInTheDocument();
+		});
+
+		it('reflects the state it was graded in instead of always passing', () => {
+			const { getByTestId } = renderComponent({ props: { previewStatus: 'work' as const } });
+			const row = getByTestId('instance-ai-test-agent-examples-try');
+
+			expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
+			expect(within(row).queryByRole('img', { name: /Passed/ })).not.toBeInTheDocument();
+		});
+	});
+
+	describe('a failed case with a suggestion', () => {
+		const failedRun = {
+			rowId: 1,
+			input: 'Can I pay by invoice?',
+			label: 'Vague',
+			status: 'work' as const,
+			output: 'Sure.',
+			toolCalls: [],
+			resultId: 'result-1',
+			whatToCheck: null,
+			errorMessage: 'It agreed instead of refusing.',
+			fixSuggestion: 'Refuse invoice payments politely.',
+		};
+		const CARD = 'instance-ai-test-agent-examples-case-1-suggestion';
+
+		const expanded = async (caseRuns: unknown[], extra: Record<string, unknown> = {}) => {
+			const user = userEvent.setup();
+			const result = renderComponent({ props: { caseRuns, ...extra } as never });
+			await user.click(result.getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			return { user, ...result };
+		};
+
+		it('shows the suggestion card under its row', async () => {
+			const { getByTestId } = await expanded([failedRun]);
+
+			expect(getByTestId(CARD)).toHaveTextContent('Refuse invoice payments politely.');
+		});
+
+		it('emits apply-suggestion with the result id on "Apply suggestion"', async () => {
+			const { user, getByTestId, emitted } = await expanded([failedRun]);
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			expect(emitted('apply-suggestion')).toEqual([['result-1']]);
+		});
+
+		it('hides the card on "Keep as is"', async () => {
+			const { user, getByTestId, queryByTestId, emitted } = await expanded([failedRun]);
+
+			await user.click(getByTestId(`${CARD}-dismiss`));
+
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+			expect(emitted('apply-suggestion')).toBeUndefined();
+		});
+
+		it('shows the card again when a different suggestion arrives for the case', async () => {
+			const { user, getByTestId, queryByTestId, rerender } = await expanded([failedRun]);
+			await user.click(getByTestId(`${CARD}-dismiss`));
+
+			await rerender({ caseRuns: [{ ...failedRun, fixSuggestion: 'Decline invoices.' }] });
+
+			expect(queryByTestId(CARD)).toHaveTextContent('Decline invoices.');
+		});
+
+		it.each([
+			['has no suggestion', { fixSuggestion: null }],
+			['has a blank suggestion', { fixSuggestion: '  ' }],
+			['is not a graded fail', { status: 'pass' as const }],
+			['has no result to rerun', { resultId: null }],
+		])('shows no card when the case %s', async (_name, override) => {
+			const { queryByTestId } = await expanded([{ ...failedRun, ...override }]);
+
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+		});
+
+		it('shows the card as applying, and hides Stop, while its suggestion is applied', () => {
+			const waiting = { ...failedRun, status: 'waiting' as const };
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { caseRuns: [waiting], applyingSuggestionIds: ['result-1'] },
+			});
+
+			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('disables the cards of other cases while one suggestion is being applied', async () => {
+			const second = { ...failedRun, rowId: 2, resultId: 'result-2' };
+			const { getByTestId } = await expanded([failedRun, second], {
+				applyingSuggestionIds: ['result-1'],
+			});
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-2-suggestion-apply')).toBeDisabled();
 		});
 	});
 

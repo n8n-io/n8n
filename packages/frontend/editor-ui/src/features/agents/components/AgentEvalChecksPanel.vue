@@ -9,15 +9,14 @@
  * `input`/`output`/`status` (the Data Table has no column for it), so this
  * never passes `label` to `AgentEvalTryRow`.
  */
-import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { ResponseError } from '@n8n/rest-api-client';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
-import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
+import { useApplyAgentEvalSuggestions } from '../composables/useApplyAgentEvalSuggestions';
 import { MAX_APPLY_SUGGESTIONS } from '../agentEvals.types';
 import {
 	readAgentAnswer,
@@ -32,7 +31,6 @@ import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
 import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import AgentEvalAddCheckPanel from './AgentEvalAddCheckPanel.vue';
-import { AGENT_CONFIG_FLUSH_KEY } from './agentBuilderInjectionKeys';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
 
 const props = defineProps<{
@@ -228,8 +226,9 @@ async function onRerunCheck(resultId: string) {
 	}
 }
 
-const flushAgentConfig = inject(AGENT_CONFIG_FLUSH_KEY, null);
-const applyingSuggestionIds = ref<string[]>([]);
+const { applyingIds: applyingSuggestionIds, applySuggestions } = useApplyAgentEvalSuggestions(
+	() => ({ projectId: props.projectId, agentId: props.agentId }),
+);
 const applyingAll = ref(false);
 
 // One request takes at most MAX_APPLY_SUGGESTIONS results; any beyond that keep their
@@ -240,37 +239,6 @@ const applicableSuggestionIds = computed(() =>
 		.map((row) => row.id)
 		.slice(0, MAX_APPLY_SUGGESTIONS),
 );
-
-// The backend rewrites the agent's instructions from the *saved* config, so pending
-// local edits are flushed first. It then reruns just these results. The builder does not
-// hear about its own tab's write over push, so it is told to refetch the config.
-async function applySuggestions(resultIds: string[]) {
-	if (resultIds.length === 0 || resultIds.some((id) => applyingSuggestionIds.value.includes(id))) {
-		return;
-	}
-	applyingSuggestionIds.value = [...applyingSuggestionIds.value, ...resultIds];
-	try {
-		await flushAgentConfig?.();
-		const applied = await store.applySuggestions(props.projectId, props.agentId, resultIds);
-		if (applied) {
-			agentsEventBus.emit('agentUpdated', { agentId: props.agentId, source: 'agent-evals' });
-		}
-	} catch (error) {
-		const conflict = error instanceof ResponseError && error.httpStatusCode === 409;
-		toast.showError(
-			error,
-			i18n.baseText(
-				conflict
-					? 'agents.builder.agentEvals.suggestion.conflictError'
-					: 'agents.builder.agentEvals.suggestion.applyError',
-			),
-		);
-	} finally {
-		applyingSuggestionIds.value = applyingSuggestionIds.value.filter(
-			(id) => !resultIds.includes(id),
-		);
-	}
-}
 
 async function onApplySuggestion(resultId: string) {
 	await applySuggestions([resultId]);
