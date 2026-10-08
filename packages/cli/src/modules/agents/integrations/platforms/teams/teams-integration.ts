@@ -122,6 +122,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 		ctx: AgentIntegrationRemovalContext,
 	): Promise<AgentIntegrationDisconnectWarning | undefined> {
 		return await Container.get(TeamsCleanupService).describeLeftovers({
+			user: ctx.user,
 			projectId: ctx.projectId,
 			credentialId: ctx.credentialId,
 		});

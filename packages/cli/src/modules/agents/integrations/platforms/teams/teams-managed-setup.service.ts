@@ -124,6 +124,10 @@ export class TeamsManagedSetupService {
 		const clientId = typeof overwrite?.clientId === 'string' ? overwrite.clientId.trim() : '';
 		if (!clientId) return null;
 
+		// No `state`. The grant lands on the tenant, not on anything n8n holds:
+		// the callback reads nothing from the query and only renders a page, so
+		// there is no n8n-side effect for a forged return to reach. Every step
+		// after this still runs on the user's own signed-in credential.
 		const query = new URLSearchParams({
 			client_id: clientId,
 			scope: 'https://graph.microsoft.com/.default',
@@ -204,11 +208,16 @@ export class TeamsManagedSetupService {
 		const tokenData = childRecord(data, 'oauthTokenData');
 		const connected = typeof stringProperty(tokenData, 'access_token') === 'string';
 		const granted = grantedScopes(stringProperty(tokenData, 'scope'));
+		// Every step redeems the refresh token rather than the access token it was
+		// issued beside. Without one the sign-in looks usable and fails on the
+		// first call, so it is a sign-in to redo.
+		const canRefresh = typeof stringProperty(tokenData, 'refresh_token') === 'string';
 
 		return {
 			connected,
 			reconnectRequired:
-				connected && REQUIRED_MANAGER_SCOPES.some((scope) => isMissingScope(granted, scope)),
+				connected &&
+				(!canRefresh || REQUIRED_MANAGER_SCOPES.some((scope) => isMissingScope(granted, scope))),
 			// Written by the provisioning step once it has read the tenant; absent
 			// until then, which is why both are nullable rather than empty strings.
 			organizationName: stringProperty(data, 'organizationName') ?? null,

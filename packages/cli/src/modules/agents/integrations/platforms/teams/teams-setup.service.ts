@@ -208,6 +208,17 @@ export class TeamsSetupService {
 		if (!identity) {
 			throw new BadRequestError('Create the Teams app before deploying the bot.');
 		}
+
+		// An Azure bot carries one messaging endpoint. Creating one against a
+		// credential another agent holds re-points that agent's bot at this
+		// endpoint, so its messages would arrive here instead.
+		const claimedBy = await this.credentialClaimedBy(agent.id, credentialId);
+		if (claimedBy) {
+			throw new BadRequestError(
+				`This credential already backs the Teams channel of "${claimedBy}". Pick a different one.`,
+			);
+		}
+
 		return {
 			...identity,
 			messagingEndpoint: this.messagingEndpointUrl(scope),

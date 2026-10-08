@@ -115,12 +115,6 @@ export class AgentTeamsIntegrationsController {
 		@Body payload: AgentTeamsProvisionBotDto,
 	): Promise<TeamsProvisionedBotSummary> {
 		const projectId = req.params.projectId;
-		const identity = await this.setupService.botIdentityFor(
-			req.user,
-			{ projectId, agentId },
-			payload.credentialId,
-		);
-
 		const report = {
 			agentId,
 			projectId,
@@ -129,6 +123,13 @@ export class AgentTeamsIntegrationsController {
 			botRoute: 'provisioned' as const,
 		};
 		try {
+			// Inside the try: a credential that has gone is a way this step fails,
+			// and reading it outside would leave that failure unrecorded.
+			const identity = await this.setupService.botIdentityFor(
+				req.user,
+				{ projectId, agentId },
+				payload.credentialId,
+			);
 			const summary = await this.botProvisioningService.provisionBot({
 				user: req.user,
 				projectId,

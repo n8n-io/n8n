@@ -350,6 +350,7 @@ describe('AgentChannelModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.keepOpenAfterConnect = false;
+		platformCanFinish.value = false;
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
 		connectedCredentials.value = {};

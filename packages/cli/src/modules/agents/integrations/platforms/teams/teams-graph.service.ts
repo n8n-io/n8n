@@ -2,11 +2,33 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { stringProperty } from '../../integration-helpers';
 
 const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
 const GRAPH_TIMEOUT_MS = 30_000;
+
+/**
+ * The bearer token is Microsoft's, so the request must not be able to leave
+ * Graph. A path is concatenated onto the base, and `..` segments walk out of
+ * `/v1.0` -- so the whole parsed URL is checked, and the parsed URL is what
+ * gets sent.
+ */
+function graphUrl(path: string): string {
+	let parsed: URL;
+	try {
+		parsed = new URL(`${GRAPH_BASE_URL}${path}`);
+	} catch {
+		throw new UnexpectedError(
+			'Refusing to send a Microsoft Graph token to a path that is not a URL.',
+		);
+	}
+	if (!parsed.href.startsWith(`${GRAPH_BASE_URL}/`)) {
+		throw new UnexpectedError('Refusing to send a Microsoft Graph token elsewhere.');
+	}
+	return parsed.href;
+}
 
 export interface GraphResponse {
 	statusCode: number;
@@ -41,7 +63,7 @@ export class TeamsGraphService {
 			.requests({ useDefaultSsrfPolicy: 'unsafe' })
 			.request({
 				method,
-				url: `${GRAPH_BASE_URL}${path}`,
+				url: graphUrl(path),
 				headers: {
 					authorization: `Bearer ${accessToken}`,
 					'content-type': 'application/json',
@@ -75,7 +97,7 @@ export class TeamsGraphService {
 			.requests({ useDefaultSsrfPolicy: 'unsafe' })
 			.request({
 				method: 'POST',
-				url: `${GRAPH_BASE_URL}${path}`,
+				url: graphUrl(path),
 				headers: {
 					authorization: `Bearer ${accessToken}`,
 					'content-type': 'application/zip',
@@ -97,6 +119,22 @@ export class TeamsGraphService {
 			});
 		}
 		return { statusCode: response.statusCode, body: response.body, ok };
+	}
+}
+
+/**
+ * Graph returns `@odata.nextLink` as an absolute URL, but this client pins the
+ * host and takes a path. A link pointing anywhere else is dropped rather than
+ * followed.
+ */
+export function graphNextLinkPath(nextLink: string | undefined): string | undefined {
+	if (!nextLink) return undefined;
+	try {
+		const url = new URL(nextLink);
+		if (!url.href.startsWith(`${GRAPH_BASE_URL}/`)) return undefined;
+		return `${url.pathname}${url.search}`.slice('/v1.0'.length);
+	} catch {
+		return undefined;
 	}
 }
 

@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 // ARM reports failures in the same `{ error: { code, message } }` envelope as Graph.
 import { graphErrorCode } from './teams-graph.service';
@@ -12,6 +13,20 @@ export interface ArmResponse {
 	statusCode: number;
 	body: unknown;
 	ok: boolean;
+}
+
+/** Refuses a path that would move the request off the pinned host. */
+function armUrl(path: string): string {
+	let parsed: URL;
+	try {
+		parsed = new URL(`${ARM_BASE_URL}${path}`);
+	} catch {
+		throw new UnexpectedError('Refusing to send an Azure token to a path that is not a URL.');
+	}
+	if (parsed.origin !== ARM_BASE_URL) {
+		throw new UnexpectedError('Refusing to send an Azure token off Azure Resource Manager.');
+	}
+	return parsed.href;
 }
 
 /**
@@ -49,12 +64,18 @@ export class TeamsArmService {
 		path: string,
 		body?: unknown,
 	): Promise<ArmResponse> {
+		// The bearer token is Azure's, so the request must not be able to leave
+		// Azure. The base carries no path of its own, so a value beginning `@`
+		// becomes userinfo and the rest becomes the host. The parsed URL is what
+		// gets sent, so what was checked is what goes out.
+		const url = armUrl(path);
+
 		const response = await this.outboundHttp
 			// Fixed public vendor host, not user-controllable.
 			.requests({ useDefaultSsrfPolicy: 'unsafe' })
 			.request({
 				method,
-				url: `${ARM_BASE_URL}${path}`,
+				url,
 				headers: {
 					authorization: `Bearer ${accessToken}`,
 					'content-type': 'application/json',

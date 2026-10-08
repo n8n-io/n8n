@@ -79,6 +79,44 @@ describe('TeamsCatalogService', () => {
 			await expect(service.findUserInstall(scope)).resolves.toBe(false);
 		});
 
+		/**
+		 * An account with many apps puts a newly uploaded one on a later page.
+		 * Reading the first page alone waits out the whole poll for an upload
+		 * that already happened.
+		 */
+		it('looks past the first page of installed apps', async () => {
+			graph.request.mockImplementation(async (_t: string, _m: string, path: string) =>
+				path.startsWith('/me/teamwork/installedApps?$expand')
+					? ok({
+							value: [{ teamsApp: { id: 'other-app', externalId: 'someone-elses' } }],
+							'@odata.nextLink':
+								'https://graph.microsoft.com/v1.0/me/teamwork/installedApps?$skiptoken=abc',
+						})
+					: ok({ value: [{ teamsApp: { id: 'sideloaded-app', externalId: EXTERNAL_ID } }] }),
+			);
+
+			await expect(service.findUserInstall(scope)).resolves.toBe(true);
+			expect(graph.request).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				'/me/teamwork/installedApps?$skiptoken=abc',
+			);
+		});
+
+		it('does not follow a nextLink that points off Graph', async () => {
+			graph.request.mockImplementation(async (_t: string, _m: string, path: string) =>
+				path.startsWith('/me/teamwork/installedApps?$expand')
+					? ok({
+							value: [],
+							'@odata.nextLink': 'https://elsewhere.example/me/teamwork/installedApps',
+						})
+					: ok({ value: [{ teamsApp: { externalId: EXTERNAL_ID } }] }),
+			);
+
+			await expect(service.findUserInstall(scope)).resolves.toBe(false);
+			expect(graph.request).toHaveBeenCalledTimes(1);
+		});
+
 		it('expands the app, since the install alone carries no external id', async () => {
 			graph.request.mockResolvedValue(ok({ value: [] }));
 

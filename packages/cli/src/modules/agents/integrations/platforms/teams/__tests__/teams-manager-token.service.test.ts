@@ -187,6 +187,26 @@ describe('TeamsManagerTokenService', () => {
 		expect(overlapped).toBe(false);
 	});
 
+	/**
+	 * Only a fresh sign-in clears `invalid_grant`, so it is the user's to act on
+	 * rather than an internal failure to retry.
+	 */
+	it('reports a sign-in that no longer reaches the resource as the user’s to redo', async () => {
+		respondWith(400, { error: 'invalid_grant' });
+
+		await expect(service.acquire(credential, GRAPH_RESOURCE)).rejects.toThrow(BadRequestError);
+	});
+
+	it('reports a refusal that may pass on a retry as operational', async () => {
+		respondWith(503, { error: 'temporarily_unavailable' });
+
+		const error = await service
+			.acquire(credential, GRAPH_RESOURCE)
+			.catch((caught: Error) => caught);
+		expect(error).not.toBeInstanceOf(BadRequestError);
+		expect((error as Error).message).toMatch(/would not issue a token/);
+	});
+
 	it('keeps the stored token data when Microsoft returns no new refresh token', async () => {
 		await service.acquire(credential, GRAPH_RESOURCE);
 

@@ -96,20 +96,38 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		return credentialId;
 	}
 
+	/**
+	 * What a reply belongs to. Every call below is made for one agent and one
+	 * Microsoft sign-in, and the modal keeps this runtime across both changing.
+	 * A reply that lands after either moved would repopulate state the view has
+	 * already cleared, with another tenant's values.
+	 */
+	function contextKey(): string {
+		return [context.projectId.value, context.agentId.value, managerCredentialId.value].join('|');
+	}
+
 	async function load() {
+		const requestedFor = [context.projectId.value, context.agentId.value].join('|');
+		const isCurrent = () =>
+			requestedFor === [context.projectId.value, context.agentId.value].join('|');
 		loading.value = true;
 		try {
-			managedSetup.value = await getTeamsManagedSetup(
+			const state = await getTeamsManagedSetup(
 				rootStore.restApiContext,
 				context.projectId.value,
 				context.agentId.value,
 			);
+			if (!isCurrent()) return;
+			managedSetup.value = state;
 		} catch {
+			if (!isCurrent()) return;
 			// An unavailable recommended setup is not an error state: the manual
 			// stepper is a complete flow on its own, so fall back to it silently.
 			managedSetup.value = emptyState();
 		} finally {
-			loading.value = false;
+			// Not from a load the agent has moved on from: it would report the
+			// newer one, still in flight, as finished.
+			if (isCurrent()) loading.value = false;
 		}
 
 		// Keep a usable sign-in selected so the stepper does not open on an empty
@@ -122,7 +140,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		await context.ensureAgentPersisted?.();
 		let id = credentialId;
 		let createdCredentialId: string | undefined;
-		let signedIn = false;
+		let reachedOAuth = false;
 
 		if (!id) {
 			const created = await createTeamsManagerCredential(
@@ -146,57 +164,87 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 			if (!credential)
 				throw new Error(i18n.baseText('agents.channels.teams.managed.errors.credentialMissing'));
 
+			// `abortOnPopupClose`, because without it a closed popup is only
+			// noticed at the five-minute timeout -- and every step here is
+			// disabled while the sign-in is in flight, with nothing to cancel it.
+			//
+			// From this line on, `authorizeNewCredential` owns the cleanup of a
+			// credential it was handed, so nothing else may delete it.
+			reachedOAuth = true;
 			const connected = createdCredentialId
 				? await credentialOAuth.authorizeNewCredential(credential, { abortOnPopupClose: true })
 				: await credentialOAuth.authorize(credential, undefined, { abortOnPopupClose: true });
 
 			if (!connected) return false;
-			signedIn = true;
 			managerCredentialId.value = id;
 			await load();
 			return true;
 		} finally {
-			// A credential nothing ever signed in to is litter, whether the popup
-			// never opened or the user closed it again. Keyed on the sign-in rather
-			// than on the attempt, or every abandoned attempt leaves one behind.
-			if (createdCredentialId && !signedIn) {
-				await credentialsStore.deleteCredential({ id: createdCredentialId });
+			// Only for a credential the helper never saw -- the lookup above threw.
+			// Past that point the helper deletes it itself on every path that is
+			// not a completed sign-in, and a second DELETE answers 404.
+			//
+			// Caught because this runs while that error is on its way out: a
+			// failed tidy-up must not take the place of the reason we are here.
+			if (createdCredentialId && !reachedOAuth) {
+				await credentialsStore.deleteCredential({ id: createdCredentialId }).catch(() => {});
 			}
 		}
 	}
 
 	async function provisionApp() {
-		provisionedApp.value = await provisionTeamsApp(
+		// Before the agent is written: refusing after it would leave a draft
+		// persisted for a step that never ran.
+		const managerCredentialId = requireManagerCredential();
+		// A sign-in already on the project is selected on load, so this step can
+		// be the first one the user presses -- and the backend reads the agent by
+		// id, which a draft does not have yet.
+		await context.ensureAgentPersisted?.();
+
+		const requestedFor = contextKey();
+		const app = await provisionTeamsApp(
 			rootStore.restApiContext,
 			context.projectId.value,
 			context.agentId.value,
-			requireManagerCredential(),
+			managerCredentialId,
 		);
+		if (requestedFor !== contextKey()) return;
+		provisionedApp.value = app;
+
 		// The Entra app is what names the organisation, so the Connect summary
 		// only becomes accurate once this has run.
 		await load();
 
+		// Re-captured: `load()` can reselect the sign-in, and the app above is
+		// still the one this call made.
+		const readFor = contextKey();
 		// Read once here so the bot step can offer the manual rungs without a
 		// second round trip when no subscription turns up.
-		botSetupState.value = await getTeamsSetupState(
+		const setupState = await getTeamsSetupState(
 			rootStore.restApiContext,
 			context.projectId.value,
 			context.agentId.value,
-			provisionedApp.value.credentialId,
+			app.credentialId,
 		);
+		if (readFor !== contextKey()) return;
+		botSetupState.value = setupState;
 	}
 
 	async function loadSubscriptions() {
-		subscriptions.value = await getTeamsAzureSubscriptions(
+		const requestedFor = contextKey();
+		const available = await getTeamsAzureSubscriptions(
 			rootStore.restApiContext,
 			context.projectId.value,
 			context.agentId.value,
 			requireManagerCredential(),
 		);
+		if (requestedFor !== contextKey()) return;
+		subscriptions.value = available;
 	}
 
 	async function provisionBot(subscriptionId: string) {
-		provisionedBot.value = await provisionTeamsBot(
+		const requestedFor = contextKey();
+		const bot = await provisionTeamsBot(
 			rootStore.restApiContext,
 			context.projectId.value,
 			context.agentId.value,
@@ -206,6 +254,8 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 				subscriptionId,
 			},
 		);
+		if (requestedFor !== contextKey()) return;
+		provisionedBot.value = bot;
 	}
 
 	/**
@@ -213,13 +263,16 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	 * so Microsoft is asked instead of guessed at.
 	 */
 	async function checkInstalled() {
+		const requestedFor = contextKey();
 		const result = await checkTeamsAppInstalled(
 			rootStore.restApiContext,
 			context.projectId.value,
 			context.agentId.value,
 			{ managerCredentialId: requireManagerCredential() },
 		);
+		if (requestedFor !== contextKey()) return false;
 		installed.value = result.installed;
+		return result.installed;
 	}
 
 	function editManagerCredential(credentialId: string) {
@@ -249,9 +302,6 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		provisionApp,
 		loadSubscriptions,
 		provisionBot,
-		checkInstalled: async () => {
-			await checkInstalled();
-			return installed.value;
-		},
+		checkInstalled,
 	};
 }

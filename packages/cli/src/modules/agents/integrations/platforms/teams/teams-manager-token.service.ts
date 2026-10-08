@@ -11,6 +11,7 @@ import { BadRequestError } from '@n8n/errors';
 import { OperationalError } from 'n8n-workflow';
 
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
+import { withTeamsFailure } from './teams-setup-telemetry.service';
 import { stringProperty } from '../../integration-helpers';
 
 // `organizations`, matching the sign-in: a personal account has no Teams
@@ -120,7 +121,12 @@ export class TeamsManagerTokenService {
 		const tokenData = this.tokenDataOf(rawData);
 		const refreshToken = stringProperty(tokenData, 'refresh_token');
 		if (!refreshToken) {
-			throw new BadRequestError('Sign in with Microsoft again to continue.');
+			// The same wall `invalid_grant` names below, reached a step earlier, so
+			// telemetry counts it under one reason rather than two.
+			throw withTeamsFailure(
+				new BadRequestError('Sign in with Microsoft again to continue.'),
+				'not_signed_in',
+			);
 		}
 
 		const client = this.clientCredentials();
@@ -165,10 +171,18 @@ export class TeamsManagerTokenService {
 			// It is refused for one resource at a time, and a sign-in that reaches
 			// Graph but not Azure is the common case: saying "no longer valid" of a
 			// sign-in that plainly works sends the user to fix the wrong thing.
+			// `invalid_grant` only clears with a fresh sign-in, so it is the user's
+			// to act on. Everything else may pass on a retry.
+			if (stringProperty(body, 'error') === 'invalid_grant') {
+				throw withTeamsFailure(
+					new BadRequestError(
+						`This Microsoft sign-in does not reach ${resourceName(resource)}. Sign in again, and make sure the organisation approved n8n for it.`,
+					),
+					'not_signed_in',
+				);
+			}
 			throw new OperationalError(
-				stringProperty(body, 'error') === 'invalid_grant'
-					? `This Microsoft sign-in does not reach ${resourceName(resource)}. Sign in again, and make sure the organisation approved n8n for it.`
-					: `Microsoft would not issue a token for ${resourceName(resource)}. Sign in again and retry.`,
+				`Microsoft would not issue a token for ${resourceName(resource)}. Sign in again and retry.`,
 			);
 		}
 
