@@ -2,6 +2,7 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
+import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { projectIconSchema } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
@@ -98,6 +99,35 @@ const credentialConflictSchema = z.object({
 	consumers: consumersSchema,
 });
 
+const dataTableChangeSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('add-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(false),
+	}),
+	z.object({
+		kind: z.literal('remove-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({
+		kind: z.literal('change-column-type'),
+		column: z.string(),
+		from: dataTableColumnTypeSchema,
+		to: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({ kind: z.literal('reorder-columns'), destructive: z.literal(false) }),
+	z.object({
+		kind: z.literal('rename-table'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
+]);
+
 /** Conflicts need a package or target correction before creation can proceed. */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
@@ -125,6 +155,15 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		project: promotionBindingProjectSchema,
 		filePath: z.string(),
 		workflows: z.array(workflowSchema),
+	}),
+	z.object({
+		kind: z.literal('data-table'),
+		code: z.literal('destructive-change'),
+		id: sourceId,
+		name: z.string(),
+		consumers: consumersSchema,
+		/** Every change that the import would make, destructive or not. */
+		changes: z.array(dataTableChangeSchema).min(1),
 	}),
 ]);
 

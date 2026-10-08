@@ -16,6 +16,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nIconButton,
 	N8nLink,
 	N8nText,
 	N8nTooltip,
@@ -1403,6 +1404,7 @@ onBeforeUnmount(() => {
 					:show-stop-button="showStop"
 					show-voice
 					:show-attach="showAttach"
+					:show-attach-button="false"
 					:accepted-mime-types="acceptedMimeTypes"
 					:can-submit="!isSubmissionBlocked && hasDraft"
 					:disabled="isPreparingToSend || !!editingQueueId"
@@ -1454,6 +1456,21 @@ onBeforeUnmount(() => {
 						</div>
 					</template>
 					<template #footer-start>
+						<N8nTooltip
+							v-if="showAttach"
+							:content="locale.baseText('chatInputBase.button.attach')"
+							placement="top"
+						>
+							<N8nIconButton
+								variant="ghost"
+								icon="paperclip"
+								icon-size="large"
+								:disabled="isPreparingToSend || !!editingQueueId"
+								:aria-label="locale.baseText('chatInputBase.button.attach')"
+								data-test-id="chat-input-attach-button"
+								@click.stop="chatInput?.openFilePicker()"
+							/>
+						</N8nTooltip>
 						<slot name="footer-start" />
 					</template>
 				</ChatInputBase>

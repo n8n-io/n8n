@@ -439,6 +439,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 }
 
 .settingLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
