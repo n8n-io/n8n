@@ -345,6 +345,8 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeRuleImpactSchema,
+	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
 } from './schemas/breaking-changes.schema';

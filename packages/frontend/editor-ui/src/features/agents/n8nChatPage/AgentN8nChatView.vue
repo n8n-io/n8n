@@ -248,6 +248,7 @@ const agentPageRoute = computed(() => {
 			@session-created="onSessionCreated"
 			@update:streaming="onStreamingChange"
 			@first-user-message="firstUserMessage = $event"
+			@agent-unavailable="notFound = true"
 		>
 			<template #empty-state>
 				<div :class="$style.emptyState" data-testid="agent-n8n-chat-empty-state">

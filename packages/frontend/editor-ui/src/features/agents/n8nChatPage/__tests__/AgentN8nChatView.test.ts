@@ -112,7 +112,7 @@ function renderView(
 						'backgroundJobsActive',
 						'centerEmptyState',
 					],
-					emits: ['session-created', 'update:streaming', 'first-user-message'],
+					emits: ['session-created', 'update:streaming', 'first-user-message', 'agent-unavailable'],
 					setup: () => ({ subAgentNames: inject(AGENT_SUB_AGENT_NAMES_KEY) }),
 					methods: { sendMessageFromOutside: sendMessageFromOutsideMock },
 				},
@@ -355,6 +355,19 @@ describe('AgentN8nChatView', () => {
 		expect(getN8nChatAgentMock).toHaveBeenLastCalledWith(expect.anything(), 'agent-2');
 		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(false);
 		expect(wrapper.text()).toContain('Other Agent');
+	});
+
+	it('switches to the unavailable empty state when the panel reports the agent is no longer available', async () => {
+		const wrapper = renderView();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="chat-panel-stub"]').exists()).toBe(true);
+		const panel = wrapper.findComponent({ name: 'AgentChatPanel' });
+		await panel.vm.$emit('agent-unavailable');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="chat-panel-stub"]').exists()).toBe(false);
 	});
 
 	it('toasts on a non-404 load failure instead of showing the unavailable state', async () => {
