@@ -188,7 +188,7 @@
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
-    "@n8n_io/license-sdk": "3.1.0",
+    "@n8n_io/license-sdk": "3.3.0",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/context-async-hooks": "^2.7.1",
     "@opentelemetry/core": "2.10.0",
