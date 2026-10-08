@@ -1,9 +1,13 @@
 import { Decoration } from '@codemirror/view';
 import { EditorState, StateEffect } from '@codemirror/state';
 import type { DecorationSet } from '@codemirror/view';
+import { captureException } from '@sentry/vue';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
+import type { ResolvableState } from '@/app/types/expressions';
 
 import { coloringStateEffects, coloringStateField, highlighter } from './resolvableHighlighter';
+
+vi.mock('@sentry/vue', () => ({ captureException: vi.fn() }));
 
 const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',
@@ -474,17 +478,23 @@ describe('resolvableHighlighter', () => {
 	});
 
 	describe('error handling', () => {
-		it('returns the previous set when the update function throws', () => {
-			// We can't easily make CodeMirror throw, but we can confirm that the
-			// try/catch wrapper exists by checking that an addColorEffect with
-			// bogus data does not corrupt the field.
+		it('returns the previous set and reports the error when the update function throws', () => {
 			let state = createState('hello world');
 			state = state.update({
 				effects: coloringStateEffects.addColorEffect.of({ from: 0, to: 5, state: 'valid' }),
 			}).state;
 			const before = snapshotDecorations(state.field(coloringStateField, false)!);
-			// The set is still queryable after an unrelated transaction
-			state = state.update({}).state;
+
+			// An unknown state has no decoration, so the update throws a TypeError
+			state = state.update({
+				effects: coloringStateEffects.addColorEffect.of({
+					from: 6,
+					to: 11,
+					state: 'unknown' as ResolvableState,
+				}),
+			}).state;
+
+			expect(captureException).toHaveBeenCalledWith(expect.any(TypeError));
 			expect(snapshotDecorations(state.field(coloringStateField, false)!)).toEqual(before);
 		});
 	});
