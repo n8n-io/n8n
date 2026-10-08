@@ -91,6 +91,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
 	};
 }

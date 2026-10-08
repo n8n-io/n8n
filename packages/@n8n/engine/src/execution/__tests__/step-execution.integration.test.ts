@@ -439,6 +439,82 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	it('records a seeded node with its outputs when the run reaches it, and runs what follows on them', async () => {
+		const chainGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [[{ json: {} }]], {
+			workflowId: 'wf-seeded',
+			graph: chainGraph,
+			seededSteps: { 'node-a': [[[{ json: { reused: true } }]]] },
+		});
+
+		// Only B ran, on A's seeded outputs.
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-b']);
+		expect(requests[0].inputs).toEqual([[{ json: { reused: true } }]]);
+		expect(execution.status).toBe('completed');
+		const a = steps.find((step) => step.nodeId === 'node-a');
+		expect(a).toMatchObject({ status: 'completed', outputs: [[{ json: { reused: true } }]] });
+	});
+
+	it('reaches a seeded node only once everything before it has settled', async () => {
+		// trigger -> A -> B (seeded) -> C: C must not run before A, even though
+		// B's outputs are known from the start.
+		const chainGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-c', name: 'C', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-c', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [[{ json: {} }]], {
+			workflowId: 'wf-seeded-order',
+			graph: chainGraph,
+			seededSteps: { 'node-b': [[[{ json: { seeded: true } }]]] },
+		});
+
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-c']);
+		expect(requests[1].inputs).toEqual([[{ json: { seeded: true } }]]);
+		expect(execution.status).toBe('completed');
+		// B's row was written when the run reached it, after A settled.
+		const a = steps.find((step) => step.nodeId === 'node-a');
+		const b = steps.find((step) => step.nodeId === 'node-b');
+		expect(b?.status).toBe('completed');
+		expect(b!.createdAt.getTime()).toBeGreaterThanOrEqual(a!.updatedAt.getTime());
+	});
+
 	it('runs what follows a loop seeded whole, and none of the loop itself', async () => {
 		// trigger -> loop(batch) -> x -> loop (back-edge); loop's done slot -> d
 		const loopGraph: WorkflowGraph = {

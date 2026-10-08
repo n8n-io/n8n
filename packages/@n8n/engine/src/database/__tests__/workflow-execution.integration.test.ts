@@ -7,6 +7,7 @@ import { ExecutionNotFoundError } from '../../execution/execution-store';
 import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
+import { WorkflowSeededStep } from '../entities/workflow-seeded-step.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
 import { TypeOrmExecutionStore } from '../typeorm-execution-store';
@@ -128,7 +129,6 @@ describe('workflow_execution table (integration)', () => {
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
-			seededSteps: null,
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
 			finishedAt: null,
@@ -351,6 +351,47 @@ describe('workflow_execution table (integration)', () => {
 			const after = await repo.findOneOrFail({ where: { id } });
 			expect(after.updatedAt).toEqual(before.updatedAt);
 		});
+	});
+
+	it('TypeOrmExecutionStore.createExecution stores seeded outputs by node and pass, read back by key', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const id = generateId();
+		await store.createExecution({
+			id,
+			workflowId: 'wf-5',
+			status: 'queued',
+			mode: 'manual',
+			graph: { nodes: [], edges: [] },
+			workflow: sampleWorkflow,
+			triggerOutputs: null,
+			seededSteps: {
+				a: [[[{ json: { pass: 0 } }]], [[{ json: { pass: 1 } }]]],
+				b: [[[{ json: { b: true } }]]],
+			},
+			callerContext: { hostMode: 'manual' },
+			responseExpectation: { kind: 'none' },
+		});
+
+		// Only the keys asked for, and nothing for a key that was never seeded.
+		const outputs = await store.loadSeededOutputs(id, [
+			{ nodeId: 'a', iteration: 1 },
+			{ nodeId: 'b', iteration: 0 },
+			{ nodeId: 'c', iteration: 0 },
+		]);
+		expect(Object.fromEntries(outputs)).toEqual({
+			'a@1': [[{ json: { pass: 1 } }]],
+			'b@0': [[{ json: { b: true } }]],
+		});
+		expect(await store.loadSeededOutputs(id, [])).toEqual(new Map());
+
+		// The outputs go with the execution.
+		await dataSource.getRepository(WorkflowExecution).delete({ id });
+		const remaining = await dataSource
+			.getRepository(WorkflowSeededStep)
+			.createQueryBuilder('seeded')
+			.where('seeded.execution_id = :id', { id })
+			.getCount();
+		expect(remaining).toBe(0);
 	});
 });
 

@@ -11,6 +11,7 @@ import {
 	createDataSource,
 	createStores,
 	WorkflowExecution,
+	WorkflowSeededStep,
 	WorkflowStepExecution,
 } from '../../database';
 import { generateId } from '../../database/generate-id';
@@ -464,7 +465,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
-	it('stores the seeded steps with the row', async () => {
+	it('stores the seeded outputs beside the row and marks the node in the graph', async () => {
 		const seededSteps = { a: [[[{ json: { reused: true } }]]] };
 		const body = startBody({
 			graph: {
@@ -486,7 +487,16 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: body.executionId } });
-		expect(row.seededSteps).toEqual(seededSteps);
+		expect(row.graph.nodes.map(({ id, seeded }) => ({ id, seeded }))).toEqual([
+			{ id: 'trigger', seeded: undefined },
+			{ id: 'a', seeded: true },
+		]);
+		const seeded = await dataSource
+			.getRepository(WorkflowSeededStep)
+			.find({ where: { executionId: body.executionId } });
+		expect(seeded).toEqual([
+			{ executionId: body.executionId, nodeId: 'a', iteration: 0, outputs: seededSteps.a[0] },
+		]);
 	});
 
 	it('rejects a seeded step for a node outside the graph with 400, creating nothing', async () => {

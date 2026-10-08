@@ -30,6 +30,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
@@ -236,6 +237,16 @@ describe('StartExecutionService', () => {
 
 			await service.start({ ...base, seededSteps });
 
+			// Stored beside the row, with the node marked in the graph so a
+			// settlement knows to record it rather than run it.
+			expect(store.createExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					graph: {
+						...graph,
+						nodes: graph.nodes.map((node) => (node.id === 'a' ? { ...node, seeded: true } : node)),
+					},
+				}),
+			);
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ seededSteps }));
 		});
 

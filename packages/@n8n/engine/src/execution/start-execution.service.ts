@@ -77,7 +77,7 @@ export class StartExecutionService {
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',
 			mode: request.mode ?? 'production',
-			graph: request.graph,
+			graph: markSeededNodes(request.graph, request.seededSteps ?? {}),
 			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
 			seededSteps: request.seededSteps ?? null,
@@ -97,22 +97,33 @@ export class StartExecutionService {
 	}
 }
 
+/** The graph as stored: each seeded node marked, so a settlement knows without a lookup. */
+function markSeededNodes(graph: WorkflowGraph, seededSteps: SeededSteps): WorkflowGraph {
+	const seeded = new Set(Object.keys(seededSteps));
+	if (seeded.size === 0) return graph;
+	return {
+		...graph,
+		nodes: graph.nodes.map((node) => (seeded.has(node.id) ? { ...node, seeded: true } : node)),
+	};
+}
+
 /**
- * Rejects seeded steps that the start handler could not record correctly.
+ * Rejects seeded steps that a settlement could not record correctly.
  *
- * The start handler turns each entry into one completed step row per pass,
- * iteration 0 first. That only works when:
+ * When the run reaches a seeded node, the settlement that would have queued it
+ * records it as completed with the seeded outputs for that pass instead. That
+ * only works when:
  *
  * - no entry names the trigger: its outputs arrive as `triggerOutputs`.
- * - the trigger reaches every seeded node: the completion check counts only
- *   reachable nodes, so a completed row outside that set would let the run
- *   finish while other steps are still outstanding.
+ * - the trigger reaches every seeded node: no settlement ever reaches any
+ *   other node, so its outputs would never be used.
  * - a node outside any loop has exactly one pass: it has no other.
  * - a loop is seeded whole or not at all: the batch node with t + 1 passes,
  *   filling its loop slot on every pass but the last, and every member with t.
- *   The loop ledger reads the loop's end from the batch node's last row, and
- *   the completion check expects exactly these rows, so any other shape would
- *   run passes the caller already holds or leave the loop unfinished.
+ *   The loop replays through those passes as the back-edge drives it, and the
+ *   loop ledger reads the loop's end from the batch node's last pass, so any
+ *   other shape would run passes the caller already holds or leave the loop
+ *   unfinished.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): void {
 	// The graph was validated first, so the trigger exists.
