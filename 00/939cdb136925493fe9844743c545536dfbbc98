@@ -57,6 +57,8 @@ packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integrati
   s_2397c9db9d923f::t_802baff86dc55d 407,409-413
   s_2397c9db9d923f::t_4711a5d92b0cad 403,406
   s_2397c9db9d923f::t_b4f02d24d14408 431-447
+  s_71ad2034164515::t_59e28df9bbbe9e 112,140,143,153-180,182,185,358-359,361-368,371-378,408
+  s_71ad2034164515::t_2c739a093cd920 187-190
 packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
   s_2397c9db9d923f::t_175fb86c18d53a 5,24,44,97
 packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
@@ -208,6 +210,14 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.
       "agent_id": {
         "tool": "codex",
         "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
