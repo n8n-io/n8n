@@ -107,10 +107,13 @@ test.describe(
 			expect(execution.status).toBe('success');
 
 			const partialRun = runDataOf(execution);
-			// A was reused; B and C ran.
+			// A was reused; B ran, and C ran again after it rather than being reused,
+			// even though its earlier results were sent along.
 			expect(firstItem(partialRun, 'A')).toEqual(firstItem(withoutB, 'A'));
 			expect(firstItem(partialRun, 'B')?.b).toEqual(expect.any(Number));
 			expect(firstItem(partialRun, 'B')?.b).not.toEqual(firstItem({ B }, 'B')?.b);
+			expect(firstItem(partialRun, 'C')?.c).toEqual(expect.any(Number));
+			expect(firstItem(partialRun, 'C')?.c).not.toEqual(firstItem(withoutB, 'C')?.c);
 			expect(firstItem(partialRun, 'C')?.a).toEqual(firstItem(withoutB, 'A')?.a);
 		});
 
