@@ -106,7 +106,9 @@ import {
 	Crosshair as BrandCrosshair,
 	Database as BrandDatabase,
 	Ellipsis as BrandEllipsis,
+	Ellipsis12 as BrandEllipsis12,
 	EllipsisVertical as BrandEllipsisVertical,
+	EllipsisVertical12 as BrandEllipsisVertical12,
 	Expand as BrandExpand,
 	ExternalLink as BrandExternalLink,
 	Eye as BrandEye,
@@ -578,6 +580,8 @@ export const updatedIconSet = {
 	'arrow-to-bracket-right': BrandLogIn,
 	// 12px glyph for 12px slots; the 16px set blurs when scaled down
 	'chevron-right-12': BrandChevronRight12,
+	'ellipsis-12': BrandEllipsis12,
+	'ellipsis-vertical-12': BrandEllipsisVertical12,
 	'robot-12': BrandRobot12,
 	'n8n-assistant': BrandN8nAssistant,
 	briefcase: BrandBriefcase,

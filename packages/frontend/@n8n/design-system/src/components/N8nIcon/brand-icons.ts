@@ -58,6 +58,8 @@ export { default as Crosshair } from './custom/brand/crosshair--outline-16.svg';
 export { default as Database } from './custom/brand/database--outline-16.svg';
 export { default as Ellipsis } from './custom/brand/dots-horizontal--outline-16.svg';
 export { default as EllipsisVertical } from './custom/brand/dots-vertical--outline-16.svg';
+export { default as Ellipsis12 } from './custom/brand/dots-horizontal--outline-12.svg';
+export { default as EllipsisVertical12 } from './custom/brand/dots-vertical--outline-12.svg';
 export { default as Expand } from './custom/brand/arrows-out--outline-16.svg';
 export { default as ExternalLink } from './custom/brand/arrow-square-out--outline-16.svg';
 export { default as Eye } from './custom/brand/eyes--outline-16.svg';

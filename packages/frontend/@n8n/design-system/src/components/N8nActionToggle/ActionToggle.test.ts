@@ -36,7 +36,7 @@ describe('N8nActionToggle', () => {
 			},
 		});
 
-		expect(getByRole('button').querySelector('svg')).toHaveAttribute('data-icon', 'ellipsis');
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('data-icon', 'ellipsis-12');
 	});
 	it('should have bottom-end as default placement', async function () {
 		const { container, getByRole } = render(ActionToggle, {

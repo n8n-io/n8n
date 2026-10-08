@@ -101,7 +101,7 @@ defineExpose({
 					<N8nIconButton
 						variant="ghost"
 						:class="$style[theme]"
-						:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
+						:icon="iconOrientation === 'horizontal' ? 'ellipsis-12' : 'ellipsis-vertical-12'"
 						size="small"
 						:disabled="disabled"
 						role="button"
