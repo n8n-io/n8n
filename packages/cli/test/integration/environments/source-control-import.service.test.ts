@@ -32,23 +32,28 @@ import {
 	UserRepository,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import type { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
 import { Cipher } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import * as utils from 'n8n-workflow';
+import type { INodeType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFile } from 'node:fs/promises';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import type { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -115,6 +120,12 @@ describe('SourceControlImportService', () => {
 			async (context, actor) =>
 				await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 		);
+		const nodeTypes = mock<NodeTypes>();
+		nodeTypes.getByNameAndVersion.mockImplementation((type) =>
+			mock<INodeType>({
+				description: { deprecated: type === 'n8n-nodes-base.function' ? true : undefined },
+			}),
+		);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -148,7 +159,11 @@ describe('SourceControlImportService', () => {
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
 			Container.get(WorkflowFinderService),
-			mock(), // deprecatedNodesValidationService
+			new DeprecatedNodesValidationService(
+				mock(),
+				mock<NodesConfig>({ blockDeprecated: true }),
+				nodeTypes,
+			),
 		);
 	});
 
@@ -1851,6 +1866,34 @@ describe('SourceControlImportService', () => {
 					throw new Error(`Trying to access invalid file in test: ${pathStr}`);
 				}
 				return mockFileData.get(pathStr)!;
+			});
+		});
+
+		describe('deprecated nodes', () => {
+			it('rejects pulling a new workflow that contains a deprecated node', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflow = makeWorkflowImport({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Function',
+							type: 'n8n-nodes-base.function',
+							typeVersion: 1,
+							position: [250, 300],
+							parameters: { functionCode: 'return items;' },
+						},
+					] as IWorkflowToImport['nodes'],
+				});
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await expect(
+					service.importWorkflowFromWorkFolder(
+						[mock<SourceControlledFile>({ id: workflow.id, file })],
+						importingUser.id,
+					),
+				).rejects.toThrow(DeprecatedNodesError);
+
+				await expect(workflowRepository.findOneBy({ id: workflow.id })).resolves.toBeNull();
 			});
 		});
 
