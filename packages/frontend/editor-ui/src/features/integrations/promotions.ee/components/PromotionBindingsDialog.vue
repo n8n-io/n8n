@@ -10,7 +10,7 @@ import {
 	N8nIcon,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { PromotionBindingConsumer } from '@n8n/api-types';
+import type { PromotionBindingConflict, PromotionBindingConsumer } from '@n8n/api-types';
 import { usePromotionBindings } from '../composables/usePromotionBindings';
 import type {
 	AppliedResult,
@@ -95,6 +95,34 @@ const destructiveSummary = computed(() =>
 		{ adjustToNumber: destructiveChanges.value.length },
 	),
 );
+
+// A long list would push the other tables out of view.
+const LISTED_COLUMNS_LIMIT = 5;
+
+function destructiveColumns(
+	changes: Extract<PromotionBindingConflict, { code: 'destructive-change' }>['changes'],
+) {
+	const columns = changes.flatMap((change) => {
+		if (change.kind === 'remove-column') {
+			return i18n.baseText('promotions.bindings.destructive.removedColumn', {
+				interpolate: { column: change.column },
+			});
+		}
+		if (change.kind === 'change-column-type') {
+			return i18n.baseText('promotions.bindings.destructive.retypedColumn', {
+				interpolate: { column: change.column, from: change.from, to: change.to },
+			});
+		}
+		return [];
+	});
+	const list = columns.slice(0, LISTED_COLUMNS_LIMIT).join(', ');
+	const hidden = columns.length - LISTED_COLUMNS_LIMIT;
+	return hidden > 0
+		? i18n.baseText('promotions.bindings.destructive.columnsMore', {
+				interpolate: { list, count: hidden },
+			})
+		: i18n.baseText('promotions.bindings.destructive.columns', { interpolate: { list } });
+}
 
 const errorDetail = computed(() =>
 	error.value?.kind === 'continue' && error.value.cause instanceof Error
@@ -251,6 +279,7 @@ async function continueApply() {
 					<p>{{ destructiveSummary }}</p>
 					<N8nCallout v-for="item in destructiveChanges" :key="item.id" theme="warning">
 						<strong>{{ item.name }}</strong>
+						<p>{{ destructiveColumns(item.changes) }}</p>
 						<p>{{ consumerNames(item.consumers) }}</p>
 					</N8nCallout>
 				</section>
