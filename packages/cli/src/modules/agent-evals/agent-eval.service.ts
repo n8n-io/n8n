@@ -1,5 +1,6 @@
 import type {
 	AgentEvalDatasetRecord,
+	ApplyAgentEvalSuggestionsResult,
 	AgentEvalResultRecord,
 	AgentEvalRunDetail,
 	AgentEvalRunList,
@@ -16,7 +17,7 @@ import type {
 	RerunResultOptions,
 	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun, User } from '@n8n/db';
 import {
 	AgentEvalDatasetRepository,
@@ -24,15 +25,23 @@ import {
 	AgentEvalRunRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import pLimit from 'p-limit';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, OperationalError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 
 import { AgentEvalCaseGenerationService } from './agent-eval-case-generation.service';
+import { rewriteAgentInstructions } from './agent-eval-instructions-rewrite';
 import { toDatasetRecord, toResultRecord, toRunRecord } from './agent-eval-record-mappers';
 import { AgentEvalRunnerService } from './agent-eval-runner.service';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
+
+/** How many suggestion reruns run at once. */
+const SUGGESTION_RERUN_CONCURRENCY = 3;
 
 /** Statuses a run can still be asked to stop from. */
 const CANCELLABLE_STATUSES = new Set(['new', 'running']);
@@ -61,6 +70,9 @@ export class AgentEvalService {
 		private readonly resultRepository: AgentEvalResultRepository,
 		private readonly runner: AgentEvalRunnerService,
 		private readonly caseGenerationService: AgentEvalCaseGenerationService,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly credentialsService: CredentialsService,
+		private readonly logger: Logger,
 	) {}
 
 	// ---- datasets ----
@@ -305,6 +317,92 @@ export class AgentEvalService {
 		return toResultRecord(updated);
 	}
 
+	// Folds the stored fix suggestions of failed results into one rewrite of the
+	// agent's instructions, saves it, then reruns only those results. The rewrite
+	// and the save happen before any result is claimed, so a failure in either
+	// leaves every result untouched. `agent:update` comes from the route scope;
+	// the reruns need `agent:execute` on top.
+	async applySuggestions(
+		user: User,
+		agentId: string,
+		projectId: string,
+		resultIds: string[],
+		pushRef?: string,
+	): Promise<ApplyAgentEvalSuggestionsResult> {
+		await this.assertAgentInProject(agentId, projectId);
+
+		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run agents in this project.');
+		}
+
+		const uniqueIds = [...new Set(resultIds)];
+		const results = await Promise.all(
+			uniqueIds.map(async (id) => await this.resolveResult(agentId, id)),
+		);
+
+		const invalidIds = results
+			.filter((result) => readFailedRuleSuggestion(result) === null)
+			.map((result) => result.id);
+		if (invalidIds.length > 0) {
+			throw new BadRequestError(
+				`These results have no fix suggestion to apply: ${invalidIds.join(', ')}.`,
+			);
+		}
+
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		const baseConfigHash = getAgentConfigHash(config);
+
+		const instructions = await rewriteAgentInstructions(
+			{
+				agentConfigService: this.agentConfigService,
+				credentialsService: this.credentialsService,
+				logger: this.logger,
+			},
+			{
+				currentInstructions: config.instructions,
+				suggestions: results.map((result) => ({
+					suggestion: readFailedRuleSuggestion(result) ?? '',
+					rule: readCriteria(result),
+				})),
+			},
+			{ agentId, projectId, user },
+		);
+
+		const saved = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			{ ...config, instructions },
+			user,
+			{ baseConfigHash, modifiedBy: 'user', pushRef },
+		);
+
+		const limit = pLimit(SUGGESTION_RERUN_CONCURRENCY);
+		const settled = await Promise.allSettled(
+			results.map(
+				async (result) =>
+					await limit(async () => await this.runner.rerunResult(result, agentId, projectId, user)),
+			),
+		);
+
+		// One failed rerun must not hide the others. Only when every rerun failed is
+		// there nothing to report, so that error is rethrown.
+		const failures = settled.filter((entry) => entry.status === 'rejected');
+		if (failures.length === settled.length) {
+			const { reason } = failures[0];
+			throw reason instanceof Error ? reason : new OperationalError(String(reason));
+		}
+
+		const rows = await Promise.all(
+			settled.map(async (entry, index) => {
+				if (entry.status === 'fulfilled') return entry.value;
+				const refreshed = await this.resultRepository.findById(results[index].id);
+				return refreshed ?? results[index];
+			}),
+		);
+
+		return { configHash: saved.configHash, results: rows.map(toResultRecord) };
+	}
+
 	// "Actually fine": the user overrides the judge's call — or an execution error —
 	// on a settled case. Recorded as a passing verdict so every reader of the
 	// result (the checks view, reopened runs) sees the same status without a second
@@ -412,6 +510,20 @@ export class AgentEvalService {
 
 		return result;
 	}
+}
+
+/** The stored fix suggestion of a settled result whose rule failed, or `null`. */
+function readFailedRuleSuggestion(result: AgentEvalResult): string | null {
+	if (result.status === 'new' || result.status === 'running') return null;
+	const verdict = result.verdict;
+	if (!verdict || verdict.status !== 'completed' || verdict.outcome !== 'fail') return null;
+	const suggestion = verdict.suggestion;
+	return typeof suggestion === 'string' && suggestion.trim().length > 0 ? suggestion.trim() : null;
+}
+
+function readCriteria(result: AgentEvalResult): string | null {
+	const criteria = result.input?.criteria;
+	return typeof criteria === 'string' && criteria.length > 0 ? criteria : null;
 }
 
 function getDataTableId(dataset: AgentEvalDataset): string | null {

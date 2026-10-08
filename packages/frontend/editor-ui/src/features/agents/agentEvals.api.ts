@@ -1,5 +1,7 @@
 import type {
 	AgentEvalDatasetRecord,
+	ApplyAgentEvalSuggestionsOptions,
+	ApplyAgentEvalSuggestionsResult,
 	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
 	AgentEvalRunDetail,
@@ -248,6 +250,23 @@ export const rerunResult = async (
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/results/${resultId}/rerun`,
+		options,
+	);
+};
+
+// Rewrites the agent's instructions to include the fixes suggested for these failed
+// results, then reruns just those results. One round trip: the response carries the
+// saved config's hash and the reran results.
+export const applySuggestions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	options: ApplyAgentEvalSuggestionsOptions,
+) => {
+	return await makeRestApiRequest<ApplyAgentEvalSuggestionsResult>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/apply-suggestions`,
 		options,
 	);
 };

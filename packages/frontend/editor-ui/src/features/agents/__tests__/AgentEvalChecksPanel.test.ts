@@ -4,9 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
+import { ResponseError } from '@n8n/rest-api-client';
+
 import { createComponentRenderer } from '@/__tests__/render';
+import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import type { AgentEvalResultRecord, AgentEvalResultStatus } from '../agentEvals.types';
+import {
+	AGENT_CONFIG_FLUSH_KEY,
+	type AgentConfigFlush,
+} from '../components/agentBuilderInjectionKeys';
 import AgentEvalChecksPanel from '../components/AgentEvalChecksPanel.vue';
 
 configure({ testIdAttribute: 'data-testid' });
@@ -32,8 +39,17 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			disabled: { type: Boolean },
 			hideRevise: { type: Boolean },
 			focused: { type: Boolean },
+			fixSuggestion: {},
+			applyingSuggestion: { type: Boolean },
 		},
-		emits: ['save-check', 'actually-fine', 'rerun-check', 'save-what-to-check', 'delete-check'],
+		emits: [
+			'save-check',
+			'actually-fine',
+			'rerun-check',
+			'save-what-to-check',
+			'delete-check',
+			'apply-suggestion',
+		],
 		// A plain, testId-free button: a testid built from the row's own (which
 		// starts with the same "agent-eval-check-" every row testid shares) would
 		// match every row-counting `getAllByTestId(/agent-eval-check-/)` query in
@@ -44,12 +60,15 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			:data-disabled="disabled"
 			:data-hide-revise="hideRevise"
 			:data-focused="focused"
+			:data-fix-suggestion="fixSuggestion"
+			:data-applying-suggestion="applyingSuggestion"
 		>
 			{{ input }}
 			<button @click="$emit('actually-fine')">actually fine</button>
 			<button @click="$emit('rerun-check')">run check</button>
 			<button @click="$emit('save-what-to-check', 'Mentions the refund window.')">save rule</button>
 			<button @click="$emit('delete-check')">delete check</button>
+			<button @click="$emit('apply-suggestion')">apply suggestion</button>
 		</div>`,
 	},
 }));
@@ -115,6 +134,7 @@ const render = (
 		focusedResultId?: string;
 	} = {},
 	inFlight = false,
+	flushConfig?: AgentConfigFlush,
 ) => {
 	const pinia = createTestingPinia({ stubActions: true });
 	const store = useAgentEvalsStore();
@@ -134,7 +154,14 @@ const render = (
 	vi.mocked(store.isStartingRun).mockReturnValue(false);
 	vi.mocked(store.consumeFocusedEvalResult).mockReturnValue(review.focusedResultId ?? null);
 
-	return { ...renderComponent({ pinia, props: { disabled: review.disabled } }), store };
+	return {
+		...renderComponent({
+			pinia,
+			props: { disabled: review.disabled },
+			global: flushConfig ? { provide: { [AGENT_CONFIG_FLUSH_KEY as symbol]: flushConfig } } : {},
+		}),
+		store,
+	};
 };
 
 /**
@@ -494,6 +521,125 @@ describe('AgentEvalChecksPanel', () => {
 
 			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
 			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-status', 'fail');
+		});
+	});
+
+	describe('fix suggestion', () => {
+		const failedWithSuggestion = {
+			...result('c1', 'success'),
+			verdict: {
+				status: 'completed' as const,
+				outcome: 'fail' as const,
+				reasoning: 'Off-task.',
+				suggestion: ' Politely decline requests outside invoice support. ',
+			},
+		};
+
+		it('passes the failed verdict’s suggestion to its row, and none to other rows', () => {
+			const { getByTestId } = render({ results: [failedWithSuggestion, result('c2', 'success')] });
+
+			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute(
+				'data-fix-suggestion',
+				'Politely decline requests outside invoice support.',
+			);
+			expect(getByTestId('agent-eval-check-c2')).not.toHaveAttribute('data-fix-suggestion');
+		});
+
+		describe('applying it', () => {
+			const applyButton = (getByTestId: (id: string) => HTMLElement) =>
+				within(getByTestId('agent-eval-check-c1')).getByText('apply suggestion');
+
+			it('saves pending edits, then applies the result, then tells the builder to refetch', async () => {
+				const user = userEvent.setup();
+				const order: string[] = [];
+				const flush = vi.fn(async () => {
+					order.push('flush');
+				});
+				const emit = vi.spyOn(agentsEventBus, 'emit');
+				const { getByTestId, store } = render({ results: [failedWithSuggestion] }, false, flush);
+				vi.mocked(store.applySuggestions).mockImplementation(async () => {
+					order.push('apply');
+					return { configHash: 'hash-2', results: [] };
+				});
+
+				await user.click(applyButton(getByTestId));
+
+				await vi.waitFor(() => expect(emit).toHaveBeenCalled());
+				expect(order).toEqual(['flush', 'apply']);
+				expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1']);
+				expect(emit).toHaveBeenCalledWith('agentUpdated', {
+					agentId: 'agent-1',
+					source: 'agent-evals',
+				});
+				expect(showError).not.toHaveBeenCalled();
+			});
+
+			it('works without a builder to flush for', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
+				vi.mocked(store.applySuggestions).mockResolvedValue({ configHash: 'h', results: [] });
+
+				await user.click(applyButton(getByTestId));
+
+				await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalled());
+			});
+
+			it('does not tell the builder to refetch when nothing was sent', async () => {
+				const user = userEvent.setup();
+				const emit = vi.spyOn(agentsEventBus, 'emit');
+				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
+				vi.mocked(store.applySuggestions).mockResolvedValue(null);
+
+				await user.click(applyButton(getByTestId));
+
+				await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalled());
+				expect(emit).not.toHaveBeenCalled();
+			});
+
+			it('toasts and does not tell the builder to refetch when applying fails', async () => {
+				const user = userEvent.setup();
+				const emit = vi.spyOn(agentsEventBus, 'emit');
+				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
+				vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
+
+				await user.click(applyButton(getByTestId));
+
+				await vi.waitFor(() =>
+					expect(showError).toHaveBeenCalledWith(
+						expect.any(Error),
+						"Couldn't apply the suggestion",
+					),
+				);
+				expect(emit).not.toHaveBeenCalled();
+			});
+
+			it('says the agent changed elsewhere on a conflict', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
+				vi.mocked(store.applySuggestions).mockRejectedValue(
+					new ResponseError('conflict', { httpStatusCode: 409 }),
+				);
+
+				await user.click(applyButton(getByTestId));
+
+				await vi.waitFor(() =>
+					expect(showError).toHaveBeenCalledWith(
+						expect.any(ResponseError),
+						'Someone changed this agent. Reload the page, then try again.',
+					),
+				);
+			});
+
+			it('does not call the API when saving the pending edits fails', async () => {
+				const user = userEvent.setup();
+				const flush = vi.fn().mockRejectedValue(new Error('save failed'));
+				const { getByTestId, store } = render({ results: [failedWithSuggestion] }, false, flush);
+
+				await user.click(applyButton(getByTestId));
+
+				await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+				expect(store.applySuggestions).not.toHaveBeenCalled();
+			});
 		});
 	});
 

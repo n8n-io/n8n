@@ -14,6 +14,7 @@ import {
 	readCorrectionText,
 	readErrorMessage,
 	readVerdictReasoning,
+	readVerdictSuggestion,
 	resolveReviewRowView,
 	toAvatarKind,
 } from '../agent-eval-review';
@@ -241,6 +242,42 @@ const verdict = (overrides: Partial<AgentEvalVerdict> = {}): AgentEvalVerdict =>
 	outcome: 'pass',
 	reasoning: 'Matches the expected answer.',
 	...overrides,
+});
+
+describe('readVerdictSuggestion', () => {
+	it('reads the trimmed suggestion from a failed verdict', () => {
+		expect(
+			readVerdictSuggestion(
+				verdict({ outcome: 'fail', suggestion: '  Decline off-topic asks.  ' }),
+			),
+		).toBe('Decline off-topic asks.');
+	});
+
+	it('returns null for a passing verdict that carries one', () => {
+		expect(readVerdictSuggestion(verdict({ outcome: 'pass', suggestion: 'Ignored.' }))).toBeNull();
+	});
+
+	it.each([
+		['missing', undefined],
+		['null', null],
+		['blank', '   '],
+	])('returns null when the suggestion is %s', (_label, suggestion) => {
+		expect(readVerdictSuggestion(verdict({ outcome: 'fail', suggestion }))).toBeNull();
+	});
+
+	it.each([
+		['errored', { status: 'error', outcome: null, reasoning: 'boom', suggestion: 'x' }],
+		['skipped', { status: 'skipped', outcome: null, reasoning: null, suggestion: 'x' }],
+	] as const)('returns null for an %s verdict', (_label, overrides) => {
+		expect(readVerdictSuggestion(verdict({ ...overrides }))).toBeNull();
+	});
+
+	test.each([
+		['null', null],
+		['undefined', undefined],
+	])('returns null for %s', (_label, input) => {
+		expect(readVerdictSuggestion(input)).toBeNull();
+	});
 });
 
 describe('readVerdictReasoning', () => {

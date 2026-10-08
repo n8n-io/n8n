@@ -78,6 +78,8 @@ export const agentEvalVerdictSchema = z.object({
 	outcome: agentEvalVerdictOutcomeSchema.nullable(),
 	/** The judge's explanation, or the error message when `status` is `'error'`. */
 	reasoning: z.string().nullable(),
+	/** One instruction that would fix a failed rule. Only set on a `fail` outcome, and absent on older rows. */
+	suggestion: z.string().nullable().optional(),
 });
 export type AgentEvalVerdict = z.infer<typeof agentEvalVerdictSchema>;
 
@@ -377,3 +379,20 @@ const rerunResultOptionsShape = {
 export const rerunResultOptionsSchema = z.object(rerunResultOptionsShape);
 export type RerunResultOptions = z.infer<typeof rerunResultOptionsSchema>;
 export class RerunResultOptionsDto extends Z.class(rerunResultOptionsShape) {}
+
+// Applies the fix suggestions stored on failed results: the backend rewrites the
+// agent's instructions once to include all of them, then reruns only these results.
+export const MAX_APPLY_SUGGESTIONS = 10;
+const applyAgentEvalSuggestionsShape = {
+	resultIds: z.array(z.string().min(1)).min(1).max(MAX_APPLY_SUGGESTIONS),
+};
+export const applyAgentEvalSuggestionsSchema = z.object(applyAgentEvalSuggestionsShape);
+export type ApplyAgentEvalSuggestionsOptions = z.infer<typeof applyAgentEvalSuggestionsSchema>;
+export class ApplyAgentEvalSuggestionsDto extends Z.class(applyAgentEvalSuggestionsShape) {}
+
+export type ApplyAgentEvalSuggestionsResult = {
+	/** Hash of the saved agent config, so the editor can adopt it without a conflict. */
+	configHash: string;
+	/** The reran results, in the order they were requested. */
+	results: AgentEvalResultRecord[];
+};

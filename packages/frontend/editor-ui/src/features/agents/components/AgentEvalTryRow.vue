@@ -24,6 +24,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { usePracticeRunBannerDismissal } from '../composables/usePracticeRunBannerDismissal';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
+import AgentEvalSuggestionCard from './AgentEvalSuggestionCard.vue';
 import EvalInitialSample from './EvalInitialSample.vue';
 
 const props = defineProps<{
@@ -58,6 +59,10 @@ const props = defineProps<{
 	hideRevise?: boolean;
 	/** The complete view was opened on this case: expand it and scroll it into view. */
 	focused?: boolean;
+	/** The judge's proposed instruction for a failed check. Not `suggestion`: that is the correction note below. */
+	fixSuggestion?: string | null;
+	/** True from "Apply suggestion" until the rewrite and rerun settle. */
+	applyingSuggestion?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -70,6 +75,8 @@ const emit = defineEmits<{
 	'save-what-to-check': [text: string];
 	/** The trash icon's confirmed delete — this case and its example. */
 	'delete-check': [];
+	/** "Apply suggestion": rewrite the agent's instructions with the fix, then rerun. */
+	'apply-suggestion': [];
 	/** Small view only: the chevron or row was clicked. */
 	open: [];
 }>();
@@ -87,6 +94,23 @@ const root = ref<HTMLElement | null>(null);
 // say what should have happened instead — a passed or not-yet-run case has
 // nothing to correct.
 const needsCorrection = computed(() => props.status === 'work' || props.status === 'fail');
+
+// "Keep as is" hides the card only until a different suggestion arrives (a rerun failed
+// again), so a new proposal is never swallowed by an old dismissal.
+const suggestionDismissed = ref(false);
+watch(
+	() => props.fixSuggestion,
+	() => {
+		suggestionDismissed.value = false;
+	},
+);
+const showFixSuggestion = computed(
+	() =>
+		props.view === 'complete' &&
+		needsCorrection.value &&
+		Boolean(props.fixSuggestion?.trim()) &&
+		!suggestionDismissed.value,
+);
 // A "couldn't finish" case often has no output at all — it must still expand
 // to reach the correction form, so this isn't gated on output alone.
 const canExpand = computed(() => props.output !== null || needsCorrection.value);
@@ -345,6 +369,16 @@ watch(
 			</div>
 
 			<template v-if="needsCorrection">
+				<AgentEvalSuggestionCard
+					v-if="showFixSuggestion && fixSuggestion"
+					:class="$style.fixSuggestion"
+					:suggestion="fixSuggestion"
+					:applying="applyingSuggestion"
+					:disabled="disabled"
+					:test-id="testId && `${testId}-suggestion-card`"
+					@apply="emit('apply-suggestion')"
+					@dismiss="suggestionDismissed = true"
+				/>
 				<template v-if="!hideRevise">
 					<N8nText bold color="text-dark" :class="$style.correctionHint">
 						{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}
@@ -487,6 +521,10 @@ watch(
 	display: block;
 	margin-top: var(--spacing--sm);
 	margin-bottom: var(--spacing--2xs);
+}
+
+.fixSuggestion {
+	margin-top: var(--spacing--sm);
 }
 
 .correctionActions {

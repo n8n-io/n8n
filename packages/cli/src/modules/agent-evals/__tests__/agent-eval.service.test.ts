@@ -1,4 +1,4 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type {
 	AgentEvalDataset,
 	AgentEvalDatasetRepository,
@@ -10,13 +10,16 @@ import type {
 } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import type { AgentEvalCaseGenerationService } from '../agent-eval-case-generation.service';
 import type { AgentEvalRunnerService } from '../agent-eval-runner.service';
+import { rewriteAgentInstructions } from '../agent-eval-instructions-rewrite';
 import { AgentEvalService } from '../agent-eval.service';
 
 // Stub the cross-module specifiers the service statically imports so this unit
@@ -30,6 +33,13 @@ vi.mock('@/permissions.ee/check-access', () => ({
 vi.mock('../agent-eval-runner.service', () => ({
 	AgentEvalRunnerService: class AgentEvalRunnerService {},
 }));
+vi.mock('@/modules/agents/agent-config.service', () => ({
+	AgentConfigService: class AgentConfigService {},
+}));
+vi.mock('@/credentials/credentials.service', () => ({
+	CredentialsService: class CredentialsService {},
+}));
+vi.mock('../agent-eval-instructions-rewrite', () => ({ rewriteAgentInstructions: vi.fn() }));
 vi.mock('../agent-eval-case-generation.service', () => ({
 	AgentEvalCaseGenerationService: class AgentEvalCaseGenerationService {},
 }));
@@ -49,6 +59,7 @@ describe('AgentEvalService', () => {
 	let resultRepository: MockProxy<AgentEvalResultRepository>;
 	let runner: MockProxy<AgentEvalRunnerService>;
 	let caseGenerationService: MockProxy<AgentEvalCaseGenerationService>;
+	let agentConfigService: MockProxy<AgentConfigService>;
 	let service: AgentEvalService;
 
 	const makeDataset = (over: Partial<AgentEvalDataset> = {}) =>
@@ -114,6 +125,7 @@ describe('AgentEvalService', () => {
 		resultRepository = mock<AgentEvalResultRepository>();
 		runner = mock<AgentEvalRunnerService>();
 		caseGenerationService = mock<AgentEvalCaseGenerationService>();
+		agentConfigService = mock<AgentConfigService>();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: AGENT_ID }));
 		datasetRepository.findByIdAndAgentId.mockResolvedValue(makeDataset());
@@ -130,6 +142,9 @@ describe('AgentEvalService', () => {
 			resultRepository,
 			runner,
 			caseGenerationService,
+			agentConfigService,
+			mock<CredentialsService>(),
+			mock<Logger>(),
 		);
 	});
 
@@ -172,6 +187,10 @@ describe('AgentEvalService', () => {
 			[
 				'rerunResult',
 				async () => await service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-1'),
+			],
+			[
+				'applySuggestions',
+				async () => await service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['result-1']),
 			],
 			['acceptResult', async () => await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1')],
 			['deleteResult', async () => await service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')],
@@ -305,12 +324,221 @@ describe('AgentEvalService', () => {
 		});
 	});
 
+	describe('applySuggestions', () => {
+		const config = { name: 'Bot', model: 'm', credential: 'c', instructions: 'Old text.' };
+		const failedWithSuggestion = (id: string, suggestion = `Fix ${id}.`) =>
+			makeResult({
+				id,
+				status: 'success',
+				input: { input: 'hello', criteria: `Rule ${id}` },
+				verdict: { status: 'completed', outcome: 'fail', reasoning: 'no', suggestion },
+			});
+
+		const mockResults = (...results: AgentEvalResult[]) => {
+			resultRepository.findById.mockImplementation(
+				async (id: string) => results.find((result) => result.id === id) ?? null,
+			);
+		};
+
+		beforeEach(() => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			vi.mocked(rewriteAgentInstructions).mockReset();
+			vi.mocked(rewriteAgentInstructions).mockResolvedValue('New text.');
+			agentConfigService.getConfig.mockResolvedValue(config as never);
+			agentConfigService.updateConfig.mockResolvedValue({
+				config: { ...config, instructions: 'New text.' },
+				configHash: 'hash-after',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				versionId: null,
+			} as never);
+			runner.rerunResult.mockImplementation(async (result) =>
+				makeResult({ id: result.id, status: 'success' }),
+			);
+		});
+
+		it('rewrites once, saves, then reruns each result and returns them in request order', async () => {
+			mockResults(failedWithSuggestion('r1'), failedWithSuggestion('r2'));
+			const order: string[] = [];
+			vi.mocked(rewriteAgentInstructions).mockImplementation(async () => {
+				order.push('rewrite');
+				return 'New text.';
+			});
+			agentConfigService.updateConfig.mockImplementation(async () => {
+				order.push('save');
+				return { configHash: 'hash-after' } as never;
+			});
+			runner.rerunResult.mockImplementation(async (result) => {
+				order.push(`rerun:${result.id}`);
+				return makeResult({ id: result.id, status: 'success' });
+			});
+
+			const response = await service.applySuggestions(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				['r2', 'r1', 'r2'],
+				'push-1',
+			);
+
+			expect(order).toEqual(['rewrite', 'save', 'rerun:r2', 'rerun:r1']);
+			expect(response.configHash).toBe('hash-after');
+			expect(response.results.map((result) => result.id)).toEqual(['r2', 'r1']);
+		});
+
+		it('folds several suggestions into one rewrite call', async () => {
+			mockResults(failedWithSuggestion('r1'), failedWithSuggestion('r2'));
+
+			await service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1', 'r2']);
+
+			expect(rewriteAgentInstructions).toHaveBeenCalledTimes(1);
+			expect(rewriteAgentInstructions).toHaveBeenCalledWith(
+				expect.anything(),
+				{
+					currentInstructions: 'Old text.',
+					suggestions: [
+						{ suggestion: 'Fix r1.', rule: 'Rule r1' },
+						{ suggestion: 'Fix r2.', rule: 'Rule r2' },
+					],
+				},
+				{ agentId: AGENT_ID, projectId: PROJECT_ID, user },
+			);
+		});
+
+		it('saves the full config with only the instructions replaced, against the hash it read', async () => {
+			mockResults(failedWithSuggestion('r1'));
+
+			await service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1'], 'push-1');
+
+			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+				AGENT_ID,
+				PROJECT_ID,
+				{ ...config, instructions: 'New text.' },
+				user,
+				{
+					baseConfigHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+					modifiedBy: 'user',
+					pushRef: 'push-1',
+				},
+			);
+		});
+
+		it.each([
+			['a running result', makeResult({ id: 'r1', status: 'running' })],
+			[
+				'a passing result',
+				makeResult({
+					id: 'r1',
+					status: 'success',
+					verdict: { status: 'completed', outcome: 'pass', reasoning: null },
+				}),
+			],
+			[
+				'a failed result without a suggestion',
+				makeResult({
+					id: 'r1',
+					status: 'success',
+					verdict: { status: 'completed', outcome: 'fail', reasoning: 'no' },
+				}),
+			],
+			[
+				'a failed result with a blank suggestion',
+				makeResult({
+					id: 'r1',
+					status: 'success',
+					verdict: { status: 'completed', outcome: 'fail', reasoning: 'no', suggestion: '  ' },
+				}),
+			],
+		])('rejects %s and changes nothing', async (_name, invalid) => {
+			mockResults(failedWithSuggestion('r2'), invalid);
+
+			await expect(
+				service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r2', 'r1']),
+			).rejects.toThrow(/r1/);
+			await expect(
+				service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r2', 'r1']),
+			).rejects.toThrow(BadRequestError);
+			expect(rewriteAgentInstructions).not.toHaveBeenCalled();
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+			expect(runner.rerunResult).not.toHaveBeenCalled();
+		});
+
+		it('404s when a result belongs to another agent', async () => {
+			resultRepository.findById.mockResolvedValue(failedWithSuggestion('r1'));
+			runRepository.findByIdAndAgentId.mockResolvedValue(null);
+
+			await expect(service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1'])).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('requires agent:execute on top of the route scope', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			mockResults(failedWithSuggestion('r1'));
+
+			await expect(service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1'])).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(rewriteAgentInstructions).not.toHaveBeenCalled();
+		});
+
+		it('saves and reruns nothing when the rewrite fails', async () => {
+			mockResults(failedWithSuggestion('r1'));
+			vi.mocked(rewriteAgentInstructions).mockRejectedValue(new Error('bad rewrite'));
+
+			await expect(service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1'])).rejects.toThrow(
+				'bad rewrite',
+			);
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+			expect(runner.rerunResult).not.toHaveBeenCalled();
+		});
+
+		it('reruns nothing when the save fails, and lets a 409 through', async () => {
+			mockResults(failedWithSuggestion('r1'));
+			agentConfigService.updateConfig.mockRejectedValue(new ConflictError('changed elsewhere'));
+
+			await expect(service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1'])).rejects.toThrow(
+				ConflictError,
+			);
+			expect(runner.rerunResult).not.toHaveBeenCalled();
+		});
+
+		it('keeps the other results when one rerun fails, returning the failed row as stored', async () => {
+			const r1 = failedWithSuggestion('r1');
+			const r2 = failedWithSuggestion('r2');
+			mockResults(r1, r2);
+			runner.rerunResult.mockImplementation(async (result) => {
+				if (result.id === 'r2') throw new Error('already running');
+				return makeResult({ id: result.id, status: 'success' });
+			});
+
+			const response = await service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1', 'r2']);
+
+			expect(response.results.map((result) => result.id)).toEqual(['r1', 'r2']);
+			expect(response.configHash).toBe('hash-after');
+		});
+
+		it('rethrows when every rerun fails', async () => {
+			mockResults(failedWithSuggestion('r1'), failedWithSuggestion('r2'));
+			runner.rerunResult.mockRejectedValue(new Error('already running'));
+
+			await expect(
+				service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['r1', 'r2']),
+			).rejects.toThrow('already running');
+		});
+	});
+
 	describe('acceptResult', () => {
 		it('records a passing verdict on a successful result and returns the refreshed record', async () => {
 			const verdict = { status: 'completed', outcome: 'pass', reasoning: null };
 			resultRepository.findById
 				.mockResolvedValueOnce(makeResult({ status: 'success' }))
-				.mockResolvedValueOnce(makeResult({ status: 'success', verdict }));
+				.mockResolvedValueOnce(
+					makeResult({
+						status: 'success',
+						verdict: { ...verdict, suggestion: undefined as never },
+					}),
+				);
 
 			const record = await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1');
 
@@ -326,7 +554,9 @@ describe('AgentEvalService', () => {
 				const verdict = { status: 'completed', outcome: 'pass', reasoning: null };
 				resultRepository.findById
 					.mockResolvedValueOnce(makeResult({ status }))
-					.mockResolvedValueOnce(makeResult({ status, verdict }));
+					.mockResolvedValueOnce(
+						makeResult({ status, verdict: { ...verdict, suggestion: undefined as never } }),
+					);
 
 				const record = await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1');
 

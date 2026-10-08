@@ -11,6 +11,8 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+
 import type { AgentEvalRatingService } from '../agent-eval-rating.service';
 import type { AgentEvalService } from '../agent-eval.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
@@ -19,6 +21,9 @@ import { AgentEvalsController } from '../agent-evals.controller';
 vi.mock('../agent-eval.service', () => ({ AgentEvalService: class AgentEvalService {} }));
 vi.mock('../agent-eval-rating.service', () => ({
 	AgentEvalRatingService: class AgentEvalRatingService {},
+}));
+vi.mock('@/collaboration/collaboration.service', () => ({
+	CollaborationService: class CollaborationService {},
 }));
 vi.mock('../agent-evals-flag-gate', () => ({ AgentEvalsFlagGate: class AgentEvalsFlagGate {} }));
 
@@ -35,13 +40,15 @@ describe('AgentEvalsController', () => {
 	let service: MockProxy<AgentEvalService>;
 	let ratingService: MockProxy<AgentEvalRatingService>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
+	let collaborationService: MockProxy<CollaborationService>;
 	let controller: AgentEvalsController;
 
 	function makeReq<P extends Record<string, unknown>>(
 		params: P,
 		body: unknown = {},
+		headers: Record<string, string> = {},
 	): AuthenticatedRequest<P> {
-		return { user, params, body } as unknown as AuthenticatedRequest<P>;
+		return { user, params, body, headers } as unknown as AuthenticatedRequest<P>;
 	}
 
 	const agentReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID });
@@ -54,7 +61,8 @@ describe('AgentEvalsController', () => {
 		ratingService = mock<AgentEvalRatingService>();
 		flagGate = mock<AgentEvalsFlagGate>();
 		flagGate.assertEnabled.mockResolvedValue(undefined);
-		controller = new AgentEvalsController(service, ratingService, flagGate);
+		collaborationService = mock<CollaborationService>();
+		controller = new AgentEvalsController(service, ratingService, flagGate, collaborationService);
 	});
 
 	/**
@@ -105,6 +113,7 @@ describe('AgentEvalsController', () => {
 			cancelRun: 'agent:update',
 			startRun: 'agent:execute',
 			rerunResult: 'agent:execute',
+			applySuggestions: 'agent:update',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -163,6 +172,11 @@ describe('AgentEvalsController', () => {
 			['getRun', async () => await controller.getRun(runReq(), undefined, RUN_PAGE)],
 			['getRunSummary', async () => await controller.getRunSummary(runReq())],
 			['cancelRun', async () => await controller.cancelRun(runReq())],
+			[
+				'applySuggestions',
+				async () =>
+					await controller.applySuggestions(agentReq(), undefined, { resultIds: ['res-1'] }),
+			],
 			[
 				'rateResult',
 				async () => await controller.rateResult(resultReq(), undefined, { vote: 'up' }),
@@ -317,6 +331,49 @@ describe('AgentEvalsController', () => {
 				'res-1',
 				payload,
 			);
+		});
+
+		it('applies suggestions after the write-lock check, forwarding the push ref', async () => {
+			const req = makeReq(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				{},
+				{ 'push-ref': 'push-1' },
+			);
+			const callOrder: string[] = [];
+			collaborationService.validateAgentWriteLock.mockImplementation(async () => {
+				callOrder.push('lock');
+			});
+			service.applySuggestions.mockImplementation(async () => {
+				callOrder.push('apply');
+				return { configHash: 'hash-1', results: [] };
+			});
+
+			await controller.applySuggestions(req, undefined, { resultIds: ['res-1', 'res-2'] });
+
+			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+				'user-1',
+				'push-1',
+				PROJECT_ID,
+				AGENT_ID,
+				'update',
+			);
+			expect(service.applySuggestions).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				['res-1', 'res-2'],
+				'push-1',
+			);
+			expect(callOrder).toEqual(['lock', 'apply']);
+		});
+
+		it('does not apply suggestions when the write lock rejects', async () => {
+			collaborationService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
+
+			await expect(
+				controller.applySuggestions(agentReq(), undefined, { resultIds: ['res-1'] }),
+			).rejects.toThrow(BadRequestError);
+			expect(service.applySuggestions).not.toHaveBeenCalled();
 		});
 
 		it('accepts a result scoped to the path agent', async () => {

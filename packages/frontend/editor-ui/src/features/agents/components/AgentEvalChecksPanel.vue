@@ -9,12 +9,14 @@
  * `input`/`output`/`status` (the Data Table has no column for it), so this
  * never passes `label` to `AgentEvalTryRow`.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import {
 	readAgentAnswer,
@@ -22,12 +24,14 @@ import {
 	readCaseWhatToCheck,
 	readErrorMessage,
 	readVerdictReasoning,
+	readVerdictSuggestion,
 	toAvatarKind,
 } from '../utils/agent-eval-review';
 import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
 import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import AgentEvalAddCheckPanel from './AgentEvalAddCheckPanel.vue';
+import { AGENT_CONFIG_FLUSH_KEY } from './agentBuilderInjectionKeys';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
 
 const props = defineProps<{
@@ -84,6 +88,8 @@ type CheckRow = {
 	errorMessage: string | null;
 	toolCalls: ToolCall[];
 	whatToCheck: string | null;
+	/** The judge's proposed instruction for a failed check, if it made one. */
+	fixSuggestion: string | null;
 };
 
 const rows = computed<CheckRow[]>(() =>
@@ -101,6 +107,7 @@ const rows = computed<CheckRow[]>(() =>
 			errorMessage: readErrorMessage(result.errorDetails) ?? readVerdictReasoning(result.verdict),
 			toolCalls: toDisplayToolCalls(result.toolCalls),
 			whatToCheck: readCaseWhatToCheck(result.input),
+			fixSuggestion: readVerdictSuggestion(result.verdict),
 		};
 	}),
 );
@@ -217,6 +224,36 @@ async function onRerunCheck(resultId: string) {
 		await store.rerunResult(props.projectId, props.agentId, resultId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
+	}
+}
+
+const flushAgentConfig = inject(AGENT_CONFIG_FLUSH_KEY, null);
+const applyingSuggestionIds = ref<string[]>([]);
+
+// The backend rewrites the agent's instructions from the *saved* config, so pending
+// local edits are flushed first. It then reruns just this result. The builder does not
+// hear about its own tab's write over push, so it is told to refetch the config.
+async function onApplySuggestion(resultId: string) {
+	if (applyingSuggestionIds.value.includes(resultId)) return;
+	applyingSuggestionIds.value = [...applyingSuggestionIds.value, resultId];
+	try {
+		await flushAgentConfig?.();
+		const applied = await store.applySuggestions(props.projectId, props.agentId, [resultId]);
+		if (applied) {
+			agentsEventBus.emit('agentUpdated', { agentId: props.agentId, source: 'agent-evals' });
+		}
+	} catch (error) {
+		const conflict = error instanceof ResponseError && error.httpStatusCode === 409;
+		toast.showError(
+			error,
+			i18n.baseText(
+				conflict
+					? 'agents.builder.agentEvals.suggestion.conflictError'
+					: 'agents.builder.agentEvals.suggestion.applyError',
+			),
+		);
+	} finally {
+		applyingSuggestionIds.value = applyingSuggestionIds.value.filter((id) => id !== resultId);
 	}
 }
 
@@ -460,6 +497,8 @@ onBeforeUnmount(store.stopPollingRun);
 				:tool-calls="row.toolCalls"
 				:project-id="projectId"
 				:what-to-check="row.whatToCheck"
+				:fix-suggestion="row.fixSuggestion"
+				:applying-suggestion="applyingSuggestionIds.includes(row.id)"
 				:disabled="disabled || showingPreviousRun"
 				:running-check="row.status === 'waiting'"
 				hide-revise
@@ -468,6 +507,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:test-id="`agent-eval-check-${row.id}`"
 				@actually-fine="onActuallyFine(row.id)"
 				@rerun-check="onRerunCheck(row.id)"
+				@apply-suggestion="onApplySuggestion(row.id)"
 				@save-what-to-check="onSaveWhatToCheck(row.id, $event)"
 				@delete-check="onDeleteCheck(row)"
 			/>

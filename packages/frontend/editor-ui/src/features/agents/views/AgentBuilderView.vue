@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import {
 	StorageSerializers,
 	useElementSize,
@@ -120,6 +120,7 @@ import {
 	isAgentConfigBlank,
 	type AgentTemplate,
 } from '../agentTemplates';
+import { AGENT_CONFIG_FLUSH_KEY } from '../components/agentBuilderInjectionKeys';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
@@ -1660,6 +1661,13 @@ async function flushAutosaveLoops(isolateSideSaveErrors = false): Promise<Autosa
 	]);
 	return configResult;
 }
+
+// Evals can rewrite the agent's instructions on the server; that reads the saved
+// config, so pending local edits must land first. A locked editor has nothing of its
+// own to save: the server rejects the write on its own lock check.
+provide(AGENT_CONFIG_FLUSH_KEY, async () => {
+	if (!isEditingLocked.value) await flushAutosaveLoops();
+});
 
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();

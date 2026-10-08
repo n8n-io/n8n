@@ -858,6 +858,9 @@ export {
 	PreviewRunOptionsDto,
 	rerunResultOptionsSchema,
 	RerunResultOptionsDto,
+	ApplyAgentEvalSuggestionsDto,
+	applyAgentEvalSuggestionsSchema,
+	MAX_APPLY_SUGGESTIONS,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -888,6 +891,8 @@ export type {
 	PreviewRunOptions,
 	PreviewRunResult,
 	RerunResultOptions,
+	ApplyAgentEvalSuggestionsOptions,
+	ApplyAgentEvalSuggestionsResult,
 } from './schemas/agent-evals.schema';
 
 export {

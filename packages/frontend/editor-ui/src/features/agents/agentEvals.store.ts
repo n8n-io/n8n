@@ -18,6 +18,7 @@ import type {
 	AgentEvalRunStatus,
 	AgentEvalRunSummary,
 	AgentEvalVote,
+	ApplyAgentEvalSuggestionsResult,
 	CreateDraftDatasetOptions,
 	GenerateDraftCasesOptions,
 	PreviewRunOptions,
@@ -1180,6 +1181,56 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// Applies the suggested fixes of these failed results: the backend rewrites the
+	// agent's instructions once and reruns just these results, all in one request.
+	// Patches each to `running` first, like `rerunResult`. Results already running are
+	// left out; null means nothing was left to send.
+	const applySuggestions = async (
+		projectId: string,
+		agentId: string,
+		resultIds: string[],
+	): Promise<ApplyAgentEvalSuggestionsResult | null> => {
+		const targets: Array<{ runId: string; result: AgentEvalResultRecord }> = [];
+		for (const resultId of new Set(resultIds)) {
+			const cached = findCachedResult(resultId);
+			if (cached?.result.status === 'running') continue;
+			if (cached) targets.push(cached);
+		}
+		if (targets.length === 0) return null;
+
+		for (const { runId, result } of targets) {
+			replaceCachedResult(runId, result.id, { ...result, status: 'running' });
+		}
+		try {
+			const applied = await agentEvalsApi.applySuggestions(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				{ resultIds: targets.map(({ result }) => result.id) },
+			);
+			for (const updated of applied.results) {
+				replaceCachedResult(updated.runId, updated.id, updated);
+			}
+			return applied;
+		} catch (error) {
+			// A failure after the config was saved may still have rerun some results, so
+			// read each back before assuming it is unchanged. Only touch a row that still
+			// shows the optimistic patch: a poll may already have replaced it.
+			await Promise.all(
+				targets.map(async ({ runId, result }) => {
+					if (findCachedResult(result.id)?.result.status !== 'running') return;
+					const refreshed = await refreshCachedResult(projectId, agentId, runId, result.id).catch(
+						() => false,
+					);
+					if (!refreshed && findCachedResult(result.id)?.result.status === 'running') {
+						replaceCachedResult(runId, result.id, result);
+					}
+				}),
+			);
+			throw error;
+		}
+	};
+
 	// Marks a finished case as passing. Patches the cached verdict first so the
 	// row flips instantly, and reverts it if the request fails.
 	const acceptResult = async (projectId: string, agentId: string, resultId: string) => {
@@ -1267,6 +1318,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		hasLostTrackOfRun,
 		startRun,
 		rerunResult,
+		applySuggestions,
 		acceptResult,
 		cancelRun,
 		isCancellingRun,

@@ -1055,6 +1055,23 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
 	});
 
+	it('refetches the config when the evals tab changes the agent on the server', async () => {
+		await renderView();
+		fetchConfigMock.mockClear();
+
+		// The server's own-tab push is excluded, so this event is the only signal.
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'agent-evals' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+	});
+
 	it('marks a route-pending agent persisted once the embedded assistant builds it externally', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
