@@ -1,10 +1,16 @@
 <script lang="ts" setup>
-import { ElDialog } from 'element-plus';
-import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 
 const visible = defineModel<boolean>();
 const i18n = useI18n();
@@ -17,13 +23,12 @@ const onViewPlans = async () => {
 </script>
 
 <template>
-	<ElDialog
-		v-model="visible"
-		:title="i18n.baseText('projects.settings.role.upgrade.title')"
-		width="400"
-		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+	<N8nDialog
+		v-model:open="visible"
+		size="medium"
+		:header="i18n.baseText('projects.settings.role.upgrade.title')"
 	>
-		<div :class="$style.content">
+		<N8nDialogBody>
 			<N8nText tag="p" size="medium">
 				<I18nT keypath="projects.settings.role.upgrade.custom.body" tag="span">
 					<template #documentation>
@@ -33,34 +38,22 @@ const onViewPlans = async () => {
 					</template>
 				</I18nT>
 			</N8nText>
-		</div>
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="visible = false">
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton variant="solid" @click="onViewPlans">
-					{{ i18n.baseText('projects.settings.role.upgrade.custom.viewPlans') }}
-					<template #append>
-						<span :class="$style.externalIcon">↗</span>
-					</template>
-				</N8nButton>
-			</div>
-		</template>
-	</ElDialog>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton variant="subtle" @click="visible = false">
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+			<N8nButton variant="solid" @click="onViewPlans">
+				{{ i18n.baseText('projects.settings.role.upgrade.custom.viewPlans') }}
+				<template #append>
+					<span :class="$style.externalIcon">↗</span>
+				</template>
+			</N8nButton>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.content {
-	padding: var(--spacing--xs) 0;
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-}
-
 .externalIcon {
 	margin-left: var(--spacing--4xs);
 }
