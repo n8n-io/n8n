@@ -250,26 +250,6 @@ describe('StartExecutionService', () => {
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ seededSteps }));
 		});
 
-		it('marks only the nodes it holds outputs for, dropping a mark the caller sent', async () => {
-			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
-			const marked = {
-				...graph,
-				nodes: graph.nodes.map((node) => (node.id === 'b' ? { ...node, seeded: true } : node)),
-			};
-
-			await service.start({ ...base, graph: marked, seededSteps: { a: [[]] } });
-
-			expect(store.createExecution).toHaveBeenCalledWith(
-				expect.objectContaining({
-					graph: {
-						...graph,
-						nodes: graph.nodes.map((node) => (node.id === 'a' ? { ...node, seeded: true } : node)),
-					},
-				}),
-			);
-		});
-
 		it('rejects a node outside any loop seeded with more than one pass', async () => {
 			const store = makeStore();
 			const service = new StartExecutionService(admittance, store, makeQueue());

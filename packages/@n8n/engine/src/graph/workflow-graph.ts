@@ -38,12 +38,6 @@ export interface GraphNode {
 	type: StepType;
 	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
-	/**
-	 * The caller supplied this node's outputs at start, so the engine records
-	 * it as completed with them instead of running it. Set by the engine when
-	 * it stores the execution; the outputs live in their own table.
-	 */
-	seeded?: boolean;
 }
 
 export interface GraphEdge {
@@ -61,5 +55,24 @@ export interface GraphEdge {
 
 export interface WorkflowGraph {
 	nodes: GraphNode[];
+	edges: GraphEdge[];
+}
+
+/**
+ * A node as stored with an execution: the graph as sent, plus what the engine
+ * marks on it at start. A caller cannot set these; the request type has none.
+ */
+export type StoredGraphNode = GraphNode & {
+	/**
+	 * The caller supplied this node's outputs, so the engine records it as
+	 * completed with them instead of running it. The outputs live in their own
+	 * table.
+	 */
+	seeded?: boolean;
+};
+
+/** The graph as stored with an execution. See `StoredGraphNode`. */
+export interface StoredWorkflowGraph {
+	nodes: StoredGraphNode[];
 	edges: GraphEdge[];
 }

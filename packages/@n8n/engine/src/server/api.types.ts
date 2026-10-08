@@ -7,7 +7,7 @@ import type {
 	WorkflowDocument,
 } from '../execution';
 import type { ExecutionListQuery } from '../execution/execution-view-store';
-import type { WorkflowGraph } from '../graph';
+import type { StoredWorkflowGraph } from '../graph';
 
 /** A read-only search. The control plane supplies the visibility decision. */
 export type SearchExecutionsRequest = ExecutionListQuery;
@@ -50,7 +50,7 @@ export interface ExecutionSnapshot {
 	/** The host's finer execution mode. */
 	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
-	graph: WorkflowGraph;
+	graph: StoredWorkflowGraph;
 	/**
 	 * The workflow the run came from, captured at start. Reported so a caller can
 	 * render the execution against the workflow that ran, not the current one.
