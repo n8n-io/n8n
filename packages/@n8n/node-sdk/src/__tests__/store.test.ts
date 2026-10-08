@@ -6,7 +6,6 @@ import path from 'node:path';
 import { packAction, packCredential, packNative, type PackedAction } from '../pack';
 import { credential, defineCredential, field } from '../entry/credentials';
 import { defineNode, t } from '../index';
-import { credentialChangeOf } from '../publish';
 import {
 	addStatusToStore,
 	addToStore,
@@ -352,30 +351,5 @@ describe('store signatures', () => {
 		expect(verifyStoreSignature({ signatures }, text, otherKey)).toBe(false);
 		expect(verifyStoreSignature({ signatures }, `${text} `, publicKey)).toBe(false);
 		expect(verifyStoreSignature({}, text, publicKey)).toBe(false);
-	});
-});
-
-describe('credentialChangeOf', () => {
-	const manifestOf = (fields: Parameters<typeof defineCredential>[0]['fields'], doc = '') =>
-		packCredential(
-			defineCredential({
-				id: 'demo.token',
-				version: '1.0.0',
-				displayName: 'Demo API',
-				...(doc ? { docs: doc } : {}),
-				fields,
-				auth: (a) => a.none(),
-			}),
-		);
-
-	it.each([
-		['a text change', { a: t.str() }, { a: t.str() }, 'patch', 'other-docs'],
-		['a new optional field', { a: t.str() }, { a: t.str(), b: t.str().optional() }, 'minor', ''],
-		['a new required field', { a: t.str() }, { a: t.str(), b: t.str() }, 'major', ''],
-		['a removed field', { a: t.str(), b: t.str() }, { a: t.str() }, 'major', ''],
-	])('rates %s', (_what, before, after, change, doc) => {
-		const [previous, next] = [manifestOf(before), manifestOf(after, doc)];
-		if (!previous || !next) throw new Error('no manifest');
-		expect(credentialChangeOf(previous, next)).toBe(change);
 	});
 });

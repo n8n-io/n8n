@@ -13,7 +13,12 @@ import {
 } from './define';
 import { permissionsOf, type ContractPermissions } from './egress';
 import type { ActionUiDocument } from './properties';
-import { nativeManifestSchema, versionManifestSchema, type NativeManifest } from './manifest';
+import {
+	nativeManifestSchema,
+	versionManifestSchema,
+	type CredentialManifest,
+	type NativeManifest,
+} from './manifest';
 import { canonicalJson, hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
 import type { MockRoute } from './testing';
@@ -398,6 +403,11 @@ const narrowed = (side: Side, narrower: boolean, text: string): ContractChange =
 const major = (text: string): ContractChange => ({ kind: 'major', text });
 const minor = (text: string): ContractChange => ({ kind: 'minor', text });
 
+const isMajor = ({ kind }: ContractChange) => kind === 'major';
+
+const changeKindOf = (changes: readonly ContractChange[]): ChangeKind =>
+	changes.some(isMajor) ? 'major' : changes.length ? 'minor' : 'patch';
+
 const LOWER_BOUNDS = ['minLength', 'minimum', 'minItems'] as const;
 const EXACT_KEYWORDS = [
 	'const',
@@ -743,15 +753,45 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 		...input,
 		...schemaChanges('output', 'output', prev.output, next.output),
 	];
-	return {
-		kind: changes.some(({ kind }) => kind === 'major')
-			? 'major'
-			: changes.length
-				? 'minor'
-				: 'patch',
-		breaksInput: input.some(({ kind }) => kind === 'major'),
-		changes,
+	return { kind: changeKindOf(changes), breaksInput: input.some(isMajor), changes };
+}
+
+/**
+ * Classifies the change between two versions of one credential type, as `diffContracts` does for
+ * an action. Stored credential data is the input of the fields schema. Another type name, scheme
+ * or base URL, an added host, and a field change that rejects stored data (a removed or renamed
+ * field, a field that becomes required, another type, a narrowed value set) are major. A removed
+ * host, a new optional field or value, a rename that `renamed` maps, and another test request are
+ * minor. A change of text only is a patch. `breaksInput` is true when stored data can fail the new
+ * fields.
+ */
+export function diffCredentials(prev: CredentialManifest, next: CredentialManifest): ContractDiff {
+	// The host reads stored data of a mapped old name under the new name, so compare it there.
+	const nameOf = (name: string) => {
+		const to = next.renamed?.[name];
+		return to !== undefined && prev.fields.properties?.[to] === undefined ? to : name;
 	};
+	const before: JsonSchema = {
+		...prev.fields,
+		properties: Object.fromEntries(
+			Object.entries(prev.fields.properties ?? {}).map(([name, field]) => [nameOf(name), field]),
+		),
+		required: prev.fields.required?.map(nameOf),
+	};
+	const fields = schemaChanges('input', 'fields', before, next.fields);
+	const changed = (key: keyof CredentialManifest) =>
+		canonicalJson(prev[key]) !== canonicalJson(next[key]);
+	const changes = [
+		...(changed('name') ? [major(`name ${prev.name} → ${next.name}`)] : []),
+		...(changed('scheme') ? [major(`scheme ${prev.scheme.kind} → ${next.scheme.kind}`)] : []),
+		...(changed('baseUrl') ? [major('base URL changed')] : []),
+		...setChanges('host', prev.hosts ?? [], next.hosts ?? []),
+		...(['test', 'legacyParent', 'renamed'] as const)
+			.filter(changed)
+			.map((key) => minor(`${key} changed`)),
+		...fields,
+	];
+	return { kind: changeKindOf(changes), breaksInput: fields.some(isMajor), changes };
 }
 
 /** A file as n8n keeps it in memory: the bytes in base64 `data`. */

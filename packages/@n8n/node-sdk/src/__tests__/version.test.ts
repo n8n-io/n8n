@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
-import { packAction, packPackage, packSdkRuntime, type PackedAction } from '../pack';
+import {
+	packAction,
+	packCredential,
+	packPackage,
+	packSdkRuntime,
+	type PackedAction,
+} from '../pack';
+import { defineCredential, field } from '../entry/credentials';
 import { generateNodeModule } from '../entry/codegen';
 import {
 	hostRuntime,
@@ -39,7 +46,13 @@ import { storeFilesOfDir, storeReader } from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import type { MockRoute } from '../testing';
-import { NODE_CONTRACT_VERSION, requiredNodeContractOf, semverRange, sha256 } from '../version';
+import {
+	diffCredentials,
+	NODE_CONTRACT_VERSION,
+	requiredNodeContractOf,
+	semverRange,
+	sha256,
+} from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
@@ -392,6 +405,117 @@ describe('diffContracts', () => {
 		const next = contractOf({ input: { where: t.obj({ field: t.str() }) } });
 		expect(diffContracts(prev, next).changes).toEqual([
 			{ kind: 'major', text: 'input.where.op removed' },
+		]);
+	});
+});
+
+describe('diffCredentials', () => {
+	type Spec = Parameters<typeof defineCredential>[0];
+	const manifestOf = ({ fields, ...spec }: Partial<Spec>) => {
+		const manifest = packCredential(
+			defineCredential({
+				id: 'demo.token',
+				version: '1.0.0',
+				displayName: 'Demo API',
+				fields: fields ?? { token: field.secret('Token') },
+				auth: (a) => a.bearer('token'),
+				...spec,
+			}),
+		);
+		if (!manifest) throw new Error('no manifest');
+		return manifest;
+	};
+	const base = manifestOf({});
+	const diffTo = (spec: Partial<Spec>) => diffCredentials(base, manifestOf(spec));
+	const region = (regions: string[]) =>
+		field.options('Region', Object.fromEntries(regions.map((name) => [name, { name }])));
+
+	it('classifies a change of text only as a patch', () => {
+		expect(diffTo({ displayName: 'Demo', docs: 'https://docs.example.com' })).toEqual({
+			kind: 'patch',
+			breaksInput: false,
+			changes: [],
+		});
+	});
+
+	it('classifies a removed field as a major that breaks stored data', () => {
+		const withUser = manifestOf({
+			fields: { token: field.secret('Token'), user: field.text('User') },
+		});
+		expect(diffCredentials(withUser, base)).toEqual({
+			kind: 'major',
+			breaksInput: true,
+			changes: [{ kind: 'major', text: 'fields.user removed' }],
+		});
+	});
+
+	it('classifies a renamed field as a major, and a rename that renamed maps as a minor', () => {
+		const withUser = manifestOf({
+			fields: { token: field.secret('Token'), user: field.text('User') },
+		});
+		const fields = { token: field.secret('Token'), login: field.text('User') };
+		expect(diffCredentials(withUser, manifestOf({ fields })).changes).toEqual([
+			{ kind: 'major', text: 'fields.user removed' },
+			{ kind: 'major', text: 'fields.login added as required' },
+		]);
+		expect(diffCredentials(withUser, manifestOf({ fields, renamed: { user: 'login' } }))).toEqual({
+			kind: 'minor',
+			breaksInput: false,
+			changes: [{ kind: 'minor', text: 'renamed changed' }],
+		});
+	});
+
+	it('classifies a field that becomes required as a major', () => {
+		const optional = manifestOf({
+			fields: { token: field.secret('Token'), user: field.text('User').optional() },
+		});
+		const required = manifestOf({
+			fields: { token: field.secret('Token'), user: field.text('User') },
+		});
+		expect(diffCredentials(optional, required).changes).toEqual([
+			{ kind: 'major', text: 'fields.user is required' },
+		]);
+	});
+
+	it('classifies another field type as a major', () => {
+		expect(diffTo({ fields: { token: t.num() } }).changes).toEqual([
+			{ kind: 'major', text: 'fields.token type string → number' },
+		]);
+	});
+
+	it('classifies another auth kind as a major', () => {
+		expect(diffTo({ auth: (a) => a.none() }).changes).toEqual([
+			{ kind: 'major', text: 'scheme apply → none' },
+		]);
+	});
+
+	it('classifies a narrowed value set as a major', () => {
+		const wide = manifestOf({
+			fields: { token: field.secret('Token'), region: region(['eu', 'us']) },
+		});
+		const narrow = manifestOf({ fields: { token: field.secret('Token'), region: region(['eu']) } });
+		expect(diffCredentials(wide, narrow).changes).toEqual([
+			{ kind: 'major', text: 'fields.region drops us' },
+		]);
+	});
+
+	it('classifies a new optional field as a minor', () => {
+		expect(
+			diffTo({ fields: { token: field.secret('Token'), user: field.text('User').optional() } }),
+		).toEqual({
+			kind: 'minor',
+			breaksInput: false,
+			changes: [{ kind: 'minor', text: 'fields.user added' }],
+		});
+	});
+
+	it('classifies a new allowed value as a minor', () => {
+		const narrow = manifestOf({ fields: { token: field.secret('Token'), region: region(['eu']) } });
+		const wide = manifestOf({
+			fields: { token: field.secret('Token'), region: region(['eu', 'us']) },
+		});
+		expect(diffCredentials(narrow, wide).changes).toEqual([
+			{ kind: 'minor', text: 'fields.region adds us' },
 		]);
 	});
 });

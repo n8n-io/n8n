@@ -10,6 +10,7 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { satisfies } from 'semver';
 
 import { isSecretField, type AnyCredentialType } from './credentials';
 import {
@@ -67,14 +68,14 @@ import {
 	type NpmSource,
 	type NpmVersion,
 } from './npm';
-import type { SourcePackage, StoreManifest } from './store';
+import { credentialRangesOf, type SourcePackage, type StoreManifest } from './store';
 import { evaluateAlone, mockHttp, sendRequest } from './testing';
 import { validate } from './validator';
 import {
 	compareSemver,
 	diffContracts,
+	diffCredentials,
 	isFixtureBinary,
-	normativeSchema,
 	parseFixtures,
 	parseManifest,
 	parseNativeManifest,
@@ -481,46 +482,16 @@ export function checkNativePublish(previous: NativeManifest | undefined, manifes
 	}
 }
 
-/** The keys of a credential manifest that are text only. A change of them is a patch. */
-const CREDENTIAL_TEXT = new Set(['semver', 'sdk', 'displayName', 'documentationUrl', 'notice']);
-
-/**
- * The change from one credential manifest to the next, by the rules of `defineCredential`: a
- * change that can break stored data or a saved workflow is major (another name, scheme or base
- * URL, a new host, a removed field, a new required field), any other change of what n8n does is
- * minor, and a change of text only is a patch.
- */
-export function credentialChangeOf(
-	previous: CredentialManifest,
-	next: CredentialManifest,
-): ChangeKind {
-	const fieldsOf = ({ fields }: CredentialManifest) => Object.keys(fields.properties ?? {});
-	const requiredOf = ({ fields }: CredentialManifest) => fields.required ?? [];
-	const breaks =
-		previous.name !== next.name ||
-		canonicalJson(previous.scheme) !== canonicalJson(next.scheme) ||
-		canonicalJson(previous.baseUrl) !== canonicalJson(next.baseUrl) ||
-		(next.hosts ?? []).some((host) => !(previous.hosts ?? []).includes(host)) ||
-		fieldsOf(previous).some((name) => !fieldsOf(next).includes(name)) ||
-		requiredOf(next).some((name) => !requiredOf(previous).includes(name));
-	if (breaks) return 'major';
-	const normative = (manifest: CredentialManifest) =>
-		canonicalJson({
-			...Object.fromEntries(Object.entries(manifest).filter(([key]) => !CREDENTIAL_TEXT.has(key))),
-			fields: normativeSchema(manifest.fields),
-		});
-	return normative(previous) === normative(next) ? 'patch' : 'minor';
-}
-
 /** The publish gate of a credential manifest: it refuses a bump lower than the change. */
 export function checkCredentialPublish(
 	previous: CredentialManifest | undefined,
 	manifest: CredentialManifest,
 ) {
 	if (!previous) return;
-	const bump = bumpOf(previous.semver, manifest.semver);
+	const diff = diffCredentials(previous, manifest);
+	const changes = diff.changes.map(({ kind, text }) => `${kind}: ${text}`).join('; ');
 	const at = `${manifest.id}@${manifest.semver}`;
-	checkBump(at, previous.semver, bump, credentialChangeOf(previous, manifest));
+	checkBump(at, previous.semver, bumpOf(previous.semver, manifest.semver), diff.kind, changes);
 }
 
 /** Where publish adds a version, and the key that signs it. */
@@ -576,8 +547,42 @@ async function publishVersion<M extends StoreManifest>(
 		.sort((a, b) => compareSemver(a.version, b.version))
 		.at(-1);
 	await gate(previous ? parse(await npmManifestTextOf(previous, name)) : undefined);
-	await npmPublish(target.registry, npmPackageOf(packed, target));
+	// npm moves `latest` only forward, so a version below a published one gets the tag of its major.
+	const older = published.some(({ version }) => compareSemver(version, semver) > 0);
+	const tag = older ? `latest-${parseSemver(semver).major}` : undefined;
+	await npmPublish(target.registry, npmPackageOf(packed, target), tag);
 	return manifest;
+}
+
+/**
+ * Refuses a version with a credential range that no published credential version satisfies. A
+ * yanked or revoked version (an npm deprecation) does not count.
+ * Publish adds the credentials of a batch before its actions, so the registry has them here.
+ */
+async function assertCredentialsPublished(
+	target: PublishTarget,
+	{
+		id,
+		semver,
+		credentials,
+	}: Pick<VersionManifest | NativeManifest, 'id' | 'semver' | 'credentials'>,
+) {
+	const unpublished = (
+		await Promise.all(
+			credentialRangesOf(credentials).map(async ([pinned, range]) => {
+				const published = await npmVersionsOf(target.registry, npmNameOf(pinned, target.scope));
+				const usable = published.filter((entry) => entry.id === pinned && !entry.deprecated);
+				return usable.some((entry) => satisfies(entry.version, range))
+					? []
+					: [`${pinned}@${range}`];
+			}),
+		)
+	).flat();
+	if (unpublished.length > 0) {
+		throw new UserError(
+			`${id}@${semver} pins the credential ${unpublished.join(', ')}, but the registry has no version of it in that range. Publish the credential first.`,
+		);
+	}
 }
 
 /**
@@ -592,7 +597,10 @@ export async function publishAction(options: PublishOptions): Promise<VersionMan
 		options,
 		{ ...packed, fixtures: options.fixtures },
 		parseManifest,
-		async (previous) => await checkPublish(previous, packed, fixtures),
+		async (previous) => {
+			await assertCredentialsPublished(options, packed.manifest);
+			return await checkPublish(previous, packed, fixtures);
+		},
 	);
 }
 
@@ -626,9 +634,10 @@ export async function publishNative(
 	},
 ): Promise<NativeManifest> {
 	const manifest = packNative(options.native);
-	return await publishVersion(options, { manifest }, parseNativeManifest, (previous) =>
-		checkNativePublish(previous, manifest),
-	);
+	return await publishVersion(options, { manifest }, parseNativeManifest, async (previous) => {
+		await assertCredentialsPublished(options, manifest);
+		checkNativePublish(previous, manifest);
+	});
 }
 
 /** The fixtures of a contract of a package. A trigger replays only migration pairs, so it may have no file. */
@@ -656,8 +665,8 @@ function deprecationOfArgs(args: readonly string[]) {
 }
 
 /**
- * Without `args`, publishes the SDK runtime, then the HEAD of each action and trigger, each
- * credential type that is not a compat type, and each native contract of a package as npm
+ * Without `args`, publishes the SDK runtime, then each credential type that is not a compat type,
+ * then the HEAD of each action and trigger, and each native contract of a package as npm
  * packages, one at a time, and
  * gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a published
  * version that matches HEAD is a no-op. With the arguments

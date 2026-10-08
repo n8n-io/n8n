@@ -46,7 +46,11 @@ const echoFixtures: ContractFixtures = {
 	executions: [{ name: 'echo', params: { text: 'hi' }, output: [{ text: 'hi' }] }],
 };
 
-const tokenWith = (spec: { hosts?: string[]; displayName?: string; version?: '1.0.1' | '2.0.0' }) =>
+const tokenWith = (spec: {
+	hosts?: string[];
+	displayName?: string;
+	version?: '1.0.1' | '1.1.0' | '2.0.0';
+}) =>
 	defineCredential({
 		id: 'demo.token',
 		legacyName: 'demoApi',
@@ -276,6 +280,47 @@ describe('publishCredential', () => {
 		const versions = await npmVersionsOf(fake().url, '@n8n-nodes/demo.token');
 		expect(versions.map(({ version }) => version)).toEqual(['1.0.0', '2.0.0']);
 	}, 60_000);
+
+	it('publishes a version below a published major with the tag of its major', async () => {
+		await publishCredential({
+			type: tokenWith({ version: '2.0.0' }),
+			registry: fake().url,
+			privateKey,
+		});
+		await publishCredential({
+			type: tokenWith({ version: '1.0.1' }),
+			registry: fake().url,
+			privateKey,
+		});
+		const versions = await npmVersionsOf(fake().url, npmNameOf('demo.token'));
+		expect(versions.map(({ version }) => version).sort()).toEqual(['1.0.1', '2.0.0']);
+		expect(fake().packuments.get(npmNameOf('demo.token'))?.['dist-tags']).toEqual({
+			latest: '2.0.0',
+			'latest-1': '1.0.1',
+		});
+	}, 60_000);
+
+	it('refuses a removed field under a minor bump', async () => {
+		const withUser = defineCredential({
+			id: 'demo.token',
+			legacyName: 'demoApi',
+			displayName: 'Demo API',
+			version: '1.0.0',
+			fields: { token: field.secret('Token'), user: field.text('User') },
+			auth: (a) => a.bearer('token'),
+			baseUrl: 'https://a.example.com',
+		});
+		await publishCredential({ type: withUser, registry: fake().url, privateKey });
+		await expect(
+			publishCredential({
+				type: tokenWith({ version: '1.1.0' }),
+				registry: fake().url,
+				privateKey,
+			}),
+		).rejects.toThrow(
+			'demo.token@1.1.0 is a minor bump from 1.0.0, but the change is major (major: fields.user removed)',
+		);
+	}, 60_000);
 });
 
 describe('publishNative', () => {
@@ -312,14 +357,33 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 		executions: [{ name: 'pass', params: {}, items: [{ a: 1 }], output: [{ a: 1 }] }],
 	};
 
+	const tokenPass = pass
+		.replace(
+			"t } from '@n8n/node-sdk';",
+			`t } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+
+const token = defineCredential({
+	id: 'demo.token',
+	version: '1.0.0',
+	displayName: 'Demo',
+	fields: { token: field.secret('Token') },
+	auth: (a) => a.none(),
+});`,
+		)
+		.replace(
+			"displayName: 'Demo' }",
+			"displayName: 'Demo', credential: credential({ types: [token] }) }",
+		);
+
 	/** A source package with the `pass` action, inside this package, so it resolves @n8n/node-sdk. */
-	const sourcePackage = async () => {
+	const sourcePackage = async (source = pass) => {
 		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
 		const entryFile = path.join(dir, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
 		const keyFile = path.join(dir, 'key.pem');
 		await mkdir(path.dirname(entryFile), { recursive: true });
 		await mkdir(path.join(dir, 'fixtures'));
-		await writeFile(entryFile, pass);
+		await writeFile(entryFile, source);
 		await writeFile(path.join(dir, 'fixtures', 'demo.pass.json'), JSON.stringify(fixtures));
 		await writeFile(path.join(dir, 'package.json'), JSON.stringify({ license: 'MIT' }));
 		// The package.json ends the self-reference of @n8n/node-sdk, so a link resolves it.
@@ -396,6 +460,44 @@ export const pass = defineNode({ id: 'demo', displayName: 'Demo' }).action('pass
 			expect(runtimes.map(({ version }) => version).sort()).toEqual(['0.0.1', sdkVersion()].sort());
 			const [action] = await npmVersionsOf(fake().url, npmNameOf('demo.pass'));
 			expect(action?.digest).toBe(`sha256:${sha256(manifestTextOf(published.manifest))}`);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	it('refuses an action whose credential range has no published version, and publishes a batch in order', async () => {
+		const { dir, entryFile, keyFile, pkg } = await sourcePackage(tokenPass);
+		try {
+			await publishCredential({
+				type: tokenWith({ version: '2.0.0' }),
+				registry: fake().url,
+				privateKey,
+			});
+			// A revoked version in the range does not count.
+			const revoked = packCredential(tokenWith({ version: '1.0.1' }));
+			if (!revoked) throw new Error('no manifest');
+			fake().put(npmPackageOf({ manifest: revoked }, { privateKey }));
+			fake().deprecate(npmNameOf('demo.token'), '1.0.1', 'revoked: leaks');
+			await expect(
+				publishAction({
+					entryFile,
+					exportName: 'pass',
+					fixtures,
+					registry: fake().url,
+					privateKey,
+				}),
+			).rejects.toThrow(
+				'demo.pass@1.0.0 pins the credential demo.token@^1.0.0, but the registry has no version of it in that range',
+			);
+			expect(fake().state.writes).toBe(1);
+			vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', fake().url);
+			vi.stubEnv('N8N_NODE_CONTRACTS_SIGNING_KEY_FILE', keyFile);
+			const log: string[] = [];
+
+			await publishPackage(pkg, [], (line) => log.push(line));
+			expect(log).toEqual([`sdkRuntime@${sdkVersion()}`, 'demo.token@1.0.0', 'demo.pass@1.0.0']);
+			const versions = await npmVersionsOf(fake().url, npmNameOf('demo.token'));
+			expect(versions.map(({ version }) => version).sort()).toEqual(['1.0.0', '1.0.1', '2.0.0']);
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}

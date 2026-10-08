@@ -424,9 +424,12 @@ async function runNpm(registry: string, args: readonly string[], files: Record<s
 	}
 }
 
-/** Publishes the package of `files` (see `npmPackageOf`) with `npm publish`. */
-export const npmPublish = async (registry: string, files: Record<string, string>) =>
-	await runNpm(registry, ['publish', './package'], files);
+/**
+ * Publishes the package of `files` (see `npmPackageOf`) with `npm publish`, with the dist-tag
+ * `tag` when set. Without a tag, npm sets `latest`.
+ */
+export const npmPublish = async (registry: string, files: Record<string, string>, tag?: string) =>
+	await runNpm(registry, ['publish', './package', ...(tag ? ['--tag', tag] : [])], files);
 
 /**
  * Deprecates the versions of `spec` (`<name>@<version or range>`) with `npm deprecate`. A host

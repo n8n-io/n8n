@@ -123,13 +123,19 @@ the supported nodes of both packages and the icon of the legacy class.
 
 `publishCredential` adds a credential manifest to the registry with the same store path as
 `publishAction`: a signature, and the gate `checkCredentialPublish`. The gate rates the change
-with `credentialChangeOf` and refuses a smaller bump:
+with `diffCredentials`, which reads the fields schema with the input rules of `diffContracts`, and
+refuses a smaller bump:
 
 | Change | Kind |
 |---|---|
 | Text only: `displayName`, `documentationUrl`, `notice`, the prose of a field | patch |
-| A new optional field, another test request, another field type | minor |
-| Another name, scheme or base URL, a new host, a removed field, a new required field | major |
+| A new optional field, a new allowed value, a removed host, a rename that `renamed` maps, another test request | minor |
+| Another name, scheme or base URL, a new host, a removed field or a rename that `renamed` does not map, a field that becomes required, another field type, a narrowed value set | major |
+
+Publish refuses an action or native version with a credential range that no published credential
+version satisfies. A yanked or revoked version does not count. `publishPackage` publishes the
+credentials before the actions, so a credential of the same batch counts. A version below a
+published one gets the npm dist-tag `latest-<major>`, because npm moves `latest` only forward.
 
 The hosts and the base URL of a credential type come from its credential manifest, never from a
 bundle: `HostRuntime.credentialManifestOf` gives the host lookup, and `loadExecutor`, the trigger loader

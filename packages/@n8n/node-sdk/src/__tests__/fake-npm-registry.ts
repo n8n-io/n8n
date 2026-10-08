@@ -46,6 +46,7 @@ export async function fakeNpmRegistry() {
 				...old,
 				...doc,
 				versions: { ...(old.versions as Json), ...(doc.versions as Json) },
+				'dist-tags': { ...(old['dist-tags'] as Json), ...(doc['dist-tags'] as Json) },
 				_rev: String(state.writes),
 			});
 			response.statusCode = 201;
