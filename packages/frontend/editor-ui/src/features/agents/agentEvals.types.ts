@@ -8,6 +8,7 @@ export type {
 	AgentEvalCorrection,
 	AgentEvalDatasetRecord,
 	AgentEvalDraftCase,
+	AgentEvalVerdict,
 	AgentEvalPage,
 	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
@@ -19,8 +20,13 @@ export type {
 	AgentEvalRunSummary,
 	AgentEvalVote,
 	CreateAgentEvalRatingPayload,
+	CreateDraftDatasetOptions,
+	CreateDraftDatasetResult,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	PreviewRunOptions,
+	PreviewRunResult,
+	RerunResultOptions,
 	// A result's `toolCalls` blob holds records of this shape under `calls`; the
 	// review view narrows to it rather than re-describing the runner's output.
 	InstanceAiEvalAgentToolCallRecord,

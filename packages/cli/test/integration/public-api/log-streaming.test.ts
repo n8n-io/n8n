@@ -170,7 +170,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('GET /settings/log-streaming/destinations/{id}', () => {
+	describe('GET /settings/log-streaming/destinations/{destinationId}', () => {
 		it('omits credentials and backend-only fields of a destination stored outside the Public API', async () => {
 			const options: MessageEventBusDestinationWebhookOptions = {
 				__type: MessageEventBusDestinationTypeNames.webhook,
@@ -279,6 +279,22 @@ describe('Log streaming in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('drops fields that do not belong to the destination type', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/log-streaming/destinations')
+				.send({
+					...webhookPayload,
+					dsn: 'https://examplePublicKey@o0.ingest.sentry.io/0',
+					unknownField: 'value',
+				});
+
+			expect(response.status).toBe(200);
+			expect(response.body.type).toBe('webhook');
+			expect(response.body).not.toHaveProperty('dsn');
+			expect(response.body).not.toHaveProperty('unknownField');
+		});
+
 		it('creates a fully-populated webhook destination', async () => {
 			const payload = {
 				type: 'webhook',
@@ -304,12 +320,14 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
-			expect(response.body).not.toHaveProperty('responseCodeMustMatch');
-			expect(response.body).not.toHaveProperty('sendPayload');
-			expect(response.body).not.toHaveProperty('authentication');
-			expect(response.body).not.toHaveProperty('credentials');
+			// Strict match: `responseCodeMustMatch`, `sendPayload`, `authentication` and
+			// `credentials` must not appear.
+			expect(response.body).toStrictEqual({
+				id: expect.any(String),
+				...payload,
+				jsonHeaders: '',
+				jsonQuery: '',
+			});
 		});
 
 		it('creates a fully-populated syslog destination', async () => {
@@ -333,8 +351,7 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
+			expect(response.body).toStrictEqual({ id: expect.any(String), ...payload });
 		});
 
 		it('creates a fully-populated sentry destination', async () => {
@@ -354,8 +371,7 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
+			expect(response.body).toStrictEqual({ id: expect.any(String), ...payload });
 		});
 
 		it('rejects a malformed body with 400', async () => {
@@ -378,7 +394,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('PUT /settings/log-streaming/destinations/{id}', () => {
+	describe('PUT /settings/log-streaming/destinations/{destinationId}', () => {
 		it('updates an existing destination', async () => {
 			const created = await createDestination();
 
@@ -397,6 +413,22 @@ describe('Log streaming in Public API', () => {
 				.get('/settings/log-streaming/destinations');
 			expect(listResponse.body.data).toHaveLength(1);
 			expect(listResponse.body.data[0].label).toBe('Renamed webhook');
+		});
+
+		it('accepts a GET response as the body and keeps the path id', async () => {
+			const created = await createDestination();
+			const read = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/settings/log-streaming/destinations/${created.id}`);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/settings/log-streaming/destinations/${created.id}`)
+				.send({ ...read.body, id: '99999999-9999-4999-8999-999999999999', label: 'Round trip' });
+
+			expect(response.status).toBe(200);
+			expect(response.body.id).toBe(created.id);
+			expect(response.body.label).toBe('Round trip');
 		});
 
 		it('returns 404 for an unknown destination id', async () => {
@@ -420,7 +452,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('POST /settings/log-streaming/destinations/{id}/test', () => {
+	describe('POST /settings/log-streaming/destinations/{destinationId}/test', () => {
 		it('sends a test message to a destination', async () => {
 			const created = await createDestination();
 			const testSpy = vi.spyOn(service(), 'testDestination').mockResolvedValue(true);
@@ -455,7 +487,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('DELETE /settings/log-streaming/destinations/{id}', () => {
+	describe('DELETE /settings/log-streaming/destinations/{destinationId}', () => {
 		it('removes the destination', async () => {
 			const created = await createDestination();
 

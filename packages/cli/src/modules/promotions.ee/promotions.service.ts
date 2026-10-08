@@ -735,6 +735,8 @@ export class PromotionsService {
 		});
 
 		return {
+			configId: input.configId,
+			branchName,
 			commitSha,
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
 			readFiles: async (filePaths) => {

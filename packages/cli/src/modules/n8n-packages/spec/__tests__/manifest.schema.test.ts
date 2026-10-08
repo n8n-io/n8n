@@ -1,4 +1,4 @@
-import { packageManifestSchema } from '../manifest.schema';
+import { manifestEntrySchema, packageManifestSchema } from '../manifest.schema';
 
 const validManifest = {
 	packageFormatVersion: '1',
@@ -11,6 +11,25 @@ const validManifest = {
 describe('packageManifestSchema', () => {
 	it('accepts a valid manifest', () => {
 		expect(() => packageManifestSchema.parse(validManifest)).not.toThrow();
+	});
+
+	it.each([
+		['projects/team/workflows/entry', true],
+		['folders/parent/folders/child/workflows/entry', true],
+		['/workflows/entry', false],
+		['C:/workflows/entry', false],
+		['workflows\\entry', false],
+		['workflows//entry', false],
+		['./workflows/entry', false],
+		['../workflows/entry', false],
+		['workflows/./entry', false],
+		['workflows/../entry', false],
+		['workflows/entry/', false],
+		['workflows/entry/.', false],
+		['workflows/entry/..', false],
+	])('validates target "%s": %s', (target, valid) => {
+		const entry = { ...validManifest.workflows[0], target };
+		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
 	});
 
 	it('rejects a manifest with an unsupported packageFormatVersion', () => {
