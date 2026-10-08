@@ -14,6 +14,26 @@ export type ApiKeyScopeRequirement =
 
 export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
+/** Media types a binary `@ApiResponse` can declare. Add a type here to support it. */
+export type BinaryResponseMediaType = 'application/gzip';
+
+/** A response header documented on a binary `@ApiResponse`. */
+export interface ResponseHeader {
+	description: string;
+}
+
+/**
+ * A success response whose body the controller method writes to `res` itself, instead of
+ * returning a value for the registry to send as JSON.
+ */
+export interface BinaryResponse {
+	mediaType: BinaryResponseMediaType;
+	/** OpenAPI description of the success response. Defaults to 'Operation successful.'. */
+	description?: string;
+	/** Response headers the controller method sets, keyed by header name. Documentation only. */
+	headers?: Record<string, ResponseHeader>;
+}
+
 export type SuccessStatus = 200 | 201 | 202 | 204;
 
 export interface ErrorResponse {
@@ -99,6 +119,8 @@ export interface RouteMetadata {
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;
+	/** Set when the controller method writes a binary body itself. Mutually exclusive with `responseDto`. */
+	binaryResponse?: BinaryResponse;
 	/** OpenAPI HTTP status sent on success, and documented as such. */
 	successStatus?: SuccessStatus;
 	/** OpenAPI operation summary. */

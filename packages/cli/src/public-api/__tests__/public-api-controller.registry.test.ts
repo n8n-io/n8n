@@ -20,6 +20,7 @@ import {
 import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
+import { Readable } from 'node:stream';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -722,6 +723,166 @@ describe('PublicApiControllerRegistry', () => {
 			const response = await request(activate()).get('/api/v1/widgets').expect(403);
 
 			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+	});
+
+	describe('binary response bodies', () => {
+		// supertest buffers only text and JSON bodies by default
+		const readBinaryBody = (
+			res: request.Response,
+			callback: (error: Error | null, body: Buffer) => void,
+		) => {
+			const chunks: Buffer[] = [];
+			res.on('data', (chunk: Buffer) => chunks.push(chunk));
+			res.on('end', () => callback(null, Buffer.concat(chunks)));
+		};
+
+		it('sends the body the method writes, with the declared status and media type', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(202, { mediaType: 'application/gzip' })
+				async method(_req: unknown, res: express.Response) {
+					res.setHeader('X-Example', '1');
+					res.end(Buffer.from([1, 2, 3]));
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.get('/api/v1/widgets')
+				.buffer(true)
+				.parse(readBinaryBody)
+				.expect(202);
+
+			expect(response.headers['content-type']).toBe('application/gzip');
+			expect(response.headers['x-example']).toBe('1');
+			expect(response.body).toEqual(Buffer.from([1, 2, 3]));
+		});
+
+		it('streams a body', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method(_req: unknown, res: express.Response) {
+					const stream = Readable.from([Buffer.from('ab'), Buffer.from('cd')]);
+					await new Promise<void>((resolve, reject) => {
+						stream.on('error', reject);
+						res.on('finish', resolve);
+						stream.pipe(res);
+					});
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.get('/api/v1/widgets')
+				.buffer(true)
+				.parse(readBinaryBody)
+				.expect(200);
+
+			expect(response.body.toString()).toBe('abcd');
+		});
+
+		it('ignores the returned value', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method(_req: unknown, res: express.Response) {
+					res.end(Buffer.from('x'));
+					return { ignored: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.get('/api/v1/widgets')
+				.buffer(true)
+				.parse(readBinaryBody)
+				.expect(200);
+
+			expect(response.body.toString()).toBe('x');
+		});
+
+		it('fails with 500 when the method sends nothing', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method(_req: unknown, res: express.Response) {
+					res.setHeader('Content-Disposition', 'attachment; filename="archive.gz"');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(500);
+
+			expect(response.headers['content-type']).toMatch(/application\/json/);
+			expect(response.headers['content-disposition']).toBeUndefined();
+			// UnexpectedError is redacted to "Internal server error" by the error handler
+			expect(response.body.message).toBe('Internal server error');
+		});
+
+		it('sends a clean JSON error when the method throws before the body starts', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method(_req: unknown, res: express.Response) {
+					res.setHeader('Content-Disposition', 'attachment; filename="x.gz"');
+					res.setHeader('X-Example', '1');
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(404);
+
+			expect(response.headers['content-type']).toMatch(/application\/json/);
+			expect(response.headers['content-disposition']).toBeUndefined();
+			expect(response.headers['x-example']).toBeUndefined();
+			expect(response.body.message).toBe('missing');
+		});
+
+		it('keeps headers set before the method on an error response', async () => {
+			const since = new Date('2026-07-23T00:00:00Z');
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				@Deprecated({ since })
+				async method(_req: unknown, _res: express.Response) {
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(404);
+
+			expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
+		});
+
+		it('runs the auth gate before the method', async () => {
+			authStrategyRegistry.authenticate.mockResolvedValue(false);
+			const handler = vi.fn();
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method(_req: unknown, res: express.Response) {
+					handler();
+					res.end(Buffer.from('data'));
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets').expect(401);
+
+			expect(handler).not.toHaveBeenCalled();
 		});
 	});
 });

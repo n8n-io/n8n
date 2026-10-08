@@ -7,7 +7,7 @@ import '../controllers';
 
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
-import type { ResponseDtoClass } from '@n8n/decorators';
+import type { BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -199,30 +199,53 @@ export function buildRequestBodyJsonSchema(
 	return isRecord(schema) ? schema : undefined;
 }
 
+/** Documents a success body the controller method writes itself, with its declared headers. */
+export function buildBinarySuccessResponse({ mediaType, description, headers }: BinaryResponse) {
+	return {
+		description: description ?? 'Operation successful.',
+		...(headers
+			? {
+					headers: Object.fromEntries(
+						Object.entries(headers).map(([name, header]) => [
+							name,
+							{ description: header.description, schema: { type: 'string' as const } },
+						]),
+					),
+				}
+			: {}),
+		content: {
+			[mediaType]: { schema: { type: 'string' as const, format: 'binary' } },
+		},
+	};
+}
+
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
  * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
  * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
+ * A binary `@ApiResponse` documents its media type, description and headers instead of a JSON DTO.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
 	resolveSchema: SchemaResolver,
 ): RouteConfig['responses'] {
 	const responses: RouteConfig['responses'] = {
-		[route.successStatus]: {
-			description: 'Operation successful.',
-			...(route.responseDto && hasNamedSchema(route.responseDto)
-				? {
-						content: {
-							'application/json': {
-								schema: resolveSchema(route.responseDto, route.responseDto.schema),
-							},
-						},
-					}
-				: {}),
-		},
+		[route.successStatus]: route.binaryResponse
+			? buildBinarySuccessResponse(route.binaryResponse)
+			: {
+					description: 'Operation successful.',
+					...(route.responseDto && hasNamedSchema(route.responseDto)
+						? {
+								content: {
+									'application/json': {
+										schema: resolveSchema(route.responseDto, route.responseDto.schema),
+									},
+								},
+							}
+						: {}),
+				},
 	};
 
 	// If the route has a request body or query, we add an HTTP 400 as a possible response

@@ -146,6 +146,34 @@ handler per media type (`REQUEST_BODY_HANDLERS` in
 `REQUEST_BODY_HANDLERS` — the registry, resolver, generator and `/discover`
 need no change, since they all read the handler, not the media type.
 
+## Binary response bodies
+
+`@ApiResponse(status, { mediaType, description?, headers? })` declares a
+success body that the controller method writes to `res` itself, for example
+an `application/gzip` stream. `mediaType` accepts only the types in
+`BinaryResponseMediaType`.
+
+- The registry sets the declared status and `Content-Type: <mediaType>`
+  before it calls the method. It does not call `res.json(...)`, and it
+  ignores the method's return value.
+- The method must start the response before it resolves. For a stream,
+  await the response's `finish` event. A method that returns before the
+  response starts fails with a `500`.
+- If the method throws, or returns, before the response starts, the registry
+  removes every header added after it called the method. The JSON error
+  then has no binary `Content-Type` and no `Content-Disposition`. Headers
+  from earlier middleware (for example `Deprecation`) stay.
+- After the response starts, an error goes to `next(error)`, as for a JSON
+  route.
+- `headers` documents response headers in the spec only. The method sets
+  them; the registry does not set or check them.
+- The generator documents the body as `{ type: string, format: binary }`
+  under the `mediaType` content key, with the description and headers.
+  The description defaults to `Operation successful.`.
+
+The runtime part is `runBinaryResponseRoute` in
+`packages/cli/src/public-api/media-types/binary-response.ts`.
+
 ## Migrating legacy EOV endpoints
 
 Legacy `express-openapi-validator` endpoints live under

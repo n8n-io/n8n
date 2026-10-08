@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { ApiResponse } from '../api-response';
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { Get } from '../route';
-import type { Controller } from '../types';
+import type { BinaryResponse, Controller } from '../types';
 
 const ExampleDto = Z.class({
 	id: z.string(),
@@ -63,5 +63,53 @@ describe('@ApiResponse Decorator', () => {
 		);
 		expect(route.successStatus).toBe(204);
 		expect(route.responseDto).toBeUndefined();
+	});
+
+	it('should store binary response metadata and leave responseDto undefined', () => {
+		const binaryOptions: BinaryResponse = {
+			mediaType: 'application/gzip',
+			description: 'Compressed archive',
+			headers: {
+				'X-Archive-Size': { description: 'Size of the archive' },
+			},
+		};
+
+		class TestController {
+			@Get('/')
+			@ApiResponse(200, binaryOptions)
+			async handler() {}
+		}
+
+		const route = controllerRegistryMetadata.getRouteMetadata(
+			TestController as Controller,
+			'handler',
+		);
+		expect(route.binaryResponse).toEqual(binaryOptions);
+		expect(route.successStatus).toBe(200);
+		expect(route.responseDto).toBeUndefined();
+	});
+
+	it('should reject 204 with binary response', () => {
+		expect(() => {
+			const binaryOptions = { mediaType: 'application/gzip' } as never;
+			class TestController {
+				@Get('/')
+				@ApiResponse(204, binaryOptions)
+				async handler() {}
+			}
+			void TestController;
+		}).toThrow('declares a 204 @ApiResponse with a binary body');
+	});
+
+	it('should reject a binary @ApiResponse stacked with another @ApiResponse', () => {
+		expect(() => {
+			class TestController {
+				@Get('/')
+				@ApiResponse(204)
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async handler() {}
+			}
+			void TestController;
+		}).toThrow('declares more than one @ApiResponse');
 	});
 });
