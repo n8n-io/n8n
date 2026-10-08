@@ -2,7 +2,7 @@ import type { Metadata } from '@grpc/grpc-js';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import type { DiagLogger, Tracer } from '@opentelemetry/api';
+import type { Attributes, DiagLogger, Tracer } from '@opentelemetry/api';
 import { DiagLogLevel, context, diag, propagation, trace } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import {
@@ -30,12 +30,19 @@ import { NodeTracerProvider, TraceIdRatioBasedSampler } from '@opentelemetry/sdk
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
+import { MappedResourceSpanExporter } from './mapped-resource-span-exporter';
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 
 import { N8N_VERSION } from '@/constants';
+import type {
+	OtelConfigureHookApi,
+	OtelOutboundBaggageMapper,
+	OtelResourceAttributeMapper,
+} from '@/external-hooks';
+import { ExternalHooks } from '@/external-hooks';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
@@ -50,12 +57,15 @@ export class OtelService {
 	private provider?: NodeTracerProvider;
 	private ownsGlobalApi = false;
 	private hasLoggedForeignGlobalApiOwner = false;
+	private resourceAttributeMappers: OtelResourceAttributeMapper[] = [];
+	private outboundBaggageMappers: OtelOutboundBaggageMapper[] = [];
 
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly externalHooks: ExternalHooks,
 	) {}
 
 	async init(): Promise<void> {
@@ -162,8 +172,55 @@ export class OtelService {
 		}
 	}
 
+	buildOutboundBaggage(spanAttributes: Attributes): Record<string, string> {
+		return this.runMappers(this.outboundBaggageMappers, { spanAttributes }, 'outbound baggage');
+	}
+
+	private async runConfigureHook(): Promise<void> {
+		this.resourceAttributeMappers = [];
+		this.outboundBaggageMappers = [];
+		const api: OtelConfigureHookApi = {
+			registerResourceAttributeMapper: (mapper) => {
+				this.resourceAttributeMappers.push(mapper);
+			},
+			registerOutboundBaggageMapper: (mapper) => {
+				this.outboundBaggageMappers.push(mapper);
+			},
+		};
+		await this.externalHooks.run('otel.configure', [api]);
+	}
+
+	private runMappers<T>(
+		mappers: Array<(input: T) => Record<string, string>>,
+		input: T,
+		label: string,
+	): Record<string, string> {
+		const merged: Record<string, string> = {};
+		for (const mapper of mappers) {
+			try {
+				const result: unknown = mapper(input);
+				if (typeof result !== 'object' || result === null) continue;
+				for (const [key, value] of Object.entries(result)) {
+					if (typeof value === 'string') merged[key] = value;
+				}
+			} catch (error) {
+				this.logger.warn(`OTEL ${label} mapper failed`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+		return merged;
+	}
+
 	private async startProvider(settings: OtelConfig): Promise<NodeTracerProvider> {
-		const traceExporter = await this.createTraceExporter(settings);
+		await this.runConfigureHook();
+		const exporter = await this.createTraceExporter(settings);
+		const traceExporter =
+			this.resourceAttributeMappers.length > 0
+				? new MappedResourceSpanExporter(exporter, (spanAttributes) =>
+						this.runMappers(this.resourceAttributeMappers, spanAttributes, 'resource attribute'),
+					)
+				: exporter;
 
 		this.provider = new NodeTracerProvider({
 			resource: this.buildResource(settings.exporterServiceName),

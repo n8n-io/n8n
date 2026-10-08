@@ -851,6 +851,70 @@ describe('ExecutionLevelTracer', () => {
 			});
 		});
 
+		it('should write a baggage header from the outbound baggage mapper and keep traceparent', () => {
+			const buildOutboundBaggage = vi.fn(
+				(attrs: Record<string, unknown>): Record<string, string> => {
+					const projectId = attrs['n8n.project.id'];
+					return typeof projectId === 'string' ? { 'project.id': projectId } : {};
+				},
+			);
+			const baggageTracer = new ExecutionLevelTracer(
+				otel.asOtelService({ buildOutboundBaggage }),
+				makeOtelSettingsService(),
+				logger,
+			);
+			baggageTracer.startWorkflow({
+				executionId: 'exec-baggage',
+				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
+			});
+			const httpNode = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+			baggageTracer.startNode({ executionId: 'exec-baggage', node: httpNode });
+
+			const headers: Record<string, string> = {};
+			baggageTracer.injectTraceHeaders('exec-baggage', 'HTTP', headers);
+
+			expect(headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
+			expect(headers.baggage).toBe('project.id=project-1');
+			expect(buildOutboundBaggage).toHaveBeenCalledWith(
+				expect.objectContaining({ 'n8n.project.id': 'project-1', 'n8n.node.name': 'HTTP' }),
+			);
+
+			baggageTracer.endNode({
+				executionId: 'exec-baggage',
+				node: httpNode,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			baggageTracer.endWorkflow({
+				executionId: 'exec-baggage',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+		});
+
+		it('should not write a baggage header when the mapper returns nothing', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-no-baggage',
+				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
+			});
+
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-no-baggage', undefined, headers);
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
+
+			tracer.endWorkflow({
+				executionId: 'exec-no-baggage',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+		});
+
 		// Regression: the injected span was silently falling back to the workflow span
 		// because the internal node-span map was keyed by node.id while the lookup used
 		// node.name. This test locks in the distinction.

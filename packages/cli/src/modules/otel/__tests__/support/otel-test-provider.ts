@@ -85,8 +85,12 @@ export class OtelTestProvider {
 	}
 
 	/** An `OtelService` stand-in that hands out this provider's tracers. */
-	asOtelService(): OtelService {
-		return mock<OtelService>({ getTracer: (name: string) => this.provider.getTracer(name) });
+	asOtelService(overrides: Partial<OtelService> = {}): OtelService {
+		return mock<OtelService>({
+			getTracer: (name: string) => this.provider.getTracer(name),
+			buildOutboundBaggage: () => ({}),
+			...overrides,
+		});
 	}
 
 	getFinishedSpans() {

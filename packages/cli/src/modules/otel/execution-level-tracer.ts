@@ -1,15 +1,17 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Context, Exception, Span } from '@opentelemetry/api';
+import type { Attributes, Context, Exception, Span } from '@opentelemetry/api';
 import {
 	context,
 	defaultTextMapGetter,
 	defaultTextMapSetter,
+	propagation,
 	ROOT_CONTEXT,
 	SpanStatusCode,
 	trace,
 } from '@opentelemetry/api';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import { W3CBaggagePropagator, W3CTraceContextPropagator } from '@opentelemetry/core';
+import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -29,6 +31,7 @@ import type { TracingContext } from './tracing-context';
 
 const TRACER_NAME = 'n8n-workflow';
 const propagator = new W3CTraceContextPropagator();
+const baggagePropagator = new W3CBaggagePropagator();
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -276,13 +279,37 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
+			const ctx = trace.setSpan(ROOT_CONTEXT, span);
+			propagator.inject(ctx, headers, defaultTextMapSetter);
+			this.injectBaggageHeader(ctx, span, headers, executionId);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
+		}
+	}
+
+	private injectBaggageHeader(
+		ctx: Context,
+		span: Span,
+		headers: Record<string, string>,
+		executionId: string,
+	): void {
+		try {
+			const entries = this.otelService.buildOutboundBaggage(getSpanAttributes(span));
+			if (Object.keys(entries).length === 0) return;
+
+			const baggage = propagation.createBaggage(
+				Object.fromEntries(Object.entries(entries).map(([key, value]) => [key, { value }])),
+			);
+			baggagePropagator.inject(propagation.setBaggage(ctx, baggage), headers, defaultTextMapSetter);
+		} catch (error) {
+			this.logger.warn('Failed to inject baggage header', {
+				executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
@@ -351,6 +378,14 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
 	return attrs;
+}
+
+function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {
+	return 'attributes' in span && typeof span.attributes === 'object' && span.attributes !== null;
+}
+
+function getSpanAttributes(span: Span): Attributes {
+	return hasAttributes(span) ? span.attributes : {};
 }
 
 function toTracingParentContext(span: Span): TracingContext {
