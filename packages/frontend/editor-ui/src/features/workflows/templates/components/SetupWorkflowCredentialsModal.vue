@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import { useSetupWorkflowCredentialsModalState } from '../composables/useSetupWorkflowCredentialsModalState';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
@@ -8,7 +7,7 @@ import { computed, onMounted, onUnmounted } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nHeading } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -25,6 +24,17 @@ const props = defineProps<{
 	modalName: string;
 	data: ModalData;
 }>();
+
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+function closeDialog() {
+	if (uiStore.modalsById[props.modalName]?.open !== true) return;
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const modalTitle = computed(() => {
 	if (props.data?.source === 'builder') {
@@ -61,15 +71,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<Modal width="700px" max-height="90%" :name="props.modalName">
-		<template #header>
-			<N8nHeading tag="h2" size="xlarge">
-				{{ modalTitle }}
-			</N8nHeading>
-		</template>
-
-		<template #content>
-			<div :class="$style.grid">
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:container-class="$style.dialog"
+		:header="modalTitle"
+		@update:open="onDialogOpenUpdate"
+	>
+		<N8nDialogBody>
+			<div :class="$style.grid" :data-test-id="`${modalName}-modal`">
 				<div :class="$style.notice" data-test-id="info-callout">
 					<AppsRequiringCredsNotice
 						:app-credentials="appCredentials"
@@ -93,24 +103,32 @@ onUnmounted(() => {
 					</ol>
 				</div>
 			</div>
-		</template>
+		</N8nDialogBody>
 
-		<template #footer>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					size="large"
 					:label="i18n.baseText('templateSetup.continue.button')"
 					:disabled="numFilledCredentials === 0"
 					data-test-id="continue-button"
-					@click="uiStore.closeModal(props.modalName)"
+					@click="closeDialog"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+.dialog {
+	display: flex;
+	flex-direction: column;
+	max-height: 90%;
+}
+
 .grid {
+	min-height: 0;
+	overflow-y: auto;
 	margin: 0 auto;
 	margin-top: var(--spacing--lg);
 	display: flex;
