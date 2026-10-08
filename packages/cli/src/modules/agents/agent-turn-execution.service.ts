@@ -80,6 +80,8 @@ interface ExecuteTurnConfig {
 	 * `undefined` to store the raw error. Must not reject.
 	 */
 	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
+	/** Called once with the recorder of the turn, so that a host can record its own events. */
+	onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 }
 
 interface TurnExecutionState {
@@ -143,6 +145,7 @@ export class AgentTurnExecutionService {
 			config.backgroundJobSignal,
 			config.admittedExecution?.startedAt,
 		);
+		config.onRecorderCreated?.(recorder);
 
 		try {
 			turn = await config.prepare();

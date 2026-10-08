@@ -146,6 +146,18 @@ export type AgentSseEvent =
 	  }
 	| { type: 'message'; message: AgentSseMessage }
 	| {
+			/**
+			 * A custom event from a system-agent provider during a turn. The
+			 * client renders it through an extension keyed by `name`. A client
+			 * without an extension for the name ignores it. The runtime records
+			 * the event with the turn, so history returns it as a `host-event`
+			 * content part.
+			 */
+			type: 'host-event';
+			name: string;
+			payload: unknown;
+	  }
+	| {
 			/** A warning message from the MCP server when it fails to connect or initialize. */
 			type: 'warning';
 			message: string;
