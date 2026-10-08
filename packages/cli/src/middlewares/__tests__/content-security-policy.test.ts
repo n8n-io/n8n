@@ -25,6 +25,11 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.type('html').send('<p>sandboxed</p>');
 	});
 
+	app.get('/self-reporting', (_req, res) => {
+		res.setHeader('Content-Security-Policy-Report-Only', "script-src 'none'");
+		res.type('html').send('<p>self-reporting</p>');
+	});
+
 	// Handlers that pass their headers to `writeHead` rather than setting them on `res`,
 	// as the streaming webhook and chat responses do.
 	app.get('/raw-page', (_req, res) => {
@@ -352,6 +357,20 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			const response = await request(app).get('/sandboxed');
 
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+	});
+
+	describe('a response that sets only a report-only policy', () => {
+		const app = setupApp({
+			enforced: "script-src <nonce> 'strict-dynamic'",
+			reportOnly: "script-src <nonce>; object-src 'none'",
+		});
+
+		it("should still serve the enforced policy and keep the response's report-only one", async () => {
+			const response = await request(app).get('/self-reporting');
+
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toBe("script-src 'none'");
 		});
 	});
 

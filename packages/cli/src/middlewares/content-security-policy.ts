@@ -39,8 +39,7 @@ const isJavaScriptResponse = (res: Response) => {
 	return values.length > 0 && values.every((value) => JAVASCRIPT_TYPES.has(essenceOf(value)));
 };
 
-const hasOwnPolicy = (res: Response) =>
-	res.hasHeader(ENFORCED_HEADER) || res.hasHeader(REPORT_ONLY_HEADER);
+const hasOwnPolicy = (res: Response) => res.hasHeader(ENFORCED_HEADER);
 
 const isHeaderValue = (value: unknown): value is number | string | string[] =>
 	typeof value === 'string' ||
@@ -128,11 +127,14 @@ export const createContentSecurityPolicyMiddleware = ({
 			// inside `writeHead`, so a direct `res.writeHead(304)` call still shows 200 here.
 			const isNotModified = args[0] === 304;
 
+			// A response that enforces its own policy, e.g. the `sandbox` policy on
+			// binary-data pages, manages itself: neither instance header goes on it. One
+			// that only reports on its own policy still gets the enforced header.
 			if (!isNotModified && !isJavaScriptResponse(res) && !hasOwnPolicy(res)) {
 				if (enforced) {
 					res.setHeader(ENFORCED_HEADER, renderContentSecurityPolicy(enforced, getNonce()));
 				}
-				if (reportOnly) {
+				if (reportOnly && !res.hasHeader(REPORT_ONLY_HEADER)) {
 					res.setHeader(REPORT_ONLY_HEADER, renderContentSecurityPolicy(reportOnly, getNonce()));
 				}
 			}
