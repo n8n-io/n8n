@@ -257,6 +257,12 @@ const agentChatMessageShape = {
 		.array(agentChatAttachmentSchema)
 		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
 		.optional(),
+	/**
+	 * Per-message context from the client (for example the user's time zone).
+	 * The Agents layer does not read it. A system agent's provider defines its
+	 * shape and validates it. Project agents ignore it.
+	 */
+	clientContext: z.record(z.unknown()).optional(),
 };
 
 const agentChatMessageSchema = z
