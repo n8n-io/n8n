@@ -4,6 +4,7 @@ import type { AgentApproval, AgentIntegrationSettings } from './agent-integratio
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
 import type { AgentBackgroundJobSignal } from './background-job';
+import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
 
@@ -433,11 +434,21 @@ export interface AgentChatListItem {
 	/** User-facing blurb from the published config; unset when the agent has none. */
 	description?: string;
 	project: { id: string; name: string };
+	/** Media types this agent's model accepts as attachments, derived from its published config. */
+	attachments: ProviderAttachmentCapabilities;
 }
 
 export interface AgentChatListResponse {
 	count: number;
 	data: AgentChatListItem[];
+}
+
+/**
+ * One agent for the n8n Chat page. Chat-only members have no `agent:read`, so the
+ * server derives sub-agent names. The list item omits them.
+ */
+export interface AgentN8nChatAgentDetails extends AgentChatListItem {
+	subAgents: Array<{ id: string; name: string }>;
 }
 
 /** One of the user's own n8n Chat threads. `agent` is as narrow as {@link AgentChatListItem}. */

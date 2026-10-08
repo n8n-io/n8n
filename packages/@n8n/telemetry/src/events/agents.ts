@@ -461,10 +461,22 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_NEW_AGENT: {
 		name: 'User clicked new agent',
 		description:
-			'The user clicked a new-agent entry point (button, dropdown, card, or command bar). No agent exists at this point — `agent_id` is the id minted for the click, which whichever path later persists the agent creates it under, so this joins to the eventual creation event. Clicks with no matching creation are abandoned new-agent flows.',
+			'The user clicked a new-agent entry point (button, dropdown, card, command bar, or an Agents empty-state action: create blank, a typed prompt, or a starter template). No agent exists at this point — `agent_id` is the id minted for the click, which whichever path later persists the agent creates it under, so this joins to the eventual creation event. Clicks with no matching creation are abandoned new-agent flows.',
 		properties: z.object({
-			source: z.enum(['button', 'dropdown', 'card', 'command_bar']),
+			source: z.enum([
+				'button',
+				'dropdown',
+				'card',
+				'empty_state_blank',
+				'empty_state_prompt',
+				'empty_state_template',
+				'command_bar',
+			]),
 			agent_id: z.string().describe('Minted at the click; no agent row exists yet'),
+			template_id: z
+				.string()
+				.optional()
+				.describe('Starter template chosen in the Agents empty state'),
 			manual: z
 				.boolean()
 				.optional()

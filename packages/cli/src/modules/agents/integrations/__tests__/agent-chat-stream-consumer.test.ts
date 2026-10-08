@@ -131,6 +131,7 @@ function makeStreamingThread({
 	rejectAfterMs,
 }: { stall?: boolean; settleAfterMs?: number; rejectAfterMs?: number } = {}) {
 	const streamed: unknown[] = [];
+	const streamedText: string[] = [];
 	const discrete: unknown[] = [];
 	const post = vi.fn(async (message: unknown) => {
 		if (!isAsyncIterable(message)) {
@@ -147,14 +148,16 @@ function makeStreamingThread({
 			);
 		}
 		if (stall) return await new Promise(() => {});
-		for await (const _chunk of message as AsyncIterable<string>) {
-			// Drain the iterable the way a real adapter does.
+		let text = '';
+		for await (const chunk of message as AsyncIterable<string>) {
+			text += chunk;
 		}
+		streamedText.push(text);
 		return undefined;
 	});
 	const thread = mock<Thread<unknown, unknown>>();
 	thread.post = post as unknown as typeof thread.post;
-	return { thread, streamed, discrete };
+	return { thread, streamed, streamedText, discrete };
 }
 
 function makeStreamingConsumer(
@@ -170,6 +173,80 @@ function makeStreamingConsumer(
 		...options,
 	});
 }
+
+describe.each([
+	['streaming', false],
+	['buffered', true],
+])('AgentChatStreamConsumer — text step boundaries (%s)', (_name, disableStreaming) => {
+	async function consumeText(chunks: StreamChunk[]) {
+		const { thread, streamedText, discrete } = makeStreamingThread();
+		await makeStreamingConsumer({ disableStreaming }).consume(makeStream(chunks), thread);
+		return disableStreaming ? discrete : streamedText;
+	}
+
+	function expectedText(text: string) {
+		return disableStreaming ? [{ markdown: text }] : [text];
+	}
+
+	it('separates text before and after a tool call', async () => {
+		const result = await consumeText([
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-1', delta: 'That is it.' },
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: {} },
+			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', output: { ok: true } },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'reasoning-delta', id: 'r-1', delta: 'Internal reasoning' },
+			{ type: 'text-delta', id: 't-2', delta: 'New ' },
+			{ type: 'text-delta', id: 't-2', delta: 'word' },
+			{ type: 'finish-step' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		expect(result).toEqual(expectedText('That is it.\n\nNew word'));
+	});
+
+	it('adds one separator across steps without text', async () => {
+		const result = await consumeText([
+			{ type: 'text-delta', id: 't-1', delta: 'Before' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: {} },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-2', delta: '' },
+			{ type: 'text-delta', id: 't-2', delta: 'After' },
+		]);
+
+		expect(result).toEqual(expectedText('Before\n\nAfter'));
+	});
+
+	it('does not add a separator before the first text', async () => {
+		const result = await consumeText([
+			{ type: 'start-step' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-1', delta: 'First ' },
+			{ type: 'text-delta', id: 't-1', delta: 'message' },
+			{ type: 'finish-step' },
+		]);
+
+		expect(result).toEqual(expectedText('First message'));
+	});
+
+	it('starts text after a discrete message without a leading separator', async () => {
+		const result = await consumeText([
+			{ type: 'text-delta', id: 't-1', delta: 'Before' },
+			{ type: 'finish-step' },
+			{ type: 'message', message: { role: 'assistant', content: [] } },
+			{ type: 'text-delta', id: 't-2', delta: 'After' },
+		]);
+
+		expect(result).toEqual(
+			disableStreaming ? [{ markdown: 'Before' }, { markdown: 'After' }] : ['Before', 'After'],
+		);
+	});
+});
 
 describe('AgentChatStreamConsumer — singleStreamedRunPerTurn', () => {
 	const textThenMessageThenText = (): StreamChunk[] => [

@@ -4,7 +4,8 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { Segment } from '@/app/types/expressions';
-import { onBeforeUnmount, useTemplateRef } from 'vue';
+import { isPairedItemNotOnBranchError } from '@/app/utils/expressions';
+import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
@@ -22,7 +23,7 @@ interface InlineExpressionEditorOutputProps {
 	virtualRef?: HTMLElement;
 }
 
-withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	editorState: undefined,
 	selection: undefined,
 	isReadOnly: false,
@@ -34,6 +35,12 @@ const theme = outputTheme();
 const ndvStore = injectNDVStore();
 const contentRef = useTemplateRef('content');
 const { APP_Z_INDEXES } = useStyles();
+
+const hasPairedItemNotOnBranchError = computed(() =>
+	props.segments.some(
+		(segment) => segment.kind === 'resolvable' && isPairedItemNotOnBranchError(segment.error),
+	),
+);
 
 onBeforeUnmount(() => {
 	ndvStore.value.expressionOutputItemIndex = 0;
@@ -81,6 +88,7 @@ defineExpose({
 						:editor-state="editorState"
 						:selection="selection"
 						:unresolved-expression="unresolvedExpression"
+						:paired-item-not-on-branch="hasPairedItemNotOnBranchError"
 					/>
 				</div>
 			</div>

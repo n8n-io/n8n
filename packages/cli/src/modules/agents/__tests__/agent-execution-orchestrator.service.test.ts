@@ -78,6 +78,7 @@ import {
 	readIntegrationMessageContext,
 } from '../integrations/integration-message-context';
 import type { ToolRegistry } from '../tool-registry';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -763,7 +764,8 @@ describe('background approvals', () => {
 					chatSurface: 'n8n-chat',
 				}),
 			),
-		).rejects.toThrow('This agent is not available in n8n Chat');
+		).rejects.toBeInstanceOf(AgentN8nChatUnavailableError);
+		expect(backgroundJobs.getApproval).not.toHaveBeenCalled();
 	});
 });
 

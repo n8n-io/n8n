@@ -156,8 +156,7 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
-		// oxlint-disable-next-line typescript/no-deprecated
-		const { text, usage, providerMetadata } = await loadAi().generateText({
+		const { text, usage, finalStep } = await loadAi().generateText({
 			model: createModel(model),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
@@ -166,7 +165,7 @@ export function createObservationLogObserveFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
@@ -325,8 +324,7 @@ export function createObservationLogReflectFn(
 				parentId: entry.parentId ? (referenceById.get(entry.parentId) ?? null) : null,
 			})),
 		);
-		// oxlint-disable-next-line typescript/no-deprecated
-		const { text, usage, providerMetadata } = await loadAi().generateText({
+		const { text, usage, finalStep } = await loadAi().generateText({
 			model: createModel(model),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
@@ -334,7 +332,7 @@ export function createObservationLogReflectFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
