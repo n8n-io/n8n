@@ -1,8 +1,10 @@
+packages/cli/src/response-helper.ts
+  h_b49cecddc99496 98-99
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.4",
-  "base_commit_sha": "c5658ba4bf21e839464fc313bb04940ae93506d6",
+  "base_commit_sha": "9772e1b1522eec07b4db995e00bb1e879df27981",
   "prompts": {},
   "humans": {
     "h_b49cecddc99496": {
