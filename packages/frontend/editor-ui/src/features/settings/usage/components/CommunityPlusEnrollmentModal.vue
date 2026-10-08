@@ -1,17 +1,25 @@
 <script lang="ts" setup="">
-import { ref } from 'vue';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { computed, ref } from 'vue';
 import type { Validatable, IValidator } from '@n8n/design-system';
 import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { COMMUNITY_PLUS_DOCS_URL } from '../usage.constants';
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useUsageStore } from '../usage.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nFormInput,
+	N8nText,
+} from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
 	data?: {
@@ -25,6 +33,8 @@ const toast = useToast();
 const usageStore = useUsageStore();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const isLoading = ref(false);
 const valid = ref(false);
@@ -49,13 +59,20 @@ const validators = ref<{ [key: string]: IValidator }>({
 	},
 });
 
-const modalBus = createEventBus();
-
-const closeModal = () => {
+function closeDialog() {
+	if (uiStore.modalsById[props.modalName]?.open !== true) return;
 	telemetry.track('User skipped community plus');
-	modalBus.emit('close');
+	uiStore.closeModal(props.modalName);
 	props.data?.closeCallback?.();
-};
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
+function preventDismiss(event: Event) {
+	event.preventDefault();
+}
 
 const confirm = async () => {
 	if (!valid.value || isLoading.value) {
@@ -65,7 +82,7 @@ const confirm = async () => {
 	isLoading.value = true;
 	try {
 		const { title, text } = await usageStore.registerCommunityEdition(email.value);
-		closeModal();
+		closeDialog();
 		toast.showMessage({
 			title: title ?? i18n.baseText('communityPlusModal.success.title'),
 			message:
@@ -85,83 +102,98 @@ const confirm = async () => {
 </script>
 
 <template>
-	<Modal
-		width="500px"
-		:name="props.modalName"
-		:event-bus="modalBus"
-		:show-close="false"
-		:close-on-click-modal="false"
-		:close-on-press-escape="false"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:aria-label="data?.customHeading ?? i18n.baseText('communityPlusModal.title')"
+		:show-close-button="false"
+		:close-on-overlay-click="false"
+		@update:open="onDialogOpenUpdate"
+		@escape-key-down="preventDismiss"
 	>
-		<template #content>
-			<div>
-				<N8nText tag="h1" align="center" size="xlarge" class="mb-m">{{
-					data?.customHeading ?? i18n.baseText('communityPlusModal.title')
-				}}</N8nText>
-				<N8nText tag="p">{{ i18n.baseText('communityPlusModal.description') }}</N8nText>
-				<ul :class="$style.features">
-					<li>
-						<i>🐞</i>
-						<N8nText>
-							<strong>{{ i18n.baseText('communityPlusModal.features.debugging.title') }}</strong>
-							{{ i18n.baseText('communityPlusModal.features.debugging.description') }}
-						</N8nText>
-					</li>
-					<li>
-						<i>🔎</i>
-						<N8nText>
-							<strong>{{ i18n.baseText('communityPlusModal.features.execution.title') }}</strong>
-							{{ i18n.baseText('communityPlusModal.features.execution.description') }}
-						</N8nText>
-					</li>
-					<li>
-						<i> 📁</i>
-						<N8nText>
-							<strong>{{ i18n.baseText('communityPlusModal.features.folders.title') }}</strong>
-							{{ i18n.baseText('communityPlusModal.features.folders.description') }}
-						</N8nText>
-					</li>
-				</ul>
-				<N8nFormInput
-					id="email"
-					v-model="email"
-					:label="i18n.baseText('communityPlusModal.input.email.label')"
-					type="email"
-					name="email"
-					label-size="small"
-					tag-size="small"
-					required
-					:show-required-asterisk="true"
-					:validate-on-blur="false"
-					:validation-rules="validationRules"
-					:validators="validators"
-					@validate="valid = $event"
-					@keyup.enter="confirm"
-				/>
+		<N8nDialogHeader>
+			<N8nDialogTitle>
+				{{ data?.customHeading ?? i18n.baseText('communityPlusModal.title') }}
+			</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody>
+			<div :data-test-id="`${modalName}-modal`">
+				<div>
+					<N8nText tag="p">{{ i18n.baseText('communityPlusModal.description') }}</N8nText>
+					<ul :class="$style.features">
+						<li>
+							<i>🐞</i>
+							<N8nText>
+								<strong>{{ i18n.baseText('communityPlusModal.features.debugging.title') }}</strong>
+								{{ i18n.baseText('communityPlusModal.features.debugging.description') }}
+							</N8nText>
+						</li>
+						<li>
+							<i>🔎</i>
+							<N8nText>
+								<strong>{{ i18n.baseText('communityPlusModal.features.execution.title') }}</strong>
+								{{ i18n.baseText('communityPlusModal.features.execution.description') }}
+							</N8nText>
+						</li>
+						<li>
+							<i> 📁</i>
+							<N8nText>
+								<strong>{{ i18n.baseText('communityPlusModal.features.folders.title') }}</strong>
+								{{ i18n.baseText('communityPlusModal.features.folders.description') }}
+							</N8nText>
+						</li>
+					</ul>
+					<N8nFormInput
+						id="email"
+						v-model="email"
+						:label="i18n.baseText('communityPlusModal.input.email.label')"
+						type="email"
+						name="email"
+						label-size="small"
+						tag-size="small"
+						required
+						:show-required-asterisk="true"
+						:validate-on-blur="false"
+						:validation-rules="validationRules"
+						:validators="validators"
+						@validate="valid = $event"
+						@keyup.enter="confirm"
+					/>
+				</div>
 			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.notice">
-				<N8nText size="xsmall" tag="span">
-					{{ i18n.baseText('communityPlusModal.notice') }}
-					<a :href="COMMUNITY_PLUS_DOCS_URL" target="_blank">
-						{{ i18n.baseText('generic.moreInfo') }}
-					</a>
-				</N8nText>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<div :class="$style.footer">
+				<div :class="$style.notice">
+					<N8nText size="xsmall" tag="span">
+						{{ i18n.baseText('communityPlusModal.notice') }}
+						<a :href="COMMUNITY_PLUS_DOCS_URL" target="_blank">
+							{{ i18n.baseText('generic.moreInfo') }}
+						</a>
+					</N8nText>
+				</div>
+				<div :class="$style.buttons">
+					<N8nButton
+						variant="ghost"
+						:class="$style.skip"
+						:disabled="isLoading"
+						@click="closeDialog"
+						>{{ i18n.baseText('communityPlusModal.button.skip') }}</N8nButton
+					>
+					<N8nButton :disabled="!valid || isLoading" variant="solid" @click="confirm">
+						{{ i18n.baseText('communityPlusModal.button.confirm') }}
+					</N8nButton>
+				</div>
 			</div>
-			<div :class="$style.buttons">
-				<N8nButton variant="ghost" :class="$style.skip" :disabled="isLoading" @click="closeModal">{{
-					i18n.baseText('communityPlusModal.button.skip')
-				}}</N8nButton>
-				<N8nButton :disabled="!valid || isLoading" variant="solid" @click="confirm">
-					{{ i18n.baseText('communityPlusModal.button.confirm') }}
-				</N8nButton>
-			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+.footer {
+	width: 100%;
+}
+
 .notice {
 	margin-bottom: var(--spacing--lg);
 }
