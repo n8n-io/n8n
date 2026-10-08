@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -6,6 +7,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@n8n/errors';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowSharingService } from '@n8n/backend-services';
 
@@ -17,21 +19,20 @@ export class ActiveWorkflowsService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	async getAllActiveIdsInStorage() {
-		const activationErrors = await this.activationErrorsService.getAll();
-		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
-		return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
+		return await this.dropActivationFailures(await this.workflowRepository.getActiveIds());
 	}
 
 	async getAllActiveIdsFor(user: User) {
-		const activationErrors = await this.activationErrorsService.getAll();
 		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
 
 		const hasFullAccess = hasGlobalScope(user, 'workflow:read');
 		if (hasFullAccess) {
-			return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
+			return await this.dropActivationFailures(activeWorkflowIds);
 		}
 
 		// Every ID here is a workflow the requesting user specifically has
@@ -39,8 +40,8 @@ export class ActiveWorkflowsService {
 		const accessibleWorkflowIds = new Set(
 			await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: ['workflow:read'] }),
 		);
-		return activeWorkflowIds.filter(
-			(workflowId) => accessibleWorkflowIds.has(workflowId) && !activationErrors[workflowId],
+		return await this.dropActivationFailures(
+			activeWorkflowIds.filter((workflowId) => accessibleWorkflowIds.has(workflowId)),
 		);
 	}
 
@@ -57,6 +58,29 @@ export class ActiveWorkflowsService {
 			throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
+		// A failed republish never clears the legacy cache, so its error comes first.
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const publicationError = await this.workflowPublicationStatusService.getFailedActivationError(
+				workflowId,
+				workflow.nodes,
+			);
+			if (publicationError !== null) return publicationError;
+		}
 		return await this.activationErrorsService.get(workflowId);
+	}
+
+	/**
+	 * Drops the ids with a recorded activation failure: a legacy activation
+	 * error or, under the publication service, a failed publication (zero live
+	 * triggers). A partial publication keeps its triggers running, so it stays.
+	 */
+	private async dropActivationFailures(workflowIds: string[]) {
+		const activationErrors = await this.activationErrorsService.getAll();
+		const candidates = workflowIds.filter((workflowId) => !activationErrors[workflowId]);
+		if (!this.workflowsConfig.useWorkflowPublicationService) return candidates;
+
+		const statuses =
+			await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(candidates);
+		return candidates.filter((workflowId) => statuses.get(workflowId) !== 'failed');
 	}
 }
