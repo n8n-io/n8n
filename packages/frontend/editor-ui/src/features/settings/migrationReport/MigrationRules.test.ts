@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import MigrationRules from './MigrationRules.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeLightReportResult } from '@n8n/api-types';
@@ -15,6 +16,7 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowIssue = {
@@ -99,6 +101,9 @@ describe('MigrationRules', () => {
 			baseUrl: 'http://localhost:5678',
 			pushRef: 'test-push-ref',
 		};
+		// By default the user can edit every workflow, so the page shows the whole instance.
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(true);
 
 		vi.mocked(breakingChangesApi.getReport).mockResolvedValue(mockReport);
 		vi.mocked(breakingChangesApi.refreshReport).mockResolvedValue(mockReport);
@@ -452,6 +457,25 @@ describe('MigrationRules', () => {
 				'Instance Rule 1',
 				'Instance Rule 3',
 			]);
+		});
+	});
+
+	describe('as a user who cannot edit every workflow', () => {
+		beforeEach(() => {
+			rbacStore.hasScope.mockReturnValue(false);
+		});
+
+		it('shows the workflow issues with a scope note, and neither Refresh nor the instance tab', async () => {
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			expect(screen.getByTestId('migration-report-scope-note')).toBeInTheDocument();
+			expect(screen.queryByText('Refresh')).not.toBeInTheDocument();
+			expect(screen.queryByText('Instance issues')).not.toBeInTheDocument();
+			expect(screen.getByText('Workflow issues')).toBeInTheDocument();
 		});
 	});
 

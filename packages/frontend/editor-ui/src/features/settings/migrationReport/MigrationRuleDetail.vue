@@ -50,6 +50,10 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
+// The page needs only `breakingChanges:list`, but a migration or a state change
+// needs `breakingChanges:migrate`.
+const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
+
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
 		const response = await breakingChangesApi.getReportForRule(
@@ -129,7 +133,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		},
 	];
 
-	if (state.value.migratable) {
+	if (state.value.migratable && canMigrate.value) {
 		headers.push({
 			title: '',
 			key: 'actions',
@@ -172,9 +176,6 @@ const openCount = computed(
 			(workflow) => workflow.status === 'open' && !migratedWorkflowIds.value.has(workflow.id),
 		).length,
 );
-
-// The page needs only `breakingChanges:list`, but a state change needs `breakingChanges:migrate`.
-const canChangeState = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
 
 // Rows with a state change in flight. One change at a time keeps the revert correct.
 const savingWorkflowIds = ref<Set<string>>(new Set());
@@ -451,7 +452,7 @@ const sortedWorkflows = computed(() => {
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canChangeState || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
+						!canMigrate || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
 					"
 					@update:model-value="onFindingStatusChange(item, $event)"
 					@click.stop

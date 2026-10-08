@@ -25,6 +25,7 @@ export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
+	runBackgroundSubAgent?: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
@@ -35,6 +36,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 		policy,
 		inlineSubAgentModelsByDifficulty,
 		resolveInlineSubAgentProviderTools,
+		runBackgroundSubAgent,
 		parentBudget,
 		...runContext
 	} = options;
@@ -47,6 +49,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			? { resolveInlineSubAgentProviderTools }
 			: {}),
 		shouldRetrySubAgentResumeError,
+		runBackgroundSubAgent,
 		runSubAgent: async (request, helpers) => {
 			const isSelfDelegation = request.subAgentId === INLINE_SUB_AGENT_ID;
 			const selectedSource = selectSubAgentSource({

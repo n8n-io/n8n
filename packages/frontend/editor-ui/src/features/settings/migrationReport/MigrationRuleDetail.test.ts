@@ -388,6 +388,18 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
 		});
 
+		it('does not render a Migrate button for a user without the migrate scope', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
+			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
+		});
+
 		it('opens the migrate modal with the rule and workflow when Migrate is clicked', async () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),

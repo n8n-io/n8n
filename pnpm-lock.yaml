@@ -1228,6 +1228,9 @@ importers:
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
+      '@n8n/client-oauth2':
+        specifier: workspace:*
+        version: link:../client-oauth2
       '@n8n/sandbox-client':
         specifier: 0.1.1
         version: 0.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -7554,6 +7557,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
