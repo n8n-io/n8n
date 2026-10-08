@@ -13,7 +13,7 @@ const COLUMN = 'verdict';
  * an incoming FK from `agent_eval_rating`, and the DSL recreates the table on
  * SQLite, which would fire that FK's CASCADE.
  */
-export class AddVerdictToAgentEvalResult1791286443000 implements ReversibleMigration {
+export class AddVerdictToAgentEvalResult1791377741440 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName(TABLE);
 		const columnName = escape.columnName(COLUMN);
