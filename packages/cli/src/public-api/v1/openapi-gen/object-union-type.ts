@@ -2,7 +2,8 @@ import { isRecord } from '@n8n/utils/is-record';
 
 const DATA_VALUED_KEYS = new Set(['example', 'examples', 'default', 'enum']);
 
-// Each value under these keys is a schema. Check it too, even when its name is `example`.
+// The keys inside these objects are field names, not keywords. Check every value, so a field
+// named `example` or `default` is not skipped as sample data.
 const SCHEMA_MAP_KEYS = new Set(['properties', 'patternProperties', '$defs', 'definitions']);
 
 /**
