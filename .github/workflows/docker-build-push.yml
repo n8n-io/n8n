@@ -241,8 +241,6 @@ jobs:
         uses: ./.github/actions/docker-registry-login
         with:
           login-ghcr: true
-          # The n8n-debian builder stage pulls from dhi.io.
-          login-dhi: true
           login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}

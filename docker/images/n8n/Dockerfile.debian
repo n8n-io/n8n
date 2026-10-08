@@ -1,28 +1,24 @@
 ARG NODE_VERSION=26.10.0
 ARG N8N_VERSION=snapshot
 
-# glibc variant of ./Dockerfile. Users add vendor libraries that need glibc
-# (for example Oracle Instant Client) in a derived image.
-# The builder is the DHI image that the Debian base builds on, so the native
-# modules compile against the same glibc that runs them. Change the tag and the
+# glibc variant of ./Dockerfile. See the README for the use case. The builder
+# is Debian 13, the same release and glibc as the base. Change the tag and the
 # digest together.
-ARG BUILDER_IMAGE=dhi.io/node:26.10.0-debian13-dev@sha256:ddb48790becd5f08bb5bb0d21292c098e64ca9108215cce589263abb10e0dcaa
+ARG BUILDER_IMAGE=node:26.10.0-trixie-slim@sha256:930557a230abacbc3f4fd9b8648abf8f4bee1e17cb72195dcdfb2f709bc85b33
 ARG RUNTIME_IMAGE=n8nio/base:26.10.0-debian@sha256:6bb313ed7e110fe753bf7141be2fa99dbac60c9de6a39f6ad56ef5478dee8d48
 
-# The runtime base has no compiler, so this stage supplies one. The -dev
-# packages are for librdkafka. pkgconf and which let its configure step find
-# the system libraries. gzip unpacks the librdkafka source.
+# The runtime base has no compiler, so this stage supplies one. Everything
+# after g++ is for the librdkafka build below.
 FROM ${BUILDER_IMAGE} AS toolchain
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3 make g++ pkgconf which gzip \
         libssl-dev libsasl2-dev zlib1g-dev libzstd-dev liblz4-dev && \
     rm -rf /var/lib/apt/lists/*
-ENV NODE_GYP=/usr/lib/nodejs/npm/node_modules/node-gyp/bin/node-gyp.js
+ENV NODE_GYP=/usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js
 
 # Compile the native modules above `COPY ./compiled`. An application change
-# then does not start a new compile. `./compiled` comes from the build host, so
-# rebuild each module for this image.
+# then does not start a new compile.
 FROM toolchain AS native-builder
 
 # These paths are pnpm symlinks. Copying through them uses the resolved version.
@@ -44,11 +40,9 @@ COPY ./compiled/node_modules/.pnpm/sqlite3@*/node_modules/sqlite3 /build/node_mo
 WORKDIR /build/node_modules/sqlite3
 RUN node "$NODE_GYP" rebuild --release
 
-# Debian ships librdkafka 2.8.0, which is older than this module needs. Build
-# the librdkafka that the module bundles, linked against the system libraries.
-# `./compiled` strips the bundled source, so get it from the npm package of the
-# same version. The repo patch for this module changes package.json only.
-# No -j: the configure action and the librdkafka build race.
+# Debian's librdkafka is too old for this module, so build the one it bundles.
+# `./compiled` strips that source; `npm pack` gets it back. No -j: the
+# configure action and the librdkafka build race.
 COPY ./compiled/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/nan /build/node_modules/nan
 COPY ./compiled/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript /build/node_modules/@confluentinc/kafka-javascript
 WORKDIR /build/node_modules/@confluentinc/kafka-javascript
@@ -82,8 +76,8 @@ COPY --from=native-builder /build/node_modules/sqlite3/build/Release/node_sqlite
 COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
      /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
 # kafka-javascript has no top-level symlink, and its pnpm directory name holds
-# a patch hash. The shell must expand this destination. The binding finds
-# librdkafka through its RUNPATH, $ORIGIN/../deps.
+# a patch hash. The shell must expand this destination. The binding loads
+# librdkafka from ../deps through its RUNPATH.
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/Release/confluent-kafka-javascript.node /tmp/kafka/Release/
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/deps/librdkafka.so.1 \
      /build/node_modules/@confluentinc/kafka-javascript/build/deps/librdkafka++.so.1 /tmp/kafka/deps/
