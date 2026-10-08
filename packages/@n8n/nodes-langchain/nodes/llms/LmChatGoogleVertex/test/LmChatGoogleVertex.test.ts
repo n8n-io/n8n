@@ -38,7 +38,7 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			privateKey: 'test-private-key',
 			email: 'test@n8n.io',
 			region: 'us-central1',
-			projectId: 'target-project',
+			projectId: ' target-project ',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
 		//@ts-expect-error - Mocking

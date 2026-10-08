@@ -44,6 +44,9 @@ export async function resolveGoogleVertexCredentials(
 	let projectId: unknown;
 	if (credentialType === 'googleVertexAiApi') {
 		projectId = credentials.projectId;
+		if (typeof projectId === 'string') {
+			projectId = projectId.trim();
+		}
 	} else {
 		projectId = context.getNodeParameter('projectId', itemIndex, '', { extractValue: true });
 	}
