@@ -69,10 +69,10 @@ describe('TeamsIntegration', () => {
 	});
 
 	describe('platform capabilities', () => {
-		it('reuses the Entra credential, stays hidden, streams per thread, and targets its cards', () => {
+		it('reuses the Entra credential, is listed, streams per thread, and targets its cards', () => {
 			expect(integration).toMatchObject({
 				credentialTypes: ['microsoftEntraServicePrincipalApi'],
-				internal: true,
+				internal: false,
 				// Streaming is decided for each conversation instead, because Teams
 				// only supports it in 1:1 chats.
 				disableStreaming: false,
