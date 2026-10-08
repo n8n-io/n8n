@@ -932,7 +932,6 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="showAttach"
-			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
 			:accepted-mime-types="props.attachOnlyMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@update:model-value="mentions.handleTextChange"

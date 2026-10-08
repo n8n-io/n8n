@@ -25,7 +25,7 @@ const props = withDefaults(
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
-		showAttachButton?: boolean;
+		/** Also shows the attach button. Without it, files can still be dropped or pasted. */
 		acceptedMimeTypes?: string;
 		/**
 		 * Base64-encoded size of the files already staged in the composer. Needed
@@ -52,7 +52,6 @@ const props = withDefaults(
 		buttonLabel: undefined,
 		activeRequiresFocus: false,
 		maxLength: undefined,
-		showAttachButton: true,
 	},
 );
 
@@ -295,7 +294,7 @@ defineExpose({
 			<template #right-actions>
 				<slot name="right-actions" />
 				<N8nTooltip
-					v-if="showAttach && showAttachButton"
+					v-if="showAttach && acceptedMimeTypes !== undefined"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>
