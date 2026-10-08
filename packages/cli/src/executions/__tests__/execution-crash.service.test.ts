@@ -175,6 +175,21 @@ describe('ExecutionCrashService', () => {
 		expect(announced()).toEqual([announcementOf(first, 'stall')]);
 	});
 
+	test('announces the stop time the caller gives instead of the claim time', async () => {
+		const first = crashedExecution('1');
+		const lastNodeStoppedAt = new Date('2025-01-01T00:00:30.000Z');
+		transitions([first]);
+
+		const crashed = await crashService.markAsCrashedWithoutCounting('1', 'startup-recovery', {
+			stoppedAt: lastNodeStoppedAt,
+		});
+
+		expect(crashed).toEqual([first]);
+		expect(announced()).toEqual([
+			announcementOf({ ...first, stoppedAt: lastNodeStoppedAt }, 'startup-recovery'),
+		]);
+	});
+
 	test('reports the executions it transitioned for a whole workflow', async () => {
 		const first = crashedExecution('1');
 		const second = crashedExecution('2');
