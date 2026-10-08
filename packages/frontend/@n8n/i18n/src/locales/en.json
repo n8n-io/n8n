@@ -1225,7 +1225,7 @@
 	"credentialEdit.credentialSharing.usedIn.personalSpace.tooltip": "{name}'s role lets them use any credential in their personal space, without a share.",
 	"credentialEdit.credentialSharing.share.teamProjects.tooltip": "Lets {name} use this credential in team projects too.",
 	"credentialEdit.credentialSharing.share": "Share",
-	"credentialEdit.credentialSharing.shareWith": "Share with {project}",
+	"credentialEdit.credentialSharing.share.tooltip": "Share this credential with {project}",
 	"credentialSelectModal.addNewCredential": "Add new credential",
 	"credentialSelectModal.continue": "Continue",
 	"credentialSelectModal.searchForApp": "Search for app...",
