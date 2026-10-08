@@ -4440,4 +4440,46 @@ describe('deprecated nodes', () => {
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toMatch(/deprecated/i);
 	});
+
+	test('PUT /workflows/:id allows editing other nodes while a deprecated node stays unchanged', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [deprecatedNode, { ...otherNode, notes: 'edited' }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('PUT /workflows/:id allows removing a deprecated node', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [otherNode],
+			connections: {},
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+	});
 });
