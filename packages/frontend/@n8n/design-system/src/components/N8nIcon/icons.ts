@@ -67,6 +67,7 @@ import {
 	Braces as BrandBraces,
 	Brain as BrandBrain,
 	Briefcase as BrandBriefcase,
+	Broom as BrandBroom,
 	Bug as BrandBug,
 	Calendar as BrandCalendar,
 	ChartColumnDecreasing as BrandChartColumnDecreasing,
@@ -113,6 +114,7 @@ import {
 	Files as BrandFiles,
 	FileText as BrandFileText,
 	FlaskConical as BrandFlaskConical,
+	Flow as BrandFlow,
 	Folder as BrandFolder,
 	FolderOpen as BrandFolderOpen,
 	FolderPlus as BrandFolderPlus,
@@ -175,6 +177,7 @@ import {
 	Redo2 as BrandRedo2,
 	RefreshCw as BrandRefreshCw,
 	Robot as BrandRobot,
+	Robot12 as BrandRobot12,
 	Rss as BrandRss,
 	SatelliteDish as BrandSatelliteDish,
 	Search as BrandSearch,
@@ -571,9 +574,13 @@ export const updatedIconSet = {
 	webhook: Webhook,
 
 	// brand-only
+	// 12px glyph for 12px slots; the 16px set blurs when scaled down
+	'robot-12': BrandRobot12,
 	'n8n-assistant': BrandN8nAssistant,
 	briefcase: BrandBriefcase,
+	broom: BrandBroom,
 	corners: BrandCorners,
+	flow: BrandFlow,
 	sparkle: BrandSparkle,
 	squares: BrandSquares,
 
