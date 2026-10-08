@@ -3,21 +3,29 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '../credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import type { NewCredentialsModal } from '@/Interface';
 
-import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nSpinner,
+} from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const modalBus = ref(createEventBus());
 const selected = ref('');
 const loading = ref(true);
 const selectRef = ref<HTMLSelectElement>();
@@ -69,8 +77,18 @@ function onSelect(type: string) {
 	selected.value = type;
 }
 
+const modalOpen = computed(() => uiStore.modalsById[CREDENTIAL_SELECT_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(CREDENTIAL_SELECT_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
 function openCredentialType() {
-	modalBus.value.emit('close');
+	closeDialog();
 	// Carry the credentials-list credential help into the new-credential dialog so
 	// it offers the Instance AI button (not the legacy assistant) like the rest of
 	// the list does.
@@ -101,69 +119,71 @@ function openCredentialType() {
 </script>
 
 <template>
-	<Modal
-		:name="CREDENTIAL_SELECT_MODAL_KEY"
-		:event-bus="modalBus"
-		width="50%"
-		:center="true"
-		:loading="loading"
-		max-width="460px"
-		min-height="250px"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:container-class="$style.dialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<h2 :class="$style.title">
-				{{ i18n.baseText('credentialSelectModal.addNewCredential') }}
-			</h2>
-		</template>
-		<template #content>
-			<div>
-				<div :class="$style.subtitle">
-					{{ i18n.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
-				</div>
-				<N8nSelect
-					ref="selectRef"
-					filterable
-					default-first-option
-					:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
-					size="xlarge"
-					:model-value="selected"
-					:filter-method="filterCredentials"
-					data-test-id="new-credential-type-select"
-					@update:model-value="onSelect"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-					<N8nOption
-						v-for="credential in selectableCredentialTypes"
-						:key="credential.name"
-						:value="credential.name"
-						:label="credential.displayName"
+		<N8nDialogBody v-if="loading">
+			<N8nSpinner />
+		</N8nDialogBody>
+		<template v-else>
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{ i18n.baseText('credentialSelectModal.addNewCredential') }}
+				</N8nDialogTitle>
+			</N8nDialogHeader>
+			<N8nDialogBody>
+				<div>
+					<div :class="$style.subtitle">
+						{{ i18n.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+					</div>
+					<N8nSelect
+						ref="selectRef"
 						filterable
-						data-test-id="new-credential-type-select-option"
+						default-first-option
+						:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
+						size="xlarge"
+						:model-value="selected"
+						:filter-method="filterCredentials"
+						data-test-id="new-credential-type-select"
+						@update:model-value="onSelect"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+						<N8nOption
+							v-for="credential in selectableCredentialTypes"
+							:key="credential.name"
+							:value="credential.name"
+							:label="credential.displayName"
+							filterable
+							data-test-id="new-credential-type-select-option"
+						/>
+					</N8nSelect>
+				</div>
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<div :class="$style.footer">
+					<N8nButton
+						:label="i18n.baseText('credentialSelectModal.continue')"
+						float="right"
+						size="large"
+						:disabled="!selected"
+						data-test-id="new-credential-type-button"
+						@click="openCredentialType"
 					/>
-				</N8nSelect>
-			</div>
+				</div>
+			</N8nDialogFooter>
 		</template>
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					:label="i18n.baseText('credentialSelectModal.continue')"
-					float="right"
-					size="large"
-					:disabled="!selected"
-					data-test-id="new-credential-type-button"
-					@click="openCredentialType"
-				/>
-			</div>
-		</template>
-	</Modal>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.title {
-	font-size: var(--font-size--xl);
-	line-height: var(--line-height--md);
+.dialog {
+	/* Previous dialog min-height. No spacing token. */
+	// min-height: 250px;
 }
 
 .subtitle {
