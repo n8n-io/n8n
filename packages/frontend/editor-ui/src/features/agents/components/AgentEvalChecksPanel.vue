@@ -544,7 +544,7 @@ onBeforeUnmount(store.stopPollingRun);
 	width: 100%;
 	border-radius: var(--radius--xl);
 	border: var(--border);
-	background-color: white;
+	background-color: var(--background--surface);
 }
 
 .list > * {

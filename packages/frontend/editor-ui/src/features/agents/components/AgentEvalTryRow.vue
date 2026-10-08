@@ -91,7 +91,7 @@ const needsCorrection = computed(() => props.status === 'work' || props.status =
 // to reach the correction form, so this isn't gated on output alone.
 const canExpand = computed(() => props.output !== null || needsCorrection.value);
 
-type StatusText = { labelKey: BaseTextKey; color: TextColor };
+type StatusText = { labelKey: BaseTextKey; color?: TextColor; warning?: boolean };
 
 // Only `view="complete"` reads this — the plain row's header already says its
 // own thing in place of a status line (the scenario `label`, or the identical
@@ -101,12 +101,13 @@ const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
 	strong: { labelKey: 'agents.builder.agentEvals.checks.status.passes', color: 'success' },
 	waiting: { labelKey: 'agents.builder.agentEvals.checks.status.running', color: 'text-light' },
 	idle: { labelKey: 'agents.builder.agentEvals.checks.status.neverRan', color: 'text-light' },
-	work: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'warning' },
+	work: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', warning: true },
 	fail: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'danger' },
 };
 
 const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
 const statusColor = computed(() => STATUS_TEXT[props.status].color);
+const statusIsWarning = computed(() => STATUS_TEXT[props.status].warning === true);
 
 function toggleExpanded() {
 	if (!canExpand.value) return;
@@ -197,7 +198,12 @@ watch(
 				<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
 					input
 				}}</N8nText>
-				<N8nText :color="statusColor" size="small">{{ statusText }}</N8nText>
+				<N8nText
+					:color="statusColor"
+					:class="{ [$style.statusWarning]: statusIsWarning }"
+					size="small"
+					>{{ statusText }}</N8nText
+				>
 			</div>
 
 			<N8nText color="text-light" size="small">
@@ -409,6 +415,10 @@ watch(
 	gap: var(--spacing--5xs);
 	flex: 1;
 	min-width: 0;
+}
+
+.statusWarning {
+	color: var(--callout--color--text--secondary);
 }
 
 .headerTitleText {

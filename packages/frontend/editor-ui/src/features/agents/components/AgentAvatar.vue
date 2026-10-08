@@ -123,9 +123,9 @@ const accessibleLabel = computed(() =>
 .warn {
 	// Warning only defines tint-1 and tint-2 (no tint-4) — tint-2 is its
 	// lightest shade, matching the fill role tint-4 plays for success/danger.
-	--fill-color: var(--color--warning--tint-2);
-	--ring-color: var(--color--warning--tint-1);
-	--icon-color: var(--color--warning);
+	--fill-color: var(--callout--color--background--secondary);
+	--ring-color: var(--callout--border-color--secondary);
+	--icon-color: var(--callout--color--text--secondary);
 }
 
 .bad {

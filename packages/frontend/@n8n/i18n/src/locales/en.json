@@ -7759,7 +7759,7 @@
 	"instanceAi.testAgentPreview.gotIt": "Got it",
 	"instanceAi.testAgentPreview.practiceRunDescription": "Nothing was sent, saved or changed.",
 	"instanceAi.testAgentPreview.inputCorrectionHint": "What should have happened?",
-	"instanceAi.testAgentPreview.rule": "Rule",
+	"instanceAi.testAgentPreview.rule": "Check that",
 	"instanceAi.testAgentPreview.conversation": "Conversation",
 	"instanceAi.testAgentPreview.editRule": "Edit rule",
 	"instanceAi.testAgentPreview.deleteCheck.label": "Delete check",
