@@ -1,8 +1,5 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { createEventBus } from '@n8n/utils/event-bus';
-import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -10,18 +7,21 @@ import HtmlEditor from '@/features/shared/editors/components/HtmlEditor/HtmlEdit
 import JsEditor from '@/features/shared/editors/components/JsEditor/JsEditor.vue';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 
-import { N8nButton, N8nInfoTip, N8nLink, N8nTabs, N8nText } from '@n8n/design-system';
-const props = withDefaults(
-	defineProps<{
-		modalBus?: EventBus;
-	}>(),
-	{
-		modalBus: () => createEventBus(),
-	},
-);
-
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInfoTip,
+	N8nLink,
+	N8nTabs,
+	N8nText,
+} from '@n8n/design-system';
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[CHAT_EMBED_MODAL_KEY]?.open === true);
 const rootStore = useRootStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -135,20 +135,23 @@ const otherCode = computed(
 ${commonCode.value.createChat}`,
 );
 
-function closeDialog() {
-	props.modalBus.emit('close');
+async function closeDialog() {
+	uiStore.closeModal(CHAT_EMBED_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
 }
 </script>
 
 <template>
-	<Modal
-		max-width="960px"
-		:title="i18n.baseText('chatEmbed.title')"
-		:event-bus="modalBus"
-		:name="CHAT_EMBED_MODAL_KEY"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:header="i18n.baseText('chatEmbed.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<div :class="$style.container">
 				<N8nTabs v-model="currentTab" :options="tabs" />
 
@@ -187,14 +190,13 @@ function closeDialog() {
 					{{ i18n.baseText('chatEmbed.chatTriggerNode') }}
 				</N8nInfoTip>
 			</div>
-		</template>
-
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div class="action-buttons">
 				<N8nButton float="right" :label="i18n.baseText('chatEmbed.close')" @click="closeDialog" />
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
