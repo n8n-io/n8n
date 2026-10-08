@@ -4,7 +4,6 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-<<<<<<< HEAD
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -12,9 +11,6 @@ import {
 	InstanceSettings,
 	StorageConfig,
 } from 'n8n-core';
-=======
-import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
->>>>>>> 60ad29f242c21aac0ce01ce945db9c66101fcce6
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 import { License } from '@/license';
@@ -46,7 +42,7 @@ mockInstance(ShutdownService);
 mockInstance(ModulesConfig);
 mockInstance(ModuleRegistry);
 mockInstance(ExecutionContextHookRegistry);
-mockInstance(BinaryDataService);
+const binaryDataService = mockInstance(BinaryDataService);
 mockInstance(DatabaseManager);
 mockInstance(LicenseState);
 mockInstance(StorageConfig, { mode: 'database' });
@@ -66,6 +62,10 @@ describe('BaseCommand', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+	});
+
+	afterEach(() => {
+		exitSpy.mockRestore();
 	});
 
 	describe('initBinaryDataService', () => {
@@ -125,11 +125,6 @@ describe('logError', () => {
 });
 
 describe('initBinaryDataService', () => {
-	const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 's3' });
-	const binaryDataService = mockInstance(BinaryDataService);
-	const license = mockInstance(License);
-	mockInstance(DatabaseManager);
-
 	it('should exit before the store starts when the write mode is not licensed', async () => {
 		binaryDataConfig.mode = 's3';
 		license.isLicensed.mockReturnValue(false);
