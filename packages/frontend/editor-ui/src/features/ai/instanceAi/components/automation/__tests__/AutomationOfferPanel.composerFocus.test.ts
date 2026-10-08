@@ -147,7 +147,7 @@ describe('AutomationOfferPanel in the chat', () => {
 		wrapper = undefined;
 	});
 
-	it('moves the focus to the composer once the send of "Make it automatic" completes', async () => {
+	it('moves the focus to the composer after "Make it automatic"', async () => {
 		const sent = createDeferredPromise<'sent'>();
 		sendMessage.mockImplementation(
 			async (_text: string, _files: unknown, onAccepted: () => void) => {
@@ -158,7 +158,7 @@ describe('AutomationOfferPanel in the chat', () => {
 		);
 		const user = userEvent.setup();
 		const chat = await mountOfferInChat();
-		chat.get('[data-test-id="automation-offer-accept"]').element.focus();
+		chat.get<HTMLButtonElement>('[data-test-id="automation-offer-accept"]').element.focus();
 
 		await user.keyboard('{Enter}');
 		await flushPromises();
@@ -175,7 +175,7 @@ describe('AutomationOfferPanel in the chat', () => {
 	it('moves the focus to the composer after Dismiss', async () => {
 		const user = userEvent.setup();
 		const chat = await mountOfferInChat();
-		chat.get('[data-test-id="automation-offer-dismiss"]').element.focus();
+		chat.get<HTMLButtonElement>('[data-test-id="automation-offer-dismiss"]').element.focus();
 
 		await user.keyboard('{Enter}');
 		await flushPromises();
