@@ -22,6 +22,12 @@
         "is_deleted": {
             "type": "boolean"
         },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
         "linkedin": {
             "type": "null"
         },
@@ -32,5 +38,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }
