@@ -262,7 +262,7 @@ describe('createRouteWatcher', () => {
 		expect(resolution).toMatchObject({
 			route: 'agent',
 			evidence: 'build-agent call',
-			question: { route: 'clarify', steer: 'agent', evidence: 'ask-user call' },
+			questions: [{ route: 'clarify', steer: 'agent', evidence: 'ask-user call' }],
 		});
 	});
 
@@ -327,7 +327,7 @@ describe('createRouteWatcher', () => {
 			streamStatus: 'timed-out',
 		});
 
-		expect(resolution.question).toBeUndefined();
+		expect(resolution.questions).toBeUndefined();
 		expect(resolution.route).toBe('clarify');
 	});
 
@@ -366,7 +366,7 @@ describe('trialPasses', () => {
 
 	it('grades the route after an answer against the after routes only', () => {
 		const openCase = routingCase('clarify', ['clarify:open'], ['agent']);
-		const answered = (route: RouteResolution) => ({ ...route, question: clarify('none') });
+		const answered = (route: RouteResolution) => ({ ...route, questions: [clarify('none')] });
 
 		expect(trialPasses(openCase, answered({ route: 'agent', evidence: 'build-agent' }))).toBe(true);
 		expect(trialPasses(openCase, answered({ route: 'workflow', evidence: 'build' }))).toBe(false);
@@ -380,7 +380,9 @@ describe('canReplyTo', () => {
 		const agentCase = routingCase('agent', ['agent', 'clarify:agent'], ['agent']);
 
 		expect(canReplyTo(agentCase, clarify('agent'))).toBe(true);
-		expect(canReplyTo(agentCase, { ...clarify('agent'), question: clarify('agent') })).toBe(true);
+		expect(canReplyTo(agentCase, { ...clarify('agent'), questions: [clarify('agent')] })).toBe(
+			true,
+		);
 		expect(canReplyTo(agentCase, clarify('workflow'))).toBe(false);
 		expect(canReplyTo(agentCase, { route: 'agent', evidence: 'build-agent' })).toBe(false);
 	});
@@ -388,13 +390,13 @@ describe('canReplyTo', () => {
 
 describe('routeLabel', () => {
 	it('shows the answered question before the route', () => {
-		expect(routeLabel({ route: 'agent', evidence: 'x', question: clarify('both') })).toBe(
+		expect(routeLabel({ route: 'agent', evidence: 'x', questions: [clarify('both')] })).toBe(
 			'clarify:both>agent',
 		);
 	});
 
 	it('shows a question from an earlier turn first', () => {
-		const route = { route: 'agent' as const, evidence: 'x', question: clarify('agent') };
+		const route = { route: 'agent' as const, evidence: 'x', questions: [clarify('agent')] };
 
 		expect(routeLabel(afterQuestion(route, clarify('none')))).toBe(
 			'clarify:none>clarify:agent>agent',

@@ -72,6 +72,9 @@ export interface StubServiceHandle {
 	capturedWorkflows: WorkflowJSON[];
 }
 
+/** The user of the stub instance, unless a caller sets one. */
+export const STUB_USER_ID = 'eval-user';
+
 export interface CreateStubServicesOptions {
 	/**
 	 * Absolute path to the nodes.json file produced by
@@ -154,7 +157,8 @@ export async function createStubServices(
 		return { summary, result };
 	});
 	const priorRunResult = (executionId: string) =>
-		priorRuns.find((run) => run.summary.id === executionId)?.result;
+		priorRuns.find((run) => run.summary.id === executionId)?.result ??
+		stubExecutionResult('stub: execution disabled in eval');
 	const seededTables = (options.seed?.dataTables ?? []).map((table) => ({
 		id: table.id,
 		name: table.name,
@@ -175,6 +179,16 @@ export async function createStubServices(
 	});
 	const seededCredential = (credentialId: string) =>
 		seededCredentials.find((credential) => credential.summary.id === credentialId);
+
+	// A seeded workflow, else the last captured build.
+	const latestJson = (workflowId: string): WorkflowJSON =>
+		seededWorkflows.get(workflowId)?.json ??
+		capturedWorkflows[capturedWorkflows.length - 1] ?? {
+			id: workflowId,
+			name: 'empty',
+			nodes: [],
+			connections: {},
+		};
 
 	const workflowService: InstanceAiWorkflowService = {
 		async list(options) {
@@ -212,9 +226,7 @@ export async function createStubServices(
 			return { ...emptyWorkflowDetail(workflowId), activeVersionId };
 		},
 		async getAsWorkflowJSON(workflowId: string) {
-			const latest =
-				seededWorkflows.get(workflowId)?.json ?? capturedWorkflows[capturedWorkflows.length - 1];
-			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
+			return latestJson(workflowId);
 		},
 		async getWorkflowHead(workflowId: string) {
 			const seeded = seededWorkflows.get(workflowId);
@@ -225,10 +237,8 @@ export async function createStubServices(
 			};
 		},
 		async getWorkflowSnapshot(workflowId: string) {
-			const latest =
-				seededWorkflows.get(workflowId)?.json ?? capturedWorkflows[capturedWorkflows.length - 1];
 			return {
-				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
+				json: latestJson(workflowId),
 				versionId: EVAL_WORKFLOW_VERSION_ID,
 				updatedAt: 0,
 			};
@@ -393,17 +403,17 @@ export async function createStubServices(
 			};
 		},
 		async getStatus(executionId: string) {
-			return priorRunResult(executionId) ?? stubExecutionResult('stub: execution disabled in eval');
+			return priorRunResult(executionId);
 		},
 		async getResult(executionId: string) {
-			return priorRunResult(executionId) ?? stubExecutionResult('stub: execution disabled in eval');
+			return priorRunResult(executionId);
 		},
 		async stop() {
 			return { success: false, message: 'stub: execution disabled in eval' };
 		},
 		async getDebugInfo(executionId: string) {
 			return {
-				...(priorRunResult(executionId) ?? stubExecutionResult('stub: execution disabled in eval')),
+				...priorRunResult(executionId),
 				nodeTrace: [],
 			};
 		},
@@ -486,7 +496,7 @@ export async function createStubServices(
 	};
 
 	const context: InstanceAiContext = {
-		userId: options.userId ?? 'eval-user',
+		userId: options.userId ?? STUB_USER_ID,
 		logger: { info() {}, warn() {}, error() {}, debug() {} },
 		workflowService,
 		executionService,

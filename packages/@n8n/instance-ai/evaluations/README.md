@@ -605,7 +605,7 @@ before the turn:
 ```json
 {
 	"complexity": "simple",
-	"tags": ["routing", "bucket:debug", "accepts:debug"],
+	"tags": ["routing", "bucket:debug"],
 	"seed": {
 		"mode": "inline",
 		"workflows": [{ "id": "wf-1", "name": "Sync orders", "nodes": [], "connections": {} }],

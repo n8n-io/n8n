@@ -56,31 +56,30 @@ export interface RouteResolution {
 	judgeReason?: string;
 	/** Set when a judge call in the trial failed. */
 	judgeError?: string;
-	/** The last question that the user proxy answered before this route. It holds the questions before it. */
-	question?: RouteResolution;
+	/** The questions that the user proxy answered before this route, in order. */
+	questions?: RouteResolution[];
 }
 
 /** The user proxy answers at most this many questions in a trial. */
 export const MAX_ANSWERS = 2;
 
-/** `resolution` with `earlier` as the first answered question of its chain. */
+/** `resolution` after `earlier`, a question that the user answered in an earlier turn. */
 export function afterQuestion(
 	resolution: RouteResolution,
-	earlier: RouteResolution,
+	{ questions = [], ...earlier }: RouteResolution,
 ): RouteResolution {
 	// The summary counts only top-level judge errors, so the errors of earlier turns move up.
 	const judgeError = resolution.judgeError ?? earlier.judgeError;
 	return {
 		...resolution,
 		...(judgeError && { judgeError }),
-		question: resolution.question ? afterQuestion(resolution.question, earlier) : earlier,
+		questions: [...questions, earlier, ...(resolution.questions ?? [])],
 	};
 }
 
 /** The number of questions that the user answered before the route. */
-export function answeredQuestions(resolution: RouteResolution): number {
-	return resolution.question ? 1 + answeredQuestions(resolution.question) : 0;
-}
+export const answeredQuestions = (resolution: RouteResolution): number =>
+	resolution.questions?.length ?? 0;
 
 const countAnswers = (steps: TraceStep[]) => steps.filter((step) => step.kind === 'answer').length;
 
@@ -201,7 +200,7 @@ export function createRouteWatcher(
 			// A question counts only when the user's answer reached the run.
 			const answered = questions.slice(0, countAnswers(steps));
 			const withQuestion = (resolution: RouteResolution): RouteResolution =>
-				withError(answered.reduceRight(afterQuestion, resolution));
+				withError(answered.length > 0 ? { ...resolution, questions: answered } : resolution);
 			if (stopped) return withQuestion(stopped);
 			const evidence = `end of turn (${streamStatus})`;
 			const verdict = await ask({ steps, endStatus: streamStatus });
@@ -216,11 +215,13 @@ export function createRouteWatcher(
 	};
 }
 
-/** Short label for output: the route, with the steer for `clarify` and `answer`, after the answered question. */
+/** Short label for output: the route, with the steer for `clarify` and `answer`, after the answered questions. */
 export function routeLabel(resolution: RouteResolution): string {
-	const { route, steer } = resolution;
-	const label = route === 'clarify' || route === 'answer' ? `${route}:${steer ?? 'none'}` : route;
-	return resolution.question ? `${routeLabel(resolution.question)}>${label}` : label;
+	return [...(resolution.questions ?? []), resolution]
+		.map(({ route, steer }) =>
+			route === 'clarify' || route === 'answer' ? `${route}:${steer ?? 'none'}` : route,
+		)
+		.join('>');
 }
 
 // `<route>:agent` passes a steer toward an Agent; `<route>:open` passes any steer except workflow only.
@@ -242,7 +243,7 @@ export function canReplyTo(routingCase: RoutingCase, question: RouteResolution):
 
 export function trialPasses(routingCase: RoutingCase, resolution: RouteResolution): boolean {
 	// After an answer, only the route that the user's facts point to passes, or a further question that steers to it.
-	if (resolution.question) {
+	if (answeredQuestions(resolution) > 0) {
 		const { route, steer } = resolution;
 		return routingCase.after.some(
 			(after) => after === route || (route === 'clarify' && after === steer),
