@@ -1680,6 +1680,9 @@ export interface InstanceAiContext {
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
+	/** The engine-v2 module is on. New workflows get `settings.engineType = 'v2'`
+	 *  and the prompt lists what engine v2 does not support. */
+	engineV2Enabled?: boolean;
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */

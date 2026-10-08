@@ -171,6 +171,23 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
+	describe('findOneUnscoped', () => {
+		it('reads the execution without a workflow scope', async () => {
+			const execution = await reader.findOneUnscoped(EXECUTION_ID);
+
+			expect(execution?.id).toBe(EXECUTION_ID);
+			expect(execution?.workflowId).toBe(WORKFLOW_ID);
+			expect(execution?.status).toBe('success');
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: true });
+		});
+
+		it('reports a miss when the data plane has no such execution', async () => {
+			dataPlane.getExecution.mockResolvedValue(undefined);
+
+			await expect(reader.findOneUnscoped(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+	});
+
 	describe('findOne', () => {
 		it('should map the snapshot onto an execution response', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);

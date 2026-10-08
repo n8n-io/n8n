@@ -6,7 +6,6 @@
  *
  * Lives in its own module to keep `instance-ai.adapter.service.ts` focused.
  */
-import { Container } from '@n8n/di';
 import {
 	wrapUntrustedData,
 	type EmptyExpressionResolution,
@@ -26,9 +25,9 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-
 import type { NodeTypes } from '@/node-types';
+
+import { loadInstanceAiExecution } from './instance-ai-execution-load';
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter
@@ -234,10 +233,7 @@ export async function extractResolvedNodeParameters(
 	nodeName: string,
 	options?: { itemIndex?: number; runIndex?: number },
 ): Promise<ResolvedNodeParametersResult> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
+	const execution = await loadInstanceAiExecution(executionId);
 
 	if (!execution) {
 		throw new Error(`Execution ${executionId} not found`);

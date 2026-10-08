@@ -6,7 +6,10 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowEditorLockedError,
 		FolderResolutionError,
 	} = await import('@n8n/instance-ai/errors');
+	const { isNodeTypeSupportedOnEngineV2 } =
+		await vi.importActual<typeof import('@n8n/instance-ai')>('@n8n/instance-ai');
 	return {
+		isNodeTypeSupportedOnEngineV2,
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
@@ -45,6 +48,8 @@ vi.mock('@n8n/ai-utilities', () => ({
 import type { PolicyCleared } from '@n8n/decorators';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 import { Expression, NodeConnectionTypes } from 'n8n-workflow';
@@ -1850,6 +1855,7 @@ function createNodeAdapterServiceForTests(
 		credentialsService?: Record<string, unknown>;
 		credentialsFinderService?: Record<string, unknown>;
 		executeNodeService?: Record<string, unknown>;
+		engineV2Available?: boolean;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1930,6 +1936,11 @@ function createNodeAdapterServiceForTests(
 		options?.executeNodeService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[43],
+		undefined,
+		undefined,
+		{
+			isAvailable: vi.fn().mockReturnValue(options?.engineV2Available ?? false),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[46],
 	);
 
 	(
@@ -2454,6 +2465,77 @@ function createDataTableAdapterForTests(overrides?: {
 	};
 }
 
+describe('createNodeAdapter — engine v2', () => {
+	const nodes = [
+		{
+			name: 'n8n-nodes-base.set',
+			displayName: 'Edit Fields',
+			description: 'Set values',
+			group: ['input'],
+			version: 3,
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+		},
+		{
+			name: 'n8n-nodes-base.code',
+			displayName: 'Code',
+			description: 'Run custom code',
+			group: ['transform'],
+			version: 2,
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+		},
+		{
+			name: '@n8n/n8n-nodes-langchain.agent',
+			displayName: 'AI Agent',
+			description: 'Agent',
+			group: ['transform'],
+			version: 2,
+			inputs: ['main', { type: 'ai_languageModel', required: true }],
+			outputs: ['main'],
+			properties: [],
+		},
+	];
+
+	beforeEach(() => {
+		vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('leaves nodes engine v2 cannot run out of discovery when the module is on', async () => {
+		const { nodeService } = createNodeAdapterServiceForTests(nodes, { engineV2Available: true });
+
+		const searchable = await nodeService.listSearchable();
+		const available = await nodeService.listAvailable();
+
+		expect(searchable.map((n) => n.name)).toEqual(['n8n-nodes-base.set']);
+		expect(available.map((n) => n.name)).toEqual(['n8n-nodes-base.set']);
+	});
+
+	it('says why a node is unavailable on engine v2 when looked up by name', async () => {
+		const { nodeService } = createNodeAdapterServiceForTests(nodes, { engineV2Available: true });
+
+		const description = await nodeService.getDescription('n8n-nodes-base.code');
+
+		expect(description.unavailable).toMatch(/engine v2/);
+		expect((await nodeService.getDescription('n8n-nodes-base.set')).unavailable).toBeUndefined();
+	});
+
+	it('keeps every node when the module is off', async () => {
+		const { nodeService } = createNodeAdapterServiceForTests(nodes);
+
+		const available = await nodeService.listAvailable();
+
+		expect(available.map((n) => n.name)).toEqual(nodes.map((n) => n.name));
+		expect((await nodeService.getDescription('n8n-nodes-base.code')).unavailable).toBeUndefined();
+	});
+});
+
 describe('createDataTableAdapter', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -2645,6 +2727,8 @@ function createWorkflowAdapterForTests(overrides?: {
 	allowSendingParameterValues?: boolean;
 	// The effective value for the run, passed to `createContext`. Overrides the env value.
 	runAllowSendingParameterValues?: boolean;
+	// Mirrors the engine-v2 module being on: the data plane proxy reports a provider.
+	engineV2Available?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2809,7 +2893,25 @@ function createWorkflowAdapterForTests(overrides?: {
 		{
 			isTeamProjectsLicensed: vi.fn().mockReturnValue(overrides?.teamProjectsLicensed ?? true),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[44],
+		undefined,
+		{
+			isAvailable: vi.fn().mockReturnValue(overrides?.engineV2Available ?? false),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[46],
 	);
+
+	// The engine v2 save check reads node descriptions; the harness has no static cache dir.
+	(
+		service as unknown as {
+			nodesCache: { promise: Promise<Array<Record<string, unknown>>>; expiresAt: number };
+		}
+	).nodesCache = {
+		promise: Promise.resolve([
+			{ name: 'n8n-nodes-base.manualTrigger', inputs: [], outputs: ['main'] },
+			{ name: 'n8n-nodes-base.set', inputs: ['main'], outputs: ['main'] },
+			{ name: 'n8n-nodes-base.code', inputs: ['main'], outputs: ['main'] },
+		]),
+		expiresAt: Date.now() + 60_000,
+	};
 
 	const boundProjectId =
 		overrides && 'projectId' in overrides ? (overrides.projectId ?? undefined) : 'team-project-id';
@@ -4114,6 +4216,95 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('defaults engineType to v2 on create when the engine-v2 module is on', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+			engineV2Available: true,
+		});
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v2' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('keeps an explicit engineType from the SDK workflow when the engine-v2 module is on', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+			engineV2Available: true,
+		});
+
+		await adapter.createFromWorkflowJSON({
+			...minimalWorkflowJSON,
+			settings: { engineType: 'v1' },
+		} as unknown as WorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v1' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('rejects a workflow engine v2 cannot run instead of saving it', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+			engineV2Available: true,
+		});
+		const withCode = {
+			...minimalWorkflowJSON,
+			nodes: [
+				...minimalWorkflowJSON.nodes,
+				{
+					id: 'code',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+		} as unknown as WorkflowJSON;
+
+		await expect(adapter.createFromWorkflowJSON(withCode)).rejects.toThrow(/"Code"/);
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-existing', {
+				...withCode,
+				settings: { engineType: 'v2' },
+			} as unknown as WorkflowJSON),
+		).rejects.toThrow(/"Code"/);
+		expect(mockWorkflowService.update).not.toHaveBeenCalled();
+	});
+
+	it('saves a workflow with a Code node when the module is off', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON({
+			...minimalWorkflowJSON,
+			nodes: [
+				{
+					id: 'code',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		} as unknown as WorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalled();
+	});
+
+	it('exposes the engine v2 flag on the context when the module is on', () => {
+		expect(createWorkflowAdapterForTests({ engineV2Available: true }).context.engineV2Enabled).toBe(
+			true,
+		);
+		expect(createWorkflowAdapterForTests().context.engineV2Enabled).toBe(false);
+	});
+
 	it('keeps an explicit executionOrder from the SDK workflow', async () => {
 		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
 
@@ -4799,10 +4990,23 @@ describe('license-gated features', () => {
 // createExecutionAdapter – access control query
 // ---------------------------------------------------------------------------
 
-function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }) {
+function createExecutionAdapterForTests(overrides?: {
+	sharingEnabled?: boolean;
+	engineV2Available?: boolean;
+}) {
 	const mockExecutionRepository = {
 		findManyByRangeQuery: vi.fn().mockResolvedValue([]),
 	};
+	const mockExecutionListService = {
+		findPageWithCount: vi
+			.fn()
+			.mockResolvedValue({ results: [], nextCursor: null, count: 0, estimated: false }),
+	};
+	// Only the merged list is stubbed; every other token resolves as it does in production.
+	const realGet = Container.get.bind(Container);
+	vi.spyOn(Container, 'get').mockImplementation((token: unknown) =>
+		token === ExecutionListService ? mockExecutionListService : realGet(token as never),
+	);
 
 	const mockRoleService = {
 		rolesWithScope: vi.fn().mockImplementation(async (namespace: string) => {
@@ -4869,6 +5073,19 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		{
+			isAvailable: vi.fn().mockReturnValue(overrides?.engineV2Available ?? false),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[46],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -4876,6 +5093,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 	return {
 		adapter,
 		mockExecutionRepository,
+		mockExecutionListService,
 		mockRoleService,
 		mockLicense,
 		mockUser,
@@ -4918,6 +5136,55 @@ describe('createExecutionAdapter', () => {
 
 		const query = mockExecutionRepository.findManyByRangeQuery.mock.calls[0][0];
 		expect(query).not.toHaveProperty('accessibleWorkflowIds');
+	});
+
+	it('lists executions from both engines when the engine-v2 module is on', async () => {
+		const { adapter, mockExecutionRepository, mockExecutionListService, mockUser } =
+			createExecutionAdapterForTests({ engineV2Available: true });
+		mockExecutionListService.findPageWithCount.mockResolvedValue({
+			results: [
+				{
+					id: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa',
+					workflowId: 'wf-1',
+					workflowName: 'v2 workflow',
+					status: 'success',
+					mode: 'manual',
+					startedAt: new Date('2026-10-07T10:00:00Z'),
+					stoppedAt: new Date('2026-10-07T10:00:05Z'),
+				},
+				{
+					id: '42',
+					workflowId: 'wf-1',
+					workflowName: 'v2 workflow',
+					status: 'error',
+					mode: 'webhook',
+					startedAt: new Date('2026-10-07T09:00:00Z'),
+				},
+			],
+			nextCursor: null,
+			count: 2,
+			estimated: false,
+		});
+
+		const listed = await adapter.list({ workflowId: 'wf-1', status: 'success', limit: 5 });
+
+		expect(listed.map((e) => e.id)).toEqual(['01a038ae-c4a8-7799-8a3e-e3c2ca055cfa', '42']);
+		expect(listed[0]).toMatchObject({
+			workflowName: 'v2 workflow',
+			status: 'success',
+			mode: 'manual',
+			workflowVersionId: null,
+		});
+		expect(mockExecutionListService.findPageWithCount).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: mockUser,
+				workflowId: 'wf-1',
+				status: ['success'],
+				range: { limit: 5 },
+				sharingOptions: expect.objectContaining({ scopes: ['workflow:read'] }),
+			}),
+		);
+		expect(mockExecutionRepository.findManyByRangeQuery).not.toHaveBeenCalled();
 	});
 });
 
@@ -5082,6 +5349,8 @@ function createRunAdapterForTests(
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
 		nodeTypes?: NodeTypes;
+		/** The id the runner answers with; a UUID stands for an engine v2 run. */
+		executionId?: string;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -5089,7 +5358,16 @@ function createRunAdapterForTests(
 	};
 
 	const mockWorkflowRunner = {
-		run: vi.fn().mockResolvedValue('exec-1'),
+		run: vi.fn().mockResolvedValue(options?.executionId ?? 'exec-1'),
+	};
+
+	const mockEngineDataPlane = {
+		isAvailable: vi.fn().mockReturnValue(true),
+		getExecution: vi.fn().mockResolvedValue({ status: 'completed' }),
+		cancelExecution: vi.fn().mockResolvedValue({ outcome: 'cancelled' }),
+	};
+	const mockEngineV2ExecutionReader = {
+		findOneUnscoped: vi.fn().mockResolvedValue(options?.execution),
 	};
 
 	const mockActiveExecutions = {
@@ -5105,7 +5383,9 @@ function createRunAdapterForTests(
 	};
 	const mockExecutionPersistence = mock<ExecutionPersistence>();
 	mockExecutionPersistence.findSingleExecution.mockResolvedValue(options?.execution as never);
-	vi.spyOn(Container, 'get').mockReturnValue(mockExecutionPersistence);
+	vi.spyOn(Container, 'get').mockImplementation((token: unknown) =>
+		token === EngineV2ExecutionReader ? mockEngineV2ExecutionReader : mockExecutionPersistence,
+	);
 	const mockWorkflowHistoryService = { getVersion: vi.fn() };
 	const mockTelemetry = { track: vi.fn() };
 
@@ -5172,6 +5452,17 @@ function createRunAdapterForTests(
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		mockEngineDataPlane as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[46],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -5179,6 +5470,8 @@ function createRunAdapterForTests(
 	return {
 		adapter,
 		mockActiveExecutions,
+		mockEngineDataPlane,
+		mockEngineV2ExecutionReader,
 		mockExecutionPersistence,
 		mockTelemetry,
 		mockWorkflowRunner,
@@ -5934,6 +6227,109 @@ function createAdapterWithGatewayMock(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
 }
+
+describe('createExecutionAdapter on engine v2', () => {
+	const V2_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+	const v2Workflow = {
+		id: 'wf-1',
+		settings: { engineType: 'v2' },
+		nodes: [
+			{
+				id: 'n1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				position: [0, 0],
+			},
+		],
+		connections: {},
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('does not name start nodes for a v2 workflow, which the dispatcher refuses', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(v2Workflow, {
+			executionId: V2_ID,
+			execution: makeExecution({ status: 'success' }),
+		});
+
+		await adapter.run('wf-1', { body: { name: 'Ada' } });
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.startNodes).toBeUndefined();
+		expect(runData.triggerToStartFrom).toEqual({ name: 'Webhook' });
+		expect(runData.pinData?.Webhook).toBeDefined();
+	});
+
+	it('still names start nodes for a v1 workflow', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ ...v2Workflow, settings: {} },
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		await adapter.run('wf-1', { body: { name: 'Ada' } });
+
+		expect(mockWorkflowRunner.run.mock.calls[0][0].startNodes).toEqual([
+			{ name: 'Webhook', sourceData: null },
+		]);
+	});
+
+	it('waits on the data plane and reads the result from it', async () => {
+		const {
+			adapter,
+			mockActiveExecutions,
+			mockEngineDataPlane,
+			mockEngineV2ExecutionReader,
+			mockExecutionPersistence,
+		} = createRunAdapterForTests(v2Workflow, {
+			executionId: V2_ID,
+			execution: makeExecution({ status: 'success', runData: { Webhook: [makeTaskData([{}])] } }),
+		});
+		mockEngineDataPlane.getExecution
+			.mockResolvedValueOnce({ status: 'running' })
+			.mockResolvedValueOnce({ status: 'completed' });
+
+		const result = await adapter.run('wf-1', { body: {} }, { verificationPinData: { Set: [{}] } });
+
+		expect(result).toMatchObject({ executionId: V2_ID, status: 'success' });
+		expect(mockEngineDataPlane.getExecution).toHaveBeenCalledTimes(2);
+		expect(mockEngineV2ExecutionReader.findOneUnscoped).toHaveBeenCalledWith(V2_ID);
+		expect(mockActiveExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+		// No control-plane row: neither the result read nor the pin pruning may go there.
+		expect(mockExecutionPersistence.findSingleExecution).not.toHaveBeenCalled();
+	});
+
+	it('reports a v2 run that timed out as an error after cancelling it', async () => {
+		const { adapter, mockEngineDataPlane } = createRunAdapterForTests(v2Workflow, {
+			executionId: V2_ID,
+			execution: makeExecution({ status: 'success' }),
+		});
+		mockEngineDataPlane.getExecution.mockResolvedValue({ status: 'running' });
+
+		const result = await adapter.run('wf-1', undefined, { timeout: 1 });
+
+		expect(result).toMatchObject({ executionId: V2_ID, status: 'error' });
+		expect(mockEngineDataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+	});
+
+	it('checks access, reads status and results, and stops a v2 execution through the data plane', async () => {
+		const { adapter, mockEngineDataPlane, mockExecutionPersistence, mockActiveExecutions } =
+			createRunAdapterForTests(v2Workflow, {
+				executionId: V2_ID,
+				execution: makeExecution({ status: 'running' }),
+			});
+		mockEngineDataPlane.getExecution.mockResolvedValue({ status: 'running' });
+
+		await expect(adapter.getStatus(V2_ID)).resolves.toMatchObject({ status: 'running' });
+		await expect(adapter.stop(V2_ID)).resolves.toMatchObject({ success: true });
+
+		expect(mockEngineDataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+		expect(mockActiveExecutions.stopExecution).not.toHaveBeenCalled();
+		expect(mockExecutionPersistence.findSingleExecution).not.toHaveBeenCalled();
+	});
+});
 
 describe('createContext activity gate', () => {
 	const user = mock<User>({ id: 'user-1' });

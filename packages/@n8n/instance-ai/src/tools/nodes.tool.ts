@@ -22,6 +22,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { isNodeTypeSupportedOnEngineV2 } from '../engine-v2/node-support';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
@@ -441,8 +442,13 @@ async function handleSuggested(
 	for (const cat of input.categories) {
 		const data = suggestedNodesData[cat];
 		if (data) {
+			// A suggestion the engine cannot run would only steer the build into a
+			// failed save, so it is left out rather than annotated.
+			const candidates = context.engineV2Enabled
+				? data.nodes.filter((node) => isNodeTypeSupportedOnEngineV2(node))
+				: data.nodes;
 			const suggestedNodes = await Promise.all(
-				data.nodes.map(async (node) => await enrichWithSetupPreference(context, node)),
+				candidates.map(async (node) => await enrichWithSetupPreference(context, node)),
 			);
 			results.push({
 				category: cat,

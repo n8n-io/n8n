@@ -472,6 +472,41 @@ describe('nodes tool', () => {
 		});
 	});
 
+	describe('suggested action on engine v2', () => {
+		it('drops nodes engine v2 cannot run from the suggestions', async () => {
+			const context = createMockContext({ engineV2Enabled: true });
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('not needed'));
+			const tool = createNodesTool(context, 'full');
+
+			const result = await executeTool<{
+				results: Array<{ suggestedNodes: Array<{ name: string }> }>;
+			}>(
+				tool,
+				{ action: 'suggested', categories: ['chatbot', 'data_extraction'] } as never,
+				{} as never,
+			);
+
+			const names = result.results.flatMap((r) => r.suggestedNodes.map((n) => n.name));
+			expect(names).not.toContain('n8n-nodes-base.code');
+			expect(names).not.toContain('@n8n/n8n-nodes-langchain.agent');
+			expect(names).toContain('n8n-nodes-base.slack');
+		});
+
+		it('keeps every suggestion when engine v2 is off', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('not needed'));
+			const tool = createNodesTool(context, 'full');
+
+			const result = await executeTool<{
+				results: Array<{ suggestedNodes: Array<{ name: string }> }>;
+			}>(tool, { action: 'suggested', categories: ['chatbot'] } as never, {} as never);
+
+			expect(result.results[0].suggestedNodes.map((n) => n.name)).toContain(
+				'@n8n/n8n-nodes-langchain.agent',
+			);
+		});
+	});
+
 	describe('explore-resources action', () => {
 		it('should return error when exploreResources is not available', async () => {
 			const context = createMockContext();
