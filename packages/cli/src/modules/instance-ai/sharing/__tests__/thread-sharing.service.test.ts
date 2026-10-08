@@ -5,12 +5,12 @@ import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentExecutionThread } from '../../../agents/entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadRepository } from '../../../agents/repositories/agent-execution-thread.repository';
 import { ASSISTANT_AGENT_ID } from '../../assistant-turn-options';
 import type { InstanceAiMemoryService } from '../../instance-ai-memory.service';
+import type { SharedCardAccess } from '../shared-card-access';
 import { SharedThreadFields } from '../shared-thread-fields';
 import { SharedThreadPolicy } from '../shared-thread-policy';
 import { ThreadSharingService } from '../thread-sharing.service';
@@ -62,14 +62,16 @@ function setup() {
 	const users = mock<UserRepository>();
 	const memory = mock<InstanceAiMemoryService>();
 	// The real policy and fields, so that these tests cover the rules end to end.
-	const policy = new SharedThreadPolicy(projectService, users, mock<WorkflowFinderService>());
+	const policy = new SharedThreadPolicy(projectService, users, mock<SharedCardAccess>());
 	const fields = new SharedThreadFields(threads, projectService, users);
 	const service = new ThreadSharingService(threads, memory, policy, fields);
 
 	projectService.findProject.mockImplementation(
 		async (id) => [teamProject, personalProject].find((project) => project.id === id) ?? null,
 	);
-	projectService.getProjectScopesForUser.mockResolvedValue(EDITOR);
+	projectService.getProjectRelationForUserAndProject.mockResolvedValue(
+		relation(teamProject, EDITOR),
+	);
 	users.findOneBy.mockResolvedValue(owner);
 	users.findManyByIds.mockResolvedValue([owner]);
 	memory.getThreadInfo.mockImplementation(async (id) => info(id));
@@ -123,10 +125,15 @@ describe('ThreadSharingService', () => {
 		it('refuses an owner who can no longer read the project', async () => {
 			const { service, threads, projectService } = setup();
 			threads.findOneBy.mockResolvedValue(makeThread());
-			projectService.getProjectScopesForUser.mockResolvedValue(['instanceAi:message']);
+			projectService.getProjectRelationForUserAndProject.mockResolvedValue(
+				relation(teamProject, ['instanceAi:message']),
+			);
 
 			await expect(service.share(owner, 'thread-1')).rejects.toThrow(ForbiddenError);
-			expect(projectService.getProjectScopesForUser).toHaveBeenCalledWith(owner, 'project-1');
+			expect(projectService.getProjectRelationForUserAndProject).toHaveBeenCalledWith(
+				'owner-1',
+				'project-1',
+			);
 			expect(threads.shareWithProject).not.toHaveBeenCalled();
 		});
 
@@ -145,7 +152,7 @@ describe('ThreadSharingService', () => {
 
 			await expect(service.share(teammate, 'thread-1')).rejects.toThrow(NotFoundError);
 			// A private thread of another user needs no scope lookup to refuse.
-			expect(projectService.getProjectScopesForUser).not.toHaveBeenCalled();
+			expect(projectService.getProjectRelationForUserAndProject).not.toHaveBeenCalled();
 		});
 
 		it('answers 404 for an unknown thread or a thread without project', async () => {
@@ -167,7 +174,9 @@ describe('ThreadSharingService', () => {
 		])('lets %s read', async (_label, user, thread, scopes) => {
 			const { service, threads, projectService } = setup();
 			threads.findOneBy.mockResolvedValue(thread);
-			projectService.getProjectScopesForUser.mockResolvedValue(scopes);
+			projectService.getProjectRelationForUserAndProject.mockResolvedValue(
+				relation(teamProject, scopes),
+			);
 
 			await expect(service.assertCanRead(user, 'thread-1')).resolves.toBeUndefined();
 		});
@@ -187,7 +196,9 @@ describe('ThreadSharingService', () => {
 		])('answers 404 to a teammate for %s', async (_label, thread, scopes: Scope[]) => {
 			const { service, threads, projectService } = setup();
 			threads.findOneBy.mockResolvedValue(thread);
-			projectService.getProjectScopesForUser.mockResolvedValue(scopes);
+			projectService.getProjectRelationForUserAndProject.mockResolvedValue(
+				relation(teamProject, scopes),
+			);
 
 			await expect(service.assertCanRead(teammate, 'thread-1')).rejects.toThrow(NotFoundError);
 		});

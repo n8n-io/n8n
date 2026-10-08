@@ -53,7 +53,7 @@ const showGroups = computed(() => showStates.value && mode.value === 'power');
 
 // A reload can push the focused chat out of the five that the flat list shows.
 // The groups keep their own focus.
-// disabled
+useKeepRowFocus(useTemplateRef<HTMLElement>('root'));
 
 const openThreadId = computed(() => {
 	const threadId = route.name === INSTANCE_AI_THREAD_VIEW ? route.params.threadId : undefined;
