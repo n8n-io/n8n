@@ -15,6 +15,7 @@ import { LOCAL_STORAGE_EVALUATIONS_CANVAS_INFO_CARD_DISMISSED } from '@/app/cons
 import { CANNED_METRICS, LLM_JUDGE_METRIC_KEYS } from '../../evaluation.constants';
 import CheckCard from '../WizardSidepanel/CheckCard.vue';
 import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
+import { useProductionChecklistStore } from '@/app/stores/productionChecklist.store';
 
 // Preview cards that scroll in the marquee at the top of the info card. We
 // duplicate the list once so the CSS `translateY(-50%)` loop reads as a
@@ -46,6 +47,7 @@ const locale = useI18n();
 const telemetry = useTelemetry();
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const productionChecklistStore = useProductionChecklistStore();
 const rootStore = useRootStore();
 const aiRootNodes = useAiRootNodes();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
@@ -97,7 +99,11 @@ const shouldRenderModuleQualifies = computed(
 // derived from the focus panel store, so this stays reactive across both
 // the wizard's own open/close actions and direct focus-panel tab switches.
 const isVisible = computed(
-	() => shouldRenderModuleQualifies.value && hasConfigs.value === false && !wizardStore.isOpen,
+	() =>
+		shouldRenderModuleQualifies.value &&
+		hasConfigs.value === false &&
+		!wizardStore.isOpen &&
+		productionChecklistStore.activeWorkflowId !== workflowId.value,
 );
 
 onMounted(() => {
