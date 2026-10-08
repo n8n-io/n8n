@@ -3037,7 +3037,10 @@ export class InstanceAiService {
 		const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
 		// A shared chat leaves out the owner's personal preferences, as it leaves out past chats.
 		const aiPreferencesTurn =
-			aiPreferencesEnabled && !environment.sharedThread && resumeReason === undefined && !isMachineFollowUp
+			aiPreferencesEnabled &&
+			!environment.sharedThread &&
+			resumeReason === undefined &&
+			!isMachineFollowUp
 				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
 				: undefined;
 		const nudge = Container.get(RepeatableWorkNudgeService);

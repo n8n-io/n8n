@@ -21,6 +21,8 @@ import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from '../entities/agent-execution-thread.entity';
+import { AgentThreadEntity } from '../entities/agent-thread.entity';
+import { draftChatMemoryResourceId } from '../utils/agent-memory-scope';
 import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
@@ -421,16 +423,23 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
-	 * Top-level sessions of an agent among `threadIds` that have no owner. A session loses its
-	 * owner when the owner's user row is deleted.
+	 * Top-level sessions of one user with one agent: the sessions that the user owns, and the
+	 * sessions that lost their owner when the user row was deleted (the owner column is set to
+	 * null). The memory threads of those sessions keep the user in their resource id.
 	 */
-	async findWithoutOwnerByIds(agentId: string, threadIds: string[]): Promise<AgentExecutionThread[]> {
-		if (threadIds.length === 0) return [];
-		return await this.findBy({
-			id: In(threadIds),
-			agentId,
-			ownerId: IsNull(),
-			parentThreadId: IsNull(),
+	async findOfUser(agentId: string, userId: string): Promise<AgentExecutionThread[]> {
+		const memoryThreads = await this.manager.find(AgentThreadEntity, {
+			select: { id: true },
+			where: { resourceId: draftChatMemoryResourceId(userId) },
+		});
+		const orphanIds = memoryThreads.map(({ id }) => id);
+		return await this.find({
+			where: [
+				{ agentId, ownerId: userId, parentThreadId: IsNull() },
+				...(orphanIds.length > 0
+					? [{ agentId, id: In(orphanIds), ownerId: IsNull(), parentThreadId: IsNull() }]
+					: []),
+			],
 		});
 	}
 

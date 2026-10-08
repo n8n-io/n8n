@@ -41,14 +41,18 @@ describe('sharedCardRule', () => {
 			['executions', 'run', 'workflow:execute'],
 			['executions', 'run-step', 'workflow:execute'],
 		])('%s %s needs %s on the workflow', (toolName, action, scope) => {
-			expect(sharedCardRule(card(toolName, { action, workflowId: 'wf-1' }), approve, PROJECT)).toEqual(
-				{ scopes: [scope], target: { type: 'workflow', id: 'wf-1' } },
-			);
+			expect(
+				sharedCardRule(card(toolName, { action, workflowId: 'wf-1' }), approve, PROJECT),
+			).toEqual({ scopes: [scope], target: { type: 'workflow', id: 'wf-1' } });
 		});
 
 		it('needs the delete scope on the credential to delete it', () => {
 			expect(
-				sharedCardRule(card('credentials', { action: 'delete', credentialId: 'c-1' }), approve, PROJECT),
+				sharedCardRule(
+					card('credentials', { action: 'delete', credentialId: 'c-1' }),
+					approve,
+					PROJECT,
+				),
 			).toEqual({ scopes: ['credential:delete'], target: { type: 'credential', id: 'c-1' } });
 		});
 
@@ -108,12 +112,20 @@ describe('sharedCardRule', () => {
 
 		it('uses the same rule for a decline as for an approval', () => {
 			expect(
-				sharedCardRule(card('workflows', { action: 'delete', workflowId: 'wf-1' }), decline, PROJECT),
+				sharedCardRule(
+					card('workflows', { action: 'delete', workflowId: 'wf-1' }),
+					decline,
+					PROJECT,
+				),
 			).toEqual({ scopes: ['workflow:delete'], target: { type: 'workflow', id: 'wf-1' } });
 		});
 
 		it('keeps "always allow" possible: the answer scope does not change the rule', () => {
-			const always: InstanceAiConfirmRequest = { kind: 'approval', approved: true, scope: 'session' };
+			const always: InstanceAiConfirmRequest = {
+				kind: 'approval',
+				approved: true,
+				scope: 'session',
+			};
 
 			expect(
 				sharedCardRule(card('executions', { action: 'run', workflowId: 'wf-1' }), always, PROJECT),
@@ -123,7 +135,11 @@ describe('sharedCardRule', () => {
 
 	describe('cards for the owner only', () => {
 		it.each([
-			['publishing, which also publishes sub-workflows', 'workflows', { action: 'publish', workflowId: 'wf-1' }],
+			[
+				'publishing, which also publishes sub-workflows',
+				'workflows',
+				{ action: 'publish', workflowId: 'wf-1' },
+			],
 			['workflow setup', 'workflows', { action: 'setup', workflowId: 'wf-1' }],
 			['a workflow action without a workflow', 'workflows', { action: 'delete' }],
 			['a workflow id that is not text', 'workflows', { action: 'delete', workflowId: 7 }],
@@ -134,8 +150,16 @@ describe('sharedCardRule', () => {
 			['a data-table action without a table', 'data-tables', { action: 'delete' }],
 			['tagging a workflow', 'workspace', { action: 'tag-workflow', workflowId: 'wf-1' }],
 			['moving a workflow', 'workspace', { action: 'move-workflow-to-folder', workflowId: 'wf-1' }],
-			['a test execution cleanup', 'workspace', { action: 'cleanup-test-executions', workflowId: 'wf-1' }],
-			['an action that is an object property name', 'workflows', { action: 'toString', workflowId: 'wf-1' }],
+			[
+				'a test execution cleanup',
+				'workspace',
+				{ action: 'cleanup-test-executions', workflowId: 'wf-1' },
+			],
+			[
+				'an action that is an object property name',
+				'workflows',
+				{ action: 'toString', workflowId: 'wf-1' },
+			],
 			['an action that is not text', 'workflows', { action: ['delete'], workflowId: 'wf-1' }],
 			['a question card', 'ask-user', { questions: [] }],
 			['a plan', 'plan', { tasks: [] }],
@@ -164,12 +188,19 @@ describe('sharedCardRule', () => {
 			['a list card', [approvalCard]],
 		])('%s, whatever the tool action', (_label, payload) => {
 			expect(
-				sharedCardRule(card('workflows', { action: 'delete', workflowId: 'wf-1' }, payload), approve, PROJECT),
+				sharedCardRule(
+					card('workflows', { action: 'delete', workflowId: 'wf-1' }, payload),
+					approve,
+					PROJECT,
+				),
 			).toBeUndefined();
 		});
 
 		it.each<[string, InstanceAiConfirmRequest]>([
-			['an approval with text', { kind: 'approval', approved: true, userInput: 'Use the sales sheet' }],
+			[
+				'an approval with text',
+				{ kind: 'approval', approved: true, userInput: 'Use the sales sheet' },
+			],
 			['a decline with text', { kind: 'approval', approved: false, userInput: 'Change step 2' }],
 			['a capability decision on a yes-or-no card', keep],
 			['a plan denial', { kind: 'planDeny' }],
@@ -181,7 +212,11 @@ describe('sharedCardRule', () => {
 			['a computer resource', { kind: 'resourceDecision', resourceDecision: 'allowOnce' }],
 		])('%s to a yes-or-no card', (_label, answer) => {
 			expect(
-				sharedCardRule(card('workflows', { action: 'delete', workflowId: 'wf-1' }), answer, PROJECT),
+				sharedCardRule(
+					card('workflows', { action: 'delete', workflowId: 'wf-1' }),
+					answer,
+					PROJECT,
+				),
 			).toBeUndefined();
 		});
 
@@ -261,7 +296,11 @@ describe('sharedCardRule', () => {
 
 		it('keeps a proposal without a workflow for the owner', () => {
 			expect(
-				sharedCardRule(card('propose_automation', { title: 'Digest' }, proposalCard), keep, PROJECT),
+				sharedCardRule(
+					card('propose_automation', { title: 'Digest' }, proposalCard),
+					keep,
+					PROJECT,
+				),
 			).toBeUndefined();
 		});
 	});

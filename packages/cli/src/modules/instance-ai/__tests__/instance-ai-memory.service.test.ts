@@ -3,7 +3,6 @@ import { Container } from '@n8n/di';
 
 import { N8nMemory } from '../../agents/integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
-import { AgentThreadRepository } from '../../agents/repositories/agent-thread.repository';
 import { SystemAgentExecutionService } from '../../agents/system-agents/system-agent-execution.service';
 import type { ThreadRunSummary } from '../../agents/repositories/agent-execution.repository';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -32,13 +31,12 @@ const mockThreads = {
 	findVisibleHistoryPage: vi.fn(),
 	findVisibleByAgent: vi.fn(),
 	findOwnedByAgent: vi.fn(),
-	findWithoutOwnerByIds: vi.fn(),
+	findOfUser: vi.fn(),
 	findIdsOwnedByAgent: vi.fn(),
 	findByAgentUpdatedBefore: vi.fn(),
 	delete: vi.fn(),
 	updateOwned: vi.fn(),
 };
-const mockMemoryThreads = { findIdsByResourceId: vi.fn() };
 const mockSystemAgentExecution = { createThread: vi.fn() };
 const mockUserRepository = { findByIdWithRole: vi.fn() };
 /** The two batch reads behind the thread states. The facts service itself is real. */
@@ -59,7 +57,6 @@ mockLogger.scoped.mockReturnValue(mockLogger);
 
 Container.set(N8nMemory, { getImplementation: () => mockAgentMemory } as never);
 Container.set(AgentExecutionThreadRepository, mockThreads as never);
-Container.set(AgentThreadRepository, mockMemoryThreads as never);
 Container.set(SystemAgentExecutionService, mockSystemAgentExecution as never);
 Container.set(UserRepository, mockUserRepository as never);
 
@@ -509,39 +506,17 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 		vi.clearAllMocks();
 	});
 
-	it('deletes every Assistant session the user owns and returns the count', async () => {
-		mockMemoryThreads.findIdsByResourceId.mockResolvedValueOnce([]);
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce([
-			makeSession('a', '2026-01-01T00:00:00.000Z'),
-			makeSession('b', '2026-01-01T00:00:00.000Z'),
-		]);
-		mockThreads.findWithoutOwnerByIds.mockResolvedValueOnce([]);
-
-		const deleted = await createService().deleteThreadsForUser('user-1');
-
-		expect(deleted).toBe(2);
-		expect(mockThreads.findOwnedByAgent).toHaveBeenCalledWith('n8n-assistant', 'user-1');
-		expect(mockDeleteThread).toHaveBeenCalledWith('a');
-		expect(mockDeleteThread).toHaveBeenCalledWith('b');
-	});
-
-	it('finds the sessions that lost their owner through the memory threads of the user', async () => {
-		// The user row is gone, so the sessions of the user have no owner any more.
-		mockMemoryThreads.findIdsByResourceId.mockResolvedValueOnce(['private', 'shared']);
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce([]);
-		mockThreads.findWithoutOwnerByIds.mockResolvedValueOnce([
+	it('deletes every Assistant session of the user, also those without owner, and returns the count', async () => {
+		// The user row is gone, so the sessions of the user can have no owner any more.
+		mockThreads.findOfUser.mockResolvedValueOnce([
 			makeSession('private', '2026-01-01T00:00:00.000Z', null),
-			makeSession('shared', '2026-01-01T00:00:00.000Z', null),
+			makeSession('shared', '2026-01-01T00:00:00.000Z'),
 		]);
 
 		const deleted = await createService().deleteThreadsForUser('user-1');
 
 		expect(deleted).toBe(2);
-		expect(mockMemoryThreads.findIdsByResourceId).toHaveBeenCalledWith('draft-chat:user-1');
-		expect(mockThreads.findWithoutOwnerByIds).toHaveBeenCalledWith('n8n-assistant', [
-			'private',
-			'shared',
-		]);
+		expect(mockThreads.findOfUser).toHaveBeenCalledWith('n8n-assistant', 'user-1');
 		expect(mockDeleteThread).toHaveBeenCalledWith('private');
 		expect(mockDeleteThread).toHaveBeenCalledWith('shared');
 		expect(mockThreads.delete).toHaveBeenCalledWith({ id: 'shared', agentId: 'n8n-assistant' });

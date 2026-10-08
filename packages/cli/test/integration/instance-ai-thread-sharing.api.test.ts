@@ -107,7 +107,7 @@ let proposalWorkflowId = '';
 const runScopes: (string | undefined)[] = [];
 /** The credential that the next delete card is about, and the deletes that ran. */
 let cardCredentialId = '';
-const deletedCredentials: Array<{ by: string; credentialId: string }> = [];
+const deletedCredentials: { by: string; credentialId: string }[] = [];
 /** Context that the next start turn stores in front of the message, as the Assistant does. */
 let storedContext = '';
 

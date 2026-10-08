@@ -91,7 +91,11 @@ const otherAnswer = fc.constantFrom<InstanceAiConfirmRequest>(
 const answer = fc.oneof(approval, decision, otherAnswer);
 
 const card = (toolName: fc.Arbitrary<string>) =>
-	fc.record<SharedCard>({ toolName, input: fc.oneof(input, fc.jsonValue()), suspendPayload: payload });
+	fc.record<SharedCard>({
+		toolName,
+		input: fc.oneof(input, fc.jsonValue()),
+		suspendPayload: payload,
+	});
 const listedCard = card(fc.constantFrom(...LISTED_TOOLS));
 
 describe('shared card rule properties', () => {
@@ -127,10 +131,16 @@ describe('shared card rule properties', () => {
 			.tuple(plainCard, extraField, fc.jsonValue())
 			.map(([plain, field, value]) => ({ ...plain, [field]: value }));
 		fc.assert(
-			fc.property(listedCard, richCard, approval, projectId, (pending, cardPayload, value, project) => {
-				const rule = sharedCardRule({ ...pending, suspendPayload: cardPayload }, value, project);
-				expect(rule).toBeUndefined();
-			}),
+			fc.property(
+				listedCard,
+				richCard,
+				approval,
+				projectId,
+				(pending, cardPayload, value, project) => {
+					const rule = sharedCardRule({ ...pending, suspendPayload: cardPayload }, value, project);
+					expect(rule).toBeUndefined();
+				},
+			),
 		);
 	});
 
@@ -154,11 +164,17 @@ describe('shared card rule properties', () => {
 			projectId: fc.string(),
 		});
 		fc.assert(
-			fc.property(folderInput, plainCard, approval, projectId, (fields, cardPayload, value, project) => {
-				fc.pre(fields.projectId !== project);
-				const pending = { toolName: 'workspace', input: fields, suspendPayload: cardPayload };
-				expect(sharedCardRule(pending, value, project)).toBeUndefined();
-			}),
+			fc.property(
+				folderInput,
+				plainCard,
+				approval,
+				projectId,
+				(fields, cardPayload, value, project) => {
+					fc.pre(fields.projectId !== project);
+					const pending = { toolName: 'workspace', input: fields, suspendPayload: cardPayload };
+					expect(sharedCardRule(pending, value, project)).toBeUndefined();
+				},
+			),
 		);
 	});
 

@@ -116,7 +116,12 @@ describe('SharedThreadPolicy', () => {
 
 		it('refuses a user who is not a member, whatever the global role holds', async () => {
 			const { policy } = setup(null);
-			const admin = makeUser('admin-1', 'Alan', 'Turing', READER.map((slug) => ({ slug })) as never);
+			const admin = makeUser(
+				'admin-1',
+				'Alan',
+				'Turing',
+				READER.map((slug) => ({ slug })) as never,
+			);
 
 			await expect(policy.canRead(admin, shared)).resolves.toBe(false);
 		});
@@ -178,13 +183,14 @@ describe('SharedThreadPolicy', () => {
 		it.each([
 			['a question card', { toolName: 'ask-user', input: {}, suspendPayload: { questions: [] } }],
 			['a web fetch card', { toolName: 'research', input: { url: 'x' }, suspendPayload: card }],
-			[
-				'a sub-agent card',
-				{ toolName: 'build-agent', input: { task: 'x' }, suspendPayload: card },
-			],
+			['a sub-agent card', { toolName: 'build-agent', input: { task: 'x' }, suspendPayload: card }],
 			[
 				'a publish card',
-				{ toolName: 'workflows', input: { action: 'publish', workflowId: 'w' }, suspendPayload: card },
+				{
+					toolName: 'workflows',
+					input: { action: 'publish', workflowId: 'w' },
+					suspendPayload: card,
+				},
 			],
 			[
 				'a setup card of a listed tool',
@@ -236,7 +242,12 @@ describe('SharedThreadPolicy', () => {
 
 		it('refuses a user who is not a member of the project, also with a global role', async () => {
 			const { policy } = setup(null);
-			const admin = makeUser('admin-1', 'Alan', 'Turing', EDITOR.map((slug) => ({ slug })) as never);
+			const admin = makeUser(
+				'admin-1',
+				'Alan',
+				'Turing',
+				EDITOR.map((slug) => ({ slug })) as never,
+			);
 
 			await expect(policy.authorizeAnswer(admin, shared, archiveCall, approve)).rejects.toThrow(
 				'Only editors in Finance can approve this.',
@@ -272,10 +283,7 @@ describe('SharedThreadPolicy', () => {
 		])(
 			'refuses a card about a %s that the teammate cannot change, and names it',
 			async (name, call) => {
-				const { policy, cardAccess } = setup([
-					...EDITOR,
-					'dataTable:delete',
-				] satisfies Scope[]);
+				const { policy, cardAccess } = setup([...EDITOR, 'dataTable:delete'] satisfies Scope[]);
 				cardAccess.canAnswer.mockResolvedValue(false);
 
 				const refusal = policy.authorizeAnswer(teammate, shared, call, approve);
@@ -344,9 +352,9 @@ describe('SharedThreadPolicy', () => {
 		])('refuses an owner who %s in the project', async (_label, scopes) => {
 			const { policy } = setup(scopes);
 
-			await expect(policy.assertCanShare(teammate, makeThread({ ownerId: teammate.id }))).rejects.toThrow(
-				'You need access to this project to share the chat.',
-			);
+			await expect(
+				policy.assertCanShare(teammate, makeThread({ ownerId: teammate.id })),
+			).rejects.toThrow('You need access to this project to share the chat.');
 		});
 
 		it('tells a reader that only the owner shares, and answers 404 to anyone else', async () => {

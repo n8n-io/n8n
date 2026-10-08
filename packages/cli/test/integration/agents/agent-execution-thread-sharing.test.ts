@@ -6,7 +6,9 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { draftChatMemoryResourceId } from '@/modules/agents/utils/agent-memory-scope';
 import { createUser } from '@test-integration/db/users';
 
 /** A shared session keeps its owner: `accessScope 'project'` with an `ownerId`. */
@@ -263,6 +265,58 @@ describe('AgentExecutionThreadRepository with shared sessions', () => {
 
 			expect(page.map(({ id }) => id).sort()).toEqual([shared, own].sort());
 			expect(ownOnly.map(({ id }) => id)).toEqual([own]);
+		});
+	});
+
+	describe('findOfUser', () => {
+		it("finds the user's sessions, also those that lost their owner, and no one else's", async () => {
+			const { project, agent } = await setup();
+			const memoryThreads = Container.get(AgentThreadRepository);
+			const withMemory = async (id: string, userId: string) => {
+				await memoryThreads.save(
+					memoryThreads.create({ id, resourceId: draftChatMemoryResourceId(userId), title: id }),
+				);
+				return id;
+			};
+			const own = await createThread(agent.id, project.id, {
+				accessScope: 'user',
+				ownerId: owner.id,
+			});
+			// The owner column is null after the owner's user row is deleted.
+			const orphaned = await withMemory(
+				await createThread(agent.id, project.id, { accessScope: 'project', ownerId: null }),
+				owner.id,
+			);
+			const otherUsers = await withMemory(
+				await createThread(agent.id, project.id, { accessScope: 'project', ownerId: null }),
+				teammate.id,
+			);
+			const integration = await createThread(agent.id, project.id, {
+				accessScope: 'project',
+				ownerId: null,
+			});
+			const child = await withMemory(
+				await createThread(
+					agent.id,
+					project.id,
+					{ accessScope: 'user', ownerId: null },
+					{ parentThreadId: own },
+				),
+				owner.id,
+			);
+			const otherAgent = await createAgent(project.id);
+			const elsewhere = await withMemory(
+				await createThread(otherAgent.id, project.id, { accessScope: 'user', ownerId: null }),
+				owner.id,
+			);
+
+			const found = (await threads.findOfUser(agent.id, owner.id)).map(({ id }) => id);
+
+			expect(found.sort()).toEqual([own, orphaned].sort());
+			for (const id of [otherUsers, integration, child, elsewhere]) {
+				expect(found).not.toContain(id);
+			}
+			await expect(threads.findOfUser(agent.id, randomUUID())).resolves.toEqual([]);
 		});
 	});
 
