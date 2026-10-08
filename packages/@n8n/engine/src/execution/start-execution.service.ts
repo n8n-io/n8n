@@ -97,13 +97,19 @@ export class StartExecutionService {
 	}
 }
 
-/** The graph as stored: each seeded node marked, so a settlement knows without a lookup. */
+/**
+ * The graph as stored: each seeded node marked, so a settlement knows without
+ * a lookup. The mark comes from `seededSteps` alone. One the caller put on a
+ * node is dropped, or a marked node could exist without outputs behind it, and
+ * the first settlement to reach it would fail the run.
+ */
 function markSeededNodes(graph: WorkflowGraph, seededSteps: SeededSteps): WorkflowGraph {
 	const seeded = new Set(Object.keys(seededSteps));
-	if (seeded.size === 0) return graph;
 	return {
 		...graph,
-		nodes: graph.nodes.map((node) => (seeded.has(node.id) ? { ...node, seeded: true } : node)),
+		nodes: graph.nodes.map(({ seeded: _, ...node }) =>
+			seeded.has(node.id) ? { ...node, seeded: true } : node,
+		),
 	};
 }
 

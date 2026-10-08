@@ -266,6 +266,26 @@ describe('StartExecutionService', () => {
 			expect(queue.publish).not.toHaveBeenCalled();
 		});
 
+		it('marks only the nodes it holds outputs for, dropping a mark the caller sent', async () => {
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeQueue());
+			const marked = {
+				...graph,
+				nodes: graph.nodes.map((node) => (node.id === 'b' ? { ...node, seeded: true } : node)),
+			};
+
+			await service.start({ ...base, graph: marked, seededSteps: { a: [[]] } });
+
+			expect(store.createExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					graph: {
+						...graph,
+						nodes: graph.nodes.map((node) => (node.id === 'a' ? { ...node, seeded: true } : node)),
+					},
+				}),
+			);
+		});
+
 		it.each([
 			{ name: 'no passes', passes: [], reason: /no passes/ },
 			{ name: 'two passes', passes: [[], []], reason: /outside any loop/ },
