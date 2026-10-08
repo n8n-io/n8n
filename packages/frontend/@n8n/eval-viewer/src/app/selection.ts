@@ -1,9 +1,9 @@
 /** The selected page, kept in the URL hash so reload, back and shared links work. */
 import { onBeforeUnmount, ref } from 'vue';
 
-export type CompareTab = 'trace' | 'outcome' | 'transcript' | 'workflow';
+export type CompareTab = 'trace' | 'outcome' | 'transcript' | 'prompt' | 'workflow';
 
-export const COMPARE_TABS: CompareTab[] = ['trace', 'outcome', 'transcript', 'workflow'];
+export const COMPARE_TABS: CompareTab[] = ['trace', 'outcome', 'transcript', 'prompt', 'workflow'];
 
 /** A case page compares two attempts. Unset ids fall back to the typical attempts. */
 export interface CaseSelection {

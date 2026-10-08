@@ -307,10 +307,15 @@ export async function extractArm(
 					hasDebug: debugThread !== undefined,
 					rawDebugId,
 				});
+				const debugRuns = debugThread?.runs ?? [];
 				details.push({
 					id,
 					turns,
 					workflow: buildRows.find((row) => row.outputs.workflowJson)?.outputs.workflowJson ?? null,
+					systemPrompt: debugRuns.map((run) => run.system).find((text) => text !== null) ?? null,
+					tools: debugRuns
+						.flatMap((run) => run.tools)
+						.filter((tool, at, all) => all.findIndex((other) => other.name === tool.name) === at),
 				});
 			});
 		}

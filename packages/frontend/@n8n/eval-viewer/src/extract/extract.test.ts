@@ -24,6 +24,7 @@ const step = (overrides: Partial<ModelStep>): ModelStep => ({
 	finishReason: null,
 	modelId: null,
 	usage: null,
+	reasoning: null,
 	toolCalls: [],
 	...overrides,
 });
@@ -201,19 +202,23 @@ describe('turnsOf and toolStatsOf', () => {
 		runs: [
 			{
 				label: 'first',
+				system: null,
+				tools: [],
 				steps: [
 					step({
 						toolWindowMs: 4000,
 						usage: { input: 100, output: 20, noCache: 0, cacheRead: 0, cacheWrite: 0 },
 						toolCalls: [
-							{ id: 'c1', tool: 'nodes' },
-							{ id: 'c2', tool: 'build-workflow' },
+							{ id: 'c1', tool: 'nodes', skill: null },
+							{ id: 'c2', tool: 'build-workflow', skill: null },
 						],
 					}),
 				],
 			},
 			{
 				label: 'second',
+				system: null,
+				tools: [],
 				steps: [
 					step({ usage: { input: 50, output: 10, noCache: 0, cacheRead: 0, cacheWrite: 0 } }),
 				],

@@ -5,11 +5,17 @@ import { computed, ref, watch } from 'vue';
 import type { TranscriptItem } from '../../schema';
 import { useToolColor } from '../colors';
 import { formatNumber } from '../format';
+import type { Skill } from '../skills';
+import SkillButton from './SkillButton.vue';
 import ValueBlock from './ValueBlock.vue';
 
 type ToolItem = Extract<TranscriptItem, { kind: 'tool' }>;
 
-const props = defineProps<{ item: ToolItem; open: boolean }>();
+const props = defineProps<{
+	item: ToolItem;
+	open: boolean;
+	skill?: { skill: Skill; path: string | null } | null;
+}>();
 const toolColor = useToolColor();
 
 const isOpen = ref(props.open);
@@ -50,6 +56,7 @@ const resultSize = computed(() =>
 			<N8nText v-if="resultSize" size="xsmall" color="text-light">{{ resultSize }}</N8nText>
 		</button>
 		<div v-if="isOpen" :class="$style.body">
+			<SkillButton :target="skill ?? null" />
 			<N8nText size="xsmall" bold color="text-light">INPUT</N8nText>
 			<ValueBlock :value="item.args" />
 			<N8nText size="xsmall" bold color="text-light">OUTPUT</N8nText>

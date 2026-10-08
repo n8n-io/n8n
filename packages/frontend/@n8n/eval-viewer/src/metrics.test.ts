@@ -162,8 +162,8 @@ describe('sharedCaseNames', () => {
 describe('attemptTotals', () => {
 	it('counts passed and built attempts and takes medians per attempt', () => {
 		const totals = attemptTotals([
-			attempt('a', true, { cost: 0.2, wallSeconds: 10 }),
-			attempt('b', false, { cost: 0.4, wallSeconds: 30 }),
+			attempt('a', true, { cost: 0.2, wallSeconds: 10, inputTokens: 900, outputTokens: 100 }),
+			attempt('b', false, { cost: 0.4, wallSeconds: 30, inputTokens: 2800, outputTokens: 200 }),
 			attempt('c', false, null, { built: false }),
 		]);
 		expect(totals).toEqual({
@@ -172,6 +172,7 @@ describe('attemptTotals', () => {
 			built: 2,
 			medianCost: expect.closeTo(0.3),
 			medianTime: 20,
+			medianTokens: 2000,
 		});
 	});
 });

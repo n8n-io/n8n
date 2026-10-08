@@ -27,7 +27,15 @@ import {
 import type { ViewerIndex } from '../../schema';
 import { armColorVar } from '../colors';
 import { comparisonRows } from '../comparison';
-import { directionColor, formatCost, formatNumber, formatSeconds, formatSigned } from '../format';
+import {
+	directionColor,
+	formatCost,
+	formatNumber,
+	formatRate,
+	formatSeconds,
+	formatSigned,
+	formatTokens,
+} from '../format';
 import type { Selection } from '../selection';
 import ArmMetricsTable from './ArmMetricsTable.vue';
 import PageHeader from './PageHeader.vue';
@@ -51,62 +59,63 @@ const rows = computed(() =>
 	),
 );
 
-/** Pass rate, cost and time of `value` against `base`, each beyond its noise floor. */
+const passRate = (totals: AttemptTotals) => ratio(totals.passed, totals.attempts);
+
+/** Pass rate, cost, time and tokens of `value` against `base`, each beyond its noise floor. */
 function trends(base: AttemptTotals | null, value: AttemptTotals | null) {
-	if (!base || !value) return { pass: NO_TREND, cost: NO_TREND, time: NO_TREND };
-	const rate = (totals: AttemptTotals) => ratio(totals.passed, totals.attempts);
+	if (!base || !value) return { pass: NO_TREND, cost: NO_TREND, time: NO_TREND, tokens: NO_TREND };
 	const relative = (baseValue: number | null) => Math.abs(baseValue ?? 0) * RELATIVE_NOISE;
 	return {
-		pass: trend(rate(base), rate(value), true, rateNoise(base.attempts, value.attempts)),
+		pass: trend(passRate(base), passRate(value), true, rateNoise(base.attempts, value.attempts)),
 		cost: trend(base.medianCost, value.medianCost, false, relative(base.medianCost)),
 		time: trend(base.medianTime, value.medianTime, false, relative(base.medianTime)),
+		tokens: trend(base.medianTokens, value.medianTokens, false, relative(base.medianTokens)),
 	};
 }
 
+const relativeChange = (base: number | null, value: number | null) =>
+	base === null || value === null || base === 0 ? null : ((value - base) / base) * 100;
+const signedPercent = (percent: number | null) =>
+	formatSigned(percent, (value) => `${formatNumber(value)}%`);
+
 const sharedCases = computed(() => sharedCaseNames(props.index.arms));
-const unsharedCases = computed(() =>
-	caseNamesOf(props.index.arms).filter((caseName) => !sharedCases.value.includes(caseName)),
-);
 
-const scopeNote = computed(() =>
-	[
-		`Over the ${sharedCases.value.length} cases that every arm ran.`,
-		unsharedCases.value.length > 0 ? `Left out: ${unsharedCases.value.join(', ')}.` : null,
-		'An attempt passes when every scenario and expectation passes.',
-	]
-		.filter(Boolean)
-		.join(' '),
-);
-
-/** Each arm over the cases every arm ran, against the first arm. */
+/**
+ * Each arm over the cases every arm ran, against the first arm. A pass rate changes in
+ * percentage points; time and tokens change relative to the baseline.
+ */
 const headline = computed(() => {
 	const totals = props.index.arms.map((arm) =>
 		attemptTotals(
 			sharedCases.value.flatMap((caseName) => armCase(arm, caseName)?.iterations ?? []),
 		),
 	);
+	const base = totals[0];
 	return props.index.arms.map((arm, armIndex) => {
 		const own = totals[armIndex];
-		const change = armIndex === 0 ? trends(null, null) : trends(totals[0], own);
-		const passRate = ratio(own.passed, own.attempts);
-		const baseRate = ratio(totals[0].passed, totals[0].attempts);
+		const isBaseline = armIndex === 0;
+		const vsBase = isBaseline ? trends(null, null) : trends(base, own);
+		const ownRate = passRate(own);
+		const baseRate = passRate(base);
 		return {
 			arm,
-			passed: `${own.passed}/${own.attempts}`,
 			cells: [
 				{
-					text:
-						armIndex === 0
-							? 'baseline'
-							: passRate === null || baseRate === null
-								? '–'
-								: formatSigned((passRate - baseRate) * 100, (points) => `${formatNumber(points)}%`),
-					trend: change.pass,
+					text: formatRate(own.passed, own.attempts),
+					change: ownRate === null || baseRate === null ? null : (ownRate - baseRate) * 100,
+					trend: vsBase.pass,
 				},
-				{ text: formatCost(own.medianCost), trend: change.cost },
-				{ text: formatSeconds(own.medianTime), trend: change.time },
-				{ text: `${own.built}/${own.attempts} built`, trend: NO_TREND },
-			],
+				{
+					text: formatSeconds(own.medianTime),
+					change: relativeChange(base.medianTime, own.medianTime),
+					trend: vsBase.time,
+				},
+				{
+					text: formatTokens(own.medianTokens),
+					change: relativeChange(base.medianTokens, own.medianTokens),
+					trend: vsBase.tokens,
+				},
+			].map((cell) => ({ ...cell, change: isBaseline ? null : signedPercent(cell.change) })),
 		};
 	});
 });
@@ -168,17 +177,13 @@ const matrix = computed(() =>
 		</PageHeader>
 
 		<section :class="$style.section">
-			<N8nHeading tag="h2" size="large">Arms</N8nHeading>
-			<N8nText size="small" color="text-light">{{ scopeNote }}</N8nText>
-			<N8nTableBase :class="$style.fit" data-test-id="arm-headline">
+			<N8nTableBase data-test-id="arm-headline">
 				<thead>
 					<tr>
 						<th scope="col">Arm</th>
-						<th scope="col">Attempts passed</th>
-						<th scope="col">Δ vs baseline</th>
-						<th scope="col">Median cost</th>
+						<th scope="col">Correctness</th>
 						<th scope="col">Median time</th>
-						<th scope="col">Builds</th>
+						<th scope="col">Median tokens</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -190,18 +195,18 @@ const matrix = computed(() =>
 							/>
 							<N8nText bold :title="entry.arm.path">{{ entry.arm.name }}</N8nText>
 						</td>
-						<td>
-							<N8nText bold>{{ entry.passed }}</N8nText>
-						</td>
 						<td v-for="(cell, at) in entry.cells" :key="at">
 							<span :class="$style.value">
-								<N8nText :color="directionColor(cell.trend.direction)">{{ cell.text }}</N8nText>
-								<N8nIcon
-									v-if="cell.trend.arrow"
-									:icon="cell.trend.arrow"
-									:color="directionColor(cell.trend.direction)"
-									size="small"
-								/>
+								<N8nText bold>{{ cell.text }}</N8nText>
+								<template v-if="cell.change">
+									<N8nText :color="directionColor(cell.trend.direction)">{{ cell.change }}</N8nText>
+									<N8nIcon
+										v-if="cell.trend.arrow"
+										:icon="cell.trend.arrow"
+										:color="directionColor(cell.trend.direction)"
+										size="small"
+									/>
+								</template>
 							</span>
 						</td>
 					</tr>
@@ -216,7 +221,7 @@ const matrix = computed(() =>
 				at least one attempt, or {{ RELATIVE_NOISE * 100 }}% in cost or time. Regressions come
 				first.
 			</N8nText>
-			<N8nTableBase :class="$style.fit">
+			<N8nTableBase>
 				<thead>
 					<tr>
 						<th scope="col" rowspan="2">Case</th>
@@ -328,11 +333,6 @@ const matrix = computed(() =>
 }
 
 /* Tables take the width of their content, not of the column. */
-.fit {
-	width: fit-content;
-	max-width: 100%;
-}
-
 .value {
 	display: inline-flex;
 	align-items: center;

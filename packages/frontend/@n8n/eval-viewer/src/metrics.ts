@@ -1,5 +1,12 @@
 /** Pure aggregations for the views. Per-build counts and medians come from summary.json as is. */
-import type { Arm, BuildTotals, FirstBuild, IterationSummary, MetricKey } from './schema';
+import type {
+	Arm,
+	BuildTotals,
+	FirstBuild,
+	IterationSummary,
+	MetricKey,
+	TrialMetrics,
+} from './schema';
 
 export interface FirstBuildSummary {
 	builds: number;
@@ -188,6 +195,14 @@ export interface AttemptTotals {
 	built: number;
 	medianCost: number | null;
 	medianTime: number | null;
+	medianTokens: number | null;
+}
+
+/** Input tokens already include the cache reads and writes, so input plus output is the total. */
+function totalTokens(metrics: TrialMetrics | null): number[] {
+	const input = metrics?.inputTokens ?? null;
+	const output = metrics?.outputTokens ?? null;
+	return input === null || output === null ? [] : [input + output];
 }
 
 /** Attempts passed (every scenario and expectation), builds and medians per attempt. */
@@ -198,5 +213,6 @@ export function attemptTotals(iterations: IterationSummary[]): AttemptTotals {
 		built: count(iterations, (iteration) => iteration.built === true),
 		medianCost: median(iterations.flatMap((iteration) => iteration.metrics?.cost ?? [])),
 		medianTime: median(iterations.flatMap((iteration) => iteration.metrics?.wallSeconds ?? [])),
+		medianTokens: median(iterations.flatMap((iteration) => totalTokens(iteration.metrics))),
 	};
 }

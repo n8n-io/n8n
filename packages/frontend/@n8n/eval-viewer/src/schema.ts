@@ -166,7 +166,16 @@ export const modelStepSchema = z.object({
 	finishReason: z.string().nullable(),
 	modelId: z.string().nullable(),
 	usage: usageSchema.nullable(),
-	toolCalls: z.array(z.object({ id: z.string(), tool: z.string() })),
+	/** The thinking summaries of the output, joined. Null when the step did not think. */
+	reasoning: z.string().nullable(),
+	toolCalls: z.array(
+		z.object({
+			id: z.string(),
+			tool: z.string(),
+			/** The skill markdown a `load_skill` call gave the model, from the next step's input. */
+			skill: z.string().nullable(),
+		}),
+	),
 });
 export type ModelStep = z.infer<typeof modelStepSchema>;
 
@@ -192,9 +201,21 @@ export const turnSchema = z.object({
 });
 export type Turn = z.infer<typeof turnSchema>;
 
+/** A tool the model could call, as the run-debug page lists it for a step. */
+export const toolDefinitionSchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	inputSchema: z.unknown(),
+});
+export type ToolDefinition = z.infer<typeof toolDefinitionSchema>;
+
 export const iterationDetailSchema = z.object({
 	id: z.string(),
 	turns: z.array(turnSchema),
 	workflow: z.unknown(),
+	/** The system prompt of the first model step. Null when the run-debug page has no step. */
+	systemPrompt: z.string().nullable(),
+	/** Every tool offered in any step, first definition per name. */
+	tools: z.array(toolDefinitionSchema),
 });
 export type IterationDetail = z.infer<typeof iterationDetailSchema>;

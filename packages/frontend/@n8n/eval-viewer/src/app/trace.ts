@@ -4,8 +4,10 @@ import type { Turn, Usage } from '../schema';
 export interface Span {
 	id: string;
 	depth: number;
-	kind: 'iteration' | 'turn' | 'model' | 'tool';
+	kind: 'iteration' | 'turn' | 'model' | 'thinking' | 'tool';
 	label: string;
+	/** Secondary text after the label, such as the finish reason of a model step. */
+	note: string | null;
 	tool: string | null;
 	start: number;
 	/** Null when the source has no end (a tool call in the last step of a run). */
@@ -15,6 +17,8 @@ export interface Span {
 	usage: Usage | null;
 	/** The tool call id of a tool span, to find its transcript item. */
 	callId: string | null;
+	/** The thinking summary of a thinking span. */
+	content: string | null;
 }
 
 export interface Trace {
@@ -34,27 +38,45 @@ export function buildTrace(turns: Turn[]): Trace {
 					depth: 3,
 					kind: 'tool',
 					label: call.tool,
+					note: null,
 					tool: call.tool,
 					start: modelEnd,
 					end: step.toolWindowMs === null ? null : modelEnd + step.toolWindowMs,
 					derived: true,
 					usage: null,
 					callId: call.id,
+					content: null,
 				}),
 			);
 			const model: Span = {
 				id: `step-${turnIndex}-${stepIndex}`,
 				depth: 2,
 				kind: 'model',
-				label: `model step ${stepIndex + 1}${step.finishReason ? ` · ${step.finishReason}` : ''}`,
+				label: `model step ${stepIndex + 1}`,
+				note: step.finishReason,
 				tool: null,
 				start: step.startMs,
 				end: modelEnd,
 				derived: false,
 				usage: step.usage,
 				callId: null,
+				content: null,
 			};
-			return [model, ...toolSpans];
+			const thinking: Span[] = step.reasoning
+				? [
+						{
+							...model,
+							id: `thinking-${turnIndex}-${stepIndex}`,
+							depth: 3,
+							kind: 'thinking',
+							label: 'thinking',
+							note: null,
+							usage: null,
+							content: step.reasoning,
+						},
+					]
+				: [];
+			return [model, ...thinking, ...toolSpans];
 		});
 		const start = Math.min(...stepSpans.map((span) => span.start));
 		const end = Math.max(...stepSpans.map((span) => span.end ?? span.start));
@@ -63,12 +85,14 @@ export function buildTrace(turns: Turn[]): Trace {
 			depth: 1,
 			kind: 'turn',
 			label: `turn ${turnIndex + 1}`,
+			note: null,
 			tool: null,
 			start,
 			end,
 			derived: false,
 			usage: null,
 			callId: null,
+			content: null,
 		};
 		return [turnSpan, ...stepSpans];
 	});
@@ -81,14 +105,23 @@ export function buildTrace(turns: Turn[]): Trace {
 		depth: 0,
 		kind: 'iteration',
 		label: 'attempt',
+		note: null,
 		tool: null,
 		start,
 		end,
 		derived: false,
 		usage: null,
 		callId: null,
+		content: null,
 	};
-	return { spans: [iteration, ...turnSpans], start, end };
+	// One turn spans the same time as the attempt, so its row adds nothing.
+	const children =
+		turns.length === 1
+			? turnSpans
+					.filter((span) => span.kind !== 'turn')
+					.map((span) => ({ ...span, depth: span.depth - 1 }))
+			: turnSpans;
+	return { spans: [iteration, ...children], start, end };
 }
 
 const TICK_STEPS_S = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];

@@ -4,6 +4,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nInput,
 	N8nLink,
 	N8nLoading2,
 	N8nSegmentControl,
@@ -23,6 +24,7 @@ import { countVariant, formatCost, formatSeconds } from '../format';
 import type { CompareTab } from '../selection';
 import { buildTrace } from '../trace';
 import AttemptOutcome from './AttemptOutcome.vue';
+import PromptPanel from './PromptPanel.vue';
 import TracePanel from './TracePanel.vue';
 import TranscriptPanel from './TranscriptPanel.vue';
 
@@ -41,8 +43,11 @@ const tabs: Array<SegmentOption<CompareTab>> = [
 	{ value: 'trace', label: 'Trace' },
 	{ value: 'outcome', label: 'Outcome' },
 	{ value: 'transcript', label: 'Transcript' },
+	{ value: 'prompt', label: 'Prompt' },
 	{ value: 'workflow', label: 'Workflow' },
 ];
+
+const promptQuery = ref('');
 
 const entries = computed(() =>
 	ids.value.map((id) => props.attempts.find((entry) => entry.id === id)),
@@ -130,6 +135,16 @@ async function copyWorkflow(id: string) {
 <template>
 	<div :class="$style.compare" data-test-id="build-compare">
 		<N8nSegmentControl v-model="tab" :options="tabs" :class="$style.tabs" aria-label="View" />
+		<N8nInput
+			v-if="tab === 'prompt'"
+			v-model="promptQuery"
+			size="small"
+			clearable
+			placeholder="Search both prompts and tools, for example a node name"
+			aria-label="Search both prompts and tools"
+			:class="$style.promptSearch"
+			data-test-id="prompt-search"
+		/>
 		<div :class="$style.columns">
 			<div v-for="(entry, at) in entries" :key="at" :class="$style.column">
 				<div :class="$style.head">
@@ -189,6 +204,12 @@ async function copyWorkflow(id: string) {
 				</N8nCallout>
 				<N8nLoading2 v-else-if="!details[entry.id]" :rows="5" />
 				<TranscriptPanel v-else-if="tab === 'transcript'" :turns="details[entry.id].turns" />
+				<PromptPanel
+					v-else-if="tab === 'prompt'"
+					:system-prompt="details[entry.id].systemPrompt"
+					:tools="details[entry.id].tools"
+					:query="promptQuery"
+				/>
 				<TracePanel
 					v-else-if="tab === 'trace'"
 					:turns="details[entry.id].turns"
@@ -220,6 +241,10 @@ async function copyWorkflow(id: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.promptSearch {
+	max-width: calc(var(--spacing--5xl) * 2);
 }
 
 .tabs {
