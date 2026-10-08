@@ -7,8 +7,12 @@ export type ExecutionIdV2 = string & { readonly __brand: 'ExecutionIdV2' };
 /** A v1 id is numeric and a v2 id is a UUID, so the shape alone picks the backend. */
 export const isExecutionIdV2 = (id: string): id is ExecutionIdV2 => UUID_V7_PATTERN.test(id);
 
-/** The v1 execution table has a numeric id column, so only a numeric id can name a row. */
-export const isExecutionIdV1 = (id: string): boolean => /^\d+$/.test(id);
+/** The v1 execution id column is a 32-bit integer (`SERIAL` on Postgres). */
+const MAX_EXECUTION_ID_V1 = 2 ** 31 - 1;
+
+/** Only a number that fits the v1 id column can name a row, so a larger one is refused. */
+export const isExecutionIdV1 = (id: string): boolean =>
+	/^\d+$/.test(id) && Number(id) <= MAX_EXECUTION_ID_V1;
 
 /**
  * Mints an id for a run the control plane hands to the engine.

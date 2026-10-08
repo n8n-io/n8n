@@ -213,6 +213,7 @@ describe('BinaryDataAccessService', () => {
 			test.each([
 				['a non-numeric id', 'abc'],
 				['a uuid that is not v7', '2c3f1e5a-0b6d-4c8e-9f11-abc123def456'],
+				['a number above the 32-bit id column', '2147483648'],
 			])('denies %s without a lookup', async (_, executionId) => {
 				const id = `filesystem-v2:workflows/wf1/executions/${executionId}/binary_data/${uuid}`;
 
