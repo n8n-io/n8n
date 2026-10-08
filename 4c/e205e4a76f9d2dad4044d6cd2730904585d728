@@ -1,0 +1,24 @@
+packages/@n8n/backend-network/src/http/axios/legacy.ts
+  h_52a137d26d774c 1
+packages/@n8n/backend-network/src/http/axios/request.ts
+  h_52a137d26d774c 159
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  h_52a137d26d774c 444,450
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  h_52a137d26d774c 1
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  h_52a137d26d774c 122,214
+packages/@n8n/backend-network/src/testing.ts
+  h_52a137d26d774c 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ce205e4a76f9d2dad4044d6cd2730904585d728",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

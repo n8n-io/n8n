@@ -1,0 +1,37 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8121-8124
+  s_9a6001e67297f0::t_bb886ef6ac8b01 8125-8127,8129-8130
+  s_9a6001e67297f0::t_c4260eb699eabd 8128
+  s_9a6001e67297f0::t_80e20563184827 1498
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  ai_agent 392
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_9a6001e67297f0::t_4f342bec9c37d1 54
+  s_9a6001e67297f0::t_c0c1d8f6393edd 428
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_9a6001e67297f0::t_80e20563184827 41
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  ai_agent 28,313-315
+  s_9a6001e67297f0::t_80e20563184827 121,122-124
+  s_9a6001e67297f0::t_7de754d494c494 105-106
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_9a6001e67297f0::t_80e20563184827 154-155
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewMoreMenu.vue
+  s_9a6001e67297f0::t_80e20563184827 126,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9afb2aadeca6dd7806b2f6074cad59cc1174bdb5",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

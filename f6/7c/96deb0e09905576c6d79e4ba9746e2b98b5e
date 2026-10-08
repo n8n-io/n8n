@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/utils/aws/test/ResponseLimitedNodeHttpHandler.test.ts
+  s_bc9dd2a1a4a175::t_fdf731443d18e2 1-5,10-14,16-40,42-69
+  s_bc9dd2a1a4a175::t_ca7cdca58a2fa2 6-9,41
+  s_bc9dd2a1a4a175::t_b445946f776574 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f67c96deb0e09905576c6d79e4ba9746e2b98b5e",
+  "prompts": {},
+  "sessions": {
+    "s_bc9dd2a1a4a175": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "433b6f90-30c1-4591-9319-b35d546866ea",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

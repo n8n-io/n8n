@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_a65a5a88327681::t_f9a1a32dfe4520 135
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_a65a5a88327681::t_f9a1a32dfe4520 42-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "981b533398447522929d533efbc8d910d112a8a4",
+  "prompts": {},
+  "sessions": {
+    "s_a65a5a88327681": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f799-dd8b-7be3-bdcc-3de578ddb55f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

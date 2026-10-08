@@ -1,0 +1,179 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b30ec406386d61::t_449ecaae490d20 14,16,60,151,172-175,240,248,1450,1614-1627,1629-1635
+  s_b30ec406386d61::t_7bdb75f6093cbb 1628,1636
+packages/cli/src/modules/mcp/mcp-tool-availability.ts
+  s_b30ec406386d61::t_7c43ba76cf924b 28-32
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_b30ec406386d61::t_d525f2a16a43ec 14,40-42,56,129-130,177-178,184-190
+  s_b30ec406386d61::t_e2cc1a686d962a 179-183,191
+  s_b30ec406386d61::t_c1572446df378f 192-193
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_b30ec406386d61::t_d6c63bc75ac167 152-155
+  s_b30ec406386d61::t_41a6614b6539a6 156,219,303
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b30ec406386d61::t_e61af5fc038ffd 5632-5636
+  s_b30ec406386d61::t_d6c63bc75ac167 5624-5631
+  s_b30ec406386d61::t_00ff649c630610 5699
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.test.ts
+  s_b30ec406386d61::t_faf752893f3e48 2,18,20,28-35,37-50,55
+  s_b30ec406386d61::t_989c8869e6b45e 51-54
+  s_b30ec406386d61::t_5172eee08ae298 36,56
+packages/frontend/editor-ui/src/features/agents/__tests__/SettingsAgentsView.test.ts
+  s_b30ec406386d61::t_7e1b29e9e37ae8 9-14,18-21,27,30-33,35-48,50-72,77,79-82,90-93,125-134,136-165,179,191-197
+  s_b30ec406386d61::t_0eafefcce82cdd 135
+  s_b30ec406386d61::t_84e59acc697afd 1-3,8,15-17,22-26,28-29,34,73-76,78,83-89,94-120,122-124,198
+  s_b30ec406386d61::t_3a6b4bd46d0267 166-175,177-178,180-181,189-190
+  s_b30ec406386d61::t_50b4769a3b1ce2 176,182-188
+  s_b30ec406386d61::t_b69888955000e8 49
+  s_b30ec406386d61::t_61bc400b32ec05 4-7
+  s_b30ec406386d61::t_9319c4107056f3 121
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_b30ec406386d61::t_50b4769a3b1ce2 473-475
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_b30ec406386d61::t_5a3fb3faddda31 98
+  s_b30ec406386d61::t_e2cc1a686d962a 18,68
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_b30ec406386d61::t_252d3265946fbd 83,137
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_b30ec406386d61::t_d6c63bc75ac167 438
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_b30ec406386d61::t_d6c63bc75ac167 20,35-44
+  s_b30ec406386d61::t_454fd5f755c5e3 45
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_b30ec406386d61::t_7c43ba76cf924b 662-667
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_b30ec406386d61::t_d6c63bc75ac167 144-147,157,221,533
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_b30ec406386d61::t_252d3265946fbd 45
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_b30ec406386d61::t_fe5662b7d98b8b 324,672,685
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_b30ec406386d61::t_7c43ba76cf924b 196
+packages/cli/src/modules/agents/agents-settings.controller.ts
+  s_b30ec406386d61::t_252d3265946fbd 1-47
+packages/frontend/editor-ui/src/features/agents/views/SettingsAgentsView.vue
+  s_b30ec406386d61::t_d6c63bc75ac167 1-19,21-101,103-104
+  s_b30ec406386d61::t_e61af5fc038ffd 20,102
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_b30ec406386d61::t_7c43ba76cf924b 59
+packages/cli/src/modules/agents/agents-settings.service.ts
+  s_b30ec406386d61::t_252d3265946fbd 1-35
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_b30ec406386d61::t_fe5662b7d98b8b 89,115
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_b30ec406386d61::t_f2eee95a25ffe5 48,288,999-1002
+  s_b30ec406386d61::t_46ec88933e8c13 1074,1082,1086-1088,1576
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_b30ec406386d61::t_84e59acc697afd 574,576,587-599,601-603,605,607-608,697-712
+  s_b30ec406386d61::t_449ecaae490d20 277
+  s_b30ec406386d61::t_6a36277bc4f2b4 188,282
+  s_b30ec406386d61::t_1f606df643ea8e 577-578
+  s_b30ec406386d61::t_25e7131cb2a0b6 614-627,630-635
+  s_b30ec406386d61::t_90e5a79cb8f0e0 609-613,628-629,636-637,2343-2345
+  s_b30ec406386d61::t_d525f2a16a43ec 575,579-586,604,2142-2145
+  s_b30ec406386d61::t_3fbe506cb7ea91 27
+  s_b30ec406386d61::t_e7fe3e60f7685c 600,606,713
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_b30ec406386d61::t_6a36277bc4f2b4 306,357
+  s_b30ec406386d61::t_3fbe506cb7ea91 17
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.test.ts
+  s_b30ec406386d61::t_fe5662b7d98b8b 24,64
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_b30ec406386d61::t_fe5662b7d98b8b 117,133
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_b30ec406386d61::t_d6c63bc75ac167 14,75-76
+  s_b30ec406386d61::t_3c0079503bd916 77
+packages/cli/src/modules/agents/agents.module.ts
+  s_b30ec406386d61::t_252d3265946fbd 23,218,224
+packages/cli/test/integration/agents/agents-create-collision.test.ts
+  s_b30ec406386d61::t_faf752893f3e48 13,23,45-52,54-57
+  s_b30ec406386d61::t_376f7e46f9a194 53,58-60
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_b30ec406386d61::t_d6c63bc75ac167 3-4,7,35-42,44-45,122-134
+  s_b30ec406386d61::t_64a456f97ccef9 43
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_b30ec406386d61::t_adb964d8ac3fde 47,68,77-84
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.test.ts
+  s_b30ec406386d61::t_fe5662b7d98b8b 97
+packages/cli/src/modules/agents/agents.service.ts
+  s_b30ec406386d61::t_64a456f97ccef9 340
+  s_b30ec406386d61::t_faf752893f3e48 135
+  s_b30ec406386d61::t_10502a3e83963a 37,89
+packages/cli/test/integration/agents/agents-settings.test.ts
+  s_b30ec406386d61::t_90e5a79cb8f0e0 62
+  s_b30ec406386d61::t_449ecaae490d20 1-8,10-15,18-31,33-61,63-76
+  s_b30ec406386d61::t_6f054c5bd1eaaf 32
+  s_b30ec406386d61::t_adb964d8ac3fde 9,16-17
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.vue
+  s_b30ec406386d61::t_7c43ba76cf924b 58
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_b30ec406386d61::t_7c43ba76cf924b 146
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/settings/SandboxSettingsRow.vue
+  s_b30ec406386d61::t_00ff649c630610 1-2,4-85
+  s_b30ec406386d61::t_a8bb651c1ec842 3
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_b30ec406386d61::t_3fbe506cb7ea91 10
+  s_b30ec406386d61::t_64a456f97ccef9 90
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_b30ec406386d61::t_d6c63bc75ac167 12
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_b30ec406386d61::t_3fbe506cb7ea91 12
+  s_b30ec406386d61::t_6a36277bc4f2b4 126,171,176
+  s_b30ec406386d61::t_84e59acc697afd 193,195-198,205-209,217-218,221,223-224
+  s_b30ec406386d61::t_d525f2a16a43ec 194,199-204,219-220
+  s_b30ec406386d61::t_adb964d8ac3fde 210-214,216
+  s_b30ec406386d61::t_e9c739752668f6 215
+  s_b30ec406386d61::t_1259fead9c0858 222
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_b30ec406386d61::t_faf752893f3e48 9-22,24-28,30-31
+  s_b30ec406386d61::t_b7350bdaf37cf2 23,29
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.ts
+  s_b30ec406386d61::t_7c43ba76cf924b 29
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_b30ec406386d61::t_46ec88933e8c13 32,129-132
+  s_b30ec406386d61::t_4c7b5ed354e2bd 133
+packages/frontend/editor-ui/src/features/agents/components/AgentsSandboxSettings.vue
+  s_b30ec406386d61::t_3af439f45dbb3e 15,23,26,34,40-49
+  s_b30ec406386d61::t_e61af5fc038ffd 1-14,16,18-22,24-25,27-33,35,37-39,50-65,67,73,75-89,91-98
+  s_b30ec406386d61::t_0eafefcce82cdd 66
+  s_b30ec406386d61::t_00ff649c630610 17,36,68-72,74,90
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_b30ec406386d61::t_e2cc1a686d962a 15,18,109,141,172,228-236
+  s_b30ec406386d61::t_ee17b6af52be07 237-238
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_b30ec406386d61::t_252d3265946fbd 50
+packages/@n8n/api-types/src/agents/dto.ts
+  s_b30ec406386d61::t_252d3265946fbd 19-22
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_b30ec406386d61::t_6a36277bc4f2b4 7570
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_b30ec406386d61::t_00ff649c630610 44,46,595,598-601
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_b30ec406386d61::t_fe5662b7d98b8b 443
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_b30ec406386d61::t_e2cc1a686d962a 782
+  s_b30ec406386d61::t_46ec88933e8c13 653
+  s_b30ec406386d61::t_f2eee95a25ffe5 37,171,490
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_b30ec406386d61::t_46ec88933e8c13 26,92,116
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_b30ec406386d61::t_f2eee95a25ffe5 11,77,92,347
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue
+  s_b30ec406386d61::t_7c43ba76cf924b 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ad2d8f5663e61ae3cb0f4a320db321693cdf0e20",
+  "prompts": {},
+  "sessions": {
+    "s_b30ec406386d61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fbac-6028-7b12-99ba-e8426f20ba57",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

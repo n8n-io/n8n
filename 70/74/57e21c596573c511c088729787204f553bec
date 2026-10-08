@@ -1,0 +1,72 @@
+packages/nodes-base/google-service-account.js
+  s_9dde2d3ceb6629::t_a0e91a598f5325 1
+packages/nodes-base/package.json
+  s_9dde2d3ceb6629::t_a0e91a598f5325 10-12,36-37
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_9dde2d3ceb6629::t_a128df57385068 70
+  s_9dde2d3ceb6629::t_74d12239b46a7d 32,46,61,78
+  s_9dde2d3ceb6629::t_165a11d49bf422 42
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 62-64,66,68-69,71-76,79-81,83,85-89
+packages/nodes-base/credentials/common/google/regions.ts
+  s_9dde2d3ceb6629::t_a0e91a598f5325 1-207
+packages/@n8n/nodes-langchain/credentials/GoogleVertexAiApi.credentials.ts
+  s_9dde2d3ceb6629::t_e4cb155cfd12c2 1-22,25,28-31
+  s_9dde2d3ceb6629::t_cbd796c79ea06c 23-24,26
+  s_9dde2d3ceb6629::t_94349b6c270e1c 27
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_a128df57385068 96
+  s_9dde2d3ceb6629::t_2df2b07bdba294 17-20,63,84,141
+  s_9dde2d3ceb6629::t_94349b6c270e1c 2,30
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 14,130-133
+  s_9dde2d3ceb6629::t_f4830428fd2896 15
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_94349b6c270e1c 2,127
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 27,147-150
+  s_9dde2d3ceb6629::t_a128df57385068 81
+  s_9dde2d3ceb6629::t_2df2b07bdba294 30-33,74,76,185
+  s_9dde2d3ceb6629::t_efc0abf42dc777 28
+packages/nodes-base/credentials/common/google/utils.ts
+  s_9dde2d3ceb6629::t_3960b5642173b7 1-19
+packages/@n8n/nodes-langchain/credentials/icons/google.svg
+  s_9dde2d3ceb6629::t_2df2b07bdba294 1
+packages/@n8n/nodes-langchain/package.json
+  s_9dde2d3ceb6629::t_2df2b07bdba294 60
+packages/nodes-base/credentials/common/google/descriptions.ts
+  s_9dde2d3ceb6629::t_a0e91a598f5325 1-49
+packages/nodes-base/credentials/common/google/index.ts
+  s_9dde2d3ceb6629::t_3960b5642173b7 1-6
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_9dde2d3ceb6629::t_676f96f082f88f 14-18,25-27,44-46
+  s_9dde2d3ceb6629::t_6ed1a9b0f48d77 3-12,31-36,40-42,48-51
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 37-39
+  s_9dde2d3ceb6629::t_a128df57385068 1-2,13,19-24,28-30,43,47
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 106-123,125-130,152-172,177-179
+  s_9dde2d3ceb6629::t_a128df57385068 124
+  s_9dde2d3ceb6629::t_165a11d49bf422 41,180
+  s_9dde2d3ceb6629::t_676f96f082f88f 82-84
+  s_9dde2d3ceb6629::t_74d12239b46a7d 105,151,173-176,181-184,188-189
+packages/nodes-base/credentials/GoogleApi.credentials.ts
+  s_9dde2d3ceb6629::t_a0e91a598f5325 11-15,28-30
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_9dde2d3ceb6629::t_43c5a2c58f7c0d 43,49
+  s_9dde2d3ceb6629::t_a128df57385068 15
+  s_9dde2d3ceb6629::t_cbd796c79ea06c 45
+  s_9dde2d3ceb6629::t_e4cb155cfd12c2 1-14,16-42,44,46-48,50-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "707457e21c596573c511c088729787204f553bec",
+  "prompts": {},
+  "sessions": {
+    "s_9dde2d3ceb6629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

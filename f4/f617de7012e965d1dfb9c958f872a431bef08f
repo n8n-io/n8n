@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1790937677019-AddAgentBackgroundJobPause.ts
+  s_0a1a804042c15b::t_80afa7b7ef2ded 3
+packages/cli/test/migration/1790937677019-add-agent-background-job-pause.test.ts
+  s_0a1a804042c15b::t_5799fd1403a7e9 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f4f617de7012e965d1dfb9c958f872a431bef08f",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

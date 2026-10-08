@@ -1,0 +1,27 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8f364f7c5743a0::t_00d7573fb00f62 9311,9315-9317
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_8f364f7c5743a0::t_d99f23c9a1f1bd 23
+  s_8f364f7c5743a0::t_086c147093184e 245-246,250-251,254-256,267-270
+  s_8f364f7c5743a0::t_dc370129c57318 485-487,489-493
+  s_8f364f7c5743a0::t_f5787ca5d2aa3c 512
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_8f364f7c5743a0::t_603a362616ea12 444-448,451,456-461,463-468,477,479,481-486,490,495,497
+  s_8f364f7c5743a0::t_513eec2bf79076 500,502,522,540,542,569,571,592,594,603,609-610,628,636,638,654,659,661
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7775958e653eea87940a3501d358ad6456720311",
+  "prompts": {},
+  "sessions": {
+    "s_8f364f7c5743a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f77a805c-fda4-413a-87ea-7588e5f68260",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
