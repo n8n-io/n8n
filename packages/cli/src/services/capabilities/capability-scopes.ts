@@ -3,6 +3,8 @@ import type { McpScope } from '@n8n/api-types';
 // This file has no runtime imports, because the OAuth consent screen and the MCP module load it.
 
 export const PARSE_SCHEDULE_CAPABILITY_NAME = 'parse_schedule';
+export const EXPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME = 'export_workflow_package';
+export const IMPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME = 'import_workflow_package';
 
 /** The capability tools that each OAuth scope unlocks. A scope that has no capability is absent. */
 export type CapabilityToolsByScope = Partial<Record<McpScope, readonly string[]>>;
@@ -14,5 +16,6 @@ export type CapabilityToolsByScope = Partial<Record<McpScope, readonly string[]>
  * not listed here, and a capability for the n8n Assistant only that is listed here.
  */
 export const CAPABILITY_TOOLS_BY_SCOPE: CapabilityToolsByScope = {
-	'workflow:read': [PARSE_SCHEDULE_CAPABILITY_NAME],
+	'workflow:read': [PARSE_SCHEDULE_CAPABILITY_NAME, EXPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME],
+	'workflow:write': [IMPORT_WORKFLOW_PACKAGE_CAPABILITY_NAME],
 };

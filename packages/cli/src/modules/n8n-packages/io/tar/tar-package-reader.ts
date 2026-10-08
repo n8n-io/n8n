@@ -10,6 +10,14 @@ import type { PackageReader } from '../package-reader';
 const MANIFEST_PATH = 'manifest.json';
 const ALLOWED_PATH_CHARS = /^[a-zA-Z0-9._/-]+$/;
 
+// The messages name the setting, so that an admin knows which limit to change.
+const TOO_MANY_ENTRIES =
+	'Package contains too many entries. An admin can change the limit with N8N_IMPORT_MAX_ENTRIES.';
+const TOO_LARGE =
+	'Package exceeds the maximum allowed uncompressed size. An admin can change the limit with N8N_IMPORT_MAX_UNCOMPRESSED_BYTES.';
+const entryTooLarge = (entryPath: string) =>
+	`Package entry "${entryPath}" exceeds the maximum allowed uncompressed size per entry. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES.`;
+
 export interface TarReaderLimits {
 	maxUncompressedBytes: number;
 	maxEntryBytes: number;
@@ -117,7 +125,7 @@ export class TarPackageReader implements PackageReader {
 			// File path to read, null to skip a directory, or throws to reject.
 			const accept = (entry: ReadEntry): string | null => {
 				if (++entryCount > maxEntries) {
-					throw new BadRequestError('Package contains too many entries');
+					throw new BadRequestError(TOO_MANY_ENTRIES);
 				}
 				if (entry.type !== 'File' && entry.type !== 'Directory') {
 					throw new BadRequestError(`Package contains a disallowed entry type for "${entry.path}"`);
@@ -161,14 +169,12 @@ export class TarPackageReader implements PackageReader {
 					if (aborted) return;
 					entryBytes += chunk.length;
 					if (entryBytes > maxEntryBytes) {
-						fail(
-							`Package entry "${safePath}" exceeds the maximum allowed uncompressed size per entry`,
-						);
+						fail(entryTooLarge(safePath));
 						return;
 					}
 					totalUncompressedBytes += chunk.length;
 					if (totalUncompressedBytes > maxUncompressedBytes) {
-						fail('Package exceeds the maximum allowed uncompressed size');
+						fail(TOO_LARGE);
 						return;
 					}
 					chunks.push(chunk);

@@ -36,6 +36,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { registerInstanceAiCapabilities } from '@/modules/instance-ai/capabilities/instance-ai-capabilities';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
+import { registerN8nPackagesCapabilities } from '@/modules/n8n-packages/capabilities/n8n-packages-capabilities';
 import {
 	EMPTY_INSTANCE_CONTEXT_TEXT,
 	INSTANCE_CONTEXT_RESOURCE_URI,
@@ -153,6 +154,16 @@ describe('getAllowedToolNames', () => {
 			'parse_schedule',
 		);
 	});
+
+	it('allows package export with workflow:read and package import with workflow:write', () => {
+		const read = getAllowedToolNames(['workflow:read']);
+		const write = getAllowedToolNames(['workflow:write']);
+
+		expect(read).toContain('export_workflow_package');
+		expect(read).not.toContain('import_workflow_package');
+		expect(write).toContain('import_workflow_package');
+		expect(write).not.toContain('export_workflow_package');
+	});
 });
 
 describe('capability tools in TOOLS_BY_SCOPE', () => {
@@ -162,6 +173,17 @@ describe('capability tools in TOOLS_BY_SCOPE', () => {
 
 	it('includes parse_schedule', () => {
 		expect(capabilityTools).toContainEqual({ scope: 'workflow:read', name: 'parse_schedule' });
+	});
+
+	it('includes the workflow package tools', () => {
+		expect(capabilityTools).toContainEqual({
+			scope: 'workflow:read',
+			name: 'export_workflow_package',
+		});
+		expect(capabilityTools).toContainEqual({
+			scope: 'workflow:write',
+			name: 'import_workflow_package',
+		});
 	});
 
 	// A second entry means that a built-in tool has the same name. The MCP server would then fail
@@ -270,6 +292,7 @@ describe('McpService scope enforcement', () => {
 		// The drift guards include capability tools, so register what the owning modules register.
 		Container.set(CapabilityRegistry, new CapabilityRegistry());
 		registerInstanceAiCapabilities(Container.get(CapabilityRegistry));
+		registerN8nPackagesCapabilities(Container.get(CapabilityRegistry), true);
 	});
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
@@ -644,6 +667,7 @@ describe('McpService scope enforcement', () => {
 				'get_workflow_version',
 				'get_workflow_versions_diff',
 				'parse_schedule',
+				'export_workflow_package',
 			]),
 		);
 	});

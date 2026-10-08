@@ -216,7 +216,9 @@ describe('TarPackageReader', () => {
 			});
 
 			await expect(reader.readManifest()).rejects.toThrow(BadRequestError);
-			await expect(reader.readManifest()).rejects.toThrow(/maximum allowed uncompressed size/i);
+			await expect(reader.readManifest()).rejects.toThrow(
+				'Package exceeds the maximum allowed uncompressed size. An admin can change the limit with N8N_IMPORT_MAX_UNCOMPRESSED_BYTES.',
+			);
 		});
 
 		it('rejects single entries larger than maxEntryBytes', async () => {
@@ -231,7 +233,9 @@ describe('TarPackageReader', () => {
 			});
 
 			await expect(reader.readManifest()).rejects.toThrow(BadRequestError);
-			await expect(reader.readManifest()).rejects.toThrow(/per entry/i);
+			await expect(reader.readManifest()).rejects.toThrow(
+				'Package entry "oversized.bin" exceeds the maximum allowed uncompressed size per entry. An admin can change the limit with N8N_IMPORT_MAX_ENTRY_BYTES.',
+			);
 		});
 
 		it('rejects packages with more than maxEntries entries', async () => {
@@ -247,7 +251,9 @@ describe('TarPackageReader', () => {
 				maxEntries: 3,
 			});
 
-			await expect(reader.readManifest()).rejects.toThrow(/too many entries/i);
+			await expect(reader.readManifest()).rejects.toThrow(
+				'Package contains too many entries. An admin can change the limit with N8N_IMPORT_MAX_ENTRIES.',
+			);
 		});
 	});
 

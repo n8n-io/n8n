@@ -1,0 +1,64 @@
+import type { CallToolResult } from '@modelcontextprotocol/server';
+import { ResponseError, UserError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { WorkflowAccessError } from '@/modules/mcp/mcp.errors';
+
+import type { PackageFailureReason } from '../n8n-packages.types';
+
+/**
+ * The audit `reason` of an MCP workflow access error, or undefined for any other error. A
+ * workflow that exists but is kept out of MCP or archived is a denial or a block, not a missing
+ * entity.
+ */
+export function classifyMcpWorkflowAccessFailure(error: unknown): PackageFailureReason | undefined {
+	if (!(error instanceof WorkflowAccessError)) return undefined;
+	if (error.reason === 'not_available_in_mcp') return 'access-denied';
+	if (error.reason === 'workflow_archived') return 'blocked';
+	return 'entity-not-found';
+}
+
+/** An error that the user can fix, so its message can go to the MCP client as is. */
+export function isClientError(error: unknown): error is UserError | ResponseError {
+	if (error instanceof UserError) return true;
+	return error instanceof ResponseError && error.httpStatusCode < 500;
+}
+
+const INTERNAL_ERROR = 'an internal error occurred. The server log has the details';
+
+/**
+ * The reason of a failed step in words for the MCP client, without a final full stop, so that a
+ * sentence can contain it. The message of another error can hold internal details, for example
+ * table names, so it goes to the server log only.
+ */
+export function reasonForClient(error: unknown): string {
+	return isClientError(error) ? error.message.replace(/\.$/, '') : INTERNAL_ERROR;
+}
+
+/** The blocking issues that an import error carries, for example credential type mismatches. */
+function blockingIssues(error: UserError | ResponseError): unknown[] | undefined {
+	if (!(error instanceof ResponseError) || !isRecord(error.meta)) return undefined;
+	return Array.isArray(error.meta.issues) ? error.meta.issues : undefined;
+}
+
+/**
+ * The MCP SDK keeps only the message of an error that a handler throws. Package errors that the
+ * user can fix keep their details in `description` or in blocking issues, so this result keeps
+ * them too. Returns undefined for other errors, which the caller throws again.
+ *
+ * The result has no structured content. MCP clients check structured content against the
+ * output schema of the tool even when `isError` is set, and that schema describes a success.
+ * Structured content here would turn the real message into a schema mismatch error.
+ */
+export function packageToolError(error: unknown): CallToolResult | undefined {
+	if (!isClientError(error)) return undefined;
+	const issues = blockingIssues(error);
+	const text = [
+		error.message,
+		error.description,
+		issues ? `Issues: ${JSON.stringify(issues)}` : undefined,
+	]
+		.filter((part) => typeof part === 'string' && part.length > 0)
+		.join(' ');
+	return { content: [{ type: 'text', text }], isError: true };
+}

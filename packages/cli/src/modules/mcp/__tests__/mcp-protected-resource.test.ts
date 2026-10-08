@@ -26,6 +26,7 @@ import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { registerInstanceAiCapabilities } from '@/modules/instance-ai/capabilities/instance-ai-capabilities';
+import { registerN8nPackagesCapabilities } from '@/modules/n8n-packages/capabilities/n8n-packages-capabilities';
 import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
@@ -272,6 +273,33 @@ describe('McpProtectedResource', () => {
 
 			expect(before['workflow:read']).not.toContain('parse_schedule');
 			expect((await resource.getScopeTools())['workflow:read']).toContain('parse_schedule');
+		});
+
+		// The n8n-packages module registers them in its init, on main instances.
+		it('lists package export under workflow:read and package import under workflow:write', async () => {
+			const before = await resource.getScopeTools();
+
+			registerN8nPackagesCapabilities(Container.get(CapabilityRegistry), true);
+			const scopeTools = await resource.getScopeTools();
+
+			const scopesListing = (tool: string) =>
+				Object.entries(scopeTools)
+					.filter(([, tools]) => tools.includes(tool))
+					.map(([scope]) => scope);
+			expect(Object.values(before).flat()).not.toContain('export_workflow_package');
+			expect(Object.values(before).flat()).not.toContain('import_workflow_package');
+			expect(scopesListing('export_workflow_package')).toEqual(['workflow:read']);
+			expect(scopesListing('import_workflow_package')).toEqual(['workflow:write']);
+		});
+
+		// The module registers no import while N8N_MCP_BUILDER_ENABLED is off.
+		it('lists package export but not package import while the workflow builder is off', async () => {
+			registerN8nPackagesCapabilities(Container.get(CapabilityRegistry), false);
+
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['workflow:read']).toContain('export_workflow_package');
+			expect(Object.values(scopeTools).flat()).not.toContain('import_workflow_package');
 		});
 
 		it('should drop agent scopes and tools when the agents module is inactive', async () => {
