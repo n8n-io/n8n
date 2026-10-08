@@ -362,6 +362,11 @@ const notice = fits<Notice>()(
 	}),
 );
 
+const fieldWhen = new Schema<CredentialManifest['when']>(
+	t.record(t.record(whenValue)).with(SINCE_2_13).json,
+	false,
+);
+
 /** An export of a credential bundle that the host calls, see `spec/wit/credential.wit`. */
 export type CredentialHook = 'sign' | 'exchange' | 'refresh' | 'derive';
 
@@ -393,6 +398,10 @@ export interface CredentialManifest {
 	readonly test?: CredentialTest;
 	/** A text the form shows after the fields. */
 	readonly notice?: Notice;
+	/** The form shows a field only while each named field has this value, by field name. */
+	readonly when?: Readonly<
+		Partial<Record<string, Readonly<Partial<Record<string, string | number | boolean>>>>>
+	>;
 	/** The legacy n8n type this type extends, e.g. `googleOAuth2Api`. */
 	readonly legacyParent?: string;
 	/** Stored fields with an old name, by old name. */
@@ -421,6 +430,7 @@ export const credentialManifestSchema = typed<CredentialManifest>()(
 			hosts: names().optional(),
 			test: test.optional(),
 			notice: notice.optional(),
+			when: fieldWhen.optional(),
 			legacyParent: t.str().optional(),
 			renamed: values().optional(),
 			bundleHash: hex().with(SINCE_2_13).optional(),
@@ -623,7 +633,7 @@ export function credentialManifestOf(type: AnyCredentialType): CredentialManifes
 		id: type.id,
 		name: type.name,
 		semver: type.semver,
-		nodeContract: '2.5.0',
+		nodeContract: type.when ? '2.13.0' : '2.5.0',
 		displayName: type.displayName,
 		...(type.documentationUrl ? { documentationUrl: type.documentationUrl } : {}),
 		fields: t.obj(type.fields ?? {}).json,
@@ -633,6 +643,7 @@ export function credentialManifestOf(type: AnyCredentialType): CredentialManifes
 		...(type.hosts ? { hosts: type.hosts } : {}),
 		...(type.test ? { test: type.test } : {}),
 		...(type.notice ? { notice: type.notice } : {}),
+		...(type.when ? { when: type.when } : {}),
 		...(type.legacyParent ? { legacyParent: type.legacyParent } : {}),
 		...(type.renamed ? { renamed: type.renamed } : {}),
 	};

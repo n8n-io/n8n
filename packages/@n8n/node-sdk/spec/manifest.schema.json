@@ -1102,6 +1102,26 @@
 					],
 					"additionalProperties": false
 				},
+				"when": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "object",
+						"additionalProperties": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "number"
+								},
+								{
+									"type": "boolean"
+								}
+							]
+						}
+					},
+					"x-n8n-since": "2.13.0"
+				},
 				"legacyParent": {
 					"type": "string"
 				},

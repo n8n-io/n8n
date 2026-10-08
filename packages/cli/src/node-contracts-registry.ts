@@ -78,6 +78,7 @@ import {
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type ICredentialTypeData,
+	type IHttpRequestOptions,
 	type INode,
 	type INodeProperties,
 	type INodeTypeDescription,
@@ -559,12 +560,16 @@ export class ContractNodeLoader implements NodeLoader {
 			}),
 		);
 		const withTypes = await this.credentialManifestsOf(storedCredentials);
+		// A jwtBearer token request runs outside a node run, so it takes the outbound client of n8n.
+		const http = async (options: IHttpRequestOptions) =>
+			await Container.get(OutboundHttp).requests().request(options);
 		const credentials = withTypes.map(({ file, manifest, withCode }) => {
 			const supportedNodes = [...this.nodes]
 				.filter(([, { type }]) => credentialNamesOf(type).includes(manifest.name))
 				.map(([name]) => name);
 			const type = {
-				...((withCode && toCredentialType(withCode)) ?? credentialTypeOfManifest(manifest)),
+				...((withCode && toCredentialType(withCode, http)) ??
+					credentialTypeOfManifest(manifest, http)),
 				supportedNodes,
 				toJSON: credentialTypeToJSON,
 			};

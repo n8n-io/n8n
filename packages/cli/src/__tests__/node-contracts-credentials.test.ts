@@ -1,3 +1,5 @@
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { hostRuntime } from '@n8n/node-sdk/host';
 import { bundledCredentialsOf } from '@test/first-party-contracts';
@@ -9,6 +11,7 @@ import type {
 	IVersionedNodeType,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
+import { generateKeyPairSync, verify } from 'node:crypto';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -379,6 +382,76 @@ describe('credential types of the node contracts package', () => {
 			pick(await oauth2Of(legacy, 'https://ghe.example.com/api/v3')),
 		);
 		expect(pick(await oauth2Of(contract))).toEqual(pick(await oauth2Of(legacy)));
+	});
+
+	it('give googleApi a JWT bearer grant that the host signs with the claims from derive', async () => {
+		const request = vi.fn().mockResolvedValue({ access_token: 'at-1' });
+		mockInstance(OutboundHttp, {
+			requests: vi.fn().mockReturnValue(mock<HttpRequestClient>({ request })),
+		});
+		const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+		const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+		const { instance, credentialTypes, helper } = await loaded(true);
+		const stored = {
+			email: ' sa@acme.iam.gserviceaccount.com ',
+			privateKey: pem.replace(/\n/g, '\\n'),
+			inpersonate: true,
+			delegatedEmail: 'ada@acme.test',
+			httpNode: true,
+			scopes:
+				'https://www.googleapis.com/auth/drive,\nhttps://www.googleapis.com/auth/spreadsheets',
+		};
+
+		expect(instance.knownCredentials.googleApi.sourcePath).toContain(NEXT);
+		expect(credentialTypes.getSupportedNodes('googleApi')).toEqual(
+			expect.arrayContaining(['n8n-nodes-base.gmail', 'n8n-nodes-base.googleSheetsTrigger']),
+		);
+		const data = await helper.applyDefaultsAndOverwrites(
+			mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+			stored,
+			'googleApi',
+			'internal',
+		);
+		// derive gives claims only; the cli writes no OAuth2 data for them.
+		expect(data).not.toHaveProperty('scope');
+		const signed = await helper.authenticate(data, 'googleApi', {
+			url: 'https://www.googleapis.com/drive/v3/files',
+		});
+
+		expect(signed.headers).toEqual({ Authorization: 'Bearer at-1' });
+		expect(request).toHaveBeenCalledTimes(1);
+		const [options] = request.mock.calls[0] as unknown as [IHttpRequestOptions];
+		expect(options).toMatchObject({ method: 'POST', url: 'https://oauth2.googleapis.com/token' });
+		const body = new URLSearchParams(String(options.body));
+		expect(body.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:jwt-bearer');
+		const [header = '', payload = '', signature = ''] = (body.get('assertion') ?? '').split('.');
+		const json = (part: string): unknown => JSON.parse(Buffer.from(part, 'base64url').toString());
+		expect(json(header)).toEqual({ alg: 'RS256', typ: 'JWT' });
+		expect(
+			verify(
+				'sha256',
+				Buffer.from(`${header}.${payload}`),
+				publicKey,
+				Buffer.from(signature, 'base64url'),
+			),
+		).toBe(true);
+		expect(json(payload)).toMatchObject({
+			iss: 'sa@acme.iam.gserviceaccount.com',
+			sub: 'ada@acme.test',
+			scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',
+			aud: 'https://oauth2.googleapis.com/token',
+		});
+
+		// Gmail and Firestore put their own token in the request, without httpNode.
+		request.mockClear();
+		const own = {
+			url: 'https://www.googleapis.com/gmail/v1/users/me/labels',
+			headers: { Authorization: 'Bearer own' },
+		};
+		await expect(
+			helper.authenticate({ ...data, httpNode: false }, 'googleApi', structuredClone(own)),
+		).resolves.toEqual(own);
+		expect(request).not.toHaveBeenCalled();
 	});
 
 	it('keep the legacy classes with node contracts off', async () => {

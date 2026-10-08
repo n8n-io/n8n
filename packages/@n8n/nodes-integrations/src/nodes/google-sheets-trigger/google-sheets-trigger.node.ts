@@ -1,7 +1,7 @@
 import { defineNode } from '@n8n/node-sdk';
-import { compat, credential } from '@n8n/node-sdk/credentials';
+import { credential } from '@n8n/node-sdk/credentials';
 
-import { googleSheetsTriggerOAuth2 } from './credentials';
+import { googleServiceAccount, googleSheetsTriggerOAuth2 } from './credentials';
 
 /**
  * The legacy Google Sheets Trigger node. It compares Drive revisions of the sheet to find
@@ -12,6 +12,6 @@ export const googleSheetsTrigger = defineNode({
 	id: 'googleSheetsTrigger',
 	displayName: 'Google Sheets Trigger',
 	credential: credential({
-		types: [googleSheetsTriggerOAuth2, compat('googleApi')],
+		types: [googleSheetsTriggerOAuth2, googleServiceAccount],
 	}),
 });

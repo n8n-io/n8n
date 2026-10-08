@@ -614,6 +614,7 @@ describe('spec/manifest.schema.json', () => {
 					'hosts',
 					'test',
 					'notice',
+					'when',
 					'legacyParent',
 					'renamed',
 					'bundleHash',

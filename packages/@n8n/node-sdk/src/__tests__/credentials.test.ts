@@ -1,4 +1,5 @@
 import type { ICredentialType, IHttpRequestHelper, IHttpRequestOptions } from 'n8n-workflow';
+import { generateKeyPairSync, verify } from 'node:crypto';
 
 import {
 	compat,
@@ -16,6 +17,7 @@ import {
 	derivedOf,
 	discoverOidc,
 	secretRedactorOf,
+	type HostHttp,
 } from '../credentials';
 import { credentialManifestOf } from '../manifest';
 
@@ -394,6 +396,48 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 		});
 	});
 
+	it('shows a field only while the fields of its when have these values', () => {
+		const delegated = defineCredential({
+			id: 'delegated.serviceAccount',
+			version: '1.0.0',
+			displayName: 'Delegated',
+			fields: {
+				privateKey: field.secret('Private Key'),
+				inpersonate: t.bool().default(false).with({ title: 'Impersonate a User' }),
+				delegatedEmail: field.text('Email').optional(),
+			},
+			auth: (a) => a.bearer('privateKey'),
+			when: { delegatedEmail: { inpersonate: true } },
+		});
+		expect(projected(delegated).properties.at(-1)).toEqual({
+			displayName: 'Email',
+			name: 'delegatedEmail',
+			type: 'string',
+			displayOptions: { show: { inpersonate: [true] } },
+			default: '',
+		});
+		const manifest = credentialManifestOf(delegated);
+		expect(manifest).toMatchObject({
+			nodeContract: '2.13.0',
+			when: { delegatedEmail: { inpersonate: true } },
+		});
+		if (!manifest) throw new Error('no manifest');
+		expect(
+			credentialTypeOfManifest(parseCredentialManifest(JSON.stringify(manifest))).properties,
+		).toEqual(projected(delegated).properties);
+		expect(() =>
+			defineCredential({
+				id: 'loose.token',
+				version: '1.0.0',
+				displayName: 'Loose',
+				fields: { token: field.secret('Token'), user: field.text('User') },
+				auth: (a) => a.bearer('token'),
+				// @ts-expect-error the run-time check sees what `tsc` refuses
+				when: { usr: { user: 'a' }, user: { token: 'x' } },
+			}),
+		).toThrow('when: usr is not a field; when: token is not a field without a secret');
+	});
+
 	it('adds the user header fields and sends the header only when it is on', async () => {
 		const proxied = defineCredential({
 			id: 'proxied.apiKey',
@@ -599,6 +643,24 @@ describe('credential types in tsc', () => {
 			auth: (a) => a.bearer('apiKey'),
 			// @ts-expect-error `regoin` is not a field
 			notice: { text: 'Pick a region', when: { regoin: 'eu' } },
+		});
+		defineCredential({
+			id: 'probe.token',
+			version: '1.0.0',
+			displayName: 'Probe',
+			fields,
+			auth: (a) => a.bearer('apiKey'),
+			// @ts-expect-error `regoin` is not a field
+			when: { regoin: { region: 'eu' } },
+		});
+		defineCredential({
+			id: 'probe.token',
+			version: '1.0.0',
+			displayName: 'Probe',
+			fields,
+			auth: (a) => a.bearer('apiKey'),
+			// @ts-expect-error a condition names no secret field
+			when: { region: { apiKey: 'x' } },
 		});
 		compat('probeApi', {
 			fields,
@@ -898,29 +960,6 @@ describe('OAuth2 grants and OIDC', () => {
 	});
 
 	it('keeps the grants n8n core does not run as data and refuses to project them', () => {
-		const fields = { privateKey: field.secret('Private Key'), email: field.text('Email') };
-		const jwt = defineCredential({
-			id: 'acme.serviceAccount',
-			version: '1.0.0',
-			displayName: 'Acme',
-			fields,
-			auth: (a) =>
-				a.oauth2.jwtBearer({
-					tokenEndpoint: 'https://oauth2.acme.test/token',
-					key: 'privateKey',
-					claims: { iss: '{email}', scope: '{$scopes}' },
-				}),
-		});
-		expect(jwt.scheme).toEqual({
-			kind: 'oauth2',
-			grant: 'jwtBearer',
-			tokenEndpoint: 'https://oauth2.acme.test/token',
-			key: 'privateKey',
-			algorithm: 'RS256',
-			claims: { iss: '{email}', scope: '{$scopes}' },
-			scope: [],
-		});
-		expect(() => toCredentialType(jwt)).toThrow('n8n core does not run jwtBearer yet');
 		const device = defineCredential({
 			id: 'acme.device',
 			version: '1.0.0',
@@ -1352,6 +1391,120 @@ describe('derivedOf', () => {
 		).resolves.toEqual({});
 		const { derive: _, ...plain } = serverOAuth2(() => ({}));
 		await expect(derivedOf(plain, {})).resolves.toBeUndefined();
+	});
+});
+
+describe('jwtBearer', () => {
+	const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+	const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+	const fields = {
+		privateKey: field.secret('Private Key'),
+		email: field.text('Email'),
+		httpNode: t.bool().default(false),
+	};
+	const serviceAccount = (derive?: (fields: { email: string; httpNode: boolean }) => Derived) =>
+		defineCredential({
+			id: 'acme.serviceAccount',
+			version: '1.0.0',
+			displayName: 'Acme',
+			fields,
+			auth: (a) =>
+				a.oauth2.jwtBearer({
+					tokenEndpoint: 'https://oauth2.acme.test/token',
+					key: 'privateKey',
+					claims: { iss: '{email}', scope: '{$scopes}' },
+					scope: ['read', 'write'],
+				}),
+			...(derive ? { derive } : {}),
+		});
+	const tokenRequests = () => {
+		const sent: IHttpRequestOptions[] = [];
+		const http = async (options: IHttpRequestOptions) => {
+			sent.push(options);
+			return await Promise.resolve({ access_token: 'at-1', expires_in: 3599 });
+		};
+		return { sent, http };
+	};
+	const authenticateOf = (type: AnyCredentialType, http?: HostHttp) => {
+		const { authenticate } = toCredentialType(type, http) ?? {};
+		if (typeof authenticate !== 'function') throw new Error('not a function');
+		return authenticate;
+	};
+	const jwtOf = (options: IHttpRequestOptions) => {
+		const assertion = new URLSearchParams(options.body as string).get('assertion') ?? '';
+		const [header = '', payload = '', signature = ''] = assertion.split('.');
+		const json = (part: string): unknown => JSON.parse(Buffer.from(part, 'base64url').toString());
+		const valid = verify(
+			'sha256',
+			Buffer.from(`${header}.${payload}`),
+			publicKey,
+			Buffer.from(signature, 'base64url'),
+		);
+		return { header: json(header), claims: json(payload), valid };
+	};
+
+	it('signs an RS256 JWT on the host and sends the token as a bearer header', async () => {
+		const { sent, http } = tokenRequests();
+		const signed = await authenticateOf(serviceAccount(), http)(
+			{ privateKey: pem, email: 'sa@acme.test' },
+			{ url: 'https://api.acme.test/x', headers: { Accept: 'application/json' } },
+		);
+
+		expect(signed.headers).toEqual({ Accept: 'application/json', Authorization: 'Bearer at-1' });
+		expect(sent).toHaveLength(1);
+		expect(sent[0]).toMatchObject({
+			method: 'POST',
+			url: 'https://oauth2.acme.test/token',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		});
+		const body = new URLSearchParams(sent[0]?.body as string);
+		expect(body.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:jwt-bearer');
+		const jwt = jwtOf(sent[0] ?? {});
+		expect(jwt.valid).toBe(true);
+		expect(jwt.header).toEqual({ alg: 'RS256', typ: 'JWT' });
+		expect(jwt.claims).toMatchObject({
+			iss: 'sa@acme.test',
+			scope: 'read write',
+			aud: 'https://oauth2.acme.test/token',
+		});
+	});
+
+	it('takes the claims of derive, but never the token endpoint, audience or lifetime', async () => {
+		const { sent, http } = tokenRequests();
+		const type = serviceAccount(({ email }) => ({
+			tokenEndpoint: 'https://other.test/token',
+			claims: { sub: `user+${email}`, aud: 'https://other.test', exp: '9999999999' },
+		}));
+		await authenticateOf(type, http)({ privateKey: pem, email: 'sa@acme.test' }, { url: '/x' });
+
+		expect(sent.map(({ url }) => url)).toEqual(['https://oauth2.acme.test/token']);
+		const { claims } = jwtOf(sent[0] ?? {});
+		expect(claims).toMatchObject({
+			iss: 'sa@acme.test',
+			sub: 'user+sa@acme.test',
+			aud: 'https://oauth2.acme.test/token',
+		});
+		const { exp, iat } = claims as { exp: number; iat: number };
+		expect(exp - iat).toBe(3600);
+	});
+
+	it('leaves the request as it is and sends no token request when derive gives no claims', async () => {
+		const { sent, http } = tokenRequests();
+		const type = serviceAccount(({ httpNode }) => (httpNode ? { claims: {} } : {}));
+		const request = { url: '/x', headers: { Authorization: 'Bearer own' } };
+
+		await expect(
+			authenticateOf(type, http)({ privateKey: pem, email: 'sa@acme.test' }, request),
+		).resolves.toEqual(request);
+		expect(sent).toEqual([]);
+	});
+
+	it('refuses to sign without the HTTP client of the host', async () => {
+		await expect(
+			authenticateOf(serviceAccount())({ privateKey: pem, email: 'sa@acme.test' }, { url: '/x' }),
+		).rejects.toThrow(
+			'Credential acme.serviceAccount: the host gives no HTTP client for jwtBearer',
+		);
 	});
 });
 

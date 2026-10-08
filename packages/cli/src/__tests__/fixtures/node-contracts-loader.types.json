@@ -1472,6 +1472,42 @@
 			"documentationUrl": "google/oauth-single-service"
 		},
 		{
+			"name": "googleApi",
+			"authenticate": {},
+			"supportedNodes": [
+				"n8n-nodes-base.evaluation",
+				"n8n-nodes-base.evaluationTrigger",
+				"n8n-nodes-base.gmail",
+				"n8n-nodes-base.gmailTrigger",
+				"n8n-nodes-base.googleBigQuery",
+				"n8n-nodes-base.googleBooks",
+				"n8n-nodes-base.googleChat",
+				"n8n-nodes-base.googleCloudStorage",
+				"n8n-nodes-base.googleDocs",
+				"n8n-nodes-base.googleDrive",
+				"n8n-nodes-base.googleDriveTrigger",
+				"n8n-nodes-base.googleFirebaseCloudFirestore",
+				"n8n-nodes-base.googleSheets",
+				"n8n-nodes-base.googleSheetsTrigger",
+				"n8n-nodes-base.googleSlides",
+				"n8n-nodes-base.googleTranslate"
+			],
+			"properties": [
+				"region",
+				"email",
+				"privateKey",
+				"inpersonate",
+				"delegatedEmail",
+				"httpNode",
+				"scopes",
+				"notice",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"iconUrl": "icons/n8n-nodes-base/dist/credentials/icons/Google.svg",
+			"documentationUrl": "google/service-account"
+		},
+		{
 			"name": "googleDocsOAuth2Api",
 			"extends": ["googleOAuth2Api"],
 			"supportedNodes": [
@@ -2087,6 +2123,39 @@
 				"n8n-nodes-base.gmailHitlTool",
 				"n8n-nodes-base.gmailTool",
 				"n8n-nodes-base.gmailTrigger"
+			]
+		},
+		"googleApi": {
+			"supportedNodes": [
+				"n8n-nodes-base.evaluation",
+				"n8n-nodes-base.evaluationTrigger",
+				"n8n-nodes-base.gmail",
+				"n8n-nodes-base.gmailHitlTool",
+				"n8n-nodes-base.gmailTool",
+				"n8n-nodes-base.gmailTrigger",
+				"n8n-nodes-base.googleBigQuery",
+				"n8n-nodes-base.googleBigQueryTool",
+				"n8n-nodes-base.googleBooks",
+				"n8n-nodes-base.googleBooksTool",
+				"n8n-nodes-base.googleChat",
+				"n8n-nodes-base.googleChatHitlTool",
+				"n8n-nodes-base.googleChatTool",
+				"n8n-nodes-base.googleCloudStorage",
+				"n8n-nodes-base.googleCloudStorageTool",
+				"n8n-nodes-base.googleDocs",
+				"n8n-nodes-base.googleDocsTool",
+				"n8n-nodes-base.googleDrive",
+				"n8n-nodes-base.googleDriveTool",
+				"n8n-nodes-base.googleDriveTrigger",
+				"n8n-nodes-base.googleFirebaseCloudFirestore",
+				"n8n-nodes-base.googleFirebaseCloudFirestoreTool",
+				"n8n-nodes-base.googleSheets",
+				"n8n-nodes-base.googleSheetsTool",
+				"n8n-nodes-base.googleSheetsTrigger",
+				"n8n-nodes-base.googleSlides",
+				"n8n-nodes-base.googleSlidesTool",
+				"n8n-nodes-base.googleTranslate",
+				"n8n-nodes-base.googleTranslateTool"
 			]
 		},
 		"googleDocsOAuth2Api": {

@@ -1,9 +1,11 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { isRecord } from '@n8n/utils/is-record';
 import { DEFAULT_PLACEHOLDER } from '@n8n/utils/redaction/redact-text';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import {
 	OperationalError,
+	UnexpectedError,
 	UserError,
 	type IAuthenticateGeneric,
 	type IAuthenticateRuleResponseSuccessBody,
@@ -221,7 +223,7 @@ export interface DeviceCodeGrant {
 
 /**
  * RFC 7523 §2.1: a JWT that n8n signs with the key of a field is the grant, e.g. a Google
- * service account. n8n core does not run it yet.
+ * service account. n8n signs on the host and sends one token request for each request.
  */
 export interface JwtBearerGrant {
 	/** Marks an OAuth2 grant. */
@@ -629,6 +631,10 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	readonly test?: CredentialTest;
 	/** A text the form shows after the fields. */
 	readonly notice?: Notice;
+	/** The form shows a field only while each named field has this value, by field name. */
+	readonly when?: Readonly<
+		Partial<Record<string, Readonly<Partial<Record<string, string | number | boolean>>>>>
+	>;
 	/**
 	 * The legacy n8n type this type extends, e.g. `googleOAuth2Api`. Instance credential
 	 * overwrites and the editor's sign-in button of that type then apply.
@@ -1060,6 +1066,12 @@ function definitionIssues(type: AnyCredentialType): string[] {
 		...Object.keys(type.notice?.when ?? {})
 			.filter((name) => !(name in fields))
 			.map((name) => `notice: ${name} is not a field`),
+		...Object.entries(type.when ?? {}).flatMap(([name, condition]) => [
+			...(name in fields ? [] : [`when: ${name} is not a field`]),
+			...Object.keys(condition ?? {})
+				.filter((on) => !plainField(on))
+				.map((on) => `when: ${on} is not a field without a secret`),
+		]),
 		...testIssues(type),
 	];
 }
@@ -1160,6 +1172,15 @@ export function defineCredential<
 		readonly deployment?: 'cloud' | 'hosted';
 	};
 	/**
+	 * The form shows a field only while each named field has this value, e.g.
+	 * `{ delegatedEmail: { inpersonate: true } }`. A condition names no secret field.
+	 */
+	readonly when?: {
+		readonly [K in FieldName<F>]?: {
+			readonly [C in keyof PlainShape<F> & string]?: string | number | boolean;
+		};
+	};
+	/**
 	 * The legacy n8n type this type extends, e.g. `googleOAuth2Api`, so its instance overwrites
 	 * and its sign-in button apply.
 	 */
@@ -1187,6 +1208,7 @@ export function defineCredential<
 		...(spec.hosts ? { hosts: spec.hosts } : {}),
 		...(spec.test ? { test: spec.test } : {}),
 		...(spec.notice ? { notice: spec.notice } : {}),
+		...(spec.when ? { when: spec.when } : {}),
 		...(spec.legacyParent ? { legacyParent: spec.legacyParent } : {}),
 		...(spec.renamed ? { renamed: spec.renamed } : {}),
 	});
@@ -1453,9 +1475,11 @@ const fieldProperty = (
 	}
 	const placeholder = json.examples?.[0];
 	const hint = json['x-n8n-hint'];
+	const when = type.when?.[name];
 	const base = {
 		displayName,
 		name,
+		...(when ? { displayOptions: { show: showOf(when) } } : {}),
 		...(canBeEmpty(schema) ? {} : { required: true }),
 		...(json.description ? { description: json.description } : {}),
 		...(hint ? { hint } : {}),
@@ -1601,6 +1625,13 @@ const userHeaderProperties = (): INodeProperties[] => {
 	];
 };
 
+const showOf = (when: NonNullable<Notice['when']>) =>
+	Object.fromEntries(
+		Object.entries(when).flatMap(([field, value]) =>
+			value === undefined ? [] : [[field, [value]]],
+		),
+	);
+
 const noticeProperty = ({ text, when, deployment }: Notice): INodeProperties => ({
 	displayName: text,
 	name: 'notice',
@@ -1609,15 +1640,7 @@ const noticeProperty = ({ text, when, deployment }: Notice): INodeProperties => 
 	...(when || deployment
 		? {
 				displayOptions: {
-					...(when
-						? {
-								show: Object.fromEntries(
-									Object.entries(when).flatMap(([field, value]) =>
-										value === undefined ? [] : [[field, [value]]],
-									),
-								),
-							}
-						: {}),
+					...(when ? { show: showOf(when) } : {}),
 					...(deployment ? { showOnDeployment: deployment } : {}),
 				},
 			}
@@ -1830,12 +1853,84 @@ const tokenProperties = ({ token }: Exchange): INodeProperties[] => [
 const notRunBy = (type: AnyCredentialType, what: string) =>
 	new UserError(`Credential ${type.id}: n8n core does not run ${what} yet`);
 
+/** The outbound HTTP client of the host, for a token request outside a node run. */
+export type HostHttp = (options: IHttpRequestOptions) => Promise<unknown>;
+
+const base64Url = (value: string | Buffer) => Buffer.from(value).toString('base64url');
+
+/**
+ * The `authenticate` of `jwtBearer` (RFC 7523 §2.1). The host signs the JWT with the key and sends
+ * one token request for each request, as the legacy Google service account type does, so n8n
+ * stores no token. A type with `derive` signs only when `derive` gives claims; else the request
+ * stays as it is. The token request goes only to the `tokenEndpoint` of the scheme.
+ */
+function jwtBearerOf(
+	type: AnyCredentialType,
+	scheme: JwtBearerGrant,
+	http: HostHttp | undefined,
+): Authenticate {
+	return async (raw, request) => {
+		const derived = type.derive ? (await derivedOf(type, raw))?.claims : {};
+		if (derived === undefined) return request;
+		if (!http) {
+			throw new UnexpectedError(
+				`Credential ${type.name}: the host gives no HTTP client for jwtBearer`,
+			);
+		}
+		const data = credentialDataOf(type, raw);
+		const scopes = scheme.scope.join(' ');
+		const templated = mapValues(scheme.claims, (template) =>
+			template.replace(PLACEHOLDER, (_, name: string) =>
+				name === '$scopes' ? scopes : storedValue(type, data, name),
+			),
+		);
+		const now = Math.floor(Date.now() / 1000);
+		// The host sets the audience and the lifetime: a claim of the type never replaces them.
+		const claims = {
+			...templated,
+			...derived,
+			aud: scheme.tokenEndpoint,
+			iat: now,
+			exp: now + 3600,
+		};
+		const input = `${base64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${base64Url(JSON.stringify(claims))}`;
+		// Only the host signs, and the SDK runtime that guests load has no Node builtin.
+		const { sign } = await import('node:crypto');
+		const key = formatPemBlock(asText(data[scheme.key]));
+		const signature = base64Url(sign('sha256', Buffer.from(input), key));
+		const response = await http({
+			method: 'POST',
+			url: scheme.tokenEndpoint,
+			body: new URLSearchParams({
+				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+				assertion: `${input}.${signature}`,
+			}).toString(),
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			json: true,
+		}).catch((error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			const redact = secretRedactorOf(type, raw);
+			throw new OperationalError(
+				`Credential ${type.name}: the token request failed: ${redact(message)}`,
+			);
+		});
+		const token = isRecord(response) ? response.access_token : undefined;
+		if (typeof token !== 'string' || token === '') {
+			throw new OperationalError(`Credential ${type.name}: the token response has no access_token`);
+		}
+		return { ...request, headers: { ...request.headers, Authorization: `Bearer ${token}` } };
+	};
+}
+
 /**
  * The n8n credential type of a value. A compat type has none: its legacy class stays the
  * definition. Placements become a generic block; what the block cannot express becomes a
- * function the SDK generates.
+ * function the SDK generates. `jwtBearer` sends its token request with `http`.
  */
-export function toCredentialType(type: AnyCredentialType): ICredentialType | undefined {
+export function toCredentialType(
+	type: AnyCredentialType,
+	http?: HostHttp,
+): ICredentialType | undefined {
 	const { scheme } = type;
 	if (scheme.kind === 'compat') return undefined;
 	if (scheme.kind === 'oidc') throw notRunBy(type, 'oidc');
@@ -1856,6 +1951,9 @@ export function toCredentialType(type: AnyCredentialType): ICredentialType | und
 	const test = testOf(type);
 	if (scheme.kind === 'none') return { ...base, properties, ...test };
 	if (scheme.kind === 'oauth2') {
+		if (scheme.grant === 'jwtBearer') {
+			return { ...base, properties, authenticate: jwtBearerOf(type, scheme, http), ...test };
+		}
 		if (scheme.grant !== 'authorizationCode' && scheme.grant !== 'clientCredentials') {
 			throw notRunBy(type, scheme.grant);
 		}
@@ -1975,8 +2073,11 @@ export function typeOfManifest(manifest: CredentialManifest): AnyCredentialType 
 }
 
 /** The n8n credential type of a credential manifest: the host reads only data, never author code. */
-export function credentialTypeOfManifest(manifest: CredentialManifest): ICredentialType {
-	const projected = toCredentialType(typeOfManifest(manifest));
+export function credentialTypeOfManifest(
+	manifest: CredentialManifest,
+	http?: HostHttp,
+): ICredentialType {
+	const projected = toCredentialType(typeOfManifest(manifest), http);
 	if (!projected) throw new UserError(`Credential ${manifest.id} has no n8n credential type`);
 	return projected;
 }

@@ -58,7 +58,8 @@ Use the first `auth` that fits:
 | `a.when(field, cases)` | one placement per value of an options field | an auth-type switch |
 | `a.oauth2.authorizationCode(...)` | RFC 6749 §4.1. PKCE S256 is on; a port of a legacy type without PKCE sets `pkce: false` | Notion OAuth2 |
 | `a.oauth2.clientCredentials(...)` | RFC 6749 §4.4 | |
-| `a.oauth2.deviceCode`, `jwtBearer`, `tokenExchange`, `a.oidc({ issuer })` | RFC 8628, RFC 7523, RFC 8693, OIDC. Data only: n8n core does not run them yet, so `toCredentialType` refuses them | |
+| `a.oauth2.jwtBearer(...)` | RFC 7523 §2.1. The host signs an RS256 JWT with the key field and sends one token request for each request; it sets `aud`, `iat` and `exp`. With `derive`, the host signs only when `derive` gives `claims` | Google service account |
+| `a.oauth2.deviceCode`, `tokenExchange`, `a.oidc({ issuer })` | RFC 8628, RFC 8693, OIDC. Data only: n8n core does not run them yet, so `toCredentialType` refuses them | |
 | `a.exchange({ post, json, token, headers })` | a token request first, e.g. a login for a session token. `{$token}` is the token | Metabase (parity file) |
 | `a.none()` | nothing. The legacy node that uses the type reads its fields | WhatsApp and Facebook trigger apps |
 | `a.custom({ reason, sign })` | code signs each request and sees every secret. `reason` is required | the last resort |
@@ -71,6 +72,8 @@ Use the first `auth` that fits:
   nodes that read the URL from the credential data (xAI, MiniMax). Both are JSON Schema `readOnly`.
 - `notice: { text, when: { signatureSecret: '' }, deployment: 'hosted' }` shows a text after the
   fields, optionally only while a field has a value, or only on one kind of deployment.
+- `when: { delegatedEmail: { inpersonate: true } }` shows a field only while each named field has
+  that value. A condition names no secret field. A manifest with `when` needs Node Contract 2.13.0.
 - OAuth2 endpoints are https URLs or templates over fields (`{server}/login/oauth/authorize`).
   `editableScopes: true` adds the legacy custom-scopes fields. `legacyParent: 'googleOAuth2Api'`
   projects `extends` to that type, so its sign-in button and instance overwrites apply.
@@ -296,7 +299,7 @@ The port does not have these legacy behaviours (`GithubTrigger.node.ts`):
   re-consent UI.
 - Typed credential fields in `run()`: actions do not read credential fields. Only `baseUrl`
   reads them. A `credential` in `RunContext` needs an ABI bump.
-- n8n core does not run the device code, JWT bearer, token exchange and OIDC grants. They need a
+- n8n core does not run the device code, token exchange and OIDC grants. They need a
   host implementation before a type can use them. Token placement quirks come next.
 - Trigger execution fixtures do not replay at publish. A poll fixture could replay pages and
   states. A trigger without a fixtures file publishes without fixtures.
