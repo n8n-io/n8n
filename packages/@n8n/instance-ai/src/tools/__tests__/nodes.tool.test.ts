@@ -429,6 +429,30 @@ describe('nodes tool', () => {
 			expect(logger.warn).toHaveBeenCalled();
 		});
 
+		it('returns installed results without waiting for a slow uninstalled list', async () => {
+			vi.useFakeTimers();
+			try {
+				const context = createMockContext({ nodeContractsEnabled: true });
+				vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
+				context.nodeService.searchUninstalledNodes = vi.fn(
+					async () => await new Promise<never>(() => {}),
+				);
+
+				const search = executeTool(createNodesTool(context, 'full'), {
+					action: 'search',
+					query: 'firecrawl',
+					limit: 5,
+				});
+				await vi.advanceTimersByTimeAsync(1_000);
+
+				const result = await search;
+				expect(result).toMatchObject({ results: [], totalResults: 0 });
+				expect(result).not.toHaveProperty('notInstalled');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should return no search results when neither query nor connection type is provided', async () => {
 			const context = createMockContext();
 			(context.nodeService.listSearchable as Mock).mockResolvedValue([]);

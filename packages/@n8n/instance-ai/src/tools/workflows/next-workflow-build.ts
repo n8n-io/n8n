@@ -341,7 +341,7 @@ export type ResourceFields = ReadonlyMap<string, readonly ResourceField[]>;
 
 const RESOURCE_LOOKUP_TIMEOUT_MS = 5_000;
 
-async function withTimeout<T>(work: Promise<T>, fallback: T, timeoutMs: number): Promise<T> {
+export async function withTimeout<T>(work: Promise<T>, fallback: T, timeoutMs: number): Promise<T> {
 	return await new Promise((resolve) => {
 		const timer = setTimeout(() => resolve(fallback), timeoutMs);
 		work.then(resolve, () => resolve(fallback)).finally(() => clearTimeout(timer));

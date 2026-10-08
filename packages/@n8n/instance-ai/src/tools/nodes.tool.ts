@@ -51,6 +51,7 @@ import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
+import { withTimeout } from './workflows/next-workflow-build';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 import { isTriggerNodeType } from './workflows/workflow-json-utils';
 
@@ -376,10 +377,14 @@ async function handleList(
 
 type SearchInput = Extract<FullInput, { action: 'search' }>;
 
+const UNINSTALLED_SEARCH_BUDGET_MS = 1_000;
+
 /**
  * Verified community nodes that the query names and that the instance has not installed. The
  * build refuses them until the package is installed, so the agent must ask the user first.
  * Only node-contract builds list them, so the search without contracts stays the baseline.
+ * The first call of a process waits for the community node catalog (about 10 s). The search
+ * does not wait for it: the catalog load goes on, and a later search lists the nodes.
  */
 async function notInstalledPartOf(
 	context: InstanceAiContext,
@@ -394,7 +399,11 @@ async function notInstalledPartOf(
 		!context.nodeService.searchUninstalledNodes
 	)
 		return {};
-	const nodes = await context.nodeService.searchUninstalledNodes(input.query);
+	const search = context.nodeService.searchUninstalledNodes(input.query).catch((error: unknown) => {
+		context.logger.warn('Failed to list uninstalled community nodes for the search', { error });
+		return [];
+	});
+	const nodes = await withTimeout(search, [], UNINSTALLED_SEARCH_BUDGET_MS);
 	if (!nodes.length) return {};
 	return {
 		notInstalled: nodes.map(({ packageName, ...node }) => ({
@@ -411,10 +420,7 @@ async function handleSearch(
 ) {
 	const [nodeTypes, notInstalledPart] = await Promise.all([
 		context.nodeService.listSearchable(),
-		notInstalledPartOf(context, input).catch((error: unknown) => {
-			context.logger.warn('Failed to list uninstalled community nodes for the search', { error });
-			return {};
-		}),
+		notInstalledPartOf(context, input),
 	]);
 	let engine = cache.engine;
 	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
