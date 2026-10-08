@@ -11,16 +11,15 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 	it('should declare a daily cron in the instance timezone and run durably', () => {
 		expect(task.name).toBe('workflow-history-compaction-trim');
 		expect(task.schedule).toEqual({ kind: 'cron', cronExpression: '0 3 * * *', timezone: null });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
 	});
 
 	it('should keep a missed occurrence claimable for an hour', () => {
-		expect(task.misfireGraceSeconds).toBe(Time.hours.toSeconds);
+		expect(task.target.scheduler?.missedAfterSeconds).toBe(Time.hours.toSeconds);
 	});
 
 	it('should outlast the default task timeout', () => {
-		expect(task.timeoutSeconds).toBe(3600);
+		expect(task.target.scheduler?.timeoutSeconds).toBe(3600);
 	});
 
 	it('should trim on run, handing the pass its abort signal', async () => {
