@@ -185,6 +185,18 @@ describe('createRouteWatcher', () => {
 		expect(await watcher.beforeToolCall(pending('search-nodes'), [])).toBe(false);
 	});
 
+	it('skips the check before a read-only action, and stops it once the route is picked', async () => {
+		const judge = judgeReturning(stop('one-off'));
+		const watcher = createRouteWatcher(judge);
+
+		expect(await watcher.beforeToolCall(pending('load_skill'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('nodes', { action: 'search' }), [])).toBe(false);
+		expect(judge).not.toHaveBeenCalled();
+		expect(await watcher.beforeToolCall(pending('nodes', { action: 'execute' }), [])).toBe(true);
+		expect(await watcher.beforeToolCall(pending('load_skill'), [])).toBe(true);
+		expect(judge).toHaveBeenCalledTimes(1);
+	});
+
 	it('stops a parallel call without a second judge call once the route is picked', async () => {
 		const judge = judgeReturning(stop('multi'));
 		const watcher = createRouteWatcher(judge);
