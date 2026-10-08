@@ -8,9 +8,9 @@ import type { StepStore } from './step-store';
 
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
- * (`queued -> running`), records the trigger and any seeded steps as completed,
- * and announces each completion. The first step(s) are planned by the step
- * completion handler that handles those completions.
+ * (`queued -> running`), records the trigger as completed, and announces that
+ * completion. The first step(s) are planned by the step completion handler
+ * that handles that completion.
  * NOTE: this means an extra trip through the queue, but it eliminates some
  * special-casing for triggers and simplifies the completion logic.
  */
@@ -55,40 +55,26 @@ export class ExecutionStartHandler {
 		// already completed so successors read them like any predecessor's slots.
 		// No payload means no slots at all: every successor edge reads undefined
 		// and is treated as dead, same as any other step that produced nothing.
-		// Seeded steps are recorded the same way, in the same batch, so a planner
-		// never queues a node the caller already holds the outputs of.
 		// The claim above makes this the only writer, so no row can exist yet.
-		const seededSteps = Object.entries(execution.seededSteps ?? {});
-		const created = await this.stepStore.createSteps(event.executionId, [
+		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
 			{
 				nodeId: trigger.id,
 				iteration: 0,
 				status: 'completed',
 				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},
-			...seededSteps.map(([nodeId, outputs]) => ({
-				nodeId,
-				iteration: 0,
-				status: 'completed' as const,
-				outputs,
-			})),
 		]);
-		if (created.length !== 1 + seededSteps.length) {
+		if (!triggerStep) {
 			throw new UnexpectedError(
-				`Start steps for execution ${event.executionId} already existed despite the claim`,
+				`Trigger step for execution ${event.executionId} already existed despite the claim`,
 			);
 		}
 
-		// Published only after the rows exist, so the consumer can always load
-		// them. A seeded step's successors are planned from its settlement like
-		// any other; a predecessor that settles later finds the row and plans
-		// nothing for it.
-		for (const step of created) {
-			await this.orchestrationQueue.publish({
-				type: 'step:settled',
-				executionId: event.executionId,
-				stepId: step.id,
-			});
-		}
+		// Published only after the row exists, so the consumer can always load it.
+		await this.orchestrationQueue.publish({
+			type: 'step:settled',
+			executionId: event.executionId,
+			stepId: triggerStep.id,
+		});
 	}
 }

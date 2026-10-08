@@ -38,6 +38,12 @@ export interface GraphNode {
 	type: StepType;
 	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
+	/**
+	 * The caller supplied this node's outputs at start, so the engine records
+	 * it as completed with them instead of running it. Set by the engine when
+	 * it stores the execution; the outputs live in their own table.
+	 */
+	seeded?: boolean;
 }
 
 export interface GraphEdge {

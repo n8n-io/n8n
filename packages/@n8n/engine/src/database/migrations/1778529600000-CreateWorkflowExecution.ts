@@ -16,7 +16,6 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 					{ name: 'graph', type: 'jsonb' },
 					{ name: 'workflow', type: 'jsonb' },
 					{ name: 'trigger_outputs', type: 'jsonb', isNullable: true },
-					{ name: 'seeded_steps', type: 'jsonb', isNullable: true },
 					{
 						name: 'caller_context',
 						type: 'jsonb',

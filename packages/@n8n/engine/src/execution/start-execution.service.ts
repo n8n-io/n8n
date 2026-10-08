@@ -75,7 +75,7 @@ export class StartExecutionService {
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',
 			mode: request.mode ?? 'production',
-			graph: request.graph,
+			graph: markSeededNodes(request.graph, request.seededSteps ?? {}),
 			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
 			seededSteps: request.seededSteps ?? null,
@@ -95,19 +95,28 @@ export class StartExecutionService {
 	}
 }
 
+/** The graph as stored: each seeded node marked, so a settlement knows without a lookup. */
+function markSeededNodes(graph: WorkflowGraph, seededSteps: SeededSteps): WorkflowGraph {
+	const seeded = new Set(Object.keys(seededSteps));
+	if (seeded.size === 0) return graph;
+	return {
+		...graph,
+		nodes: graph.nodes.map((node) => (seeded.has(node.id) ? { ...node, seeded: true } : node)),
+	};
+}
+
 /**
- * Rejects seeded steps that the start handler could not record correctly.
+ * Rejects seeded steps that a settlement could not record correctly.
  *
- * The start handler turns each seeded step into a completed step row for its
- * node at iteration 0. That only works for a node that:
+ * When the run reaches a seeded node, the settlement that would have queued it
+ * records it as completed with the seeded outputs for that pass instead. That
+ * only works for a node that:
  *
  * - is not the trigger: its outputs arrive as `triggerOutputs`.
- * - the trigger can reach: the completion check counts only reachable nodes,
- *   so a completed row outside that set would let the run finish while other
- *   steps are still outstanding.
- * - is not in a loop: a loop member runs once per iteration, and a row for
- *   iteration 0 does not stop the later iterations from running it.
- *   TODO(CAT-4875): seed every iteration instead.
+ * - the trigger can reach: no settlement ever reaches any other node, so its
+ *   outputs would never be used.
+ * - is not in a loop, and so has exactly one pass. TODO(CAT-4875): accept a
+ *   loop's passes.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): void {
 	// The graph was validated first, so the trigger exists.
@@ -116,7 +125,7 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 	const loopByMember = new Map(
 		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
 	);
-	for (const nodeId of Object.keys(seededSteps)) {
+	for (const [nodeId, passes] of Object.entries(seededSteps)) {
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
 				'The trigger cannot be seeded; send its payload as triggerOutputs',
@@ -131,6 +140,11 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 		if (loop) {
 			throw new GraphValidationError(
 				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
+			);
+		}
+		if (passes.length !== 1) {
+			throw new GraphValidationError(
+				`Node ${nodeId} is seeded with ${passes.length} passes, and a node outside a loop has one`,
 			);
 		}
 	}
