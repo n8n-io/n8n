@@ -4,8 +4,16 @@ import { useI18n } from '@n8n/i18n';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
 import { VIEWS } from '@/app/constants';
-import Modal from '@/app/components/Modal.vue';
-import { N8nButton, N8nHeading, N8nText, N8nInfoTip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nText,
+	N8nInfoTip,
+} from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 
 type TabType = 'failed' | 'published';
@@ -61,26 +69,30 @@ const activeWorkflows = computed(() => {
 	return activeTab.value === 'failed' ? failedWorkflows.value : publishedWorkflows.value;
 });
 
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
 function close() {
 	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) close();
 }
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		width="812px"
-		height="min(80vh, 850px)"
-		:custom-class="$style.pullResultModal"
-		@close="close"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:container-class="[$style.pullResultModal, $style.fixedHeight].join(' ')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading tag="h1" size="xlarge">
+		<N8nDialogHeader>
+			<N8nDialogTitle>
 				{{ i18n.baseText('settings.sourceControl.modals.pullResult.title') }}
-			</N8nHeading>
-		</template>
-
-		<template #content>
+			</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div style="display: flex; flex-direction: column; height: 100%">
 				<div style="display: flex; flex: 1; min-height: 0">
 					<div :class="$style.tabs">
@@ -149,27 +161,30 @@ function close() {
 					</div>
 				</div>
 			</div>
-		</template>
-
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pullResult.buttons.close') }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 .pullResultModal {
-	&:global(.el-dialog) {
-		margin: 0;
-	}
-
-	:global(.el-dialog__header) {
+	header {
 		padding-bottom: var(--spacing--xs);
 	}
+}
+
+.fixedHeight {
+	/* Previous dialog height. No spacing token for 850px. */
+	height: min(80vh, 850px);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .headerTitle {
@@ -225,7 +240,7 @@ function close() {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-	margin-top: 8px;
+	width: 100%;
 }
 
 .table {
