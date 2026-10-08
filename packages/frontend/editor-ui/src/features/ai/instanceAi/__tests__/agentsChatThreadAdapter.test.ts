@@ -123,6 +123,42 @@ describe('agentsChatToThreadMessages', () => {
 		expect(agentsChatToThreadMessages(messages, false)[3].agentTree?.status).toBe('completed');
 	});
 
+	it('marks every segment of the latest output as live while streaming', () => {
+		const result = agentsChatToThreadMessages(
+			[
+				...messages.slice(0, 3),
+				{ id: 'a-2', role: 'assistant', content: 'Building it.' },
+				{
+					...assistant('a-2:segment-1', [toolCall({ tool: 'build-workflow' })]),
+					content: '',
+					segmentOf: 'a-2',
+				},
+				{ id: 'a-2:segment-2', segmentOf: 'a-2', role: 'assistant', content: 'Testing it now.' },
+			],
+			true,
+		);
+
+		expect(result.map((message) => message.agentTree?.status)).toEqual([
+			undefined,
+			'error',
+			undefined,
+			'active',
+			'active',
+			'active',
+		]);
+		expect(result[4].isStreaming).toBe(true);
+	});
+
+	it('keeps the latest output live while the next user message waits for a reply', () => {
+		const result = agentsChatToThreadMessages(
+			[...messages, { id: 'u-3', role: 'user', content: 'And then?' }],
+			true,
+		);
+
+		expect(result[3].agentTree?.status).toBe('active');
+		expect(result[1].agentTree?.status).toBe('error');
+	});
+
 	it('puts the derived checklist on the latest assistant turn only', () => {
 		const result = agentsChatToThreadMessages(messages, false);
 		expect(result[1].agentTree?.tasks).toBeUndefined();

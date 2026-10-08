@@ -43,6 +43,7 @@ import {
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	getMessageSegmentKind,
+	getSegmentRootId,
 	getTextSegmentKind,
 	startsNewSegment,
 	type MessageSegmentKind,
@@ -594,7 +595,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * one. The id is FE-issued (used as a v-for key) — the wire format no
 	 * longer carries a server-minted messageId.
 	 */
-	function ensureCurrent(session: StreamSession): ChatMessage {
+	function ensureCurrent(session: StreamSession, segmentOf?: string): ChatMessage {
 		if (session.current) return session.current;
 		const msg = reactive<ChatMessage>({
 			id: crypto.randomUUID(),
@@ -603,6 +604,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 			executionId: session.executionId,
+			...(segmentOf !== undefined && { segmentOf }),
 		});
 		messages.value.push(msg);
 		session.current = msg;
@@ -613,15 +615,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	/**
 	 * The message for the next text or tool output. A switch between text and
 	 * tool calls starts a new message, so the chat shows them in the order the
-	 * agent produced them. Reloaded history splits by the same rule.
+	 * agent produced them. Reloaded history splits by the same rule. The new
+	 * message points to the first segment of the step, so checks on the last
+	 * output still see a card that text came after.
 	 */
 	function ensureSegment(
 		session: StreamSession,
 		kind: MessageSegmentKind | undefined,
 	): ChatMessage {
-		const open = session.current && getMessageSegmentKind(session.current);
-		if (startsNewSegment(open, kind)) session.current = undefined;
-		return ensureCurrent(session);
+		const open = session.current;
+		if (!open || !startsNewSegment(getMessageSegmentKind(open), kind)) {
+			return ensureCurrent(session);
+		}
+		session.current = undefined;
+		return ensureCurrent(session, getSegmentRootId(open));
 	}
 
 	/** The message of this stream that already holds the call, if any. */

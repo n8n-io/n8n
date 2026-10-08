@@ -10,6 +10,7 @@ import {
 	N8nTooltip,
 	type IconName,
 } from '@n8n/design-system';
+import { HOVER_DELAY } from '@/app/constants';
 import { oppositeExperienceMode } from './experienceMode';
 import { useExperienceMode } from './useExperienceMode';
 
@@ -26,8 +27,8 @@ const MODE_ICONS: Record<ExperienceMode, IconName> = {
 	simple: 'message-square',
 	power: 'sliders-horizontal',
 };
-// Same delay as the other sidebar footer tooltips (source control).
-const TOOLTIP_DELAY = 300;
+// Hover intent, so a pointer that only passes over the footer opens no tooltip.
+const TOOLTIP_DELAY = HOVER_DELAY.SHOW;
 
 const i18n = useI18n();
 const { isEnabled, mode, setMode } = useExperienceMode();

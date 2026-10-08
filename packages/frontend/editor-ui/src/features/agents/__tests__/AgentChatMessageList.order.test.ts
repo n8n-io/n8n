@@ -2,7 +2,10 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { N8N_CHAT_ACTION_TOOL_NAME, type AgentPersistedMessageContentPart } from '@n8n/api-types';
 
-import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	applyOpenSuspensions,
+	convertDbMessages,
+} from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import {
 	READ_THEN_EDIT_TURN,
@@ -170,5 +173,36 @@ describe('AgentChatMessageList — reloaded history order', () => {
 			'card: card-1',
 			'text: Tell me what to change.',
 		]);
+	});
+
+	it.each([
+		{ state: 'waits for an answer', answered: false, footers: 0 },
+		{ state: 'is answered', answered: true, footers: 1 },
+	])('shows the turn footer only when a card that text follows $state', ({ answered, footers }) => {
+		const approval: AgentPersistedMessageContentPart = {
+			type: 'tool-call',
+			toolName: 'delete_file',
+			toolCallId: 'call-card',
+			input: { path: 'a.md' },
+			suspendPayload: { type: 'approval', toolName: 'delete_file', args: { path: 'a.md' } },
+			...(answered && { state: 'resolved', output: { approved: true } }),
+		};
+		const messages = applyOpenSuspensions(
+			convertDbMessages([
+				{
+					id: 'checkpoint-1',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'I will delete a.md.' },
+						approval,
+						{ type: 'text', text: 'Waiting for you.' },
+					],
+				},
+			]),
+			answered ? [] : [{ toolCallId: 'call-card', runId: 'run-1' }],
+		);
+		const wrapper = mount(AgentChatMessageList, { props: { messages, messagingState: 'idle' } });
+
+		expect(wrapper.findAll('[data-testid="message-actions"]')).toHaveLength(footers);
 	});
 });

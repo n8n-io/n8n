@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import type { ExperienceMode } from '@n8n/api-types';
 import {
 	createExperienceModeSaver,
+	limitExperienceToAssistant,
 	oppositeExperienceMode,
 	resolveExperienceMode,
 } from '../experienceMode';
@@ -71,6 +72,50 @@ describe('oppositeExperienceMode', () => {
 		['power', 'simple'],
 	])('turns %s into %s', (mode, opposite) => {
 		expect(oppositeExperienceMode(mode)).toBe(opposite);
+	});
+});
+
+describe('limitExperienceToAssistant', () => {
+	it('keeps experience modes on while the Assistant is on', () => {
+		expect(limitExperienceToAssistant({ enabled: true, defaultMode: 'simple' }, true)).toEqual({
+			enabled: true,
+			defaultMode: 'simple',
+		});
+	});
+
+	it('turns experience modes off when the Assistant is off, and keeps the default mode', () => {
+		expect(limitExperienceToAssistant({ enabled: true, defaultMode: 'simple' }, false)).toEqual({
+			enabled: false,
+			defaultMode: 'simple',
+		});
+	});
+
+	it('does not turn on experience modes that the instance has off', () => {
+		expect(limitExperienceToAssistant({ enabled: false, defaultMode: 'power' }, true)).toEqual({
+			enabled: false,
+			defaultMode: 'power',
+		});
+	});
+
+	it.each([true, false])(
+		'stays absent when the server sent no experience settings (Assistant on: %s)',
+		(assistantEnabled) => {
+			expect(limitExperienceToAssistant(undefined, assistantEnabled)).toBeUndefined();
+		},
+	);
+
+	it('is on only when both the instance and the Assistant are on, and does not change its input', () => {
+		fc.assert(
+			fc.property(fc.boolean(), modeArb, fc.boolean(), (enabled, defaultMode, assistantEnabled) => {
+				const experience = { enabled, defaultMode };
+
+				const result = limitExperienceToAssistant(experience, assistantEnabled);
+
+				expect(result).toEqual({ enabled: enabled && assistantEnabled, defaultMode });
+				expect(result).not.toBe(experience);
+				expect(experience).toEqual({ enabled, defaultMode });
+			}),
+		);
 	});
 });
 

@@ -1854,6 +1854,114 @@ describe('AgentChatPanel', () => {
 		},
 	);
 
+	describe('a card that text follows in the same output', () => {
+		/** One agent output split into text, the call that holds the card, and text. */
+		function cardOutput(card: Pick<ChatMessage, 'interactive' | 'toolCalls'>): ChatMessage[] {
+			return [
+				{ id: 'output-1', role: 'assistant', content: 'I will delete a.md.', status: 'success' },
+				{
+					id: 'output-1:segment-1',
+					segmentOf: 'output-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					...card,
+				},
+				{
+					id: 'output-1:segment-2',
+					segmentOf: 'output-1',
+					role: 'assistant',
+					content: 'Waiting for your answer.',
+					status: 'success',
+				},
+			];
+		}
+
+		it('replaces the composer with the approval and resumes the run on a decision', async () => {
+			messagesMock.value = cardOutput({
+				toolCalls: [{ tool: 'delete_file', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' }],
+				interactive: {
+					toolName: APPROVAL_TOOL_NAME,
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					input: { type: 'approval', toolName: 'delete_file', args: { path: 'a.md' } },
+				},
+			});
+
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(true);
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
+			await wrapper.get('[data-test-id="approval-card-allow-once"]').trigger('click');
+			expect(resumeMock).toHaveBeenCalledExactlyOnceWith({
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+			});
+			wrapper.unmount();
+		});
+
+		it('answers an open question by steering, and shows Stop', async () => {
+			messagesMock.value = cardOutput({
+				toolCalls: [
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+				],
+				interactive: openInteractiveMessage().interactive,
+			});
+
+			const wrapper = mountPanel();
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
+			expect(chatInput.props('showStopButton')).toBe(true);
+			(
+				wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+			).sendMessageFromOutside('Use Teams instead');
+			await flushPromises();
+			expect(cancelAndSteerMock).toHaveBeenCalledWith('Use Teams instead', expect.any(Function));
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it('shows Stop for a suspended call without a card', () => {
+			messagesMock.value = cardOutput({
+				toolCalls: [
+					{ tool: 'external_action', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+				],
+			});
+
+			const wrapper = mountPanel();
+
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('showStopButton')).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('frees the composer once a later output follows the card', () => {
+			messagesMock.value = [
+				...cardOutput({
+					toolCalls: [
+						{ tool: 'delete_file', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+					],
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: { type: 'approval', toolName: 'delete_file', args: {} },
+					},
+				}),
+				{ id: 'output-2', role: 'assistant', content: 'Done', status: 'success' },
+			];
+
+			const wrapper = mountPanel();
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(false);
+			expect(chatInput.props('placeholder')).toBe('Message Agent…');
+			expect(chatInput.props('showStopButton')).toBe(false);
+			wrapper.unmount();
+		});
+	});
+
 	it('blocks sending while a budget stop card is showing', async () => {
 		messagesMock.value = [
 			{

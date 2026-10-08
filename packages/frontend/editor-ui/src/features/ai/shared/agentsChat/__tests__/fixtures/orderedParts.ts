@@ -61,6 +61,13 @@ export const orderedPartsArb: fc.Arbitrary<OrderedPart[]> = fc
 		}),
 	);
 
+/** Gives each tool call of the parts a new id with the prefix, so two turns can not share an id. */
+export function withToolIdPrefix(parts: OrderedPart[], prefix: string): OrderedPart[] {
+	return parts.map((part) =>
+		part.kind === 'tool' ? { ...part, toolCallId: `${prefix}${part.toolCallId}` } : part,
+	);
+}
+
 export function isBlankText(part: OrderedPart): boolean {
 	return part.kind === 'text' && !part.text.trim();
 }
@@ -94,7 +101,8 @@ export function toPersistedMessage(
 	};
 }
 
-function partEvents(part: OrderedPart, index: number): AgentSseEvent[] {
+/** The stream events of one part. `index` makes the text and reasoning ids unique. */
+export function partEvents(part: OrderedPart, index: number): AgentSseEvent[] {
 	if (part.kind === 'text') return [{ type: 'text-delta', id: `text-${index}`, delta: part.text }];
 	if (part.kind === 'reasoning') {
 		const id = `reasoning-${index}`;

@@ -294,7 +294,9 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
 	if (group.kind === 'backgroundJobSignal') return false;
 	if (group.kind === 'toolRun') {
+		// Text can follow an open card in the same output. The turn is not done yet.
 		return (
+			!group.awaitingInput &&
 			group.finalMessage !== undefined &&
 			group.finalMessage.status !== CHAT_MESSAGE_STATUS.STREAMING &&
 			group.finalMessage.status !== CHAT_MESSAGE_STATUS.AWAITING_USER

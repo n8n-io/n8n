@@ -23,6 +23,7 @@ import { isDelegateSubAgentTool } from './delegateTool';
 import {
 	getPersistedPartSegmentKind,
 	getSegmentMessageId,
+	getTailSegments,
 	splitIntoSegments,
 } from './messageSegments';
 import {
@@ -105,19 +106,18 @@ export function findOpenInteractive(
 	return undefined;
 }
 
+type TailMessage = MessageWithInteractives & Pick<ChatMessage, 'id' | 'segmentOf'>;
+
 /**
  * The open interactive on the last turn, which is the one that owns the chat
  * input and any steering. A parked run is always the tail of the transcript, so
  * an unresolved card further up belongs to a turn the conversation already moved
  * past — `findOpenInteractive` returns those too, and acting on them would
- * answer or cancel the wrong tool call.
+ * answer or cancel the wrong tool call. The tail is the whole last output: text
+ * after the card in the same output is a later segment of it.
  */
-export function findTailOpenInteractive(
-	messages: MessageWithInteractives[],
-): InteractivePayload | undefined {
-	const tail = messages[messages.length - 1];
-	if (!tail) return undefined;
-	return getMessageInteractives(tail).find((payload) => payload.resolvedAt === undefined);
+export function findTailOpenInteractive(messages: TailMessage[]): InteractivePayload | undefined {
+	return findOpenInteractive(getTailSegments(messages));
 }
 
 /**
@@ -128,13 +128,11 @@ export function findTailOpenInteractive(
  * Stopping a wait is a deliberate act — the card's own button, or Stop.
  */
 export function findTailSteerableInteractive(
-	messages: MessageWithInteractives[],
+	messages: TailMessage[],
 ): InteractivePayload | undefined {
-	const tail = messages[messages.length - 1];
-	if (!tail) return undefined;
-	return getMessageInteractives(tail).find(
-		(payload) => payload.resolvedAt === undefined && payload.toolName !== WAIT_TOOL_NAME,
-	);
+	return getTailSegments(messages)
+		.flatMap(getMessageInteractives)
+		.find((payload) => payload.resolvedAt === undefined && payload.toolName !== WAIT_TOOL_NAME);
 }
 
 /** True when a suspend payload is the approval tool's renderable input. */
@@ -334,6 +332,7 @@ function historyMessageFields(
 	return {
 		...(msg.author && { author: msg.author }),
 		...(msg.executionId ? { executionId: msg.executionId } : {}),
+		...(segmentIndex > 0 && { segmentOf: context.messageId }),
 		// Only the first segment carries the signal: each copy renders its own card.
 		...(role === 'assistant' && segmentIndex === 0 && msg.backgroundTaskSignal
 			? { backgroundJobSignal: msg.backgroundTaskSignal }

@@ -46,6 +46,7 @@ import {
 	getMessageInteractives,
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import { getTailSegments } from '@/features/ai/shared/agentsChat/messageSegments';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
@@ -462,9 +463,9 @@ const backgroundApproval = computed(() => {
 	return undefined;
 });
 const pendingApproval = computed(() => {
-	const tail = messages.value.at(-1);
-	if (!tail) return undefined;
-	for (const payload of getMessageInteractives(tail)) {
+	// The card can sit above text that came after it in the same output.
+	const interactives = getTailSegments(messages.value).flatMap(getMessageInteractives);
+	for (const payload of interactives) {
 		if (
 			payload.toolName !== APPROVAL_TOOL_NAME ||
 			payload.resolvedAt !== undefined ||
@@ -748,11 +749,13 @@ const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
-const hasOpenSuspension = computed(
-	() =>
-		messages.value[messages.value.length - 1]?.toolCalls?.some(
-			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
-		) ?? false,
+const hasOpenSuspension = computed(() =>
+	getTailSegments(messages.value).some(
+		(message) =>
+			message.toolCalls?.some(
+				(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+			) ?? false,
+	),
 );
 const hasBudgetStop = computed(() =>
 	messages.value.some((message) =>

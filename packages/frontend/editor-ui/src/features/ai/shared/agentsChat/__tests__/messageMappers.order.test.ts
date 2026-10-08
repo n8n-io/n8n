@@ -1,10 +1,18 @@
 import fc from 'fast-check';
+import {
+	APPROVAL_TOOL_NAME,
+	WAIT_TOOL_NAME,
+	WORKFLOW_WAIT_SUSPEND_TYPE,
+	type AgentPersistedMessageContentPart,
+	type AgentPersistedMessageDto,
+} from '@n8n/api-types';
 
 import { buildDisplayGroups } from '../displayGroups';
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
 	findTailOpenInteractive,
+	findTailSteerableInteractive,
 } from '../messageMappers';
 import {
 	READ_THEN_EDIT_TURN,
@@ -15,6 +23,7 @@ import {
 	toPersistedMessage,
 	toRenderItems,
 	tool,
+	withToolIdPrefix,
 	type OrderedPart,
 } from './fixtures/orderedParts';
 
@@ -170,6 +179,143 @@ describe('convertDbMessages — order of text and tool calls', () => {
 			content: 'Summarise this file. Keep it short.',
 			attachments: [{ fileId: 'file-1', fileName: 'notes.md' }],
 		});
+	});
+});
+
+const approvalCall: AgentPersistedMessageContentPart = {
+	type: 'tool-call',
+	toolName: 'delete_file',
+	toolCallId: 'call-card',
+	input: { path: 'a.md' },
+	suspendPayload: { type: 'approval', toolName: 'delete_file', args: { path: 'a.md' } },
+};
+const waitCall: AgentPersistedMessageContentPart = {
+	type: 'tool-call',
+	toolName: 'collect_feedback',
+	toolCallId: 'call-card',
+	input: {},
+	suspendPayload: {
+		type: WORKFLOW_WAIT_SUSPEND_TYPE,
+		title: 'Waiting for the form',
+		components: [{ type: 'button', label: 'Cancel', value: 'cancel' }],
+	},
+};
+const readCall: AgentPersistedMessageContentPart = {
+	type: 'tool-call',
+	toolName: 'read_file',
+	toolCallId: 'call-read',
+	input: { path: 'b.md' },
+	state: 'resolved',
+	output: { ok: true },
+};
+
+/**
+ * A run parked on a card, as a reload restores it from the open checkpoint:
+ * one assistant message without an execution id or status.
+ */
+function parkedOutput(content: AgentPersistedMessageContentPart[]): AgentPersistedMessageDto {
+	return { id: 'checkpoint-1', role: 'assistant', content };
+}
+
+function reload(dbMessages: AgentPersistedMessageDto[]) {
+	return applyOpenSuspensions(convertDbMessages(dbMessages), [
+		{ toolCallId: 'call-card', runId: 'run-1' },
+	]);
+}
+
+describe('convertDbMessages — a card that text follows in the same output', () => {
+	it.each([
+		{ name: 'text → card → text', after: [{ type: 'text', text: 'Waiting for you.' }] },
+		{
+			name: 'text → card → text → tool',
+			after: [{ type: 'text', text: 'Reading the next file.' }, readCall],
+		},
+	] satisfies Array<{ name: string; after: AgentPersistedMessageContentPart[] }>)(
+		'finds the open approval of $name as the card of the last turn',
+		({ after }) => {
+			const messages = reload([
+				parkedOutput([{ type: 'text', text: 'I will delete a.md.' }, approvalCall, ...after]),
+			]);
+
+			expect(messages.length).toBeGreaterThan(2);
+			expect(messages[1].status).toBe('awaitingUser');
+			for (const segment of messages.slice(1)) expect(segment.segmentOf).toBe('checkpoint-1');
+			const expected = { toolName: APPROVAL_TOOL_NAME, toolCallId: 'call-card', runId: 'run-1' };
+			expect(findTailOpenInteractive(messages)).toMatchObject(expected);
+			expect(findTailSteerableInteractive(messages)).toMatchObject(expected);
+		},
+	);
+
+	it('finds the card of a recorded turn whose text comes after it', () => {
+		const messages = reload([
+			toPersistedMessage([], {
+				executionStatus: undefined,
+				content: [
+					{ type: 'text', text: 'I will delete a.md.' },
+					approvalCall,
+					{ type: 'text', text: 'Waiting for you.' },
+				],
+			}),
+		]);
+
+		expect(messages.map((message) => message.id)).toEqual([
+			'exec-1:assistant',
+			'exec-1:assistant:segment-1',
+			'exec-1:assistant:segment-2',
+		]);
+		expect(findTailOpenInteractive(messages)).toMatchObject({ toolCallId: 'call-card' });
+	});
+
+	it('finds a waiting card, but never offers it to steering', () => {
+		const messages = reload([
+			parkedOutput([
+				{ type: 'text', text: 'I started the form workflow.' },
+				waitCall,
+				{ type: 'text', text: 'It waits for the form.' },
+			]),
+		]);
+
+		expect(findTailOpenInteractive(messages)).toMatchObject({
+			toolName: WAIT_TOOL_NAME,
+			runId: 'run-1',
+		});
+		expect(findTailSteerableInteractive(messages)).toBeUndefined();
+	});
+
+	it.each([
+		{ name: 'a user message', next: { id: 'user-2', role: 'user', content: [] } },
+		{ name: 'a later output', next: { id: 'exec-2:assistant', role: 'assistant', content: [] } },
+	] satisfies Array<{ name: string; next: AgentPersistedMessageDto }>)(
+		'leaves the card to history once $name follows the output',
+		({ next }) => {
+			const card = parkedOutput([
+				{ type: 'text', text: 'I will delete a.md.' },
+				approvalCall,
+				{ type: 'text', text: 'Waiting for you.' },
+			]);
+			const messages = reload([card, { ...next, content: [{ type: 'text', text: 'Go on.' }] }]);
+
+			expect(findTailOpenInteractive(messages)).toBeUndefined();
+			expect(findTailSteerableInteractive(messages)).toBeUndefined();
+		},
+	);
+
+	it('finds the open approval wherever it sits in the last output', () => {
+		fc.assert(
+			fc.property(orderedPartsArb, orderedPartsArb, (before, after) => {
+				const content = [
+					...toPersistedMessage(withToolIdPrefix(before, 'before-')).content,
+					approvalCall,
+					...toPersistedMessage(withToolIdPrefix(after, 'after-')).content,
+				];
+				const messages = reload([parkedOutput(content)]);
+
+				expect(findTailOpenInteractive(messages)).toMatchObject({
+					toolCallId: 'call-card',
+					runId: 'run-1',
+				});
+			}),
+		);
 	});
 });
 

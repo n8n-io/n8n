@@ -1,7 +1,28 @@
-import { experienceModeSchema, type ExperienceMode } from '@n8n/api-types';
+import {
+	experienceModeSchema,
+	type ExperienceMode,
+	type FrontendModuleSettings,
+} from '@n8n/api-types';
 
 /** Today's interface. The editor shows it when experience modes are off. */
 const FALLBACK_MODE: ExperienceMode = 'power';
+
+type ExperienceSettings = NonNullable<
+	NonNullable<FrontendModuleSettings['instance-ai']>['experience']
+>;
+
+/**
+ * Applies the module-settings rule that experience modes are on only while the
+ * Assistant is on. A local change of the Assistant setting must keep this rule
+ * until the next settings fetch.
+ */
+export function limitExperienceToAssistant(
+	experience: ExperienceSettings | undefined,
+	assistantEnabled: boolean,
+): ExperienceSettings | undefined {
+	if (!experience) return undefined;
+	return { ...experience, enabled: experience.enabled && assistantEnabled };
+}
 
 export interface ExperienceModeInput {
 	/** Whether experience modes are on for the instance. */

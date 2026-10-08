@@ -68,3 +68,24 @@ export function splitIntoSegments<T>(
 export function getSegmentMessageId(messageId: string, segmentIndex: number): string {
 	return segmentIndex === 0 ? messageId : `${messageId}:segment-${segmentIndex}`;
 }
+
+type SegmentedMessage = Pick<AgentsChatMessage, 'id' | 'segmentOf'>;
+
+/** The id that all segments of one agent output share: the id of its first segment. */
+export function getSegmentRootId(message: SegmentedMessage): string {
+	return message.segmentOf ?? message.id;
+}
+
+/**
+ * All segments of the last agent output, oldest first. A parked run is always
+ * the last output, but its card can sit in an earlier segment than the text
+ * that follows it. Checks that read only the last message miss that card.
+ */
+export function getTailSegments<T extends SegmentedMessage>(messages: readonly T[]): T[] {
+	const tail = messages.at(-1);
+	if (!tail) return [];
+	const rootId = getSegmentRootId(tail);
+	let start = messages.length - 1;
+	while (start > 0 && getSegmentRootId(messages[start - 1]) === rootId) start--;
+	return messages.slice(start);
+}
