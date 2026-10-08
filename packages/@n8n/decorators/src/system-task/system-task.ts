@@ -11,7 +11,7 @@ import {
 import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { SystemTaskPlacement } from './system-task-placement';
+import type { SystemTaskPlacement } from './types';
 
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';

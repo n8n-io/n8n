@@ -5,7 +5,7 @@ import {
 	type SystemTask,
 	type SystemTaskSchedule,
 } from '../system-task';
-import type { SystemTaskPlacement } from '../system-task-placement';
+import type { SystemTaskPlacement } from '../types';
 
 const taskWith = (
 	schedule: SystemTaskSchedule,
