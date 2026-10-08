@@ -1,6 +1,13 @@
 <script lang="ts" setup>
 import { ROLE } from '@n8n/api-types';
-import { N8nAvatar, N8nDialog, N8nLink, N8nLoading, N8nText } from '@n8n/design-system';
+import {
+	N8nAvatar,
+	N8nDialog,
+	N8nDialogBody,
+	N8nLink,
+	N8nLoading,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
@@ -61,32 +68,29 @@ function mailtoHref(email: string): string {
 		size="medium"
 		data-test-id="contact-instance-admin-modal"
 	>
-		<N8nLoading v-if="isLoading" :rows="2" variant="p" :class="$style.body" />
-		<ul
-			v-else-if="owners.length"
-			:class="[$style.body, $style.list]"
-			data-test-id="contact-instance-admin-list"
-		>
-			<li v-for="owner in owners" :key="owner.id" :class="$style.owner">
-				<N8nAvatar :first-name="owner.firstName" :last-name="owner.lastName" size="small" />
-				<div :class="$style.identity">
-					<N8nText size="medium" color="text-dark">{{ owner.fullName }}</N8nText>
-					<N8nLink :to="mailtoHref(owner.email ?? '')" size="small" theme="text">
-						{{ owner.email }}
-					</N8nLink>
-				</div>
-			</li>
-		</ul>
-		<N8nText
-			v-else
-			tag="p"
-			size="small"
-			color="text-base"
-			:class="$style.body"
-			data-test-id="contact-instance-admin-empty"
-		>
-			{{ i18n.baseText('typeAvailabilityPolicies.contactAdmin.empty') }}
-		</N8nText>
+		<N8nDialogBody>
+			<N8nLoading v-if="isLoading" :rows="2" variant="p" />
+			<ul v-else-if="owners.length" :class="$style.list" data-test-id="contact-instance-admin-list">
+				<li v-for="owner in owners" :key="owner.id" :class="$style.owner">
+					<N8nAvatar :first-name="owner.firstName" :last-name="owner.lastName" size="small" />
+					<div :class="$style.identity">
+						<N8nText size="medium" color="text-dark">{{ owner.fullName }}</N8nText>
+						<N8nLink :to="mailtoHref(owner.email ?? '')" size="small" theme="text">
+							{{ owner.email }}
+						</N8nLink>
+					</div>
+				</li>
+			</ul>
+			<N8nText
+				v-else
+				tag="p"
+				size="small"
+				color="text-base"
+				data-test-id="contact-instance-admin-empty"
+			>
+				{{ i18n.baseText('typeAvailabilityPolicies.contactAdmin.empty') }}
+			</N8nText>
+		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
@@ -98,10 +102,6 @@ function mailtoHref(email: string): string {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
-}
-
-.body {
-	margin-top: var(--spacing--lg);
 }
 
 .owner {
