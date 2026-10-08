@@ -457,7 +457,8 @@ watch(
 				:class="$style.timestampDivider"
 				data-testid="agent-chat-timestamp-divider"
 			>
-				<N8nText size="small" color="text-light">{{ dividerLabels.get(group.id) }}</N8nText>
+				<!-- `text-base` is the subtle text token: 4.5:1 on the chat background. -->
+				<N8nText size="small" color="text-base">{{ dividerLabels.get(group.id) }}</N8nText>
 			</div>
 			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
 				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />

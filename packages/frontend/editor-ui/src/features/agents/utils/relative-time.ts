@@ -72,26 +72,36 @@ interface ChatDividerI18n {
 }
 
 /**
+ * The short time of day in the clock style of the locale: "06:42" in en-GB,
+ * "6:42 AM" in en-US. `undefined` uses the locale of the viewer's browser.
+ */
+export function formatChatTime(date: Date, locale?: string): string {
+	return date.toLocaleTimeString(locale, { timeStyle: 'short' });
+}
+
+/**
  * Label for a ChatGPT-style timestamp divider above a chat message:
  *
  *   - same local day      → "Today at {time}"
  *   - previous local day  → "Yesterday at {time}"
  *   - older                → "{weekday}, {month} {day} at {time}"
  *
- * Time and date formatting are left to the viewer's locale (12h/24h, date order).
+ * Time and date formatting follow the locale (12h/24h, date order). `undefined`
+ * uses the locale of the viewer's browser.
  */
 export function formatChatDividerTimestamp(
 	date: Date | string | number,
 	i18n: ChatDividerI18n,
 	now: Date = new Date(),
+	locale?: string,
 ): string {
 	const past = new Date(date);
-	const time = past.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+	const time = formatChatTime(past, locale);
 
 	if (isSameLocalDay(past, now)) return i18n.today(time);
 	if (isYesterdayLocal(past, now)) return i18n.yesterday(time);
 
-	const dateLabel = past.toLocaleDateString(undefined, {
+	const dateLabel = past.toLocaleDateString(locale, {
 		weekday: 'short',
 		month: 'short',
 		day: 'numeric',

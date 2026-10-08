@@ -219,6 +219,18 @@ describe('AssistantMadeBadge', () => {
 			);
 		});
 
+		it('stays out of the tab order and keeps the full text for screen readers', async () => {
+			await render();
+			const badge = screen.getByTestId('workflow-assistant-made-badge');
+			setLabelWidths(within(badge).getByText(BADGE_TEXT), 160, 40);
+			await flushPromises();
+
+			await userEvent.tab();
+
+			expect(document.body).toHaveFocus();
+			expect(badge).toHaveTextContent(BADGE_TEXT);
+		});
+
 		it('shows no tooltip again after the text fits', async () => {
 			await render();
 			const badge = screen.getByTestId('workflow-assistant-made-badge');

@@ -184,7 +184,9 @@ watch(
 		if (!wasStreaming && previousCount === chatMessages.value.length) return;
 		void refreshThreadInfo();
 		clearTimeout(titleRefreshTimer);
-		titleRefreshTimer = setTimeout(() => void refreshThreadInfo(), TITLE_REFINE_DELAY_MS);
+		titleRefreshTimer = setTimeout(() => {
+			void refreshThreadInfo();
+		}, TITLE_REFINE_DELAY_MS);
 	},
 );
 
@@ -682,10 +684,15 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--sm);
 }
 
+/* The same column as the composer (AgentChatPanel `.inputArea`), so the offers
+   line up with the transcript and the composer. */
 .offers {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	width: 100%;
+	max-width: 800px;
+	margin-inline: auto;
 	padding: 0 var(--spacing--sm);
 
 	&:empty {

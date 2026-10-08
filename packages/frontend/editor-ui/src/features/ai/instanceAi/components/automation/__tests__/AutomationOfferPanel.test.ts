@@ -36,6 +36,18 @@ describe('AutomationOfferPanel', () => {
 		);
 	});
 
+	it('keeps the icon tile and the dismiss button in the title row', () => {
+		const { getByTestId, getByText } = renderComponent();
+
+		// One row, so a title that wraps on a phone keeps both next to its first line.
+		expect([...getByTestId('automation-offer-head').children]).toEqual([
+			getByTestId('automation-offer-icon'),
+			getByText('Want this to happen automatically?'),
+			getByTestId('automation-offer-dismiss'),
+		]);
+		expect(getByTestId('automation-offer-icon')).toHaveAttribute('aria-hidden', 'true');
+	});
+
 	it('shows a workflow name as plain text', () => {
 		const { getByTestId } = renderComponent({ props: { workflowName: '<b>Leads</b> & "VIP"' } });
 

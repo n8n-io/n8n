@@ -1,0 +1,54 @@
+@use '@n8n/design-system/css/mixins/focus';
+
+// One recipe for the offer cards between the transcript and the composer, so
+// the offers look the same (DESIGN-v3 §11: the rebrand card recipe).
+
+// The icon tile and an icon button (`size="xsmall"`) in the title row.
+$control-size: var(--height--xs);
+// One line of a default N8nText (`size="medium"`): font size `sm`, line height `lg`.
+$title-line-height: calc(var(--font-size--sm) * var(--line-height--lg));
+
+@mixin card {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	margin: var(--spacing--2xs) 0;
+	background-color: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow--xs);
+}
+
+// The controls stay on the first line when a narrow card wraps the title.
+@mixin head {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	align-self: stretch;
+}
+
+@mixin icon-tile {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: $control-size;
+	height: $control-size;
+	background-color: var(--background--subtle);
+	border-radius: var(--radius--2xs);
+}
+
+@mixin title {
+	flex: 1;
+	min-width: 0;
+	// Centres the first line of the title on the controls next to it.
+	padding-block-start: calc((#{$control-size} - #{$title-line-height}) / 2);
+}
+
+// The ring of an ink (`solid`) button is faint against the card. A ring in the
+// focus border colour with a gap stays visible (3:1 or more).
+@mixin primary-action {
+	@include focus.focus-visible-ring-offset;
+}

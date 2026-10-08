@@ -40,6 +40,7 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { useComposerFocus } from '../composables/useComposerFocus';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import {
 	findTailOpenInteractive,
@@ -567,6 +568,9 @@ const backgroundElapsed = computed(() => {
 
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const isPreparingToSend = ref(false);
+// A send disables the composer, which drops its focus. This gives it back.
+const composerFocus = useComposerFocus(() => chatInput.value, isPreparingToSend);
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
 const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
@@ -576,7 +580,7 @@ const showBackgroundJobs = computed(
 );
 
 function focusInput(options?: FocusOptions) {
-	chatInput.value?.focus(options);
+	composerFocus.focus(options);
 }
 
 watch(
@@ -696,7 +700,6 @@ const inputText = computed<string>({
 const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
-const isPreparingToSend = ref(false);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;

@@ -17,11 +17,11 @@ const i18n = useI18n();
 
 <template>
 	<div :class="$style.root" data-test-id="instance-ai-test-agent-panel">
-		<div :class="$style.head">
-			<span :class="$style.iconWrap">
+		<div :class="$style.head" data-test-id="instance-ai-test-agent-head">
+			<span :class="$style.iconWrap" aria-hidden="true" data-test-id="instance-ai-test-agent-icon">
 				<N8nIcon icon="sparkles" size="medium" />
 			</span>
-			<N8nText bold color="text-dark">
+			<N8nText bold color="text-dark" :class="$style.title">
 				{{ i18n.baseText('instanceAi.testAgent.title') }}
 			</N8nText>
 		</div>
@@ -34,6 +34,7 @@ const i18n = useI18n();
 			<N8nButton
 				variant="solid"
 				size="small"
+				:class="$style.generate"
 				data-test-id="instance-ai-test-agent-generate"
 				@click="$emit('generate')"
 			>
@@ -52,34 +53,29 @@ const i18n = useI18n();
 </template>
 
 <style module lang="scss">
+@use '../../shared/styles/inline-offer' as inlineOffer;
+
 /* Flat card — no header/footer rules. The design separates the three rows with
    a single gap, so adding dividers would over-structure it. */
 .root {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--sm);
-	margin: var(--spacing--2xs) 0;
-	background-color: var(--background--surface);
-	border: var(--border);
-	/* Same radius token as the sibling offer card, so the two match in the thread.
-	   Note `--radius--sm` is not a smaller version of this one: the legacy layer
-	   overrides both, and it lands far tighter than the primitives file suggests. */
-	border-radius: var(--radius--lg);
+	@include inlineOffer.card;
 }
 
 .head {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	@include inlineOffer.head;
 }
 
 .iconWrap {
-	display: flex;
-	padding: var(--spacing--3xs);
-	background-color: var(--background--subtle);
-	border-radius: var(--radius--2xs);
+	@include inlineOffer.icon-tile;
+}
+
+.title {
+	@include inlineOffer.title;
+}
+
+// Two classes, so the ring wins over the button's own focus style.
+.root .generate {
+	@include inlineOffer.primary-action;
 }
 
 .options {

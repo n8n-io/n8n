@@ -398,6 +398,36 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
+	describe('when Tab cannot accept a contextual suggestion', () => {
+		it.each([
+			{ name: 'no follow-up shows', props: { contextualSuggestion: null }, typed: '' },
+			{
+				name: 'the user has typed',
+				props: { contextualSuggestion: 'Summarize the last workflow error for me' },
+				typed: 'Hi',
+			},
+			{
+				name: 'a plan review placeholder shows',
+				props: {
+					contextualSuggestion: 'Summarize the last workflow error for me',
+					isAwaitingPlanReview: true,
+				},
+				typed: '',
+			},
+		])('moves the focus out of the textarea when $name', async ({ props, typed }) => {
+			const user = userEvent.setup();
+			const { getByRole } = renderComponent({ props: { isStreaming: false, ...props } });
+			const textbox = getByRole('textbox');
+			await user.click(textbox);
+			if (typed) await user.keyboard(typed);
+
+			await user.tab();
+
+			expect(textbox).not.toHaveFocus();
+			expect(textbox).toHaveValue(typed);
+		});
+	});
+
 	it('does not submit when Enter is pressed on an empty draft', async () => {
 		const { emitted, getByRole } = renderComponent({
 			props: {

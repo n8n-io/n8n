@@ -50,8 +50,8 @@ const announcement = computed(() =>
 		<span :class="$style.announcement" role="status" data-test-id="automation-offer-announcement">{{
 			announcement
 		}}</span>
-		<div :class="$style.head">
-			<span :class="$style.iconWrap" aria-hidden="true">
+		<div :class="$style.head" data-test-id="automation-offer-head">
+			<span :class="$style.iconWrap" aria-hidden="true" data-test-id="automation-offer-icon">
 				<N8nIcon icon="zap" size="medium" />
 			</span>
 			<N8nText :id="titleId" bold color="text-dark" :class="$style.title">
@@ -76,6 +76,7 @@ const announcement = computed(() =>
 		<N8nButton
 			variant="solid"
 			size="small"
+			:class="$style.accept"
 			data-test-id="automation-offer-accept"
 			@click="$emit('accept')"
 		>
@@ -85,40 +86,31 @@ const announcement = computed(() =>
 </template>
 
 <style module lang="scss">
-/* Same flat card as the "test your agent" offer, so the offers match in the thread. */
+@use '../../../shared/styles/inline-offer' as inlineOffer;
+
 .root {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--sm);
-	margin: var(--spacing--2xs) 0;
-	background-color: var(--background--surface);
-	border: var(--border);
-	border-radius: var(--radius--lg);
+	@include inlineOffer.card;
 }
 
 .head {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	align-self: stretch;
+	@include inlineOffer.head;
 }
 
 .iconWrap {
-	display: flex;
-	padding: var(--spacing--3xs);
-	background-color: var(--background--subtle);
-	border-radius: var(--radius--2xs);
+	@include inlineOffer.icon-tile;
 }
 
 .title {
-	flex: 1;
-	min-width: 0;
+	@include inlineOffer.title;
 }
 
 .body {
 	overflow-wrap: anywhere;
+}
+
+// Two classes, so the ring wins over the button's own focus style.
+.root .accept {
+	@include inlineOffer.primary-action;
 }
 
 /* Hidden on screen, read by screen readers. */
