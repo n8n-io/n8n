@@ -246,8 +246,8 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				/>
 
 				<div :class="$style.settingGroup">
-					<div :class="$style.row">
-						<div :class="$style.rowLabel">
+					<div :class="shared.settingRow">
+						<div :class="shared.settingLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.reasoning.label')
 							}}</N8nText>
@@ -262,7 +262,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						<N8nSwitch2
 							:model-value="reasoningEnabled"
 							:disabled="props.disabled || isReasoningUnavailable"
-							:class="$style.switchControl"
+							:class="[$style.switchControl, shared.settingControl]"
 							data-testid="agent-reasoning-toggle"
 							@update:model-value="(v) => onReasoningToggle(Boolean(v))"
 						/>
@@ -273,15 +273,17 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="$style.subSettings"
 						data-testid="agent-reasoning-settings"
 					>
-						<div :class="$style.row">
-							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-								i18n.baseText('agents.builder.advanced.reasoningEffort.label')
-							}}</N8nText>
+						<div :class="shared.settingRow">
+							<div :class="shared.settingLabel">
+								<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+									i18n.baseText('agents.builder.advanced.reasoningEffort.label')
+								}}</N8nText>
+							</div>
 							<N8nSelect
 								:model-value="reasoningLevel"
 								size="small"
 								:disabled="props.disabled || isReasoningUnavailable"
-								:class="$style.shortInput"
+								:class="shared.settingControlShort"
 								data-testid="agent-reasoning-effort-select"
 								@update:model-value="onReasoningLevelChange"
 							>
@@ -297,8 +299,8 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				</div>
 
 				<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
-					<div :class="$style.row">
-						<div :class="$style.rowLabel">
+					<div :class="shared.settingRow">
+						<div :class="shared.settingLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
 							}}</N8nText>
@@ -310,7 +312,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 							:model-value="anthropicTtl"
 							size="small"
 							:disabled="props.disabled"
-							:class="$style.shortInput"
+							:class="shared.settingControlShort"
 							data-testid="agent-prompt-caching-ttl-select"
 							@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
 						>
@@ -324,8 +326,8 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 				</div>
 
-				<div :class="$style.row">
-					<div :class="$style.rowLabel">
+				<div :class="shared.settingRow">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.concurrency.label')
 						}}</N8nText>
@@ -340,14 +342,14 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:precision="0"
 						:controls="false"
 						:disabled="props.disabled"
-						:class="$style.shortInput"
+						:class="shared.settingControlShort"
 						data-testid="agent-concurrency-input"
 						@update:model-value="onConcurrencyChange"
 					/>
 				</div>
 
-				<div :class="$style.row">
-					<div :class="$style.rowLabel">
+				<div :class="shared.settingRow">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.maxIterations.label')
 						}}</N8nText>
@@ -362,7 +364,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:precision="0"
 						:controls="false"
 						:disabled="props.disabled"
-						:class="$style.shortInput"
+						:class="shared.settingControlShort"
 						data-testid="agent-max-iterations-input"
 						@update:model-value="onMaxIterationsChange"
 					/>
@@ -392,38 +394,12 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 	gap: var(--spacing--2xs);
 }
 
-.row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	min-height: var(--spacing--xl);
-}
-
-.rowLabel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .subSettings {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	padding-left: var(--spacing--sm);
 	border-left: var(--border);
-}
-
-.shortInput {
-	width: 140px;
-	flex-shrink: 0;
-}
-
-.credentialSelect {
-	width: 220px;
-	flex-shrink: 0;
 }
 
 .switchControl:not([data-disabled]) {

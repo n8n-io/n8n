@@ -437,7 +437,8 @@ defineExpose({ onSetupTaskAction });
 	flex-direction: column;
 	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
-	min-width: var(--agent-builder-editor-min-width, 35rem);
+	min-width: 0;
+	container: agent-editor / inline-size;
 }
 
 .panelArea {
@@ -452,6 +453,14 @@ defineExpose({ onSetupTaskAction });
 	overflow: auto;
 	scrollbar-gutter: stable;
 	@include scrollbar-mixins.hoverable-scroll-bar;
+}
+
+// A container query does not resolve a custom property.
+// 40rem is two 16rem steps plus one 8rem step.
+@container agent-editor (max-width: 40rem) {
+	.panelArea {
+		--agent-builder-content-padding-inline: var(--spacing--sm);
+	}
 }
 
 .preventScroll {

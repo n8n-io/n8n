@@ -40,8 +40,10 @@ withDefaults(
 
 .row {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-start;
 	gap: var(--spacing--xs);
+	container: agent-panel-header / inline-size;
 }
 
 .copy {
@@ -54,6 +56,19 @@ withDefaults(
 
 	> span {
 		text-wrap: balance;
+	}
+}
+
+// A container query does not resolve a custom property.
+// 34.5rem matches the narrow setting row. The 80% cap squeezes the description there.
+@container agent-panel-header (max-width: 34.5rem) {
+	.copy {
+		flex-basis: 100%;
+		max-width: 100%;
+	}
+
+	.actions {
+		margin-inline-start: 0;
 	}
 }
 
