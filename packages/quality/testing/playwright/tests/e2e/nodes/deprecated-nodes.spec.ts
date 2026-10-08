@@ -93,7 +93,8 @@ test.describe(
 			await n8n.canvas.deleteNodeByName(FUNCTION_NODE_NAME);
 
 			expect((await saved).ok()).toBe(true);
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
+			await expect(n8n.canvas.nodeByName(FUNCTION_NODE_NAME)).toHaveCount(0);
+			await expect(n8n.canvas.nodeByName(TRIGGER_NAME)).toBeVisible();
 		});
 	},
 );

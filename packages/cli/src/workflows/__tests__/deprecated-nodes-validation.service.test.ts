@@ -146,6 +146,24 @@ describe('DeprecatedNodesValidationService', () => {
 			expect(() => validator.validateOnCreate(nodes)).toThrow(/Replace it with the Code node/);
 		});
 
+		it("names the replacement configured on the node's own deprecated version", () => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type, version) => {
+				if (type === 'n8n-nodes-base.set') {
+					return Object.assign(mock<INodeType>(), {
+						description: (version === 1
+							? { name: type, deprecated: true, replacedByNodeType: 'n8n-nodes-base.code' }
+							: { name: type }) as INodeTypeDescription,
+					});
+				}
+				return Object.assign(mock<INodeType>(), {
+					description: { name: type, displayName: 'Code' } as INodeTypeDescription,
+				});
+			});
+
+			const nodes = [makeNode({ id: 'a', type: 'n8n-nodes-base.set', typeVersion: 1 })];
+			expect(() => validator.validateOnCreate(nodes)).toThrow(/Replace it with the Code node/);
+		});
+
 		it('is a no-op when the config flag is off', () => {
 			nodesConfig.blockDeprecated = false;
 			const nodes = [makeNode({ id: 'a', type: 'n8n-nodes-base.function' })];

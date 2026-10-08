@@ -12,6 +12,8 @@ type DeprecatedNodeViolation = {
 	kind: 'added' | 'edited';
 	nodeName: string;
 	nodeType: string;
+	/** From the description of the node's own version, which may differ from the latest one. */
+	replacedByNodeType?: string;
 };
 
 /**
@@ -33,8 +35,14 @@ export class DeprecatedNodesValidationService {
 
 		const violations: DeprecatedNodeViolation[] = [];
 		for (const node of nodes) {
-			if (this.deprecatedDescription(node)) {
-				violations.push({ kind: 'added', nodeName: node.name, nodeType: node.type });
+			const description = this.deprecatedDescription(node);
+			if (description) {
+				violations.push({
+					kind: 'added',
+					nodeName: node.name,
+					nodeType: node.type,
+					replacedByNodeType: description.replacedByNodeType,
+				});
 			}
 		}
 
@@ -55,17 +63,22 @@ export class DeprecatedNodesValidationService {
 			const description = this.deprecatedDescription(incoming);
 			if (!description) continue;
 
+			const violation = {
+				nodeName: incoming.name,
+				nodeType: incoming.type,
+				replacedByNodeType: description.replacedByNodeType,
+			};
 			const before = existingById.get(incoming.id);
 			// A stored node that was not deprecated counts as adding one, so a node cannot be moved back onto a deprecated version.
 			if (!before || !this.deprecatedDescription(before)) {
-				violations.push({ kind: 'added', nodeName: incoming.name, nodeType: incoming.type });
+				violations.push({ kind: 'added', ...violation });
 				continue;
 			}
 
 			if (
 				!isEqual(this.frozenFields(before, description), this.frozenFields(incoming, description))
 			) {
-				violations.push({ kind: 'edited', nodeName: incoming.name, nodeType: incoming.type });
+				violations.push({ kind: 'edited', ...violation });
 			}
 		}
 
@@ -137,19 +150,16 @@ export class DeprecatedNodesValidationService {
 
 	private formatMessage(v: DeprecatedNodeViolation): string {
 		const verb = v.kind === 'added' ? 'use a' : 'modify a';
-		const replacement = this.getReplacementDisplayName(v.nodeType);
+		const replacement = this.getReplacementDisplayName(v.replacedByNodeType);
 		const fix = replacement
 			? `Replace it with the ${replacement} node or remove it from the workflow.`
 			: 'Replace it with a supported alternative or remove it from the workflow.';
 		return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated. ${fix}`;
 	}
 
-	/** Display name of the node type configured as this node's replacement, if any. */
-	private getReplacementDisplayName(nodeType: string): string | undefined {
+	private getReplacementDisplayName(replacementType: string | undefined): string | undefined {
+		if (!replacementType) return undefined;
 		try {
-			const replacementType =
-				this.nodeTypes.getByNameAndVersion(nodeType)?.description?.replacedByNodeType;
-			if (!replacementType) return undefined;
 			return this.nodeTypes.getByNameAndVersion(replacementType)?.description?.displayName;
 		} catch {
 			return undefined;
