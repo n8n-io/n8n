@@ -1,6 +1,6 @@
 # CI passes one DHI reference per published Node version (see the matrix in
 # build-base-image.yml). The default keeps plain `docker build` working.
-ARG DHI_REF=dhi.io/node:24.19.0-alpine3.24-dev@sha256:dc2989ad23938772abaf549ed7bde5d61d70377005229bb55bef94bff40f8bbd
+ARG DHI_REF=dhi.io/node:24.21.0-alpine3.24-dev@sha256:d22ba0e9ab2a54609ae533df4ebfd6f36c1f233b662a4c547f5a3195e8c21937
 FROM ${DHI_REF}
 
 # Install all dependencies in a single layer to minimize image size

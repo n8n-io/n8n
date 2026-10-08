@@ -29,6 +29,7 @@ const SET = 'n8n-nodes-base.set';
 const GMAIL = 'n8n-nodes-base.gmail';
 const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
 const SCHEDULE_TRIGGER = 'n8n-nodes-base.scheduleTrigger';
+const DATE_TIME = 'n8n-nodes-base.dateTime';
 
 // `endpointGroups` is load-bearing beyond the routes it mounts: `setupTestServer` only reaches
 // `ModuleRegistry.initModules` when it is set, and that init is what registers both the
@@ -203,6 +204,62 @@ describe('PATCH /workflows/:workflowId', () => {
 		await ownerAgent
 			.patch(`/workflows/${workflow.id}`)
 			.send({ name: 'Renamed', nodes: [node(MANUAL_TRIGGER), node(SET)], connections: {} })
+			.expect(200);
+	});
+});
+
+describe('inline agents', () => {
+	const inlineAgentNode = (): INode => ({
+		...node('n8n-nodes-base.messageAnAgent', 'Message an Agent'),
+		parameters: {
+			agentSource: 'inline',
+			inlineAgent: {
+				config: {
+					tools: [
+						{
+							type: 'node',
+							name: 'Current date',
+							node: { nodeType: DATE_TIME, nodeTypeVersion: 2, nodeParameters: {} },
+						},
+					],
+				},
+			},
+		},
+	});
+
+	test('blocks a create whose inline agent has a blocked node tool', async () => {
+		await putInstancePolicy({ rules: [rule('deny-date-time', 'deny', DATE_TIME)] });
+
+		const response = await ownerAgent
+			.post('/workflows')
+			.send({
+				name: 'New workflow',
+				nodes: [node(MANUAL_TRIGGER), inlineAgentNode()],
+				connections: {},
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			code: 403,
+			meta: { violations: [violationFor(DATE_TIME, 'instance', 'deny-date-time')] },
+		});
+		await expect(workflowRepository.count()).resolves.toBe(0);
+	});
+
+	test('grandfathers an inline agent tool the stored workflow already had', async () => {
+		const workflow = await createWorkflow(
+			{
+				name: 'Stored workflow',
+				nodes: [node(MANUAL_TRIGGER), inlineAgentNode()],
+				connections: {},
+			},
+			owner,
+		);
+		await putInstancePolicy({ rules: [rule('deny-date-time', 'deny', DATE_TIME)] });
+
+		await ownerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Renamed', nodes: [node(MANUAL_TRIGGER), inlineAgentNode()], connections: {} })
 			.expect(200);
 	});
 });

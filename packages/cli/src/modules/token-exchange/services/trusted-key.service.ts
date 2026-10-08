@@ -27,7 +27,7 @@ import type {
 import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
 import { JwksResolverService } from './jwks-resolver';
 
-type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
+type AlgorithmFamily = 'RSA' | 'EC';
 
 const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 	RS256: 'RSA',
@@ -39,7 +39,6 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 	ES256: 'EC',
 	ES384: 'EC',
 	ES512: 'EC',
-	EdDSA: 'EdDSA',
 };
 
 const STATIC_SOURCE_ID = 'static';
@@ -540,7 +539,6 @@ export class TrustedKeyService {
 		const expectedTypes: Record<AlgorithmFamily, string[]> = {
 			RSA: ['rsa'],
 			EC: ['ec'],
-			EdDSA: ['ed25519', 'ed448'],
 		};
 
 		if (!expectedTypes[family].includes(keyType ?? '')) {

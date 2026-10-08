@@ -49,11 +49,12 @@ import {
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import { selectLatestAgentPlan } from '../utils/agent-plan';
+import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import type {
 	AgentContinueLoadedEvent,
@@ -237,6 +238,21 @@ function editQueuedMessage(id: string) {
 	if (item) void startQueueEdit(item);
 }
 
+async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promise<File> {
+	if (attachment.file) return attachment.file;
+	if (!attachment.fileId) throw new Error('Attachment is unavailable');
+	const url = getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachment.fileId,
+		props.channel,
+	);
+	const response = await fetch(url, { credentials: 'include' });
+	if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
+	return new File([await response.blob()], attachment.fileName, { type: attachment.mimeType });
+}
+
 async function startQueueEdit(item: AgentChatQueueItem) {
 	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
 	queueExpanded.value = true;
@@ -257,20 +273,9 @@ async function startQueueEdit(item: AgentChatQueueItem) {
 	try {
 		/** Load attachments before removal so a failed download leaves the message queued. */
 		const files = await Promise.all(
-			(item.attachments ?? []).map(async (attachment) => {
-				const url = getChatAttachmentUrl(
-					rootStore.restApiContext,
-					target.projectId,
-					target.agentId,
-					attachment.id,
-					props.channel,
-				);
-				const response = await fetch(url, { credentials: 'include' });
-				if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
-				return new File([await response.blob()], attachment.fileName, {
-					type: attachment.mimeType,
-				});
-			}),
+			(item.attachments ?? []).map((attachment) =>
+				loadChatAttachmentFile({ ...attachment, fileId: attachment.id }),
+			),
 		);
 		if (!isCurrentTarget() || hasDraft.value) return;
 		const result = await removeQueuedMessage(item.id);
@@ -320,14 +325,9 @@ function isQueueItemBusy(item: AgentChatQueueItem) {
 	);
 }
 function canMoveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
-	if (
-		!capabilities.value.reorder ||
-		editingQueueId.value ||
-		from === to ||
-		!items[from] ||
-		!items[to]
-	)
-		return false;
+	if (editingQueueId.value || from === to || !items[from] || !items[to]) return false;
+	// The preview hides a queued item, so a reorder would send a stale queue order.
+	if (isPreviewingFirstMessage.value && previewQueueId.value) return false;
 	return !items.slice(Math.min(from, to), Math.max(from, to) + 1).some(isQueueItemBusy);
 }
 function canDragQueueItem(index: number) {
@@ -365,9 +365,6 @@ async function moveQueueItem(items: AgentChatQueueItem[], from: number, to: numb
 	if (queueOrder.value !== reordered) return;
 	queueOrder.value = undefined;
 }
-const backgroundJobsActive = computed(
-	() => capabilities.value.backgroundTasks && props.backgroundJobsActive,
-);
 const {
 	jobs: backgroundJobs,
 	respondToApproval,
@@ -377,7 +374,8 @@ const {
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
-	active: () => backgroundJobsActive.value,
+	active: () => props.backgroundJobsActive,
+	channel: () => props.channel,
 	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
 });
 const canStopBackgroundJobs = computed(() =>
@@ -488,7 +486,7 @@ const backgroundJobStatuses = computed(() => ({
 }));
 
 const backgroundApproval = computed(() => {
-	if (!backgroundJobsActive.value) return undefined;
+	if (!props.backgroundJobsActive) return undefined;
 	for (const job of backgroundJobs.value) {
 		if (job.status !== 'suspended' || !job.approval) continue;
 		const input = parseApprovalInput(job.approval.suspendPayload);
@@ -579,7 +577,7 @@ const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
 );
 watch(
 	() =>
-		backgroundJobsActive.value &&
+		props.backgroundJobsActive &&
 		backgroundInProgress.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
@@ -606,7 +604,7 @@ const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
-	() => backgroundJobsActive.value && backgroundJobs.value.length > 0,
+	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
 );
 
 function focusInput(options?: FocusOptions) {
@@ -799,14 +797,58 @@ const hasBudgetStop = computed(() =>
 );
 const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
 const budgetIncreasePending = ref(false);
+const isRetrying = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
+		isRetrying.value ||
 		!!editingQueueId.value ||
 		isPreparingToSend.value ||
 		isSubmitting.value ||
 		isLoadingHistory.value ||
 		hasBudgetStop.value,
 );
+const retryMessageId = computed(() => {
+	if (!isRetryableChatError(messages.value.at(-1))) return undefined;
+	return messages.value.findLast((message) => message.role === 'user')?.id;
+});
+const retryDisabled = computed(
+	() =>
+		isSubmissionBlocked.value ||
+		hasDraft.value ||
+		showStop.value ||
+		queuedMessages.value.length > 0,
+);
+
+async function retryMessage(messageId: string) {
+	if (retryDisabled.value || retryMessageId.value !== messageId) return;
+	const message = messages.value.find((entry) => entry.id === messageId);
+	if (!message) return;
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		!disposed &&
+		target.projectId === props.projectId &&
+		target.agentId === props.agentId &&
+		target.continueSessionId === props.continueSessionId;
+	isRetrying.value = true;
+	try {
+		const files = await Promise.all((message.attachments ?? []).map(loadChatAttachmentFile));
+		if (!isCurrentTarget() || hasDraft.value || retryMessageId.value !== messageId) return;
+		isRetrying.value = false;
+		if (retryDisabled.value) return;
+		inputText.value = message.content;
+		attachedFiles.value = files;
+		await submitDraft(message.content.trim(), files);
+	} catch (error) {
+		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.chat.retry.error'));
+	} finally {
+		isRetrying.value = false;
+	}
+}
+
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
 // the user clear the stale pulsing state without reloading the chat.
@@ -951,8 +993,10 @@ function trackSentToN8nChat(hadNoMessagesBeforeSend: boolean) {
 }
 
 async function onSubmit(): Promise<SubmitResult> {
-	const text = inputText.value.trim();
-	const files = [...attachedFiles.value];
+	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
+}
+
+async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
@@ -1217,6 +1261,9 @@ onBeforeUnmount(() => {
 			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			:can-increase-budget="canIncreaseBudget"
 			:budget-increase-pending="budgetIncreasePending"
+			:retry-message-id="retryMessageId"
+			:retry-disabled="retryDisabled"
+			@retry="retryMessage"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 			@increase-budget="onIncreaseBudget"
@@ -1286,7 +1333,7 @@ onBeforeUnmount(() => {
 						</ul>
 						<div :class="$style.backgroundJobActions">
 							<N8nLink
-								v-if="continueSessionId"
+								v-if="continueSessionId && capabilities.traceLinks"
 								:to="backgroundTraceRoute"
 								theme="text"
 								size="small"
@@ -1370,7 +1417,9 @@ onBeforeUnmount(() => {
 							v-if="currentPlan"
 							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
 							:plan="currentPlan"
-							:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
+							:trace-route="
+								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+							"
 						/>
 					</template>
 					<template #above>

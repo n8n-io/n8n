@@ -1,3 +1,5 @@
+import type { DataTableColumnType } from 'n8n-workflow';
+
 import type {
 	DataTableMatchingMode,
 	DataTableMissingMode,
@@ -36,8 +38,16 @@ export type DataTableResolutionFailure = {
 	missingColumns?: string[];
 	/** For `schema-incompatible`: package columns whose target type differs. */
 	typeMismatches?: DataTableColumnTypeMismatch[];
-	/** For `schema-incompatible` under the `fail` policy: target columns not in the package schema. */
+	/** For `schema-incompatible` under the `fail` and `overwrite-non-destructive` policies: target columns not in the package schema. */
 	extraColumns?: string[];
+	/** For `schema-incompatible`: the changes `overwrite` would make to the target table. */
+	overwriteChanges?: DataTableSchemaOperation[];
+	/** For `permission-denied`: the project scope the user lacks. */
+	missingScope?: 'dataTable:create' | 'dataTable:update';
+	/** For `name-conflict`: the other table that holds or claims the name. */
+	conflictingTableId?: string;
+	/** For a rename `name-conflict`: the matched table's current name. */
+	currentName?: string;
 	usedByWorkflows: string[];
 };
 
@@ -47,7 +57,14 @@ export function createFailure(
 	details: Partial<
 		Pick<
 			DataTableResolutionFailure,
-			'existingProjectId' | 'missingColumns' | 'typeMismatches' | 'extraColumns'
+			| 'name'
+			| 'existingProjectId'
+			| 'missingColumns'
+			| 'typeMismatches'
+			| 'extraColumns'
+			| 'overwriteChanges'
+			| 'conflictingTableId'
+			| 'currentName'
 		>
 	> = {},
 ): DataTableResolutionFailure {
@@ -58,6 +75,25 @@ export function createFailure(
 		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 		...details,
 	};
+}
+
+/** `destructive` operations delete the data in a column. */
+export type DataTableSchemaOperation =
+	| { kind: 'add-column'; column: string; type: DataTableColumnType; destructive: false }
+	| { kind: 'remove-column'; column: string; type: DataTableColumnType; destructive: true }
+	| {
+			kind: 'change-column-type';
+			column: string;
+			from: DataTableColumnType;
+			to: DataTableColumnType;
+			destructive: true;
+	  }
+	| { kind: 'reorder-columns'; destructive: false }
+	| { kind: 'rename-table'; from: string; to: string; destructive: false };
+
+export interface DataTableUpdate {
+	table: SerializedDataTable;
+	operations: DataTableSchemaOperation[];
 }
 
 export interface DataTableImportRequest {
@@ -72,6 +108,8 @@ export interface DataTableImportRequest {
 export interface DataTableImportPlan {
 	/** Tables to create in the target project, keeping their package (source) id. */
 	creations: SerializedDataTable[];
+	/** Matched tables to change to the package schema under the `overwrite` and `overwrite-non-destructive` policies. */
+	updates: DataTableUpdate[];
 	failures: DataTableResolutionFailure[];
 	/** Requirements resolved to an existing compatible table, used as-is. Carried for telemetry. */
 	matchedCount: number;

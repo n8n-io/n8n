@@ -107,6 +107,7 @@ function renderView(
 						'agentStatus',
 						'connectedTriggers',
 						'channel',
+						'backgroundJobsActive',
 						'centerEmptyState',
 					],
 					emits: ['session-created', 'update:streaming', 'first-user-message'],
@@ -242,6 +243,8 @@ describe('AgentN8nChatView', () => {
 		expect(panel.props('projectId')).toBe('project-1');
 		expect(panel.props('agentConfig')).toMatchObject({ name: 'Support Agent' });
 		expect(panel.props('channel')).toBe('n8n-chat');
+		// n8n Chat has parity with Preview: background tasks poll once the agent loads.
+		expect(panel.props('backgroundJobsActive')).toBe(true);
 	});
 
 	it('shows "Personal" with a project icon for the personal project', async () => {

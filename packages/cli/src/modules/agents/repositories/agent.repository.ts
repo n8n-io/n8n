@@ -356,6 +356,16 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return result?.projectId ?? null;
 	}
 
+	/** Name and home project for the budget-alert email. Skips the config JSON. */
+	async findBudgetAlertTarget(id: string): Promise<Pick<Agent, 'name' | 'projectId'> | null> {
+		const agent = await this.findOne({
+			select: ['name', 'projectId'],
+			where: { id },
+		});
+		if (!agent) return null;
+		return { name: agent.name, projectId: agent.projectId };
+	}
+
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,

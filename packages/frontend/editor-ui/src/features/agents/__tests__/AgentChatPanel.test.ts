@@ -10,6 +10,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import {
 	buildAgentConfigFingerprint,
 	type AgentConfigFingerprint,
@@ -240,21 +241,33 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages', 'messagingState', 'canIncreaseBudget', 'budgetIncreasePending'],
-		emits: ['send-to-assistant', 'increase-budget'],
+		props: [
+			'messages',
+			'messagingState',
+			'canIncreaseBudget',
+			'budgetIncreasePending',
+			'retryMessageId',
+			'retryDisabled',
+		],
+		emits: ['send-to-assistant', 'increase-budget', 'retry'],
 	},
 }));
 
 vi.mock('../composables/useAgentChatStream', () => ({
-	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
+	useAgentChatStream: (options: {
+		channel?: { value: 'chat' | 'n8n-chat' };
+		onHistoryLoaded: (count: number) => void;
+	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
-			capabilities: computed(() => ({
-				steer: true,
-				reorder: true,
-				backgroundTasks: true,
-				previewHistory: true,
-			})),
+			capabilities: computed(() => {
+				// Mirrors the composable: every capability is off on the n8n Chat channel.
+				const isPreview = options.channel?.value !== 'n8n-chat';
+				return {
+					previewHistory: isPreview,
+					traceLinks: isPreview,
+				};
+			}),
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
@@ -367,6 +380,186 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	describe('resend after an error', () => {
+		const failedMessages = (attachments?: ChatMessage['attachments']): ChatMessage[] => [
+			{ id: 'user', role: 'user', content: 'Find the invoice', attachments },
+			{
+				id: 'error',
+				role: 'assistant',
+				content: 'The model finished without returning an answer. Try again or use another model.',
+				status: 'error',
+			},
+		];
+		it('sends the original text and attachment through the normal send action', async () => {
+			const beforeSend = vi.fn();
+			const file = new File(['invoice'], 'invoice.txt', { type: 'text/plain' });
+			messagesMock.value = failedMessages([{ file, fileName: file.name, mimeType: file.type }]);
+			const wrapper = mountPanel({ beforeSend });
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			expect(list.props('retryMessageId')).toBe('user');
+			list.vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(beforeSend).toHaveBeenCalledOnce();
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'Find the invoice',
+				[file],
+				expect.any(Function),
+			);
+			expect(messagesMock.value.at(-1)?.status).toBe('error');
+			wrapper.unmount();
+		});
+
+		it.each([false, true])(
+			'resends from the preview page with attachments: %s',
+			async (withFile) => {
+				const file = new File(['invoice'], 'invoice.txt', { type: 'text/plain' });
+				messagesMock.value = failedMessages(
+					withFile ? [{ file, fileName: file.name, mimeType: file.type }] : undefined,
+				);
+				const router = createRouter({
+					history: createMemoryHistory(),
+					routes: [{ path: '/', component: { template: '<div />' } }],
+				});
+				const wrapper = mount(AgentPreviewChatPage, {
+					global: { plugins: [router] },
+					props: {
+						initialized: true,
+						projectId: 'p1',
+						agentId: 'a1',
+						agent: null,
+						localConfig: defaultAgentConfig,
+						connectedTriggers: [],
+						effectiveSessionId: 'thread-1',
+					},
+				});
+				await flushPromises();
+				wrapper.findComponent({ name: 'AgentChatMessageList' }).vm.$emit('retry', 'user');
+				await flushPromises();
+				expect(sendMessageMock).toHaveBeenCalledWith(
+					'Find the invoice',
+					withFile ? [file] : undefined,
+					expect.any(Function),
+				);
+				wrapper.unmount();
+			},
+		);
+
+		it.each(['draft', 'active', 'queue', 'budget'] as const)(
+			'does not resend with %s work',
+			async (state) => {
+				messagesMock.value = failedMessages();
+				const wrapper = mountPanel();
+				await flushPromises();
+				if (state === 'draft')
+					wrapper
+						.findComponent({ name: 'ChatInputBase' })
+						.vm.$emit('update:modelValue', 'New draft');
+				if (state === 'active') isStreamingMock.value = true;
+				if (state === 'queue')
+					queuedMessagesMock.value = [
+						{
+							id: 'q',
+							message: 'Next message',
+							attachments: [],
+							steeringExecutionId: null,
+							createdAt: new Date().toISOString(),
+						},
+					];
+				if (state === 'budget')
+					messagesMock.value[1].budgetNotices = [{ id: 'cap', code: 'budget.session' }];
+				await nextTick();
+				const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+				expect(list.props('retryDisabled')).toBe(true);
+				list.vm.$emit('retry', 'user');
+				await flushPromises();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				wrapper.unmount();
+			},
+		);
+
+		it('cancels resend if a turn starts while the attachment loads', async () => {
+			messagesMock.value = failedMessages([
+				{ fileId: 'stored', fileName: 'invoice.txt', mimeType: 'text/plain' },
+			]);
+			const download = createDeferredPromise<Response>();
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockReturnValue(download.promise);
+			const wrapper = mountPanel();
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			list.vm.$emit('retry', 'user');
+			list.vm.$emit('retry', 'user');
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			isStreamingMock.value = true;
+			download.resolve(new Response('invoice'));
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+			fetchSpy.mockRestore();
+			wrapper.unmount();
+		});
+
+		it('keeps the failed message when an attachment download fails', async () => {
+			messagesMock.value = failedMessages([
+				{ fileId: 'stored', fileName: 'invoice.txt', mimeType: 'text/plain' },
+			]);
+			const fetchSpy = vi
+				.spyOn(globalThis, 'fetch')
+				.mockResolvedValue(new Response(null, { status: 404 }));
+			const wrapper = mountPanel();
+			await flushPromises();
+			wrapper.findComponent({ name: 'AgentChatMessageList' }).vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'agents.chat.retry.error');
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+			fetchSpy.mockRestore();
+			wrapper.unmount();
+		});
+
+		it('does not offer resend for an earlier failed turn after a newer message', async () => {
+			messagesMock.value = [
+				...failedMessages(),
+				{ id: 'new', role: 'user', content: 'New request' },
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(
+				wrapper.findComponent({ name: 'AgentChatMessageList' }).props('retryMessageId'),
+			).toBeUndefined();
+			wrapper.unmount();
+		});
+
+		it('offers resend for the current stream-stall error', async () => {
+			messagesMock.value = failedMessages();
+			messagesMock.value[1].content =
+				'The model stream stalled: no data received for 90 seconds. This is usually a transient connection issue — please try again.';
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(wrapper.findComponent({ name: 'AgentChatMessageList' }).props('retryMessageId')).toBe(
+				'user',
+			);
+			wrapper.unmount();
+		});
+
+		it.each([
+			'Invalid API key. Check the credential and try again.',
+			'The model reached its output token limit before it returned an answer. Reduce the request scope or use another model.',
+			'Unknown error',
+		])('does not offer or submit a retry for %s', async (content) => {
+			messagesMock.value = failedMessages();
+			messagesMock.value[1].content = content;
+			const wrapper = mountPanel();
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			expect(list.props('retryMessageId')).toBeUndefined();
+			list.vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+	});
 
 	it('reports the first user message, for a title before the thread has one', async () => {
 		messagesMock.value = [
@@ -481,6 +674,29 @@ describe('AgentChatPanel', () => {
 				const rows = wrapper.findAll('[data-testid="chat-queued-message"]');
 				expect(rows).toHaveLength(1);
 				expect(rows[0].text()).toContain('second message');
+				wrapper.unmount();
+			});
+
+			it('blocks reordering while the preview hides a queued message', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = ['1', '2', '3'].map((id) => ({
+					id,
+					steeringExecutionId: null,
+					message: id === '1' ? 'hello agent' : `message ${id}`,
+					createdAt: new Date().toISOString(),
+				}));
+				await flushPromises();
+
+				// The hidden item would be missing from the reorder's expected ids.
+				const handles = wrapper.findAll('[data-testid="chat-queue-drag-handle"]');
+				expect(handles).toHaveLength(2);
+				for (const handle of handles) {
+					expect(handle.attributes('disabled')).toBeDefined();
+				}
 				wrapper.unmount();
 			});
 
@@ -1099,6 +1315,14 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
+		it('does not link a plan to the builder trace on the n8n Chat channel', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
 		it('links a plan to the current session trace only when the session is available', async () => {
 			messagesMock.value = [planMessage(planView())];
 			const wrapper = mountPanel();
@@ -1573,6 +1797,21 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.get('[data-testid="agent-background-jobs-trace"]').attributes('href')).toBe(
 				'/projects/p1/agents/a1/sessions/t2',
 			);
+			wrapper.unmount();
+		});
+
+		it('shows the background tasks section for n8n Chat but hides the trace link', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({
+				backgroundJobsActive: true,
+				continueSessionId: 't1',
+				channel: 'n8n-chat',
+			});
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			await panel.get('button').trigger('click');
+			// `/sessions/<threadId>` is the builder's session view, which needs
+			// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
 			wrapper.unmount();
 		});
 

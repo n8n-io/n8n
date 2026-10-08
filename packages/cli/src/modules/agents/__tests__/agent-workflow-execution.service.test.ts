@@ -1,8 +1,9 @@
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
-import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -30,6 +31,8 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '../agent-sandbox-principal';
+import { AgentBudgetAlertService } from '../agent-budget-alert.service';
+import { AgentSpendLedger } from '../budget-guardrail';
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
@@ -192,6 +195,10 @@ function makeService() {
 describe('AgentWorkflowExecutionService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		Container.reset();
 	});
 
 	it.each(['stored', 'inline'] as const)(
@@ -547,6 +554,41 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 
 		expect(result.toolCalls).toEqual([{ toolName: 'lookup', input: null, result: { ok: true } }]);
+	});
+
+	it('emails the saved agent when a workflow run crosses the monthly alert', async () => {
+		const spendLedger = mock<AgentSpendLedger>();
+		spendLedger.read.mockResolvedValue(0);
+		spendLedger.add.mockImplementation(async (_callId, entries) =>
+			entries.map((entry) => ({ key: entry.key, totalUsd: entry.usd, previousUsd: 0 })),
+		);
+		const budgetAlert = mock<AgentBudgetAlertService>();
+		Container.set(AgentSpendLedger, spendLedger);
+		Container.set(AgentBudgetAlertService, budgetAlert);
+
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = {
+			...makeRuntime(),
+			budget: { enabled: true as const, monthlyBudgetUsd: 20, alertThresholdPercent: 80 },
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		const hook = options.guardrails?.hooks[0];
+		if (!hook?.after) throw new Error('Expected a budget guardrail hook');
+		await hook.after(
+			{ callId: 'call-1', model: 'anthropic/claude-sonnet-4-5', source: 'turn' },
+			{ promptTokens: 1, completionTokens: 1, totalTokens: 2, cost: 17 },
+		);
+
+		expect(budgetAlert.notifyMonthlyThreshold).toHaveBeenCalledOnce();
+		expect(budgetAlert.notifyMonthlyThreshold).toHaveBeenCalledWith({
+			agentId,
+			alertThresholdPercent: 80,
+		});
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {

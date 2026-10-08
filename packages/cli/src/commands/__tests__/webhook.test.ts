@@ -111,7 +111,8 @@ describe('Webhook', () => {
 			baseInitSpy.mockRestore();
 		});
 
-		it('should call executionContextHookRegistry.init before LoadNodesAndCredentials.postProcessLoaders', async () => {
+		/** A webhook command whose init steps are all stubbed. */
+		const createWebhook = () => {
 			const webhook = new Webhook();
 
 			// @ts-expect-error - Accessing protected property for testing
@@ -138,6 +139,11 @@ describe('Webhook', () => {
 			webhook.executionContextHookRegistry = {
 				init: vi.fn().mockResolvedValue(undefined),
 			};
+			return webhook;
+		};
+
+		it('should call executionContextHookRegistry.init before LoadNodesAndCredentials.postProcessLoaders', async () => {
+			const webhook = createWebhook();
 
 			await webhook.init();
 
@@ -149,6 +155,21 @@ describe('Webhook', () => {
 			expect(postProcessMock).toHaveBeenCalled();
 			expect(hookInitMock.mock.invocationCallOrder[0]).toBeLessThan(
 				postProcessMock.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should register pubsub event handlers again after the modules initialize', async () => {
+			const webhook = createWebhook();
+
+			await webhook.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModulesMock = webhook.moduleRegistry.initModules as Mock;
+			const registryInitMock = Container.get(PubSubRegistry).init as Mock;
+
+			expect(registryInitMock).toHaveBeenCalledTimes(1);
+			expect(initModulesMock.mock.invocationCallOrder[0]).toBeLessThan(
+				registryInitMock.mock.invocationCallOrder[0],
 			);
 		});
 	});
