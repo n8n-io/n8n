@@ -1,5 +1,7 @@
+import { CredentialOptionsRequestDto } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import type { CredentialInformation, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import {
 	oAuth1CredentialAuthorize,
@@ -19,26 +21,46 @@ const makeRestApiRequestMock = vi.mocked(makeRestApiRequest);
 const context: IRestApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 
 describe('credentials.api resource locator', () => {
-	it.each<{ destination: CredentialOptionsDestination; path: string }>([
+	it.each<{
+		destination: CredentialOptionsDestination;
+		path: string;
+		tokenData?: ICredentialDataDecryptedObject;
+		expectedTokenData?: ICredentialDataDecryptedObject;
+	}>([
 		{
 			destination: { kind: 'project', projectId: 'project-id' },
 			path: '/credentials/options/projects/project-id',
+			tokenData: { oauthTokenData: null as unknown as CredentialInformation },
 		},
 		{ destination: { kind: 'instance' }, path: '/credentials/options/instance' },
 		{
 			destination: { kind: 'stored', credentialId: 'credential-id' },
 			path: '/credentials/credential-id/options',
+			tokenData: { oauthTokenData: { access_token: 'access-token' } },
+			expectedTokenData: { oauthTokenData: { access_token: 'access-token' } },
 		},
-	])('sends the draft in a POST body to $path', async ({ destination, path }) => {
-		const data = {
-			type: 'googleVertexAiApi',
-			propertyName: 'projectId',
-			data: { email: 'service@example.com', privateKey: 'draft-key' },
-			paginationToken: 'next-page',
-		};
-		await getCredentialOptions(context, destination, data);
-		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'POST', path, data);
-	});
+	])(
+		'sends a valid draft in a POST body to $path',
+		async ({ destination, path, tokenData, expectedTokenData }) => {
+			const credentialData = { email: 'service@example.com', privateKey: 'draft-key' };
+			const data = {
+				type: 'googleVertexAiApi',
+				propertyName: 'project',
+				data: { ...credentialData, ...tokenData },
+				paginationToken: 'next-page',
+			};
+			const originalData = structuredClone(data);
+			await getCredentialOptions(context, destination, data);
+			expect(makeRestApiRequestMock).toHaveBeenLastCalledWith(context, 'POST', path, {
+				...data,
+				data: { ...credentialData, ...expectedTokenData },
+			});
+			expect(
+				CredentialOptionsRequestDto.safeParse(makeRestApiRequestMock.mock.lastCall?.[3]).success,
+			).toBe(true);
+			expect(data).toEqual(originalData);
+		},
+	);
 });
 
 // A credential as returned by the list/edit endpoints, carrying the large fields

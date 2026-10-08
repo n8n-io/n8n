@@ -157,7 +157,7 @@ describe('credential project options', () => {
 	});
 
 	it.each([undefined, 'saved-credential'])(
-		'loads all project pages without a workflow for credential %s',
+		'keeps manual entry available while loading all project pages for credential %s',
 		async (credentialId) => {
 			let resolveNextPage!: (result: INodeListSearchResult) => void;
 			lookup.mockResolvedValueOnce({
@@ -171,22 +171,48 @@ describe('credential project options', () => {
 			);
 			const credentialData = {
 				...data,
+				project: 'first-project',
 				privateKey: credentialId ? CREDENTIAL_BLANKING_VALUE : 'draft-key',
 			};
 			const view = renderOptions({ props: { credentialId, credentialData } });
 			const input = await view.findByLabelText('Project');
-			expect(input).toHaveValue('Custom');
-			await waitFor(() => expect(input).toBeDisabled());
+			await waitFor(() => expect(input).toHaveValue('First project (first-project)'));
+			expect(view.queryByPlaceholderText('my-project-id')).toBeNull();
+			expect(view.getByRole('status')).toBeVisible();
+			await userEvent.click(input);
+			await userEvent.click(view.getByRole('option', { name: 'Custom' }));
+			expect(view.emitted('update')).toContainEqual([{ name: 'project', value: '__custom__' }]);
+			await view.rerender({
+				credentialData: { ...credentialData, project: '__custom__' },
+				credentialProperties: [
+					...properties,
+					{
+						name: 'projectId',
+						displayName: 'Project ID',
+						type: 'string',
+						default: '',
+						required: true,
+						placeholder: 'my-project-id',
+						displayOptions: { show: { project: ['__custom__'] } },
+					},
+				],
+			});
+			const manualProjectInput = view.getByPlaceholderText('my-project-id');
+			expect(manualProjectInput).toHaveValue('saved-project');
+			await fireEvent.update(manualProjectInput, 'manual-project');
+			expect(view.emitted('update')).toContainEqual([
+				{ name: 'projectId', value: 'manual-project' },
+			]);
 			expect(view.getByRole('status')).toBeVisible();
 			resolveNextPage({
 				results: [{ name: 'Target project (target-project)', value: 'target-project' }],
 			});
-			await waitFor(() => expect(input).toBeEnabled());
-			expect(view.queryByRole('status')).toBeNull();
+			await waitFor(() => expect(view.queryByRole('status')).toBeNull());
 			await userEvent.click(input);
 			expect(await view.findByText('First project (first-project)')).toBeVisible();
+			const updatesBeforeFiltering = view.emitted('update')?.slice();
 			await userEvent.type(input, 'Target');
-			expect(view.emitted('update')).toBeUndefined();
+			expect(view.emitted('update')).toEqual(updatesBeforeFiltering);
 			await userEvent.click(await view.findByText('Target project (target-project)'));
 			expect(lookup).toHaveBeenLastCalledWith(
 				expect.anything(),

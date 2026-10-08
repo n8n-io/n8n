@@ -42,7 +42,6 @@ const hasRequiredError = computed(
 		<N8nSelect
 			:id="inputId"
 			:model-value="modelValue"
-			:disabled="loading"
 			:size="compact ? 'small' : 'large'"
 			:placeholder="parameter.placeholder"
 			:teleported="false"

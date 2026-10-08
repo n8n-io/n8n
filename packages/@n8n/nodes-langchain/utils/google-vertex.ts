@@ -72,7 +72,7 @@ export async function resolveGoogleVertexCredentials(
 
 export async function searchGoogleProjects(
 	credentials: ICredentialDataDecryptedObject,
-	_filter?: string,
+	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const { ProjectsClient } = await import('@google-cloud/resource-manager');
@@ -80,8 +80,14 @@ export async function searchGoogleProjects(
 		credentials: getGoogleServiceAccountCredentials(credentials),
 	});
 	try {
+		const trimmedFilter = filter?.trim();
+		let query: string | undefined;
+		if (trimmedFilter) {
+			const prefix = JSON.stringify(`${trimmedFilter}*`);
+			query = `displayName:${prefix} projectId:${prefix}`;
+		}
 		const [projects, nextPage] = await client.searchProjects(
-			{ pageToken: paginationToken },
+			{ pageToken: paginationToken, ...(query ? { query } : {}) },
 			{ autoPaginate: false },
 		);
 		return {

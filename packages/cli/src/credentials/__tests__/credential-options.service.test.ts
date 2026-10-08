@@ -165,21 +165,39 @@ describe('CredentialOptionsService', () => {
 		},
 	);
 
-	it('checks changed secret references against the original stored values', async () => {
-		vi.mocked(userHasScopes).mockResolvedValue(false);
-		credentials.prepareCredentialsForUse.mockResolvedValue({
-			credentials: {
-				id: stored.id,
-				name: stored.name,
-				type: stored.type,
-				homeProject,
-				data: { ...request.data, privateKey: '={{ $secrets.vault.newKey }}' },
-			},
-			storedData: request.data,
-		});
-		await expect(service.lookupStored(user, stored.id, request)).rejects.toThrow('permissions');
-		expect(loader).not.toHaveBeenCalled();
-	});
+	it.each([false, true])(
+		'checks secret-reference permissions when stored values change: %s',
+		async (isChanged) => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			secretProviderAccess.isProviderAvailableInProject.mockImplementation(
+				async (providerKey, projectId) => providerKey === 'vault' && projectId === homeProject.id,
+			);
+			const storedData = { ...request.data, privateKey: '={{ $secrets.vault.existingKey }}' };
+			const data = {
+				...storedData,
+				privateKey: isChanged ? '={{ $secrets.vault.newKey }}' : storedData.privateKey,
+			};
+			credentials.prepareCredentialsForUse.mockResolvedValue({
+				credentials: {
+					id: stored.id,
+					name: stored.name,
+					type: stored.type,
+					homeProject,
+					data,
+				},
+				storedData,
+			});
+			const result = service.lookupStored(user, stored.id, { ...request, data });
+			if (isChanged) {
+				await expect(result).rejects.toThrow('permissions');
+				expect(loader).not.toHaveBeenCalled();
+			} else {
+				await expect(result).resolves.toEqual({
+					results: [{ name: 'Target project', value: 'target-project' }],
+				});
+			}
+		},
+	);
 
 	it('rejects fields without a declared list callback', async () => {
 		await expect(

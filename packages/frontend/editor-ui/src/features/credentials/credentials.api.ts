@@ -198,7 +198,11 @@ export async function getCredentialOptions(
 	} else if (destination.kind === 'project') {
 		path = `/credentials/options/projects/${destination.projectId}`;
 	}
-	return await makeRestApiRequest(context, 'POST', path, { ...data });
+	const requestData = { ...data, data: { ...data.data } };
+	if (requestData.data.oauthTokenData === null) {
+		delete requestData.data.oauthTokenData;
+	}
+	return await makeRestApiRequest(context, 'POST', path, requestData);
 }
 
 /**

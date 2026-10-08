@@ -61,7 +61,26 @@ describe('Google project discovery', () => {
 
 	beforeEach(() => vi.clearAllMocks());
 
-	it('normalizes the service account and returns project names, IDs, and the next page', async () => {
+	it.each([
+		{ filter: undefined, expectedRequest: { pageToken: 'current-page' } },
+		{ filter: '', expectedRequest: { pageToken: 'current-page' } },
+		{ filter: ' \t\n ', expectedRequest: { pageToken: 'current-page' } },
+		{
+			filter: 'target',
+			expectedRequest: {
+				pageToken: 'current-page',
+				query: 'displayName:"target*" projectId:"target*"',
+			},
+		},
+		{
+			filter: ' Target "project"\\folder ',
+			expectedRequest: {
+				pageToken: 'current-page',
+				query:
+					'displayName:"Target \\"project\\"\\\\folder*" projectId:"Target \\"project\\"\\\\folder*"',
+			},
+		},
+	])('returns projects and pagination for filter $filter', async ({ filter, expectedRequest }) => {
 		searchProjects.mockResolvedValue([
 			[
 				{ displayName: 'Target project', projectId: 'target-project' },
@@ -71,7 +90,7 @@ describe('Google project discovery', () => {
 			{ pageToken: 'next-page' },
 		]);
 
-		await expect(searchGoogleProjects(credentials, undefined, 'current-page')).resolves.toEqual({
+		await expect(searchGoogleProjects(credentials, filter, 'current-page')).resolves.toEqual({
 			results: [
 				{ name: 'Target project (target-project)', value: 'target-project' },
 				{ name: 'another-project', value: 'another-project' },
@@ -84,10 +103,7 @@ describe('Google project discovery', () => {
 				private_key: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
 			},
 		});
-		expect(searchProjects).toHaveBeenCalledWith(
-			{ pageToken: 'current-page' },
-			{ autoPaginate: false },
-		);
+		expect(searchProjects).toHaveBeenCalledWith(expectedRequest, { autoPaginate: false });
 		expect(close).toHaveBeenCalled();
 	});
 
