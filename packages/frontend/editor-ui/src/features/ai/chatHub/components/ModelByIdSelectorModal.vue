@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { N8nButton, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { computed, ref, onMounted } from 'vue';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nFormInput,
+	N8nText,
+} from '@n8n/design-system';
 import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import {
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
@@ -10,6 +17,7 @@ import {
 } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -20,11 +28,14 @@ const props = defineProps<{
 	};
 }>();
 
-const modalBus = ref(createEventBus());
 const modelId = ref<string | null>(props.data.initialValue);
 const inputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY]?.open === true,
+);
 
 onMounted(() => {
 	// With modals normal focusing via `props.focus-initially` on N8nFormInput does not work
@@ -34,35 +45,41 @@ onMounted(() => {
 	});
 });
 
+async function closeDialog() {
+	uiStore.closeModal(CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
 function onConfirm() {
 	if (modelId.value) {
 		props.data.onSelect(props.data.provider, modelId.value);
-		modalBus.value.emit('close');
+		void closeDialog();
 	}
 }
 
 function onCancel() {
-	modalBus.value.emit('close');
+	void closeDialog();
 }
 </script>
 
 <template>
-	<Modal
-		:name="CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY"
-		:event-bus="modalBus"
-		width="50%"
-		:center="true"
-		max-width="460px"
-		min-height="250px"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:container-class="$style.dialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
+		<N8nDialogHeader>
 			<div :class="$style.header">
 				<CredentialIcon
 					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[data.provider]"
 					:size="24"
 					:class="$style.icon"
 				/>
-				<N8nHeading size="medium" tag="h2" :class="$style.title">
+				<N8nDialogTitle>
 					{{
 						i18n.baseText('chatHub.models.byIdSelector.title', {
 							interpolate: {
@@ -70,10 +87,10 @@ function onCancel() {
 							},
 						})
 					}}
-				</N8nHeading>
+				</N8nDialogTitle>
 			</div>
-		</template>
-		<template #content>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div :class="$style.content">
 				<N8nText size="small" color="text-base">
 					{{ i18n.baseText('chatHub.models.byIdSelector.choose') }}
@@ -88,8 +105,8 @@ function onCancel() {
 					@enter="onConfirm"
 				/>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('chatHub.models.byIdSelector.cancel') }}
@@ -98,11 +115,16 @@ function onCancel() {
 					{{ i18n.baseText('chatHub.models.byIdSelector.confirm') }}
 				</N8nButton>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+.dialog {
+	/* No height token matches the previous 250px dialog min-height. */
+	min-height: 250px;
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
