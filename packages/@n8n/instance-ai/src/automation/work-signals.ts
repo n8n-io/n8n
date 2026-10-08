@@ -9,8 +9,11 @@ import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
  */
 export const PROPOSE_AUTOMATION_TOOL_NAME = 'propose_automation';
 
-/** The `postBuildFlow.reason` of a `build-workflow` result after a one-off build. */
-export const ONE_OFF_BUILD_SUCCEEDED_REASON = 'direct-one-off-build-succeeded';
+/**
+ * The `postBuildFlow.reason` of a one-off build. It mirrors the result schema in
+ * `build-workflow.tool.ts`, which does not export it.
+ */
+const ONE_OFF_BUILD_SUCCEEDED_REASON = 'direct-one-off-build-succeeded';
 
 const RUN_ACTION = 'run';
 

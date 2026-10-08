@@ -3,10 +3,12 @@ import { assessRepeatableWork } from '../repeatable-work';
 import type { WorkToolCall } from '../work-signals';
 import {
 	collectWorkSignals,
-	ONE_OFF_BUILD_SUCCEEDED_REASON,
 	PROPOSE_AUTOMATION_TOOL_NAME,
 	readWorkToolCall,
 } from '../work-signals';
+
+// The build result reason from the spec, kept apart from the implementation on purpose.
+const ONE_OFF_REASON = 'direct-one-off-build-succeeded';
 
 const oneOffBuild = (workflowId = 'wf-1'): WorkToolCall => ({
 	toolName: 'build-workflow',
@@ -102,7 +104,10 @@ describe('collectWorkSignals', () => {
 	it('gives no one-off-success when the build has no workflow ID', () => {
 		const withoutId = collectWorkSignals({
 			userTexts: [],
-			toolCalls: [{ toolName: 'build-workflow', ok: true, oneOffBuildSucceeded: true }, run('')],
+			toolCalls: [
+				{ toolName: 'build-workflow', ok: true, oneOffBuildSucceeded: true },
+				{ toolName: 'executions', action: 'run', ok: true },
+			],
 		});
 		const blankIds = collectWorkSignals({ userTexts: [], toolCalls: [oneOffBuild(''), run('')] });
 
@@ -181,7 +186,11 @@ describe('readWorkToolCall', () => {
 	});
 
 	it('reads the tool name and the action of a finished call', () => {
-		expect(readWorkToolCall(part())).toEqual({ toolName: 'workflows', action: 'list', ok: true });
+		expect(readWorkToolCall(part())).toStrictEqual({
+			toolName: 'workflows',
+			action: 'list',
+			ok: true,
+		});
 	});
 
 	it.each([
@@ -234,7 +243,7 @@ describe('readWorkToolCall', () => {
 			output: { executionId: 'exec-1', status },
 		});
 
-		expect(readWorkToolCall(runPart)).toEqual({
+		expect(readWorkToolCall(runPart)).toStrictEqual({
 			toolName: 'executions',
 			action: 'run',
 			ok,
@@ -261,11 +270,11 @@ describe('readWorkToolCall', () => {
 			output: {
 				success: true,
 				workflowId: 'wf-new',
-				postBuildFlow: { reason: ONE_OFF_BUILD_SUCCEEDED_REASON, skillId: 'one-off-operations' },
+				postBuildFlow: { reason: ONE_OFF_REASON, skillId: 'one-off-operations' },
 			},
 		});
 
-		expect(readWorkToolCall(build)).toEqual({
+		expect(readWorkToolCall(build)).toStrictEqual({
 			toolName: 'build-workflow',
 			ok: true,
 			workflowId: 'wf-new',
@@ -280,7 +289,7 @@ describe('readWorkToolCall', () => {
 			output: { success: true },
 		});
 
-		expect(readWorkToolCall(build)).toEqual({ toolName: 'build-workflow', ok: true });
+		expect(readWorkToolCall(build)).toStrictEqual({ toolName: 'build-workflow', ok: true });
 	});
 
 	it('does not mark a build with another post-build reason as one-off', () => {
@@ -294,7 +303,7 @@ describe('readWorkToolCall', () => {
 			},
 		});
 
-		expect(readWorkToolCall(build)).toEqual({
+		expect(readWorkToolCall(build)).toStrictEqual({
 			toolName: 'build-workflow',
 			ok: true,
 			workflowId: 'wf-1',
@@ -304,10 +313,10 @@ describe('readWorkToolCall', () => {
 	it('does not read the one-off marker from a tool other than build-workflow', () => {
 		const other = part({
 			input: {},
-			output: { workflowId: 'wf-1', postBuildFlow: { reason: ONE_OFF_BUILD_SUCCEEDED_REASON } },
+			output: { workflowId: 'wf-1', postBuildFlow: { reason: ONE_OFF_REASON } },
 		});
 
-		expect(readWorkToolCall(other)).toEqual({ toolName: 'workflows', ok: true });
+		expect(readWorkToolCall(other)).toStrictEqual({ toolName: 'workflows', ok: true });
 	});
 
 	it('reads fields with an unexpected type as absent, and keeps the call', () => {
@@ -317,17 +326,20 @@ describe('readWorkToolCall', () => {
 			canceled: 'yes',
 		});
 
-		expect(readWorkToolCall(odd)).toEqual({ toolName: 'workflows', ok: true });
+		expect(readWorkToolCall(odd)).toStrictEqual({ toolName: 'workflows', ok: true });
 	});
 
 	it('reads blank action and workflow ID values as absent', () => {
 		const blank = part({ input: { action: ' ', workflowId: '' } });
 
-		expect(readWorkToolCall(blank)).toEqual({ toolName: 'workflows', ok: true });
+		expect(readWorkToolCall(blank)).toStrictEqual({ toolName: 'workflows', ok: true });
 	});
 
 	it('reads an input that is not an object as empty', () => {
-		expect(readWorkToolCall(part({ input: 'list' }))).toEqual({ toolName: 'workflows', ok: true });
+		expect(readWorkToolCall(part({ input: 'list' }))).toStrictEqual({
+			toolName: 'workflows',
+			ok: true,
+		});
 	});
 
 	it('trims the tool name', () => {
