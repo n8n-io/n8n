@@ -73,5 +73,16 @@ describe('BinaryDataService', () => {
 			expect(result).toBe(buffer);
 			expect(azureManager.getAsBuffer).toHaveBeenCalledWith(fileId);
 		});
+
+		it('should delegate claiming a file to the configured manager', async () => {
+			const fileId = 'workflows/w/executions/temp/binary_data/uuid';
+			const claimedFileId = 'workflows/w/executions/e/binary_data/uuid';
+			const manager = mock<BinaryData.Manager>();
+			manager.claimForExecution.mockResolvedValue(claimedFileId);
+			service.setManager('filesystem-v2', manager);
+
+			await expect(service.claimForExecution(fileId, 'e')).resolves.toBe(claimedFileId);
+			expect(manager.claimForExecution).toHaveBeenCalledWith(fileId, 'e');
+		});
 	});
 });

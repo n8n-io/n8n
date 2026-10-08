@@ -157,6 +157,20 @@ describe('rename', () => {
 	});
 });
 
+describe('claimForExecution', () => {
+	it('moves a temporary file to the execution path and returns its new ID', async () => {
+		const tempFileId = toFileId(
+			workflowId,
+			TEMP_EXECUTION_ID,
+			'71f6209b-5d48-41a2-a224-80d529d8bb33',
+		);
+		const claimedFileId = toFileId(workflowId, executionId, '71f6209b-5d48-41a2-a224-80d529d8bb33');
+
+		await expect(manager.claimForExecution(tempFileId, executionId)).resolves.toBe(claimedFileId);
+		expect(byteStore.rename).toHaveBeenCalledWith(tempFileId, claimedFileId);
+	});
+});
+
 describe('deletion', () => {
 	it('deleteMany is a no-op without prefix deletion (delegated to lifecycle policies)', async () => {
 		await manager.deleteMany([location]);

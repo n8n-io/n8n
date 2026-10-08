@@ -167,6 +167,20 @@ export class DatabaseManager implements BinaryData.Manager {
 		if (result.affected === 0) throw new BinaryDataFileNotFoundError(oldFileId);
 	}
 
+	async claimForExecution(fileId: string, executionId: string) {
+		const result = await this.repository.update(
+			{ fileId, sourceType: 'execution', sourceId: TEMP_EXECUTION_ID },
+			{ sourceId: executionId },
+		);
+
+		if (result.affected === 0) {
+			const source = await this.repository.findSourceByFileId(fileId);
+			if (!source) throw new BinaryDataFileNotFoundError(fileId);
+		}
+
+		return fileId;
+	}
+
 	private toSource(location: BinaryData.FileLocation): {
 		sourceType: SourceType;
 		sourceId: string;
