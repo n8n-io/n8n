@@ -3351,6 +3351,17 @@ describe('NodeCredentials', () => {
 			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
 		});
 
+		it('keeps Connect available when the credential exists only in the usable slice', async () => {
+			credentialsStore.state.credentials = {};
+			credentialsStore.usableCredentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			credentialsStore.hasFetchedUsableCredentials = true;
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
+		});
+
 		it('disables the Connect button when the user lacks connect permission', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': {
