@@ -1,5 +1,6 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
+import type { Project, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -19,7 +20,7 @@ import {
 	assertEveryRequestedEntityAccessible,
 	PackageExportBlockedError,
 } from '../package-export.errors';
-import { ProjectExporter } from '../project/project.exporter';
+import { ProjectShellExporter } from '../project/project-shell.exporter';
 import { addRequirementUsage } from '../requirement-source';
 import { mergeRequirements } from '../requirements.types';
 
@@ -34,7 +35,7 @@ export class AgentSelectionExporter {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly projectService: ProjectService,
-		private readonly projectExporter: ProjectExporter,
+		private readonly projectShellExporter: ProjectShellExporter,
 		private readonly requirementsExtractor: AgentRequirementsExtractor,
 	) {}
 
@@ -74,7 +75,7 @@ export class AgentSelectionExporter {
 			return result;
 		}
 
-		await this.assertProjectsAccessible(request);
+		await this.findAccessibleProjects(request.user, projectIds);
 		// Resolve Agent services only after the module check.
 		const { AgentRepository } = await import('@/modules/agents/repositories/agent.repository.js');
 		const { AgentExporter } = await import('./agent.exporter.js');
@@ -95,19 +96,18 @@ export class AgentSelectionExporter {
 		return result;
 	}
 
-	private async assertProjectsAccessible(request: AgentSelectionExportRequest): Promise<void> {
-		if (!request.projectIds?.length) return;
-		const projects = await this.projectService.findProjectsByIdsForUser(
-			request.user,
-			request.projectIds,
-			['project:export'],
-		);
+	private async findAccessibleProjects(user: User, projectIds: string[]): Promise<Project[]> {
+		if (projectIds.length === 0) return [];
+		const projects = await this.projectService.findProjectsByIdsForUser(user, projectIds, [
+			'project:export',
+		]);
 		await assertEveryRequestedEntityAccessible(
 			'project',
-			request.projectIds,
+			projectIds,
 			projects,
 			async (ids) => await this.projectService.findExistingProjectIds(ids),
 		);
+		return projects;
 	}
 
 	private async prepareSelection(
@@ -190,18 +190,13 @@ export class AgentSelectionExporter {
 			(id) => !result.projectTargetsById.has(id),
 		);
 		if (projectIds.length === 0) return;
-		const projects = await this.projectExporter.export({
-			user: request.user,
+		const projects = await this.findAccessibleProjects(request.user, projectIds);
+		const context = {
 			writer: request.writer,
-			projectIds,
-			workflowIds: [],
-			includeTags: false,
-			includeArchivedWorkflows: false,
-			workflowVersionPolicy: WorkflowVersionPolicy.Latest,
-		});
-		result.projectEntries.push(...projects.entries);
-		for (const [id, target] of projects.projectTargetsById)
-			result.projectTargetsById.set(id, target);
+			projectEntries: result.projectEntries,
+			projectTargetsById: result.projectTargetsById,
+		};
+		for (const project of projects) await this.projectShellExporter.export(project, context);
 	}
 
 	private collectAgentRequirements(prepared: PreparedSelection[]): PackageAgentRequirement[] {

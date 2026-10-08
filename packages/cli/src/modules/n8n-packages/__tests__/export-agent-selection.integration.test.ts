@@ -157,6 +157,15 @@ async function readRecords() {
 it.each(['loose', 'project'] as const)(
 	'round-trips a %s selection with Agent and workflow cycles',
 	async (placement) => {
+		const user = await createMember();
+		await linkUserToProject(user, project, 'project:viewer');
+		const dependencyRole = await createCustomRoleWithScopeSlugs([
+			'agent:export',
+			'workflow:export',
+			'project:export',
+		]);
+		await linkUserToProject(user, otherProject, dependencyRole.slug);
+		await createFolder(otherProject, { name: 'Unrelated folder' });
 		await setConfig(parent, {
 			model: 'openai/gpt-4o',
 			credential: 'missing-model',
@@ -210,7 +219,7 @@ it.each(['loose', 'project'] as const)(
 				},
 			};
 			const common = {
-				user: owner,
+				user,
 				writer,
 				includeTags: false,
 				includeArchivedWorkflows: false,
@@ -230,7 +239,7 @@ it.each(['loose', 'project'] as const)(
 					: undefined;
 			const prepare = vi.spyOn(Container.get(AgentExporter), 'prepare');
 			const agents = await exporter.export({
-				user: owner,
+				user,
 				writer,
 				...(placement === 'project'
 					? { projectIds: [project.id] }
@@ -247,13 +256,13 @@ it.each(['loose', 'project'] as const)(
 			const initialFolders = [...(projects?.folderEntries ?? []), ...(folders?.entries ?? [])];
 			const initialProjects = [...(projects?.entries ?? []), ...agents.projectEntries];
 			const workflowRequirements = await Container.get(WorkflowDependencyResolver).resolve({
-				user: owner,
+				user,
 				workflowIds: initialWorkflows.map(({ id }) => id),
 				agentRequirements: agents.workflowRequirements,
 				workflowVersionPolicy: 'latest',
 			});
 			const resolution = await Container.get(AutoIncludedWorkflowResolver).resolve({
-				user: owner,
+				user,
 				requirements: workflowRequirements,
 				topLevelWorkflowIds: workflows?.entries.map(({ id }) => id) ?? [],
 				folderWorkflowIds: folders?.workflowEntries.map(({ id }) => id) ?? [],
@@ -283,13 +292,13 @@ it.each(['loose', 'project'] as const)(
 				included.requirements,
 			);
 			const credentials = await Container.get(CredentialExporter).export({
-				user: owner,
+				user,
 				writer,
 				requirements: requirements.credentials,
 				credentialExportPolicy: 'expression-values-only',
 			});
 			const workflowManifest = await Container.get(WorkflowRequirementExporter).export({
-				user: owner,
+				user,
 				requirements: workflowRequirements,
 				workflows: allWorkflows,
 			});
