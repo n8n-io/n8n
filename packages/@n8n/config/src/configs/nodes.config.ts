@@ -50,11 +50,11 @@ export class NodesConfig {
 	@Env('NODES_MERGE_SQL_SANDBOX_MEMORY_LIMIT_MB', z.coerce.number().int().positive())
 	mergeSqlSandboxMemoryLimitMb: number = 64;
 	/**
-	 * When enabled, the backend refuses to create or modify workflows that
-	 * introduce new instances of deprecated nodes (or edit existing ones).
-	 * Existing workflows that already contain deprecated nodes continue to run
-	 * unchanged. Set to `false` to turn enforcement off, for example to import
-	 * older backups that contain deprecated nodes.
+	 * Refuse deprecated nodes. Saving or importing a workflow fails if it adds or
+	 * changes one. A sub-workflow from inline JSON, a URL or a file, or a single
+	 * node run by n8n Assistant, fails if it contains one. Saved workflows that
+	 * already contain deprecated nodes keep running. Set to `false` to turn this
+	 * off, for example to import older backups.
 	 */
 	@Env('N8N_DEPRECATED_NODES_BLOCK')
 	blockDeprecated: boolean = true;
