@@ -70,10 +70,6 @@ function onDialogOpenUpdate(open: boolean) {
 	if (!open) closeDialog();
 }
 
-function preventDismiss(event: Event) {
-	event.preventDefault();
-}
-
 const confirm = async () => {
 	if (!valid.value || isLoading.value) {
 		return;
@@ -108,8 +104,8 @@ const confirm = async () => {
 		:aria-label="data?.customHeading ?? i18n.baseText('communityPlusModal.title')"
 		:show-close-button="false"
 		:close-on-overlay-click="false"
+		:close-on-escape="false"
 		@update:open="onDialogOpenUpdate"
-		@escape-key-down="preventDismiss"
 	>
 		<N8nDialogHeader>
 			<N8nDialogTitle>
