@@ -162,13 +162,17 @@ describe('TrustedSourceIdentityService (integration)', () => {
 				grant,
 				assurance: { acr: 'urn:mfa' },
 			});
-			expect(context.actor).toBeUndefined();
-			expect(context.actorClaim).toBeUndefined();
-			expect(context.subIdentityId).toBeUndefined();
-			const serialized = JSON.stringify(context);
-			expect(serialized).not.toContain('credential');
-			expect(serialized).not.toContain('headers');
-			expect(serialized).not.toContain('actor');
+			// Key checks, not substring checks: role descriptions and scope slugs contain these words.
+			for (const key of [
+				'actor',
+				'actorClaim',
+				'subIdentityId',
+				'credential',
+				'request',
+				'claims',
+			]) {
+				expect(context).not.toHaveProperty(key);
+			}
 		});
 
 		it.each(['suspended', 'revoked'] as const)(
@@ -187,6 +191,16 @@ describe('TrustedSourceIdentityService (integration)', () => {
 				);
 			},
 		);
+
+		it('reports the binding status before the user status', async () => {
+			const source = await seedSource();
+			const disabled = await createUser({ disabled: true });
+			await bind(source, 'alice', disabled.id, { status: 'suspended' });
+
+			const result = await service.identify(verified(source, { sub: 'alice' }));
+
+			expect(rejectReason(result)).toBe('binding-inactive');
+		});
 
 		it('rejects a binding to a disabled user', async () => {
 			const source = await seedSource();
