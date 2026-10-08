@@ -11,6 +11,7 @@ import {
 	type IPinData,
 	type IWorkflowBase,
 	jsonParse,
+	MANUAL_TRIGGER_NODE_TYPE,
 	mapConnectionsByDestination,
 	UserError,
 } from 'n8n-workflow';
@@ -592,6 +593,8 @@ export interface GenerateMockHintsOptions {
 	workflow: IWorkflowBase;
 	nodeNames: string[];
 	scenarioHints?: string;
+	/** The node the run starts at when the hints name no start node. */
+	defaultStartNodeName?: string;
 }
 
 export const TRIGGER_CONTENT_CORRECTION =
@@ -606,8 +609,8 @@ RULES:
    - For webhook triggers: include { headers: {}, query: {}, body: { ...fields } } since downstream nodes reference $json.body.fieldName
    - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
    - For schedule triggers: include timestamp fields
-   - For manual triggers: include the fields that downstream nodes reference
-   - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
+   - For a Manual Trigger: it emits one empty item, so return {} and never invent fields for it, even when downstream nodes reference trigger fields
+   - CRITICAL: apart from a Manual Trigger, triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
    - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
@@ -695,6 +698,12 @@ const MAX_HINT_ATTEMPTS = 2;
  */
 const HINT_LLM_TIMEOUT_MS = 300_000;
 
+/** A Manual Trigger emits one empty item, so `{}` is its faithful trigger content. */
+function isManualTriggerNode(workflow: IWorkflowBase, nodeName?: string): boolean {
+	const node = workflow.nodes.find((n) => n.name === nodeName);
+	return node?.type === MANUAL_TRIGGER_NODE_TYPE && !node.disabled;
+}
+
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
@@ -759,7 +768,15 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
-				if (Object.keys(triggerContent).length === 0 && !triggerEmitsNoItems) {
+				const startNodeName =
+					typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
+						? parsed.startNodeName
+						: undefined;
+				if (
+					Object.keys(triggerContent).length === 0 &&
+					!triggerEmitsNoItems &&
+					!isManualTriggerNode(workflow, startNodeName ?? options.defaultStartNodeName)
+				) {
 					reason = 'empty triggerContent';
 				} else {
 					// Coerce nodeHints values to strings — LLM may return objects instead of strings
@@ -771,9 +788,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 						globalContext,
 						nodeHints,
 						triggerContent: triggerContent as Record<string, unknown>,
-						...(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
-							? { startNodeName: parsed.startNodeName }
-							: {}),
+						...(startNodeName ? { startNodeName } : {}),
 						...(triggerEmitsNoItems ? { triggerEmitsNoItems: true } : {}),
 						warnings,
 						bypassPinData: {},

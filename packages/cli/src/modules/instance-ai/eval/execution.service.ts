@@ -35,6 +35,7 @@ import {
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
 	fileTypeFromMimeType,
+	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
 	TimeoutExecutionCancelledError,
 	UserError,
@@ -278,12 +279,18 @@ export class EvalExecutionService {
 					workflow: workflowEntity,
 					nodeNames,
 					scenarioHints,
+					defaultStartNodeName: this.findStartNode(this.buildWorkflow(workflowEntity))?.name,
 				}),
 		);
 
 		// A trigger pinned without content runs with no items and blames every downstream miss on the builder.
+		// A Manual Trigger is the exception: it emits one empty item (see buildTriggerPinData).
 		const triggerStart = this.triggerStartNode(workflowEntity, hints);
-		if (triggerStart && lacksTriggerContent(hints)) {
+		if (
+			triggerStart &&
+			triggerStart.type !== MANUAL_TRIGGER_NODE_TYPE &&
+			lacksTriggerContent(hints)
+		) {
 			throw new Error(
 				`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" (${hints.warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
 			);
@@ -914,7 +921,12 @@ export class EvalExecutionService {
 		// which is the point of a "no new items" scenario. No pin at all would instead
 		// start the trigger with one injected empty item.
 		if (triggerEmitsNoItems) return { [startNode.name]: [] };
-		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
+		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) {
+			// A Manual Trigger's real output is one empty item.
+			return startNode.type === MANUAL_TRIGGER_NODE_TYPE
+				? { [startNode.name]: [{ json: {} }] }
+				: {};
+		}
 
 		// Mirror any LLM-embedded binary map as real item-level binary; json stays
 		// untouched so $json.binary.* references keep resolving.
