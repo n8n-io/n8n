@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import {
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIconButton,
+	N8nSpinner,
 	N8nSelect,
 	N8nOption,
 	N8nMenuItem,
@@ -13,8 +18,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '@/app/constants';
-import { createEventBus } from '@n8n/utils/event-bus';
-import Modal from '@/app/components/Modal.vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import SaveButton from '@/app/components/SaveButton.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { CredentialResolver } from '@n8n/api-types';
@@ -43,8 +47,11 @@ const props = defineProps<{
 	};
 }>();
 
-const modalBus = createEventBus();
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[CREDENTIAL_RESOLVER_EDIT_MODAL_KEY]?.open === true,
+);
 const toast = useToast();
 const rootStore = useRootStore();
 
@@ -246,6 +253,15 @@ const beforeClose = () => {
 	return true;
 };
 
+function closeDialog() {
+	if (beforeClose() === false) return;
+	uiStore.closeModal(CREDENTIAL_RESOLVER_EDIT_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
 const save = async () => {
 	if (!canSave.value) return;
 
@@ -307,7 +323,7 @@ const save = async () => {
 		});
 
 		hasUnsavedChanges.value = false;
-		modalBus.emit('close');
+		closeDialog();
 	} catch (error) {
 		errorMessage.value =
 			error instanceof Error ? error.message : i18n.baseText('credentialResolverEdit.error.save');
@@ -361,7 +377,7 @@ const deleteResolver = async () => {
 		if (props.data?.onDelete) {
 			props.data.onDelete(props.data.resolverId);
 		}
-		modalBus.emit('close');
+		closeDialog();
 	}
 };
 
@@ -381,186 +397,192 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		:name="CREDENTIAL_RESOLVER_EDIT_MODAL_KEY"
-		:custom-class="$style.resolverModal"
-		:event-bus="modalBus"
-		:loading="isLoading"
-		:before-close="beforeClose"
-		width="70%"
-		height="80%"
+	<N8nDialog
+		:open="modalOpen"
+		size="full"
+		:container-class="$style.resolverModal"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<div :class="$style.header">
-				<div :class="$style.resolverInfo">
-					<div :class="$style.resolverIcon">
+		<N8nDialogBody v-if="isLoading">
+			<N8nSpinner />
+		</N8nDialogBody>
+		<template v-else>
+			<N8nDialogHeader>
+				<div :class="$style.header">
+					<div :class="$style.resolverInfo">
+						<div :class="$style.resolverIcon">
+							<N8nIconButton
+								variant="subtle"
+								icon="database"
+								size="large"
+								:disabled="true"
+								:aria-label="i18n.baseText('credentialResolverEdit.icon')"
+							/>
+						</div>
+						<div :class="$style.resolverName">
+							<N8nDialogTitle v-if="resolverName" as-child>
+								<N8nInlineTextEdit
+									data-test-id="credential-resolver-name"
+									:model-value="resolverName"
+									@update:model-value="onNameEdit"
+								/>
+							</N8nDialogTitle>
+							<N8nText v-if="selectedType" size="small" tag="p" color="text-light">
+								{{ selectedType.displayName }}
+							</N8nText>
+						</div>
+					</div>
+					<div :class="$style.resolverActions">
 						<N8nIconButton
 							variant="subtle"
-							icon="database"
-							size="large"
-							:disabled="true"
-							:aria-label="i18n.baseText('credentialResolverEdit.icon')"
+							v-if="isEditMode"
+							:title="i18n.baseText('credentialResolverEdit.delete')"
+							icon="trash-2"
+							:disabled="isSaving"
+							:loading="isDeleting"
+							data-test-id="credential-resolver-delete-button"
+							@click="deleteResolver"
+						/>
+						<SaveButton
+							:saved="false"
+							:is-saving="isSaving"
+							:disabled="!canSave"
+							data-test-id="credential-resolver-save-button"
+							@click="save"
 						/>
 					</div>
-					<div :class="$style.resolverName">
-						<N8nInlineTextEdit
-							v-if="resolverName"
-							data-test-id="credential-resolver-name"
-							:model-value="resolverName"
-							@update:model-value="onNameEdit"
+				</div>
+			</N8nDialogHeader>
+			<N8nDialogBody>
+				<div :class="$style.container" data-test-id="credential-resolver-edit-dialog">
+					<div :class="$style.sidebar">
+						<N8nMenuItem
+							v-for="item in sidebarItems"
+							:key="item.id"
+							:item="item"
+							:active="activeTab === item.id"
+							@click="() => onTabSelect(item.id)"
 						/>
-						<N8nText v-if="selectedType" size="small" tag="p" color="text-light">
-							{{ selectedType.displayName }}
-						</N8nText>
 					</div>
-				</div>
-				<div :class="$style.resolverActions">
-					<N8nIconButton
-						variant="subtle"
-						v-if="isEditMode"
-						:title="i18n.baseText('credentialResolverEdit.delete')"
-						icon="trash-2"
-						:disabled="isSaving"
-						:loading="isDeleting"
-						data-test-id="credential-resolver-delete-button"
-						@click="deleteResolver"
-					/>
-					<SaveButton
-						:saved="false"
-						:is-saving="isSaving"
-						:disabled="!canSave"
-						data-test-id="credential-resolver-save-button"
-						@click="save"
-					/>
-				</div>
-			</div>
-		</template>
-		<template #content>
-			<div :class="$style.container" data-test-id="credential-resolver-edit-dialog">
-				<div :class="$style.sidebar">
-					<N8nMenuItem
-						v-for="item in sidebarItems"
-						:key="item.id"
-						:item="item"
-						:active="activeTab === item.id"
-						@click="() => onTabSelect(item.id)"
-					/>
-				</div>
-				<div v-if="activeTab === 'configuration'" ref="mainContentRef" :class="$style.mainContent">
-					<N8nCallout
-						v-if="errorMessage"
-						theme="danger"
-						:class="$style.errorAlert"
-						data-test-id="credential-resolver-error-alert"
+					<div
+						v-if="activeTab === 'configuration'"
+						ref="mainContentRef"
+						:class="$style.mainContent"
 					>
-						{{ errorMessage }}
-					</N8nCallout>
-
-					<div v-if="isEditMode && hasNonNameChanges" :class="$style.formGroup">
-						<label :class="$style.label">
-							{{ i18n.baseText('credentialResolverEdit.clearCredentials.label') }}
-						</label>
-						<N8nSelect
-							v-model="clearCredentials"
-							:placeholder="i18n.baseText('credentialResolverEdit.clearCredentials.placeholder')"
-							data-test-id="credential-resolver-clear-credentials-select"
-							@update:model-value="
-								() => {
-									hasUnsavedChanges = true;
-									errorMessage = '';
-								}
-							"
+						<N8nCallout
+							v-if="errorMessage"
+							theme="danger"
+							:class="$style.errorAlert"
+							data-test-id="credential-resolver-error-alert"
 						>
-							<N8nOption
-								:label="i18n.baseText('credentialResolverEdit.clearCredentials.yes')"
-								:value="true"
-							>
-							</N8nOption>
-							<N8nOption
-								:label="i18n.baseText('credentialResolverEdit.clearCredentials.no')"
-								:value="false"
-							>
-							</N8nOption>
-						</N8nSelect>
-					</div>
+							{{ errorMessage }}
+						</N8nCallout>
 
-					<N8nCallout
-						v-if="isEditMode && hasNonNameChanges"
-						theme="warning"
-						:class="$style.warningAlert"
-						data-test-id="credential-resolver-clear-credentials-warning"
-					>
-						{{ i18n.baseText('credentialResolverEdit.clearCredentials.warning') }}
-					</N8nCallout>
+						<div v-if="isEditMode && hasNonNameChanges" :class="$style.formGroup">
+							<label :class="$style.label">
+								{{ i18n.baseText('credentialResolverEdit.clearCredentials.label') }}
+							</label>
+							<N8nSelect
+								v-model="clearCredentials"
+								:placeholder="i18n.baseText('credentialResolverEdit.clearCredentials.placeholder')"
+								data-test-id="credential-resolver-clear-credentials-select"
+								@update:model-value="
+									() => {
+										hasUnsavedChanges = true;
+										errorMessage = '';
+									}
+								"
+							>
+								<N8nOption
+									:label="i18n.baseText('credentialResolverEdit.clearCredentials.yes')"
+									:value="true"
+								>
+								</N8nOption>
+								<N8nOption
+									:label="i18n.baseText('credentialResolverEdit.clearCredentials.no')"
+									:value="false"
+								>
+								</N8nOption>
+							</N8nSelect>
+						</div>
 
-					<div :class="$style.formGroup">
-						<label :class="$style.label">
-							{{ i18n.baseText('credentialResolverEdit.type.label') }}
-						</label>
-						<N8nSelect
-							v-model="resolverType"
-							:placeholder="i18n.baseText('credentialResolverEdit.type.placeholder')"
-							data-test-id="credential-resolver-type-select"
-							@update:model-value="
-								() => {
-									hasUnsavedChanges = true;
-									errorMessage = '';
-									clearCredentials = null;
-								}
-							"
+						<N8nCallout
+							v-if="isEditMode && hasNonNameChanges"
+							theme="warning"
+							:class="$style.warningAlert"
+							data-test-id="credential-resolver-clear-credentials-warning"
 						>
-							<N8nOption
-								v-for="type in availableTypes"
-								:key="type.name"
-								:label="type.displayName"
-								:value="type.name"
-							>
-							</N8nOption>
-						</N8nSelect>
-					</div>
+							{{ i18n.baseText('credentialResolverEdit.clearCredentials.warning') }}
+						</N8nCallout>
 
-					<div v-if="resolverProperties.length > 0" :class="$style.configSection">
-						<CredentialInputs
-							:credential-properties="resolverProperties"
-							:credential-data="resolverData"
-							documentation-url=""
-							:show-validation-warnings="!!errorMessage"
-							@update="onConfigUpdate"
-						/>
+						<div :class="$style.formGroup">
+							<label :class="$style.label">
+								{{ i18n.baseText('credentialResolverEdit.type.label') }}
+							</label>
+							<N8nSelect
+								v-model="resolverType"
+								:placeholder="i18n.baseText('credentialResolverEdit.type.placeholder')"
+								data-test-id="credential-resolver-type-select"
+								@update:model-value="
+									() => {
+										hasUnsavedChanges = true;
+										errorMessage = '';
+										clearCredentials = null;
+									}
+								"
+							>
+								<N8nOption
+									v-for="type in availableTypes"
+									:key="type.name"
+									:label="type.displayName"
+									:value="type.name"
+								>
+								</N8nOption>
+							</N8nSelect>
+						</div>
+
+						<div v-if="resolverProperties.length > 0" :class="$style.configSection">
+							<CredentialInputs
+								:credential-properties="resolverProperties"
+								:credential-data="resolverData"
+								documentation-url=""
+								:show-validation-warnings="!!errorMessage"
+								@update="onConfigUpdate"
+							/>
+						</div>
+					</div>
+					<div v-if="activeTab === 'details'" :class="$style.mainContent">
+						<div :class="$style.formGroup">
+							<label :class="$style.label">
+								{{ i18n.baseText('credentialResolverEdit.details.id') }}
+							</label>
+							<N8nText v-if="props.data?.resolverId" color="text-base">
+								{{ props.data.resolverId }}
+							</N8nText>
+							<N8nText v-else color="text-light">
+								{{ i18n.baseText('credentialResolverEdit.details.notSaved') }}
+							</N8nText>
+						</div>
 					</div>
 				</div>
-				<div v-if="activeTab === 'details'" :class="$style.mainContent">
-					<div :class="$style.formGroup">
-						<label :class="$style.label">
-							{{ i18n.baseText('credentialResolverEdit.details.id') }}
-						</label>
-						<N8nText v-if="props.data?.resolverId" color="text-base">
-							{{ props.data.resolverId }}
-						</N8nText>
-						<N8nText v-else color="text-light">
-							{{ i18n.baseText('credentialResolverEdit.details.notSaved') }}
-						</N8nText>
-					</div>
-				</div>
-			</div>
+			</N8nDialogBody>
 		</template>
-	</Modal>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 .resolverModal {
-	--dialog--max-width: 1200px;
-	--dialog--close--spacing--top: 31px;
-	--dialog--max-height: 750px;
+	/* Previous dialog cap. No spacing token for 1200px or 750px. */
+	max-width: min(1200px, 70vw);
+	height: 80%;
+	max-height: 750px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	position: relative;
 
-	:global(.el-dialog__header) {
+	header {
 		padding-bottom: 0;
-		border-bottom: var(--border);
-	}
-
-	:global(.el-dialog__body) {
-		padding-top: var(--spacing--lg);
-		position: relative;
 	}
 }
 
