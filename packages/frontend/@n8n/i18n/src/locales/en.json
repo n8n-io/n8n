@@ -4616,6 +4616,8 @@
 	"settings.migrationReport.documentation": "Documentation",
 	"settings.migrationReport.workflowsCount": "{count} Workflow | {count} Workflows",
 	"settings.migrationReport.resolved": "Resolved",
+	"settings.migrationReport.findingCount.open": "{count} open",
+	"settings.migrationReport.findingCount.wontFix": "{count} won't fix",
 	"settings.migrationReport.detail.affectedTag": "{count} affected",
 	"settings.migrationReport.detail.table.name": "Name",
 	"settings.migrationReport.detail.table.status": "Status",
