@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { NodesConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
+import omit from 'lodash/omit';
 import type { INode } from 'n8n-workflow';
 
 import {
@@ -54,9 +55,9 @@ export class DeprecatedNodesValidationService {
 	 *
 	 * Blocked:
 	 *  - adding a deprecated node
-	 *  - any in-place change to a deprecated node's type, typeVersion, parameters,
-	 *    credentials, name or disabled state. The only way to "change" a deprecated
-	 *    node is to remove it or upgrade it off the deprecated version.
+	 *  - any in-place change to a deprecated node other than its position. The
+	 *    only way to "change" a deprecated node is to remove it or upgrade it off
+	 *    the deprecated version.
 	 */
 	validateOnUpdate(incomingNodes: INode[], existingNodes: INode[], workflowId?: string): void {
 		if (!this.nodesConfig.blockDeprecated) return;
@@ -85,11 +86,8 @@ export class DeprecatedNodesValidationService {
 
 	private frozenFields(node: INode) {
 		return {
-			type: node.type,
-			typeVersion: node.typeVersion,
-			parameters: node.parameters,
+			...omit(node, 'position'),
 			credentials: node.credentials ?? {},
-			name: node.name,
 			disabled: node.disabled ?? false,
 		};
 	}

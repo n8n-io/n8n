@@ -149,6 +149,12 @@ describe('DeprecatedNodesValidationService', () => {
 			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot modify.*Func/);
 		});
 
+		it('blocks changing the error handling of an existing deprecated node', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after: INode = { ...before, onError: 'continueRegularOutput' };
+			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot modify.*Func/);
+		});
+
 		it('treats a deprecated node sent with a new id as added', () => {
 			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
 			const after = { ...before, id: 'b' };
