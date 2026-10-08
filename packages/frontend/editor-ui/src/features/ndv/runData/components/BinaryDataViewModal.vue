@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
-import Modal from '@/app/components/Modal.vue';
+import { N8nDialog, N8nDialogBody } from '@n8n/design-system';
 import VueJsonPretty from 'vue-json-pretty';
 import RunDataHtml from './RunDataHtml.vue';
 import RunDataMarkdown from './RunDataMarkdown.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { BinaryMetadata } from '@n8n/design-system';
 
 const i18n = useI18n();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
 const props = defineProps<{
@@ -126,18 +128,31 @@ watch(
 onBeforeUnmount(() => {
 	revokeBlobUrl();
 });
+
+const modalOpen = computed(() => uiStore.modalsById[BINARY_DATA_VIEW_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(BINARY_DATA_VIEW_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		width="60%"
-		height="90%"
-		title="File Preview"
-		:name="BINARY_DATA_VIEW_MODAL_KEY"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="cover"
+		header="File Preview"
+		container-class="binary-data-view-dialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="['binary-data-modal-content', binaryData.fileType]">
+		<N8nDialogBody>
+			<div
+				:class="['binary-data-modal-content', binaryData.fileType]"
+				data-test-id="binaryDataView-modal"
+			>
 				<div v-if="isLoading" class="loading-message">Loading binary data...</div>
 				<div v-else-if="error" class="error-message">Error loading binary data</div>
 
@@ -197,21 +212,28 @@ onBeforeUnmount(() => {
 					<div v-else class="error-message">Preview not available for this file type</div>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss">
-.el-overlay:has([data-test-id='binaryDataView-modal']),
-.el-dialog__wrapper:has([data-test-id='binaryDataView-modal']) {
+.binary-data-view-dialog,
+[data-state='open']:has(+ .binary-data-view-dialog) {
 	z-index: 10000000 !important;
+}
+
+.binary-data-view-dialog {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 </style>
 
 <style lang="scss" scoped>
 .binary-data-modal-content {
 	width: 100%;
-	height: 100%;
+	flex: 1;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
