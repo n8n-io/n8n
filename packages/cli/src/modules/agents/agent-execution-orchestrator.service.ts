@@ -21,6 +21,7 @@ import {
 	AgentChatExecutionService,
 	type CancelSuspendedRunParams,
 } from './agent-chat-execution.service';
+import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import {
@@ -521,7 +522,7 @@ export class AgentExecutionOrchestratorService {
 			resume.chatSurface === 'n8n-chat' &&
 			!(await this.agentRepository.isN8nChatPublished(resume.agentId, resume.projectId))
 		) {
-			throw new UserError('This agent is not available in n8n Chat');
+			throw new AgentN8nChatUnavailableError();
 		}
 		if (await this.resumeBackgroundForChat(resume)) return;
 		const checkpoint = await this.loadResumeCheckpoint(resume);
@@ -1498,7 +1499,7 @@ export class AgentExecutionOrchestratorService {
 			!skipPublishedCheck &&
 			!(await this.agentRepository.isN8nChatPublished(agentId, projectId))
 		) {
-			throw new UserError('This agent is not available in n8n Chat');
+			throw new AgentN8nChatUnavailableError();
 		}
 		const fail = denied ?? (() => new UserError('Session not found'));
 		if (resourceId !== chatSurfaceMemoryResourceId('n8n-chat', userId)) {

@@ -10,6 +10,7 @@ import type {
 	InstanceAiFileAttachment,
 	InstanceAiThreadSource,
 } from '@n8n/api-types';
+import { acceptedMimeTypesFromCapabilities } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -541,6 +542,13 @@ const isComposerAvailable = computed(
 );
 // Mentions only make sense against the Assistant, so they're off while an agent is selected.
 const inputMentionsEnabled = computed(() => mentionsEnabled.value && !selectedChatAgent.value);
+// An agent can't use connectors or computer/browser use, so the composer offers only the file
+// types its model accepts; n8n Assistant keeps the full "+" menu.
+const composerAttachOnlyMimeTypes = computed(() =>
+	selectedChatAgent.value
+		? acceptedMimeTypesFromCapabilities(selectedChatAgent.value.attachments)
+		: undefined,
+);
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 // Layout changes mount a new, empty composer.
@@ -876,6 +884,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						:mentions-enabled="inputMentionsEnabled"
 						:mention-project-id="selectedProject"
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
+						:attach-only-mime-types="composerAttachOnlyMimeTypes"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"

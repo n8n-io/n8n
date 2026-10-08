@@ -13,14 +13,16 @@ import {
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
+import type { AgentN8nChatThreadSummary, InstanceAiThreadSummary } from '@n8n/api-types';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { formatTimeAgo } from '@/app/utils/formatters/dateFormatter';
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
 import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
+import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useMergedChatHistory } from '@/features/agents/n8nChatPage/useMergedChatHistory';
 import {
+	agentThreadActions,
 	chatItemRoute,
 	chatItemTitle,
 	type RecentChatItem,
@@ -30,6 +32,7 @@ import { INSTANCE_AI_VIEW } from './constants';
 import { useInstanceAiStore } from './instanceAi.store';
 
 const store = useInstanceAiStore();
+const agentThreadsStore = useAgentN8nChatThreadsStore();
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
@@ -56,6 +59,8 @@ const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{ id: 'rename', label: i18n.baseText('instanceAi.sidebar.renameThread'), icon: 'pencil' },
 	{ id: 'delete', label: i18n.baseText('instanceAi.sidebar.deleteThread'), icon: 'trash-2' },
 ];
+
+const agentActions = agentThreadActions(i18n);
 
 function itemTitle(item: RecentChatItem): string {
 	return chatItemTitle(item, i18n);
@@ -99,6 +104,10 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 	if (action === 'delete' && (await store.deleteThread(thread.id))) {
 		clearPendingThreadHandoff(thread.id);
 	}
+}
+
+async function handleAgentThreadAction(action: string, thread: AgentN8nChatThreadSummary) {
+	if (action === 'delete') await agentThreadsStore.deleteThread(thread);
 }
 </script>
 
@@ -173,6 +182,21 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 							:class="$style.actions"
 							placement="bottom-end"
 							@select="handleThreadAction($event, item.thread)"
+						>
+							<template #activator>
+								<N8nIconButton
+									variant="ghost"
+									icon="ellipsis-vertical"
+									:aria-label="i18n.baseText('instanceAi.threads.actions')"
+								/>
+							</template>
+						</N8nActionDropdown>
+						<N8nActionDropdown
+							v-else
+							:items="agentActions"
+							:class="$style.actions"
+							placement="bottom-end"
+							@select="handleAgentThreadAction($event, item.thread)"
 						>
 							<template #activator>
 								<N8nIconButton

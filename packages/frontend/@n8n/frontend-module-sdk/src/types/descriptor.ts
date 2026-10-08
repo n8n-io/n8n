@@ -12,6 +12,16 @@ import type { ModuleSetupContext } from './setup';
 import type { ModuleShortcut } from './shortcut';
 import type { DynamicTabOptions } from './tabs';
 
+/** A link in the settings sidebar. Shell and modules both use it. */
+export type IMenuSettingItem = IMenuItem & {
+	/**
+	 * @description Sort position, low to high. Shell links use 10, 20, 30, ... so pick a number
+	 * between two of them to land between them. No `order` means last. Equal values
+	 * keep registration order.
+	 */
+	order?: number;
+};
+
 /**
  * The declarative contract a frontend module exposes to the editor-ui shell.
  *
@@ -37,7 +47,7 @@ export type FrontendModuleDescription = {
 	 * here so they arrive on the same path as `modals`, not by import side effect.
 	 */
 	adHocModalKeyPrefixes?: string[];
-	settingsPages?: IMenuItem[];
+	settingsPages?: IMenuSettingItem[];
 
 	// --- descriptor v2 (all optional, additive) ---
 

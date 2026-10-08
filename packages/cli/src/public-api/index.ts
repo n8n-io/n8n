@@ -16,7 +16,6 @@ import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { License } from '@/license';
-import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -273,7 +272,6 @@ function createLazyValidatorMiddleware(
 					return authenticated;
 				};
 
-				const globalConfig = Container.get(GlobalConfig);
 				const router = express.Router();
 				router.use(
 					openApiValidatorMiddleware({
@@ -289,7 +287,7 @@ function createLazyValidatorMiddleware(
 						},
 						validateRequests: true,
 						validateApiSpec: true,
-						fileUploader: createN8nPackageMulterOptions(globalConfig),
+						fileUploader: false,
 						formats: {
 							email: {
 								type: 'string',

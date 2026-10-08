@@ -15,6 +15,7 @@ import { agentTaskSchema } from './agent-task.schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
+import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
 
 export class AgentsSettingsDto extends Z.class({
@@ -126,6 +127,7 @@ export class ListN8nChatThreadsQueryDto extends Z.class({
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
+	search: threadTitleSearchSchema,
 }) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
