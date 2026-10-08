@@ -56,6 +56,9 @@ function pending(toolName: string, args: Record<string, unknown> = {}) {
 	return { toolCallId: toolName, toolName, args };
 }
 
+/** A question card call with its own call id. */
+const card = (toolCallId: string) => ({ toolCallId, toolName: 'ask-user', args: {} });
+
 function routingCase(
 	bucket: RoutingCase['bucket'],
 	accepts: RoutingCase['accepts'] = [],
@@ -270,8 +273,8 @@ describe('createRouteWatcher', () => {
 		const twice = [...once, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
 
 		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
-		expect(await watcher.beforeToolCall(pending('ask-user-2'), once)).toBe(false);
-		expect(await watcher.beforeToolCall(pending('ask-user-3'), twice)).toBe(true);
+		expect(await watcher.beforeToolCall(card('ask-user-2'), once)).toBe(false);
+		expect(await watcher.beforeToolCall(card('ask-user-3'), twice)).toBe(true);
 		const resolution = await watcher.resolve({
 			instanceEvents: twice,
 			streamStatus: 'stopped-on-route',
@@ -288,7 +291,7 @@ describe('createRouteWatcher', () => {
 		const answered = [...skipped, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
 
 		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
-		expect(await watcher.beforeToolCall(pending('ask-user-2'), skipped)).toBe(false);
+		expect(await watcher.beforeToolCall(card('ask-user-2'), skipped)).toBe(false);
 		expect(await watcher.beforeToolCall(pending('build-agent'), answered)).toBe(true);
 		const resolution = await watcher.resolve({
 			instanceEvents: answered,
@@ -298,12 +301,18 @@ describe('createRouteWatcher', () => {
 		expect(routeLabel(resolution)).toBe('clarify:agent>agent');
 	});
 
+	it('stops before a call that is not a question card, even when the user can reply', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('clarify', 'agent')), isQuestion);
+
+		expect(await watcher.beforeToolCall(pending('build-workflow'), [])).toBe(true);
+	});
+
 	it('stops on a second question when the turn has one answer left', async () => {
 		const watcher = createRouteWatcher(judgeReturning(stop('clarify')), isQuestion, 1);
 		const answered = [callEvent('ask-user'), ...answerEvents()];
 
 		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
-		expect(await watcher.beforeToolCall(pending('ask-user-2'), answered)).toBe(true);
+		expect(await watcher.beforeToolCall(card('ask-user-2'), answered)).toBe(true);
 	});
 
 	it('drops the question when no answer reached the run', async () => {

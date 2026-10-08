@@ -22,7 +22,7 @@ import {
 	type DiscoveryStreamStatus,
 	type PendingToolCall,
 } from '../discovery/types';
-import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
+import { ASK_USER_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 
 /**
  * A check before a read almost never stops the run, and the next check sees
@@ -138,8 +138,9 @@ export interface RouteWatcher {
 }
 
 /**
- * One watcher for each turn. While the user has answers left, a stop that
- * `canReply` accepts lets the run go on, so the user proxy can answer the question.
+ * One watcher for each turn. While the user has answers left, a stop before a
+ * question card that `canReply` accepts lets the run go on, so the user proxy
+ * can answer the question.
  */
 export function createRouteWatcher(
 	judge: (input: JudgeInput) => Promise<JudgeVerdict>,
@@ -180,7 +181,8 @@ export function createRouteWatcher(
 					judgeReason: verdict.reason,
 				};
 				const answers = countAnswers(steps);
-				if (answers < maxAnswers && canReply?.(resolution)) {
+				// Only a question card waits for the user. Any other call would run before the answer.
+				if (call.toolName === ASK_USER_TOOL_ID && answers < maxAnswers && canReply?.(resolution)) {
 					// The next answer replies to the latest question. A skipped card adds no answer.
 					questions[answers] = resolution;
 					return false;
