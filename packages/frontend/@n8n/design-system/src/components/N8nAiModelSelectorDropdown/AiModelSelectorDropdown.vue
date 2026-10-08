@@ -34,6 +34,7 @@ const {
 	selectedCredentialName,
 	credentialsMissing = false,
 	credentialsMissingLabel,
+	restrictedLabel,
 	noMatchLabel,
 	showBorder = true,
 	disabled = false,
@@ -52,6 +53,8 @@ const {
 	credentialsMissing?: boolean;
 	/** Text shown when credentials are required but missing. */
 	credentialsMissingLabel?: string;
+	/** Badge shown in the trigger when a policy blocks the selected item. */
+	restrictedLabel?: string;
 	/** Empty-state text shown when search returns no matching items. */
 	noMatchLabel: string;
 	/** Whether the trigger button should render with a border. */
@@ -134,7 +137,16 @@ defineExpose({
 						</N8nText>
 						<span v-if="isLoading" :class="$style.loading"></span>
 						<N8nBadge
-							v-if="credentialsMissing && !isLoading"
+							v-if="restrictedLabel && !isLoading"
+							variant="danger"
+							size="small"
+							:class="$style.credsBadge"
+							data-test-id="ai-model-selector-restricted-badge"
+						>
+							{{ restrictedLabel }}
+						</N8nBadge>
+						<N8nBadge
+							v-else-if="credentialsMissing && !isLoading"
 							variant="danger"
 							size="small"
 							:class="$style.credsBadge"
@@ -185,40 +197,58 @@ defineExpose({
 					</template>
 				</div>
 			</template>
-			<div v-else :class="[$style.labelWithBadge, ui.class]">
-				<span v-if="item.data?.loading" :class="$style.modelLoading" aria-hidden="true"></span>
-				<N8nText v-else size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">
-					{{ item.label }}
+			<div v-else :class="[$style.labelColumn, ui.class]">
+				<div :class="$style.labelWithBadge">
+					<span v-if="item.data?.loading" :class="$style.modelLoading" aria-hidden="true"></span>
+					<N8nText v-else size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">
+						{{ item.label }}
+					</N8nText>
+					<N8nBadge
+						v-if="item.data?.badgeLabel"
+						:class="$style.badge"
+						variant="secondary"
+						size="xsmall"
+					>
+						{{ item.data.badgeLabel }}
+					</N8nBadge>
+					<N8nBadge
+						v-if="item.data?.actionPill"
+						size="xxsmall"
+						:variant="
+							item.data.actionPill.type === 'danger' || item.data.actionPill.type === 'info'
+								? item.data.actionPill.type
+								: 'success'
+						"
+					>
+						{{ item.data.actionPill.text }}
+					</N8nBadge>
+					<span v-if="item.data?.connectedLabel" :class="$style.connected">
+						<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
+						<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>
+					</span>
+				</div>
+				<N8nText
+					v-if="item.data?.restriction"
+					size="small"
+					color="text-light"
+					data-test-id="ai-model-selector-restriction"
+				>
+					{{ item.data.restriction.label }}
 				</N8nText>
-				<N8nBadge
-					v-if="item.data?.badgeLabel"
-					:class="$style.badge"
-					variant="secondary"
-					size="xsmall"
-				>
-					{{ item.data.badgeLabel }}
-				</N8nBadge>
-				<N8nBadge
-					v-if="item.data?.actionPill"
-					size="xxsmall"
-					:variant="
-						item.data.actionPill.type === 'danger' || item.data.actionPill.type === 'info'
-							? item.data.actionPill.type
-							: 'success'
-					"
-				>
-					{{ item.data.actionPill.text }}
-				</N8nBadge>
-				<span v-if="item.data?.connectedLabel" :class="$style.connected">
-					<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
-					<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>
-				</span>
 			</div>
 		</template>
 
 		<template #item-trailing="{ item, ui }">
+			<N8nIcon
+				v-if="item.data?.restriction"
+				icon="lock"
+				size="small"
+				color="text-light"
+				:class="ui.class"
+				data-test-id="ai-model-selector-restricted-icon"
+			/>
 			<N8nTooltip
-				v-if="item.data?.description"
+				v-else-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
 				:class="ui.class"
 				placement="right"
@@ -360,6 +390,12 @@ defineExpose({
 	flex-shrink: 0;
 	display: inline-flex;
 	align-items: center;
+}
+
+.labelColumn {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .labelWithBadge {

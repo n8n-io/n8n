@@ -5734,6 +5734,7 @@
 	"agents.modelSelector.connectTo": "Connect to {provider}",
 	"agents.modelSelector.models": "Models",
 	"agents.modelSelector.credentialsMissing": "Credentials missing",
+	"agents.modelSelector.restricted": "Restricted",
 	"agents.modelSelector.freeCredits.label": "Use free OpenAI credits",
 	"agents.modelSelector.freeCredits.badge": "free credits",
 	"agents.modelSelector.freeCredits.description": "Get {credits} free OpenAI API credits. Try it with gpt-5-mini.",
