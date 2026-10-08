@@ -120,6 +120,54 @@ const CONFIG_WRITE_RESULT_RULE =
 	'the same baseConfigHash. On stage: "stale", the result carries the current config and configHash: ' +
 	're-apply your change to it and retry once. ';
 
+/**
+ * Models sometimes still send a structured argument as a JSON string. Parse it
+ * so the schema sees the value, and keep it unchanged when it is not valid JSON.
+ */
+function parseJsonStringInput(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	const parsed = tryParseConfigJson(value);
+	return parsed.ok ? parsed.data : value;
+}
+
+/**
+ * `write_config` arguments are objects so the model does not have to escape
+ * every quote. A JSON string is still accepted, as older tool calls sent one.
+ */
+function readStructuredToolInput(
+	value: unknown,
+): { ok: true; data: unknown } | { ok: false; errors: ConfigValidationError[] } {
+	return typeof value === 'string' ? tryParseConfigJson(value) : { ok: true, data: value };
+}
+
+/**
+ * `write_config` keeps every top-level field the model omits. Merge the stored
+ * value before validation, so builder defaults (web search, prompt caching)
+ * see the real stored state instead of an empty field.
+ */
+function mergeOmittedTopLevelFields(submitted: unknown, stored: AgentJsonConfig | null): unknown {
+	if (!stored || !isRecord(submitted)) return submitted;
+	return { ...stored, ...submitted };
+}
+
+/**
+ * Before `config`, `write_config` took the config as a `json` string. Map that
+ * key so a checkpoint resumed after a deploy can still run a pending call.
+ * The model only sees the `config` key in the tool schema.
+ */
+function renameLegacyWriteConfigKey(value: unknown): unknown {
+	if (!isRecord(value) || value.config !== undefined || value.json === undefined) return value;
+	const { json, ...rest } = value;
+	return { ...rest, config: json };
+}
+
+const jsonPatchOperationSchema = z.object({
+	op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
+	path: z.string().describe('JSON Pointer, e.g. "/instructions" or "/tools/-"'),
+	from: z.string().optional().describe('Source JSON Pointer for move and copy'),
+	value: z.unknown().optional().describe('New value for add, replace, and test'),
+});
+
 const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
 	path: '(root)',
 	message:
@@ -874,7 +922,7 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.PATCH_CONFIG)
 			.description(
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
-					'Pass an array of patch operations as a JSON string. ' +
+					'Pass the patch operations as an array of objects, not as a JSON string. ' +
 					BASE_CONFIG_HASH_RULE +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
 					CONFIG_WRITE_RESULT_RULE +
@@ -883,7 +931,9 @@ export class AgentsBuilderToolsService {
 			)
 			.input(
 				z.object({
-					operations: z.string().describe('RFC 6902 JSON Patch operations array as a JSON string'),
+					operations: z
+						.preprocess(parseJsonStringInput, z.array(jsonPatchOperationSchema))
+						.describe('RFC 6902 JSON Patch operations'),
 					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
 				}),
 			)
@@ -891,7 +941,7 @@ export class AgentsBuilderToolsService {
 				async ({
 					operations,
 					baseConfigHash,
-				}: { operations: string; baseConfigHash: string | null }) =>
+				}: { operations: unknown; baseConfigHash: string | null }) =>
 					await this.patchBuilderConfig(agentId, projectId, user, operations, baseConfigHash),
 			)
 			.build();
@@ -900,21 +950,28 @@ export class AgentsBuilderToolsService {
 	private buildWriteConfigTool(agentId: string, projectId: string, user: User) {
 		return new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.description(
-				'Create or replace the agent configuration by writing a complete JSON string. ' +
-					'Optional fields you omit keep their stored value. ' +
+				'Create or update the agent configuration. Pass the config as an object, not as a JSON string. ' +
+					'Send only the top-level fields you set or change: every top-level field you omit ' +
+					'(including model and credential) keeps its stored value, and a field you send replaces ' +
+					'the stored field whole. A fresh agent with no stored config needs name, model, and instructions. ' +
 					BASE_CONFIG_HASH_RULE +
 					CONFIG_WRITE_RESULT_RULE +
 					'Failure errors carry path, message, expected, and received fields.',
 			)
 			.input(
-				z.object({
-					json: z.string().describe('Complete agent configuration as a JSON string'),
-					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
-				}),
+				z.preprocess(
+					renameLegacyWriteConfigKey,
+					z.object({
+						config: z
+							.preprocess(parseJsonStringInput, z.record(z.unknown()))
+							.describe('Agent configuration object with the top-level fields to set'),
+						baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
+					}),
+				),
 			)
 			.handler(
-				async ({ json, baseConfigHash }: { json: string; baseConfigHash: string | null }) =>
-					await this.writeBuilderConfig(agentId, projectId, user, json, baseConfigHash),
+				async ({ config, baseConfigHash }: { config: unknown; baseConfigHash: string | null }) =>
+					await this.writeBuilderConfig(agentId, projectId, user, config, baseConfigHash),
 			)
 			.build();
 	}
@@ -1388,24 +1445,26 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		json: string,
+		input: unknown,
 		baseConfigHash: string | null,
 	) {
 		const editorLock = await this.getEditorLockFailure(agentId);
 		if (editorLock) return editorLock;
-		const parsed = tryParseConfigJson(json);
+		const parsed = readStructuredToolInput(input);
 		if (!parsed.ok) return { ok: false, errors: parsed.errors };
 		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
 		if (!fresh.ok) return fresh;
-		const validated = this.validateBuilderConfig(parsed.data, fresh.snapshot.config);
+		const merged = mergeOmittedTopLevelFields(parsed.data, fresh.snapshot.config);
+		const validated = this.validateBuilderConfig(merged, fresh.snapshot.config);
 		if (!validated.ok) return validated;
+		// Compare with the merged config, so kept fields alone do not echo the full config back.
 		return await this.saveBuilderConfig(
 			agentId,
 			projectId,
 			user,
 			validated.config,
 			fresh.snapshot.configHash,
-			parsed.data,
+			merged,
 		);
 	}
 
@@ -1413,12 +1472,12 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		operations: string,
+		operations: unknown,
 		baseConfigHash: string | null,
 	) {
 		const editorLock = await this.getEditorLockFailure(agentId);
 		if (editorLock) return { ...editorLock, stage: 'locked' };
-		const parsed = tryParseConfigJson(operations);
+		const parsed = readStructuredToolInput(operations);
 		if (!parsed.ok) return { ok: false, stage: 'parse', errors: parsed.errors };
 		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
 		if (!fresh.ok) return fresh;
