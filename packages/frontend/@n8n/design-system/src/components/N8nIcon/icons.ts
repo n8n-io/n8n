@@ -22,15 +22,15 @@ import NodePower from './custom/brand/power--solid-16.svg';
 import NodeSparkle from './custom/brand/sparkle--solid-16.svg';
 import NodeSuccess from './custom/node-success.svg';
 import NodeTrash from './custom/brand/trash--solid-16.svg';
-import NodeValidationError from './custom/node-validation-error.svg';
-import PopOut from './custom/pop-out.svg';
+import NodeValidationError from './custom/brand/exclamation-triangle--solid-16.svg';
+import PopOut from './custom/brand/arrow-square-out--outline-16.svg';
 import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
-import Schema from './custom/schema.svg';
+import Schema from './custom/brand/list-tree--outline-16.svg';
 import Slack from './custom/slack.svg';
 import Spinner from './custom/spinner.svg';
-import StarFilled from './custom/star-filled.svg';
+import StarFilled from './custom/brand/star--solid-16.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
 import StatusError from './custom/status-error.svg';
@@ -63,6 +63,7 @@ import {
 	Bold as BrandBold,
 	Book as BrandBook,
 	BookOpen as BrandBookOpen,
+	Bot as BrandBot,
 	Box as BrandBox,
 	Braces as BrandBraces,
 	Brain as BrandBrain,
@@ -96,6 +97,7 @@ import {
 	Clipboard as BrandClipboard,
 	Clock as BrandClock,
 	Cloud as BrandCloud,
+	Code as BrandCode,
 	Cog as BrandCog,
 	Copy as BrandCopy,
 	CornerDownRight as BrandCornerDownRight,
@@ -104,6 +106,7 @@ import {
 	Database as BrandDatabase,
 	Ellipsis as BrandEllipsis,
 	EllipsisVertical as BrandEllipsisVertical,
+	Expand as BrandExpand,
 	ExternalLink as BrandExternalLink,
 	Eye as BrandEye,
 	EyeOff as BrandEyeOff,
@@ -186,6 +189,7 @@ import {
 	Settings as BrandSettings,
 	Share as BrandShare,
 	Shield as BrandShield,
+	ShieldHalf as BrandShieldHalf,
 	Smile as BrandSmile,
 	Sparkle as BrandSparkle,
 	Sparkles as BrandSparkles,
@@ -233,7 +237,6 @@ import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
 import IconLucideArrowLeftRight from '~icons/lucide/arrow-left-right';
 import IconLucideBookmark from '~icons/lucide/bookmark';
-import IconLucideBot from '~icons/lucide/bot';
 import IconLucideCalculator from '~icons/lucide/calculator';
 import IconLucideCaseUpper from '~icons/lucide/case-upper';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
@@ -241,14 +244,12 @@ import IconLucideCirclePause from '~icons/lucide/circle-pause';
 import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
 import IconLucideClipboardList from '~icons/lucide/clipboard-list';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
-import IconLucideCode from '~icons/lucide/code';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideDoorOpen from '~icons/lucide/door-open';
 import IconLucideDot from '~icons/lucide/dot';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEqual from '~icons/lucide/equal';
-import IconLucideExpand from '~icons/lucide/expand';
 import IconLucideFileArchive from '~icons/lucide/file-archive';
 import IconLucideFileOutput from '~icons/lucide/file-output';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
@@ -283,7 +284,6 @@ import IconLucideScissors from '~icons/lucide/scissors';
 import IconLucideScrollText from '~icons/lucide/scroll-text';
 import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings2 from '~icons/lucide/settings-2';
-import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideShieldUser from '~icons/lucide/shield-user';
 import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
@@ -382,7 +382,7 @@ export const deprecatedIconSet = {
 	'chevron-right': BrandChevronRight,
 	'chevron-down': BrandChevronDown,
 	'chevron-up': BrandChevronUp,
-	code: IconLucideCode,
+	code: BrandCode,
 	'code-branch': BrandGitBranch,
 	cog: BrandCog,
 	cogs: BrandCog,
@@ -608,7 +608,7 @@ export const updatedIconSet = {
 	book: BrandBook,
 	'book-open': BrandBookOpen,
 	bookmark: IconLucideBookmark,
-	bot: IconLucideBot,
+	bot: BrandBot,
 	box: BrandBox,
 	brain: BrandBrain,
 	bug: BrandBug,
@@ -645,7 +645,7 @@ export const updatedIconSet = {
 	clock: BrandClock,
 	cloud: BrandCloud,
 	'cloud-download': IconLucideCloudDownload,
-	code: IconLucideCode,
+	code: BrandCode,
 	cog: BrandCog,
 	contrast: IconLucideContrast,
 	copy: BrandCopy,
@@ -659,7 +659,7 @@ export const updatedIconSet = {
 	ellipsis: BrandEllipsis,
 	'ellipsis-vertical': BrandEllipsisVertical,
 	equal: IconLucideEqual,
-	expand: IconLucideExpand,
+	expand: BrandExpand,
 	'external-link': BrandExternalLink,
 	eye: BrandEye,
 	'eye-off': BrandEyeOff,
@@ -769,7 +769,7 @@ export const updatedIconSet = {
 	server: IconLucideServer,
 	share: BrandShare,
 	shield: BrandShield,
-	'shield-half': IconLucideShieldHalf,
+	'shield-half': BrandShieldHalf,
 	'shield-user': IconLucideShieldUser,
 	shredder: IconLucideShredder,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
