@@ -1903,6 +1903,15 @@ describe('useCanvasOperations', () => {
 			expect(addNodeSpy).not.toHaveBeenCalled();
 		});
 
+		it('should not rename a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(node);
+			const cloneSpy = vi.spyOn(workflowDocumentStoreInstance, 'cloneWorkflowObject');
+
+			expect(await useCanvasOperations().renameNode(node.name, 'Renamed')).toBe(false);
+			expect(cloneSpy).not.toHaveBeenCalled();
+		});
+
 		it('should not cut a deprecated node', async () => {
 			const node = setupDeprecatedNode();
 			const startRecordingUndoSpy = vi.spyOn(useHistoryStore(), 'startRecordingUndo');

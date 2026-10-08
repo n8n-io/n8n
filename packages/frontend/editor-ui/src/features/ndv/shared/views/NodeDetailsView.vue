@@ -784,7 +784,7 @@ onBeforeUnmount(() => {
 			>
 				<NDVHeader
 					:class="$style.header"
-					:read-only="isDeprecatedNode"
+					:read-only="readOnly || isDeprecatedNode"
 					:node-name="activeNode.name"
 					:node-type-name="
 						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
