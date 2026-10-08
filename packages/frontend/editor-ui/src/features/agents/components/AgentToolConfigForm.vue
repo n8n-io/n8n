@@ -357,6 +357,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 		<ContactInstanceAdminModal
 			v-if="isRestricted"
 			v-model:open="isContactAdminOpen"
+			stacked
 			:node-type-name="restrictedToolName"
 		/>
 		<N8nText
@@ -418,11 +419,13 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 			<AgentToolConfigApprovalSetting
 				v-if="!isMcpTool && initialNode && showApprovalSetting"
 				v-model="approvalRequired"
+				:disabled="isRestricted"
 			/>
 			<AgentToolConfigMcpApprovalSetting
 				v-if="isMcpTool && currentNode && supportsApproval"
 				v-model="mcpApproval"
 				:node="currentNode"
+				:disabled="isRestricted"
 				:project-id="data.projectId"
 				@update:valid="mcpApprovalValid = $event"
 			/>

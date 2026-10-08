@@ -32,6 +32,7 @@ const props = defineProps<{
 	/** Hide the "Disabled" option — for callers that wrap the selector in a
 	 * toggle that already handles enable/disable. */
 	hideDisabledOption?: boolean;
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -143,6 +144,7 @@ function handleSelectedUpdate(value: unknown) {
 		<div :class="$style.controls">
 			<N8nSelect
 				:model-value="approvalMode"
+				:disabled="props.disabled"
 				size="small"
 				:data-test-id="`${props.testIdPrefix}-mode`"
 				:class="$style.modeSelect"
@@ -163,6 +165,7 @@ function handleSelectedUpdate(value: unknown) {
 			:model-value="selectedEntries"
 			multiple
 			filterable
+			:disabled="props.disabled"
 			size="small"
 			:loading="props.loading"
 			:placeholder="props.placeholder"

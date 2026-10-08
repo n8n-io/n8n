@@ -5,8 +5,9 @@ import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
-const { nodeTypeName } = defineProps<{
+const { nodeTypeName, stacked = false } = defineProps<{
 	nodeTypeName: string;
+	stacked?: boolean;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -59,6 +60,7 @@ function mailtoHref(email: string): string {
 		:header="i18n.baseText('typeAvailabilityPolicies.contactAdmin.title')"
 		:description="description"
 		size="medium"
+		:stacked="stacked"
 		data-test-id="contact-instance-admin-modal"
 	>
 		<N8nLoading v-if="isLoading" :rows="2" variant="p" :class="$style.body" />

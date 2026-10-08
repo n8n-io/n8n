@@ -203,18 +203,19 @@ function renderModal({
 				AgentToolConfigNodeContent: createToolSettingsStub(valid),
 				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
 				N8nSwitch2: {
-					props: ['modelValue'],
+					props: ['modelValue', 'disabled'],
 					emits: ['update:modelValue'],
 					template:
-						'<button data-test-id="agent-tool-approval-toggle" :data-checked="modelValue" @click="$emit(\'update:modelValue\', !modelValue)" />',
+						'<button data-test-id="agent-tool-approval-toggle" :data-checked="modelValue" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
 				},
 				AgentToolConfigCustomContent: {
 					props: ['code'],
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
 				},
 				ContactInstanceAdminModal: {
-					props: ['open', 'nodeTypeName'],
-					template: '<div v-if="open" data-test-id="contact-instance-admin-modal" />',
+					props: { open: Boolean, nodeTypeName: String, stacked: Boolean },
+					template:
+						'<div v-if="open" data-test-id="contact-instance-admin-modal" :data-stacked="stacked" />',
 				},
 			},
 		},
@@ -518,6 +519,7 @@ describe('AgentToolConfigModal', () => {
 				'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
 			);
 			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'true');
+			expect(getByTestId('agent-tool-approval-toggle')).toBeDisabled();
 			expect(queryNativeTestId(container, 'agent-modal-title-input')).toBeNull();
 
 			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
@@ -533,7 +535,7 @@ describe('AgentToolConfigModal', () => {
 			expect(queryByTestId('contact-instance-admin-modal')).toBeNull();
 			await fireEvent.click(getNativeTestId(container, 'agent-tool-config-contact-admin'));
 
-			expect(getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
+			expect(getByTestId('contact-instance-admin-modal')).toHaveAttribute('data-stacked', 'true');
 		});
 
 		it('keeps Remove so the agent can be repaired', async () => {
@@ -554,6 +556,7 @@ describe('AgentToolConfigModal', () => {
 
 			expect(queryByTestId('agent-tool-config-restricted')).toBeNull();
 			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
+			expect(getByTestId('agent-tool-approval-toggle')).not.toBeDisabled();
 			expect(getNativeTestId(container, 'agent-modal-title-input')).toBeInTheDocument();
 			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
 			expect(saveBtn.disabled).toBe(false);
