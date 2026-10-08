@@ -45,6 +45,8 @@ const ITEM_ID = {
 	DELETE_WORKFLOW: 'delete-workflow',
 	PUBLISH_WORKFLOW: 'publish-workflow',
 	UNPUBLISH_WORKFLOW: 'unpublish-workflow',
+	OPEN_WORKFLOW_EXECUTIONS: 'open-workflow-executions',
+	OPEN_VERSION_HISTORY: 'open-version-history',
 } as const;
 
 export function useWorkflowCommands(): CommandGroup {
@@ -325,6 +327,43 @@ export function useWorkflowCommands(): CommandGroup {
 		];
 	});
 
+	const navigationCommands = computed<CommandBarItem[]>(() => {
+		const workflowId = workflowsStore.workflowId;
+		if (!workflowsStore.isWorkflowSaved[workflowId]) return [];
+
+		return [
+			{
+				id: ITEM_ID.OPEN_WORKFLOW_EXECUTIONS,
+				title: i18n.baseText('commandBar.workflow.openExecutions'),
+				section: i18n.baseText('commandBar.sections.workflow'),
+				keywords: [i18n.baseText('generic.executions')],
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'list-checks',
+					},
+				},
+				handler: () => {
+					void router.push({ name: VIEWS.EXECUTION_HOME, params: { workflowId } });
+				},
+			},
+			{
+				id: ITEM_ID.OPEN_VERSION_HISTORY,
+				title: i18n.baseText('menuActions.versionHistory'),
+				section: i18n.baseText('commandBar.sections.workflow'),
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'history',
+					},
+				},
+				handler: () => {
+					void router.push({ name: VIEWS.WORKFLOW_HISTORY, params: { workflowId } });
+				},
+			},
+		];
+	});
+
 	const exportCommands = computed<CommandBarItem[]>(() => {
 		return [
 			{
@@ -460,6 +499,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const workflowCommands = computed<CommandBarItem[]>(() => {
 		return [
 			...canvasActions.value,
+			...navigationCommands.value,
 			...subworkflowCommands.value,
 			...exportCommands.value,
 			...importCommands.value,

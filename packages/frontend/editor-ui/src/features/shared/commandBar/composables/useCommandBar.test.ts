@@ -106,6 +106,7 @@ const genericCommands: CommandBarItem[] = [
 
 const workflows = createRemoteSource('workflows');
 const credentials = createRemoteSource('credentials', 3);
+const favoritesInitialize = vi.fn().mockResolvedValue(undefined);
 const nodeEntries = ref<CommandBarItem[]>(items('node', 25));
 const assistantCommands = ref<CommandBarItem[]>([]);
 const recentInitialize = vi.fn().mockResolvedValue(undefined);
@@ -170,6 +171,16 @@ vi.mock('./useChatHubCommands', () => ({
 vi.mock('./useInstanceAiCommands', () => ({
 	useInstanceAiCommands: () => ({ commands: computed(() => assistantCommands.value) }),
 }));
+vi.mock('./useSettingsCommands', () => ({
+	useSettingsCommands: () =>
+		group([{ id: 'settings-personal', title: 'Personal', section: 'Settings' }]),
+}));
+vi.mock('./useFavoriteCommands', () => ({
+	useFavoriteCommands: () =>
+		group([{ id: 'favorite-1', title: 'Favorite workflow', section: 'Favorites' }], {
+			initialize: favoritesInitialize,
+		}),
+}));
 
 describe('useCommandBar', () => {
 	let commandBar: ReturnType<typeof useCommandBar>;
@@ -213,6 +224,7 @@ describe('useCommandBar', () => {
 
 		expect(loadNodeTypesIfNotLoaded).toHaveBeenCalled();
 		expect(recentInitialize).toHaveBeenCalled();
+		expect(favoritesInitialize).toHaveBeenCalled();
 		expect(workflowNavigationInitialize).toHaveBeenCalled();
 	});
 
@@ -241,9 +253,11 @@ describe('useCommandBar', () => {
 
 		expect(sectionIds()).toEqual([
 			'recent:Recent',
+			'favorites:Favorites',
 			'actions:Workflows',
 			'actions:General',
 			'actions:Help',
+			'actions:Settings',
 		]);
 		expect(workflows.search).not.toHaveBeenCalled();
 	});

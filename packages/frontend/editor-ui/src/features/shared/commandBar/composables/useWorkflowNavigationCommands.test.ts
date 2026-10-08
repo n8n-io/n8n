@@ -2,11 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { HTTP_REQUEST_NODE_TYPE, VIEWS } from '@/app/constants';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, WorkflowListItem } from '@/Interface';
+import { getWorkflowsAndFolders } from '@/app/api/workflows';
+import type { FolderListItem } from '@/features/core/folders/folders.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -28,15 +32,23 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-const resolveMock = vi.fn((location: { params?: { workflowId?: string } }) => ({
-	href: `/workflow/${location.params?.workflowId}`,
+const resolveMock = vi.fn((location: { params?: { workflowId?: string; folderId?: string } }) => ({
+	href: location.params?.folderId
+		? `/folders/${location.params.folderId}`
+		: `/workflow/${location.params?.workflowId}`,
 	fullPath: '/workflow/new',
 }));
+const pushMock = vi.fn();
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ resolve: resolveMock }),
+	useRouter: () => ({ resolve: resolveMock, push: pushMock }),
 	useRoute: () => ({ params: { folderId: 'folder-1' } }),
 	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/app/api/workflows', async (importOriginal) => ({
+	...(await importOriginal()),
+	getWorkflowsAndFolders: vi.fn(),
 }));
 
 const WORKFLOW_FIELDS = ['id', 'name', 'updatedAt', 'ownedBy', 'parentFolder'];
@@ -63,6 +75,18 @@ const personalProject: ProjectSharingData = {
 	type: ProjectTypes.Personal,
 };
 
+const createFolder = (overrides: Partial<FolderListItem> = {}): FolderListItem => ({
+	id: 'f1',
+	name: 'Reports',
+	resource: 'folder',
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-03T00:00:00.000Z',
+	workflowCount: 0,
+	subFolderCount: 0,
+	homeProject: teamProject,
+	...overrides,
+});
+
 const createWorkflows = (count: number) =>
 	Array.from({ length: count }, (_, index) => createTestWorkflow({ id: `w${index}` }));
 
@@ -72,6 +96,7 @@ describe('useWorkflowNavigationCommands', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let tagsStore: MockedStore<typeof useTagsStore>;
 	let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+	let settingsStore: MockedStore<typeof useSettingsStore>;
 
 	const createCommands = () =>
 		useWorkflowNavigationCommands({ currentProjectName: ref('My Project') });
@@ -124,6 +149,11 @@ describe('useWorkflowNavigationCommands', () => {
 
 		sourceControlStore = mockedStore(useSourceControlStore);
 		sourceControlStore.preferences.branchReadOnly = false;
+
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isFoldersFeatureEnabled = false;
+
+		vi.mocked(getWorkflowsAndFolders).mockResolvedValue({ count: 0, data: [] });
 
 		Object.defineProperty(window, 'location', {
 			value: { href: '' },
@@ -397,6 +427,119 @@ describe('useWorkflowNavigationCommands', () => {
 
 			expect(items.map((item) => item.id)).toEqual(['w1', 'w2']);
 			expect(items[0].icon).toEqual(expect.objectContaining({ component: NodeIcon }));
+		});
+	});
+
+	describe('folder matches', () => {
+		beforeEach(() => {
+			settingsStore.isFoldersFeatureEnabled = true;
+		});
+
+		it('lists matching folders and workflows by the most recent update', async () => {
+			vi.mocked(getWorkflowsAndFolders).mockResolvedValue({ count: 1, data: [createFolder()] });
+			mockSearchResults({
+				byName: [
+					createTestWorkflow({ id: 'w2', updatedAt: '2026-01-04T00:00:00.000Z' }),
+					createTestWorkflow({ id: 'w1', updatedAt: '2026-01-02T00:00:00.000Z' }),
+				],
+			});
+
+			const { items } = await search({ query: '  reports  ', limit: 5 });
+
+			expect(getWorkflowsAndFolders).toHaveBeenCalledWith(
+				useRootStore().restApiContext,
+				{ query: 'reports', isArchived: false },
+				{ skip: 0, take: 5, sortBy: 'updatedAt:desc' },
+				true,
+			);
+			expect(items.map((item) => item.id)).toEqual(['w2', 'folder-f1', 'w1']);
+		});
+
+		it('maps a folder to an item that opens the folder in its project', async () => {
+			vi.mocked(getWorkflowsAndFolders).mockResolvedValue({
+				count: 1,
+				data: [
+					createFolder({
+						parentFolder: { id: 'f0', name: 'Archive', parentFolderId: null },
+					}),
+				],
+			});
+
+			const { items } = await search({ query: 'reports' });
+
+			expect(items[0]).toEqual({
+				id: 'folder-f1',
+				title: 'Reports',
+				description: 'Team A / Archive',
+				descriptionIcon: { type: 'icon', value: 'rocket' },
+				icon: { type: 'icon', value: 'folder' },
+				timestamp: '2026-01-03T00:00:00.000Z',
+				href: '/folders/f1',
+				handler: expect.any(Function),
+			});
+
+			await items[0].handler?.();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: 'team-1', folderId: 'f1' },
+			});
+		});
+
+		it('opens a folder without a home project through the folders view', async () => {
+			vi.mocked(getWorkflowsAndFolders).mockResolvedValue({
+				count: 1,
+				data: [createFolder({ homeProject: undefined })],
+			});
+
+			const { items } = await search({ query: 'reports' });
+
+			expect(items[0].description).toBe('');
+			expect(items[0].descriptionIcon).toBeUndefined();
+
+			await items[0].handler?.();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: VIEWS.FOLDERS,
+				params: { folderId: 'f1' },
+			});
+		});
+
+		it('ignores workflow rows from the folder search response', async () => {
+			const workflowRow: WorkflowListItem = {
+				...createTestWorkflow({ id: 'w9' }),
+				description: undefined,
+				resource: 'workflow',
+			};
+			vi.mocked(getWorkflowsAndFolders).mockResolvedValue({
+				count: 2,
+				data: [createFolder(), workflowRow],
+			});
+			mockSearchResults({ byName: [createTestWorkflow({ id: 'w1' })] });
+
+			const { items } = await search({ query: 'reports' });
+
+			expect(items.map((item) => item.id)).toEqual(['folder-f1', 'w1']);
+		});
+
+		it('does not search folders when the folders feature is disabled', async () => {
+			settingsStore.isFoldersFeatureEnabled = false;
+
+			await search({ query: 'reports' });
+
+			expect(getWorkflowsAndFolders).not.toHaveBeenCalled();
+		});
+
+		it('does not search folders when the query is empty', async () => {
+			await search({ query: '   ' });
+
+			expect(getWorkflowsAndFolders).not.toHaveBeenCalled();
+		});
+
+		it('does not search folders on later pages', async () => {
+			await search({ query: 'reports', offset: 10 });
+
+			expect(getWorkflowsAndFolders).not.toHaveBeenCalled();
 		});
 	});
 

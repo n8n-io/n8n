@@ -1,3 +1,4 @@
+import type { IMenuItem } from '@n8n/design-system';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import type { CommandBarItem, CommandBarSearchRequest, CommandBarSearchResult } from './types';
 
@@ -20,4 +21,12 @@ export function paginate(
 		items: items.slice(offset, offset + limit),
 		hasMore: offset + limit < items.length,
 	};
+}
+
+export function toCommandBarIcon(icon: IMenuItem['icon']): CommandBarItem['icon'] {
+	if (!icon) return undefined;
+	if (typeof icon === 'string') return { type: 'icon', value: icon };
+	return icon.type === 'emoji'
+		? { type: 'emoji', value: icon.value }
+		: { type: 'icon', value: icon.value };
 }

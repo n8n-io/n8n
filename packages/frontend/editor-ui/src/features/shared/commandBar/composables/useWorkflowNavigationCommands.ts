@@ -2,11 +2,15 @@ import { computed, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { N8nIcon, isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { VIEWS } from '@/app/constants';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
+import { getWorkflowsAndFolders } from '@/app/api/workflows';
+import type { FolderListItem } from '@/features/core/folders/folders.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -26,11 +30,18 @@ const ITEM_ID = {
 
 const WORKFLOW_FIELDS = ['id', 'name', 'updatedAt', 'ownedBy', 'parentFolder'];
 
+type LocatedResource = Pick<FolderListItem, 'homeProject' | 'parentFolder'>;
+
+const isFolder = (resource: WorkflowListResource): resource is FolderListItem =>
+	resource.resource === 'folder';
+
 export function useWorkflowNavigationCommands(options: {
 	currentProjectName: Ref<string>;
 }): CommandGroup {
 	const i18n = useI18n();
 	const { currentProjectName } = options;
+	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
@@ -54,28 +65,61 @@ export function useWorkflowNavigationCommands(options: {
 		return result;
 	});
 
-	const getProjectIcon = (workflow: IWorkflowDb): IconOrEmoji => {
-		if (workflow.homeProject?.type === ProjectTypes.Personal) {
+	const getProjectIcon = (resource: LocatedResource): IconOrEmoji => {
+		if (resource.homeProject?.type === ProjectTypes.Personal) {
 			return { type: 'icon', value: 'user' };
 		}
 
-		if (workflow.homeProject?.name) {
-			return isIconOrEmoji(workflow.homeProject.icon)
-				? workflow.homeProject.icon
+		if (resource.homeProject?.name) {
+			return isIconOrEmoji(resource.homeProject.icon)
+				? resource.homeProject.icon
 				: { type: 'icon', value: 'layers' };
 		}
 
 		return { type: 'icon', value: 'house' };
 	};
 
-	const getLocation = (workflow: IWorkflowDb) => {
+	const getLocation = (resource: LocatedResource) => {
 		const projectName =
-			workflow.homeProject?.type === ProjectTypes.Personal
+			resource.homeProject?.type === ProjectTypes.Personal
 				? i18n.baseText('projects.menu.personal')
-				: workflow.homeProject?.name;
+				: resource.homeProject?.name;
 
-		return [projectName, workflow.parentFolder?.name].filter(Boolean).join(' / ');
+		return [projectName, resource.parentFolder?.name].filter(Boolean).join(' / ');
 	};
+
+	const toFolderItem = (folder: FolderListItem): CommandBarItem => {
+		const location = getLocation(folder);
+		const route = folder.homeProject
+			? {
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: { projectId: folder.homeProject.id, folderId: folder.id },
+				}
+			: { name: VIEWS.FOLDERS, params: { folderId: folder.id } };
+
+		return {
+			id: `folder-${folder.id}`,
+			title: folder.name,
+			description: location,
+			...(location ? { descriptionIcon: getProjectIcon(folder) } : {}),
+			icon: { type: 'icon', value: 'folder' },
+			timestamp: folder.updatedAt,
+			href: router.resolve(route).href,
+			handler: () => {
+				void router.push(route);
+			},
+		};
+	};
+
+	async function searchFolders(query: string, limit: number): Promise<FolderListItem[]> {
+		const { data } = await getWorkflowsAndFolders(
+			rootStore.restApiContext,
+			{ query, isArchived: false },
+			{ skip: 0, take: limit, sortBy: 'updatedAt:desc' },
+			true,
+		);
+		return data.filter(isFolder);
+	}
 
 	const toCommandBarItem = (workflow: IWorkflowDb, matchedNodeType?: string): CommandBarItem => {
 		const nodeType = matchedNodeType ? nodeTypesStore.getNodeType(matchedNodeType) : null;
@@ -119,8 +163,10 @@ export function useWorkflowNavigationCommands(options: {
 			skip: offset,
 			take: limit + 1,
 		};
+		const includesFolders = offset === 0 && trimmed !== '' && settingsStore.isFoldersFeatureEnabled;
 
-		const [byName, byNodeType, byTag] = await Promise.all([
+		const [folders, byName, byNodeType, byTag] = await Promise.all([
+			includesFolders ? searchFolders(trimmed, limit) : Promise.resolve([]),
 			workflowsListStore.searchWorkflows({
 				query: trimmed || undefined,
 				isArchived: false,
@@ -146,6 +192,10 @@ export function useWorkflowNavigationCommands(options: {
 		]);
 
 		const items = new Map<string, CommandBarItem>();
+		for (const folder of folders) {
+			const item = toFolderItem(folder);
+			items.set(item.id, item);
+		}
 		for (const workflow of byNodeType.slice(0, limit)) {
 			const matchedNodeType = matchedNodeTypeNames
 				? findMatchedNodeType(workflow, matchedNodeTypeNames)
@@ -156,17 +206,11 @@ export function useWorkflowNavigationCommands(options: {
 			if (!items.has(workflow.id)) items.set(workflow.id, toCommandBarItem(workflow));
 		}
 
-		const updatedAtById = new Map(
-			[...byNodeType, ...byTag, ...byName].map((workflow) => [
-				workflow.id,
-				new Date(workflow.updatedAt).getTime(),
-			]),
-		);
+		const updatedAt = (item: CommandBarItem) =>
+			item.timestamp ? new Date(item.timestamp).getTime() : 0;
 
 		return {
-			items: [...items.values()].sort(
-				(a, b) => (updatedAtById.get(b.id) ?? 0) - (updatedAtById.get(a.id) ?? 0),
-			),
+			items: [...items.values()].sort((a, b) => updatedAt(b) - updatedAt(a)),
 			hasMore: [byName, byNodeType, byTag].some((page) => page.length > limit),
 		};
 	}

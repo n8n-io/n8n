@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { paginate, rankItems } from './commandBar.utils';
+import { paginate, rankItems, toCommandBarIcon } from './commandBar.utils';
 import type { CommandBarItem } from './types';
 
 const createItem = (id: string, title: string, keywords?: string[]): CommandBarItem => ({
@@ -56,5 +56,29 @@ describe('paginate', () => {
 
 	it('should return an empty page when the offset is past the end', () => {
 		expect(paginate(items, { offset: 10, limit: 2 })).toEqual({ items: [], hasMore: false });
+	});
+});
+
+describe('toCommandBarIcon', () => {
+	it('should return undefined when the menu item has no icon', () => {
+		expect(toCommandBarIcon(undefined)).toBeUndefined();
+	});
+
+	it('should map an icon name to an icon', () => {
+		expect(toCommandBarIcon('cog')).toEqual({ type: 'icon', value: 'cog' });
+	});
+
+	it('should map an icon object to an icon without its color', () => {
+		expect(toCommandBarIcon({ type: 'icon', value: 'layers', color: 'text-light' })).toEqual({
+			type: 'icon',
+			value: 'layers',
+		});
+	});
+
+	it('should map an emoji object to an emoji without its color', () => {
+		expect(toCommandBarIcon({ type: 'emoji', value: '🚀', color: 'text-light' })).toEqual({
+			type: 'emoji',
+			value: '🚀',
+		});
 	});
 });

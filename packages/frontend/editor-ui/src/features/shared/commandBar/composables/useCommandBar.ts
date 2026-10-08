@@ -27,6 +27,8 @@ import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import { useInstanceAiCommands } from './useInstanceAiCommands';
+import { useSettingsCommands } from './useSettingsCommands';
+import { useFavoriteCommands } from './useFavoriteCommands';
 import { rankItems } from '../commandBar.utils';
 import type {
 	CommandBarItem,
@@ -115,7 +117,9 @@ export function useCommandBar() {
 	const executionNavigationGroup = useExecutionNavigationCommands();
 	const projectNavigationGroup = useProjectNavigationCommands();
 	const genericCommandGroup = useGenericCommands();
+	const settingsCommandGroup = useSettingsCommands();
 	const recentResourcesGroup = useRecentResources();
+	const favoriteCommandGroup = useFavoriteCommands();
 	const chatHubCommandGroup = useChatHubCommands();
 	const instanceAiCommandGroup = useInstanceAiCommands();
 
@@ -179,6 +183,7 @@ export function useCommandBar() {
 		...navigationGroups.value.filter((group) => group !== nodeCommandGroup),
 		executionNavigationGroup,
 		genericCommandGroup,
+		settingsCommandGroup,
 	]);
 
 	const sources = computed(() =>
@@ -362,6 +367,7 @@ export function useCommandBar() {
 			if (!query.value.trim()) {
 				return [
 					...groupBySection(recentResourcesGroup.commands.value, 'recent'),
+					...groupBySection(favoriteCommandGroup.commands.value, 'favorites'),
 					...groupBySection(actions.value, ACTIONS_TAB),
 				];
 			}
@@ -469,7 +475,7 @@ export function useCommandBar() {
 	async function initialize() {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 		await Promise.all(
-			[recentResourcesGroup, ...actionGroups.value].map(
+			[recentResourcesGroup, favoriteCommandGroup, ...actionGroups.value].map(
 				async (group) => await group.initialize?.(),
 			),
 		);
