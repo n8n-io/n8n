@@ -496,6 +496,23 @@ describe('AgentsBuilderToolsService', () => {
 			);
 		});
 
+		it('write_config input schema maps the legacy json key to config', () => {
+			const { service } = makeService();
+			const tool = getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG);
+			const writeSchema = tool.inputSchema as ZodTypeAny;
+
+			expect(
+				writeSchema.parse({ json: JSON.stringify({ name: 'A' }), baseConfigHash: 'h' }),
+			).toEqual({ config: { name: 'A' }, baseConfigHash: 'h' });
+			// The model only sees the new key.
+			expect(zodToJsonSchema(writeSchema)).toEqual(
+				expect.objectContaining({
+					type: 'object',
+					required: ['config', 'baseConfigHash'],
+				}),
+			);
+		});
+
 		it('write_config failure result is not stamped with configMutated', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));

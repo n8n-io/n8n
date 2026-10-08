@@ -132,7 +132,7 @@ function parseJsonStringInput(value: unknown): unknown {
 
 /**
  * `write_config` arguments are objects so the model does not have to escape
- * every quote. A JSON string is still accepted for older persisted tool calls.
+ * every quote. A JSON string is still accepted, as older tool calls sent one.
  */
 function readStructuredToolInput(
 	value: unknown,
@@ -148,6 +148,17 @@ function readStructuredToolInput(
 function mergeOmittedTopLevelFields(submitted: unknown, stored: AgentJsonConfig | null): unknown {
 	if (!stored || !isRecord(submitted)) return submitted;
 	return { ...stored, ...submitted };
+}
+
+/**
+ * Before `config`, `write_config` took the config as a `json` string. Map that
+ * key so a checkpoint resumed after a deploy can still run a pending call.
+ * The model only sees the `config` key in the tool schema.
+ */
+function renameLegacyWriteConfigKey(value: unknown): unknown {
+	if (!isRecord(value) || value.config !== undefined || value.json === undefined) return value;
+	const { json, ...rest } = value;
+	return { ...rest, config: json };
 }
 
 const jsonPatchOperationSchema = z.object({
@@ -948,12 +959,15 @@ export class AgentsBuilderToolsService {
 					'Failure errors carry path, message, expected, and received fields.',
 			)
 			.input(
-				z.object({
-					config: z
-						.preprocess(parseJsonStringInput, z.record(z.unknown()))
-						.describe('Agent configuration object with the top-level fields to set'),
-					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
-				}),
+				z.preprocess(
+					renameLegacyWriteConfigKey,
+					z.object({
+						config: z
+							.preprocess(parseJsonStringInput, z.record(z.unknown()))
+							.describe('Agent configuration object with the top-level fields to set'),
+						baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
+					}),
+				),
 			)
 			.handler(
 				async ({ config, baseConfigHash }: { config: unknown; baseConfigHash: string | null }) =>
