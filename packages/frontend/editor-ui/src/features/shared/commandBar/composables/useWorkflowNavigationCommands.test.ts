@@ -435,9 +435,14 @@ describe('useWorkflowNavigationCommands', () => {
 			settingsStore.isFoldersFeatureEnabled = true;
 		});
 
-		it('lists folders matching the query before workflows', async () => {
+		it('lists matching folders and workflows by the most recent update', async () => {
 			vi.mocked(getWorkflowsAndFolders).mockResolvedValue({ count: 1, data: [createFolder()] });
-			mockSearchResults({ byName: [createTestWorkflow({ id: 'w1' })] });
+			mockSearchResults({
+				byName: [
+					createTestWorkflow({ id: 'w2', updatedAt: '2026-01-04T00:00:00.000Z' }),
+					createTestWorkflow({ id: 'w1', updatedAt: '2026-01-02T00:00:00.000Z' }),
+				],
+			});
 
 			const { items } = await search({ query: '  reports  ', limit: 5 });
 
@@ -447,7 +452,7 @@ describe('useWorkflowNavigationCommands', () => {
 				{ skip: 0, take: 5, sortBy: 'updatedAt:desc' },
 				true,
 			);
-			expect(items.map((item) => item.id)).toEqual(['folder-f1', 'w1']);
+			expect(items.map((item) => item.id)).toEqual(['w2', 'folder-f1', 'w1']);
 		});
 
 		it('maps a folder to an item that opens the folder in its project', async () => {

@@ -206,17 +206,11 @@ export function useWorkflowNavigationCommands(options: {
 			if (!items.has(workflow.id)) items.set(workflow.id, toCommandBarItem(workflow));
 		}
 
-		const updatedAtById = new Map(
-			[...byNodeType, ...byTag, ...byName].map((workflow) => [
-				workflow.id,
-				new Date(workflow.updatedAt).getTime(),
-			]),
-		);
+		const updatedAt = (item: CommandBarItem) =>
+			item.timestamp ? new Date(item.timestamp).getTime() : 0;
 
 		return {
-			items: [...items.values()].sort(
-				(a, b) => (updatedAtById.get(b.id) ?? 0) - (updatedAtById.get(a.id) ?? 0),
-			),
+			items: [...items.values()].sort((a, b) => updatedAt(b) - updatedAt(a)),
 			hasMore: [byName, byNodeType, byTag].some((page) => page.length > limit),
 		};
 	}

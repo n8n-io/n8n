@@ -74,6 +74,7 @@ describe('useSettingsCommands', () => {
 	it('navigates to the item route and then selects the item when the handler runs', async () => {
 		const callOrder: string[] = [];
 		routerPushMock.mockImplementation(async () => {
+			await Promise.resolve();
 			callOrder.push('push');
 		});
 		handleSettingsItemSelectMock.mockImplementation(async () => {
