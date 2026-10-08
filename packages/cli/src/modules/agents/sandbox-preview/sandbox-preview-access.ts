@@ -1,6 +1,8 @@
 import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { AuthError } from '@n8n/errors';
 import type { Request } from 'express';
+import { JsonWebTokenError } from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -49,13 +51,25 @@ export class SandboxPreviewAccess {
 
 	/**
 	 * On a page load the browser's session user must have access too, when the
-	 * browser sends the n8n cookie. A session that does not validate is refused.
+	 * browser sends a valid n8n cookie. A cookie that no longer validates
+	 * (expired, signed out elsewhere) names no viewer, so the check of the URL's
+	 * user decides, as for a request without the cookie: a refusal would add no
+	 * protection, because the holder of the URL can leave the cookie out.
 	 */
 	async sessionUserAllowed(req: Request, entry: SandboxPreviewEntry): Promise<boolean> {
 		const cookie = this.authService.getCookieToken(req);
-		if (!cookie) return true;
-		const viewer = await this.authService.authenticateUserByCookie(cookie).catch(() => null);
-		return await this.hasAccess(viewer, entry);
+		const viewer = cookie ? await this.sessionUser(cookie) : undefined;
+		return viewer === undefined || (await this.hasAccess(viewer, entry));
+	}
+
+	/** The user of a valid session cookie. A fault that is not about the cookie is passed on. */
+	private async sessionUser(cookie: string): Promise<User | undefined> {
+		try {
+			return await this.authService.authenticateUserByCookie(cookie);
+		} catch (error) {
+			if (error instanceof AuthError || error instanceof JsonWebTokenError) return undefined;
+			throw error;
+		}
 	}
 
 	private async hasAccess(user: User | null, entry: SandboxPreviewEntry): Promise<boolean> {

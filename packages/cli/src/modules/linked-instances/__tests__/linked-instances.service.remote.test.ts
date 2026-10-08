@@ -14,14 +14,14 @@ import {
 	CLOUD,
 	expectRejection,
 	fakeToken,
+	OPS,
+	PERSONAL,
+	SALES,
 	searchProjectsOutput,
 	setup,
 	user,
 } from './linked-instances.test-helpers';
 
-const OPS = { id: 'Xk3pQ9aZ1bC2dE4f', name: 'Ops', type: 'team' };
-const SALES = { id: 'Sa1eS0pQ9aZ1bC2d', name: 'Sales', type: 'team' };
-const PERSONAL = { id: 'Pm0rT8sU7vW6xY5z', name: 'Ada Lovelace <ada@acme.test>', type: 'personal' };
 const WITH_PROJECTS = ['search_workflows', 'search_projects'];
 
 const FAILURES = ['unreachable', 'mcp-disabled', 'unauthorised'] as const;

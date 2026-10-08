@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope, type Ref } from 'vue';
+import fc from 'fast-check';
 import type { PushMessage } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ASSISTANT_AGENT_ID } from '../../agentsChatMode';
@@ -269,10 +270,34 @@ describe('useLiveThreadList', () => {
 });
 
 describe('isAssistantThreadEvent', () => {
+	const AGENT_UPDATE_TYPES = ['agentExecutionUpdated', 'agentBackgroundTasksUpdated'];
+
 	it('accepts execution and background task updates of the Assistant only', () => {
 		expect(isAssistantThreadEvent(executionUpdated())).toBe(true);
 		expect(isAssistantThreadEvent(backgroundTasksUpdated())).toBe(true);
 		expect(isAssistantThreadEvent(executionUpdated('agent-2'))).toBe(false);
 		expect(isAssistantThreadEvent(backgroundTasksUpdated('agent-2'))).toBe(false);
+	});
+
+	it('accepts a message exactly when it is an agent update of the Assistant', () => {
+		const messageArb = fc.record({
+			type: fc.oneof(
+				fc.constantFrom(...AGENT_UPDATE_TYPES, 'workflowUpdated', 'executionStarted'),
+				fc.string(),
+			),
+			data: fc.record({
+				agentId: fc.oneof(fc.constant(ASSISTANT_AGENT_ID), fc.string()),
+				threadId: fc.string(),
+			}),
+		});
+
+		fc.assert(
+			fc.property(messageArb, (message) => {
+				const expected =
+					AGENT_UPDATE_TYPES.includes(message.type) && message.data.agentId === ASSISTANT_AGENT_ID;
+
+				expect(isAssistantThreadEvent(message as PushMessage)).toBe(expected);
+			}),
+		);
 	});
 });

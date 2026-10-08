@@ -38,13 +38,29 @@ const decodeLeniently = (value: string): string =>
  */
 const SEGMENT_END = /[\\/?#;\0]/;
 
-const namesParent = (value: string): boolean => value.split(SEGMENT_END).includes('..');
+/** A WHATWG URL parser removes ASCII tab, LF and CR anywhere in its input. */
+const URL_REMOVED_CHARS = /[\t\n\r]/g;
+
+/**
+ * A URL parser also trims C0 controls and spaces at both ends of its input.
+ * Each part is trimmed, so a part at the end of the path is covered too.
+ */
+const URL_TRIMMED_CHARS = /^[\0- ]+|[\0- ]+$/g;
+
+/** The form of a part after a second URL parse. */
+const asReparsed = (part: string): string =>
+	part.replace(URL_REMOVED_CHARS, '').replace(URL_TRIMMED_CHARS, '');
+
+const namesParent = (value: string): boolean =>
+	value.split(SEGMENT_END).some((part) => asReparsed(part) === '..');
 
 /**
  * Whether a segment, in any decoded form, names the parent directory. The
  * forwarded path sits below the key-bearing `/sandboxes/<id>/ports/<port>`
- * prefix, so no segment may leave it, encoded or not. Later rounds decode
- * leniently: a bad escape that only a decode reveals must not end the check.
+ * prefix, so no segment may leave it, encoded or not. Each round also checks
+ * the form that a second URL parse makes (`.%09.` becomes `..`). Later rounds
+ * decode leniently: a bad escape that only a decode reveals must not end the
+ * check.
  */
 export function segmentClimbsOut(segment: string): boolean {
 	// Refuse a bad escape only in the form the client sent: a decoded `%` is valid text.

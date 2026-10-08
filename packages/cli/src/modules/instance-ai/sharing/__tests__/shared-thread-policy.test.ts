@@ -13,11 +13,16 @@ import { SharedThreadPolicy } from '../shared-thread-policy';
 const READER: Scope[] = ['instanceAi:message', 'project:read'];
 const EDITOR: Scope[] = [...READER, 'workflow:update', 'workflow:delete', 'credential:delete'];
 
-const makeUser = (id: string, firstName: string, lastName: string, scopes: Scope[] = []) =>
-	mock<User>({ id, firstName, lastName, role: { slug: 'global:member', scopes } });
+const makeUser = (id: string, firstName: string, lastName: string, globalScopes: Scope[] = []) =>
+	mock<User>({
+		id,
+		firstName,
+		lastName,
+		role: { slug: 'global:member', scopes: globalScopes.map((slug) => ({ slug })) },
+	});
 
 /** A member user. The Assistant scope comes from the global role, as in n8n. */
-const owner = makeUser('owner-1', 'Ada', 'Lovelace', [{ slug: 'instanceAi:message' }] as never);
+const owner = makeUser('owner-1', 'Ada', 'Lovelace', ['instanceAi:message']);
 const teammate = makeUser('teammate-1', 'Grace', 'Hopper');
 
 const teamProject = mock<Project>({ id: 'project-1', name: 'Finance', type: 'team' });
@@ -116,12 +121,7 @@ describe('SharedThreadPolicy', () => {
 
 		it('refuses a user who is not a member, whatever the global role holds', async () => {
 			const { policy } = setup(null);
-			const admin = makeUser(
-				'admin-1',
-				'Alan',
-				'Turing',
-				READER.map((slug) => ({ slug })) as never,
-			);
+			const admin = makeUser('admin-1', 'Alan', 'Turing', READER);
 
 			await expect(policy.canRead(admin, shared)).resolves.toBe(false);
 		});
@@ -242,12 +242,7 @@ describe('SharedThreadPolicy', () => {
 
 		it('refuses a user who is not a member of the project, also with a global role', async () => {
 			const { policy } = setup(null);
-			const admin = makeUser(
-				'admin-1',
-				'Alan',
-				'Turing',
-				EDITOR.map((slug) => ({ slug })) as never,
-			);
+			const admin = makeUser('admin-1', 'Alan', 'Turing', EDITOR);
 
 			await expect(policy.authorizeAnswer(admin, shared, archiveCall, approve)).rejects.toThrow(
 				'Only editors in Finance can approve this.',
@@ -372,7 +367,7 @@ describe('SharedThreadPolicy', () => {
 	describe('readableProjectIds', () => {
 		it('lists the team projects where the member can read shared threads', async () => {
 			const { policy, projectService } = setup();
-			const relation = (projectId: string, type: string, scopes: Scope[]) =>
+			const relation = (projectId: string, type: 'team' | 'personal', scopes: Scope[]) =>
 				mock<ProjectRelation>({
 					projectId,
 					project: { type },

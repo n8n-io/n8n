@@ -1,6 +1,6 @@
 import type { SandboxPortRoute, WorkspaceSandbox } from '@n8n/agents/sandbox';
 import type { GlobalConfig } from '@n8n/config';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 import fc from 'fast-check';
 import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
@@ -13,6 +13,8 @@ import type { SandboxPortCapability } from '../sandbox-port-capability.service';
 import {
 	SANDBOX_PREVIEW_TTL_SECONDS,
 	SandboxPreviewService,
+	normalizeServiceUrl,
+	type SandboxPreviewEntry,
 	type SandboxPreviewRequest,
 } from '../sandbox-preview.service';
 
@@ -37,9 +39,14 @@ function setup(options: { basePath?: string } = {}) {
 	);
 	const apiKey = `test-key-${crypto.randomUUID()}`;
 	const settings = mock<SandboxSettingsService>();
+	settings.isAgentSandboxEnabled.mockReturnValue(true);
+	settings.getProvider.mockReturnValue('n8n-sandbox');
 	settings.resolveN8nSandboxConfig.mockResolvedValue({ serviceUrl: ROUTE.serviceUrl, apiKey });
 	const capability = mock<SandboxPortCapability>();
-	capability.assertSupported.mockResolvedValue(undefined);
+	capability.resolveRoute.mockImplementation(async (sandbox, port) => {
+		if (!sandbox.getPortRoute) throw new Error('The test sandbox has no port route');
+		return await sandbox.getPortRoute(port);
+	});
 	const globalConfig = mock<GlobalConfig>({ path: options.basePath ?? '/' });
 	const service = new SandboxPreviewService(jwtService, settings, capability, globalConfig);
 	const getPortRoute = vi.fn(
@@ -71,12 +78,12 @@ describe('SandboxPreviewService', () => {
 
 	describe('open', () => {
 		it('returns an n8n path whose token reaches the sandbox port', async () => {
-			const { service, sandbox, getPortRoute, settings } = setup();
+			const { service, sandbox, capability, settings } = setup();
 
 			const { url } = await service.open(sandbox, REQUEST);
 
 			expect(url).toMatch(/^\/sandbox-preview\/[\w-]+\.[\w-]+\.[\w-]+\/$/);
-			expect(getPortRoute).toHaveBeenCalledWith(5173);
+			expect(capability.resolveRoute).toHaveBeenCalledWith(sandbox, 5173);
 			const entry = service.resolveToken(tokenOf(url));
 			expect(entry).toEqual(
 				expect.objectContaining({
@@ -116,34 +123,22 @@ describe('SandboxPreviewService', () => {
 			expect(url).toMatch(/^\/n8n\/sandbox-preview\/[^/]+\/$/);
 		});
 
-		it('checks the ports capability of the service that the route names', async () => {
-			const { service, sandbox, capability } = setup();
-
-			await service.open(sandbox, REQUEST);
-
-			expect(capability.assertSupported).toHaveBeenCalledWith(ROUTE.serviceUrl);
-		});
-
-		it('refuses a sandbox that has no port route', async () => {
-			const { service, capability } = setup();
-			const sandbox = mock<WorkspaceSandbox>({ getPortRoute: undefined });
-
-			const error = await service.open(sandbox, REQUEST).catch((e: unknown) => e);
-
-			expect(error).toBeInstanceOf(BadRequestError);
-			expect(error).toHaveProperty('message', 'This sandbox cannot show app previews');
-			expect(capability.assertSupported).not.toHaveBeenCalled();
-		});
-
-		it('makes no URL when the service lacks the ports capability', async () => {
-			const { service, sandbox, capability } = setup();
-			capability.assertSupported.mockRejectedValue(
+		it.each([
+			[
+				'the service lacks the ports capability',
 				new BadRequestError('This sandbox service cannot show app previews yet.'),
-			);
+			],
+			[
+				'the sandbox service cannot be reached',
+				new ServiceUnavailableError(
+					'Could not reach the sandbox service to open the app preview. Try again in a moment.',
+				),
+			],
+		])('makes no URL when %s', async (_case, error) => {
+			const { service, sandbox, capability } = setup();
+			capability.resolveRoute.mockRejectedValue(error);
 
-			await expect(service.open(sandbox, REQUEST)).rejects.toThrow(
-				'This sandbox service cannot show app previews yet.',
-			);
+			await expect(service.open(sandbox, REQUEST)).rejects.toBe(error);
 			expect(entryCount(service)).toBe(0);
 		});
 
@@ -292,55 +287,187 @@ describe('SandboxPreviewService', () => {
 		});
 	});
 
-	describe('serviceApiKey', () => {
-		it('reads the key of the configured service and reuses it for thirty seconds', async () => {
-			const { service, settings, apiKey } = setup();
+	describe('serviceCredentials', () => {
+		const openEntry = async (context: ReturnType<typeof setup>): Promise<SandboxPreviewEntry> => {
+			const { url } = await context.service.open(context.sandbox, REQUEST);
+			const entry = context.service.resolveToken(tokenOf(url));
+			if (!entry) throw new Error('The preview did not resolve');
+			return entry;
+		};
 
-			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
+		it('gives the key of the configured service for an entry of that service', async () => {
+			const context = setup();
+			const entry = await openEntry(context);
+
+			await expect(context.service.serviceCredentials(entry)).resolves.toEqual({
+				apiKey: context.apiKey,
+			});
+		});
+
+		it('reads the settings once for thirty seconds', async () => {
+			const context = setup();
+			const entry = await openEntry(context);
+
+			await context.service.serviceCredentials(entry);
 			vi.setSystemTime(START.getTime() + 30_000 - 1);
-			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
+			await context.service.serviceCredentials(entry);
 
-			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(1);
+			expect(context.settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(1);
 		});
 
 		it('gives the rotated key to open previews once thirty seconds have passed', async () => {
-			const { service, sandbox, settings, apiKey } = setup();
-			const { url } = await service.open(sandbox, REQUEST);
-			await service.serviceApiKey();
+			const context = setup();
+			const entry = await openEntry(context);
+			await context.service.serviceCredentials(entry);
 			const rotated = `rotated-${crypto.randomUUID()}`;
-			settings.resolveN8nSandboxConfig.mockResolvedValue({ apiKey: rotated });
+			context.settings.resolveN8nSandboxConfig.mockResolvedValue({
+				serviceUrl: ROUTE.serviceUrl,
+				apiKey: rotated,
+			});
 
-			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
+			await expect(context.service.serviceCredentials(entry)).resolves.toEqual({
+				apiKey: context.apiKey,
+			});
 			vi.setSystemTime(START.getTime() + 30_000);
 
-			await expect(service.serviceApiKey()).resolves.toBe(rotated);
-			expect(service.resolveToken(tokenOf(url))).toBeDefined();
+			await expect(context.service.serviceCredentials(entry)).resolves.toEqual({ apiKey: rotated });
+			expect(context.service.resolveToken(entry.token)).toBe(entry);
 		});
 
-		it('reads the key once for requests that ask at the same time', async () => {
-			const { service, settings, apiKey } = setup();
+		it('reads the settings once for requests that ask at the same time', async () => {
+			const context = setup();
+			const entry = await openEntry(context);
 
-			const keys = await Promise.all([service.serviceApiKey(), service.serviceApiKey()]);
+			await Promise.all([
+				context.service.serviceCredentials(entry),
+				context.service.serviceCredentials(entry),
+			]);
 
-			expect(keys).toEqual([apiKey, apiKey]);
-			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(1);
+			expect(context.settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(1);
 		});
 
-		it('reads again at once after a failed read', async () => {
-			const { service, settings, apiKey } = setup();
-			settings.resolveN8nSandboxConfig.mockRejectedValueOnce(new Error('settings not readable'));
+		it('reads again at once after a failed read, and keeps the entry', async () => {
+			const context = setup();
+			const entry = await openEntry(context);
+			context.settings.resolveN8nSandboxConfig.mockRejectedValueOnce(
+				new Error('settings not readable'),
+			);
 
-			await expect(service.serviceApiKey()).rejects.toThrow('settings not readable');
-			await expect(service.serviceApiKey()).resolves.toBe(apiKey);
-
-			expect(settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(2);
+			await expect(context.service.serviceCredentials(entry)).rejects.toThrow(
+				'settings not readable',
+			);
+			await expect(context.service.serviceCredentials(entry)).resolves.toEqual({
+				apiKey: context.apiKey,
+			});
+			expect(context.settings.resolveN8nSandboxConfig).toHaveBeenCalledTimes(2);
 		});
 
-		it('gives undefined when the service has no key', async () => {
-			const { service, settings } = setup();
-			settings.resolveN8nSandboxConfig.mockResolvedValue({ serviceUrl: ROUTE.serviceUrl });
+		it('gives no key when the configured service has none', async () => {
+			const context = setup();
+			const entry = await openEntry(context);
+			context.settings.resolveN8nSandboxConfig.mockResolvedValue({ serviceUrl: ROUTE.serviceUrl });
 
-			await expect(service.serviceApiKey()).resolves.toBeUndefined();
+			await expect(context.service.serviceCredentials(entry)).resolves.toEqual({
+				apiKey: undefined,
+			});
+		});
+
+		it.each([
+			[
+				'the settings name another service URL',
+				(context: ReturnType<typeof setup>) =>
+					context.settings.resolveN8nSandboxConfig.mockResolvedValue({
+						serviceUrl: 'http://new-sandbox-service.internal',
+						apiKey: context.apiKey,
+					}),
+			],
+			[
+				'the settings name no service URL',
+				(context: ReturnType<typeof setup>) =>
+					context.settings.resolveN8nSandboxConfig.mockResolvedValue({ apiKey: context.apiKey }),
+			],
+			[
+				'the agent sandbox is off',
+				(context: ReturnType<typeof setup>) =>
+					context.settings.isAgentSandboxEnabled.mockReturnValue(false),
+			],
+			[
+				'the provider is Daytona',
+				(context: ReturnType<typeof setup>) =>
+					context.settings.getProvider.mockReturnValue('daytona'),
+			],
+		])('revokes the entry and gives no key when %s', async (_case, change) => {
+			const context = setup();
+			const entry = await openEntry(context);
+			change(context);
+
+			await expect(context.service.serviceCredentials(entry)).resolves.toBeUndefined();
+			expect(context.service.resolveToken(entry.token)).toBeUndefined();
+		});
+
+		it('does not read the key when the agent sandbox is off', async () => {
+			const context = setup();
+			const entry = await openEntry(context);
+			context.settings.isAgentSandboxEnabled.mockReturnValue(false);
+
+			await context.service.serviceCredentials(entry);
+
+			expect(context.settings.resolveN8nSandboxConfig).not.toHaveBeenCalled();
+		});
+
+		it('matches a configured URL with spaces around it and slashes at its end', async () => {
+			const context = setup();
+			const entry = await openEntry(context);
+			await fc.assert(
+				fc.asyncProperty(
+					fc.string({ unit: fc.constantFrom(' ', '\t'), maxLength: 3 }),
+					fc.string({ unit: fc.constant('/'), maxLength: 3 }),
+					fc.string({ unit: fc.constantFrom(' ', '\n'), maxLength: 3 }),
+					async (before, slashes, after) => {
+						vi.setSystemTime(Date.now() + 30_000);
+						context.settings.resolveN8nSandboxConfig.mockResolvedValue({
+							serviceUrl: `${before}${ROUTE.serviceUrl}${slashes}${after}`,
+							apiKey: context.apiKey,
+						});
+
+						await expect(context.service.serviceCredentials(entry)).resolves.toEqual({
+							apiKey: context.apiKey,
+						});
+					},
+				),
+				{ numRuns: 30 },
+			);
+		});
+	});
+
+	describe('normalizeServiceUrl', () => {
+		it.each([
+			[undefined, undefined],
+			['', undefined],
+			['  ', undefined],
+			['/', undefined],
+			['http://svc.internal', 'http://svc.internal'],
+			[' http://svc.internal/base// ', 'http://svc.internal/base'],
+		])('turns %j into %j', (url, normalized) => {
+			expect(normalizeServiceUrl(url)).toBe(normalized);
+		});
+
+		it('removes the spaces around a URL and the slashes at its end, and keeps that form', () => {
+			const spacesArb = fc.string({ unit: fc.constantFrom(' ', '\t', '\n'), maxLength: 3 });
+			fc.assert(
+				fc.property(
+					fc.webUrl({ withQueryParameters: false, withFragments: false }),
+					spacesArb,
+					fc.string({ unit: fc.constant('/'), maxLength: 3 }),
+					spacesArb,
+					(url, before, slashes, after) => {
+						const expected = url.replace(/\/+$/, '');
+
+						expect(normalizeServiceUrl(`${before}${url}${slashes}${after}`)).toBe(expected);
+						expect(normalizeServiceUrl(expected)).toBe(expected);
+					},
+				),
+			);
 		});
 	});
 

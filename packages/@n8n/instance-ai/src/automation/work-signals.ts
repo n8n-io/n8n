@@ -1,8 +1,21 @@
-import type { SKILL_LOAD_TOOL_NAME } from '@n8n/agents';
+import type {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	FLAG_MEMORY_TOOL_NAME,
+	LOAD_TOOL_TOOL_NAME,
+	RECALL_MEMORY_TOOL_NAME,
+	SEARCH_TOOLS_TOOL_NAME,
+	SKILL_LOAD_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
+} from '@n8n/agents';
 import { z } from 'zod';
 
 import type { WorkSignal } from './repeatable-work';
-import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS, WORKSPACE_TOOL_IDS } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	DOMAIN_TOOL_IDS,
+	ORCHESTRATION_TOOL_IDS,
+	WORKSPACE_TOOL_IDS,
+} from '../tools/tool-ids';
 import { ONE_OFF_BUILD_SUCCEEDED_REASON } from '../tools/workflows/post-build-flow-reason';
 
 /**
@@ -11,10 +24,29 @@ import { ONE_OFF_BUILD_SUCCEEDED_REASON } from '../tools/workflows/post-build-fl
  */
 export const PROPOSE_AUTOMATION_TOOL_NAME = 'propose_automation';
 
-// Tied to the runtime name at the type level. A value import would load the whole runtime here.
-const LOAD_SKILL_TOOL_NAME: typeof SKILL_LOAD_TOOL_NAME = 'load_skill';
-
 const RUN_ACTION = 'run';
+const EXECUTE_ACTION = 'execute';
+
+/**
+ * Tools that the agents runtime adds by name: skills, tool search, to-dos, memory and sub-agents.
+ * Each name is tied to the runtime constant at the type level. A value import would load the
+ * whole runtime here.
+ */
+const RUNTIME_TOOL_NAMES: readonly string[] = [
+	'load_skill' satisfies typeof SKILL_LOAD_TOOL_NAME,
+	'search_tools' satisfies typeof SEARCH_TOOLS_TOOL_NAME,
+	'load_tool' satisfies typeof LOAD_TOOL_TOOL_NAME,
+	'write_todos' satisfies typeof WRITE_TODOS_TOOL_NAME,
+	'recall_memory' satisfies typeof RECALL_MEMORY_TOOL_NAME,
+	'flag_memory' satisfies typeof FLAG_MEMORY_TOOL_NAME,
+	'delegate_subagent' satisfies typeof DELEGATE_SUB_AGENT_TOOL_NAME,
+];
+
+/**
+ * The runtime gives each tool of the sandbox workspace (files, commands, processes) this prefix.
+ * The workflow builder writes, validates and edits its code with these tools in most build chats.
+ */
+const RUNTIME_WORKSPACE_TOOL_PREFIX = 'workspace_';
 
 /**
  * The Assistant's own tools. Their lookups, builds and set-up steps occur in almost every build
@@ -25,21 +57,60 @@ const ASSISTANT_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
 	...Object.values(DOMAIN_TOOL_IDS),
 	...Object.values(ORCHESTRATION_TOOL_IDS),
 	...Object.values(WORKSPACE_TOOL_IDS),
-	LOAD_SKILL_TOOL_NAME,
-	// The runtime adds these by name: tool search, and the research tools.
-	'search_tools',
-	'load_tool',
-	'web-search',
-	'fetch-url',
+	// Also has the research tools that the runtime loads by name.
+	...ALWAYS_LOADED_TOOL_NAMES,
+	...RUNTIME_TOOL_NAMES,
+]);
+
+/**
+ * Tools of the local gateway (`@n8n/computer-use`) and of the browser (`@n8n/mcp-browser`) that
+ * only read, or only move around: they change no data. One job calls them many times, so a repeat
+ * does not show a repeated job. The history does not keep the MCP read-only hint of a call, so the
+ * names are listed here.
+ */
+const LOCAL_LOOKUP_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
+	'read_file',
+	'list_files',
+	'get_file_tree',
+	'search_files',
+	'screen_screenshot',
+	'screen_screenshot_region',
+	'mouse_move',
+	'mouse_scroll',
+	'browser_connect',
+	'browser_disconnect',
+	'browser_navigate',
+	'browser_back',
+	'browser_forward',
+	'browser_reload',
+	'browser_snapshot',
+	'browser_screenshot',
+	'browser_content',
+	'browser_console',
+	'browser_network',
+	'browser_hover',
+	'browser_scroll',
+	'browser_tab_list',
+	'browser_tab_focus',
+	'browser_wait',
 ]);
 
 /** The calls of the Assistant's own tools that do the user's job: they run or write something. */
 const JOB_SIGNATURES: ReadonlySet<string> = new Set<string>([
 	`${DOMAIN_TOOL_IDS.EXECUTIONS}:${RUN_ACTION}`,
-	`${DOMAIN_TOOL_IDS.NODES}:execute`,
+	`${DOMAIN_TOOL_IDS.NODES}:${EXECUTE_ACTION}`,
 	`${DOMAIN_TOOL_IDS.DATA_TABLES}:insert-rows`,
 	`${DOMAIN_TOOL_IDS.DATA_TABLES}:update-rows`,
 	`${DOMAIN_TOOL_IDS.DATA_TABLES}:delete-rows`,
+]);
+
+/**
+ * The job calls whose result gives `status: 'success'` only when the run succeeded. A failed run
+ * returns `status: 'error'` without a failure flag, so only this status tells success from failure.
+ */
+const STATUS_RESULT_SIGNATURES: ReadonlySet<string> = new Set<string>([
+	`${DOMAIN_TOOL_IDS.EXECUTIONS}:${RUN_ACTION}`,
+	`${DOMAIN_TOOL_IDS.NODES}:${EXECUTE_ACTION}`,
 ]);
 
 /** One tool call of a chat, as `collectWorkSignals` reads it. */
@@ -86,13 +157,20 @@ function signatureOf({ toolName, action }: Pick<WorkToolCall, 'toolName' | 'acti
 	return `${toolName}:${action ?? ''}`;
 }
 
+function isAssistantTool(toolName: string): boolean {
+	return ASSISTANT_TOOL_NAMES.has(toolName) || toolName.startsWith(RUNTIME_WORKSPACE_TOOL_PREFIX);
+}
+
 /**
  * Whether a call does work that the user can want again, so that a repeat of it counts. The
- * Assistant's own `propose_automation` call is not work.
+ * Assistant's own `propose_automation` call and the local lookups are not work.
  */
 export function isWorkToolCall(call: Pick<WorkToolCall, 'toolName' | 'action'>): boolean {
-	if (call.toolName === PROPOSE_AUTOMATION_TOOL_NAME) return false;
-	return !ASSISTANT_TOOL_NAMES.has(call.toolName) || JOB_SIGNATURES.has(signatureOf(call));
+	const { toolName } = call;
+	if (toolName === PROPOSE_AUTOMATION_TOOL_NAME || LOCAL_LOOKUP_TOOL_NAMES.has(toolName)) {
+		return false;
+	}
+	return !isAssistantTool(toolName) || JOB_SIGNATURES.has(signatureOf(call));
 }
 
 /**
@@ -158,12 +236,12 @@ function reportsFailure(output: StoredToolCall['output']): boolean {
 }
 
 /**
- * A call is ok when it finished and its result reports no failure. A workflow run is ok only when
- * the execution succeeded, as in the automation offer of the editor.
+ * A call is ok when it finished and its result reports no failure. A workflow run or a node run is
+ * ok only when it succeeded, as in the automation offer of the editor.
  */
 function isOkCall({ toolName, state, canceled, input, output }: StoredToolCall): boolean {
 	if (state !== 'resolved' || canceled === true) return false;
-	if (toolName === DOMAIN_TOOL_IDS.EXECUTIONS && input.action === RUN_ACTION) {
+	if (STATUS_RESULT_SIGNATURES.has(signatureOf({ toolName, action: input.action }))) {
 		return output.status === 'success';
 	}
 	return !reportsFailure(output);

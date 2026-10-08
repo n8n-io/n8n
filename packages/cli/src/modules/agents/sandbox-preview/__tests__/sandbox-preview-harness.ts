@@ -243,19 +243,30 @@ export const sendTo = async (port: number, path: string, options: SendOptions = 
 		outgoing.end();
 	});
 
-function previewServiceWith(apiKey: string) {
-	const jwtService = new JwtService(
-		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
-		mock<GlobalConfig>({ userManagement: { jwtSecret: '' } }),
-		mock(),
-	);
+const jwtService = new JwtService(
+	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+	mock<GlobalConfig>({ userManagement: { jwtSecret: '' } }),
+	mock(),
+);
+
+/** The sandbox settings of the instance: the agent sandbox is on and uses the n8n sandbox service. */
+function sandboxSettings(config: { serviceUrl: string; apiKey: string }) {
 	const settings = mock<SandboxSettingsService>();
-	settings.resolveN8nSandboxConfig.mockResolvedValue({ apiKey });
+	settings.isAgentSandboxEnabled.mockReturnValue(true);
+	settings.getProvider.mockReturnValue('n8n-sandbox');
+	settings.resolveN8nSandboxConfig.mockResolvedValue(config);
+	return settings;
+}
+
+/** A new service for each test, so that no entry or cached setting passes over from another test. */
+function previewServiceFor(settings: SandboxSettingsService) {
 	const capability = mock<SandboxPortCapability>();
-	capability.assertSupported.mockResolvedValue(undefined);
+	capability.resolveRoute.mockImplementation(async (sandbox, port) => {
+		if (!sandbox.getPortRoute) throw new Error('The test sandbox has no port route');
+		return await sandbox.getPortRoute(port);
+	});
 	const globalConfig = mock<GlobalConfig>({ path: '/' });
-	const previewService = new SandboxPreviewService(jwtService, settings, capability, globalConfig);
-	return { jwtService, settings, previewService };
+	return new SandboxPreviewService(jwtService, settings, capability, globalConfig);
 }
 
 /** Registers the hooks of the harness in the calling `describe`. */
@@ -279,7 +290,10 @@ export function usePreviewHarness() {
 		httpAgent: new HttpAgent({ keepAlive: true }),
 		httpsAgent: new HttpsAgent({ keepAlive: true }),
 	};
-	const services = previewServiceWith(apiKey);
+	const current = {
+		settings: sandboxSettings({ serviceUrl: '', apiKey }),
+		previewService: previewServiceFor(mock<SandboxSettingsService>()),
+	};
 
 	beforeAll(async () => {
 		servers.upstream = stubSandboxService(state, seen);
@@ -303,23 +317,32 @@ export function usePreviewHarness() {
 		seen.length = 0;
 		state.mode = 'ok';
 		resetMocks(mocks, users, agents);
+		current.settings = sandboxSettings({ serviceUrl: servers.upstreamUrl, apiKey });
+		current.previewService = previewServiceFor(current.settings);
 		// A new controller for each test, so that no access check passes over from another test.
 		const access = new SandboxPreviewAccess(mocks.authService, mocks.userRepository);
 		const { logger, outboundHttp } = mocks;
 		const controller = new SandboxPreviewProxyController(
 			logger,
-			services.previewService,
+			current.previewService,
 			access,
 			outboundHttp,
 		);
 		Container.set(SandboxPreviewProxyController, controller);
 	});
 
-	/** A preview URL for the stub service, or for `route` when given. */
+	/**
+	 * A preview URL for the stub service, or for `route` when given. The
+	 * instance settings then name the service of `route`.
+	 */
 	const openPreview = async (route?: SandboxPortRoute) => {
 		const target = route ?? { serviceUrl: servers.upstreamUrl, path: PORT_PATH };
+		current.settings.resolveN8nSandboxConfig.mockResolvedValue({
+			serviceUrl: target.serviceUrl,
+			apiKey,
+		});
 		const sandbox = mock<WorkspaceSandbox>({ getPortRoute: vi.fn().mockResolvedValue(target) });
-		const { url } = await services.previewService.open(sandbox, {
+		const { url } = await current.previewService.open(sandbox, {
 			userId: 'user-1',
 			projectId: 'project-1',
 			port: route ? 3000 : 5173,
@@ -332,10 +355,18 @@ export function usePreviewHarness() {
 		state,
 		apiKey,
 		servers,
+		jwtService,
 		...users,
 		...mocks,
 		...agents,
-		...services,
+		/** The sandbox settings of the current test. */
+		get settings() {
+			return current.settings;
+		},
+		/** The preview service of the current test. */
+		get previewService() {
+			return current.previewService;
+		},
 		openPreview,
 		send: async (path: string, options?: SendOptions) => await sendTo(servers.port, path, options),
 	};

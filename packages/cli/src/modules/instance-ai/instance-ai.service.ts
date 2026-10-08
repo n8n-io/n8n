@@ -3046,7 +3046,7 @@ export class InstanceAiService {
 		const nudge = Container.get(RepeatableWorkNudgeService);
 		const repeatableWorkSection =
 			resumeReason === undefined && !isMachineFollowUp
-				? await nudge.forTurn(threadId, message, loadReplayedHistory)
+				? await nudge.forTurn(threadId, thread?.metadata, message, loadReplayedHistory)
 				: undefined;
 		const threadContextBlock = buildThreadContextBlock([
 			instanceContext.state === 'injected' ? instanceContext.block : '',

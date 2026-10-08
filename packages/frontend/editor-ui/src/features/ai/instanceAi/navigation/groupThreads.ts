@@ -91,3 +91,19 @@ export function groupThreads(
 		return { group, threads: visibleThreads(sorted, limit, openThreadId), total: sorted.length };
 	});
 }
+
+/**
+ * The expanded groups that still have more chats than a group shows. A group that gets small
+ * enough closes, so that it does not open by itself when it grows again.
+ */
+export function stillExpandable(
+	expanded: ReadonlySet<ThreadGroup>,
+	entries: readonly ThreadGroupEntry[],
+	perGroup: number,
+): ReadonlySet<ThreadGroup> {
+	return new Set(
+		entries
+			.filter((entry) => entry.total > perGroup && expanded.has(entry.group))
+			.map((entry) => entry.group),
+	);
+}

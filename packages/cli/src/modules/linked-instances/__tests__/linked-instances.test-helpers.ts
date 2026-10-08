@@ -114,6 +114,15 @@ export async function expectRejection(
 
 type RemoteProjectOutput = { id: string; name: string; type: string };
 
+// Projects as `search_projects` lists them. The ids have the format of n8n project ids.
+export const OPS: RemoteProjectOutput = { id: 'Xk3pQ9aZ1bC2dE4f', name: 'Ops', type: 'team' };
+export const SALES: RemoteProjectOutput = { id: 'Sa1eS0pQ9aZ1bC2d', name: 'Sales', type: 'team' };
+export const PERSONAL: RemoteProjectOutput = {
+	id: 'Pm0rT8sU7vW6xY5z',
+	name: 'Ada Lovelace <ada@acme.test>',
+	type: 'personal',
+};
+
 /** The structured output of `search_projects` on an n8n instance: team projects first. */
 export const searchProjectsOutput = (data: RemoteProjectOutput[], teamProjectsEnabled = true) => ({
 	data,

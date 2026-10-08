@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import fc from 'fast-check';
 import { CHAT_GROUP_ATTRIBUTE, focusAnchor, focusTarget } from '../useKeepGroupFocus';
+
+const GROUP_NAMES = ['needs-you', 'working', 'ready', 'done'];
 
 /** A grouped chat list: each group has a heading, its chat rows and a "Show all" button. */
 function groupedList(groups: Record<string, string[]>) {
@@ -55,6 +58,50 @@ describe('useKeepGroupFocus helpers', () => {
 	});
 
 	describe('focusTarget', () => {
+		/** Groups in the fixed order, some without rows, and row IDs that are unique in the list. */
+		const listArb = fc
+			.record({
+				groups: fc.subarray(GROUP_NAMES),
+				rows: fc.uniqueArray(fc.tuple(fc.integer({ min: 0, max: 15 }), fc.nat()), {
+					selector: ([id]) => id,
+					maxLength: 12,
+				}),
+			})
+			.map(({ groups, rows }) => {
+				const list: Record<string, string[]> = Object.fromEntries(groups.map((g) => [g, []]));
+				if (groups.length > 0) {
+					for (const [id, slot] of rows) list[groups[slot % groups.length]].push(`r${id}`);
+				}
+				return list;
+			});
+		const anchorArb = fc.record({
+			rowId: fc.option(fc.integer({ min: 0, max: 15 }).map((id) => `r${id}`), { nil: undefined }),
+			group: fc.option(fc.constantFrom(...GROUP_NAMES, 'other'), { nil: undefined }),
+		});
+
+		it('returns a row of the new list when the list has one, and the same chat when it is listed', () => {
+			fc.assert(
+				fc.property(listArb, anchorArb, (list, anchor) => {
+					const root = groupedList(list);
+					try {
+						const rows = Array.from(root.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+						const groupRows = anchor.group === undefined ? [] : (list[anchor.group] ?? []);
+						const expectedId = rows.some((r) => r.id === anchor.rowId)
+							? anchor.rowId
+							: (groupRows.at(-1) ?? rows[0]?.id);
+
+						const target = focusTarget(root, anchor);
+
+						if (rows.length === 0) expect(target).toBeUndefined();
+						else expect(rows).toContain(target);
+						expect(target?.id).toBe(expectedId);
+					} finally {
+						root.remove();
+					}
+				}),
+			);
+		});
+
 		it('finds the same chat in another group', () => {
 			const root = groupedList({ working: ['a'], done: ['b', 'c'] });
 

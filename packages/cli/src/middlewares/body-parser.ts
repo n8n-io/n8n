@@ -1,6 +1,7 @@
 import { parseIncomingMessage } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { Request, RequestHandler } from 'express';
 import { jsonParse, sanitizeXmlName } from 'n8n-workflow';
 import { parse as parseQueryString } from 'querystring';
@@ -36,6 +37,18 @@ const isClientAbortError = (error: unknown): boolean =>
 	// raw-body sets these error.type values for a client aborting mid-read.
 	(error.type === 'stream.not.readable' || error.type === 'request.aborted');
 
+/** The `Content-Encoding` values whose body `rawBodyReader` keeps in decoded form. */
+const bodyDecoders = { gzip: createGunzip, deflate: createInflate } as const;
+
+/**
+ * Whether `rawBodyReader` decodes a body with this `Content-Encoding`. Code that
+ * sends `rawBody` on uses this to know that the bytes are no longer encoded.
+ */
+export const isDecodedBodyEncoding = (
+	encoding: string | undefined,
+): encoding is keyof typeof bodyDecoders =>
+	encoding !== undefined && Object.hasOwn(bodyDecoders, encoding);
+
 export const rawBodyReader: RequestHandler = (req, _res, next) => {
 	parseIncomingMessage(req);
 
@@ -44,15 +57,10 @@ export const rawBodyReader: RequestHandler = (req, _res, next) => {
 			let stream: Readable = req;
 			let contentLength: string | undefined;
 			const contentEncoding = req.headers['content-encoding'];
-			switch (contentEncoding) {
-				case 'gzip':
-					stream = req.pipe(createGunzip());
-					break;
-				case 'deflate':
-					stream = req.pipe(createInflate());
-					break;
-				default:
-					contentLength = req.headers['content-length'];
+			if (isDecodedBodyEncoding(contentEncoding)) {
+				stream = req.pipe(bodyDecoders[contentEncoding]());
+			} else {
+				contentLength = req.headers['content-length'];
 			}
 
 			// Client aborted before we read the body: treat as client error, not a 500.
@@ -81,6 +89,21 @@ export const rawBodyReader: RequestHandler = (req, _res, next) => {
 	next();
 };
 
+type ParseBodyText = (text: string) => unknown;
+
+/** The parser for a content type, or undefined when n8n keeps only the raw bytes. */
+const bodyTextParserFor = (contentType: string | undefined): ParseBodyText | undefined => {
+	if (contentType === 'application/json') return (text) => jsonParse(stripBom(text));
+	if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
+		return async (text) => await xmlParser.parseStringPromise(text);
+	}
+	if (contentType === 'application/x-www-form-urlencoded') {
+		return (text) => parseQueryString(stripBom(text), undefined, undefined, { maxKeys: 1000 });
+	}
+	if (contentType === 'text/plain') return (text) => text;
+	return undefined;
+};
+
 export const parseBody = async (req: Request) => {
 	// Skip multipart requests (e.g., file uploads) - these need specialized parsing by multer.
 	// Reading the body stream here would consume it, making it unavailable for multer processing.
@@ -90,24 +113,12 @@ export const parseBody = async (req: Request) => {
 
 	await req.readRawBody();
 	const { rawBody, contentType, encoding } = req;
-	if (rawBody?.length) {
-		try {
-			if (contentType === 'application/json') {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = jsonParse(stripBom(rawBody.toString(encoding)));
-			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
-			} else if (contentType === 'application/x-www-form-urlencoded') {
-				req.body = parseQueryString(stripBom(rawBody.toString(encoding)), undefined, undefined, {
-					maxKeys: 1000,
-				});
-			} else if (contentType === 'text/plain') {
-				req.body = rawBody.toString(encoding);
-			}
-		} catch (error) {
-			throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);
-		}
+	const parse = bodyTextParserFor(contentType);
+	if (!rawBody?.length || !parse) return;
+	try {
+		req.body = await parse(rawBody.toString(encoding));
+	} catch (error) {
+		throw new UnprocessableRequestError('Failed to parse request body', ensureError(error).message);
 	}
 };
 

@@ -14,16 +14,7 @@ interface WatchedAnswer {
 
 describe('SandboxPreviewProxyController transport', () => {
 	const h = usePreviewHarness();
-	const {
-		seen,
-		previewService,
-		outboundHttp,
-		getNodeAgent,
-		httpAgent,
-		httpsAgent,
-		openPreview,
-		send,
-	} = h;
+	const { seen, outboundHttp, getNodeAgent, httpAgent, httpsAgent, openPreview, send } = h;
 
 	/** Resolves when the answer ends or breaks off, or with 'hung' when it does neither in time. */
 	const watch = async (path: string, waitMs: number) =>
@@ -143,7 +134,7 @@ describe('SandboxPreviewProxyController transport', () => {
 		expect(answer.status).toBe(502);
 		expect(answer.body).toBe('Bad Gateway');
 		expectHardened(answer);
-		expect(previewService.resolveToken(token)).toBeDefined();
+		expect(h.previewService.resolveToken(token)).toBeDefined();
 	});
 
 	it('passes a sandbox restart through as 409 and answers 404 afterwards', async () => {
@@ -158,6 +149,36 @@ describe('SandboxPreviewProxyController transport', () => {
 		expectHardened(restarted);
 		expect(later.status).toBe(404);
 		expect(seen).toHaveLength(1);
+	});
+
+	it('sends nothing to the service when the browser leaves during the access check', async () => {
+		const { url } = await openPreview();
+		const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+		let checkStarted: () => void = () => {};
+		const started = new Promise<void>((resolve) => (checkStarted = resolve));
+		let finishCheck: () => void = () => {};
+		const checked = new Promise<void>((resolve) => (finishCheck = resolve));
+		h.userRepository.findByIdWithRole.mockImplementation(async () => {
+			checkStarted();
+			await checked;
+			return h.tokenUser;
+		});
+
+		const outgoing = request({
+			host: '127.0.0.1',
+			port: h.servers.port,
+			path: `${url}src/main.ts`,
+		});
+		outgoing.on('error', () => {});
+		outgoing.end();
+		await started;
+		outgoing.destroy();
+		// n8n sees the closed connection before the access check ends.
+		await pause(50);
+		finishCheck();
+		await pause(50);
+
+		expect(seen).toHaveLength(0);
 	});
 
 	it('relays a 502 from the app without revoking the URL', async () => {
@@ -209,7 +230,7 @@ describe('SandboxPreviewProxyController transport', () => {
 			const answer = await send(`${url}src/main.ts`);
 
 			expect(answer.status).toBe(200);
-			expect(previewService.resolveToken(token)).toBeDefined();
+			expect(h.previewService.resolveToken(token)).toBeDefined();
 		});
 
 		it('ends a complete answer normally', async () => {
@@ -299,8 +320,8 @@ describe('SandboxPreviewProxyController transport', () => {
 		});
 
 		it('does not pass the keep-alive timeout of the service on to the browser', async () => {
-			const { upstream } = h.servers;
-			if (!upstream) throw new Error('The harness servers did not start');
+			const { upstream, n8n } = h.servers;
+			if (!upstream || !n8n) throw new Error('The harness servers did not start');
 			const serviceTimeout = upstream.keepAliveTimeout;
 			upstream.keepAliveTimeout = 61_000;
 			const answer = await (async () => {
@@ -312,9 +333,12 @@ describe('SandboxPreviewProxyController transport', () => {
 				}
 			})();
 
-			// The service answered `keep-alive: timeout=61`; n8n closes idle browser connections sooner.
+			// The service answered `keep-alive: timeout=61`; the browser gets the timeout of n8n's own server.
 			expect(seen[0].headers.connection).toBe('keep-alive');
-			expect(answer.headers['keep-alive']).toBeUndefined();
+			expect(answer.headers['keep-alive']).toBe(
+				`timeout=${Math.floor(n8n.keepAliveTimeout / 1000)}`,
+			);
+			expect(answer.headers.connection).toBe('keep-alive');
 		});
 
 		it('connects to an https service with the https agent', async () => {

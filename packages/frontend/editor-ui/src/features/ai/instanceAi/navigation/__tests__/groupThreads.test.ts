@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import {
 	groupThreads,
+	stillExpandable,
 	threadGroup,
 	THREAD_GROUPS,
 	type GroupThreadsOptions,
@@ -346,5 +347,57 @@ describe('groupThreads', () => {
 
 			expect(threads).toEqual(sevenDoneChats);
 		});
+	});
+});
+
+describe('stillExpandable', () => {
+	const entry = (name: ThreadGroup, total: number): ThreadGroupEntry => ({
+		group: name,
+		threads: [],
+		total,
+	});
+
+	it('keeps an expanded group only while it has more chats than a group shows', () => {
+		fc.assert(
+			fc.property(inputArb, ({ threads, options, perGroup }) => {
+				const expanded = options.expanded ?? new Set<ThreadGroup>();
+				const entries = groupThreads(threads, options);
+
+				const kept = stillExpandable(expanded, entries, perGroup);
+
+				for (const name of THREAD_GROUPS) {
+					const total = group(entries, name)?.total ?? 0;
+					expect(kept.has(name)).toBe(expanded.has(name) && total > perGroup);
+				}
+			}),
+		);
+	});
+
+	it('keeps a group with one chat more than a group shows', () => {
+		const kept = stillExpandable(new Set<ThreadGroup>(['done']), [entry('done', 6)], 5);
+
+		expect([...kept]).toEqual(['done']);
+	});
+
+	it('closes a group with exactly as many chats as a group shows', () => {
+		const kept = stillExpandable(new Set<ThreadGroup>(['done']), [entry('done', 5)], 5);
+
+		expect([...kept]).toEqual([]);
+	});
+
+	it('closes a group that has no chats left', () => {
+		const kept = stillExpandable(new Set<ThreadGroup>(['working']), [entry('done', 9)], 5);
+
+		expect([...kept]).toEqual([]);
+	});
+
+	it('does not expand a group that the user did not expand', () => {
+		const kept = stillExpandable(
+			new Set<ThreadGroup>(['done']),
+			[entry('working', 9), entry('done', 9)],
+			5,
+		);
+
+		expect([...kept]).toEqual(['done']);
 	});
 });

@@ -11,6 +11,7 @@ import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiAvailable } from '../composables/useInstanceAiAvailability';
 import { useExperienceMode } from '../experience/useExperienceMode';
 import AssistantSectionHeader from './AssistantSectionHeader.vue';
+import { useAssistantSidebarStore } from './assistantSidebar.store';
 import { useAutomationUpdates } from './useAutomationUpdates';
 import { useChatTurnEnded } from './useChatTurnEnded';
 import { FOCUS_ROW_ATTRIBUTE, useKeepRowFocus } from './useKeepListFocus';
@@ -42,6 +43,14 @@ const isShown = computed(
 	() => isAssistantAvailable.value && experienceModesOn.value && !props.collapsed,
 );
 const { automations, refresh } = useMyAutomations(isShown);
+
+// The section shows after the first chat list request ended, with or without success. Else the
+// chats above can appear later and push the section down.
+const sidebarStore = useAssistantSidebarStore();
+const hasList = computed(
+	() => isShown.value && sidebarStore.chatListSettled && automations.value !== undefined,
+);
+
 // A turn can build or turn on a workflow, also when the user answers an automation card.
 useChatTurnEnded(() => {
 	void refresh();
@@ -94,7 +103,7 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 
 <template>
 	<div
-		v-if="isShown && automations !== undefined"
+		v-if="hasList"
 		ref="root"
 		:class="$style.section"
 		data-test-id="assistant-automations"

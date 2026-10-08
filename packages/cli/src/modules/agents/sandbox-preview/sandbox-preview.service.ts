@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import type { SandboxPortRoute, WorkspaceSandbox } from '@n8n/agents/sandbox';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { JwtService } from '@/services/jwt.service';
@@ -19,8 +18,20 @@ export const SANDBOX_PREVIEW_TTL_SECONDS = 60 * 60;
 /** A live preview URL is given out again while at least this much of its life is left. */
 const REUSE_MIN_REMAINING_MS = (SANDBOX_PREVIEW_TTL_SECONDS * 1000) / 2;
 
-/** How long the proxy reuses the service API key, so that a rotated key reaches open previews soon. */
-const API_KEY_CACHE_MS = 30_000;
+/**
+ * How long the proxy reuses the sandbox service settings, so that a rotated
+ * key or a changed URL reaches open previews soon.
+ */
+const SERVICE_CONFIG_CACHE_MS = 30_000;
+
+interface ServiceConfig {
+	serviceUrl?: string;
+	apiKey?: string;
+}
+
+/** The form of a service URL in a port route: no spaces, no trailing slash (see `getPortRoute`). */
+export const normalizeServiceUrl = (url: string | undefined): string | undefined =>
+	url?.trim().replace(/\/+$/, '') || undefined;
 
 const tokenClaimsSchema = z.object({ sub: z.string().min(1), jti: z.string().min(1) });
 
@@ -56,7 +67,7 @@ export interface SandboxPreviewRequest {
 export class SandboxPreviewService {
 	private readonly entries = new Map<string, SandboxPreviewEntry>();
 
-	private apiKeyCache?: { apiKey: Promise<string | undefined>; until: number };
+	private configCache?: { config: Promise<ServiceConfig>; until: number };
 
 	constructor(
 		private readonly jwtService: JwtService,
@@ -67,11 +78,7 @@ export class SandboxPreviewService {
 
 	/** Returns the n8n URL of the preview, `<N8N_PATH>sandbox-preview/<token>/`. */
 	async open(sandbox: WorkspaceSandbox, request: SandboxPreviewRequest): Promise<{ url: string }> {
-		if (!sandbox.getPortRoute) {
-			throw new BadRequestError('This sandbox cannot show app previews');
-		}
-		const route = await sandbox.getPortRoute(request.port);
-		await this.portCapability.assertSupported(route.serviceUrl);
+		const route = await this.portCapability.resolveRoute(sandbox, request.port);
 		this.pruneExpired();
 		const scope = JSON.stringify([request.userId, request.projectId, route.serviceUrl, route.path]);
 		const entry = this.reusableEntry(scope) ?? this.createEntry(request, route, scope);
@@ -97,24 +104,41 @@ export class SandboxPreviewService {
 	}
 
 	/**
-	 * The current API key of the sandbox service. The proxy reads it for each
-	 * request and not when it makes an entry, so open previews keep working
-	 * after an admin rotates the key.
+	 * The API key for a request of `entry`, read for each request so that open
+	 * previews keep working after an admin rotates the key. The key belongs to
+	 * the configured service URL and never goes to another one. When the agent
+	 * sandbox is off, uses another provider, or names another service URL than
+	 * the entry, this revokes the entry and returns undefined.
 	 */
-	async serviceApiKey(): Promise<string | undefined> {
+	async serviceCredentials(entry: SandboxPreviewEntry): Promise<{ apiKey?: string } | undefined> {
+		const config = this.servesN8nSandbox() ? await this.currentServiceConfig() : undefined;
+		if (config && normalizeServiceUrl(config.serviceUrl) === entry.serviceUrl) {
+			return { apiKey: config.apiKey };
+		}
+		this.markDead(entry);
+		return undefined;
+	}
+
+	private servesN8nSandbox(): boolean {
+		return (
+			this.sandboxSettingsService.isAgentSandboxEnabled() &&
+			this.sandboxSettingsService.getProvider() === 'n8n-sandbox'
+		);
+	}
+
+	/** The URL and the key come from one read, so a cached pair always belongs together. */
+	private async currentServiceConfig(): Promise<ServiceConfig> {
 		const now = Date.now();
-		if (!this.apiKeyCache || this.apiKeyCache.until <= now) {
-			const apiKey = this.sandboxSettingsService
-				.resolveN8nSandboxConfig()
-				.then((config) => config.apiKey);
-			const cache = { apiKey, until: now + API_KEY_CACHE_MS };
-			this.apiKeyCache = cache;
+		if (!this.configCache || this.configCache.until <= now) {
+			const config = this.sandboxSettingsService.resolveN8nSandboxConfig();
+			const cache = { config, until: now + SERVICE_CONFIG_CACHE_MS };
+			this.configCache = cache;
 			// A failed read is not reused.
-			void apiKey.catch(() => {
-				if (this.apiKeyCache === cache) this.apiKeyCache = undefined;
+			void config.catch(() => {
+				if (this.configCache === cache) this.configCache = undefined;
 			});
 		}
-		return await this.apiKeyCache.apiKey;
+		return await this.configCache.config;
 	}
 
 	private reusableEntry(scope: string): SandboxPreviewEntry | undefined {

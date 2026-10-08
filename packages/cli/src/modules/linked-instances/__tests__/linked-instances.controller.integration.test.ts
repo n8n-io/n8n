@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { LINKED_INSTANCE_INPUT_MESSAGES } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -22,6 +22,14 @@ import {
 	RemoteInstanceClientFactory,
 	type RemoteInstanceClient,
 } from '../remote/remote-instance.client';
+import {
+	CLOUD,
+	fakeToken,
+	OPS,
+	PERSONAL,
+	SALES,
+	searchProjectsOutput,
+} from './linked-instances.test-helpers';
 
 const clientFactory = mockInstance(RemoteInstanceClientFactory);
 
@@ -30,24 +38,14 @@ const testServer = utils.setupTestServer({
 	modules: ['linked-instances'],
 });
 
-const CLOUD = 'https://acme.app.n8n.cloud';
-const OPS = { id: 'Xk3pQ9aZ1bC2dE4f', name: 'Ops', type: 'team' };
-const SALES = { id: 'Sa1eS0pQ9aZ1bC2d', name: 'Sales', type: 'team' };
-const PERSONAL = { id: 'Pm0rT8sU7vW6xY5z', name: 'Ada Lovelace <ada@acme.test>', type: 'personal' };
 const FAILURES = ['unreachable', 'mcp-disabled', 'unauthorised'] as const;
-
-const searchProjectsOutput = (data: unknown[], teamProjectsEnabled = true) => ({
-	data,
-	count: data.length,
-	teamProjectsEnabled,
-});
 
 /** Every token and every ciphertext that this file made. No response may hold one. */
 const secrets = new Set<string>();
 const responses: string[] = [];
 
 const newToken = () => {
-	const token = `n8n_test_${randomBytes(16).toString('hex')}`;
+	const token = fakeToken();
 	secrets.add(token);
 	return token;
 };
@@ -200,6 +198,15 @@ describe('LinkedInstancesController', () => {
 			expect(clientFactory.create).not.toHaveBeenCalled();
 		});
 
+		// `recorded` fails the test when the response repeats either token.
+		it('answers 400 to a token that is not valid without repeating the token', async () => {
+			const response = await link(aliceAgent, { token: `${newToken()} ${newToken()}` });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe(LINK_INPUT_MESSAGES.token);
+			await expect(repository.count()).resolves.toBe(0);
+		});
+
 		it('answers 409 when the user already linked the address, and lets another user link it', async () => {
 			await linkedId();
 
@@ -314,6 +321,21 @@ describe('LinkedInstancesController', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body.message).toBe(PROBE_FAILURE_MESSAGES[reason]);
+			await expect(storedToken(alice, id)).resolves.toBe(oldToken);
+		});
+
+		it('keeps the old token when the new token is not valid, without a probe', async () => {
+			const id = await linkedId();
+			const oldToken = await storedToken(alice, id);
+			clientFactory.create.mockClear();
+
+			const response = await recorded(
+				aliceAgent.patch(`/linked-instances/${id}`).send({ token: `${newToken()} ${newToken()}` }),
+			);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe(LINK_INPUT_MESSAGES.token);
+			expect(clientFactory.create).not.toHaveBeenCalled();
 			await expect(storedToken(alice, id)).resolves.toBe(oldToken);
 		});
 

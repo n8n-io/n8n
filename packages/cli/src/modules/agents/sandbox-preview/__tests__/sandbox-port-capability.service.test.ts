@@ -1,3 +1,4 @@
+import type { SandboxPortRoute, WorkspaceSandbox } from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
@@ -178,5 +179,63 @@ describe('SandboxPortCapability', () => {
 			`${SERVICE_URL}/healthz`,
 			`${other}/healthz`,
 		]);
+	});
+
+	describe('resolveRoute', () => {
+		const ROUTE: SandboxPortRoute = { serviceUrl: SERVICE_URL, path: '/sandboxes/sb-1/ports/5173' };
+
+		const sandboxWith = (getPortRoute: WorkspaceSandbox['getPortRoute']) =>
+			mock<WorkspaceSandbox>({ getPortRoute });
+
+		it('returns the route of the port on a service with the ports capability', async () => {
+			const getPortRoute = vi.fn().mockResolvedValue(ROUTE);
+			const { capability, httpRequest } = setup([healthz({ capabilities: ['ports'] })]);
+
+			await expect(capability.resolveRoute(sandboxWith(getPortRoute), 5173)).resolves.toEqual(
+				ROUTE,
+			);
+
+			expect(getPortRoute).toHaveBeenCalledWith(5173);
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ url: `${SERVICE_URL}/healthz` }),
+			);
+		});
+
+		it('refuses a sandbox that has no port route, without asking the service', async () => {
+			const { capability, httpRequest } = setup([healthz({ capabilities: ['ports'] })]);
+
+			const error = await capability
+				.resolveRoute(sandboxWith(undefined), 5173)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toHaveProperty('message', 'This sandbox cannot show app previews');
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+
+		it('answers 503 and logs the cause when the port route cannot be found', async () => {
+			const getPortRoute = vi.fn().mockRejectedValue(new Error('sandbox service unavailable'));
+			const { capability, httpRequest, logger } = setup([healthz({ capabilities: ['ports'] })]);
+
+			const error = await capability
+				.resolveRoute(sandboxWith(getPortRoute), 5173)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ServiceUnavailableError);
+			expect(error).toHaveProperty('message', UNREACHABLE);
+			expect(logger.warn).toHaveBeenCalledWith('Could not find the port route of the sandbox', {
+				error: 'sandbox service unavailable',
+			});
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+
+		it('refuses the route of a service without the ports capability', async () => {
+			const getPortRoute = vi.fn().mockResolvedValue(ROUTE);
+			const { capability } = setup([healthz({ capabilities: ['exec'] })]);
+
+			await expect(capability.resolveRoute(sandboxWith(getPortRoute), 5173)).rejects.toThrow(
+				NOT_SUPPORTED,
+			);
+		});
 	});
 });

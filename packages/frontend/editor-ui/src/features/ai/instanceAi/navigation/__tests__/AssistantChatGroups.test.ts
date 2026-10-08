@@ -184,6 +184,44 @@ describe('AssistantChatGroups', () => {
 		expect(getByRole('button', { name: 'Show all (7)' })).toHaveAttribute('aria-expanded', 'false');
 	});
 
+	it('keeps a group expanded when the list mounts again, as after a move to another page', async () => {
+		const first = render(doneChats(8));
+		await userEvent.click(first.getByRole('button', { name: 'Show all (8)' }));
+		first.unmount();
+
+		const { getByRole } = render(doneChats(8));
+
+		expect(within(getByRole('list', { name: 'Done' })).getAllByRole('listitem')).toHaveLength(8);
+		expect(getByRole('button', { name: 'Show fewer' })).toHaveAttribute('aria-expanded', 'true');
+	});
+
+	it('closes a group that gets small enough, so that it does not open by itself when it grows', async () => {
+		const { getByRole, queryByTestId, rerender } = render(doneChats(7));
+		await userEvent.click(getByRole('button', { name: 'Show all (7)' }));
+
+		await rerender({ threads: doneChats(5) });
+		expect(queryByTestId('assistant-chat-group-show-all')).not.toBeInTheDocument();
+		await rerender({ threads: doneChats(7) });
+
+		expect(within(getByRole('list', { name: 'Done' })).getAllByRole('listitem')).toHaveLength(5);
+		expect(getByRole('button', { name: 'Show all (7)' })).toHaveAttribute('aria-expanded', 'false');
+	});
+
+	it('closes a group that has no chats left', async () => {
+		const working = (count: number) =>
+			Array.from({ length: count }, (_, index) =>
+				chat(`w-${index}`, `Working chat ${index}`, { state: 'working' }),
+			);
+		const { getByRole, queryByRole, rerender } = render([...working(6), ...doneChats(1)]);
+		await userEvent.click(getByRole('button', { name: 'Show all (6)' }));
+
+		await rerender({ threads: doneChats(1) });
+		expect(queryByRole('list', { name: 'Working' })).not.toBeInTheDocument();
+		await rerender({ threads: [...working(6), ...doneChats(1)] });
+
+		expect(getByRole('button', { name: 'Show all (6)' })).toHaveAttribute('aria-expanded', 'false');
+	});
+
 	it('keeps the open chat in its group when it is not one of the five newest', () => {
 		const chats = doneChats(7);
 

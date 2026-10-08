@@ -95,7 +95,8 @@ function hasUsedNudge(chat: ChatWork): boolean {
 /**
  * Decides whether a normal user turn carries the `<repeatable-work>` section, which tells the
  * Assistant to offer "Make this automatic" once in a chat. The score uses the replay window. The
- * once-per-chat rule also uses a thread metadata key and, before the first nudge, the full history.
+ * once-per-chat rule also uses a thread metadata key and, before the first nudge of a compacted
+ * chat, the full history.
  */
 @Service()
 export class RepeatableWorkNudgeService {
@@ -120,25 +121,24 @@ export class RepeatableWorkNudgeService {
 	}
 
 	/**
-	 * The section for a normal turn of a chat, or undefined. The key is set before the section is
-	 * returned, so a failed write costs the nudge and never sends it twice. Best effort, like the
-	 * other turn context: a failed read costs the section, not the turn.
+	 * The section for a normal turn of a chat, or undefined. `metadata` is the thread metadata that
+	 * the turn already read. The key is set before the section is returned, so a failed write costs
+	 * the nudge and never sends it twice. Best effort, like the other turn context: a failed read
+	 * costs the section, not the turn.
 	 */
 	async forTurn(
 		threadId: string,
+		metadata: Record<string, unknown> | undefined,
 		message: string,
 		loadHistory: () => Promise<AgentDbMessage[]>,
 	): Promise<string | undefined> {
+		if (nudgedMetadataSchema.safeParse(metadata).success) return undefined;
 		try {
-			const memory = this.memory.getImplementation(ASSISTANT_AGENT_ID);
-			const thread = await memory.getThread(threadId);
-			if (nudgedMetadataSchema.safeParse(thread?.metadata).success) return undefined;
-
 			const section = this.resolveTurnSection(message, await loadHistory());
 			if (section === undefined) return undefined;
 
-			// The window can miss compacted turns, so the full history decides once for each chat.
-			const usedBefore = hasUsedNudge(readChatWork(await memory.getMessages(threadId)));
+			const memory = this.memory.getImplementation(ASSISTANT_AGENT_ID);
+			const usedBefore = await this.usedBeforeWindow(memory, threadId);
 			await this.recordNudge(memory, threadId);
 			return usedBefore ? undefined : section;
 		} catch (error) {
@@ -147,6 +147,15 @@ export class RepeatableWorkNudgeService {
 			});
 			return undefined;
 		}
+	}
+
+	/**
+	 * Whether turns that compaction moved out of the replay window already used the nudge. Without
+	 * a cursor the window is the full history, which the section check has read already.
+	 */
+	private async usedBeforeWindow(memory: N8nMemoryImpl, threadId: string): Promise<boolean> {
+		if (!(await memory.getCursor(threadId))) return false;
+		return hasUsedNudge(readChatWork(await memory.getMessages(threadId)));
 	}
 
 	private async recordNudge(memory: N8nMemoryImpl, threadId: string): Promise<void> {

@@ -9,9 +9,9 @@ import {
 	PROBE_FAILURE_MESSAGES,
 } from '../linked-instances.service';
 import type { RemoteProbeResult } from '../remote/remote-instance.client';
-import { CLOUD, expectRejection, setup, user } from './linked-instances.test-helpers';
+import { CLOUD, expectRejection, fakeToken, setup, user } from './linked-instances.test-helpers';
 
-const TOKEN = 'n8n_api_secret-token-0123456789';
+const TOKEN = fakeToken();
 
 const input = (overrides: Partial<{ name: string; address: string; token: string }> = {}) => ({
 	name: 'Cloud',

@@ -11,6 +11,7 @@ import { useExperienceMode } from '../experience/useExperienceMode';
 import AssistantChatGroups from './AssistantChatGroups.vue';
 import AssistantChatRow from './AssistantChatRow.vue';
 import AssistantSectionHeader from './AssistantSectionHeader.vue';
+import { useAssistantSidebarStore } from './assistantSidebar.store';
 import { threadDisplayState } from './threadDisplayState';
 import { FOCUS_ROW_ATTRIBUTE, useKeepRowFocus } from './useKeepListFocus';
 import { useLiveThreadList } from './useLiveThreadList';
@@ -31,11 +32,23 @@ const { lastViewedAt } = useThreadLastViewed();
 
 const isChatsCollapsed = useLocalStorage(CHATS_COLLAPSED_KEY, false, { writeDefaults: false });
 
+const sidebarStore = useAssistantSidebarStore();
+
+// The Automations section waits for the first chat list, so that it does not show first and then
+// move down when the chats appear above it.
+async function loadChats() {
+	try {
+		await instanceAiStore.loadThreads();
+	} finally {
+		sidebarStore.chatListSettled = true;
+	}
+}
+
 // The recent chats read the store list; fetch it once the AI Assistant entry is shown.
 watch(
 	isInstanceAiNavVisible,
 	(visible) => {
-		if (visible) void instanceAiStore.loadThreads();
+		if (visible) void loadChats();
 	},
 	{ immediate: true },
 );
@@ -43,7 +56,7 @@ watch(
 // Another tab can start a chat; refresh the list when the user comes back to this one.
 const { onDocumentVisible } = useDocumentVisibility();
 onDocumentVisible(() => {
-	if (isInstanceAiNavVisible.value) void instanceAiStore.loadThreads();
+	if (isInstanceAiNavVisible.value) void loadChats();
 });
 
 // The chat states change while the user works elsewhere.

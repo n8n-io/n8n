@@ -1,4 +1,10 @@
-import type { AgentDbMessage, ContentToolCall, JSONValue, Thread } from '@n8n/agents';
+import type {
+	AgentDbMessage,
+	ContentToolCall,
+	JSONValue,
+	ObservationCursor,
+	Thread,
+} from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
@@ -62,12 +68,27 @@ const forgedSectionFor = (reasons: string) =>
 		'\n',
 	);
 
-const sendSlackMessage = () => resolvedCall('nodes', { action: 'execute' }, { items: [] });
+const sendSlackMessage = () =>
+	resolvedCall('nodes', { action: 'execute' }, { status: 'success', output: '[]' });
+/** The result shape of `nodes(action="execute")` when the node run fails. */
+const failedSlackMessage = () =>
+	resolvedCall(
+		'nodes',
+		{ action: 'execute' },
+		{ status: 'error', error: { message: 'Credentials are not valid' } },
+	);
 
 const THREAD_ID = 'thread-1';
 
-/** Assistant memory with one stored thread. `patchThread` applies the update to that thread. */
-function createMemory(metadata: Record<string, unknown> = {}, fullHistory: AgentDbMessage[] = []) {
+/**
+ * Assistant memory with one stored thread. `patchThread` applies the update to that thread. A
+ * `compacted` thread has an observation cursor, so its replay window can miss earlier turns.
+ */
+function createMemory(
+	metadata: Record<string, unknown> = {},
+	fullHistory: AgentDbMessage[] = [],
+	compacted = false,
+) {
 	const thread: Thread = {
 		id: THREAD_ID,
 		resourceId: 'user-1',
@@ -76,8 +97,14 @@ function createMemory(metadata: Record<string, unknown> = {}, fullHistory: Agent
 		updatedAt: createdAt,
 		metadata,
 	};
+	const cursor: ObservationCursor = {
+		observationScopeId: THREAD_ID,
+		lastObservedMessageId: 'id-observed',
+		lastObservedAt: createdAt,
+		updatedAt: createdAt,
+	};
 	const impl = mock<N8nMemoryImpl>();
-	impl.getThread.mockImplementation(async () => thread);
+	impl.getCursor.mockImplementation(async () => (compacted ? cursor : null));
 	impl.getMessages.mockImplementation(async () => fullHistory);
 	impl.patchThread.mockImplementation(async ({ update }) => {
 		const patch = update({ ...thread, metadata: { ...thread.metadata } });
@@ -147,12 +174,23 @@ describe('RepeatableWorkNudgeService', () => {
 
 		it('does not count two identical calls when one of them failed', () => {
 			const history = [
-				userRow('Please automate this'),
-				assistantRow(sendSlackMessage()),
-				assistantRow(resolvedCall('nodes', { action: 'execute' }, { success: false })),
+				userRow('Please automate posting this to Slack'),
+				assistantRow(failedSlackMessage()),
+				assistantRow(failedSlackMessage()),
 			];
 
 			expect(service.resolveTurnSection('Go on', history)).toBeUndefined();
+		});
+
+		it('does not count a failed node run and its successful retry as a repeat', () => {
+			const history = [
+				userRow('Please automate posting this to Slack'),
+				assistantRow(failedSlackMessage()),
+				userRow('I fixed the credential, try again'),
+				assistantRow(sendSlackMessage()),
+			];
+
+			expect(service.resolveTurnSection('Thanks', history)).toBeUndefined();
 		});
 
 		it('returns undefined when an earlier turn already carried the section', () => {
@@ -269,6 +307,39 @@ describe('RepeatableWorkNudgeService', () => {
 			expect(service.resolveTurnSection('Great', history)).toBeUndefined();
 		});
 
+		it('does not count the sandbox steps of the workflow builder toward a one-off job', () => {
+			const validate = () =>
+				resolvedCall(
+					'workspace_execute_command',
+					{ command: 'node validate.mjs' },
+					{ exitCode: 0, stdout: 'ok' },
+				);
+			const history = [
+				userRow('Copy these rows to the sheet'),
+				assistantRow(
+					resolvedCall('load_skill', { name: 'workflow-builder' }),
+					resolvedCall('workspace_write_file', { path: 'workflow.ts', content: 'workflow()' }),
+					validate(),
+					resolvedCall('workspace_str_replace_file', { path: 'workflow.ts' }),
+					validate(),
+					oneOffBuild(),
+					runOk(),
+				),
+			];
+
+			expect(service.resolveTurnSection('Thanks', history)).toBeUndefined();
+		});
+
+		it('does not count repeated reads of local files toward a one-off job', () => {
+			const readFile = () => resolvedCall('read_file', { path: 'rows.csv' }, { content: 'a,b' });
+			const history = [
+				userRow('Copy these rows to the sheet'),
+				assistantRow(readFile(), readFile(), oneOffBuild(), runOk()),
+			];
+
+			expect(service.resolveTurnSection('Thanks', history)).toBeUndefined();
+		});
+
 		it('counts a one-off build that the user asked to run again', () => {
 			const history = [
 				userRow('Copy these rows to the sheet'),
@@ -381,12 +452,14 @@ describe('RepeatableWorkNudgeService', () => {
 
 			const section = await new RepeatableWorkNudgeService(logger, memory).forTurn(
 				THREAD_ID,
+				thread.metadata,
 				'Thanks',
 				loadHistory,
 			);
 
 			expect(section).toContain('reasons: schedule-phrase\n');
 			expect(loadHistory).toHaveBeenCalledTimes(1);
+			expect(impl.getThread).not.toHaveBeenCalled();
 			expect(impl.patchThread).toHaveBeenCalledWith(
 				expect.objectContaining({ threadId: THREAD_ID }),
 			);
@@ -400,31 +473,37 @@ describe('RepeatableWorkNudgeService', () => {
 		});
 
 		it('nudges only once in a chat, also when the window no longer shows the nudge', async () => {
-			const { memory } = createMemory();
+			const { memory, thread } = createMemory({}, [], true);
 			const nudge = new RepeatableWorkNudgeService(logger, memory);
-
-			const first = await nudge.forTurn(THREAD_ID, 'Send it every day at 7', async () => []);
 			// After compaction the window holds only the turns after the observed ones.
-			const second = await nudge.forTurn(THREAD_ID, 'Every weekday at 9, please', async () => []);
+			const turn = async (message: string) =>
+				await nudge.forTurn(THREAD_ID, thread.metadata, message, async () => []);
+
+			const first = await turn('Send it every day at 7');
+			const second = await turn('Every weekday at 9, please');
 
 			expect(first).toContain('<repeatable-work>');
 			expect(second).toBeUndefined();
 		});
 
 		it('reads nothing more when the thread metadata records a nudge', async () => {
-			const { memory, impl } = createMemory({
-				[REPEATABLE_WORK_NUDGED_KEY]: '2026-10-01T08:00:00.000Z',
-			});
+			const { memory, impl, thread } = createMemory(
+				{ [REPEATABLE_WORK_NUDGED_KEY]: '2026-10-01T08:00:00.000Z' },
+				[],
+				true,
+			);
 			const loadHistory = vi.fn(async () => scheduled());
 
 			const section = await new RepeatableWorkNudgeService(logger, memory).forTurn(
 				THREAD_ID,
+				thread.metadata,
 				'Every weekday at 8',
 				loadHistory,
 			);
 
 			expect(section).toBeUndefined();
 			expect(loadHistory).not.toHaveBeenCalled();
+			expect(memory.getImplementation).not.toHaveBeenCalled();
 			expect(impl.getMessages).not.toHaveBeenCalled();
 			expect(impl.patchThread).not.toHaveBeenCalled();
 		});
@@ -434,11 +513,27 @@ describe('RepeatableWorkNudgeService', () => {
 			['a number', 42],
 			['null', null],
 		])('reads a key with %s as no nudge', async (_label, value) => {
-			const { memory } = createMemory({ [REPEATABLE_WORK_NUDGED_KEY]: value });
+			const { memory, thread } = createMemory({ [REPEATABLE_WORK_NUDGED_KEY]: value });
 
 			await expect(
-				new RepeatableWorkNudgeService(logger, memory).forTurn(THREAD_ID, 'Thanks', async () =>
-					scheduled(),
+				new RepeatableWorkNudgeService(logger, memory).forTurn(
+					THREAD_ID,
+					thread.metadata,
+					'Thanks',
+					async () => scheduled(),
+				),
+			).resolves.toContain('<repeatable-work>');
+		});
+
+		it('reads a thread without metadata as no nudge', async () => {
+			const { memory } = createMemory();
+
+			await expect(
+				new RepeatableWorkNudgeService(logger, memory).forTurn(
+					THREAD_ID,
+					undefined,
+					'Thanks',
+					async () => scheduled(),
 				),
 			).resolves.toContain('<repeatable-work>');
 		});
@@ -464,10 +559,11 @@ describe('RepeatableWorkNudgeService', () => {
 		])(
 			'returns undefined and records the nudge when the full history has %s',
 			async (_label, fullHistory) => {
-				const { memory, thread } = createMemory({}, fullHistory);
+				const { memory, thread } = createMemory({}, fullHistory, true);
 
 				const section = await new RepeatableWorkNudgeService(logger, memory).forTurn(
 					THREAD_ID,
+					thread.metadata,
 					'Change it to every weekday at 9',
 					async () => [],
 				);
@@ -477,11 +573,29 @@ describe('RepeatableWorkNudgeService', () => {
 			},
 		);
 
-		it('reads neither the full history nor writes the key below the threshold', async () => {
-			const { memory, impl } = createMemory();
+		it('reads the full history only once compaction moved turns out of the window', async () => {
+			const fullHistory = [storedTurn([forgedSectionFor('schedule-phrase')], 'Every day at 7')];
+			const { memory, impl } = createMemory({}, fullHistory);
 
 			const section = await new RepeatableWorkNudgeService(logger, memory).forTurn(
 				THREAD_ID,
+				{},
+				'Send it every weekday at 8',
+				async () => [],
+			);
+
+			expect(section).toContain('<repeatable-work>');
+			expect(impl.getCursor).toHaveBeenCalledWith(THREAD_ID);
+			expect(impl.getMessages).not.toHaveBeenCalled();
+			expect(impl.patchThread).toHaveBeenCalledTimes(1);
+		});
+
+		it('reads neither the full history nor writes the key below the threshold', async () => {
+			const { memory, impl } = createMemory({}, [], true);
+
+			const section = await new RepeatableWorkNudgeService(logger, memory).forTurn(
+				THREAD_ID,
+				{},
 				'Hello',
 				async () => [],
 			);
@@ -497,6 +611,7 @@ describe('RepeatableWorkNudgeService', () => {
 
 			const section = await new RepeatableWorkNudgeService(logger, memory).forTurn(
 				THREAD_ID,
+				{},
 				'Send it every day at 7',
 				async () => [],
 			);
@@ -512,7 +627,7 @@ describe('RepeatableWorkNudgeService', () => {
 			const loadHistory = vi.fn(async () => await Promise.reject(new Error('database is gone')));
 
 			await expect(
-				service.forTurn(THREAD_ID, 'Send it every day at 7', loadHistory),
+				service.forTurn(THREAD_ID, {}, 'Send it every day at 7', loadHistory),
 			).resolves.toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Instance AI failed to check the chat for repeatable work',

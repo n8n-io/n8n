@@ -1,3 +1,7 @@
+import type { WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents';
+import { createWorkspaceTools } from '@n8n/agents';
+import { mock } from 'vitest-mock-extended';
+
 import type { WorkSignal } from '../repeatable-work';
 import { assessRepeatableWork } from '../repeatable-work';
 import type { WorkToolCall } from '../work-signals';
@@ -25,6 +29,13 @@ const run = (workflowId = 'wf-1', ok = true): WorkToolCall => ({
 });
 const oneOffSignals = (signals: WorkSignal[]) =>
 	signals.filter((signal) => signal.kind === 'one-off-success');
+const call = (toolName: string, action?: string, ok = true): WorkToolCall => ({
+	toolName,
+	...(action ? { action } : {}),
+	ok,
+});
+const assess = (userText: string, toolCalls: WorkToolCall[]) =>
+	assessRepeatableWork(collectWorkSignals({ userTexts: [userText], toolCalls }));
 
 describe('collectWorkSignals', () => {
 	it('returns no signals for an empty chat', () => {
@@ -61,6 +72,10 @@ describe('collectWorkSignals', () => {
 				{ toolName: 'workflows', action: 'list', ok: true },
 				{ toolName: 'build-workflow', ok: true, workflowId: 'wf-1' },
 				{ toolName: 'research', action: 'web-search', ok: true },
+				{ toolName: 'workspace_execute_command', ok: true },
+				{ toolName: 'write_todos', ok: true },
+				{ toolName: 'read_file', ok: true },
+				{ toolName: 'browser_snapshot', ok: true },
 			],
 		});
 
@@ -179,42 +194,76 @@ describe('collectWorkSignals', () => {
 	});
 
 	it('scores a chat with a one-off run and a repeated call as repeatable', () => {
-		const assessment = assessRepeatableWork(
-			collectWorkSignals({
-				userTexts: ['Copy these rows to the sheet'],
-				toolCalls: [run('wf-0'), run('wf-0'), oneOffBuild(), run()],
-			}),
-		);
+		const assessment = assess('Copy these rows to the sheet', [
+			run('wf-0'),
+			run('wf-0'),
+			oneOffBuild(),
+			run(),
+		]);
 
 		expect(assessment.reasons).toEqual(['repeated-tool-call', 'one-off-success']);
 		expect(assessment.score).toBe(0.6);
 	});
 
 	it('scores a one-off build chat with repeated lookups below the threshold', () => {
-		const lookup = (toolName: string, action?: string): WorkToolCall => ({
-			toolName,
-			...(action ? { action } : {}),
-			ok: true,
-		});
-		const assessment = assessRepeatableWork(
-			collectWorkSignals({
-				userTexts: ['Copy these rows to the sheet'],
-				toolCalls: [
-					lookup('load_skill'),
-					lookup('load_skill'),
-					lookup('nodes', 'type-definition'),
-					lookup('nodes', 'type-definition'),
-					lookup('workflows', 'get-as-code'),
-					lookup('workflows', 'get-as-code'),
-					{ toolName: 'build-workflow', ok: true, workflowId: 'wf-1' },
-					oneOffBuild(),
-					run(),
-				],
-			}),
-		);
+		const assessment = assess('Copy these rows to the sheet', [
+			call('load_skill'),
+			call('load_skill'),
+			call('nodes', 'type-definition'),
+			call('nodes', 'type-definition'),
+			call('workflows', 'get-as-code'),
+			call('workflows', 'get-as-code'),
+			{ toolName: 'build-workflow', ok: true, workflowId: 'wf-1' },
+			oneOffBuild(),
+			run(),
+		]);
 
 		expect(assessment.reasons).toEqual(['one-off-success']);
 		expect(assessment.score).toBe(0.2);
+	});
+
+	it('scores the workspace steps of the workflow builder in a one-off chat below the threshold', () => {
+		// The builder writes the code, validates it, edits it and validates it again.
+		const assessment = assess('Copy these rows to the sheet', [
+			call('load_skill'),
+			call('workspace_write_file'),
+			call('workspace_execute_command'),
+			call('workspace_str_replace_file'),
+			call('workspace_execute_command'),
+			call('workspace_read_file'),
+			call('workspace_read_file'),
+			oneOffBuild(),
+			run(),
+		]);
+
+		expect(assessment.repeatedSignatures).toEqual([]);
+		expect(assessment.reasons).toEqual(['one-off-success']);
+	});
+
+	it('scores repeated reads of local files and pages in a one-off chat below the threshold', () => {
+		const assessment = assess('Copy these rows to the sheet', [
+			call('read_file'),
+			call('read_file'),
+			call('browser_navigate'),
+			call('browser_snapshot'),
+			call('browser_navigate'),
+			call('browser_snapshot'),
+			oneOffBuild(),
+			run(),
+		]);
+
+		expect(assessment.repeatedSignatures).toEqual([]);
+		expect(assessment.score).toBe(0.2);
+	});
+
+	it('does not count a failed node run and its successful retry as a repeat', () => {
+		const assessment = assess('Please automate posting this to Slack', [
+			call('nodes', 'execute', false),
+			call('nodes', 'execute', true),
+		]);
+
+		expect(assessment.reasons).toEqual(['intent-phrase']);
+		expect(assessment.score).toBe(0.3);
 	});
 });
 
@@ -227,6 +276,12 @@ describe('isWorkToolCall', () => {
 		['data-tables', 'delete-rows'],
 		['slack_post_message', undefined],
 		['gmail_send', 'send'],
+		['write_file', undefined],
+		['shell_execute', undefined],
+		['browser_click', undefined],
+		['browser_type', undefined],
+		['keyboard_type', undefined],
+		['mouse_click', undefined],
 	])('counts %s:%s as work', (toolName, action) => {
 		expect(isWorkToolCall({ toolName, ...(action ? { action } : {}) })).toBe(true);
 	});
@@ -262,8 +317,36 @@ describe('isWorkToolCall', () => {
 		['create-tasks', undefined],
 		['verify-built-workflow', undefined],
 		[PROPOSE_AUTOMATION_TOOL_NAME, undefined],
+		['write_todos', undefined],
+		['recall_memory', undefined],
+		['flag_memory', undefined],
+		['delegate_subagent', undefined],
+		['workspace_execute_command', undefined],
+		['workspace_write_file', undefined],
+		['workspace_str_replace_file', undefined],
+		['workspace_read_file', undefined],
+		['workspace_read_tool_result', undefined],
+		['read_file', undefined],
+		['list_files', undefined],
+		['get_file_tree', undefined],
+		['search_files', undefined],
+		['screen_screenshot', undefined],
+		['browser_navigate', undefined],
+		['browser_snapshot', undefined],
+		['browser_content', undefined],
+		['browser_wait', undefined],
 	])('does not count %s:%s as work', (toolName, action) => {
 		expect(isWorkToolCall({ toolName, ...(action ? { action } : {}) })).toBe(false);
+	});
+
+	it('does not count any workspace tool that the agents runtime adds', () => {
+		const tools = createWorkspaceTools({
+			filesystem: mock<WorkspaceFilesystem>(),
+			sandbox: mock<WorkspaceSandbox>(),
+		});
+
+		expect(tools.length).toBeGreaterThan(10);
+		expect(tools.filter((tool) => isWorkToolCall({ toolName: tool.name }))).toEqual([]);
 	});
 });
 
@@ -344,16 +427,43 @@ describe('readWorkToolCall', () => {
 		});
 	});
 
-	it('uses the status rule only for the run action of the executions tool', () => {
+	it.each<[string, boolean, unknown]>([
+		['a successful run', true, { status: 'success', output: '[]' }],
+		['a failed run', false, { status: 'error', error: { message: 'Credentials are not valid' } }],
+		['a denied run', false, { status: 'error', denied: true, reason: 'User denied the action' }],
+		['a result without a status', false, { output: '[]' }],
+	])('marks a node execution with %s as ok: %s', (_label, ok, output) => {
+		const executePart = part({
+			toolName: 'nodes',
+			input: { action: 'execute', type: 'n8n-nodes-base.slack', version: 2 },
+			output,
+		});
+
+		expect(readWorkToolCall(executePart)).toStrictEqual({
+			toolName: 'nodes',
+			action: 'execute',
+			ok,
+		});
+	});
+
+	it('uses the status rule only for workflow runs and node executions', () => {
 		const lookup = part({
 			toolName: 'executions',
 			input: { action: 'get', executionId: 'exec-1' },
 			output: { status: 'error' },
 		});
+		const nodeLookup = part({
+			toolName: 'nodes',
+			input: { action: 'type-definition' },
+			output: { status: 'error' },
+		});
 		const otherTool = part({ input: { action: 'run' }, output: { status: 'running' } });
+		const otherExecute = part({ input: { action: 'execute' }, output: { status: 'error' } });
 
 		expect(readWorkToolCall(lookup)?.ok).toBe(true);
+		expect(readWorkToolCall(nodeLookup)?.ok).toBe(true);
 		expect(readWorkToolCall(otherTool)?.ok).toBe(true);
+		expect(readWorkToolCall(otherExecute)?.ok).toBe(true);
 	});
 
 	it('reads a one-off build with the workflow ID from its result', () => {

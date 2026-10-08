@@ -8,7 +8,7 @@ import { collectWorkSignals, isWorkToolCall, readWorkToolCall } from '../work-si
 const SPEC_BUILD = 'build-workflow';
 const SPEC_RUNS = 'executions';
 const SPEC_IGNORED = 'propose_automation';
-// Calls of the Assistant that look things up, plan, build or set up. They occur in most build chats.
+// Calls that look things up, plan, build or set up. They occur in most build chats.
 const SPEC_NON_WORK: ReadonlyArray<[string, string | undefined]> = [
 	['load_skill', undefined],
 	['search_tools', undefined],
@@ -25,6 +25,17 @@ const SPEC_NON_WORK: ReadonlyArray<[string, string | undefined]> = [
 	['nodes', 'type-definition'],
 	['data-tables', 'query'],
 	['credentials', 'setup'],
+	// Steps of the agents runtime: to-dos, memory and the sandbox workspace of the builder.
+	['write_todos', undefined],
+	['recall_memory', undefined],
+	['workspace_write_file', undefined],
+	['workspace_execute_command', undefined],
+	['workspace_str_replace_file', undefined],
+	// Reads and moves of the local gateway and the browser.
+	['read_file', undefined],
+	['search_files', undefined],
+	['browser_navigate', undefined],
+	['browser_snapshot', undefined],
 ];
 
 // Small pools make matching workflow IDs and repeated calls likely.

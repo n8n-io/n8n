@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { InstanceAiProvenanceListItem, PushMessage } from '@n8n/api-types';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
@@ -12,6 +13,8 @@ import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import { resetExperienceModeState } from '../../experience/useExperienceMode';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import AssistantAutomationsSection from '../AssistantAutomationsSection.vue';
+import AssistantChatsSection from '../AssistantChatsSection.vue';
+import { useAssistantSidebarStore } from '../assistantSidebar.store';
 import {
 	chat,
 	configureInstanceAi,
@@ -79,8 +82,8 @@ const twoAutomations = [
 /** Automations `Workflow <from>` to `Workflow <to>`, each with a chat the user can open. */
 function numberedAutomations(from: number, to: number) {
 	return Array.from({ length: to - from + 1 }, (_, index) => {
-		const number = from + index;
-		return automation(`wf-${number}`, `Workflow ${number}`, { canOpenThread: true });
+		const position = from + index;
+		return automation(`wf-${position}`, `Workflow ${position}`, { canOpenThread: true });
 	});
 }
 
@@ -116,8 +119,11 @@ describe('AssistantAutomationsSection', () => {
 		stubLocalStorage(storage);
 		createTestingPinia();
 		resetExperienceModeState();
+		useUsersStore().currentUserId = 'user-1';
 		instanceAiStore = mockedStore(useInstanceAiStore);
 		instanceAiStore.threads = [];
+		// The Chats section above has loaded its first list.
+		useAssistantSidebarStore().chatListSettled = true;
 		router = createTestRouter();
 		configureInstanceAi({ experienceModes: true });
 	});
@@ -457,5 +463,80 @@ describe('AssistantAutomationsSection', () => {
 		await new Promise(setImmediate);
 
 		expect(fetchMyAutomations).not.toHaveBeenCalled();
+	});
+	describe('when the sidebar mounts again, as after a move to a page with another layout', () => {
+		it('shows the last list at once while the new list loads', async () => {
+			const { unmount } = await renderLoaded();
+			unmount();
+			const pending = createDeferredPromise<InstanceAiProvenanceListItem[]>();
+			fetchMyAutomations.mockReturnValue(pending.promise);
+
+			const { getAllByTestId, getByRole } = render();
+
+			expect(getAllByTestId('assistant-automation-row')).toHaveLength(2);
+			pending.resolve([automation('wf-3', 'Lead import'), ...twoAutomations]);
+			await waitFor(() => expect(getAllByTestId('assistant-automation-row')).toHaveLength(3));
+			expect(getByRole('menuitem', { name: 'Lead import, Off' })).toBeInTheDocument();
+		});
+
+		it('keeps the last list when the new load fails', async () => {
+			const { unmount } = await renderLoaded();
+			unmount();
+			fetchMyAutomations.mockRejectedValue(new Error('offline'));
+
+			const { getAllByTestId, queryByRole } = render();
+			await vi.waitFor(() => expect(fetchMyAutomations).toHaveBeenCalledTimes(2));
+			await nextTick();
+
+			expect(getAllByTestId('assistant-automation-row')).toHaveLength(2);
+			expect(queryByRole('alert')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('under the Chats section', () => {
+		const Sidebar = defineComponent({
+			setup: () => () => [
+				h(AssistantChatsSection, { collapsed: false }),
+				h(AssistantAutomationsSection, { collapsed: false }),
+			],
+		});
+		const renderSidebar = createComponentRenderer(Sidebar);
+
+		function renderBoth() {
+			return renderSidebar({ global: { plugins: [router], stubs: { RouterLink: false } } });
+		}
+
+		beforeEach(() => {
+			useAssistantSidebarStore().chatListSettled = false;
+			fetchMyAutomations.mockResolvedValue(twoAutomations);
+		});
+
+		it('shows the automations only after the first chat list, below the chats', async () => {
+			const chats = createDeferredPromise<boolean>();
+			instanceAiStore.loadThreads.mockReturnValue(chats.promise);
+
+			const { queryByTestId, findByTestId, getByTestId } = renderBoth();
+			await vi.waitFor(() => expect(fetchMyAutomations).toHaveBeenCalled());
+			await new Promise(setImmediate);
+			expect(queryByTestId('assistant-automations')).not.toBeInTheDocument();
+
+			instanceAiStore.threads = [chat('a', 'Build report')];
+			chats.resolve(true);
+
+			const automations = await findByTestId('assistant-automations');
+			const chatsSection = getByTestId('instance-ai-sidebar-chats');
+			expect(chatsSection.compareDocumentPosition(automations)).toBe(
+				Node.DOCUMENT_POSITION_FOLLOWING,
+			);
+		});
+
+		it('shows the automations when the chat list fails to load', async () => {
+			instanceAiStore.loadThreads.mockResolvedValue(false);
+
+			const { findByTestId, queryByTestId } = renderBoth();
+
+			expect(await findByTestId('assistant-automations')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-sidebar-chats')).not.toBeInTheDocument();
+		});
 	});
 });

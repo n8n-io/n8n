@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 import { render } from '@testing-library/vue';
+import fc from 'fast-check';
 import type { PushMessage } from '@n8n/api-types';
 import { changedWorkflowId, useAutomationUpdates } from '../useAutomationUpdates';
 
@@ -54,7 +55,42 @@ function mountUpdates({ enabled = true, workflowIds = ['wf-1', 'wf-2'] } = {}) {
 	return { ...render(host), isEnabled, ids, onChange };
 }
 
+const WORKFLOW_CHANGE_TYPES = [
+	'workflowActivated',
+	'workflowPartiallyActivated',
+	'workflowDeactivated',
+	'workflowAutoDeactivated',
+	'workflowUpdated',
+];
+
+/** Push messages of the workflow change types, other types with a workflow ID, and unknown types. */
+const pushMessageArb = fc.record({
+	type: fc.oneof(
+		fc.constantFrom(
+			...WORKFLOW_CHANGE_TYPES,
+			'workflowFailedToActivate',
+			'workflowSettingsUpdated',
+			'executionStarted',
+			'agentExecutionUpdated',
+		),
+		fc.string(),
+	),
+	data: fc.record({ workflowId: fc.string() }),
+});
+
 describe('changedWorkflowId', () => {
+	it('returns the workflow ID of exactly the workflow change types', () => {
+		fc.assert(
+			fc.property(pushMessageArb, (message) => {
+				const expected = WORKFLOW_CHANGE_TYPES.includes(message.type)
+					? message.data.workflowId
+					: undefined;
+
+				expect(changedWorkflowId(message as PushMessage)).toBe(expected);
+			}),
+		);
+	});
+
 	it.each<[string, PushMessage]>([
 		['workflowActivated', activated('wf-1')],
 		[

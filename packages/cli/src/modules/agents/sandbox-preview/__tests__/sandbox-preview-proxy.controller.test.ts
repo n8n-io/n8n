@@ -79,6 +79,53 @@ describe('SandboxPreviewProxyController', () => {
 		expect(headers['x-api-key']).toBe(apiKey);
 	});
 
+	it('applies the header allowlist and the API key to a request that sends Expect: 100-continue', async () => {
+		const { url } = await openPreview();
+
+		const answer = await send(`${url}api/items`, {
+			method: 'POST',
+			headers: {
+				expect: '100-continue',
+				'content-type': 'text/plain',
+				cookie: 'n8n-auth=secret-session',
+				authorization: 'Bearer secret',
+				'x-forwarded-user': 'ada',
+			},
+			body: 'hello',
+		});
+
+		expect(answer.status).toBe(200);
+		const { headers, body } = seen[0];
+		expect(body).toBe('hello');
+		expect(headers['x-api-key']).toBe(apiKey);
+		expect(headers.expect).toBeUndefined();
+		expect(headers.cookie).toBeUndefined();
+		expect(headers.authorization).toBeUndefined();
+		expect(headers['x-forwarded-user']).toBeUndefined();
+	});
+
+	it('applies the allowlist to a streamed multipart body that sends Expect: 100-continue', async () => {
+		const { url } = await openPreview();
+		const body = ['--b', 'Content-Disposition: form-data; name="a"', '', '1', '--b--', ''].join(
+			'\r\n',
+		);
+
+		await send(`${url}api/upload`, {
+			method: 'POST',
+			headers: {
+				expect: '100-continue',
+				'content-type': 'multipart/form-data; boundary=b',
+				cookie: 'n8n-auth=secret-session',
+			},
+			body,
+		});
+
+		expect(seen[0].body).toBe(body);
+		expect(seen[0].headers['x-api-key']).toBe(apiKey);
+		expect(seen[0].headers.expect).toBeUndefined();
+		expect(seen[0].headers.cookie).toBeUndefined();
+	});
+
 	it('keeps headers that a reverse proxy in front of n8n adds away from the app', async () => {
 		const { url } = await openPreview();
 
@@ -370,14 +417,42 @@ describe('SandboxPreviewProxyController', () => {
 			expect(seen).toHaveLength(1);
 		});
 
-		it('answers 403 for a session cookie that does not validate', async () => {
+		it('serves the page for the user of the URL when the session cookie no longer validates', async () => {
+			const { url } = await openPreview();
+
+			const answer = await send(url, { headers: { ...PAGE, cookie: 'n8n-auth=signed-out' } });
+
+			expect(answer.status).toBe(200);
+			expect(seen).toHaveLength(1);
+			expect(seen[0].headers.cookie).toBeUndefined();
+			expect(vi.mocked(userHasScopes).mock.calls.map(([user]) => user)).toEqual([tokenUser]);
+		});
+
+		it('answers 403 for a session cookie that does not validate when the user of the URL lost access', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 			const { url } = await openPreview();
 
 			const answer = await send(url, { headers: { ...PAGE, cookie: 'n8n-auth=signed-out' } });
 
 			expect(answer.status).toBe(403);
 			expect(seen).toHaveLength(0);
-			expect(vi.mocked(userHasScopes).mock.calls.map(([user]) => user)).toEqual([tokenUser]);
+		});
+
+		it('answers 500 without the app when the session check fails for another reason', async () => {
+			authService.authenticateUserByCookie.mockRejectedValue(new Error('database not reachable'));
+			const { url } = await openPreview();
+
+			const answer = await send(url, {
+				headers: { ...PAGE, cookie: `n8n-auth=${SESSION_COOKIE}` },
+			});
+
+			expect(answer.status).toBe(500);
+			expect(answer.body).toBe('Internal Server Error');
+			expectHardened(answer);
+			expect(seen).toHaveLength(0);
+			expect(h.logger.error).toHaveBeenCalledWith('Could not serve an app preview', {
+				error: 'database not reachable',
+			});
 		});
 
 		it('checks the session on a form submit that loads a new page into the frame', async () => {

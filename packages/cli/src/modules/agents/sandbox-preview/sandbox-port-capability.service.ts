@@ -1,3 +1,4 @@
+import type { SandboxPortRoute, WorkspaceSandbox } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
@@ -11,14 +12,18 @@ const SUPPORTED_CACHE_MS = 10 * 60_000;
 /** A service without the route is asked again sooner, so an upgrade shows quickly. */
 const UNSUPPORTED_CACHE_MS = 30_000;
 
+const UNREACHABLE_MESSAGE =
+	'Could not reach the sandbox service to open the app preview. Try again in a moment.';
+
 /** Older services leave out `capabilities`; they have no port route. */
 const healthzSchema = z.object({ capabilities: z.array(z.string()).optional() });
 
 const healthzResponseSchema = z.object({ statusCode: z.number(), body: z.unknown() });
 
 /**
- * Whether a sandbox service can serve a sandbox port over HTTP. The service
- * lists `ports` in the `capabilities` of its `/healthz` answer.
+ * Finds the route to a sandbox port and checks that its sandbox service can
+ * serve it over HTTP. The service lists `ports` in the `capabilities` of its
+ * `/healthz` answer.
  */
 @Service()
 export class SandboxPortCapability {
@@ -33,6 +38,19 @@ export class SandboxPortCapability {
 		this.logger = logger.scoped('agents');
 	}
 
+	/** The route to `port` of `sandbox`, on a service that can serve it. */
+	async resolveRoute(sandbox: WorkspaceSandbox, port: number): Promise<SandboxPortRoute> {
+		if (!sandbox.getPortRoute) {
+			throw new BadRequestError('This sandbox cannot show app previews');
+		}
+		// The route call may start the sandbox, so a service fault can show here first.
+		const route = await sandbox.getPortRoute(port).catch((error: unknown) => {
+			throw this.unreachable('Could not find the port route of the sandbox', error);
+		});
+		await this.assertSupported(route.serviceUrl);
+		return route;
+	}
+
 	async assertSupported(serviceUrl: string): Promise<void> {
 		if (!(await this.supportsPorts(serviceUrl))) {
 			throw new BadRequestError('This sandbox service cannot show app previews yet.');
@@ -44,16 +62,17 @@ export class SandboxPortCapability {
 		if (cached && Date.now() < cached.until) return cached.supported;
 		// A fault is not cached, because it can pass soon.
 		const supported = await this.readCapability(serviceUrl).catch((error: unknown) => {
-			this.logger.warn('Could not read the sandbox service capabilities', {
-				error: ensureError(error).message,
-			});
-			throw new ServiceUnavailableError(
-				'Could not reach the sandbox service to open the app preview. Try again in a moment.',
-			);
+			throw this.unreachable('Could not read the sandbox service capabilities', error);
 		});
 		const ttl = supported ? SUPPORTED_CACHE_MS : UNSUPPORTED_CACHE_MS;
 		this.answers.set(serviceUrl, { supported, until: Date.now() + ttl });
 		return supported;
+	}
+
+	/** The user gets a short answer that they can act on, and the cause stays in the log. */
+	private unreachable(logMessage: string, error: unknown): ServiceUnavailableError {
+		this.logger.warn(logMessage, { error: ensureError(error).message });
+		return new ServiceUnavailableError(UNREACHABLE_MESSAGE);
 	}
 
 	/**

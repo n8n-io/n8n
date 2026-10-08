@@ -45,10 +45,13 @@ const user = Object.assign(new User(), { id: 'user-1' });
  * The service with every collaborator of `prepareStartTurn` replaced, so the test reads the
  * message that the turn sends to the agent.
  */
-function createService(history: AgentDbMessage[]): TurnInternals {
+function createService(
+	history: AgentDbMessage[],
+	metadata: Record<string, unknown> = {},
+): TurnInternals {
 	const service = Object.create(InstanceAiService.prototype) as Record<string, unknown>;
 	const memory = {
-		getThread: vi.fn(async () => ({ id: THREAD_ID, title: 'Sales digest', metadata: {} })),
+		getThread: vi.fn(async () => ({ id: THREAD_ID, title: 'Sales digest', metadata })),
 	};
 	Object.assign(service, {
 		adapterService: { resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })) },
@@ -89,8 +92,13 @@ function createService(history: AgentDbMessage[]): TurnInternals {
 	return service as unknown as TurnInternals;
 }
 
-async function sendTurn(message: string, options: TurnOptions, history: AgentDbMessage[] = []) {
-	const handle = await createService(history).prepareStartTurn(
+async function sendTurn(
+	message: string,
+	options: TurnOptions,
+	history: AgentDbMessage[] = [],
+	metadata: Record<string, unknown> = {},
+) {
+	const handle = await createService(history, metadata).prepareStartTurn(
 		{ user, message, thread: { id: THREAD_ID } },
 		options,
 	);
@@ -131,16 +139,26 @@ describe('InstanceAiService — repeatable-work section of a turn', () => {
 		expect(input.endsWith('\n\nSend it every day at 7')).toBe(true);
 		expect(nudge.forTurn).toHaveBeenCalledWith(
 			THREAD_ID,
+			{},
 			'Send it every day at 7',
 			expect.any(Function),
 		);
+	});
+
+	it('passes the thread metadata that the turn already read', async () => {
+		const metadata = { titleRefined: true, repeatableWorkNudgedAt: '2026-10-01T08:00:00.000Z' };
+		nudge.forTurn.mockResolvedValue(undefined);
+
+		await sendTurn('Hello', { runId: 'run-1' }, [], metadata);
+
+		expect(nudge.forTurn).toHaveBeenCalledWith(THREAD_ID, metadata, 'Hello', expect.any(Function));
 	});
 
 	it('passes the replayed history to the check', async () => {
 		const history: AgentDbMessage[] = [
 			{ id: 'm-1', createdAt: new Date(), role: 'user', content: [{ type: 'text', text: 'Hi' }] },
 		];
-		nudge.forTurn.mockImplementation(async (_threadId, _message, loadHistory) => {
+		nudge.forTurn.mockImplementation(async (_threadId, _metadata, _message, loadHistory) => {
 			expect(await loadHistory()).toBe(history);
 			return undefined;
 		});
@@ -186,8 +204,7 @@ describe('InstanceAiService — repeatable-work section of a turn', () => {
 
 	it('adds the section that the real check builds from the chat', async () => {
 		const assistantMemory = mock<N8nMemoryImpl>();
-		assistantMemory.getThread.mockResolvedValue(null);
-		assistantMemory.getMessages.mockResolvedValue([]);
+		assistantMemory.getCursor.mockResolvedValue(null);
 		assistantMemory.patchThread.mockResolvedValue(null);
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(assistantMemory);
@@ -206,5 +223,8 @@ describe('InstanceAiService — repeatable-work section of a turn', () => {
 		expect(assistantMemory.patchThread).toHaveBeenCalledWith(
 			expect.objectContaining({ threadId: THREAD_ID }),
 		);
+		// Without a cursor the replay window is the full history, so it is read once.
+		expect(assistantMemory.getThread).not.toHaveBeenCalled();
+		expect(assistantMemory.getMessages).not.toHaveBeenCalled();
 	});
 });

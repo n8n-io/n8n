@@ -1,0 +1,10 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": { "noEmit": true, "incremental": false },
+	"include": [
+		"src/modules/instance-ai/automation/repeatable-work-nudge.service.ts",
+		"src/modules/instance-ai/automation/__tests__/repeatable-work-nudge.service.test.ts",
+		"src/modules/instance-ai/__tests__/internal-messages.thread-context.property.test.ts",
+		"src/modules/instance-ai/__tests__/internal-messages.thread-context.test.ts"
+	]
+}

@@ -1,6 +1,7 @@
 import type { User, UserRepository } from '@n8n/db';
 import { AuthError } from '@n8n/errors';
 import type { Request } from 'express';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
@@ -200,13 +201,29 @@ describe('SandboxPreviewAccess', () => {
 			).resolves.toBe(false);
 		});
 
-		it('refuses a cookie that does not validate, without the user of the URL', async () => {
-			await expect(
-				access.sessionUserAllowed(requestWith('signed-out'), entryFor('a')),
-			).resolves.toBe(false);
+		it.each([
+			['is signed out', new AuthError('Unauthorized')],
+			['has expired', new TokenExpiredError('jwt expired', new Date(START.getTime() - 1000))],
+			['is malformed', new JsonWebTokenError('jwt malformed')],
+		])(
+			'leaves the decision to the check of the URL user when the cookie %s',
+			async (_case, error) => {
+				authService.authenticateUserByCookie.mockRejectedValue(error);
 
-			expect(userRepository.findByIdWithRole).not.toHaveBeenCalled();
-			expect(userHasScopes).not.toHaveBeenCalled();
+				await expect(
+					access.sessionUserAllowed(requestWith('stale-session'), entryFor('a')),
+				).resolves.toBe(true);
+
+				expect(userHasScopes).not.toHaveBeenCalled();
+			},
+		);
+
+		it('passes on a fault that is not about the cookie', async () => {
+			authService.authenticateUserByCookie.mockRejectedValue(new Error('database not reachable'));
+
+			await expect(
+				access.sessionUserAllowed(requestWith(SESSION_COOKIE), entryFor('a')),
+			).rejects.toThrow('database not reachable');
 		});
 
 		it('refuses a disabled session user', async () => {

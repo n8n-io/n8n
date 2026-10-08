@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, reactive, ref, type EffectScope, type Ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 import type { InstanceAiProvenanceListItem } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { AUTOMATIONS_SHOWN, useMyAutomations } from '../useMyAutomations';
@@ -51,13 +52,14 @@ function mount(enabled: Ref<boolean> | boolean = true) {
 	scopes.push(scope);
 	const instance = scope.run(() => useMyAutomations(enabled));
 	if (!instance) throw new Error('effect scope did not run');
-	return instance;
+	return { ...instance, unmount: () => scope.stop() };
 }
 
 describe('useMyAutomations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		usersStore.id = 'user-1';
+		setActivePinia(createPinia());
 	});
 
 	afterEach(() => {
@@ -204,5 +206,74 @@ describe('useMyAutomations', () => {
 		await flushPromises();
 
 		expect(automations.value).toBeUndefined();
+	});
+	describe('when the sidebar mounts again, as after a move to a page with another layout', () => {
+		it('shows the last list at once and replaces it when the new list arrives', async () => {
+			fetchMyAutomations.mockResolvedValueOnce([automation('wf-1')]);
+			const first = mount();
+			await flushPromises();
+			first.unmount();
+			const pending = createDeferredPromise<InstanceAiProvenanceListItem[]>();
+			fetchMyAutomations.mockReturnValueOnce(pending.promise);
+
+			const { automations } = mount();
+
+			expect(automations.value).toEqual([automation('wf-1')]);
+			expect(fetchMyAutomations).toHaveBeenCalledTimes(2);
+			pending.resolve([automation('wf-2'), automation('wf-1')]);
+			await flushPromises();
+			expect(automations.value?.map((item) => item.workflowId)).toEqual(['wf-2', 'wf-1']);
+		});
+
+		it('keeps the last list when the load of the new mount fails', async () => {
+			fetchMyAutomations.mockResolvedValueOnce([automation('wf-1')]);
+			mount().unmount();
+			await flushPromises();
+			fetchMyAutomations.mockRejectedValueOnce(new Error('offline'));
+
+			const { automations } = mount();
+			await flushPromises();
+
+			expect(fetchMyAutomations).toHaveBeenCalledTimes(2);
+			expect(automations.value).toEqual([automation('wf-1')]);
+		});
+
+		it('ignores a slow answer to the earlier mount that comes after the newer list', async () => {
+			const slow = createDeferredPromise<InstanceAiProvenanceListItem[]>();
+			fetchMyAutomations.mockReturnValueOnce(slow.promise);
+			mount().unmount();
+			fetchMyAutomations.mockResolvedValueOnce([automation('new')]);
+
+			const { automations } = mount();
+			await flushPromises();
+			slow.resolve([automation('old')]);
+			await flushPromises();
+
+			expect(automations.value).toEqual([automation('new')]);
+		});
+
+		it('shows nothing of the previous user after a new sign-in', async () => {
+			fetchMyAutomations.mockResolvedValueOnce([automation('wf-1')]);
+			mount().unmount();
+			await flushPromises();
+			usersStore.id = 'user-2';
+			fetchMyAutomations.mockReturnValueOnce(new Promise(() => {}));
+
+			const { automations } = mount();
+
+			expect(automations.value).toBeUndefined();
+		});
+	});
+
+	it('drops the list when the user signs out', async () => {
+		fetchMyAutomations.mockResolvedValueOnce([automation('wf-1')]);
+		const { automations } = mount();
+		await flushPromises();
+
+		usersStore.id = null;
+		await nextTick();
+
+		expect(automations.value).toBeUndefined();
+		expect(fetchMyAutomations).toHaveBeenCalledTimes(1);
 	});
 });

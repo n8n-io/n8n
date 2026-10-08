@@ -1,10 +1,16 @@
 <script lang="ts" setup>
-import { computed, shallowRef, useId, useTemplateRef } from 'vue';
+import { computed, useId, useTemplateRef, watch } from 'vue';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import AssistantChatRow from './AssistantChatRow.vue';
-import { groupThreads, type ThreadGroup, type ThreadGroupEntry } from './groupThreads';
+import { useAssistantSidebarStore } from './assistantSidebar.store';
+import {
+	groupThreads,
+	stillExpandable,
+	type ThreadGroup,
+	type ThreadGroupEntry,
+} from './groupThreads';
 import { threadDisplayState } from './threadDisplayState';
 import { CHAT_GROUP_ATTRIBUTE, useKeepGroupFocus } from './useKeepGroupFocus';
 import { useThreadLastViewed } from './useThreadLastViewed';
@@ -32,25 +38,35 @@ const { lastViewedAt } = useThreadLastViewed();
 useKeepGroupFocus(useTemplateRef<HTMLElement>('root'));
 
 // "Show all" expands the group here: the history page does not show what each chat needs.
-const expanded = shallowRef<ReadonlySet<ThreadGroup>>(new Set());
+// The store keeps the expanded groups while the user moves between pages.
+const sidebarStore = useAssistantSidebarStore();
 
 const groups = computed(() =>
 	groupThreads(props.threads, {
 		lastViewedAt,
 		openThreadId: props.openThreadId,
 		perGroup: PER_GROUP,
-		expanded: expanded.value,
+		expanded: sidebarStore.expandedGroups,
 	}),
+);
+
+watch(
+	groups,
+	(entries) => {
+		const kept = stillExpandable(sidebarStore.expandedGroups, entries, PER_GROUP);
+		if (kept.size < sidebarStore.expandedGroups.size) sidebarStore.expandedGroups = kept;
+	},
+	{ immediate: true },
 );
 
 const headingId = (group: ThreadGroup) => `${idPrefix}-heading-${group}`;
 const listId = (group: ThreadGroup) => `${idPrefix}-list-${group}`;
-const isExpanded = (group: ThreadGroup) => expanded.value.has(group);
+const isExpanded = (group: ThreadGroup) => sidebarStore.expandedGroups.has(group);
 
 function toggle(group: ThreadGroup) {
-	const next = new Set(expanded.value);
+	const next = new Set(sidebarStore.expandedGroups);
 	if (!next.delete(group)) next.add(group);
-	expanded.value = next;
+	sidebarStore.expandedGroups = next;
 }
 
 function toggleLabel(entry: ThreadGroupEntry) {

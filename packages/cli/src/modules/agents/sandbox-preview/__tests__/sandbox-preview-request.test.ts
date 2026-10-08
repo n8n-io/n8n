@@ -52,6 +52,28 @@ const climbingSegmentArb = fc.oneof(
 	fc.tuple(dotDotArb, separatorArb, safeSegmentArb).map((parts) => parts.join('')),
 );
 
+/** Encoded characters that a WHATWG URL parser removes anywhere in its input: tab, LF and CR. */
+const removedCharArb = fc.constantFrom('%09', '%0a', '%0A', '%0d', '%0D', '%2509', '%250a');
+
+/** Encoded characters that a URL parser trims at both ends of its input: C0 controls and space. */
+const trimmedCharArb = fc.constantFrom('%20', '%09', '%0c', '%0C', '%01', '%1f', '%1F', '%2520');
+
+/**
+ * `..` that a second URL parse makes from a decoded segment: a removed character
+ * between or around the dots, or a trimmed character at either end.
+ */
+const reparsedDotDotArb = fc
+	.tuple(
+		fc.array(trimmedCharArb, { maxLength: 2 }),
+		encodedDotArb,
+		fc.array(removedCharArb, { maxLength: 2 }),
+		encodedDotArb,
+		fc.array(trimmedCharArb, { maxLength: 2 }),
+	)
+	.map(([lead, first, middle, second, trail]) =>
+		[...lead, first, ...middle, second, ...trail].join(''),
+	);
+
 /** Text that decodes once to a malformed escape (`%zz`, a lone `%`), which strict decoders refuse. */
 const badAfterDecodeArb = fc.constantFrom('%25zz', '%25', '%25g1', '%25%25', 'x%25zz');
 
@@ -171,6 +193,52 @@ describe('parsePreviewUrl', () => {
 	});
 });
 
+describe('parsePreviewUrl with characters that a second URL parse removes', () => {
+	it.each([
+		'/.%09./.%09./exec',
+		'/.%0a./x',
+		'/.%0A%2e/x',
+		'/..%0d/x',
+		'/%09../x',
+		'/src/..%20',
+		'/src/..%0C',
+		'/src/%20..%20/x',
+		'/.%2509./x',
+		'/%2e%0a%2e%2fx',
+	])('refuses %s after the token', (suffix) => {
+		expect(parsePreviewUrl(`/${TOKEN}${suffix}`)).toEqual({ kind: 'invalid' });
+	});
+
+	it.each(['/.%20./x', '/a%09..b/x', '/my%20file.png', '/%09', '/.%09/x'])(
+		'forwards %s, which no parse turns into `..`',
+		(suffix) => {
+			expect(parsePreviewUrl(`/${TOKEN}${suffix}`)).toEqual({
+				kind: 'forward',
+				token: TOKEN,
+				forwardPath: suffix,
+			});
+		},
+	);
+
+	it('refuses any segment that a second URL parse turns into `..`', () => {
+		fc.assert(
+			fc.property(
+				fc.array(safeSegmentArb, { maxLength: 3 }),
+				fc.oneof(
+					reparsedDotDotArb,
+					fc.tuple(safeSegmentArb, separatorArb, reparsedDotDotArb).map((parts) => parts.join('')),
+				),
+				fc.array(safeSegmentArb, { maxLength: 3 }),
+				(before, climbing, after) => {
+					const path = ['', TOKEN, ...before, climbing, ...after].join('/');
+
+					expect(parsePreviewUrl(path)).toEqual({ kind: 'invalid' });
+				},
+			),
+		);
+	});
+});
+
 describe('parsePreviewUrl with escapes that a decode makes malformed', () => {
 	it('refuses a `..` segment that only a lenient second decode reveals', () => {
 		fc.assert(
@@ -207,6 +275,12 @@ describe('segmentClimbsOut', () => {
 		'a;..',
 		'..%00',
 		'%2e%2e%2500',
+		'.%09.',
+		'..%0a',
+		'%0D..',
+		'..%20',
+		'%01..%1f',
+		'a%2f.%0a.',
 	])('is true for %s', (segment) => {
 		expect(segmentClimbsOut(segment)).toBe(true);
 	});
@@ -226,6 +300,10 @@ describe('segmentClimbsOut', () => {
 		'...;',
 		'a%3f..b',
 		'%00',
+		'.%20.',
+		'a%09..b',
+		'%09',
+		'.%0a',
 	])('is false for %j', (segment) => {
 		expect(segmentClimbsOut(segment)).toBe(false);
 	});

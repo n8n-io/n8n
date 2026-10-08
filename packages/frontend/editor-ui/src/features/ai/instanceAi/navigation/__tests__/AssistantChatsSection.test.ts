@@ -14,6 +14,7 @@ import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import { resetExperienceModeState } from '../../experience/useExperienceMode';
 import { resetThreadLastViewedState, useThreadLastViewed } from '../useThreadLastViewed';
 import AssistantChatsSection from '../AssistantChatsSection.vue';
+import { useAssistantSidebarStore } from '../assistantSidebar.store';
 import {
 	chat,
 	configureInstanceAi,
@@ -214,6 +215,17 @@ describe('AssistantChatsSection', () => {
 
 			document.dispatchEvent(new Event('visibilitychange'));
 			expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
+		});
+
+		it('lets the sidebar know when the first chat list ended, also when it failed', async () => {
+			configureInstanceAi();
+			instanceAiStore.loadThreads.mockResolvedValue(false);
+			const sidebarStore = useAssistantSidebarStore();
+
+			render();
+			expect(sidebarStore.chatListSettled).toBe(false);
+
+			await waitFor(() => expect(sidebarStore.chatListSettled).toBe(true));
 		});
 
 		it('does not load the chats when Instance AI is not available', () => {
@@ -439,6 +451,20 @@ describe('AssistantChatsSection', () => {
 				'Chat 3',
 				'Chat 6',
 			]);
+		});
+
+		it('keeps a group expanded after the user collapses and opens the section', async () => {
+			instanceAiStore.threads = Array.from({ length: 7 }, (_, index) =>
+				chat(`thread-${index}`, `Chat ${index}`),
+			);
+			const { getByRole } = render();
+			await userEvent.click(getByRole('button', { name: 'Show all (7)' }));
+
+			await userEvent.click(getByRole('button', { name: 'Chats' }));
+			await userEvent.click(getByRole('button', { name: 'Chats' }));
+
+			expect(within(getByRole('list', { name: 'Done' })).getAllByRole('listitem')).toHaveLength(7);
+			expect(getByRole('button', { name: 'Show fewer' })).toBeInTheDocument();
 		});
 
 		it('renders nothing when there is no chat', () => {

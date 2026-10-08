@@ -432,15 +432,14 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			select: { id: true },
 			where: { resourceId: draftChatMemoryResourceId(userId) },
 		});
-		const orphanIds = memoryThreads.map(({ id }) => id);
-		return await this.find({
-			where: [
-				{ agentId, ownerId: userId, parentThreadId: IsNull() },
-				...(orphanIds.length > 0
-					? [{ agentId, id: In(orphanIds), ownerId: IsNull(), parentThreadId: IsNull() }]
-					: []),
-			],
-		});
+		const memoryThreadIds = memoryThreads.map(({ id }) => id);
+		const sessions = await this.findBy({ agentId, ownerId: userId, parentThreadId: IsNull() });
+		// Batches keep each IN list under the SQLite variable limit.
+		for (const ids of chunk(memoryThreadIds, CHECKPOINT_BATCH_SIZE)) {
+			const orphans = { agentId, id: In(ids), ownerId: IsNull(), parentThreadId: IsNull() };
+			sessions.push(...(await this.findBy(orphans)));
+		}
+		return sessions;
 	}
 
 	/** The shared sessions of an agent among `threadIds`. */
