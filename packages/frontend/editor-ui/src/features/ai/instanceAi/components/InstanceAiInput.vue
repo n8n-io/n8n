@@ -426,7 +426,8 @@ const resolvedSuggestionCatalogVersion = computed(
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
-const placeholder = computed(() => {
+/** A placeholder that takes priority over the contextual follow-up. */
+const priorityPlaceholder = computed(() => {
 	if (!props.isWorkflowBuilderAvailable) {
 		return i18n.baseText('instanceAi.input.workflowBuilderUnavailablePlaceholder');
 	}
@@ -448,11 +449,25 @@ const placeholder = computed(() => {
 			interpolate: { role: props.amendContext.role },
 		});
 	}
-	if (props.contextualSuggestion) {
-		return props.contextualSuggestion;
-	}
-	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
+	return undefined;
 });
+
+/**
+ * The contextual follow-up while it shows in the empty input. Tab accepts it
+ * only then. Otherwise Tab moves the focus out of the composer.
+ */
+const tabSuggestion = computed(() =>
+	!inputText.value && priorityPlaceholder.value === undefined
+		? props.contextualSuggestion || undefined
+		: undefined,
+);
+
+const placeholder = computed(
+	() =>
+		priorityPlaceholder.value ??
+		(props.contextualSuggestion ||
+			i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder')),
+);
 
 watch(
 	[shouldTrackVisibleSuggestions, resolvedSuggestionCatalogVersion, () => props.currentThreadId],
@@ -761,10 +776,9 @@ function handleComposerKeydown(event: KeyboardEvent): void {
 }
 
 function handleTabAutocomplete() {
-	if (!inputText.value && props.contextualSuggestion) {
-		// n8n wrote this follow-up, so accepting it is a pre-fill like any other.
-		setPrefill({ text: props.contextualSuggestion, prefillType: 'contextual_followup' });
-	}
+	const suggestion = tabSuggestion.value;
+	// n8n wrote this follow-up, so accepting it is a pre-fill like any other.
+	if (suggestion) setPrefill({ text: suggestion, prefillType: 'contextual_followup' });
 }
 
 function handleFilesSelected(files: File[]) {
@@ -908,6 +922,7 @@ const resizable = computed(() => {
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
+			:tab-completes="tabSuggestion !== undefined"
 			show-voice
 			:show-attach="!props.isAwaitingPlanReview"
 			:show-attach-button="false"

@@ -42,6 +42,12 @@ const props = withDefaults(
 		// Send button turns active only while focused with text (default: follows canSubmit).
 		activeRequiresFocus?: boolean;
 		maxLength?: number;
+		/**
+		 * True while the composer shows a suggestion that Tab accepts. Only then
+		 * does Tab stay in the textarea and emit `tab`. Otherwise Tab moves the
+		 * focus, so keyboard users can leave the composer.
+		 */
+		tabCompletes?: boolean;
 	}>(),
 	{
 		placeholder: undefined,
@@ -53,6 +59,7 @@ const props = withDefaults(
 		activeRequiresFocus: false,
 		maxLength: undefined,
 		showAttachButton: true,
+		tabCompletes: false,
 	},
 );
 
@@ -208,7 +215,7 @@ function handleKeydown(e: KeyboardEvent) {
 	// Only the textarea gets tab-to-autocomplete; other focusable children
 	// (attach/mic buttons, leading-slot chips) must keep normal Tab navigation.
 	const isTextareaFocused = (e.target as HTMLElement)?.tagName === 'TEXTAREA';
-	if (e.key === 'Tab' && !e.shiftKey && isTextareaFocused) {
+	if (e.key === 'Tab' && !e.shiftKey && isTextareaFocused && props.tabCompletes) {
 		e.preventDefault();
 		emit('tab');
 	}

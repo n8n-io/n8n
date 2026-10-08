@@ -41,6 +41,13 @@ import {
 	setMessageInteractives,
 	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	getMessageSegmentKind,
+	getSegmentRootId,
+	getTextSegmentKind,
+	startsNewSegment,
+	type MessageSegmentKind,
+} from '@/features/ai/shared/agentsChat/messageSegments';
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
@@ -588,7 +595,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * one. The id is FE-issued (used as a v-for key) — the wire format no
 	 * longer carries a server-minted messageId.
 	 */
-	function ensureCurrent(session: StreamSession): ChatMessage {
+	function ensureCurrent(session: StreamSession, segmentOf?: string): ChatMessage {
 		if (session.current) return session.current;
 		const msg = reactive<ChatMessage>({
 			id: crypto.randomUUID(),
@@ -597,11 +604,40 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 			executionId: session.executionId,
+			...(segmentOf !== undefined && { segmentOf }),
 		});
 		messages.value.push(msg);
 		session.current = msg;
 		session.minted.add(msg);
 		return msg;
+	}
+
+	/**
+	 * The message for the next text or tool output. A switch between text and
+	 * tool calls starts a new message, so the chat shows them in the order the
+	 * agent produced them. Reloaded history splits by the same rule. The new
+	 * message points to the first segment of the step, so checks on the last
+	 * output still see a card that text came after.
+	 */
+	function ensureSegment(
+		session: StreamSession,
+		kind: MessageSegmentKind | undefined,
+	): ChatMessage {
+		const open = session.current;
+		if (!open || !startsNewSegment(getMessageSegmentKind(open), kind)) {
+			return ensureCurrent(session);
+		}
+		session.current = undefined;
+		return ensureCurrent(session, getSegmentRootId(open));
+	}
+
+	/** The message of this stream that already holds the call, if any. */
+	function findStreamToolMessage(
+		session: StreamSession,
+		toolCallId: string,
+	): ChatMessage | undefined {
+		const found = findToolCallById(toolCallId);
+		return found && session.minted.has(found.msg) ? found.msg : undefined;
 	}
 
 	function attachBudgetNotice(
@@ -985,7 +1021,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.reasoningStartedAt.set(event.id, Date.now());
 				break;
 			case 'text-delta': {
-				const msg = ensureCurrent(session);
+				const msg = ensureSegment(session, getTextSegmentKind(event.delta));
 				msg.content += event.delta;
 				break;
 			}
@@ -1000,8 +1036,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				settleReasoning(session, event.id);
 				break;
 			case 'tool-input-start': {
-				const msg = ensureCurrent(session);
-				if (msg.content && !msg.content.endsWith('\n')) msg.content += '\n';
+				const msg =
+					findStreamToolMessage(session, event.toolCallId) ?? ensureSegment(session, 'tools');
 				msg.toolCalls = msg.toolCalls ?? [];
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
@@ -1020,7 +1056,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
 				// or push one if `tool-input-start` was missing.
-				const msg = ensureCurrent(session);
+				const msg =
+					findStreamToolMessage(session, event.toolCallId) ?? ensureSegment(session, 'tools');
 				msg.toolCalls = msg.toolCalls ?? [];
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
@@ -1124,7 +1161,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					tc.runId = payload.runId;
 					tc.suspendPayload = payload.input;
 				} else {
-					msg = ensureCurrent(session);
+					msg = ensureSegment(session, 'tools');
 					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,

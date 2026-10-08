@@ -40,12 +40,14 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { useComposerFocus } from '../composables/useComposerFocus';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import { getTailSegments } from '@/features/ai/shared/agentsChat/messageSegments';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
@@ -462,9 +464,9 @@ const backgroundApproval = computed(() => {
 	return undefined;
 });
 const pendingApproval = computed(() => {
-	const tail = messages.value.at(-1);
-	if (!tail) return undefined;
-	for (const payload of getMessageInteractives(tail)) {
+	// The card can sit above text that came after it in the same output.
+	const interactives = getTailSegments(messages.value).flatMap(getMessageInteractives);
+	for (const payload of interactives) {
 		if (
 			payload.toolName !== APPROVAL_TOOL_NAME ||
 			payload.resolvedAt !== undefined ||
@@ -566,6 +568,9 @@ const backgroundElapsed = computed(() => {
 
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const isPreparingToSend = ref(false);
+// A send disables the composer, which drops its focus. This gives it back.
+const composerFocus = useComposerFocus(() => chatInput.value, isPreparingToSend);
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
 const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
@@ -575,7 +580,7 @@ const showBackgroundJobs = computed(
 );
 
 function focusInput(options?: FocusOptions) {
-	chatInput.value?.focus(options);
+	composerFocus.focus(options);
 }
 
 watch(
@@ -695,7 +700,6 @@ const inputText = computed<string>({
 const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
-const isPreparingToSend = ref(false);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
@@ -748,11 +752,13 @@ const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
-const hasOpenSuspension = computed(
-	() =>
-		messages.value[messages.value.length - 1]?.toolCalls?.some(
-			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
-		) ?? false,
+const hasOpenSuspension = computed(() =>
+	getTailSegments(messages.value).some(
+		(message) =>
+			message.toolCalls?.some(
+				(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+			) ?? false,
+	),
 );
 const hasBudgetStop = computed(() =>
 	messages.value.some((message) =>

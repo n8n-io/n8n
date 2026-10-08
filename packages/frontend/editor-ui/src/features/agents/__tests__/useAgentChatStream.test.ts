@@ -1742,14 +1742,17 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		await flushPromises();
 		await nextTick();
 
-		// 1 user + 2 assistant ChatMessages (one per start-step / finish-step pair)
-		expect(hook.messages.value).toHaveLength(3);
-		const first = hook.messages.value[1];
-		const second = hook.messages.value[2];
-		expect(first.content).toBe('first turn');
-		expect(first.toolCalls?.[0].toolCallId).toBe('tc-1');
-		expect(first.toolCalls?.[0].state).toBe('done');
-		expect(first.toolCalls?.[0].output).toEqual({ hit: true });
+		// 1 user + 3 assistant ChatMessages: the first step holds text, then a
+		// tool call in its own message (the order the agent produced them), and
+		// the step boundary opens a fresh message for the second step.
+		expect(hook.messages.value).toHaveLength(4);
+		const [, firstText, firstTools, second] = hook.messages.value;
+		expect(firstText.content).toBe('first turn');
+		expect(firstText.toolCalls).toEqual([]);
+		expect(firstTools.content).toBe('');
+		expect(firstTools.toolCalls?.[0].toolCallId).toBe('tc-1');
+		expect(firstTools.toolCalls?.[0].state).toBe('done');
+		expect(firstTools.toolCalls?.[0].output).toEqual({ hit: true });
 		expect(second.content).toBe('second turn');
 	});
 

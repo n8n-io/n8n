@@ -157,6 +157,12 @@ export interface AgentsChatMessage {
 	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
+	/**
+	 * Id of the first message of the same agent output. The chat splits one
+	 * output into text and tool-call segments, so a card can sit above the last
+	 * message. Only later segments set it.
+	 */
+	segmentOf?: string;
 	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
 	createdAt?: number;
 	/** Live preview only. Budget stop or alert cards for this turn. */

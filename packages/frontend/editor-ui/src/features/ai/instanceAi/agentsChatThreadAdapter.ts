@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
+import { getTailSegments } from '@/features/ai/shared/agentsChat/messageSegments';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 /**
@@ -115,6 +116,8 @@ function toAgentTree(
 /**
  * Build legacy-shaped messages from Agents chat messages. `isStreaming` marks
  * the latest assistant turn as the live one, which drives the editing locks.
+ * The chat splits one output into text and tool-call segments, so every
+ * segment of the latest output is live.
  */
 export function agentsChatToThreadMessages(
 	messages: readonly ChatMessage[],
@@ -124,6 +127,11 @@ export function agentsChatToThreadMessages(
 	messages.forEach((message, index) => {
 		if (message.role === 'assistant') lastAssistantIndex = index;
 	});
+	const liveIds = new Set(
+		isStreaming
+			? getTailSegments(messages.slice(0, lastAssistantIndex + 1)).map((message) => message.id)
+			: [],
+	);
 	const tasks = deriveTasksFromAgentsChat(messages);
 
 	return messages.map((message, index): InstanceAiMessage => {
@@ -138,7 +146,7 @@ export function agentsChatToThreadMessages(
 				isStreaming: false,
 			};
 		}
-		const isLiveTurn = isStreaming && index === lastAssistantIndex;
+		const isLiveTurn = liveIds.has(message.id);
 		return {
 			id: message.id,
 			role: 'assistant',

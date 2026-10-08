@@ -54,7 +54,7 @@ const linkTooltip = computed(() =>
 			:aria-label="i18n.baseText('instanceAi.provenance.openChatLabel')"
 			data-test-id="workflow-assistant-made-link"
 		>
-			<N8nBadge variant="outline" leading-icon="sparkles" :class="$style.linkBadge">
+			<N8nBadge variant="outline" size="xsmall" leading-icon="sparkles" :class="$style.linkBadge">
 				<span :class="$style.labelTrack">
 					<span ref="label" :class="$style.labelText">
 						{{ i18n.baseText('instanceAi.provenance.badge') }}
@@ -72,6 +72,7 @@ const linkTooltip = computed(() =>
 	>
 		<N8nBadge
 			variant="outline"
+			size="xsmall"
 			leading-icon="sparkles"
 			data-test-id="workflow-assistant-made-badge"
 		>
@@ -89,7 +90,9 @@ const linkTooltip = computed(() =>
 
 .link {
 	display: inline-flex;
-	border-radius: var(--radius--full);
+	// The radius of the `xsmall` badge inside, so the focus ring follows its
+	// corners. Rebrand badges are rounded rectangles, not pills.
+	border-radius: var(--radius--2xs);
 	color: inherit;
 	text-decoration: none;
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
@@ -152,15 +153,65 @@ describe('ChatInputBase', () => {
 		expect(emitted().submit).toBeFalsy();
 	});
 
-	it('should emit tab on Tab keydown', () => {
-		const { getByRole, emitted } = renderComponent({
-			props: makeProps(),
+	describe('Tab in the textarea', () => {
+		it('accepts the suggestion and keeps the focus while a suggestion is active', async () => {
+			const user = userEvent.setup();
+			const { getByRole, emitted } = renderComponent({
+				props: makeProps({ tabCompletes: true, showVoice: true }),
+			});
+			const textarea = getByRole('textbox');
+			textarea.focus();
+
+			await user.tab();
+
+			expect(textarea).toHaveFocus();
+			expect(emitted().tab).toHaveLength(1);
 		});
 
-		const textarea = getByRole('textbox');
-		textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+		it('moves the focus to the next control when no suggestion is active', async () => {
+			const user = userEvent.setup();
+			const { getByRole, getByTestId, emitted } = renderComponent({
+				props: makeProps({ showVoice: true }),
+			});
+			const textarea = getByRole('textbox');
+			textarea.focus();
 
-		expect(emitted().tab).toBeTruthy();
+			await user.tab();
+
+			expect(getByTestId('chat-input-voice-button')).toHaveFocus();
+			expect(emitted().tab).toBeUndefined();
+		});
+
+		it.each([
+			{ name: 'a suggestion is active', tabCompletes: true },
+			{ name: 'no suggestion is active', tabCompletes: false },
+		])('lets Shift+Tab move the focus back while $name', async ({ tabCompletes }) => {
+			const user = userEvent.setup();
+			const { getByRole, emitted } = renderComponent({
+				props: makeProps({ tabCompletes, showVoice: true }),
+			});
+			const textarea = getByRole('textbox');
+			textarea.focus();
+
+			await user.tab({ shift: true });
+
+			expect(textarea).not.toHaveFocus();
+			expect(emitted().tab).toBeUndefined();
+		});
+
+		it('keeps normal Tab order on the other controls while a suggestion is active', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({
+				props: makeProps({ tabCompletes: true, showVoice: true }),
+			});
+			const voiceButton = getByTestId('chat-input-voice-button');
+			voiceButton.focus();
+
+			await user.tab();
+
+			expect(voiceButton).not.toHaveFocus();
+			expect(emitted().tab).toBeUndefined();
+		});
 	});
 
 	it('should disable send button when canSubmit is false', () => {

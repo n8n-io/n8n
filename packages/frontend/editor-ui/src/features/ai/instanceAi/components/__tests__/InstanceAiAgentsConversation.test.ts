@@ -25,6 +25,7 @@ const chatState = vi.hoisted(() => ({
 	sendMessageFromOutside: undefined as unknown as ReturnType<typeof vi.fn>,
 	setDraft: undefined as unknown as ReturnType<typeof vi.fn>,
 	openFilePicker: undefined as unknown as ReturnType<typeof vi.fn>,
+	focusInput: undefined as unknown as ReturnType<typeof vi.fn>,
 }));
 
 vi.mock('../InstanceAiInputMenu.vue', async () => {
@@ -67,7 +68,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
 					sendMessageFromOutside: chatState.sendMessageFromOutside,
 					setDraft: chatState.setDraft,
 					openFilePicker: chatState.openFilePicker,
-					focusInput: vi.fn(),
+					focusInput: chatState.focusInput,
 					isDirty: () => false,
 				});
 				return () =>
@@ -139,6 +140,7 @@ describe('InstanceAiAgentsConversation', () => {
 		chatState.sendMessageFromOutside = vi.fn().mockResolvedValue(true);
 		chatState.setDraft = vi.fn();
 		chatState.openFilePicker = vi.fn();
+		chatState.focusInput = vi.fn();
 		vi.mocked(fetchThread).mockResolvedValue(threadInfo('First title'));
 	});
 
@@ -271,9 +273,7 @@ describe('InstanceAiAgentsConversation', () => {
 			file,
 		]);
 		const hostContext = chatState.hostContext?.();
-		expect(hostContext?.context).toEqual(
-			expect.objectContaining({ source: 'credential-modal' }),
-		);
+		expect(hostContext?.context).toEqual(expect.objectContaining({ source: 'credential-modal' }));
 		expect(hostContext?.attachments).toEqual([{ type: 'workflow', id: 'wf-1', name: 'Orders' }]);
 		// The one-shot context does not leak into the next message.
 		expect(chatState.hostContext?.()).not.toHaveProperty('context');
@@ -290,6 +290,18 @@ describe('InstanceAiAgentsConversation', () => {
 
 		expect(sent).toBe(true);
 		expect(chatState.sendMessageFromOutside).toHaveBeenCalledWith('Fix it', undefined);
+	});
+
+	it('should focus the composer on the next tick when the store asks for it', async () => {
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+		chatState.focusInput.mockClear();
+
+		useInstanceAiStore().requestComposerFocus();
+		await flushPromises();
+
+		expect(chatState.focusInput).toHaveBeenCalledOnce();
 	});
 
 	it('should carry a pending hand-off context until a message is accepted', async () => {
