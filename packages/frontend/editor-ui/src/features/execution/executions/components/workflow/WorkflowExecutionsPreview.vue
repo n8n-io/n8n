@@ -445,15 +445,21 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					@command="handleRetryClick"
 				>
 					<span class="retry-button">
-						<N8nIconButton
-							variant="subtle"
-							size="medium"
-							:title="locale.baseText('executionsList.retryExecution')"
+						<N8nTooltip
+							:content="locale.baseText('executionsList.retryExecution')"
 							:disabled="!workflowPermissions.update"
-							icon="redo-2"
-							data-test-id="execution-preview-retry-button"
-							@blur="onRetryButtonBlur"
-						/>
+							placement="top"
+						>
+							<N8nIconButton
+								variant="subtle"
+								size="medium"
+								:aria-label="locale.baseText('executionsList.retryExecution')"
+								:disabled="!workflowPermissions.update"
+								icon="redo-2"
+								data-test-id="execution-preview-retry-button"
+								@blur="onRetryButtonBlur"
+							/>
+						</N8nTooltip>
 					</span>
 
 					<template #dropdown>

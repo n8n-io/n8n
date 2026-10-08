@@ -177,13 +177,13 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(getByTestId('stop-execution')).toBeDisabled();
 	});
 
-	it('provides a positioned tooltip for Retry on a failed execution (LIGO-1252)', () => {
+	it('provides a positioned tooltip for Retry on a failed execution (LIGO-1252)', async () => {
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		workflowsListStore.getWorkflowById.mockReturnValue({
 			scopes: ['workflow:update'],
 		} as IWorkflowDb);
 
-		const { getByTestId } = renderComponent({
+		const { getByTestId, findByText } = renderComponent({
 			props: { execution: { ...executionData, status: 'error', retrySuccessId: null } },
 		});
 		const retryButton = getByTestId('execution-preview-retry-button');
@@ -199,6 +199,12 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			'top',
 		);
 		expect(retryButton).not.toHaveAttribute('title');
+		expect(retryButton).toHaveAttribute('aria-label', 'Retry execution');
+
+		await userEvent.click(retryButton);
+		expect(
+			await findByText('Retry with currently saved workflow (from node with error)'),
+		).toBeVisible();
 	});
 
 	it('shows the add-to-dataset button for a successful non-evaluation execution', () => {
