@@ -1,24 +1,43 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
-import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import type { BreakingChangeRuleDetailResult } from '@n8n/api-types';
 
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReportForRule: vi.fn(),
 	migrateWorkflowForRule: vi.fn(),
+	updateFindingStatus: vi.fn(),
+}));
+
+const { showError, resolveRoute } = vi.hoisted(() => ({
+	showError: vi.fn(),
+	resolveRoute: vi.fn(() => ({ href: '/workflow/workflow-1' })),
+}));
+
+vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useToast: () => ({ showError }),
+}));
+
+// The test renderer has no router. The row click needs `resolve` to build the workflow URL.
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useRouter: () => ({ push: vi.fn(), resolve: resolveRoute }),
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowWithIssue = {
@@ -28,6 +47,7 @@ const mockWorkflowWithIssue = {
 	numberOfExecutions: 100,
 	lastUpdatedAt: new Date('2024-01-15'),
 	lastExecutedAt: new Date('2024-01-14'),
+	status: 'open' as const,
 	issues: [
 		{
 			nodeId: 'node-1',
@@ -45,6 +65,7 @@ const mockWorkflowWithMultipleNodes = {
 	active: false,
 	numberOfExecutions: 50,
 	lastUpdatedAt: new Date('2024-01-10'),
+	status: 'open' as const,
 	issues: [
 		{
 			nodeId: 'node-2',
@@ -63,7 +84,7 @@ const mockWorkflowWithMultipleNodes = {
 	],
 };
 
-const mockRuleResult: BreakingChangeWorkflowRuleResult = {
+const mockRuleResult: BreakingChangeRuleDetailResult = {
 	ruleId: 'rule-1',
 	ruleTitle: 'Test Rule',
 	ruleDescription: 'This is a test rule description',
@@ -80,8 +101,8 @@ const mockRuleResult: BreakingChangeWorkflowRuleResult = {
 };
 
 const createMockRuleResult = (
-	overrides: Partial<BreakingChangeWorkflowRuleResult> = {},
-): BreakingChangeWorkflowRuleResult => {
+	overrides: Partial<BreakingChangeRuleDetailResult> = {},
+): BreakingChangeRuleDetailResult => {
 	return {
 		ruleId: 'rule-1',
 		ruleTitle: 'Test Rule',
@@ -107,6 +128,8 @@ describe('MigrationRuleDetail', () => {
 			pushRef: 'test-push-ref',
 		};
 		uiStore = mockedStore(useUIStore);
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -168,7 +191,183 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText(/Number of executions/)).toBeInTheDocument();
 				expect(screen.getByText(/Last executed/)).toBeInTheDocument();
 				expect(screen.getByText(/Last updated/)).toBeInTheDocument();
+				expect(screen.getByText('State', { selector: 'th' })).toBeInTheDocument();
 			});
+		});
+
+		it('should show the state right after the affected nodes', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				const titles = screen.getAllByRole('columnheader').map((th) => th.textContent?.trim());
+				expect(titles.indexOf('State')).toBe(titles.indexOf('Nodes affected') + 1);
+			});
+		});
+	});
+
+	describe('finding state', () => {
+		const getStateSelect = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return within(row).getByTestId('migration-finding-state-select');
+		};
+
+		// The select trigger marks its disabled state with `data-disabled`.
+		const isStateDisabled = (workflowName: string) =>
+			getStateSelect(workflowName).hasAttribute('data-disabled');
+
+		const selectState = async (workflowName: string, label: string) => {
+			await userEvent.click(getStateSelect(workflowName));
+			const listbox = await screen.findByRole('listbox');
+			await userEvent.click(within(listbox).getByText(label));
+		};
+
+		beforeEach(() => {
+			vi.spyOn(window, 'open').mockImplementation(() => null);
+		});
+
+		afterEach(() => {
+			vi.mocked(window.open).mockRestore();
+		});
+
+		it('should show the state of each finding', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, status: 'wont_fix' },
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
+				expect(getStateSelect('Test Workflow 2')).toHaveTextContent("Won't fix");
+			});
+		});
+
+		it('should count only the open findings in the affected badge', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, status: 'wont_fix' },
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByText('1 affected')).toBeInTheDocument();
+		});
+
+		it('should save the new state and update the row and the badge', async () => {
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await selectState('Test Workflow 1', "Won't fix");
+
+			await waitFor(() => {
+				expect(getStateSelect('Test Workflow 1')).toHaveTextContent("Won't fix");
+				expect(screen.getByText('1 affected')).toBeInTheDocument();
+			});
+			expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				'workflow-1',
+				'wont_fix',
+			);
+			expect(breakingChangesApi.getReportForRule).toHaveBeenCalledTimes(1);
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('should revert the state and show an error when the save fails', async () => {
+			const error = new Error('Request failed');
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockRejectedValue(error);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await selectState('Test Workflow 1', "Won't fix");
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(error, 'Could not change the state');
+			});
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
+			expect(screen.getByText('2 affected')).toBeInTheDocument();
+		});
+
+		it('should disable the state of a row while its change is saving', async () => {
+			let finishSave = () => {};
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockImplementation(
+				async () => await new Promise<void>((resolve) => (finishSave = resolve)),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await selectState('Test Workflow 1', "Won't fix");
+
+			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(true));
+			expect(isStateDisabled('Test Workflow 2')).toBe(false);
+
+			finishSave();
+
+			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(false));
+			expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalledTimes(1);
+		});
+
+		it('should disable every state when the user cannot change states', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(rbacStore.hasScope).toHaveBeenCalledWith('breakingChanges:migrate');
+			expect(isStateDisabled('Test Workflow 1')).toBe(true);
+			expect(isStateDisabled('Test Workflow 2')).toBe(true);
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
+		});
+
+		it('should disable the state of a migrated row and leave it out of the badge', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					migratable: true,
+					affectedWorkflows: [mockWorkflowWithIssue, mockWorkflowWithMultipleNodes],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			const [migrateButton] = screen.getAllByTestId('migrate-workflow-button');
+			await userEvent.click(migrateButton);
+			const { data } = vi.mocked(uiStore.openModalWithData).mock.calls[0][0];
+			(data.eventBus as EventBus).emit('migrated', { workflowId: mockWorkflowWithIssue.id });
+
+			await waitFor(() => expect(isStateDisabled('Test Workflow 1')).toBe(true));
+			expect(isStateDisabled('Test Workflow 2')).toBe(false);
+			expect(screen.getByText('1 affected')).toBeInTheDocument();
+		});
+
+		it('should not open the workflow when the state is changed', async () => {
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await selectState('Test Workflow 1', "Won't fix");
+
+			await waitFor(() => {
+				expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalled();
+			});
+			expect(window.open).not.toHaveBeenCalled();
+		});
+
+		it('should open the workflow when the row is clicked', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await userEvent.click(await screen.findByText('Test Workflow 1'));
+
+			expect(window.open).toHaveBeenCalledWith('/workflow/workflow-1', '_blank');
 		});
 	});
 

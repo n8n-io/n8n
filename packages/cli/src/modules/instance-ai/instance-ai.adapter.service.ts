@@ -2850,7 +2850,11 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: await credentialsService.decrypt(credential, true),
+					data: await credentialsService.decryptForUse(
+						credential,
+						{ kind: 'user', user },
+						boundProjectId,
+					),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
@@ -4257,9 +4261,8 @@ export class InstanceAiAdapterService {
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
 				assertNotReadOnly('executions');
-				// Access-check the workflow with execute scope (matches controller behavior)
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:execute',
+					'execution:delete',
 				]);
 				if (!workflow) {
 					throw new WorkflowNotFoundError(workflowId);
@@ -4284,12 +4287,15 @@ export class InstanceAiAdapterService {
 
 				const ids = executions.map((e) => e.id);
 
-				// Use the canonical deletion pipeline (handles binary data and fs blobs)
-				await executionPersistence.hardDeleteBy({
-					filters: { workflowId, mode: 'manual' },
-					accessibleWorkflowIds: [workflowId],
-					deleteConditions: { deleteBefore: cutoff },
-				});
+				// Use the canonical deletion pipeline (handles binary data and fs blobs).
+				// Delete by ID so only the counted manual executions are removed.
+				for (let start = 0; start < ids.length; start += EXECUTION_DELETE_CHUNK_SIZE) {
+					await executionPersistence.hardDeleteBy({
+						filters: undefined,
+						accessibleWorkflowIds: [workflowId],
+						deleteConditions: { ids: ids.slice(start, start + EXECUTION_DELETE_CHUNK_SIZE) },
+					});
+				}
 
 				// Emit audit event (matches controller behavior)
 				eventService.emit('execution-deleted', {
@@ -5368,6 +5374,10 @@ function readParentFolder(workflow: WorkflowEntity): { id: string; name: string 
 	const parent = workflow.parentFolder ?? undefined;
 	return parent ? { id: parent.id, name: parent.name } : undefined;
 }
+
+/** Execution ids per deletion query. The query binds one parameter per id
+ *  and SQLite allows 999 of them, so the ids are deleted in chunks. */
+const EXECUTION_DELETE_CHUNK_SIZE = 500;
 
 /** Folder ids per path query. `getFolderPathsToRoot` binds one parameter per id
  *  and SQLite allows 999 of them, so the ids are read in chunks. */

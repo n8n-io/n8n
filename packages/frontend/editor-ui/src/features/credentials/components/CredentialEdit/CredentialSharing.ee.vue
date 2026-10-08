@@ -209,9 +209,13 @@ const usedInAccessText = computed(() =>
 			}),
 );
 
+/** A personal project is named "Name <email>"; the project row hides the email, so the copy does too. */
+function usedInProjectName(project: Pick<ProjectSharingData, 'name'>) {
+	return splitName(project.name ?? '').name;
+}
+
 function usedInShareLabel(project: Pick<ProjectSharingData, 'name'>) {
-	// A personal project is named "Name <email>"; the project row hides the email, so the label does too.
-	const { name } = splitName(project.name ?? '');
+	const name = usedInProjectName(project);
 
 	return name
 		? i18n.baseText('credentialEdit.credentialSharing.shareWith', {
@@ -230,6 +234,23 @@ function usedInAccessTooltip(project: Pick<ProjectSharingData, 'name'>) {
 		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner.tooltip', {
 				interpolate: { name: credentialOwnerFirstName.value, project: projectName },
 			});
+}
+
+const viewerHasInstanceWideUse = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).credential?.use === true,
+);
+
+/**
+ * The viewer's own personal project, when their instance role lets them use
+ * every credential: they already use this one there without a share. "Used in"
+ * lists only the viewer's projects, so this is the only personal project it shows.
+ */
+function hasInstanceWideUse(project: Pick<ProjectSharingData, 'id' | 'type'>) {
+	return (
+		viewerHasInstanceWideUse.value &&
+		project.type === ProjectTypes.Personal &&
+		project.id === projectsStore.personalProject?.id
+	);
 }
 
 function shareUsedInProject(projectId: string) {
@@ -326,18 +347,43 @@ function goToUpgrade() {
 			>
 				<template #unshared-actions="{ project }">
 					<div :class="$style.onlyYou">
-						<N8nTooltip :content="usedInAccessTooltip(project)" placement="top">
+						<N8nTooltip v-if="hasInstanceWideUse(project)" placement="top">
+							<template #content>
+								{{
+									i18n.baseText('credentialEdit.credentialSharing.usedIn.personalSpace.tooltip', {
+										interpolate: { name: usedInProjectName(project) ?? '' },
+									})
+								}}
+							</template>
+							<N8nText
+								:class="$style.accessText"
+								color="text-light"
+								data-test-id="credential-used-in-personal-space"
+							>
+								{{ i18n.baseText('credentialEdit.credentialSharing.usedIn.personalSpace') }}
+							</N8nText>
+						</N8nTooltip>
+						<N8nTooltip v-else :content="usedInAccessTooltip(project)" placement="top">
 							<N8nText :class="$style.accessText" color="text-light">
 								{{ usedInAccessText }}
 							</N8nText>
 						</N8nTooltip>
-						<N8nButton
-							variant="outline"
-							data-test-id="credential-used-in-project-share"
-							@click="shareUsedInProject(project.id)"
-						>
-							{{ usedInShareLabel(project) }}
-						</N8nButton>
+						<N8nTooltip :disabled="!hasInstanceWideUse(project)" placement="top">
+							<template #content>
+								{{
+									i18n.baseText('credentialEdit.credentialSharing.share.teamProjects.tooltip', {
+										interpolate: { name: usedInProjectName(project) ?? '' },
+									})
+								}}
+							</template>
+							<N8nButton
+								variant="outline"
+								data-test-id="credential-used-in-project-share"
+								@click="shareUsedInProject(project.id)"
+							>
+								{{ usedInShareLabel(project) }}
+							</N8nButton>
+						</N8nTooltip>
 					</div>
 				</template>
 			</ProjectSharing>

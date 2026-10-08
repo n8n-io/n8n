@@ -59,6 +59,7 @@ import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-h
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
+import type { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
@@ -78,6 +79,7 @@ describe('WorkflowService', () => {
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 		let globalConfigMock: MockProxy<GlobalConfig>;
 		let workflowPublicationStatusServiceMock: MockProxy<WorkflowPublicationStatusService>;
+		let restrictedNodeTypesProviderMock: MockProxy<RestrictedNodeTypesProviderProxy>;
 
 		beforeEach(() => {
 			workflowRepositoryMock = mock();
@@ -99,6 +101,7 @@ describe('WorkflowService', () => {
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 			});
 			workflowPublicationStatusServiceMock = mock<WorkflowPublicationStatusService>();
+			restrictedNodeTypesProviderMock = mock<RestrictedNodeTypesProviderProxy>();
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -140,6 +143,7 @@ describe('WorkflowService', () => {
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
 			);
 		});
 
@@ -438,6 +442,46 @@ describe('WorkflowService', () => {
 				expect(folder).not.toHaveProperty('publicationStatus');
 			});
 		});
+
+		describe('restricted node filter', () => {
+			const restrictedNodeFilter = { filter: { executionBlockedBy: ['restrictedNode'] } };
+
+			test('keeps the folders when no node type is restricted', async () => {
+				restrictedNodeTypesProviderMock.findRestrictedWorkflowIds.mockResolvedValue(null);
+				const folder = { id: 'folder-1', resource: 'folder' };
+				workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery.mockResolvedValue(
+					[[folder], 1],
+				);
+
+				const result = await workflowService.getMany(mock<User>(), restrictedNodeFilter, {
+					includeFolders: true,
+				});
+
+				expect(result).toMatchObject({ workflows: [folder], count: 1 });
+				expect(
+					workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery,
+				).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					{ ...restrictedNodeFilter, workflowIdsIn: null },
+					undefined,
+				);
+			});
+
+			test('limits the list query to the restricted workflow ids', async () => {
+				const workflowIdsIn = { query: 'SELECT 1', parameters: {} };
+				restrictedNodeTypesProviderMock.findRestrictedWorkflowIds.mockResolvedValue(workflowIdsIn);
+
+				await workflowService.getMany(mock<User>(), restrictedNodeFilter);
+
+				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					{ ...restrictedNodeFilter, workflowIdsIn },
+					undefined,
+				);
+			});
+		});
 	});
 
 	describe('workflow updates', () => {
@@ -517,6 +561,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 
 			vi.clearAllMocks();
@@ -1553,6 +1598,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 
 			// Bypass validation internals
@@ -2314,6 +2360,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 		});
 
@@ -2456,6 +2503,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 		});
 
@@ -2767,6 +2815,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 		});
 
@@ -2942,6 +2991,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 		});
 
@@ -3130,6 +3180,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 		});
 
@@ -3234,6 +3285,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 		});
 
@@ -3341,6 +3393,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
+				mock(), // restrictedNodeTypesProvider
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);

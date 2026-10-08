@@ -153,9 +153,9 @@ export interface BridgeExecutionContext {
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
-	 * Platform-fetched conversation context (e.g. prior Slack thread messages)
-	 * that the bridge prepends to the agent input message. Undefined when the
-	 * platform did not surface any context for this message.
+	 * Platform context that the bridge prepends to the agent input message,
+	 * such as prior Slack thread messages or a Teams note that the reply is
+	 * optional. Undefined when the platform has none for this message.
 	 */
 	historyContext?: string;
 }
@@ -182,6 +182,8 @@ export interface BridgeMessageContextParams {
 	 * thread context that the agent has never seen.
 	 */
 	isNewMention: boolean;
+	/** True when the message arrived in a thread the agent already joined. */
+	inSubscribedThread?: boolean;
 	/**
 	 * The turn's reply policy ('required' when the platform has none).
 	 * Platforms use 'optional' to skip reply-signalling side effects
@@ -561,6 +563,18 @@ export abstract class AgentChatIntegration {
 	shouldSubscribeToNewMention?(params: {
 		thread: Thread<unknown, unknown>;
 		message: Message<unknown>;
+	}): boolean;
+
+	/**
+	 * Whether a message that does not mention the bot should run the agent,
+	 * in a subscribed thread or not. Only platforms that deliver every message
+	 * implement this (Teams with read-all permissions). Without it the bridge
+	 * runs every subscribed follow-up and never listens for other messages.
+	 */
+	shouldHandleUnmentionedMessage?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
 	}): boolean;
 
 	/**
