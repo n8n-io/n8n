@@ -21,8 +21,8 @@
  * - Other failures, such as 404, are broken.
  *
  * Prints the broken and pending links, adds them to $GITHUB_STEP_SUMMARY, and
- * exits 1 if there are broken links. Needs Chrome, which GitHub-hosted Ubuntu
- * runners include.
+ * exits 1 if there are broken links. Needs Chrome, which GitHub-hosted and
+ * Blacksmith Ubuntu runners include.
  */
 import { execFileSync } from 'node:child_process';
 import { appendFile, readFile } from 'node:fs/promises';

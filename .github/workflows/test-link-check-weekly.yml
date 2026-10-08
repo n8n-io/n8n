@@ -11,11 +11,11 @@ permissions:
 jobs:
   check:
     name: Check links in packages/
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     timeout-minutes: 20
     env:
       LYCHEE_VERSION: '0.24.2'
-      LYCHEE_SHA256: '1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a'
+      LYCHEE_SHA256: '73657a111819a30c47c08352896796f23d64e4eb2b3ed39b6d32149241566fc5'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,11 +33,12 @@ jobs:
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
+      # The musl build runs on Ubuntu 22.04. The glibc build needs a newer glibc.
       - name: Install lychee
         run: |
-          curl -sSfL -o lychee.tar.gz "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+          curl -sSfL -o lychee.tar.gz "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-musl.tar.gz"
           echo "${LYCHEE_SHA256}  lychee.tar.gz" | sha256sum --check
-          tar -xzf lychee.tar.gz --strip-components=1 -C /usr/local/bin lychee-x86_64-unknown-linux-gnu/lychee
+          tar -xzf lychee.tar.gz --strip-components=1 -C /usr/local/bin lychee-x86_64-unknown-linux-musl/lychee
           lychee --version
 
       # The next step decides which failures are broken links.
