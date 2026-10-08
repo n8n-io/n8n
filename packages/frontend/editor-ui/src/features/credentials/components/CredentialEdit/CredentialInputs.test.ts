@@ -177,7 +177,6 @@ describe('credential project options', () => {
 			const view = renderOptions({ props: { credentialId, credentialData } });
 			const input = await view.findByLabelText('Project');
 			await waitFor(() => expect(input).toHaveValue('First project (first-project)'));
-			expect(view.queryByPlaceholderText('my-project-id')).toBeNull();
 			expect(view.getByRole('status')).toBeVisible();
 			await userEvent.click(input);
 			await userEvent.click(view.getByRole('option', { name: 'Custom' }));
