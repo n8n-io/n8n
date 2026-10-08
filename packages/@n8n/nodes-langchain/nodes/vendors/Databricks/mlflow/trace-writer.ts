@@ -1,6 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
-import { OperationalError, type IDataObject } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError, type IDataObject } from 'n8n-workflow';
 
 import type { CollectedTrace, MlflowSpan } from './types';
 import { MLFLOW_ATTRIBUTE, MLFLOW_TRACE_METADATA } from './types';
@@ -63,9 +63,8 @@ function describeFailure(body: unknown): string {
 function assertOk(response: MlflowResponse, what: string): unknown {
 	if (response.status < 200 || response.status >= 300) {
 		const detail = describeFailure(response.body);
-		throw new OperationalError(
-			`Databricks ${what} failed with HTTP ${response.status}${detail ? ` (${detail})` : ''}`,
-		);
+		const message = `Databricks ${what} failed with HTTP ${response.status}${detail ? ` (${detail})` : ''}`;
+		throw response.status >= 500 ? new OperationalError(message) : new UserError(message);
 	}
 	return response.body;
 }
@@ -135,7 +134,7 @@ export async function ensureExperiment(
 	if (isRecord(created) && typeof created.experiment_id === 'string') {
 		return created.experiment_id;
 	}
-	throw new OperationalError('Databricks did not return an experiment id');
+	throw new UnexpectedError('Databricks did not return an experiment id');
 }
 
 /**
@@ -227,7 +226,7 @@ export async function writeTrace(
 			? credentials.credential_info.signed_uri
 			: undefined;
 	if (typeof signedUri !== 'string' || signedUri.length === 0) {
-		throw new OperationalError('Databricks did not return an upload URL for the trace data');
+		throw new UnexpectedError('Databricks did not return an upload URL for the trace data');
 	}
 
 	await upload({

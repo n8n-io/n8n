@@ -1,3 +1,4 @@
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -18,6 +19,14 @@ import { MlflowSpanCollector } from './mlflow/span-collector';
 import type { MlflowRequest, SignedUpload } from './mlflow/trace-writer';
 import { defaultExperimentName, ensureExperiment, writeTrace } from './mlflow/trace-writer';
 import { createMlflowTransport } from './mlflow/transport';
+
+const MAX_LOGGED_ERROR_CHARS = 1_000;
+
+/** Scrubs credential material (e.g. a signed upload URL's query string) before logging. */
+function sanitizedErrorMessage(error: unknown): string {
+	const message = error instanceof Error ? error.message : String(error);
+	return sanitizeErrorDetail(message, MAX_LOGGED_ERROR_CHARS);
+}
 
 /**
  * Trace export is off by default and opt-in per node. Traces carry the real
@@ -86,9 +95,7 @@ async function prepareTraceExport(ctx: IExecuteFunctions): Promise<TraceExporter
 		return { request, upload, experimentId: await ensureExperiment(request, name) };
 	} catch (error) {
 		ctx.logger.warn(
-			`Databricks AI Agent: could not prepare MLflow trace export: ${
-				error instanceof Error ? error.message : String(error)
-			}`,
+			`Databricks AI Agent: could not prepare MLflow trace export: ${sanitizedErrorMessage(error)}`,
 		);
 		return undefined;
 	}
@@ -107,9 +114,7 @@ async function flushTrace(
 		await writeTrace(exporter, trace);
 	} catch (error) {
 		ctx.logger.warn(
-			`Databricks AI Agent: MLflow trace export failed: ${
-				error instanceof Error ? error.message : String(error)
-			}`,
+			`Databricks AI Agent: MLflow trace export failed: ${sanitizedErrorMessage(error)}`,
 		);
 	}
 }

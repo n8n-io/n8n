@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	buildTraceInfo,
@@ -178,7 +178,7 @@ describe('ensureExperiment', () => {
 
 		const error = await ensureExperiment(request, '/Shared/x').catch((e: unknown) => e);
 
-		expect(error).toBeInstanceOf(OperationalError);
+		expect(error).toBeInstanceOf(UserError);
 		expect(String(error)).toContain('PERMISSION_DENIED');
 		expect(String(error)).not.toContain(token);
 		expect(String(error)).not.toContain('sig=secret');
@@ -190,7 +190,24 @@ describe('ensureExperiment', () => {
 			'/api/2.0/mlflow/experiments/create': { status: 200, body: {} },
 		});
 
-		await expect(ensureExperiment(request, '/Shared/x')).rejects.toThrow('experiment id');
+		const error = await ensureExperiment(request, '/Shared/x').catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnexpectedError);
+		expect(String(error)).toContain('experiment id');
+	});
+
+	it('classifies a transient 5xx as OperationalError, not UserError', async () => {
+		const { request } = workspace({
+			'/api/2.0/mlflow/experiments/get-by-name': {
+				status: 503,
+				body: { error_code: 'TEMPORARILY_UNAVAILABLE', message: 'try again' },
+			},
+		});
+
+		const error = await ensureExperiment(request, '/Shared/x').catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(OperationalError);
+		expect(String(error)).toContain('TEMPORARILY_UNAVAILABLE');
 	});
 });
 
@@ -264,9 +281,13 @@ describe('writeTrace', () => {
 			},
 		});
 
-		await expect(
-			writeTrace({ request, upload: async () => {}, experimentId: '1' }, trace()),
-		).rejects.toThrow('upload URL');
+		const error = await writeTrace(
+			{ request, upload: async () => {}, experimentId: '1' },
+			trace(),
+		).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UnexpectedError);
+		expect(String(error)).toContain('upload URL');
 	});
 
 	it('does not upload when trace creation fails', async () => {
