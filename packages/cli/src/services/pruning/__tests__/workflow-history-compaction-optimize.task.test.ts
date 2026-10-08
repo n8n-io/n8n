@@ -17,12 +17,11 @@ describe('WorkflowHistoryCompactionOptimizeTask', () => {
 	it('should declare a cadence of half the optimizing window', () => {
 		expect(task.name).toBe('workflow-history-compaction-optimize');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
 	});
 
 	it('should outlast the default task timeout', () => {
-		expect(task.timeoutSeconds).toBe(1800);
+		expect(task.target.scheduler?.timeoutSeconds).toBe(1800);
 	});
 
 	it('should optimize histories on run, handing the pass its abort signal', async () => {
