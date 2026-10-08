@@ -40,13 +40,18 @@ import { createOwner } from '../shared/db/users';
 import { LicenseMocker } from '../shared/license';
 import * as utils from '../shared/utils/';
 
+// The activation retries back off 1+2+4+8 s between the five attempts.
+vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn() }));
+
 /**
  * ENT-497: a Microsoft Teams Trigger whose Graph subscription is refused (403)
  * on `POST /subscriptions`. The node throws on both activation paths; what
  * differs is where the failure is recorded. The legacy path rejects the
- * activation and registers the error at `GET /rest/active-workflows/error/:id`.
- * The publication path (the default) keeps the workflow `active`, records the
- * failure as a trigger status plus a push, and never writes the legacy store.
+ * activation and registers the error. The publication path (the default) keeps
+ * the workflow `active`, records the failure as a trigger status plus a push,
+ * never writes the legacy store, and the legacy activation API reads that
+ * status: the workflow is absent from the active list and its activation error
+ * is the Graph error.
  */
 
 mockInstance(ActiveExecutions);
@@ -113,6 +118,7 @@ afterEach(async () => {
 		'WorkflowPublishHistory',
 		'WorkflowEntity',
 		'WorkflowHistory',
+		'WebhookEntity',
 		'SharedCredentials',
 		'CredentialsEntity',
 		'User',
@@ -167,7 +173,7 @@ async function createTeamsTriggerWorkflow() {
 
 	const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
 	await setActiveVersion(workflow.id, workflow.versionId);
-	return { workflow, trigger };
+	return { workflow, trigger, owner };
 }
 
 describe('Microsoft Teams Trigger: Graph refuses the subscription', () => {
@@ -182,10 +188,10 @@ describe('Microsoft Teams Trigger: Graph refuses the subscription', () => {
 		expect(await activationErrorsService.get(workflow.id)).toBe(GRAPH_ERROR);
 	});
 
-	test('publication path: the failure reaches the publication surfaces only', async () => {
+	test('publication path: the failure reaches the publication surfaces and the legacy activation API', async () => {
 		Container.get(WorkflowsConfig).useWorkflowPublicationService = true;
 		const scope = mockGraphRefusingSubscription();
-		const { workflow, trigger } = await createTeamsTriggerWorkflow();
+		const { workflow, trigger, owner } = await createTeamsTriggerWorkflow();
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
@@ -216,7 +222,7 @@ describe('Microsoft Teams Trigger: Graph refuses the subscription', () => {
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			{
 				type: 'workflowFailedToActivate',
-				data: { workflowId: workflow.id, errorMessage: GRAPH_ERROR },
+				data: { workflowId: workflow.id, errorMessage: GRAPH_ERROR, nodeId: trigger.id },
 			},
 			expect.any(Array),
 		);
@@ -227,8 +233,11 @@ describe('Microsoft Teams Trigger: Graph refuses the subscription', () => {
 			activeVersionId: workflow.versionId,
 		});
 		expect(await activationErrorsService.get(workflow.id)).toBeNull();
-		expect(await Container.get(ActiveWorkflowsService).getAllActiveIdsInStorage()).toEqual([
-			workflow.id,
-		]);
-	}, 60_000);
+
+		// The legacy activation API reads the trigger status.
+		const activeWorkflowsService = Container.get(ActiveWorkflowsService);
+		expect(await activeWorkflowsService.getAllActiveIdsInStorage()).toEqual([]);
+		expect(await activeWorkflowsService.getAllActiveIdsFor(owner)).toEqual([]);
+		expect(await activeWorkflowsService.getActivationError(workflow.id, owner)).toBe(GRAPH_ERROR);
+	});
 });
