@@ -22,7 +22,8 @@ export async function createVariable(
 	context: IRestApiContext,
 	data: CreateEnvironmentVariable,
 ): Promise<EnvironmentVariable> {
-	return await makeRestApiRequest(context, 'POST', '/variables', data as unknown as IDataObject);
+	const payload = { ...data, projectId: data.projectId ?? undefined };
+	return await makeRestApiRequest(context, 'POST', '/variables', payload);
 }
 
 export async function updateVariable(

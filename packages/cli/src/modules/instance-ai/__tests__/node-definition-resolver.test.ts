@@ -113,3 +113,41 @@ describe('resolveNodeTypeDefinition — latest version resolution', () => {
 		expect(result.content).toBe('// notion v3 get def');
 	});
 });
+
+describe('resolveNodeTypeDefinition — version segment handling', () => {
+	let defsDir: string;
+
+	beforeAll(() => {
+		defsDir = mkdtempSync(join(tmpdir(), 'node-defs-versions-'));
+		const nodesDir = join(defsDir, 'nodes', 'n8n-nodes-base');
+
+		mkdirSync(join(nodesDir, 'set'), { recursive: true });
+		writeFileSync(join(nodesDir, 'set', 'v2.ts'), '// set v2 def');
+
+		mkdirSync(join(nodesDir, 'webhook'), { recursive: true });
+		writeFileSync(join(nodesDir, 'webhook', 'v2.ts'), '// webhook v2 def');
+
+		writeFileSync(join(defsDir, 'index.ts'), '// definitions root index');
+	});
+
+	afterAll(() => {
+		rmSync(defsDir, { recursive: true, force: true });
+	});
+
+	it('resolves the definition for a plain version', () => {
+		const result = resolveNodeTypeDefinition('n8n-nodes-base.set', [defsDir], { version: '2' });
+
+		expect(result.error).toBeUndefined();
+		expect(result.content).toBe('// set v2 def');
+	});
+
+	it.each(['v./../../webhook/v2', 'v./../../../../index', '../webhook/v2', '..', 'latest'])(
+		'rejects the version value %j',
+		(version) => {
+			const result = resolveNodeTypeDefinition('n8n-nodes-base.set', [defsDir], { version });
+
+			expect(result.error).toContain('not found for node');
+			expect(result.content).toBe('');
+		},
+	);
+});

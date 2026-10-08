@@ -1,7 +1,11 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { oAuth1CredentialAuthorize, oAuth2CredentialAuthorize } from './credentials.api';
+import {
+	oAuth1CredentialAuthorize,
+	oAuth2CredentialAuthorize,
+	searchCredentials,
+} from './credentials.api';
 import type { ICredentialsResponse } from './credentials.types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -48,6 +52,34 @@ describe('credentials.api OAuth authorization', () => {
 
 		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'GET', '/oauth1-credential/auth', {
 			id: 'cred-1',
+		});
+	});
+});
+
+describe('credentials.api searchCredentials', () => {
+	beforeEach(() => {
+		makeRestApiRequestMock.mockReset();
+		makeRestApiRequestMock.mockResolvedValue([]);
+	});
+
+	it('sends the name filter, pagination, and includeGlobal', async () => {
+		await searchCredentials(context, { name: 'slack', skip: 20, take: 21 });
+
+		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'GET', '/credentials', {
+			filter: { name: 'slack' },
+			skip: 20,
+			take: 21,
+			includeGlobal: true,
+		});
+	});
+
+	it('omits the filter when the name is empty', async () => {
+		await searchCredentials(context, { name: '', skip: 0, take: 21 });
+
+		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'GET', '/credentials', {
+			skip: 0,
+			take: 21,
+			includeGlobal: true,
 		});
 	});
 });

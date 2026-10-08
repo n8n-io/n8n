@@ -22,6 +22,7 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 - `step?: number` - Increment/decrement step amount. Default: `1`
 - `stepSnapping?: boolean` - When `true`, typed values snap to `step` on blur. Default: `false` (Reka defaults to `true`; we override so decimals are preserved unless opted in).
 - `precision?: number` - Decimal places. Maps to Reka `formatOptions` fraction digits.
+- `useGrouping?: boolean` - Locale-specific digit grouping (e.g. `1,433`). Default: `false`.
 - `controls?: boolean` - Show increment/decrement buttons. Default: `true`
 - `controlsPosition?: 'both' | 'right'` - Control layout. Default: `'right'`
 - `disabled?: boolean` - Disables the field. Default: `false`
@@ -46,6 +47,7 @@ Same contract as `N8nInput`, so `ParameterInput` can programmatically focus, blu
 
 **Slots**
 
+- `prefix` - Content shown before the number, e.g. a currency symbol.
 - `increment` - Fully custom increment control. Scope: `{ ui: { class } }`. Default: button with plus/chevron icon.
 - `decrement` - Fully custom decrement control. Scope: `{ ui: { class } }`. Default: button with minus/chevron icon.
 

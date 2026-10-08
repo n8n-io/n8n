@@ -159,3 +159,58 @@ describe('deriveVerificationClaim', () => {
 		expect(claim.liveTestRecommended).toBe(false);
 	});
 });
+
+describe('deriveVerificationClaim — publish state', () => {
+	it('reports the workflow as unpublished when there is no active version', () => {
+		const claim = deriveVerificationClaim({
+			analysis: makeAnalysis(),
+			plannedNodeCount: 3,
+			publishState: { activeVersionId: null, draftVersionId: 'draft-1' },
+		});
+
+		expect(claim.liveState).toBe('unpublished');
+		expect(claim.verifiedVersionId).toBe('draft-1');
+	});
+
+	it('reports live-current when the published version is the verified draft', () => {
+		const claim = deriveVerificationClaim({
+			analysis: makeAnalysis(),
+			plannedNodeCount: 3,
+			publishState: { activeVersionId: 'draft-1', draftVersionId: 'draft-1' },
+		});
+
+		expect(claim.liveState).toBe('live-current');
+	});
+
+	it('reports live-stale when the published version is an older one', () => {
+		const claim = deriveVerificationClaim({
+			analysis: makeAnalysis(),
+			plannedNodeCount: 3,
+			publishState: { activeVersionId: 'published-1', draftVersionId: 'draft-2' },
+		});
+
+		expect(claim.liveState).toBe('live-stale');
+		expect(claim.verifiedVersionId).toBe('draft-2');
+	});
+
+	it('keeps a stale live version publishable — publishing is the fix', () => {
+		const claim = deriveVerificationClaim({
+			analysis: makeAnalysis(),
+			plannedNodeCount: 3,
+			publishState: { activeVersionId: 'published-1', draftVersionId: 'draft-2' },
+		});
+
+		expect(claim.level).toBe('verified');
+		expect(claim.publishReady).toBe(true);
+	});
+
+	it('leaves publish state out when the lookup produced nothing', () => {
+		const claim = deriveVerificationClaim({
+			analysis: makeAnalysis(),
+			plannedNodeCount: 3,
+		});
+
+		expect(claim.liveState).toBeUndefined();
+		expect(claim.verifiedVersionId).toBeUndefined();
+	});
+});

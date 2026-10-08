@@ -31,8 +31,7 @@ import { In, LessThan, Like } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -256,6 +255,15 @@ export class TypeORMAgentMemory
 	async getThread(threadId: string): Promise<Thread | null> {
 		const thread = await this.threadRepo.findOneBy({ id: threadId });
 		return thread ? toThread(thread) : null;
+	}
+
+	async listThreadHistory(
+		resourceId: string,
+		limit: number,
+		search?: string,
+		before?: { updatedAt: Date; id: string },
+	): Promise<Thread[]> {
+		return (await this.threadRepo.listHistoryPage(resourceId, limit, search, before)).map(toThread);
 	}
 
 	async listThreads(args: {
@@ -520,6 +528,7 @@ export class TypeORMAgentMemory
 		});
 
 		await this.messageRepo.save(entities);
+		await this.threadRepo.update(args.threadId, { updatedAt: new Date() });
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {

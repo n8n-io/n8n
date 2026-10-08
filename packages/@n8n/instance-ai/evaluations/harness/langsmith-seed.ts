@@ -416,6 +416,8 @@ async function reconstructWithClient(
 			// Likewise no projects: a replayed thread ran in whatever project it ran in,
 			// and a seeded project is a fixture an author declares, not something a trace records.
 			projects: [],
+			// And no folders: a trace records which workflows ran, not where they sat.
+			folders: [],
 		},
 		liveTurn,
 		runCount: runs.length,

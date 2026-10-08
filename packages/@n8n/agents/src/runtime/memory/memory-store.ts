@@ -139,8 +139,8 @@ export class InMemoryMemory
 		recordCaptureCandidateFailure: async (ids, maxAttempts) =>
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
 		taskLock: {
-			acquire: async (resourceId, opts) =>
-				await this.acquireEpisodicMemoryTaskLock(resourceId, opts),
+			acquire: async (scope, opts) =>
+				await this.acquireEpisodicMemoryTaskLock(scope.resourceId, opts),
 			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
 		},
 	};
@@ -765,9 +765,15 @@ export async function saveMessagesToThread(
 	threadId: string,
 	resourceId: string,
 	messages: AgentDbMessage[],
+	hostMetadata?: Parameters<BuiltMemory['saveMessages']>[0]['hostMetadata'],
 ): Promise<void> {
 	await memory.saveThread({ id: threadId, resourceId });
-	await memory.saveMessages({ threadId, resourceId, messages });
+	await memory.saveMessages({
+		threadId,
+		resourceId,
+		messages,
+		...(hostMetadata && { hostMetadata }),
+	});
 }
 
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {

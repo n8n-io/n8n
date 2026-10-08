@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-network",
-  "version": "1.13.0",
+  "version": "1.17.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -9,8 +9,8 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -35,6 +35,11 @@
       "import": "./src/transport.ts",
       "require": "./dist/transport.js"
     },
+    "./egress": {
+      "types": "./dist/egress.d.ts",
+      "import": "./src/egress.ts",
+      "require": "./dist/egress.js"
+    },
     "./proxy": {
       "types": "./dist/proxy/index.d.ts",
       "import": "./src/proxy/index.ts",
@@ -48,6 +53,9 @@
       ],
       "transport": [
         "dist/transport.d.ts"
+      ],
+      "egress": [
+        "dist/egress.d.ts"
       ],
       "proxy": [
         "dist/proxy/index.d.ts"
@@ -72,17 +80,19 @@
     "n8n-workflow": "workspace:*",
     "proxy-from-env": "catalog:",
     "qs": "catalog:",
-    "reflect-metadata": "catalog:",
     "undici": "catalog:undici-v7",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/proxy-from-env": "catalog:",
     "@types/qs": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "nock": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

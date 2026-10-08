@@ -46,9 +46,17 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import {
+	loadWorkflowDiagnosticsWorker,
+	SANDBOX_TYPESCRIPT_VERSION,
+	TSCONFIG_JSON,
+	WORKFLOW_DIAGNOSTICS_FILENAME,
+} from './sandbox-typescript';
 import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
+
+export { TSCONFIG_JSON } from './sandbox-typescript';
 
 const hostRequire = createRequire(__filename);
 
@@ -189,6 +197,7 @@ const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
+		typescript: SANDBOX_TYPESCRIPT_VERSION,
 	};
 	if (sdkSpecifier) {
 		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
@@ -224,6 +233,15 @@ export const PACKAGE_JSON = buildPackageJson(
 
 let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
 
+const MAX_INSTALL_OUTPUT_CHARS = 4000;
+
+function tailOutput(output: string): string {
+	const trimmed = output.trim();
+	return trimmed.length > MAX_INSTALL_OUTPUT_CHARS
+		? `…${trimmed.slice(-MAX_INSTALL_OUTPUT_CHARS)}`
+		: trimmed;
+}
+
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
 	root: string,
@@ -239,7 +257,7 @@ export async function linkWorkspaceSdkIfEnabled(
 	if (!packedPackages?.length) {
 		linkedPackagesPromise = null;
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/@n8n/errors, packages/workflow, and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 
@@ -257,17 +275,20 @@ export async function linkWorkspaceSdkIfEnabled(
 	const tarballArgs = remotePaths
 		.map((remotePath) => `'${escapeSingleQuotes(remotePath)}'`)
 		.join(' ');
-	const install = await runInSandbox(
-		workspace,
-		`npm install ${tarballArgs} --no-save --force ${resolveNpmInstallFlags(workspace)}`,
-		root,
-	);
+	const command = `npm install ${tarballArgs} --no-save --force ${resolveNpmInstallFlags(workspace)}`;
+	const install = await runInSandbox(workspace, command, root);
 	if (install.exitCode !== 0) {
+		// Daytona returns all command output in stdout, so stderr alone is empty there.
+		// npm prints its error summary to stderr, so put stderr last and keep the end of the output.
+		const output = tailOutput([install.stdout, install.stderr].filter(Boolean).join('\n'));
 		logger.error('Failed to link workspace packages into sandbox', {
 			exitCode: install.exitCode,
-			stderr: install.stderr,
+			command,
+			output,
 		});
-		throw new Error(`Failed to install workspace package tarballs: ${install.stderr}`);
+		throw new Error(
+			`Failed to install workspace package tarballs (exit code ${install.exitCode}): ${output}`,
+		);
 	}
 
 	logger.info('Linked workspace packages into sandbox', {
@@ -308,27 +329,6 @@ try {
   process.exit(1);
 }
 `;
-
-export const TSCONFIG_JSON = JSON.stringify(
-	{
-		compilerOptions: {
-			strict: true,
-			// Disable strictNullChecks because the SDK's ifElse() returns NodeInstance
-			// where onTrue?/onFalse? are optional in the type (they're always present at runtime).
-			// Without this, tsc rejects `.onTrue()` / `.onFalse()` calls.
-			strictNullChecks: false,
-			noEmit: true,
-			target: 'ES2022',
-			module: 'ES2022',
-			moduleResolution: 'bundler',
-			esModuleInterop: true,
-			skipLibCheck: true,
-		},
-		include: ['src/**/*.ts', 'chunks/**/*.ts'],
-	},
-	null,
-	2,
-);
 
 /**
  * Build a searchable catalog line for a node type.
@@ -522,6 +522,7 @@ export async function setupSandboxWorkspace(
 			files.set('package.json', PACKAGE_JSON);
 			files.set('tsconfig.json', TSCONFIG_JSON);
 			files.set('build.mjs', BUILD_MJS);
+			files.set(WORKFLOW_DIAGNOSTICS_FILENAME, await loadWorkflowDiagnosticsWorker());
 
 			// Node types catalog
 			const nodeTypes = await setupStep(

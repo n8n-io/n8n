@@ -81,6 +81,7 @@ erDiagram
   varchar_128_ taskType
 }
 "scheduled_job" {
+  INT concurrencyLimit
   datetime_3_ createdAt
   varchar_255_ cronExpression
   boolean enabled

@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { PolicyAction } from '../../policy-rule.types';
+import type { PolicyAction, PolicyScopeKey } from '../../policy-rule.types';
 import { TypeAvailabilityPolicyScope } from '../entities/type-availability-policy-scope.entity';
 
 type NewPolicyScope = {
@@ -18,6 +18,11 @@ type NewPolicyScope = {
 	defaultAction: PolicyAction;
 	updatedBy: string;
 };
+
+export type ProjectPolicyScope = TypeAvailabilityPolicyScope & { projectId: string };
+
+const isProjectScope = (scope: TypeAvailabilityPolicyScope): scope is ProjectPolicyScope =>
+	scope.projectId !== null;
 
 @Service()
 export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAvailabilityPolicyScope> {
@@ -75,6 +80,25 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	}
 
 	/**
+	 * Like `findScopeById`, scoped by `kind` as well as id — a caller that only knows a scope
+	 * id (from a prior `getEffectivePolicy`/`setDefaultAction` call under its own kind) must not
+	 * reach a scope of a different kind, the same protection `findByIdAndKind` gives policy
+	 * documents. See `findScopeById` for `forUpdate`.
+	 */
+	async findScopeByIdAndKind(
+		id: string,
+		kind: string,
+		ctx: OperationContext,
+		forUpdate = false,
+	): Promise<TypeAvailabilityPolicyScope | null> {
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(TypeAvailabilityPolicyScope, {
+			where: { id, kind },
+			...(forUpdate ? this.forUpdateLock(manager) : {}),
+		});
+	}
+
+	/**
 	 * Locks every named scope row, in id order, and returns the ids that exist.
 	 *
 	 * Every write path that touches both a scope and a policy document must lock the scope
@@ -104,6 +128,35 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		}
 
 		return found;
+	}
+
+	/**
+	 * The reader-facing identity of each named scope. A policy edit fans out over scope ids,
+	 * but a reader addresses a scope by `(kind, projectId)`, so this translates between the
+	 * two. Chunked like `lockScopesByIds`, for the same reason.
+	 */
+	async findScopeKeysByIds(ids: string[], ctx: OperationContext): Promise<PolicyScopeKey[]> {
+		const manager = this.managerFor(ctx);
+		const keys: PolicyScopeKey[] = [];
+
+		for (const batch of chunkIds(ids)) {
+			const rows = await manager.find(TypeAvailabilityPolicyScope, {
+				select: { kind: true, projectId: true },
+				where: { id: In(batch) },
+			});
+			keys.push(...rows.map(({ kind, projectId }) => ({ kind, projectId })));
+		}
+
+		return keys;
+	}
+
+	async findProjectScopes(kind: string, ctx: OperationContext): Promise<ProjectPolicyScope[]> {
+		const scopes = await this.managerFor(ctx).findBy(TypeAvailabilityPolicyScope, {
+			kind,
+			projectId: Not(IsNull()),
+		});
+
+		return scopes.filter(isProjectScope);
 	}
 
 	/**

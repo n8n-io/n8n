@@ -81,6 +81,7 @@ export function resolveMcpRegistryConnection(
 			transport: 'httpStreamable',
 			isTemplated: true,
 			headers: remote.headers,
+			attribution: server.attribution,
 		};
 	}
 
@@ -94,6 +95,7 @@ export function resolveMcpRegistryConnection(
 			credentialBindings,
 			isTemplated: false,
 			headers: remote.headers,
+			attribution: server.attribution,
 		};
 	} catch {
 		return null;

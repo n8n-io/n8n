@@ -9,8 +9,15 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	INodeProperties,
+	N8nOAuth2BrowserFlowMode,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node, n8nOAuth2Auth } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeOperationError,
+	Node,
+	n8nOAuth2Auth,
+	resolveOAuthClientMode,
+} from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
@@ -49,8 +56,8 @@ export class Webhook extends Node {
 		iconColor: 'magenta',
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2, 2.1],
-		defaultVersion: 2.1,
+		version: [1, 1.1, 2, 2.1, 2.2],
+		defaultVersion: 2.2,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -229,6 +236,7 @@ export class Webhook extends Node {
 			rawBody: boolean;
 			responseData?: string;
 			ipWhitelist?: string;
+			oauthClient?: N8nOAuth2BrowserFlowMode;
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
@@ -255,6 +263,9 @@ export class Webhook extends Node {
 				const authResult = await n8nOAuth2Auth(context, {
 					realm: 'n8n Webhook',
 					method: req.method,
+					// Same version-gated default as the resolvers' `isFirstParty`, so the
+					// runtime redirect and the AS's virtual client can't disagree.
+					browserFlow: resolveOAuthClientMode(options.oauthClient, nodeVersion),
 				});
 				if (authResult === 'handled') {
 					// Token missing/invalid: the helper already sent the response.

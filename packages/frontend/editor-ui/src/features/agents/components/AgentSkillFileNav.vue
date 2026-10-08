@@ -216,4 +216,14 @@ function testIdForPath(path: string) {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+
+@media (max-width: 480px) {
+	.nav {
+		width: 100%;
+		max-height: calc(var(--height--5xl) * 2);
+		border-right: 0;
+		border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+		overflow-y: auto;
+	}
+}
 </style>

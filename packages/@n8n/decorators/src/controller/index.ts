@@ -12,6 +12,7 @@ export { Get, Post, Put, Patch, Delete, Head, Options } from './route';
 export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { Licensed } from './licensed';
+export { RequiresUserQuota } from './requires-user-quota';
 export { Deprecated } from './deprecated';
 export { GlobalScope, ProjectScope } from './scoped';
 export type {
@@ -24,6 +25,10 @@ export type {
 	ErrorResponse,
 	HandlerName,
 	Method,
+	MultipartUploadLimits,
+	RequestBodyMedia,
+	RequestBodyMediaOptions,
+	RequestBodyMediaType,
 	ResponseDtoClass,
 	RouteMetadata,
 	StaticRouterMetadata,

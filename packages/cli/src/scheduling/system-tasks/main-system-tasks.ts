@@ -2,26 +2,41 @@ import type { GlobalConfig } from '@n8n/config';
 import type { SystemTaskClass } from '@n8n/decorators';
 
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
+import { isTrimmingEnabled } from '@/services/pruning/workflow-history-compaction.utils';
 
 /**
  * Return the main command's own system tasks, owned by no backend module.
  * A task whose feature is off is left out, so the runner only logs tasks that will run.
  */
 export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<SystemTaskClass[]> {
-	const { LicenseRenewalTask } = await import('@/license/license-renewal.task.js');
 	const { WorkflowHistoryCompactionOptimizeTask } = await import(
 		'@/services/pruning/workflow-history-compaction-optimize.task.js'
 	);
-	const { WorkflowHistoryCompactionTrimTask } = await import(
-		'@/services/pruning/workflow-history-compaction-trim.task.js'
+	const { WorkflowHistoryPruningTask } = await import(
+		'@/services/pruning/workflow-history-pruning.task.js'
+	);
+	const { PendingAuthorizationCleanupTask } = await import(
+		'@/credentials/pending-authorization-cleanup.task.js'
 	);
 
 	const tasks: SystemTaskClass[] = [
 		ActivityPruningTask,
-		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
-		WorkflowHistoryCompactionTrimTask,
+		WorkflowHistoryPruningTask,
+		PendingAuthorizationCleanupTask,
 	];
+
+	if (isTrimmingEnabled(globalConfig.workflowHistory, globalConfig.workflowHistoryCompaction)) {
+		const { WorkflowHistoryCompactionTrimTask } = await import(
+			'@/services/pruning/workflow-history-compaction-trim.task.js'
+		);
+		tasks.push(WorkflowHistoryCompactionTrimTask);
+	}
+
+	if (globalConfig.license.autoRenewalEnabled) {
+		const { LicenseRenewalTask } = await import('@/license/license-renewal.task.js');
+		tasks.push(LicenseRenewalTask);
+	}
 
 	if (globalConfig.executions.pruneData) {
 		const { ExecutionPruningSoftDeleteTask } = await import(
@@ -30,11 +45,23 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		tasks.push(ExecutionPruningSoftDeleteTask);
 	}
 
+	if (globalConfig.diagnostics.enabled) {
+		const { TelemetryPulseTask } = await import('@/telemetry/telemetry-pulse.task.js');
+		tasks.push(TelemetryPulseTask);
+	}
+
 	if (globalConfig.workflows.useWorkflowPublicationService) {
 		const { WorkflowPublicationOutboxCleanupTask } = await import(
 			'@/workflows/publication/workflow-publication-outbox-cleanup.task.js'
 		);
 		tasks.push(WorkflowPublicationOutboxCleanupTask);
+	}
+
+	if (globalConfig.database.type === 'postgresdb') {
+		const { WorkflowStatisticsRollupTask } = await import(
+			'@/services/workflow-statistics-rollup.task.js'
+		);
+		tasks.push(WorkflowStatisticsRollupTask);
 	}
 
 	return tasks;

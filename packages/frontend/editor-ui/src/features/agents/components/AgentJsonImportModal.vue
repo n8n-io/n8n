@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { AgentJsonConfigSchema } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
-import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentJsonConfig } from '../types';
+import AgentModal from './modals/AgentModal.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const parsedConfig = ref<AgentJsonConfig | null>(null);
 const errorMessage = ref('');
 const importing = ref(false);
@@ -68,49 +69,47 @@ async function onConfirm() {
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
+	<AgentModal
+		:open="modalOpen"
 		:title="i18n.baseText('agents.builder.importJsonModal.title' as BaseTextKey)"
-		width="520px"
+		:busy="importing"
+		size="large"
 		data-testid="agent-json-import-modal"
+		@update:open="!$event && closeModal()"
 	>
-		<template #content>
-			<div :class="$style.content">
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.importJsonModal.description' as BaseTextKey) }}
+		<div :class="$style.content">
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('agents.builder.importJsonModal.description' as BaseTextKey) }}
+			</N8nText>
+
+			<label :class="$style.fileField">
+				<N8nText size="small" :bold="true">
+					{{ i18n.baseText('agents.builder.importJsonModal.fileLabel' as BaseTextKey) }}
 				</N8nText>
-
-				<label :class="$style.fileField">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText('agents.builder.importJsonModal.fileLabel' as BaseTextKey) }}
-					</N8nText>
-					<input
-						ref="fileInput"
-						type="file"
-						accept="application/json,.json"
-						data-testid="agent-json-import-file-input"
-						@change="onFileChange"
-					/>
-				</label>
-
-				<N8nCallout v-if="errorMessage" theme="danger" data-testid="agent-json-import-error">
-					{{ errorMessage }}
-				</N8nCallout>
-			</div>
-		</template>
-
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton variant="subtle" :label="i18n.baseText('generic.cancel')" @click="closeModal" />
-				<N8nButton
-					:label="i18n.baseText('agents.builder.importJsonModal.import' as BaseTextKey)"
-					:disabled="!parsedConfig || importing"
-					data-testid="agent-json-import-confirm"
-					@click="onConfirm"
+				<input
+					ref="fileInput"
+					type="file"
+					accept="application/json,.json"
+					data-testid="agent-json-import-file-input"
+					@change="onFileChange"
 				/>
-			</div>
+			</label>
+
+			<N8nCallout v-if="errorMessage" theme="danger" data-testid="agent-json-import-error">
+				{{ errorMessage }}
+			</N8nCallout>
+		</div>
+
+		<template #footerActions>
+			<N8nButton
+				:label="i18n.baseText('agents.builder.importJsonModal.import' as BaseTextKey)"
+				:disabled="!parsedConfig || importing"
+				:loading="importing"
+				data-testid="agent-json-import-confirm"
+				@click="onConfirm"
+			/>
 		</template>
-	</Modal>
+	</AgentModal>
 </template>
 
 <style module lang="scss">
@@ -124,11 +123,5 @@ async function onConfirm() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>

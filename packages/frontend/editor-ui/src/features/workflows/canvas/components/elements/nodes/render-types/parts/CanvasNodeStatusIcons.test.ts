@@ -4,8 +4,14 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { VIEWS } from '@/app/constants';
+import { EditorEnabledFeaturesKey, WorkflowDocumentStoreKey, VIEWS } from '@/app/constants';
+import { createTestNode } from '@/__tests__/mocks';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import { computed, type ComputedRef } from 'vue';
@@ -24,6 +30,7 @@ vi.mock('vue-router', async (importOriginal) => {
 
 const pinnedDataByNodeName: IPinData = {};
 const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
+const executionIssuesByNodeId = new Map<string, ComputedRef<string[]>>();
 let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
@@ -34,6 +41,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 			value: actual.createEmptyCanvasRenderData({
 				pinnedDataByNodeName,
 				executionPinDataByNodeId,
+				executionIssuesByNodeId,
 				isExecutionDataDisplayed,
 			}),
 		})),
@@ -48,16 +56,61 @@ const mockedUseRoute = vi.mocked(useRoute);
 
 describe('CanvasNodeStatusIcons', () => {
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+	let typeAvailabilityPoliciesStore: MockedStore<typeof useTypeAvailabilityPoliciesStore>;
 
 	beforeEach(() => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		typeAvailabilityPoliciesStore = mockedStore(useTypeAvailabilityPoliciesStore);
 		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 		for (const key of Object.keys(pinnedDataByNodeName)) {
 			delete pinnedDataByNodeName[key];
 		}
 		executionPinDataByNodeId.clear();
+		executionIssuesByNodeId.clear();
 		isExecutionDataDisplayed = false;
 	});
+
+	it.each([
+		{ enabled: true, bound: false, otherIssue: false, executionError: false, pending: true },
+		{ enabled: false, bound: false, otherIssue: false, executionError: false, pending: false },
+		{ enabled: true, bound: true, otherIssue: false, executionError: false, pending: false },
+		{ enabled: true, bound: false, otherIssue: true, executionError: false, pending: false },
+		{ enabled: true, bound: false, otherIssue: false, executionError: true, pending: false },
+	])(
+		'distinguishes missing credentials from errors: %j',
+		({ enabled, bound, otherIssue, executionError, pending }) => {
+			const document = useWorkflowDocumentStore(createWorkflowDocumentId('workflow'));
+			vi.spyOn(document, 'getNodeById').mockReturnValue({
+				...createTestNode({
+					id: 'node',
+					credentials: bound ? { slackApi: { id: 'account', name: 'Slack' } } : {},
+				}),
+				issues: {
+					credentials: { slackApi: ['Select a credential'] },
+					...(otherIssue ? { parameters: { channel: ['Channel is required'] } } : {}),
+				},
+			});
+			if (executionError)
+				executionIssuesByNodeId.set(
+					'node',
+					computed(() => ['Request failed']),
+				);
+			const { getByTestId, queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: { issues: { visible: true, validation: ['Select a credential'] } },
+						}),
+						[WorkflowDocumentStoreKey]: computed(() => document),
+						[EditorEnabledFeaturesKey]: computed(() => ({ credentialSetupWarnings: enabled })),
+					},
+				},
+			});
+			expect(getByTestId(pending ? 'node-setup-required' : 'node-issues')).toBeVisible();
+			expect(queryByTestId(pending ? 'node-issues' : 'node-setup-required')).toBeNull();
+		},
+	);
 
 	it('should render correctly for a pinned node', () => {
 		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
@@ -291,5 +344,43 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
+	});
+
+	describe('restricted node type', () => {
+		beforeEach(() => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				available: false,
+				scope: 'instance',
+			});
+		});
+
+		it('should render the lock badge for a restricted node type', () => {
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-base.slack' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('node-restricted')).toBeInTheDocument();
+		});
+
+		it('should keep the lock badge ahead of the not-installed badge', () => {
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-base.slack' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('node-restricted')).toBeInTheDocument();
+			expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
+		});
 	});
 });

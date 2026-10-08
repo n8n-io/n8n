@@ -1,3 +1,4 @@
+import type { AiPreferenceSource } from '@n8n/api-types';
 import {
 	Column,
 	Entity,
@@ -23,6 +24,10 @@ export class AiPreference extends WithTimestamps {
 
 	@Column({ type: 'text' })
 	content: string;
+
+	/** Which surface wrote the row. Set by the service, never by a request body. */
+	@Column({ type: 'varchar', length: 16 })
+	source: AiPreferenceSource;
 
 	@Index()
 	@Column({ type: 'uuid', nullable: true })

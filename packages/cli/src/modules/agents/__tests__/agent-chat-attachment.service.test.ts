@@ -4,18 +4,56 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentChatAttachmentRepository } from '../repositories/agent-chat-attachment.repository';
 
 describe('AgentChatAttachmentService', () => {
 	let binaryDataService = mock<BinaryDataService>();
 	let repository = mock<AgentChatAttachmentRepository>();
 	let service: AgentChatAttachmentService;
+	let threadRepository = mock<AgentExecutionThreadRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		binaryDataService = mock<BinaryDataService>();
 		repository = mock<AgentChatAttachmentRepository>();
-		service = new AgentChatAttachmentService(mock<Logger>(), binaryDataService, repository);
+		threadRepository = mock<AgentExecutionThreadRepository>();
+		service = new AgentChatAttachmentService(
+			mock<Logger>(),
+			binaryDataService,
+			repository,
+			threadRepository,
+		);
+	});
+
+	it('checks attachment access through the session and falls back to its persisted resource', async () => {
+		const scope = { agentId: 'agent-1', projectId: 'project-1', userId: 'user-1' };
+		const attachment = mock<AgentChatAttachment>({
+			threadId: 'thread-1',
+			resourceId: 'draft-chat:user-1',
+		});
+		repository.findByIdForAgent.mockResolvedValue(attachment);
+		const thread = mock<AgentExecutionThread>({
+			agentId: scope.agentId,
+			projectId: scope.projectId,
+			accessScope: 'user',
+			ownerId: scope.userId,
+		});
+		threadRepository.findOneBy.mockResolvedValue(thread);
+		expect(await service.getForAgent('att-1', scope)).toEqual(attachment);
+		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toBeNull();
+		threadRepository.findOneBy.mockResolvedValue({ ...thread, ownerId: null });
+		expect(await service.getForAgent('att-1', scope)).toBeNull();
+		threadRepository.findOneBy.mockResolvedValue(null);
+		expect(await service.getForAgent('att-1', scope)).toEqual(attachment);
+		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toBeNull();
+		threadRepository.findOneBy.mockResolvedValue({
+			...thread,
+			accessScope: 'project',
+			ownerId: null,
+		});
+		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toEqual(attachment);
 	});
 
 	describe('storeInbound', () => {

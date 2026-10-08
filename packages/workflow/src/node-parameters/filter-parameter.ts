@@ -1,7 +1,7 @@
 import type { Result } from '@n8n/utils/result';
 import type { DateTime } from 'luxon';
 
-import { UserError } from '../errors/base/user.error';
+import { UserError } from '@n8n/errors';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,

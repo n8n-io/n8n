@@ -16,6 +16,12 @@ type BlockingIssue =
 	| { type: 'project-conflict'; sourceProjectId: string; name: string }
 	| { type: 'workflow-removal-forbidden'; workflowId: string; name: string; projectId: string }
 	| {
+			type: 'workflow-removal-conflict';
+			sourceWorkflowId: string;
+			workflowId: string;
+			projectId: string;
+	  }
+	| {
 			type: 'workflow-archive-forbidden';
 			sourceWorkflowId: string;
 			existingWorkflowId: string;
@@ -48,7 +54,44 @@ type BlockingIssue =
 			name?: string;
 			missingScope?: string;
 			usedByWorkflows: string[];
+	  }
+	| {
+			type: 'data-table-unresolved';
+			kind: string;
+			sourceId?: string;
+			name?: string;
+			missingScope?: string;
+			missingColumns?: string[];
+			typeMismatches?: Array<{ column: string }>;
+			extraColumns?: string[];
+			overwriteChanges?: DataTableSchemaChange[];
+			currentName?: string;
+			conflictingTableId?: string;
+			usedByWorkflows: string[];
 	  };
+
+type DataTableSchemaChange = { destructive?: boolean } & (
+	| { kind: 'add-column'; column: string }
+	| { kind: 'remove-column'; column: string }
+	| { kind: 'change-column-type'; column: string; from: string; to: string }
+	| { kind: 'reorder-columns' }
+	| { kind: 'rename-table'; from: string; to: string }
+);
+
+function describeSchemaChange(change: DataTableSchemaChange): string {
+	switch (change.kind) {
+		case 'add-column':
+			return `add column ${change.column}`;
+		case 'remove-column':
+			return `remove column ${change.column}`;
+		case 'change-column-type':
+			return `change column ${change.column} from ${change.from} to ${change.to}`;
+		case 'reorder-columns':
+			return 'reorder columns';
+		case 'rename-table':
+			return `rename table "${change.from}" to "${change.to}"`;
+	}
+}
 
 function formatIssue(issue: unknown): string {
 	if (typeof issue !== 'object' || issue === null) return JSON.stringify(issue);
@@ -68,7 +111,10 @@ function formatIssue(issue: unknown): string {
 		return `project "${it.name}" (source ${it.sourceProjectId}) already exists on this instance`;
 	}
 	if (it.type === 'workflow-removal-forbidden') {
-		return `workflow "${it.name}" (${it.workflowId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;
+		return `workflow "${it.name}" (${it.workflowId}) in project ${it.projectId} could not be removed — not in the package or selected for deletion, and you lack permission`;
+	}
+	if (it.type === 'workflow-removal-conflict') {
+		return `Workflow ${it.workflowId} (source ${it.sourceWorkflowId}) in project ${it.projectId} is selected for both import and deletion. Remove it from one selection.`;
 	}
 	if (it.type === 'workflow-archive-forbidden') {
 		return `workflow "${it.name}" (${it.existingWorkflowId}) in project ${it.projectId} must be ${it.transition}d to match the package, but you lack permission to do so`;
@@ -104,6 +150,32 @@ function formatIssue(issue: unknown): string {
 			return `tag import requires the ${it.missingScope} scope, needed by workflow(s) ${usedBy}`;
 		}
 		return `tag "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'data-table-unresolved') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		if (it.kind === 'permission-denied') {
+			return `data table import requires the ${it.missingScope} scope, needed by workflow(s) ${usedBy}`;
+		}
+		if (it.kind === 'schema-incompatible') {
+			const reasons = [
+				it.missingColumns?.length ? `missing columns: ${it.missingColumns.join(', ')}` : '',
+				it.typeMismatches?.length
+					? `different types: ${it.typeMismatches.map(({ column }) => column).join(', ')}`
+					: '',
+				it.extraColumns?.length ? `extra columns: ${it.extraColumns.join(', ')}` : '',
+			].filter(Boolean);
+			const changes = it.overwriteChanges?.length
+				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (data lost)` : describeSchemaChange(change))).join(', ')}`
+				: '';
+			return `data table "${it.name}" (${it.sourceId}) does not match the package schema (${reasons.join('; ')}), used by workflow(s) ${usedBy}${changes}`;
+		}
+		if (it.kind === 'name-conflict') {
+			const action = it.currentName
+				? `"${it.currentName}" (${it.sourceId}) cannot be renamed to "${it.name}"`
+				: `"${it.name}" (${it.sourceId}) cannot be created`;
+			return `data table ${action}: the name is also used by table ${it.conflictingTableId}, used by workflow(s) ${usedBy}`;
+		}
+		return `data table "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
 	}
 	return JSON.stringify(issue);
 }

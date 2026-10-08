@@ -1,6 +1,11 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
+import type {
+	AgentExecutionCounter,
+	ModelConfig,
+	SerializableAgentState,
+	TokenUsage,
+} from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
@@ -64,6 +69,8 @@ export interface BuiltMemory {
 		threadId: string;
 		resourceId: string;
 		messages: AgentDbMessage[];
+		/** Host context for linking persisted messages to the current run. */
+		hostMetadata?: JSONObject;
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
@@ -77,8 +84,13 @@ export interface BuiltMemory {
 
 export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
 
+/**
+ * Who asked and where. Stores decide the storage scope from both: a host can
+ * key shared conversations by thread and still resolve recall per resource.
+ */
 export interface EpisodicMemoryScope {
 	resourceId: string;
+	threadId: string;
 }
 
 export type EpisodicMemoryCaptureKind =
@@ -174,6 +186,8 @@ export interface EpisodicMemorySearchOptions {
 	topK?: number;
 	queryEmbedding?: number[];
 	includeStatuses?: EpisodicMemoryStatus[];
+	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
+	writeScopeOnly?: boolean;
 }
 
 export interface EpisodicMemoryTaskLockHandle {
@@ -184,7 +198,7 @@ export interface EpisodicMemoryTaskLockHandle {
 
 export interface EpisodicMemoryTaskLockMethods {
 	acquire(
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null>;
 	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
@@ -247,9 +261,23 @@ export interface EpisodicMemoryReflectorInput {
 	executionCounter?: AgentExecutionCounter;
 }
 
+export interface EpisodicMemoryReflectResult {
+	reflection: EpisodicMemoryReflection;
+	/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the reflection. */
+	model: string;
+}
+
+/**
+ * Reflect a cluster of episodic entries. Returns the reflection, or a
+ * `{ reflection, usage, model }` result that also carries token usage for the
+ * host to price. Bare `EpisodicMemoryReflection` returns are accepted for
+ * backward compatibility.
+ */
 export type EpisodicMemoryReflectFn = (
 	input: EpisodicMemoryReflectorInput,
-) => Promise<EpisodicMemoryReflection>;
+) => Promise<EpisodicMemoryReflection | EpisodicMemoryReflectResult>;
 
 export interface EpisodicMemoryReflectionApplyMerge {
 	supersedes: string[];
@@ -308,6 +336,11 @@ export interface ObservationLogMemoryConfig {
 export interface ObservationalMemoryConfig {
 	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
 	observerThresholdTokens?: number;
+	/**
+	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
+	 * When `false`, the Observer runs only after the turn completes.
+	 */
+	midRunObservation?: boolean;
 	/** Estimated active observation-log tokens required before the Reflector runs. */
 	reflectorThresholdTokens?: number;
 	/** Maximum estimated tokens to render into the system prompt. */
@@ -369,6 +402,6 @@ export interface CheckpointStore {
 	 * false when another process has already claimed or changed the snapshot.
 	 */
 	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

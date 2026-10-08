@@ -15,6 +15,7 @@ import {
 	StoppedExecutionsPublicDto,
 	TagIdsPublicDto,
 } from '@n8n/api-types';
+import { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
 import {
@@ -33,22 +34,20 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { StopResult } from '@/executions/execution.types';
+import type { TracingContext } from '@/modules/otel/tracing-context';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
 
@@ -113,7 +112,7 @@ export class ExecutionsPublicController {
 
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:read'],
+			['execution:read'],
 			query.projectId,
 		);
 
@@ -178,7 +177,7 @@ export class ExecutionsPublicController {
 	): Promise<ExecutionPublicDto> {
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:read'],
+			['execution:read'],
 		);
 
 		if (!sharedWorkflowsIds.length) {
@@ -233,7 +232,7 @@ export class ExecutionsPublicController {
 	): Promise<DeletedExecutionPublicDto> {
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:delete'],
+			['execution:delete'],
 		);
 
 		if (!sharedWorkflowsIds.length) {
@@ -434,8 +433,18 @@ export class ExecutionsPublicController {
 	}
 }
 
+function toPublicTracingContext(tracingContext: unknown): TracingContext | null {
+	if (!isRecord(tracingContext)) return null;
+
+	const { traceparent, tracestate } = tracingContext;
+	if (typeof traceparent !== 'string' || traceparent.length === 0) return null;
+
+	return typeof tracestate === 'string' ? { traceparent, tracestate } : { traceparent };
+}
+
 function toBaseFields(execution: PublicExecution) {
 	return {
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -448,7 +457,7 @@ function toBaseFields(execution: PublicExecution) {
 		workflowId: execution.workflowId,
 		waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
 		storedAt: execution.storedAt,
-		tracingContext: execution.tracingContext ?? null,
+		tracingContext: toPublicTracingContext(execution.tracingContext),
 		deduplicationKey: execution.deduplicationKey ?? null,
 		jsonSizeBytes: execution.jsonSizeBytes ?? 0,
 		binaryDataSizeBytes: execution.binaryDataSizeBytes ?? 0,
@@ -460,6 +469,7 @@ function toBaseFields(execution: PublicExecution) {
 function toExecutionListItem(execution: PublicExecution) {
 	return {
 		id: execution.id,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -545,6 +555,7 @@ function toRetriedExecutionPublicDto(
 		mode: retried.mode,
 		startedAt: retried.startedAt.toISOString(),
 		workflowId: retried.workflowId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: retried.finished,
 		retryOf: retried.retryOf ?? null,
 		status: retried.status,

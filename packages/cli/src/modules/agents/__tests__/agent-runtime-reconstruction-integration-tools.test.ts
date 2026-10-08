@@ -1,3 +1,9 @@
+import {
+	type CredentialsFinderService,
+	type EventService,
+	type ProjectScopeService,
+} from '@n8n/backend-services';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -5,6 +11,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
+	TransactionRunner,
 	User,
 	CredentialsEntity,
 	ProjectRelationRepository,
@@ -12,12 +19,11 @@ import type {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -27,12 +33,18 @@ import type { AiService } from '@/services/ai.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
+import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
@@ -41,8 +53,12 @@ import { AgentPublishService } from '../agent-publish.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
+import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
@@ -68,6 +84,8 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -214,6 +232,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
+		agentExecutionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
@@ -235,8 +254,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		runtimeCacheService = new AgentRuntimeCacheService(
 			logger,
 			agentRepository,
-			publisher,
-			globalConfig,
+			new AgentChangePublisher(publisher, globalConfig, logger),
 			agentRuntimeReconstructionService,
 			credentialsService,
 			agentSandboxRuntimeService,
@@ -244,37 +262,49 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();
 		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
-		agentSkillsService = new AgentSkillsService(
-			logger,
-			agentRepository,
-			modificationTelemetry,
+		const saveCompletion = new AgentSaveCompletionService(
+			mock<EventService>(),
 			agentUpdateBroadcaster,
+			modificationTelemetry,
 		);
+		const transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		agentRepository.hasRevision.mockResolvedValue(true);
+		const definitionService = new AgentDefinitionService(
+			agentTaskRepository,
+			agentTaskSnapshotRepository,
+			agentRepository,
+			transactionRunner,
+		);
+		agentSkillsService = new AgentSkillsService(logger, agentRepository, saveCompletion);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
 			agentTaskRepository,
 			agentSkillsService,
-			runtimeCacheService,
-			credentialsService,
-			mock<WorkflowRepository>(),
-			mock<NodeToolAiGatewayService>(),
-			mock<EventService>(),
+			new AgentConfigPreparationService(
+				credentialsService,
+				mock<WorkflowRepository>(),
+				mock<NodeToolAiGatewayService>(),
+			),
 			mock<AgentSetupCompletionService>(),
-			modificationTelemetry,
-			agentUpdateBroadcaster,
+			transactionRunner,
+			saveCompletion,
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
-		agentCustomToolsService = new AgentCustomToolsService(
-			logger,
-			agentRepository,
-			runtimeCacheService,
-			modificationTelemetry,
-			agentUpdateBroadcaster,
-		);
+		agentCustomToolsService = new AgentCustomToolsService(logger, agentRepository, saveCompletion);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
 			n8nCheckpointStorage,
 			agentExecutionService,
+			new AgentTurnExecutionService(
+				logger,
+				agentExecutionService,
+				mock<AgentChatExecutionService>(),
+				mock<AgentMessageQueueService>(),
+				mock<AgentMessageSteeringService>(),
+				mock<AgentToolApprovalService>(),
+			),
 			telemetry,
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
@@ -283,6 +313,10 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentSandboxRuntimeService,
 			agentRepository,
 			mock<AiConfig>(),
+			mock<AgentChatExecutionService>(),
+			mock<AgentBackgroundJobRepository>(),
+			mock<AgentBackgroundJobService>(),
+			mock<AgentsSettingsService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -295,8 +329,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
-			agentTaskRepository,
-			agentTaskSnapshotRepository,
+			definitionService,
 			mock<NodeTypes>(),
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
@@ -315,8 +348,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			telemetry,
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
-			mock<AgentModificationTelemetryService>(),
 			mock<AgentUpdateBroadcaster>(),
+			transactionRunner,
+			saveCompletion,
+			definitionService,
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
@@ -332,6 +368,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			agentExecutionService,
 			credentialsService,
+			mock<ProjectScopeService>(),
+			mock<AgentsSettingsService>(),
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

@@ -5,16 +5,21 @@ import type {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
+	Repository,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
-import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
 	}
 
 	async findManyByIds(
@@ -43,8 +48,8 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	async findByIdWithRole(id: string): Promise<User | null> {
-		return await this.findOne({
+	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
 			where: { id },
 			relations: ['role'],
 		});
@@ -89,6 +94,54 @@ export class UserRepository extends Repository<User> {
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
+	}
+
+	/**
+	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
+	 * when the email changed concurrently and `'email-taken'` when another user
+	 * already owns `newEmail`, so the caller can reject the request.
+	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
+	 */
+	async changeEmail(
+		userId: string,
+		oldEmail: string,
+		newEmail: string,
+	): Promise<'changed' | 'stale' | 'email-taken'> {
+		return await this.manager.transaction(async (trx) => {
+			const user = await trx.findOne(User, {
+				where: { id: userId },
+				// Serialize concurrent changes on Postgres; SQLite serializes writes.
+				...(trx.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			if (user?.email !== oldEmail) return 'stale';
+			user.email = newEmail;
+			try {
+				await trx.save(User, user);
+			} catch (error) {
+				// Another user took `newEmail` between the caller's check and this save.
+				if (isUniqueConstraintError(error)) return 'email-taken';
+				throw error;
+			}
+			return 'changed';
+		});
+	}
+
+	/**
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
+	 */
+	async hasClaimedInstanceOwner(): Promise<boolean> {
+		return await this.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
+		});
 	}
 
 	async deleteAllExcept(user: User) {

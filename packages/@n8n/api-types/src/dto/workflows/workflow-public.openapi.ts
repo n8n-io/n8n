@@ -103,6 +103,10 @@ export const workflowSettingsFieldDocs = {
 
 export const workflowCreateFieldDocs = {
 	name: { example: 'Workflow 1' },
+	description: {
+		description: 'Description of the workflow',
+		example: 'My workflow description',
+	},
 	nodes: { description: 'Nodes that make up the workflow' },
 	nodeGroups: { description: 'Visual groupings of nodes shown as frames on the canvas' },
 	staticData: { description: 'Data the workflow keeps between executions', example: { lastId: 1 } },
@@ -342,9 +346,15 @@ const requestNodeGroupsOpenApi = nestingDescriptor({
 	},
 });
 
+export const workflowActiveDeprecationDocs = {
+	description: 'Deprecated. Check whether `activeVersionId` is not null instead.',
+	deprecated: true,
+} as const satisfies ZodOpenAPIMetadata;
+
 export const workflowCreateReadOnlyFieldDocs = {
 	id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },
-	active: { type: 'boolean', readOnly: true },
+	active: { type: 'boolean', readOnly: true, ...workflowActiveDeprecationDocs },
+	activeVersionId: alsoNullable({ type: 'string', readOnly: true }),
 	createdAt: { type: 'string', format: 'date-time', readOnly: true },
 	updatedAt: { type: 'string', format: 'date-time', readOnly: true },
 	isArchived: { type: 'boolean', readOnly: true },

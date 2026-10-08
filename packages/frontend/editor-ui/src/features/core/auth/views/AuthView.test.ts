@@ -4,13 +4,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 const renderComponent = createComponentRenderer(AuthView, {
 	pinia: createTestingPinia(),
-	global: {
-		stubs: {
-			SSOLogin: {
-				template: '<div data-test-id="sso-login"></div>',
-			},
-		},
-	},
 });
 
 describe('AuthView', () => {
@@ -23,17 +16,26 @@ describe('AuthView', () => {
 		expect(getByText('Some text')).toBeInTheDocument();
 	});
 
-	it('should render without SSO component', () => {
-		const { queryByTestId } = renderComponent();
-		expect(queryByTestId('sso-login')).not.toBeInTheDocument();
-	});
-
-	it('should render with SSO component', () => {
-		const { getByTestId } = renderComponent({
+	it('should render the form box when a form is passed', () => {
+		const { getByTestId, getByText } = renderComponent({
 			props: {
-				withSso: true,
+				form: { title: 'Form title', inputs: [] },
 			},
 		});
-		expect(getByTestId('sso-login')).toBeInTheDocument();
+		expect(getByTestId('auth-form')).toBeInTheDocument();
+		expect(getByText('Form title')).toBeInTheDocument();
+	});
+
+	it('should render the default slot in place of the form box', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				form: { title: 'Form title', inputs: [] },
+			},
+			slots: {
+				default: '<div data-test-id="custom-card"></div>',
+			},
+		});
+		expect(getByTestId('custom-card')).toBeInTheDocument();
+		expect(queryByTestId('auth-form')).not.toBeInTheDocument();
 	});
 });

@@ -46,6 +46,18 @@ export interface ITelegramReplyKeyboard extends IMarkupReplyKeyboardOptions {
 	keyboard: ITelegramKeyboardButton[][];
 }
 
+/**
+ * Response of the `getWebhookInfo` endpoint. Every field is optional: the
+ * credential's Base URL can point at any host, so a 2xx response does not
+ * guarantee the payload Telegram sends.
+ */
+export interface TelegramWebhookInfo {
+	result?: {
+		url?: string;
+		allowed_updates?: string[];
+	};
+}
+
 // Shared interfaces
 export interface IMarkupForceReply {
 	force_reply?: boolean;

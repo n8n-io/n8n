@@ -12,6 +12,7 @@ describe('DeprecationService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		nodes: { exclude: [] },
 		executions: { mode: 'regular' },
+		taskRunners: { mode: 'internal' },
 	});
 	const instanceSettings = mockInstance(InstanceSettings, {
 		instanceType: 'main',
@@ -64,6 +65,7 @@ describe('DeprecationService', () => {
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
 		['N8N_RUNNERS_ENABLED', '1', true],
+		['N8N_DB_PING_TIMEOUT', '1', true],
 		['WEBHOOK_URL', 'https://example.com/', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'default', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
@@ -78,13 +80,28 @@ describe('DeprecationService', () => {
 		['N8N_OUTBOUND_PROXY_MODE', undefined, false],
 		['N8N_RUNNERS_MODE', 'internal', true],
 		['N8N_RUNNERS_MODE', 'external', false],
-		['N8N_RUNNERS_MODE', undefined, false],
+		['N8N_RUNNERS_MODE', undefined, true],
 		['N8N_SSRF_PROTECTION_ENABLED', 'true', true],
 		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
 		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],
 		['N8N_SSRF_PROTECTION_ENABLED', undefined, false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'false', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'FALSE', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', '0', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'true', false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'invalid', false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
+	});
+
+	// `toTest` treats a blank value as unset, so set it here directly.
+	test('should not warn when N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is blank', () => {
+		process.env.N8N_AI_ALLOW_SENDING_PARAMETER_VALUES = '';
+		deprecationService.warn();
+		expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(
+			'N8N_AI_ALLOW_SENDING_PARAMETER_VALUES',
+		);
 	});
 
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {

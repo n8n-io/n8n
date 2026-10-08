@@ -276,12 +276,6 @@ export class SchedulerConfig {
 	 * was and the next scheduled poll covers the same ground. It counts as a poll
 	 * failure, so a source that keeps timing out is polled at a widening interval.
 	 * Guards against a poll stuck on an unresponsive source running indefinitely.
-	 *
-	 * Keep it below {@link leaseDurationSeconds}: the deadline only starts after
-	 * the occurrence's setup reads, so a poll allowed to run as long as the claim
-	 * on its run can still be in flight when that claim expires and another
-	 * instance takes the run over. The default leaves that headroom, and the
-	 * scheduler warns at startup when the timeout reaches the lease duration.
 	 * Must be greater than 0 and at most one day.
 	 */
 	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema.max(Time.days.toSeconds))
@@ -313,6 +307,8 @@ export class SchedulerConfig {
 	 * side (for example during a rolling deploy), the older instances still run
 	 * these jobs on their own timers, so the same job could run twice at the
 	 * same time.
+	 *
+	 * Give every instance the same value, and the same {@link enabled}.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;

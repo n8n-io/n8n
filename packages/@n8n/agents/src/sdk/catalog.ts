@@ -51,6 +51,8 @@ export interface ModelInfo {
 	name: string;
 	/** Release date in ISO date format when available from models.dev. */
 	releaseDate?: string;
+	/** Lifecycle status reported by the catalog, such as alpha or beta. */
+	status?: string;
 	/** Whether the model supports reasoning / thinking, when reported by models.dev. */
 	reasoning?: boolean;
 	/**
@@ -60,6 +62,8 @@ export interface ModelInfo {
 	temperature?: boolean;
 	/** Whether the model supports tool calling. */
 	toolCall: boolean;
+	/** Whether the catalog supplied tool-call support. Keeps the legacy false default intact. */
+	toolCallKnown?: boolean;
 	/** Input and output types supported by the model. */
 	modalities?: ModelModalities;
 	/** Cost per million tokens. */
@@ -207,9 +211,11 @@ export async function fetchProviderCatalog(options?: {
 				id: model.id,
 				name: model.name,
 				...(model.release_date !== undefined && { releaseDate: model.release_date }),
+				...(model.status !== undefined && { status: model.status }),
 				...(model.reasoning !== undefined && { reasoning: model.reasoning }),
 				...(model.temperature !== undefined && { temperature: model.temperature }),
 				toolCall: model.tool_call ?? false,
+				toolCallKnown: model.tool_call !== undefined,
 				...(model.modalities !== undefined && { modalities: model.modalities }),
 			};
 			if (model.cost?.input !== undefined && model.cost?.output !== undefined) {

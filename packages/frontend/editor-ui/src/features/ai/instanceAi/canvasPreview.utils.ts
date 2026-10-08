@@ -84,6 +84,50 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	return undefined;
 }
 
+export interface CallAgentResult {
+	message: string;
+	response: string;
+	/** Unique per call — a later test call re-fires watchers. */
+	toolCallId: string;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the message
+ * and response from the latest completed `call_agent` test run against
+ * `targetAgentId` — the builder's own "Testing agent" step already runs a
+ * representative message against the draft agent, so a caller needing a real
+ * input/output pair for preview purposes can reuse it instead of generating
+ * and running its own. Scoped to `targetAgentId` (resolved the same way as
+ * `getLatestAgentArtifactResult`) so a `call_agent` result from an earlier
+ * agent built in this thread is never mistaken for the one just built.
+ */
+export function getLatestCallAgentResult(
+	node: InstanceAiAgentNode,
+	targetAgentId: string,
+): CallAgentResult | undefined {
+	return walkAgentTargetedResult(node, undefined, (tc, callTarget) => {
+		if (callTarget?.agentId !== targetAgentId) return undefined;
+		if (
+			tc.toolName !== 'call_agent' ||
+			tc.isLoading ||
+			!tc.result ||
+			typeof tc.result !== 'object'
+		) {
+			return undefined;
+		}
+		const args = tc.args;
+		const result = tc.result as Record<string, unknown>;
+		if (
+			result.status === 'completed' &&
+			typeof result.response === 'string' &&
+			typeof args.message === 'string'
+		) {
+			return { message: args.message, response: result.response, toolCallId: tc.toolCallId };
+		}
+		return undefined;
+	}).result;
+}
+
 /** A workflow-builder sub-agent node, identified by kind or role. */
 function isBuilderNode(node: InstanceAiAgentNode): boolean {
 	return node.kind === 'builder' || node.role === 'workflow-builder';
@@ -117,6 +161,7 @@ export interface AgentBuilderTarget {
 	/** The builder sub-agent node id (`agent-builder:<targetAgentId>`). */
 	agentId: string;
 	targetAgentId: string;
+	activity?: InstanceAiAgentNode['activity'];
 }
 
 /**
@@ -138,7 +183,11 @@ export function getLatestAgentBuilderTarget(
 			child.targetResource?.type === 'agent' &&
 			typeof child.targetResource.id === 'string'
 		) {
-			return { agentId: child.agentId, targetAgentId: child.targetResource.id };
+			return {
+				agentId: child.agentId,
+				targetAgentId: child.targetResource.id,
+				activity: child.activity,
+			};
 		}
 	}
 	return undefined;
@@ -240,12 +289,37 @@ const WORKFLOW_LOCKING_TOOLS = new Set([
  *      restore-version / setup action. Read-only `workflows` actions (including
  *      historical get-json events, get, list, …) don't lock.
  */
-export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
+export function isAgentEditingWorkflow(
+	node: InstanceAiAgentNode,
+	workflowId: string,
+	announcement = node.latestSetupAnnouncement,
+): boolean {
+	const announcedBuild =
+		announcement?.workflowId === workflowId &&
+		node.toolCalls.some(
+			(call) =>
+				call.isLoading &&
+				call.toolName === 'build-workflow' &&
+				!call.args?.workflowId &&
+				announcement.agentId === node.agentId &&
+				call.startedAt &&
+				announcement.timestamp >= call.startedAt,
+		);
 	if (
 		node.status === 'active' &&
 		(getLatestBuildResult(node)?.workflowId === workflowId ||
 			getLatestWorkflowSetupResult(node)?.workflowId === workflowId ||
-			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId)
+			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
+			node.toolCalls.some(
+				(call) =>
+					call.toolName === 'credentials' &&
+					call.args?.action === 'setup' &&
+					isRecord(call.result) &&
+					call.result.announced === true &&
+					call.result.preBuild === true &&
+					call.result.workflowId === workflowId,
+			) ||
+			announcedBuild)
 	) {
 		return true;
 	}
@@ -277,7 +351,7 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 	}
 
 	for (const child of node.children) {
-		if (isAgentEditingWorkflow(child, workflowId)) return true;
+		if (isAgentEditingWorkflow(child, workflowId, announcement)) return true;
 	}
 	return false;
 }
@@ -482,12 +556,18 @@ function matchAgentArtifactToolCall(
 	if (tc.toolName !== 'build-agent') return undefined;
 
 	const result = tc.result as Record<string, unknown>;
-	const args = tc.args as Record<string, unknown> | undefined;
-
-	if (result.ok === true && typeof args?.name === 'string') {
+	if (result.agentChange === 'created') {
 		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
 	}
-	if (result.configUpdated === true) {
+	if (result.agentChange === 'updated') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+	}
+	// Keep old stored threads working until all results include agentChange.
+	const args = tc.args as Record<string, unknown> | undefined;
+	if (result.agentChange === undefined && result.ok === true && typeof args?.name === 'string') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
+	}
+	if (result.agentChange === undefined && result.configUpdated === true) {
 		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
 	}
 	return undefined;

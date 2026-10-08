@@ -2,6 +2,8 @@ import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { generateKeyPairSync } from 'node:crypto';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -26,7 +28,16 @@ const mockReqWith = (authHeader: string | undefined, body?: any) => {
 };
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
-const jwtService = new JwtService(instanceSettings, mock());
+const jwtService = new JwtService(instanceSettings, mock(), mock());
+const signingKey = generateKeyPairSync('ec', { namedCurve: 'P-256' }).privateKey;
+
+/** An access token in the shape n8n mints. The verifier is mocked, so only its claims matter. */
+const signOAuthToken = () =>
+	jwt.sign({ sub: 'user-123', meta: { isOAuth: true } }, signingKey, {
+		algorithm: 'ES256',
+		audience: 'https://n8n.example.com/mcp-server/http',
+		header: { alg: 'ES256', typ: 'at+jwt', kid: 'signing-kid' },
+	});
 
 let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
 let oauthTokenVerifier: Mocked<OAuthTokenVerifierProxy>;
@@ -61,11 +72,7 @@ describe('McpServerMiddlewareService', () => {
 	describe('getUserForToken', () => {
 		it('should return user for valid OAuth token (meta.isOAuth = true)', async () => {
 			const user = mock<User>({ id: 'user-123' });
-			const oauthToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-				meta: { isOAuth: true },
-			});
+			const oauthToken = signOAuthToken();
 
 			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
 				user,
@@ -84,10 +91,7 @@ describe('McpServerMiddlewareService', () => {
 
 		it('should return user for valid API key (no meta.isOAuth)', async () => {
 			const user = mock<User>({ id: 'user-123' });
-			const apiKeyToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-			});
+			const apiKeyToken = jwtService.sign('mcpApiKey', { sub: 'user-123' });
 
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({
 				user,
@@ -103,9 +107,8 @@ describe('McpServerMiddlewareService', () => {
 
 		it('should return user for valid API key (meta.isOAuth = false)', async () => {
 			const user = mock<User>({ id: 'user-123' });
-			const apiKeyToken = jwtService.sign({
+			const apiKeyToken = jwtService.sign('mcpApiKey', {
 				sub: 'user-123',
-				aud: 'mcp-server-api',
 				meta: { isOAuth: false },
 			});
 
@@ -132,11 +135,7 @@ describe('McpServerMiddlewareService', () => {
 		});
 
 		it('should return null when OAuth token verification fails', async () => {
-			const oauthToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-				meta: { isOAuth: true },
-			});
+			const oauthToken = signOAuthToken();
 
 			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
@@ -146,10 +145,7 @@ describe('McpServerMiddlewareService', () => {
 		});
 
 		it('should return null when API key verification fails', async () => {
-			const apiKeyToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-			});
+			const apiKeyToken = jwtService.sign('mcpApiKey', { sub: 'user-123' });
 
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 
@@ -310,11 +306,7 @@ describe('McpServerMiddlewareService', () => {
 
 		it('should authenticate with valid OAuth token and call next', async () => {
 			const user = mock<User>({ id: 'user-123' });
-			const oauthToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-				meta: { isOAuth: true },
-			});
+			const oauthToken = signOAuthToken();
 
 			const req = mockReqWith(`Bearer ${oauthToken}`);
 			const res = mockDeep<Response>();
@@ -338,11 +330,7 @@ describe('McpServerMiddlewareService', () => {
 
 		it('should attach the OAuth token scopes to the request', async () => {
 			const user = mock<User>({ id: 'user-123' });
-			const oauthToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-				meta: { isOAuth: true },
-			});
+			const oauthToken = signOAuthToken();
 
 			const req = mockReqWith(`Bearer ${oauthToken}`);
 			const res = mockDeep<Response>();
@@ -363,11 +351,7 @@ describe('McpServerMiddlewareService', () => {
 
 		it('should attach the OAuth client the token was issued to', async () => {
 			const user = mock<User>({ id: 'user-123' });
-			const oauthToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-				meta: { isOAuth: true },
-			});
+			const oauthToken = signOAuthToken();
 
 			const req = mockReqWith(`Bearer ${oauthToken}`);
 			const res = mockDeep<Response>();
@@ -389,10 +373,7 @@ describe('McpServerMiddlewareService', () => {
 
 		it('should authenticate with valid API key and call next', async () => {
 			const user = mock<User>({ id: 'user-123' });
-			const apiKeyToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-			});
+			const apiKeyToken = jwtService.sign('mcpApiKey', { sub: 'user-123' });
 
 			const req = mockReqWith(`Bearer ${apiKeyToken}`);
 			const res = mockDeep<Response>();
@@ -423,7 +404,7 @@ describe('McpServerMiddlewareService', () => {
 
 		it('should authenticate with a delegated scoped JWT and set req.user to the actor', async () => {
 			const actor = mock<User>({ id: 'actor-1' });
-			const scopedJwt = jwtService.sign({
+			const scopedJwt = jwtService.sign('tokenExchange', {
 				iss: 'n8n-token-exchange',
 				sub: 'subject-1',
 				act: { sub: 'actor-1' },
@@ -450,11 +431,7 @@ describe('McpServerMiddlewareService', () => {
 		});
 
 		it('should return 401 with WWW-Authenticate header when token validation fails', async () => {
-			const invalidToken = jwtService.sign({
-				sub: 'user-123',
-				aud: 'mcp-server-api',
-				meta: { isOAuth: true },
-			});
+			const invalidToken = signOAuthToken();
 
 			const req = mockReqWith(`Bearer ${invalidToken}`);
 			const res = mockDeep<Response>();

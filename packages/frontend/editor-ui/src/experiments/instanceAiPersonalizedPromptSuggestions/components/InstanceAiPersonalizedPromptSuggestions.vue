@@ -8,6 +8,7 @@ import type {
 	PersonalizedPromptFormat,
 	PersonalizedPromptSuggestionSource,
 } from '../types';
+import type { InstanceAiPrefillDeclaration } from '@/features/ai/instanceAi/prefills';
 
 const SUGGESTION_ENTER_STAGGER_MS = 45;
 
@@ -19,7 +20,7 @@ const props = defineProps<{
 	showSeeMore: boolean;
 }>();
 
-type InsertSuggestionPayload = {
+type InsertSuggestionPayload = InstanceAiPrefillDeclaration & {
 	prompt: string;
 	suggestionId: string;
 	suggestionKind: 'prompt';
@@ -91,6 +92,7 @@ function handleSuggestionClick(suggestion: PersonalizedPromptDisplaySuggestion) 
 		suggestionId: suggestion.id,
 		suggestionKind: 'prompt',
 		position,
+		prefillType: 'suggestion_catalog',
 		telemetryPayload: isShowingFallback.value
 			? {
 					suggestion_source: 'v2_top_used_fallback',

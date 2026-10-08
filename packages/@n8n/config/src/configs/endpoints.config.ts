@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 export class PrometheusMetricsConfig {
@@ -72,6 +73,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
 	includePollTriggerMetrics: boolean = false;
 
+	/** Whether to include system task metrics (run duration, skips, in-flight runs, last success, scheduling failures). */
+	@Env('N8N_METRICS_INCLUDE_SYSTEM_TASK_METRICS')
+	includeSystemTaskMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -131,6 +136,10 @@ export class PrometheusMetricsConfig {
 	/** Whether to include metrics for the workflow publication service (main instances only). */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
 	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** Whether to include MCP workflow-builder post-save failure metrics. */
+	@Env('N8N_METRICS_INCLUDE_MCP_POST_SAVE_METRICS')
+	includeMcpPostSaveMetrics: boolean = false;
 
 	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
 	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
@@ -198,14 +207,6 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;
 
-	/**
-	 * Force-enable Canvas node-group support in the MCP workflow-builder tools.
-	 * Acts as an operator-level override of the PostHog rollout flag.
-	 * Cannot force-disable: setting this to `false` falls back to PostHog.
-	 */
-	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
-	mcpCanvasGroupsEnabled: boolean = false;
-
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;
@@ -228,4 +229,8 @@ export class EndpointsConfig {
 		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
 	)
 	health: string = '/healthz';
+
+	/** Milliseconds the editor waits for a health check response before showing offline status. */
+	@Env('N8N_FRONTEND_HEALTH_CHECK_TIMEOUT_MS', positiveIntSchema.max(2_147_483_647))
+	frontendHealthCheckTimeoutMs: number = 5000;
 }

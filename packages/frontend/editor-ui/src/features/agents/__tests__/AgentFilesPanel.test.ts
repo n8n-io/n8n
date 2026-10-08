@@ -88,12 +88,8 @@ describe('AgentFilesPanel', () => {
 		expect(wrapper.findComponent({ name: 'N8nEmptyState' }).props('buttonDisabled')).toBe(true);
 	});
 
-	it('shows the knowledge base title with a tooltip and add action', () => {
+	it('shows the add action when files exist', () => {
 		const wrapper = mountPanel({ files: [file] });
-
-		expect(wrapper.find('[data-testid="agent-files-title"]').text()).toContain(
-			'agents.builder.files.title',
-		);
 
 		const uploadButton = wrapper.findComponent({ name: 'N8nButton' });
 		expect(uploadButton.props('variant')).toBe('ghost');

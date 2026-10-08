@@ -9,12 +9,15 @@ import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
-import { STATUS_CALLBACK_PATH } from './engine-v2.constants';
+import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
+import { CREDENTIALS_RESOLVE_PATH, STATUS_CALLBACK_PATH } from './engine-v2.constants';
 
 /**
- * Receives lifecycle events from the data plane. Its own server, not a route on
- * n8n's main one, so this surface can be isolated from the editor API.
+ * Receives lifecycle events from the data plane and resolves credentials for
+ * it. It listens on its own host and port, separate from the REST API server,
+ * so an operator can restrict these internal routes to the network that the
+ * data plane uses without touching the editor's routes.
  */
 @Service()
 export class EngineControlPlaneServer {
@@ -28,6 +31,7 @@ export class EngineControlPlaneServer {
 	constructor(
 		private readonly engineConfig: EngineConfig,
 		private readonly lifecycleEventController: EngineLifecycleEventController,
+		private readonly credentialsController: EngineCredentialsController,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
@@ -44,11 +48,11 @@ export class EngineControlPlaneServer {
 		this.server.on('error', (error: NodeJS.ErrnoException) => {
 			if (error.code !== 'EADDRINUSE') {
 				// Nothing else handles these, so an unlogged one is a silent failure.
-				this.logger.error('Engine 2.0 control plane server error', { error });
+				this.logger.error('Engine v2 control plane server error', { error });
 				return;
 			}
 
-			this.logger.error(`Engine 2.0 control plane port ${port} is already in use`);
+			this.logger.error(`Engine v2 control plane port ${port} is already in use`);
 			// Skipped in tests, where exiting would kill the vitest worker.
 			if (!inTest) process.exit(1);
 		});
@@ -66,7 +70,7 @@ export class EngineControlPlaneServer {
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
 		// The bound port, not the configured one, which is `0` when the OS picks it.
-		this.logger.info(`Engine 2.0 control plane listening on http://${shownHost}:${this.port}`);
+		this.logger.info(`Engine v2 control plane listening on http://${shownHost}:${this.port}`);
 	}
 
 	async stop(): Promise<void> {
@@ -101,6 +105,14 @@ export class EngineControlPlaneServer {
 			send(
 				async (req, res) => await this.lifecycleEventController.receiveLifecycleEvents(req, res),
 			),
+		);
+
+		app.post(
+			CREDENTIALS_RESOLVE_PATH,
+			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger, 'credentials:read'),
+			rawBodyReader,
+			bodyParser,
+			send(async (req, res) => await this.credentialsController.resolveCredential(req, res)),
 		);
 	}
 }

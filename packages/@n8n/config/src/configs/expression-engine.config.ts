@@ -4,6 +4,13 @@ import { Config, Env } from '../decorators';
 
 const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
 
+/**
+ * The engines the editor can run in a browser. `vm` is absent on purpose: isolated-vm
+ * is a native module, so the enum rejects it here instead of letting the editor accept
+ * the value and silently keep the legacy evaluator.
+ */
+const frontendExpressionEngineSchema = z.enum(['legacy', 'quickjs']);
+
 @Config
 export class ExpressionEngineConfig {
 	/**
@@ -14,6 +21,15 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
 	engine: 'legacy' | 'vm' | 'quickjs' = 'vm';
+
+	/**
+	 * Which expression engine the editor uses in the browser. Independent of `engine`:
+	 * the backend can evaluate with `vm` while the editor evaluates with `quickjs`.
+	 * - `legacy` (default) runs expressions without isolation. Soon to be deprecated.
+	 * - `quickjs` runs expressions in a QuickJS WASM sandbox.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_FRONTEND', frontendExpressionEngineSchema)
+	frontendEngine: 'legacy' | 'quickjs' = 'legacy';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')
@@ -72,6 +88,8 @@ export class ExpressionEngineConfig {
 	 * Whether a production webhook request may skip acquiring an isolate when its
 	 * trigger provably evaluates no expression during the webhook phase. Off
 	 * acquires one for every request.
+	 *
+	 * TODO(native-evaluation rollout, CAT-4699): remove through a deprecation entry.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_ALLOW_WEBHOOK_ISOLATE_SKIP')
 	allowWebhookIsolateSkip: boolean = true;
@@ -95,4 +113,13 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_COMPILE_CACHE')
 	compileCache: boolean = false;
+
+	/**
+	 * Experimental: fast native evaluation. Simple expressions are evaluated
+	 * directly by n8n instead of the expression engine, so they never need an
+	 * isolate. Every other expression is evaluated by the engine as before.
+	 * Applies to every engine.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION')
+	nativeEvaluation: boolean = false;
 }

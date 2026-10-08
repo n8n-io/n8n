@@ -67,7 +67,8 @@ function renderInlineConstraintLines(): string {
 const SAFE_METHODS_SENTENCE =
 	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')} ` +
 	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
-	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
+	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available in builder code. ' +
+	'This restriction applies to builder code only: n8n expressions (`{{ ... }}`) run full JavaScript at runtime, so all of these methods work inside an expression.';
 
 /**
  * Node-groups documentation, shared by Instance AI and the MCP `get_sdk_reference` tool.
@@ -115,9 +116,8 @@ ${renderRulesLines()}
 
 /**
  * Grouping judgement guidance: *when* to group — the rules that make a group
- * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list
- * only when the canvas-groups flag is on; Instance AI always materializes it
- * into the knowledge base.
+ * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list;
+ * Instance AI materializes it into the knowledge base.
  */
 export const GROUPING_GUIDANCE = `## Grouping
 
@@ -127,13 +127,13 @@ Every workflow needs an explicit grouping decision, taken while you write the co
 
 - **When:** count top-level items with no groups (trigger + every node or existing group). More than ${TOP_LEVEL_ITEM_CEILING} → you must group. A linear pipeline is the normal case for grouping, not an exemption: stages run in sequence (ingest → transform → deliver). ${TOP_LEVEL_ITEM_CEILING} or fewer serving one objective → leave it ungrouped.
 - **How many:** one per stage or high-level objective, typically 3-5, aiming for at most ${TOP_LEVEL_ITEM_CEILING} top-level items after grouping. Staying above ${TOP_LEVEL_ITEM_CEILING} is only acceptable when every item still at the top level is either a group already, or a node that cannot join one without breaking a validity rule — check each one before you settle. Never split one objective to hit the number. When in doubt, fewer and larger.
-- **What belongs together:** one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Cut where the objective changes; merge groups serving the same outcome. Stages of one or two nodes mean the boundaries are too fine — widen them.
+- **What belongs together:** one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Cut where the objective changes; merge groups serving the same outcome. Stages of one or two nodes mean the boundaries are too fine — widen them: merge the small stage into its neighbour rather than keeping three groups.
 - **Groups vs sub-workflows:** a group organises one canvas; a sub-workflow is separately executed and reusable. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
 
 **Boundaries:** a group takes one member receiving from outside and one member sending outside; any number of connections may reach those two members.
 
 - A branch that stops one way and continues the other: keep the branch node inside with both its paths outside, end the group before it, or leave it and its stop path outside.
-- Work that fans out into parallel branches: the node they fan out from and the node they reconverge on both belong inside, or every branch faces outward on its own.
+- Work that fans out into parallel branches: the node they fan out from and the node they reconverge on both belong inside, or every branch faces outward on its own. Several IF nodes in a row: each IF sits inside a stage; the node where their paths join is inside that stage or the first node of the next group, never loose.
 - When the node at either end cannot be a member — the trigger, or a node already in another group — the stage needs its own step there to serve as the single entry or exit. Use a step the stage already has; add a plain pass-through only when the stage would otherwise stay ungrouped.
 - A rejected group never closes the stage: try a smaller slice that is valid — one branch, or the linear run before or after the split — before leaving anything ungrouped.
 
@@ -151,14 +151,8 @@ Examples:
 
 Read the node groups reference for the exact rules before creating groups.`;
 
-/**
- * Render the full language reference. The node-groups section is included by
- * default (Instance AI's knowledge base); the MCP SDK reference passes its
- * `canvasGroupsEnabled` flag state as `includeGroups`.
- */
-export function buildSdkLanguageReference(options: { includeGroups?: boolean } = {}): string {
-	const { includeGroups = true } = options;
-
+/** Render the full language reference, node-groups section included. */
+export function buildSdkLanguageReference(): string {
 	return `# Workflow SDK language reference
 
 SDK builder code is a **restricted subset of TypeScript**, not a Code node and
@@ -172,7 +166,9 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-${includeGroups ? `${NODE_GROUPS_REFERENCE}\n\n` : ''}## Forbidden constructs
+${NODE_GROUPS_REFERENCE}
+
+## Forbidden constructs
 
 ${renderForbiddenLines()}
 
@@ -188,19 +184,31 @@ ${renderBlockedGlobalsLines()}
 
 ## Where to put runtime logic
 
-Builder code only describes the graph. For anything that needs to run at
-runtime (joining/aggregating values, transforming items, parsing, date math,
-regex), do it in one of these:
+Builder code only describes the graph. Anything that runs at runtime (shaping
+items, filtering, routing, sorting, de-duplicating, aggregating, splitting,
+parsing, date math, regex) belongs in a node. Pick the native node first:
 
-- Build strings with **template literals** or explicit lines.
-- Use an **n8n expression** via \`expr('{{ ... }}')\` for per-item values.
-- Use a **Code node** for multi-step aggregation or transformation.
+- Per-item shaping (rename, combine, compute, default, format fields): **Edit Fields (Set)** with expressions.
+- Filtering: **Filter**. Routing: **IF** / **Switch**. Sorting: **Sort**.
+- De-duplication: **Remove Duplicates**. Aggregation: **Aggregate** / **Summarize**.
+- Splitting an array into items: **Split Out**. Capping items: **Limit**. Joining branches: **Merge**.
+
+n8n expressions run full JavaScript at runtime, so \`.join()\`, \`.filter()\`,
+\`.map()\`, \`.split()\`, ternaries and \`||\` defaults all work inside a Set field
+value, for example \`{{ [$json.title, $json.category].filter(Boolean).join(' ') }}\`.
+The builder-code method restriction above does not apply to expressions. In
+builder code, pass an expression with \`expr('{{ ... }}')\` and build static
+strings with **template literals**.
+
+Use a **Code node** only for: multi-pass algorithms (loops over loops,
+recursion), \`$getWorkflowStaticData\` counters or state kept across runs,
+parsing model output that needs fence stripping, try/catch around upstream
+node access, or a step that would otherwise need three or more native nodes.
 `;
 }
 
 /**
  * Full reference including groups docs. Materialized into Instance AI's
- * knowledge base for on-demand reading; the MCP SDK reference embeds the
- * groups-gated variant via `buildSdkLanguageReference` instead.
+ * knowledge base for on-demand reading and embedded in the MCP SDK reference.
  */
 export const SDK_LANGUAGE_REFERENCE = buildSdkLanguageReference();

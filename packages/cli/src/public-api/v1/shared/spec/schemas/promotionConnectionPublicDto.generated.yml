@@ -74,6 +74,16 @@ properties:
           updatedAt:
             type: string
             format: date-time
+          checkout:
+            type: object
+            properties:
+              hasCheckout:
+                type: boolean
+              matchesConfig:
+                type: boolean
+            required:
+              - hasCheckout
+              - matchesConfig
           settings:
             type: object
             properties:
@@ -94,6 +104,7 @@ properties:
           - name
           - createdAt
           - updatedAt
+          - checkout
           - settings
       promote:
         type: object
@@ -110,6 +121,16 @@ properties:
           updatedAt:
             type: string
             format: date-time
+          checkout:
+            type: object
+            properties:
+              hasCheckout:
+                type: boolean
+              matchesConfig:
+                type: boolean
+            required:
+              - hasCheckout
+              - matchesConfig
           settings:
             type: object
             properties:
@@ -133,6 +154,7 @@ properties:
           - name
           - createdAt
           - updatedAt
+          - checkout
           - settings
   createdAt:
     type: string

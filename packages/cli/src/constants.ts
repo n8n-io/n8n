@@ -130,6 +130,9 @@ export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;
 
+/** Longest window a caller can request with `timeoutMs`. Also bounds the multi-main registrations hash TTL. */
+export const TEST_WEBHOOK_MAX_TIMEOUT = 10 * Time.minutes.toMilliseconds;
+
 export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'oAuth2Api',
 	'googleOAuth2Api',

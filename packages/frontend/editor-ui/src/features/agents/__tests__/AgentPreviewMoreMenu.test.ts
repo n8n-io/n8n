@@ -114,6 +114,7 @@ const stubs = {
 
 const thread = {
 	id: 'thread-1',
+	canContinueInPreview: false,
 	agentId: 'agent-1',
 	agentName: 'Agent',
 	parentThreadId: null,
@@ -145,6 +146,7 @@ const defaultProps = {
 	isLangSmithExportEnabled: false,
 	isExporting: false,
 	isDeletingSession: false,
+	canDeleteSession: true,
 	getConversationMarkdown: function getConversationMarkdown() {
 		return '**User:**\n\nHello';
 	},
@@ -311,6 +313,14 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(wrapper.emitted('delete-session')).toEqual([[]]);
 	});
 
+	it('omits and guards deletion for viewers', function blocksViewerDeletion() {
+		const wrapper = mountMenu({ canDeleteSession: false });
+
+		expect(getMenuItem(wrapper, 'delete-session')).toBeUndefined();
+		getDropdown(wrapper).vm.$emit('select', 'delete-session');
+		expect(wrapper.emitted('delete-session')).toBeUndefined();
+	});
+
 	it.each([{ hasSession: false }, { effectiveSessionId: undefined }, { isDeletingSession: true }])(
 		'blocks deletion with %j',
 		function blocksDeletion(overrides) {
@@ -374,10 +384,12 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		['telegram', 'Telegram', 'telegram'],
 		['linear', 'Linear', 'linear'],
 		['discord', 'Discord', 'discord'],
+		['teams', 'Teams', 'teams'],
 		['mcp', 'Mcp', 'mcp'],
 		['workflow', 'Workflow', 'workflow'],
 		['webhook', 'Webhook', 'webhook'],
 		['instance-ai', 'agentSessions.origin.instanceAi', 'sparkles'],
+		['n8n_chat_production', 'agentSessions.origin.n8nChat', 'message-square'],
 		['chat', 'agentSessions.origin.preview', 'bolt-filled'],
 		['n8n_chat', 'agentSessions.origin.preview', 'bolt-filled'],
 		[null, 'agentSessions.origin.preview', 'bolt-filled'],

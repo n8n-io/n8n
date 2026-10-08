@@ -55,7 +55,6 @@ export const serializedWorkflowSchema = z.object({
 	connections: connectionsSchema,
 	nodeGroups: z.array(nodeGroupSchema).optional(),
 	settings: z.record(z.unknown()).optional(),
-	versionId: z.string(),
 	parentFolderId: z.string().nullable(),
 	isArchived: z.boolean(),
 	tagIds: z.array(z.string().min(1)).optional(),

@@ -19,7 +19,7 @@ CREATE TABLE "user" ("id" varchar PRIMARY KEY, "email" varchar(255), "firstName"
 | disabled | boolean | FALSE | false |  |  |  |
 | email | varchar(255) |  | true |  |  |  |
 | firstName | varchar(32) |  | true |  |  |  |
-| id | varchar |  | true | [activity_event](activity_event.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_eval_rating](agent_eval_rating.md) [agent_eval_run](agent_eval_run.md) [agent_history](agent_history.md) [ai_preference](ai_preference.md) [auth_identity](auth_identity.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [chat_hub_tools](chat_hub_tools.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [evaluation_collection](evaluation_collection.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) [instance_ai_thread_grants](instance_ai_thread_grants.md) [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) [project](project.md) [project_relation](project_relation.md) [user_api_keys](user_api_keys.md) [user_favorites](user_favorites.md) [workflow_builder_session](workflow_builder_session.md) [workflow_publish_history](workflow_publish_history.md) [workflow_review_activity](workflow_review_activity.md) [workflow_review_activity_comment](workflow_review_activity_comment.md) [workflow_review_request](workflow_review_request.md) [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) |  |  |
+| id | varchar |  | true | [activity_event](activity_event.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_eval_rating](agent_eval_rating.md) [agent_eval_run](agent_eval_run.md) [agent_execution_threads](agent_execution_threads.md) [agent_history](agent_history.md) [ai_preference](ai_preference.md) [auth_identity](auth_identity.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [chat_hub_tools](chat_hub_tools.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [evaluation_collection](evaluation_collection.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) [instance_ai_thread_grants](instance_ai_thread_grants.md) [instance_ai_thread_tabs](instance_ai_thread_tabs.md) [migration_workflow_owner](migration_workflow_owner.md) [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) [project](project.md) [project_relation](project_relation.md) [self_healing_result](self_healing_result.md) [trusted_source_identity](trusted_source_identity.md) [user_api_keys](user_api_keys.md) [user_favorites](user_favorites.md) [workflow_builder_session](workflow_builder_session.md) [workflow_publish_history](workflow_publish_history.md) [workflow_review_activity](workflow_review_activity.md) [workflow_review_activity_comment](workflow_review_activity_comment.md) [workflow_review_request](workflow_review_request.md) [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) [workflow_suggestion](workflow_suggestion.md) [workflow_suggestion_activity](workflow_suggestion_activity.md) |  |  |
 | lastActiveAt | date |  | true |  |  |  |
 | lastName | varchar(32) |  | true |  |  |  |
 | mfaEnabled | boolean | FALSE | false |  |  |  |
@@ -57,6 +57,7 @@ erDiagram
 "agent_eval_dataset" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_rating" }o--o| "user" : "FOREIGN KEY (ratedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_execution_threads" }o--o| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -69,12 +70,18 @@ erDiagram
 "instance_ai_mcp_registry_connections" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_grants" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_thread_tabs" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (assignedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "oauth_access_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "project_relation" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"trusted_source_identity" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "user_api_keys" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "user_favorites" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -86,6 +93,8 @@ erDiagram
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request_authors" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_reviewers" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_suggestion" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_suggestion_activity" }o--o| "user" : "FOREIGN KEY (actorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "user" }o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 
 "user" {
@@ -156,6 +165,27 @@ erDiagram
   varchar status
   datetime_3_ updatedAt
 }
+"agent_execution_threads" {
+  varchar_16_ accessScope
+  varchar_36_ agentId FK
+  varchar_255_ agentName
+  datetime_3_ createdAt
+  varchar_8_ emoji
+  varchar_128_ id PK
+  varchar ownerId FK
+  varchar_36_ parentAgentId
+  varchar_128_ parentThreadId
+  varchar_255_ projectId FK
+  INTEGER sessionNumber
+  varchar_32_ taskId
+  varchar_36_ taskVersionId FK
+  varchar_255_ title
+  INTEGER totalCompletionTokens
+  REAL totalCost
+  INTEGER totalDuration
+  INTEGER totalPromptTokens
+  datetime_3_ updatedAt
+}
 "agent_history" {
   varchar_36_ agentId FK
   varchar_255_ author
@@ -173,6 +203,7 @@ erDiagram
   varchar createdById FK
   varchar id PK
   varchar_36_ projectId FK
+  varchar_16_ source
   datetime_3_ updatedAt
   varchar userId FK
 }
@@ -248,7 +279,7 @@ erDiagram
   varchar_36_ credentialId FK
   varchar id PK
   varchar_255_ serverSlug FK
-  TEXT toolFilter
+  TEXT toolPermissions
   datetime_3_ updatedAt
   varchar userId FK
 }
@@ -272,6 +303,22 @@ erDiagram
   varchar threadId PK
   datetime_3_ updatedAt
   varchar userId PK
+}
+"instance_ai_thread_tabs" {
+  datetime_3_ createdAt
+  TEXT state
+  varchar threadId PK
+  datetime_3_ updatedAt
+  varchar userId PK
+}
+"migration_workflow_owner" {
+  datetime_3_ assignedAt
+  varchar assignedById FK
+  datetime_3_ createdAt
+  varchar_16_ source
+  datetime_3_ updatedAt
+  varchar userId FK
+  varchar_36_ workflowId PK
 }
 "oauth_access_tokens" {
   varchar clientId FK
@@ -327,6 +374,33 @@ erDiagram
   varchar role FK
   datetime_3_ updatedAt
   varchar userId PK
+}
+"self_healing_result" {
+  varchar backgroundUserId FK
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  datetime_3_ dismissedAt
+  varchar dismissedById FK
+  varchar_36_ executionId
+  varchar_36_ id PK
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  TEXT report
+  varchar_36_ suggestionId FK
+  TEXT summary
+  datetime_3_ updatedAt
+  TEXT usage
+  varchar_36_ workflowId FK
+}
+"trusted_source_identity" {
+  datetime_3_ createdAt
+  datetime_3_ lastSeenAt
+  varchar_32_ provenance
+  varchar_36_ sourceId PK
+  varchar_16_ status
+  varchar subject PK
+  datetime_3_ updatedAt
+  varchar userId FK
 }
 "user_api_keys" {
   varchar apiKey
@@ -404,6 +478,33 @@ erDiagram
 "workflow_review_request_reviewers" {
   varchar userId PK
   varchar_36_ workflowReviewRequestId PK
+}
+"workflow_suggestion" {
+  varchar_32_ appliedAction
+  varchar appliedActorId
+  varchar_64_ appliedChecksum
+  varchar_36_ appliedVersionId
+  varchar backgroundUserId FK
+  datetime_3_ closedAt
+  varchar_16_ closedReason
+  datetime_3_ createdAt
+  TEXT expectedBaseline
+  varchar_36_ id PK
+  TEXT payload
+  varchar_36_ projectId FK
+  varchar_16_ resultKind
+  varchar_16_ state
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"workflow_suggestion_activity" {
+  varchar_16_ action
+  varchar actorId FK
+  varchar_16_ author
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_36_ suggestionId FK
+  datetime_3_ updatedAt
 }
 "role" {
   datetime_3_ createdAt

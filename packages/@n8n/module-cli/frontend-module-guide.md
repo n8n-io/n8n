@@ -10,7 +10,7 @@ Modules give these benefits:
 - **Independence:** You typecheck, lint and test one feature in seconds. You do not run all of
   editor-ui (~770K lines of `.ts` and `.vue`; `src/features/` holds ~600K of that).
 - **Decoupling:** A module cannot read the shell or another module. Features stay separate.
-- **Ownership:** One package has one CODEOWNERS line.
+- **Ownership:** One package has one `OWNERS` line.
 - **Parity:** The frontend module id is the same as the backend module id. Both read
   `/rest/module-settings`.
 
@@ -62,7 +62,7 @@ The command prints this output:
  │    pnpm turbo lint --filter=@n8n/frontend-module-my-feature       │
  │    pnpm turbo test --filter=@n8n/frontend-module-my-feature       │
  │                                                                   │
- │    Guide: packages/@n8n/module-cli/frontend-module-guide.md       │
+ │    Frontend: packages/@n8n/module-cli/frontend-module-guide.md    │
  │                                                                   │
  ╰───────────────────────────────────────────────────────────────────╯
 ```
@@ -90,18 +90,13 @@ dependencies first, and the typecheck then passes. `lint` and `test` pass in bot
 The CLI makes every edit outside the new package idempotent. You can run the command again after
 a partial failure.
 
-### `--stack=backend` is a placeholder
+### `--stack=backend` creates a separate package
 
-The backend half is a reserved path and a README. **Nothing loads it.**
+The backend half is a built workspace package at `packages/modules/<name>/backend`. The CLI adds
+its runtime dependency and lazy registration to `packages/cli`. It also adds the module id to the
+validated list in `@n8n/backend-common`.
 
-The backend runtime reads its modules from `packages/cli/src/modules/<name>`. All 37 real backend
-modules are there. For this reason `packages/modules/<name>/backend` is not a workspace package.
-
-To create a backend module that runs, use `pnpm setup-backend-module`. Then obey
-`scripts/backend-module/backend-module-guide.md`.
-
-The CLI prints all of this when you ask for the backend half. This guide repeats it, because it is
-the one part of `create` that can mislead you.
+Read `scripts/backend-module/backend-module-guide.md` before you add backend behavior.
 
 ## File structure
 
@@ -147,16 +142,29 @@ value, export that value here.
 
 ```ts
 // src/my-feature.module.ts
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 
-export const MyFeatureModule: FrontendModuleDescription = {
+export const MyFeatureModule = defineFrontendModule({
 	// Must match the backend module id: both gate off `/rest/module-settings`.
 	id: 'my-feature',
 	name: 'My Feature',
 	description: 'What this module does',
 	icon: 'box',
-};
+});
 ```
+
+Declare every descriptor with `defineFrontendModule()`. It is the canonical form.
+It returns the object that you give it, and it changes no behaviour. It gives you
+two things:
+
+- One seam. The SDK gets one function to attach validation or a dev-mode check
+  to. Ten annotated object literals give it none.
+- Inference. Each field keeps its literal type, so `MyFeatureModule.id` reads as
+  `'my-feature'` and not as `string`.
+
+Do not annotate the descriptor also. `defineFrontendModule()` checks the object
+against `FrontendModuleDescription`, and the annotation makes the types wide
+again.
 
 The `id` field is critical. `settingsStore.isModuleActive(id)` reads the `activeModules` list from
 the backend. An id with no backend twin is never active. A route that uses the module availability
@@ -386,6 +394,49 @@ export const useMyFeatureStore = defineStore('myFeature', () => {
 Export the store from `src/index.ts` if a file outside the module reads it. `instance-registry`
 does this, because `AboutModal` and `useDebugInfo` read its cluster-info store.
 
+## Capabilities
+
+A capability is a shell action that a module calls but cannot import. The shell provides an
+implementation at boot. The module reads it through a typed token.
+
+Declare one only when all three rows hold. If one row fails, use the surface named in it.
+
+| Check | Otherwise |
+|---|---|
+| The module needs a runtime action or a reactive read, not a component | Use `componentRegistry` |
+| The target is shell-core state with no path down to an L2 package | Import the L2 package |
+| No contribution surface fits (components, modals, commands, resources, push handlers, parameter inputs) | Use the contribution surface that fits |
+
+Four files hold one capability:
+
+```ts
+// packages/frontend/@n8n/frontend-module-sdk/src/capabilities/myThing.ts
+export const myThing = declareCapability<(id: string) => void>('my-thing');
+
+// packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+export { myThing } from './myThing';
+
+// packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+capabilityRegistry.provide(capabilities.myThing, (id) => useMyShellStore().touch(id));
+
+// your module, in a handler or a route guard
+capabilityRegistry.use(capabilities.myThing)(id);
+```
+
+Give the type parameter of `declareCapability` explicitly. It is the contract both sides get
+checked against.
+
+**Caution:** `use()` throws when the capability has no provider and no `fallback`. That is
+intended: a missing provider is a bootstrap bug, and a silent no-op hides it. Never call `use()`
+at module scope, because the shell provides after your module file is evaluated. Use `tryUse()`
+for a presence check; it returns `undefined` and ignores the `fallback`.
+
+In a module test there is no shell, so provide a stub in `beforeEach` and call
+`capabilityRegistry.clear()` in `afterEach`.
+
+The shell's full list is `editor-ui/src/app/capabilities.manifest.ts`. The other registries are
+contribution surfaces and not capabilities. They stay as they are.
+
 ## Module settings and the timing problem
 
 There are two levels of gating. They come from **different endpoints at different times**:
@@ -421,7 +472,7 @@ const isEnabled = computed(
 ## Register the module with the shell
 
 A module does nothing until the shell can see it. The shell needs **four file edits and one
-CODEOWNERS line**. The CLI makes the four edits. Read this section when you register a module by
+`OWNERS` line**. The CLI makes the four edits. Read this section when you register a module by
 hand, or when you debug a CI failure.
 
 | # | Where                                          | What                                      | Scaffolded? |
@@ -430,10 +481,10 @@ hand, or when you debug a CI failure.
 | 2 | `editor-ui/package.json`                       | `"@n8n/frontend-module-x": "workspace:*"`  | ✅          |
 | 3 | `editor-ui/tsconfig.json`                      | two `paths` entries (bare + `/*`)          | ✅          |
 | 4 | `editor-ui/src/app/modules.manifest.ts`        | import + array entry                       | ✅          |
-| 5 | `.github/CODEOWNERS`                           | one line for the new package               | ❌ do this  |
+| 5 | `OWNERS`                                       | one line for the new package               | ❌ do this  |
 
-The frontend has no CODEOWNERS entries today, so you cannot copy a line for #5. Add your line when
-you create the module. A package with no owner is the start of an incomplete migration.
+Add the ownership line when you create the module. A package with no owner is the start of an
+incomplete migration.
 
 **Put #1, #2 and #3 in the same PR.** They are not alternatives. Each one serves a different
 resolver:
@@ -640,7 +691,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
    can become a static map of dynamic imports. Vite then emits one chunk for each module. The
    decision point is the end of wave 2, with bundle data. The team decided against a module load
    at run time.
-5. **CODEOWNERS is a manual step.** An addition to the CLI is a small and clear follow-up.
+5. **Updating `OWNERS` is a manual step.** An addition to the CLI is a small and clear follow-up.
 6. **`@n8n/module-cli` has no `lint` script.** Type-aware lint on a package with no types gives
    only `no-unsafe-*` noise. Ten other `@n8n/*` packages ship in the same way, and Biome still
    formats this one. Review this decision if the CLI grows past a few hundred lines.

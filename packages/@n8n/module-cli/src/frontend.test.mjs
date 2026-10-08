@@ -133,6 +133,15 @@ describe('createFrontend', () => {
 			expect(readFileSync(join(packageDir, `src/${NAME}.store.ts`), 'utf8')).toContain(
 				"defineStore('myFeature'",
 			);
+
+			// `defineFrontendModule()` is the canonical descriptor form: it is the SDK's
+			// one seam for validation and dev-mode checks. A scaffold that emits a bare
+			// annotated object starts every new module outside that seam.
+			const descriptor = readFileSync(join(packageDir, `src/${NAME}.module.ts`), 'utf8');
+			expect(descriptor).toContain(
+				"import { defineFrontendModule } from '@n8n/frontend-module-sdk';",
+			);
+			expect(descriptor).toContain('export const MyFeatureModule = defineFrontendModule({');
 		});
 
 		it('registers the plugins a design-system consumer needs, and declares them', () => {

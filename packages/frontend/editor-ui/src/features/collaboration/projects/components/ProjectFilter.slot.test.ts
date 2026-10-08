@@ -7,6 +7,7 @@ import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { reactive } from 'vue';
 import type { Component } from 'vue';
+import type { RouteRecordRaw } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { defaultSettings, mockedStore } from '@n8n/frontend-test-utils';
@@ -50,7 +51,11 @@ const moduleSettings: FrontendModuleSettings = {
 
 /** The dashboard as the shell reaches it: the descriptor's lazy route component. */
 const loadDashboard = async (): Promise<Component> => {
-	const child = InsightsModule.routes?.[0]?.children?.[0];
+	// Read the routes through the contract type. `defineFrontendModule()` keeps the
+	// descriptor's literal types, so the inferred record narrows to the one route
+	// shape insights declares — `RouteRecordRaw` is the shape the shell registers.
+	const routes: RouteRecordRaw[] = InsightsModule.routes ?? [];
+	const child = routes[0]?.children?.[0];
 	const loader = child?.components?.default ?? child?.component;
 	if (typeof loader !== 'function') throw new Error('insights dashboard route component missing');
 	const loaded = (await (loader as () => Promise<{ default: Component }>)()) as {

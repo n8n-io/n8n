@@ -16,6 +16,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -311,7 +312,7 @@ const onTest = async () => {
 		const url = await ssoStore.testSamlConfig(metaDataConfig);
 
 		if (typeof window !== 'undefined') {
-			window.open(url, '_blank');
+			openSafeUrl(url);
 		}
 	} catch (error) {
 		toast.showError(error, 'error');

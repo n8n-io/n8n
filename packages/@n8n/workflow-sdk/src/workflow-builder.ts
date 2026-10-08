@@ -28,6 +28,7 @@ import {
 import { shouldGeneratePinData } from './workflow-builder/pin-data-utils';
 import { registerDefaultPlugins } from './workflow-builder/plugins/defaults';
 import { pluginRegistry, type PluginRegistry } from './workflow-builder/plugins/registry';
+import { safeNodeTypesProvider } from './workflow-builder/plugins/safe-node-types-provider';
 import { jsonSerializer } from './workflow-builder/plugins/serializers';
 import type {
 	PluginContext,
@@ -730,17 +731,34 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// with old IDs. This mapping allows mergeInstanceConnections() to resolve
 		// those stale references to the correct map key (important for auto-renamed nodes).
 		const staleIdToKeyMap = new Map<string, string>();
+		const newIdByKey = new Map<string, string>();
+		const newIdByOldId = new Map<string, string>();
 
-		for (const [mapKey, graphNode] of this._nodes) {
-			const instance = graphNode.instance;
+		// Work out every new ID before cloning any node, so a sticky copied first
+		// can still point at the new IDs of the nodes it wraps.
+		for (const [mapKey, { instance }] of this._nodes) {
 			staleIdToKeyMap.set(instance.id, mapKey);
 			const newId =
 				instance.config?.id ??
 				existingIdsByName?.get(mapKey) ??
 				generateDeterministicNodeId(this.id, instance.type, mapKey);
 
-			// Clone the instance with the new ID
-			const newInstance = cloneNodeWithId(instance, newId);
+			newIdByKey.set(mapKey, newId);
+			newIdByOldId.set(instance.id, newId);
+		}
+		// A handle retained from the previous regeneration can still be used to
+		// create an anchored sticky. Let that stale ID follow its current node too.
+		for (const [staleId, mapKey] of this._staleIdToKeyMap ?? []) {
+			const newId = newIdByKey.get(mapKey);
+			if (newId !== undefined) newIdByOldId.set(staleId, newId);
+		}
+
+		for (const [mapKey, graphNode] of this._nodes) {
+			const instance = graphNode.instance;
+			const newId = newIdByKey.get(mapKey) ?? instance.id;
+
+			// Clone the instance with the new ID and remap any internal references.
+			const newInstance = cloneNodeWithId(instance, newId, newIdByOldId);
 
 			newNodes.set(mapKey, {
 				instance: newInstance,
@@ -768,7 +786,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			validationOptions: {
 				allowDisconnectedNodes: options.allowDisconnectedNodes,
 				allowNoTrigger: options.allowNoTrigger,
-				nodeTypesProvider: options.nodeTypesProvider,
+				// Guarded: a validator must not turn an unresolvable node type or
+				// version into a failed validation pass.
+				nodeTypesProvider: options.nodeTypesProvider
+					? safeNodeTypesProvider(options.nodeTypesProvider)
+					: undefined,
 			},
 		};
 
@@ -818,7 +840,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						code,
 						issue.message,
 						issue.nodeName,
-						undefined,
+						issue.parameterPath,
 						issue.violationLevel,
 					),
 				);

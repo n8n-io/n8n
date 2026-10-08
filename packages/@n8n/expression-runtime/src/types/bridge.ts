@@ -94,6 +94,13 @@ export interface BridgeConfig {
 	logger?: Logger;
 
 	/**
+	 * Pre-loaded runtime IIFE bundle source as a string.
+	 * If provided, the bridge skips its own filesystem read.
+	 * Required when running in environments without filesystem access (browser).
+	 */
+	runtimeBundle?: string;
+
+	/**
 	 * Reuse V8 compile cache for the runtime bundle. isolated-vm only.
 	 * Default: false
 	 */
@@ -112,6 +119,7 @@ export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
 	memoryLimit: 128,
 	timeout: 5000,
 	logger: NO_OP_LOGGER,
+	runtimeBundle: '',
 	compileCache: false,
 };
 

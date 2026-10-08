@@ -35,6 +35,7 @@ export type ValidationErrorCode =
 	| 'TOOL_NO_PARAMETERS'
 	| 'FROM_AI_IN_NON_TOOL'
 	| 'MISSING_EXPRESSION_PREFIX'
+	| 'UNSUPPORTED_EXPRESSION'
 	| 'INVALID_PARAMETER'
 	| 'INVALID_INPUT_INDEX'
 	| 'INVALID_OUTPUT_INDEX'
@@ -1323,6 +1324,8 @@ function validateSwitchHasOutgoingConnections(
 ): void {
 	for (const sourceNode of json.nodes) {
 		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.switch') continue;
+		// Disabled nodes pass data through without evaluating Switch routing rules.
+		if (sourceNode.disabled === true) continue;
 		if (hasAnyMainOutputConnection(json.connections[sourceNode.name])) continue;
 
 		warnings.push(

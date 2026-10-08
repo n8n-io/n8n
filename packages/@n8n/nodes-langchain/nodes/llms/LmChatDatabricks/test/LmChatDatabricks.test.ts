@@ -9,6 +9,7 @@ import {
 	createRefreshingAuthFetch,
 	makeN8nLlmFailedAttemptHandler,
 	getProxyAgent,
+	aiClientFetch,
 } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -17,17 +18,18 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
-import { getDatabricksTokenProvider } from '../token-provider';
+import { getDatabricksTokenProvider } from '@utils/databricks/token-provider';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('../token-provider');
+vi.mock('@utils/databricks/token-provider');
 
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const mockedGetDatabricksTokenProvider = vi.mocked(getDatabricksTokenProvider);
 const mockedCreateRefreshingAuthFetch = vi.mocked(createRefreshingAuthFetch);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 const mockTokenProvider = {
 	getToken: vi.fn(async () => 'test-token'),
@@ -44,6 +46,8 @@ const mockCredential = {
 	accessTokenUrl: 'https://my.databricks.com/oidc/v1/token',
 	scope: 'all-apis',
 	authentication: 'header',
+	allowedHttpRequestDomains: 'all',
+	allowedDomains: '',
 };
 
 describe('LmChatDatabricks', () => {
@@ -92,11 +96,11 @@ describe('LmChatDatabricks', () => {
 				name: 'lmChatDatabricks',
 				group: ['transform'],
 				version: [1],
-				hidden: true,
 				credentials: [{ name: 'databricksOAuth2Api', required: true }],
 				outputs: ['ai_languageModel'],
 				outputNames: ['Model'],
 			});
+			expect(node.description.hidden).toBeUndefined();
 		});
 	});
 
@@ -130,6 +134,16 @@ describe('LmChatDatabricks', () => {
 			);
 		});
 
+		it('should build the refreshing fetch on top of the bounded aiClientFetch', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(mockedCreateRefreshingAuthFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ baseFetch: mockedAiClientFetch }),
+			);
+		});
+
 		it('should wire the refreshing fetch into ChatOpenAI', async () => {
 			const ctx = setupMockContext();
 
@@ -152,6 +166,17 @@ describe('LmChatDatabricks', () => {
 
 			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
 			expect(fetchOptions.expiredStatus).toBe(403);
+		});
+
+		it('should name the configured model service in the rate limit error', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			const [, databricksHandler] = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0];
+			expect(() => databricksHandler?.(Object.assign(new Error('429 x'), { status: 429 }))).toThrow(
+				'Databricks rate limit reached for my-chat-endpoint',
+			);
 		});
 
 		it('should send the bearer and the partner User-Agent on every request', async () => {
@@ -190,11 +215,10 @@ describe('LmChatDatabricks', () => {
 
 		it('should thread the egress filter into the token provider and proxy agent', async () => {
 			const ctx = setupMockContext();
-			const secureLookup = vi.fn();
 			const egressFilter = {
 				validateUrl: vi.fn(),
 				validateRedirectSync: vi.fn(),
-				createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+				createSecureLookup: vi.fn(),
 			};
 			ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue(egressFilter);
 
@@ -208,7 +232,7 @@ describe('LmChatDatabricks', () => {
 			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
 				'https://my.databricks.com/ai-gateway/openai/v1',
 				expect.any(Object),
-				secureLookup,
+				egressFilter,
 			);
 
 			// Every redirect hop is checked before the bearer is sent to it
@@ -234,6 +258,40 @@ describe('LmChatDatabricks', () => {
 
 			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
 			await expect(fetchOptions.assertAllowedUrl?.('http://169.254.169.254/')).rejects.toBe(denied);
+		});
+
+		it('should allow the workspace host and the listed domains', async () => {
+			const ctx = setupMockContext({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'other.example.com',
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			await expect(
+				fetchOptions.assertAllowedUrl?.(
+					'https://my.databricks.com/ai-gateway/openai/v1/chat/completions',
+				),
+			).resolves.toBeUndefined();
+			await expect(
+				fetchOptions.assertAllowedUrl?.('https://other.example.com/x'),
+			).resolves.toBeUndefined();
+		});
+
+		it('should reject a hop outside the allowed domains even without an egress filter', async () => {
+			// Both grant types share this fetch path, so one test covers both
+			const ctx = setupMockContext({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'other.example.com',
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			await expect(fetchOptions.assertAllowedUrl?.('https://evil.example.com/')).rejects.toThrow(
+				NodeOperationError,
+			);
 		});
 
 		it('should read the model via resourceLocator value extraction', async () => {

@@ -1,3 +1,4 @@
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { type INode, NodeConnectionTypes } from 'n8n-workflow';
 
 import { createNodeData } from './helpers';
@@ -225,5 +226,41 @@ describe('rewireGraph()', () => {
 		// The tested tool (leafTool) and the trigger remain
 		expect(rewiredGraph.hasNode('trigger')).toBe(true);
 		expect(rewiredGraph.hasNode('leafTool')).toBe(true);
+	});
+
+	it('stands in for the agent, not for a node downstream of it', () => {
+		// trigger -> upstream -> agent -> downstream -> final, with a tool on the agent.
+		// The Tool Executor has to inherit the *agent's* main parents. Inheriting a
+		// downstream node's parents would put the agent and everything between it and
+		// that node back in the run.
+		const trigger = createNodeData({ name: 'trigger' });
+		const upstream = createNodeData({ name: 'upstream' });
+		const agent = createNodeData({ name: 'agent', type: 'n8n-nodes-base.ai-agent' });
+		const downstream = createNodeData({ name: 'downstream' });
+		const final = createNodeData({ name: 'final' });
+		const tool = createNodeData({ name: 'tool', type: 'n8n-nodes-base.ai-tool' });
+
+		const graph = new DirectedGraph();
+		graph.addNodes(trigger, upstream, agent, downstream, final, tool);
+		graph.addConnections(
+			{ from: trigger, to: upstream, type: NodeConnectionTypes.Main },
+			{ from: upstream, to: agent, type: NodeConnectionTypes.Main },
+			{ from: agent, to: downstream, type: NodeConnectionTypes.Main },
+			{ from: downstream, to: final, type: NodeConnectionTypes.Main },
+			{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+		);
+
+		const rewiredGraph = rewireGraph(tool, graph);
+
+		const executorNode = rewiredGraph.getNodesByNames([TOOL_EXECUTOR_NODE_NAME]).values().next()
+			.value as INode;
+
+		const parents = rewiredGraph.getDirectParentConnections(executorNode);
+		expect(
+			parents.filter((cn) => cn.type === NodeConnectionTypes.Main).map((cn) => cn.from.name),
+		).toEqual(['upstream']);
+		expect(rewiredGraph.hasNode('agent')).toBe(false);
+		// The nodes below the agent lose their only parent, so nothing reaches them.
+		expect(rewiredGraph.getDirectParentConnections(downstream)).toEqual([]);
 	});
 });

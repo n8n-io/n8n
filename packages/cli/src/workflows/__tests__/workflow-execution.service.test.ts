@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -31,12 +32,10 @@ import type { WorkflowRequest } from '../workflow.request';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -405,7 +404,7 @@ describe('WorkflowExecutionService', () => {
 			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
-			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('exec-9');
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('exec-9', 'start-failure');
 			expect(responsePromise.reject).toHaveBeenCalledWith(runError);
 			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
 		});
@@ -517,7 +516,7 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		test('never commits the cursor when the run fails to start', async () => {
-			const runError = new Error('engine 2.0 rejected the run');
+			const runError = new Error('engine v2 rejected the run');
 			workflowRunner.run.mockRejectedValue(runError);
 
 			await expect(runPolledWorkflowV2()).rejects.toBe(runError);

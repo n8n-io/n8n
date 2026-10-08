@@ -45,6 +45,29 @@ describe('components/N8nInputNumber', () => {
 			const input = wrapper.container.querySelector('input');
 			expect(input).toHaveValue('7');
 		});
+
+		it('should not group digits by default', () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 1433,
+					locale: 'en-US',
+					controls: false,
+				},
+			});
+			expect(wrapper.container.querySelector('input')).toHaveValue('1433');
+		});
+
+		it('should group digits when useGrouping is true', () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 1433,
+					locale: 'en-US',
+					useGrouping: true,
+					controls: false,
+				},
+			});
+			expect(wrapper.container.querySelector('input')).toHaveValue('1,433');
+		});
 	});
 
 	describe('sizes', () => {
@@ -305,6 +328,20 @@ describe('components/N8nInputNumber', () => {
 	});
 
 	describe('slots', () => {
+		it('should not render a prefix by default', () => {
+			const wrapper = render(InputNumber);
+			expect(wrapper.container.querySelector('.prefix')).not.toBeInTheDocument();
+		});
+
+		it('should render prefix slot content', () => {
+			const wrapper = render(InputNumber, {
+				slots: {
+					prefix: '$',
+				},
+			});
+			expect(wrapper.getByText('$')).toBeInTheDocument();
+		});
+
 		it('should render custom increment slot', () => {
 			const wrapper = render(InputNumber, {
 				props: {

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
-import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
-import {
-	buildDisplayGroups,
-	type DisplayGroup,
-} from '@/features/ai/shared/agentsChat/displayGroups';
+import { TIME } from '@/app/constants/durations';
+import { isAssistantGroup, type DisplayGroup } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	getMessageThinkingSegments,
@@ -22,14 +20,18 @@ import type {
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
+import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
+import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
 import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
+import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
+import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -39,11 +41,15 @@ const props = defineProps<{
 	agentId?: string;
 	sessionId?: string;
 	canSendToAssistant?: boolean;
+	dismissedFixToolCallIds?: string[];
+	canIncreaseBudget?: boolean;
+	budgetIncreasePending?: boolean;
 }>();
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
+	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
 }>();
 
 const i18n = useI18n();
@@ -52,6 +58,7 @@ const canSendToAssistant = computed(() =>
 );
 
 function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
+	if (group.kind === 'backgroundJobSignal') return;
 	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
 	if (!executionId || failures.length === 0) return;
 	emit('sendToAssistant', { executionId, failures });
@@ -84,12 +91,11 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
 }
 
 /**
- * Open cards always render. Once resolved, answered interactive cards clear
- * from the chat (both approval and n8n chat cards collapse into their
- * tool-step summary) — but display-only n8n chat cards persist: they are
- * content, and being born resolved they would otherwise never render at all.
+ * Tool approvals replace the composer. Answered chat cards collapse into
+ * their tool-step summary. Display-only cards remain in the conversation.
  */
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
+	if (payload.toolName === APPROVAL_TOOL_NAME) return false;
 	if (!payload.resolvedAt) return !!payload.runId;
 	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
@@ -143,7 +149,42 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildDisplayGroups(props.messages));
+const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+const streamingGroupId = computed(() =>
+	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
+
+const formatChatDividerTimestamp = useChatDividerTimestamp();
+
+/**
+ * Divider label by group id: the first user message gets one, and so does any
+ * later user message whose gap since the previous one exceeds the window above.
+ * Messages without a `createdAt` (older history) are skipped and never become
+ * the "previous" reference.
+ */
+const dividerLabels = computed(() => {
+	const labels = new Map<string, string>();
+	let previousUserCreatedAt: number | undefined;
+	for (const group of displayGroups.value) {
+		if (group.kind !== 'message' || group.message.role !== 'user') continue;
+		const createdAt = group.message.createdAt;
+		if (createdAt === undefined) continue;
+		// A new local day always earns a divider, even inside the window: without
+		// it a chat that crosses midnight files today's messages under a
+		// "Yesterday at ..." heading.
+		if (
+			previousUserCreatedAt === undefined ||
+			createdAt - previousUserCreatedAt > TIME.HOUR ||
+			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
+		) {
+			labels.set(group.id, formatChatDividerTimestamp(createdAt));
+		}
+		previousUserCreatedAt = createdAt;
+	}
+	return labels;
+});
 
 /**
  * Dismissing the note silences it for the rest of this preview chat, so a user
@@ -183,15 +224,12 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getAssistantGroupContent(group: DisplayGroup): string {
+	if (group.kind === 'backgroundJobSignal') return '';
 	if (group.kind === 'toolRun') {
 		return group.finalMessage?.content ?? '';
 	}
 
 	return group.message.role === 'assistant' ? group.message.content : '';
-}
-
-function isAssistantGroup(group: DisplayGroup): boolean {
-	return group.kind === 'toolRun' || group.message.role === 'assistant';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -254,6 +292,7 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 }
 
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'backgroundJobSignal') return false;
 	if (group.kind === 'toolRun') {
 		return (
 			group.finalMessage !== undefined &&
@@ -411,13 +450,24 @@ watch(
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
-			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div
+				v-if="dividerLabels.has(group.id)"
+				:class="$style.timestampDivider"
+				data-testid="agent-chat-timestamp-divider"
+			>
+				<N8nText size="small" color="text-light">{{ dividerLabels.get(group.id) }}</N8nText>
+			</div>
+			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
+				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+			</div>
+			<div v-else-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
 						:tool-calls="group.toolCalls"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
@@ -454,6 +504,14 @@ watch(
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
+					<AgentBudgetNoticeCard
+						v-for="notice in group.budgetNotices"
+						:key="notice.id"
+						:code="notice.code"
+						:can-increase="canIncreaseBudget"
+						:pending="budgetIncreasePending"
+						@increase="emit('increase-budget', $event)"
+					/>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -489,8 +547,8 @@ watch(
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
-							!group.finalMessage.content &&
+							group.id === streamingGroupId &&
+							!group.finalMessage?.content &&
 							!group.toolCalls.length &&
 							!group.thinkingSegments.length
 						"
@@ -508,6 +566,7 @@ watch(
 						:tool-calls="group.message.toolCalls"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
@@ -532,6 +591,15 @@ watch(
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>
+					<N8nText
+						v-if="group.message.role === 'user' && group.message.author"
+						size="xsmall"
+						color="text-light"
+						:class="$style.author"
+						data-testid="agent-chat-message-author"
+					>
+						{{ group.message.author.name }}
+					</N8nText>
 					<div
 						v-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -558,6 +626,14 @@ watch(
 								/>
 							</div>
 						</template>
+						<AgentBudgetNoticeCard
+							v-for="notice in group.message.budgetNotices ?? []"
+							:key="notice.id"
+							:code="notice.code"
+							:can-increase="canIncreaseBudget"
+							:pending="budgetIncreasePending"
+							@increase="emit('increase-budget', $event)"
+						/>
 					</template>
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"
@@ -677,6 +753,11 @@ watch(
 	padding-top: var(--spacing--4xs);
 }
 
+.timestampDivider {
+	align-self: center;
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -744,6 +825,10 @@ watch(
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	& + .chatMessage {
+		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	}
 }
 
 .chatMessageUser {
@@ -753,6 +838,10 @@ watch(
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
+}
+
+.author {
+	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
 .chatMessageError {

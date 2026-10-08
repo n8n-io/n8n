@@ -70,7 +70,35 @@
                                 }
                             }
                         },
+                        "maxres": {
+                            "type": "object",
+                            "properties": {
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
                         "medium": {
+                            "type": "object",
+                            "properties": {
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "standard": {
                             "type": "object",
                             "properties": {
                                 "height": {
@@ -92,5 +120,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

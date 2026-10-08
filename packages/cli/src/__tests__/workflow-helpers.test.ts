@@ -16,6 +16,7 @@ import type {
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
@@ -32,7 +33,7 @@ import {
 	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {
@@ -1019,17 +1020,108 @@ describe('updateParentExecutionWithChildResults', () => {
 	};
 
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
-	async function resumeWith(child: IRun, childExecution?: RelatedExecution) {
+	async function resumeWith(
+		child: IRun,
+		childExecution?: RelatedExecution,
+		workflowData?: IWorkflowBase,
+	) {
 		const executionPersistence = mockInstance(ExecutionPersistence);
 		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
 
-		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
+		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution, workflowData);
 
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
 		return (payload as IExecutionResponse).data.executionData!
 			.nodeExecutionStack[0] as unknown as StackEntry;
 	}
+
+	function savedWorkflow(outputCount: number): IWorkflowBase {
+		mockInstance(NodeTypes).getByNameAndVersion.mockReturnValue({
+			description: {
+				name: 'test',
+				displayName: 'Test',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: {},
+				inputs: ['main'],
+				outputs: Array.from({ length: outputCount }, () => 'main'),
+				properties: [],
+			},
+		});
+		return {
+			...mock<IWorkflowBase>(),
+			nodes: [
+				{
+					id: 'last',
+					name: 'Last',
+					type: 'test',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			settings: {},
+			staticData: undefined,
+		};
+	}
+
+	it.each([false, true])('uses the saved lastRunOnly=%s policy on resume', async (lastRunOnly) => {
+		const child = childRun('success', 'Last', {
+			executionIndex: 1,
+			data: { main: [[], [{ json: { id: 57 } }]] },
+		});
+		child.data.resultData.runData.Last.unshift({
+			startTime: 0,
+			executionTime: 0,
+			source: [],
+			executionIndex: 0,
+			data: { main: [[], [{ json: { id: 55 } }]] },
+		});
+		if (!lastRunOnly) child.data.resultData.runData.Last.reverse();
+		child.data.subWorkflowOutput = { lastRunOnly };
+		const entry = await resumeWith(child, undefined, savedWorkflow(2));
+		expect(entry.data).toEqual({
+			main: [lastRunOnly ? [{ json: { id: 57 } }] : [{ json: { id: 55 } }, { json: { id: 57 } }]],
+		});
+	});
+
+	it.each([true, false])(
+		'excludes discarded items on resume when Filter keeps items: %s',
+		async (keepsItems) => {
+			const kept = keepsItems ? [{ json: { id: 55 } }] : [];
+			const child = childRun('success', 'Last', { data: { main: [kept, [{ json: { id: 56 } }]] } });
+			child.data.subWorkflowOutput = { lastRunOnly: false };
+			const entry = await resumeWith(child, undefined, savedWorkflow(1));
+			expect(entry.data).toEqual({ main: [kept] });
+		},
+	);
+
+	it('keeps the final run and branch shape for an execution without a saved policy', async () => {
+		const child = childRun('success', 'Last', { data: { main: [[], [{ json: { id: 57 } }]] } });
+		child.data.resultData.runData.Last.unshift({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: [],
+			data: { main: [[{ json: { id: 55 } }]] },
+		});
+		const entry = await resumeWith(child, undefined, savedWorkflow(2));
+		expect(entry.data).toEqual({ main: [[], [{ json: { id: 57 } }]] });
+	});
+
+	it('requires the execution snapshot for a saved output policy', async () => {
+		const child = childRun('success', 'Last', { data: { main: [[{ json: {} }]] } });
+		child.data.subWorkflowOutput = { lastRunOnly: false };
+		const persistence = mockInstance(ExecutionPersistence);
+		persistence.findSingleExecution.mockResolvedValue(waitingParent());
+		await expect(updateParentExecutionWithChildResults(PARENT_ID, child)).rejects.toThrow(
+			'saved child workflow',
+		);
+		expect(persistence.updateExistingExecution).not.toHaveBeenCalled();
+	});
 
 	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
 		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
@@ -1218,4 +1310,55 @@ describe('updateParentExecutionWithChildResults', () => {
 			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(2);
 		},
 	);
+
+	describe('when the parent names the children its current wait is parked on', () => {
+		const parentWaitingOn = (childExecutionIds: string[]): IExecutionResponse => {
+			const parent = waitingParent();
+			parent.data.executionData!.nodeExecutionStack[0].metadata = {
+				waitingChildExecutionIds: childExecutionIds,
+			};
+			return parent;
+		};
+
+		const child = () => childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } });
+
+		it('patches for a child the parent is waiting on', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parentWaitingOn(['child-2']));
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-2',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(true);
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves the parent alone for a child left over from an earlier wait', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parentWaitingOn(['child-2']));
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-1',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(false);
+			expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+		});
+
+		it('patches for any child when the parent names none', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-1',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(true);
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		});
+	});
 });

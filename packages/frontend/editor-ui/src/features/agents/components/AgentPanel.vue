@@ -20,7 +20,9 @@ const headerId = useId();
 
 <template>
 	<section :class="[$style.panelContainer, props.containerClass]" :aria-labelledby="headerId">
+		<slot v-if="$slots.header" name="header" :header-id="headerId" />
 		<AgentPanelHeader
+			v-else
 			:header-id="headerId"
 			:title="props.header"
 			:header-visibility="props.headerVisibility"

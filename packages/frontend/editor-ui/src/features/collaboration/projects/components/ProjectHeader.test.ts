@@ -42,20 +42,6 @@ vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
 	}),
 }));
 
-const instanceAiMocks = vi.hoisted(() => ({ ready: false }));
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiAvailable: () => ({
-		get value() {
-			return instanceAiMocks.ready;
-		},
-	}),
-	useInstanceAiReady: () => ({
-		get value() {
-			return instanceAiMocks.ready;
-		},
-	}),
-}));
-
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
@@ -80,7 +66,6 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
-			<button data-test-id="action-agentManual" @click="$emit('action', 'agentManual')">Agent manually</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
 			</div>
@@ -114,7 +99,6 @@ describe('ProjectHeader', () => {
 		uiStore = mockedStore(useUIStore);
 		projectPages = useProjectPages();
 
-		instanceAiMocks.ready = false;
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };
 		settingsStore.isDataTableFeatureEnabled = true;
@@ -337,6 +321,7 @@ describe('ProjectHeader', () => {
 	describe('new agent telemetry', () => {
 		beforeEach(() => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({
 				scopes: ['workflow:create', 'agent:create'],
 			});
@@ -362,55 +347,6 @@ describe('ProjectHeader', () => {
 
 			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
 			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown', expect.any(String));
-		});
-
-		it('tracks the manual flag when the manual agent action is selected', async () => {
-			instanceAiMocks.ready = true;
-			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
-
-			await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
-			await waitFor(() => expect(getByTestId('action-agentManual')).toBeVisible());
-			await userEvent.click(getByTestId('action-agentManual'));
-
-			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown', expect.any(String), {
-				manual: true,
-			});
-			expect(mockPush).toHaveBeenCalledWith(
-				expect.objectContaining({
-					query: expect.objectContaining({ mode: 'manual' }),
-				}),
-			);
-		});
-	});
-
-	describe('manual agent creation menu item', () => {
-		beforeEach(() => {
-			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
-			const project = createTestProject({ scopes: ['agent:create'] });
-			projectsStore.currentProject = project;
-			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
-		});
-
-		it('is offered on the agents pages while Instance AI is ready', () => {
-			instanceAiMocks.ready = true;
-			const { queryByTestId } = renderComponent({ props: { mainButton: 'agent' } });
-
-			expect(queryByTestId('menu-agentManual')).toBeInTheDocument();
-		});
-
-		it('is not offered while Instance AI is not ready — the main button is already manual', () => {
-			instanceAiMocks.ready = false;
-			const { queryByTestId } = renderComponent({ props: { mainButton: 'agent' } });
-
-			expect(queryByTestId('menu-agentManual')).not.toBeInTheDocument();
-		});
-
-		it('is not offered outside the agents pages', () => {
-			instanceAiMocks.ready = true;
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('menu-agentManual')).not.toBeInTheDocument();
 		});
 	});
 
@@ -450,6 +386,31 @@ describe('ProjectHeader', () => {
 		} as RouteLocationNormalizedLoadedGeneric);
 		const { queryByTestId } = renderComponent();
 		expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
+	});
+
+	it('should hide agent controls when agents are disabled', () => {
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		settingsStore.isModuleActive = vi.fn().mockImplementation((module) => module === 'agents');
+		settingsStore.isAgentsEnabled = false;
+		uiStore.moduleTabs.project = {
+			agents: [{ value: 'agents', label: 'Agents' }],
+		};
+		const project = createTestProject({ scopes: ['workflow:create', 'agent:create'] });
+		projectsStore.currentProject = project;
+		projectsStore.myProjects = [project] as unknown as ProjectListItem[];
+
+		const { getByTestId, queryByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'additional-tabs': [],
+			}),
+			null,
+		);
+		expect(queryByTestId('menu-agent')).not.toBeInTheDocument();
+		expect(queryByTestId('add-resource-agent')).not.toBeInTheDocument();
+		expect(getByTestId('add-resource-workflow')).toBeEnabled();
 	});
 
 	describe('customProjectTabs', () => {
@@ -581,7 +542,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(5);
 		});
 
 		it('should pass empty array when no modules are active', () => {
@@ -734,6 +694,7 @@ describe('ProjectHeader', () => {
 
 		it('should enable agent create button when project scope allows it', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({ scopes: ['agent:create'] });
 			projectsStore.currentProject = project;
 			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
@@ -746,6 +707,7 @@ describe('ProjectHeader', () => {
 
 		it('should disable agent create button when no scope allows it', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({ scopes: [] });
 			projectsStore.currentProject = project;
 			projectsStore.myProjects = [project] as unknown as ProjectListItem[];

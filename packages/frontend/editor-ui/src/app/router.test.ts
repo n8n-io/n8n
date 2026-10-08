@@ -5,6 +5,7 @@ import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
+
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -263,9 +264,6 @@ describe('router', () => {
 
 		test('waits for delayed flag hydration before allowing enrolled users through', async () => {
 			const posthog = usePostHog();
-			const hasPendingFeatureFlagsSpy = vi
-				.spyOn(posthog, 'hasPendingFeatureFlags')
-				.mockReturnValue(true);
 			const waitForFeatureFlagsSpy = vi
 				.spyOn(posthog, 'waitForFeatureFlags')
 				.mockImplementation(async () => {
@@ -282,7 +280,6 @@ describe('router', () => {
 				expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
 			} finally {
 				waitForFeatureFlagsSpy.mockRestore();
-				hasPendingFeatureFlagsSpy.mockRestore();
 			}
 		});
 	});
@@ -293,6 +290,7 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			mcpConnectionsAvailable: true,
 			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,

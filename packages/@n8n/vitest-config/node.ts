@@ -4,7 +4,11 @@ import type { Alias } from 'vite';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
+import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
+import { profilingConfig, profilingReporters } from './profiling.js';
+
+export { profilingReporters } from './profiling.js';
 
 /**
  * Pin dual-build (ESM+CJS) deps to their CJS entry so a single class identity is shared
@@ -51,14 +55,17 @@ export const forkPoolOptions = (): InlineConfig => {
  * Use this when you need to spread the config into workspace projects.
  */
 export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig => ({
+	...profilingConfig(),
 	silent: true,
 	globals: true,
 	// Restore `vi.spyOn` spies to their original implementation before each test, so
 	// spies set up once don't leak across tests. Packages may override via `options`.
 	restoreMocks: true,
 	environment: 'node',
+	// Inline so vitest maps the `vitest` import inside it to the running instance.
+	// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
+	server: { deps: { inline: ['vitest-mock-extended'] } },
 	...forkPoolOptions(),
-	reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 	outputFile: { junit: './junit.xml' },
 	...(process.env.COVERAGE_ENABLED === 'true'
 		? {
@@ -68,10 +75,15 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 					reporter: process.env.CI === 'true' ? 'lcov' : 'text-summary',
 					include: ['src/**/*.ts'],
 					exclude: [...coverageConfigDefaults.exclude, ...coverageExcludes],
+					// With a CHANGED_FILES signal (PR runs), measure only the changed files.
+					...changedFileCoverage(),
 				},
 			}
 		: {}),
 	...options,
+	reporters: profilingReporters(
+		options.reporters ?? (process.env.CI === 'true' ? ['default', 'junit'] : ['default']),
+	),
 });
 
 export const createVitestConfig = (

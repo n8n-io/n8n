@@ -1,5 +1,13 @@
-export type { FetchOptions } from 'imap';
-export * from './imap-simple';
+export type {
+	ExistsEvent,
+	FetchMessageObject,
+	FetchQueryObject,
+	FlagsEvent,
+	ListResponse,
+	MailboxObject,
+	SearchObject,
+} from 'imapflow';
 export * from './connection-options';
+export * from './imap-simple';
 export * from './errors';
-export type * from './types';
+export { parseHeaders } from './headers';

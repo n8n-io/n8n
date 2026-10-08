@@ -9,7 +9,6 @@ import type {
 	WorkflowEntity,
 } from '@n8n/db';
 import {
-	CredentialsEntity,
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRelationRepository,
@@ -105,7 +104,7 @@ import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
 import { ExportableVariable } from './types/exportable-variable';
-import type { WorkflowImportResult } from './types/import-result';
+import type { CredentialImportResult, WorkflowImportResult } from './types/import-result';
 import type {
 	RemoteResourceOwner,
 	StatusResourceOwner,
@@ -191,6 +190,7 @@ export class SourceControlImportService {
 		const remoteWorkflowFiles = await glob('*.json', {
 			cwd: this.workflowExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		// Parse in bounded batches and project each workflow to its slim status shape
@@ -339,6 +339,7 @@ export class SourceControlImportService {
 		const remoteCredentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		const remoteCredentialFilesRead = await mapInBatches(
@@ -429,8 +430,10 @@ export class SourceControlImportService {
 					role: true,
 				},
 			},
-			where:
+			// A credential the user never finished authorizing must not reach the push dialog or git
+			where: this.credentialsRepository.excludePendingAuthorization(
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
+			),
 		});
 
 		// Batched to bound the transient decryption allocations (plaintext + parsed object)
@@ -471,6 +474,7 @@ export class SourceControlImportService {
 		const variablesFile = await glob(SOURCE_CONTROL_VARIABLES_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (variablesFile.length > 0) {
 			this.logger.debug(`Importing variables from file ${variablesFile[0]}`);
@@ -494,6 +498,7 @@ export class SourceControlImportService {
 		const dataTableFiles = await glob('*.json', {
 			cwd: this.dataTableExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		if (dataTableFiles.length === 0) {
@@ -595,6 +600,7 @@ export class SourceControlImportService {
 		const foldersFile = await glob(SOURCE_CONTROL_FOLDERS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (foldersFile.length > 0) {
 			this.logger.debug(`Importing folders from file ${foldersFile[0]}`);
@@ -647,6 +653,7 @@ export class SourceControlImportService {
 		const tagsFile = await glob(SOURCE_CONTROL_TAGS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (tagsFile.length > 0) {
 			this.logger.debug(`Importing tags from file ${tagsFile[0]}`);
@@ -690,6 +697,7 @@ export class SourceControlImportService {
 		const remoteProjectFiles = await glob('*.json', {
 			cwd: this.projectExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		const remoteProjects = await mapInBatches(
@@ -862,11 +870,14 @@ export class SourceControlImportService {
 		// skip after that point would leave it stopped with nothing imported in its place.
 		let cleared: PolicyCleared<'contentImport'>;
 		try {
-			cleared = await this.policyEnforcementService.enforceContentImport({
-				workflow: { id, name: importedWorkflow.name, nodes },
-				projectId: targetOwnerProject.id,
-				transport: 'source-control',
-			});
+			cleared = await this.policyEnforcementService.enforceContentImport(
+				{
+					workflow: { id, name: importedWorkflow.name, nodes },
+					projectId: targetOwnerProject.id,
+					transport: 'source-control',
+				},
+				{ kind: 'user', user: { id: userId } },
+			);
 		} catch (error) {
 			// A blocked workflow is skipped, not fatal — the rest of the pull still lands. A check
 			// that broke is not scoped to one workflow, so it fails the pull rather than silently
@@ -1074,99 +1085,124 @@ export class SourceControlImportService {
 			},
 		});
 
-		const importCredentialsResult: Array<{ id: string; name: string; type: string } | undefined> =
-			await Promise.all(
-				candidates.map(async (candidate) => {
-					this.logger.debug(`Importing credentials file ${candidate.file}`);
-					const credential = jsonParse<ExportableCredential>(
-						await fsReadFile(candidate.file, { encoding: 'utf8' }),
+		const importCredentialsResult: Array<CredentialImportResult | undefined> = await Promise.all(
+			candidates.map(async (candidate) => {
+				this.logger.debug(`Importing credentials file ${candidate.file}`);
+				const credential = jsonParse<ExportableCredential>(
+					await fsReadFile(candidate.file, { encoding: 'utf8' }),
+				);
+				const existingCredentialById = existingCredentialsById.get(credential.id);
+
+				// Instance credentials (provider connections) are instance-local and never synced
+				if (
+					credential.usageScope === 'instance' ||
+					existingCredentialById?.usageScope === 'instance'
+				) {
+					this.logger.debug(`Skipping provider connection file ${candidate.file}`);
+					return undefined;
+				}
+
+				const existingCredential =
+					existingCredentialById?.type === credential.type ? existingCredentialById : undefined;
+
+				// Carry the "private"/resolvable nature across environments. resolverId is
+				// instance-local and handled separately (see IAM-906).
+				const {
+					name,
+					type,
+					data,
+					id,
+					isGlobal = false,
+					isResolvable = false,
+					resolvableAllowFallback = false,
+				} = credential;
+
+				const targetOwnerProject = await this.resolveTargetOwnerProject(
+					credential.ownedBy,
+					personalProject,
+				);
+
+				// Enforced before the decrypt and merge, so a blocked credential is skipped even when
+				// its stored data can't be read.
+				let cleared: PolicyCleared<'contentImport'>;
+				try {
+					cleared = await this.policyEnforcementService.enforceContentImport(
+						{
+							credential: { id: credential.id ?? null, type },
+							projectId: targetOwnerProject.id,
+							transport: 'source-control',
+						},
+						{ kind: 'user', user: { id: userId } },
 					);
-					const existingCredentialById = existingCredentialsById.get(credential.id);
+				} catch (error) {
+					if (!(error instanceof PolicyViolationError)) throw error;
 
-					// Instance credentials (provider connections) are instance-local and never synced
-					if (
-						credential.usageScope === 'instance' ||
-						existingCredentialById?.usageScope === 'instance'
-					) {
-						this.logger.debug(`Skipping provider connection file ${candidate.file}`);
-						return undefined;
-					}
-
-					const existingCredential =
-						existingCredentialById?.type === credential.type ? existingCredentialById : undefined;
-
-					// Carry the "private"/resolvable nature across environments. resolverId is
-					// instance-local and handled separately (see IAM-906).
-					const {
-						name,
-						type,
-						data,
-						id,
-						isGlobal = false,
-						isResolvable = false,
-						resolvableAllowFallback = false,
-					} = credential;
-					const newCredentialObject = new Credentials({ id, name }, type);
-
-					if (existingCredential?.data) {
-						// Credential exists - merge expressions from remote while preserving local plain values
-						const existingDecrypted = new Credentials(
-							{ id: existingCredential.id, name: existingCredential.name },
-							existingCredential.type,
-							existingCredential.data,
-						);
-						const localData = await existingDecrypted.getData();
-						const mergedData = mergeRemoteCrendetialDataIntoLocalCredentialData({
-							local: localData,
-							remote: data,
-						});
-						await newCredentialObject.setData(mergedData);
-					} else {
-						// This is a safe guard, in principle remote data should already be sanitized
-						// This prevents importing invalid data that should have not been synched in the first place
-						const sanitizedData = sanitizeCredentialData(data);
-						await newCredentialObject.setData(sanitizedData);
-					}
-					const targetOwnerProject = await this.resolveTargetOwnerProject(
-						credential.ownedBy,
-						personalProject,
-					);
-
-					this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-					await this.credentialsRepository.runInTransaction({}, async (transactionManager) => {
-						await transactionManager.upsert(
-							CredentialsEntity,
-							{
-								...newCredentialObject,
-								isGlobal,
-								isResolvable,
-								resolvableAllowFallback,
-							},
-							['id'],
-						);
-
-						const localOwner = existingSharedCredentials.find(
-							(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
-						);
-
-						await this.syncResourceOwnership({
-							resourceId: credential.id,
-							remoteOwner: credential.ownedBy,
-							localOwner,
-							fallbackProject: personalProject,
-							repository: this.sharedCredentialsRepository,
-							transactionManager,
-							targetOwnerProject,
-						});
-					});
+					this.logger.warn(`Skipping credential ${id}: blocked by policy`);
 
 					return {
-						id: newCredentialObject.id as string,
-						name: newCredentialObject.name,
-						type: newCredentialObject.type,
+						id,
+						name: candidate.file,
+						type,
+						contentImportPolicy: { violations: error.violations, checkErrors: [] },
 					};
-				}),
-			);
+				}
+
+				const newCredentialObject = new Credentials({ id, name }, type);
+
+				if (existingCredential?.data) {
+					// Credential exists - merge expressions from remote while preserving local plain values
+					const existingDecrypted = new Credentials(
+						{ id: existingCredential.id, name: existingCredential.name },
+						existingCredential.type,
+						existingCredential.data,
+					);
+					const localData = await existingDecrypted.getData();
+					const mergedData = mergeRemoteCrendetialDataIntoLocalCredentialData({
+						local: localData,
+						remote: data,
+					});
+					await newCredentialObject.setData(mergedData);
+				} else {
+					// This is a safe guard, in principle remote data should already be sanitized
+					// This prevents importing invalid data that should have not been synched in the first place
+					const sanitizedData = sanitizeCredentialData(data);
+					await newCredentialObject.setData(sanitizedData);
+				}
+
+				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
+				await this.credentialsRepository.runInTransaction({}, async (transactionManager, ctx) => {
+					await this.credentialsRepository.upsertImportedContent(
+						{
+							...newCredentialObject,
+							isGlobal,
+							isResolvable,
+							resolvableAllowFallback,
+						},
+						{ ...ctx, policyCleared: cleared },
+					);
+
+					const localOwner = existingSharedCredentials.find(
+						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
+					);
+
+					await this.syncResourceOwnership({
+						resourceId: credential.id,
+						remoteOwner: credential.ownedBy,
+						localOwner,
+						fallbackProject: personalProject,
+						repository: this.sharedCredentialsRepository,
+						transactionManager,
+						targetOwnerProject,
+					});
+				});
+
+				return {
+					id: newCredentialObject.id as string,
+					name: newCredentialObject.name,
+					type: newCredentialObject.type,
+				};
+			}),
+		);
 		return importCredentialsResult.filter((e) => e !== undefined);
 	}
 
@@ -1329,6 +1365,9 @@ export class SourceControlImportService {
 		const result: { imported: string[] } = { imported: [] };
 		const overriddenKeys = Object.keys(valueOverrides ?? {});
 
+		const existingVariables = await this.variablesRepository.find({ select: ['id'] });
+		const existingVariableIds = new Set(existingVariables.map(({ id }) => id));
+
 		for (const variable of variables) {
 			if (!variable.key) {
 				continue;
@@ -1338,15 +1377,24 @@ export class SourceControlImportService {
 				overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
 			}
 			try {
-				// by default no value is stored remotely, so an empty string is returned
-				// it must be changed to undefined so as to not overwrite existing values!
+				const isNewVariable = !existingVariableIds.has(variable.id);
+				const defaultNewValue = isNewVariable ? '' : undefined;
+
+				// By default no value is stored remotely, so an empty string is returned.
+				// For an existing variable, keep it untouched (`undefined`) so re-importing
+				// doesn't overwrite the local value. For a brand-new variable, create it with
+				// an empty value rather than leaving the column unset (which would insert `NULL`).
 				const variableToUpsert = {
 					...variable,
-					value: variable.value === '' ? undefined : variable.value,
+					value: variable.value === '' ? defaultNewValue : variable.value,
 					project: variable.projectId ? { id: variable.projectId } : null,
 				};
 
 				await this.variablesRepository.upsert(variableToUpsert, ['id']);
+
+				if (isNewVariable) {
+					existingVariableIds.add(variable.id);
+				}
 			} catch (errorUpsert) {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
 					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);

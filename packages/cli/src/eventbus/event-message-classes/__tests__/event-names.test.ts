@@ -15,6 +15,7 @@ const KNOWN_EVENT_GROUPS = [
 	'n8n.runner.',
 	'n8n.queue.',
 	'n8n.execution.',
+	'n8n.instanceReporting.',
 ];
 
 describe('log streaming event names', () => {

@@ -9,8 +9,7 @@ import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AgentEvalRatingService } from '../agent-eval-rating.service';
 import type { AgentEvalService } from '../agent-eval.service';
@@ -94,12 +93,18 @@ describe('AgentEvalsController', () => {
 			listRatingsForResult: 'agent:read',
 			listLatestRatingsForRun: 'agent:read',
 			createDataset: 'agent:update',
+			createDraftDataset: 'agent:update',
 			updateDataset: 'agent:update',
 			deleteDataset: 'agent:update',
+			deleteDraftDataset: 'agent:update',
+			deleteResult: 'agent:update',
+			acceptResult: 'agent:update',
 			generateDraftCases: 'agent:update',
+			previewRun: 'agent:update',
 			rateResult: 'agent:update',
 			cancelRun: 'agent:update',
 			startRun: 'agent:execute',
+			rerunResult: 'agent:execute',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -148,6 +153,7 @@ describe('AgentEvalsController', () => {
 				async () => await controller.updateDataset(datasetReq(), undefined, { name: 'x' }),
 			],
 			['deleteDataset', async () => await controller.deleteDataset(datasetReq())],
+			['deleteDraftDataset', async () => await controller.deleteDraftDataset(datasetReq())],
 			[
 				'generateDraftCases',
 				async () => await controller.generateDraftCases(agentReq(), undefined, {}),
@@ -238,10 +244,37 @@ describe('AgentEvalsController', () => {
 			expect(service.startRun).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'ds-1', {});
 		});
 
+		it('creates a draft dataset for the path agent', async () => {
+			await controller.createDraftDataset(agentReq(), undefined, { datasetName: 'My checks' });
+
+			expect(service.createDraftDataset).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				'My checks',
+			);
+		});
+
+		it('previews a run for the path agent', async () => {
+			await controller.previewRun(agentReq(), undefined, { suggestion: 'be nicer' });
+
+			expect(service.previewRun).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, {
+				suggestion: 'be nicer',
+			});
+		});
+
 		it('reports a delete as a success envelope', async () => {
 			await expect(controller.deleteDataset(datasetReq())).resolves.toEqual({ success: true });
 
 			expect(service.deleteDataset).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'ds-1');
+		});
+
+		it('discards a draft dataset scoped to the path agent and reports a success envelope', async () => {
+			await expect(controller.deleteDraftDataset(datasetReq())).resolves.toEqual({
+				success: true,
+			});
+
+			expect(service.deleteDraftDataset).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'ds-1');
 		});
 
 		it('reads a run summary scoped to the path agent', async () => {
@@ -270,6 +303,32 @@ describe('AgentEvalsController', () => {
 				'res-1',
 				payload,
 			);
+		});
+
+		it('reruns a result scoped to the path agent, forwarding the edited rule', async () => {
+			const payload = { whatToCheck: 'Mentions the refund window.' };
+
+			await controller.rerunResult(resultReq(), undefined, payload);
+
+			expect(service.rerunResult).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				'res-1',
+				payload,
+			);
+		});
+
+		it('accepts a result scoped to the path agent', async () => {
+			await controller.acceptResult(resultReq());
+
+			expect(service.acceptResult).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'res-1');
+		});
+
+		it('deletes a result scoped to the path agent and reports a success envelope', async () => {
+			await expect(controller.deleteResult(resultReq())).resolves.toEqual({ success: true });
+
+			expect(service.deleteResult).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'res-1');
 		});
 
 		it('reads a result rating history scoped to the path agent', async () => {

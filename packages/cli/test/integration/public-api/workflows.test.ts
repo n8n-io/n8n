@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -28,7 +29,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -1056,6 +1056,22 @@ describe('GET /workflows/:id', () => {
 			}),
 		]);
 	});
+
+	test('should return every publish event of the active version in order', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		const events = (
+			response.body.activeVersion.workflowPublishHistory as Array<{ event: string }>
+		).map(({ event }) => event);
+		expect(events).toEqual(['activated', 'deactivated', 'activated']);
+	});
 });
 
 describe('GET /workflows/:id/:versionId', () => {
@@ -1073,6 +1089,7 @@ describe('GET /workflows/:id/:versionId', () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.headers.deprecation).toBe('@1787702400');
 		// The deprecated path keeps one message for both cases. Callers may match on it.
 		expect(response.body.message).toBe('Version not found');
 	});
@@ -1109,6 +1126,9 @@ describe('GET /workflows/:id/:versionId', () => {
 		await createWorkflowHistoryItem(workflow.id, versionData);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBe('@1787702400');
 
 		const body = response.body as Partial<WorkflowHistory>;
 		expect(body).toEqual({
@@ -2200,6 +2220,19 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
 		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
+	});
+
+	test('should create a workflow with a description', async () => {
+		const description = 'What this workflow does';
+		const response = await authMemberAgent.post('/workflows').send({
+			...mockPostWorkflowPayload(),
+			description,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe(description);
+		const stored = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(stored?.description).toBe(description);
 	});
 
 	test.each([

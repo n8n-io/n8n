@@ -50,7 +50,7 @@ const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly
 
 const dataTableHasDependents = computed(() => hasDependencies(props.id, 'dataTable'));
 
-const loading = ref(false);
+const loading = ref(true);
 const saving = ref(false);
 const dataTable = ref<DataTable | null>(null);
 const dataTableTableRef = ref<InstanceType<typeof DataTableTable>>();

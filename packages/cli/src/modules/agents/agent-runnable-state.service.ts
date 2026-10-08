@@ -62,6 +62,7 @@ export class AgentRunnableStateService {
 			this.credentialsService,
 			projectId,
 			user,
+			agent.id,
 		);
 		const [validation, hasPublishHistory] = await Promise.all([
 			this.agentValidationService.validateLoadedAgentConfiguration(

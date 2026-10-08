@@ -38,10 +38,12 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 	{ id: 'sub-agent', name: i18n.baseText('agentSessions.origin.subAgent') },
 	{ id: 'schedule', name: i18n.baseText('agentSessions.origin.schedule') },
 	{ id: 'workflow', name: i18n.baseText('agentSessions.origin.workflow') },
+	{ id: 'n8n_chat_production', name: i18n.baseText('agentSessions.origin.n8nChat') },
 	{ id: 'slack', name: i18n.baseText('agentSessions.origin.slack') },
 	{ id: 'telegram', name: i18n.baseText('agentSessions.origin.telegram') },
 	{ id: 'linear', name: i18n.baseText('agentSessions.origin.linear') },
 	{ id: 'discord', name: i18n.baseText('agentSessions.origin.discord') },
+	{ id: 'whatsapp', name: i18n.baseText('agentSessions.origin.whatsapp') },
 ];
 
 const activeFilterCount = computed(
@@ -85,7 +87,7 @@ function reset() {
 			>
 				<template v-if="activeFilterCount > 0" #default>
 					<N8nBadge
-						theme="primary"
+						variant="primary"
 						:class="$style.filterBadge"
 						data-test-id="agent-sessions-filter-badge"
 					>

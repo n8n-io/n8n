@@ -194,6 +194,29 @@ describe('DynamicCredentialStorageService', () => {
 					service.storeIfNeeded(metadata, dynamicData, credentialContext),
 				).rejects.toThrow('Failed to store end-user credential data');
 			});
+
+			it('the resolver cannot be used with the established n8n identity', async () => {
+				const metadata = createMockCredentialMetadata({ resolverId: undefined });
+				const resolverEntity = createMockResolverEntity({ id: 'workflow-resolver-789' });
+				// Resolver keyed on an external subject: no `resolveOwningUserId`.
+				const mockResolver = createMockResolver();
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
+
+				await expect(
+					service.storeIfNeeded(
+						metadata,
+						dynamicData,
+						{ version: 1, identity: 'n8n-session-jwt', metadata: { source: 'cookie-source' } },
+						staticData,
+						{ credentialResolverId: 'workflow-resolver-789' },
+					),
+				).rejects.toThrow(CredentialStorageError);
+
+				expect(mockResolver.setSecret).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('should successfully store when', () => {

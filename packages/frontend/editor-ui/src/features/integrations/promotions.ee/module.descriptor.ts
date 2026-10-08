@@ -1,4 +1,4 @@
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 
 import { VIEWS } from '@/app/constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
@@ -15,7 +15,7 @@ const SETTINGS_SCOPES = [
 	'gitConnection:delete',
 ] as const;
 
-export const PromotionsModule: FrontendModuleDescription = {
+export const PromotionsModule = defineFrontendModule({
 	id: 'promotions',
 	name: 'Promotions',
 	description: 'Promote workflow changes between environments',
@@ -41,4 +41,4 @@ export const PromotionsModule: FrontendModuleDescription = {
 		},
 	],
 	modals: PROMOTIONS_MODALS,
-};
+});

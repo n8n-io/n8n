@@ -1,8 +1,9 @@
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import {
 	dropInvalidWorkflowJsonGroups,
@@ -23,7 +24,12 @@ import {
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { describeSavedPublishState, savedWorkflowStateSchema } from './saved-workflow-state';
 import { isSetupPanelEnabled } from './setup-items';
+import {
+	applyPendingSetupCredentialSelections,
+	markSetupCredentialSelectionsApplied,
+} from './setup-credential-selections';
 import { recordWorkflowSetupState } from './setup-panel-state';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
@@ -55,6 +61,7 @@ import { withDeterministicRouting } from './workflow-build-routing';
 import {
 	trackWaitGateVerificationPlan,
 	trackWorkflowSourceBuild,
+	type BuildTelemetryStage,
 } from './workflow-build-telemetry';
 import {
 	bindSourceFileToExistingWorkflow,
@@ -77,9 +84,14 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
+import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
+	GROUP_DROPPED_OVER_CEILING_CODE,
+	groupingDecisionBlocker,
+	NODE_GROUP_DROPPED_CODE,
 	nodeGroupDroppedWarnings,
 	partitionWarnings,
+	summarizeWorkflowTopLevelItems,
 	topLevelItemsWarning,
 	type ValidationWarning,
 } from './workflow-validation-warnings';
@@ -91,11 +103,14 @@ import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } fr
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
+	groupingOutcomeSchema,
 	remediationMetadataSchema,
 	workflowVerificationReadinessSchema,
+	type GroupingOutcome,
 	type WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { approvalSummarySchema, formatApprovalMessage } from '../approval-copy';
 import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
@@ -106,6 +121,9 @@ const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	/** Workflow name shown in the approval card title. */
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
 	workflowId: z.string(),
@@ -173,6 +191,7 @@ export const buildWorkflowInputSchema = z
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
+		approvalSummary: approvalSummarySchema,
 		workItemId: z
 			.string()
 			.optional()
@@ -203,6 +222,20 @@ export const buildWorkflowInputSchema = z
 					'vehicle — verification becomes an optional pre-flight and completion is a live run whose ' +
 					'output was read back (see the one-off-operations skill). Omit or pass `reusable` for ' +
 					'anything the user may run again.',
+			),
+		groupingDecision: z
+			.enum(['grouped', 'not_warranted'])
+			.optional()
+			.describe(
+				'Only for a canvas that will exceed the top-level ceiling with no node group: pass `not_warranted` ' +
+					'together with `groupingReason` to say why no valid group can hold the remaining nodes. ' +
+					'Never pass it to skip the grouping decision.',
+			),
+		groupingReason: z
+			.string()
+			.optional()
+			.describe(
+				'Required with `groupingDecision: not_warranted`: why these nodes cannot form a valid group.',
 			),
 	})
 	.strict();
@@ -315,11 +348,24 @@ export function autoImportMissingSdkSymbols(
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
-const ONE_OFF_OPERATIONS_GUIDANCE =
-	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
+/**
+ * Where the follow-up instructions live depends on the branch: the runtime
+ * delivers an activated skill with this tool result, and an inlined copy sits
+ * in `instructions`.
+ */
+function followInstructionsClause(skillId: string, label: string, activated: boolean): string {
+	return activated
+		? `Follow the active ${skillId} skill instructions now (do NOT call load_skill for it — it is already active)`
+		: `Follow the ${label} instructions in \`instructions\` now (do NOT load the ${skillId} skill — they are the same instructions)`;
+}
 
-const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+function oneOffOperationsGuidance(activated: boolean): string {
+	return `This one-off build is not complete yet. ${followInstructionsClause(ONE_OFF_OPERATIONS_SKILL_ID, 'one-off', activated)}. Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.`;
+}
+
+function postBuildFlowGuidance(activated: boolean): string {
+	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, 'post-build', activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`executions(action="list")\` and \`executions(action="get")\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
+}
 
 /** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
 const INLINE_SKIPPED_SECTIONS = [
@@ -380,7 +426,7 @@ async function directPostBuildFlowHandoff(
 			required: true,
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
-			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
+			guidance: oneOffOperationsGuidance(activate !== undefined),
 			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
 		};
 	}
@@ -389,12 +435,13 @@ async function directPostBuildFlowHandoff(
 		required: true,
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
-		guidance: POST_BUILD_FLOW_GUIDANCE,
+		guidance: postBuildFlowGuidance(activate !== undefined),
 		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
 	};
 }
 
 interface ValidationFailureArgs {
+	abortSignal?: AbortSignal;
 	context: InstanceAiContext;
 	blocking: ValidationWarning[];
 	informational: ValidationWarning[];
@@ -411,7 +458,42 @@ interface ValidationFailureArgs {
 	owner: WorkflowBuildOutcome['owner'];
 	isSupportingWorkflow?: boolean;
 	isAuxiliarySupportingWorkflow?: boolean;
-	withEscalation: (errors: string[]) => string[];
+	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
+	stage?: BuildTelemetryStage;
+	grouping?: GroupingOutcome;
+}
+
+/**
+ * The grouping decision this build ends with, for the result and telemetry.
+ *
+ * - `grouped`: the agent made groups, even if the save dropped all of them.
+ * - `not_warranted`: the agent made no groups and gave a reason.
+ * - `under_ceiling`: the canvas has `TOP_LEVEL_ITEM_CEILING` boxes or fewer, so
+ *   groups are not needed.
+ * - `missing`: the canvas has more than `TOP_LEVEL_ITEM_CEILING` boxes, and the
+ *   agent made no groups and gave no reason. It skipped the decision. The build
+ *   is refused.
+ */
+function resolveGroupingDecision(input: {
+	groupCount: number;
+	overCeiling: boolean;
+	groupingDecision: 'grouped' | 'not_warranted' | undefined;
+}): GroupingOutcome['decision'] {
+	if (input.groupCount > 0) {
+		return 'grouped';
+	}
+
+	if (input.groupingDecision !== undefined) {
+		return input.groupingDecision;
+	}
+
+	// No groups and no reason given. With more than `TOP_LEVEL_ITEM_CEILING` boxes on
+	// the canvas, the agent had to make groups or give a reason. It did neither.
+	if (input.overCeiling) {
+		return 'missing';
+	}
+
+	return 'under_ceiling';
 }
 
 async function handleValidationFailure(args: ValidationFailureArgs) {
@@ -433,10 +515,18 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		isSupportingWorkflow = false,
 		isAuxiliarySupportingWorkflow = false,
 		withEscalation,
+		stage = 'validation',
+		grouping,
 	} = args;
 
+	const validationErrors = blocking.map(
+		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+	);
 	const formattedErrors = withEscalation(
-		blocking.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+		reason === 'workflow_source_validation_failed'
+			? await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal)
+			: validationErrors,
+		{ trackingErrors: validationErrors },
 	);
 	const remediation = createCodeFixableRemediation({ reason, guidance });
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
@@ -451,10 +541,11 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		errors: formattedErrors,
 		summary,
 		storeOnRunContext: !isAuxiliarySupportingWorkflow,
+		grouping,
 	});
 	trackWorkflowSourceBuild(context, {
 		result: 'failure',
-		stage: 'validation',
+		stage,
 		binding,
 		targetWorkflowId,
 		isSupportingWorkflow,
@@ -462,6 +553,15 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		remediation,
 		errorCount: formattedErrors.length,
 		warningCount: informational.length,
+		...(grouping
+			? {
+					topLevelItemCount: grouping.topLevelItemCount,
+					groupCount: grouping.groupCount,
+					droppedGroupCount: grouping.droppedGroupCount,
+					groupingDecision: grouping.decision,
+					groupingReasonProvided: grouping.reason !== undefined,
+				}
+			: {}),
 	});
 	return {
 		success: false as const,
@@ -471,6 +571,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		errors: formattedErrors,
 		remediation,
 		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+		...(grouping ? { grouping } : {}),
 	};
 }
 
@@ -496,6 +597,8 @@ const buildWorkflowOutputSchema = z.object({
 	credentialResolutionNote: z.string().optional(),
 	referencedWorkflowIds: z.array(z.string()).optional(),
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	...savedWorkflowStateSchema.shape,
+	grouping: groupingOutcomeSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
 	remediation: remediationMetadataSchema.optional(),
@@ -530,6 +633,41 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
+			// Limited mode: reads omit parameter values, so a save would erase them.
+			if (context.allowSendingParameterValues === false) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [
+						'n8n Assistant cannot create or edit workflows while data sharing is turned off. Nothing was saved.',
+					],
+					remediation: createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'parameter_values_hidden',
+						guidance:
+							'Do not retry or rewrite the workflow code. Tell the user that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
+					}),
+				};
+			}
+
+			const { groupingDecision, groupingReason } = input;
+			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
+				const guidance =
+					"Pass `groupingReason` with `groupingDecision: 'not_warranted'`: say why no valid node group can hold the remaining nodes.";
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: ['groupingDecision is not_warranted but groupingReason is missing.'],
+					remediation: createRemediation({
+						category: 'code_fixable',
+						shouldEdit: false,
+						reason: 'grouping_reason_missing',
+						guidance,
+					}),
+				};
+			}
+
 			let filePath: string;
 			try {
 				// Accepts absolute paths under the workspace root (models often echo
@@ -581,6 +719,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			// The source was read while parameter values were hidden. Saving it would erase them.
+			if (binding.workflowId && binding.parameterValuesIncluded === false) {
+				const remediation = createRemediation({
+					category: 'code_fixable',
+					shouldEdit: false,
+					reason: 'workflow_source_refresh_required',
+					guidance:
+						'Call workflows(action="get-as-code") for this workflow before rebuilding. ' +
+						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'source_read',
+					binding,
+					targetWorkflowId: binding.workflowId,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: binding.workflowId,
+					errors: ['This workflow source may omit saved parameter values. Nothing was saved.'],
+					remediation,
+				};
+			}
+
 			if (input.workflowId && !binding.workflowId) {
 				try {
 					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
@@ -610,8 +775,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const targetWorkflowId = binding.workflowId;
 			// Only the folder-enabled schema carries the field; the narrowing keeps the
 			// handler valid for both shapes without a cast.
+			// Blank or "/" names no folder: OpenAI's strict tool schemas make models fill every field.
 			const folderPath =
-				'folderPath' in input && typeof input.folderPath === 'string'
+				'folderPath' in input &&
+				typeof input.folderPath === 'string' &&
+				/[^\s/]/.test(input.folderPath)
 					? input.folderPath
 					: undefined;
 			if (folderPath !== undefined && targetWorkflowId) {
@@ -740,7 +908,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					return await ctx.suspend({
 						requestId: nanoid(),
-						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
+						message: formatApprovalMessage(
+							'Save the changes to this workflow',
+							input.approvalSummary,
+						),
+						resourceName: workflowName,
+						approvalDetails: { action: 'edit-workflow', summary: input.approvalSummary },
 						severity: 'warning',
 						workflowId: targetWorkflowId,
 					});
@@ -859,9 +1032,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 			const withEscalation = (
 				errors: string[],
-				options: { includeSdkLanguageGuidance?: boolean } = {},
+				options: { includeSdkLanguageGuidance?: boolean; trackingErrors?: string[] } = {},
 			): string[] => {
-				const escalation = failureTracker.record(workItemKey, errors, options);
+				// Supplemental diagnostics can time out. Keep the original failure signature stable.
+				const escalation = failureTracker.record(
+					workItemKey,
+					options.trackingErrors ?? errors,
+					options,
+				);
 				return escalation ? [...errors, escalation] : errors;
 			};
 
@@ -912,7 +1090,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 			if (!compiled.success) {
-				const errors = compiled.editable ? withEscalation(compiled.errors) : compiled.errors;
+				const buildErrors =
+					compiled.reason === 'workflow_source_build_failed'
+						? await appendWorkflowSourceDiagnostics(
+								context,
+								filePath,
+								compiled.errors,
+								ctx.abortSignal,
+							)
+						: compiled.errors;
+				const errors = compiled.editable
+					? withEscalation(buildErrors, { trackingErrors: compiled.errors })
+					: buildErrors;
 				const remediation = createSourceCompileRemediation({
 					reason: compiled.reason,
 					editable: compiled.editable,
@@ -968,6 +1157,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedWarnings.blocking,
 					informational,
@@ -1036,13 +1226,49 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
+			const setupSelections = await applyPendingSetupCredentialSelections(
+				json,
+				targetWorkflowId,
+				context,
+				credentialMap,
+			);
+			const setupPreferences =
+				isSetupPanelEnabled(context) && binding.setupPreferences?.runId === context.runId
+					? binding.setupPreferences
+					: undefined;
+			const selectedTypes = new Set(
+				Object.values(setupSelections.resolvedCredentialsByNode)
+					.flat()
+					.map((credential) => credential.type),
+			);
+			// Keep a saved choice when the model repeats setup flags during a repair.
+			const preferNewCredentialTypes = [
+				...new Set([
+					...(setupPreferences?.preferNewCredentialTypes ?? []),
+					...(input.preferNewCredentials ?? []),
+				]),
+			].filter(
+				(type) =>
+					!selectedTypes.has(type) && !setupPreferences?.satisfiedCredentialTypes.includes(type),
+			);
 			const mockResult = await resolveCredentials(
 				json,
 				targetWorkflowId,
 				context,
 				credentialMap,
-				input.preferNewCredentials,
+				[...preferNewCredentialTypes, ...setupSelections.unavailableCredentialTypes],
+				setupSelections.resolvedCredentialsByNode,
 			);
+			for (const [nodeName, selections] of Object.entries(
+				setupSelections.resolvedCredentialsByNode,
+			)) {
+				mockResult.resolvedCredentialsByNode[nodeName] = [
+					...(mockResult.resolvedCredentialsByNode[nodeName] ?? []).filter(
+						(credential) => !selections.some((selection) => selection.type === credential.type),
+					),
+					...selections,
+				];
+			}
 
 			// Deterministic backstop for a builder that never checked credentials:
 			// a chat-model node for a provider the user has no credential for gets
@@ -1083,6 +1309,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedChatModelWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedChatModelWarnings.blocking,
 					informational,
@@ -1128,9 +1355,103 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				);
 				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
 				informational.push(...droppedGroupWarnings);
-				const overCeiling = topLevelItemsWarning(json);
+
+				const topLevel = summarizeWorkflowTopLevelItems(json);
+				const grouping: GroupingOutcome = {
+					topLevelItemCount: topLevel.total,
+					ceiling: topLevel.ceiling,
+					groupCount: topLevel.groupCount,
+					droppedGroupCount,
+					decision: resolveGroupingDecision({
+						groupCount: groupCountBeforeDrop,
+						overCeiling: topLevel.overCeiling,
+						groupingDecision,
+					}),
+					...(groupingReason ? { reason: groupingReason } : {}),
+				};
+
+				// The check applies to canvases this run is responsible for: a new
+				// workflow, a rebuild of one it created, or an edit that pushed a small
+				// workflow over the ceiling. A small edit to a wide user workflow only warns.
+				const snapshotWasUnderCeiling =
+					savedWorkflowSnapshot !== undefined &&
+					!summarizeWorkflowTopLevelItems(savedWorkflowSnapshot).overCeiling;
+
+				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes;
+				// false when the user's workflow already exceeded it. It gates only the "no groups" refusal.
+				const agentExceededCeiling =
+					!targetWorkflowId ||
+					context.aiCreatedWorkflowIds?.has(targetWorkflowId) === true ||
+					snapshotWasUnderCeiling;
+
+				const refusalReason = groupingDecisionBlocker({
+					summary: topLevel,
+					declaredGroupCount: groupCountBeforeDrop,
+					droppedGroupWarnings,
+					groupingDecision,
+				});
+
+				// The one reason to refuse this build because of grouping, or undefined when the canvas is fine.
+				// A dropped group is the agent's own declaration, so it is refused on any canvas. "No groups"
+				// is refused only when the agent made the canvas exceed the ceiling; on the user's
+				// pre-existing layout it stays a warning.
+				const blocker =
+					agentExceededCeiling || refusalReason?.code === GROUP_DROPPED_OVER_CEILING_CODE
+						? refusalReason
+						: undefined;
+
+				if (blocker) {
+					const groupWasDropped = blocker.code === GROUP_DROPPED_OVER_CEILING_CODE;
+
+					const reason = groupWasDropped
+						? 'workflow_group_dropped_over_ceiling'
+						: 'workflow_grouping_decision_missing';
+
+					const guidance =
+						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
+						(groupWasDropped
+							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
+							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
+
+					// The dropped-group error already carries each drop reason, so the matching
+					// warnings would only repeat it.
+					const informationalWithoutDrops = groupWasDropped
+						? informational.filter((warning) => warning.code !== NODE_GROUP_DROPPED_CODE)
+						: informational;
+
+					return await handleValidationFailure({
+						abortSignal: ctx.abortSignal,
+						context,
+						blocking: [blocker],
+						informational: informationalWithoutDrops,
+						reason,
+						guidance,
+						summary:
+							'Workflow build stopped: the canvas is over the top-level ceiling and the node groups do not cover it.',
+						binding,
+						sourceHash,
+						targetWorkflowId,
+						filePath,
+						resolvedWorkItemId,
+						resolvedTaskId,
+						plannedTaskId,
+						owner,
+						isSupportingWorkflow,
+						isAuxiliarySupportingWorkflow,
+						withEscalation,
+						stage: 'grouping',
+						grouping,
+					});
+				}
+
+				const overCeiling = topLevelItemsWarning(json, topLevel);
 				if (overCeiling) {
-					informational.push(overCeiling);
+					const accepted = groupingDecision === 'not_warranted' && groupingReason;
+					informational.push(
+						accepted
+							? { ...overCeiling, message: `${overCeiling.message} (accepted: ${groupingReason})` }
+							: overCeiling,
+					);
 				}
 
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
@@ -1175,18 +1496,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					(n) => isInSetupScope(n.name) && hasPlaceholderDeep(n.parameters),
 				);
 				const createSuccessResponse = async (
-					saved: { id: string; versionId: string; checksum?: string; folder?: WorkflowFolderRef },
+					saved: {
+						id: string;
+						versionId: string;
+						/** Published version, null while the workflow is unpublished. */
+						activeVersionId: string | null;
+						checksum?: string;
+						folder?: WorkflowFolderRef;
+					},
 					operation: 'create' | 'update',
 				) => {
+					await markSetupCredentialSelectionsApplied(context, setupSelections.consumedSelections);
 					// The setup panel lists bound slots too (rendered as done), so its
 					// snapshot needs the settled requests the routing below must not see.
 					const setupItemsEmitter = isSetupPanelEnabled(context)
 						? context.setupItemsEmitter
 						: undefined;
 					const analyzedRequests = await analyzeWorkflow(context, saved.id, undefined, {
-						...(input.preferNewCredentials
-							? { preferNewCredentialTypes: input.preferNewCredentials }
-							: {}),
+						...(preferNewCredentialTypes.length > 0 ? { preferNewCredentialTypes } : {}),
 						...(setupItemsEmitter ? { includeSettled: true } : {}),
 					});
 					const setupRequests = analyzedRequests.filter((request) => !!request.needsAction);
@@ -1236,6 +1563,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowVersionId: saved.versionId,
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
+						setupPending: undefined,
+						...(setupPreferences
+							? {
+									setupPreferences: {
+										...setupPreferences,
+										preferNewCredentialTypes,
+										satisfiedCredentialTypes: [
+											...new Set([...setupPreferences.satisfiedCredentialTypes, ...selectedTypes]),
+										],
+									},
+								}
+							: {}),
 					});
 					// Trace-only compiled-JSON event for eval seed reconstruction — never part
 					// of the tool result, so it never enters the agent's context.
@@ -1301,6 +1640,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						changedNodeNames,
 						executionIntent,
+						grouping,
 						summary,
 					});
 					const postBuildFlow = await directPostBuildFlowHandoff(
@@ -1318,6 +1658,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 
 					failureTracker.clear(workItemKey);
+					await context.onArtifactChanged?.({
+						type: 'workflow',
+						id: saved.id,
+						...(json.name ? { name: json.name } : {}),
+					});
 
 					trackWorkflowSourceBuild(context, {
 						result: 'success',
@@ -1330,11 +1675,20 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isAuxiliarySupportingWorkflow,
 						warningCount: informational.length,
 						droppedGroupCount,
+						...(grouping
+							? {
+									topLevelItemCount: grouping.topLevelItemCount,
+									groupCount: grouping.groupCount,
+									groupingDecision: grouping.decision,
+									groupingReasonProvided: grouping.reason !== undefined,
+								}
+							: {}),
 					});
 
 					return {
 						success: true,
 						...sourceResponseBase(binding),
+						...describeSavedPublishState(saved),
 						workflowId: saved.id,
 						workflowName: json.name || undefined,
 						workItemId: resolvedWorkItemId,
@@ -1371,6 +1725,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
+						grouping,
 						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 					};
 				};
@@ -1384,7 +1739,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						updateOptions,
 					);
-					return await createSuccessResponse(updated, 'update');
+					return await createSuccessResponse(updated, binding.setupPending ? 'create' : 'update');
 				}
 
 				const created = await context.workflowService.createFromWorkflowJSON(json, {
