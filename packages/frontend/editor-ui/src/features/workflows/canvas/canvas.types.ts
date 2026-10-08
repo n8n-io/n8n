@@ -147,6 +147,12 @@ export interface CanvasNodeData {
 		waiting?: string;
 		running: boolean;
 		waitingForNext?: boolean;
+		// No `phase`: nothing renders it, and it would re-map the canvas on every push.
+		subworkflowProgress?: {
+			currentNodeName?: string;
+			currentNodeIndex: number;
+			totalNodes: number;
+		};
 	};
 	runData: {
 		outputMap?: ExecutionOutputMap;
