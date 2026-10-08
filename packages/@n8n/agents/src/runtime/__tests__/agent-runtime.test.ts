@@ -11270,3 +11270,104 @@ describe('AgentRuntime — MCP tool provenance', () => {
 		);
 	});
 });
+
+describe('AgentRuntime — tools that end the turn', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function silenceTool(endsTurn: (output: unknown) => boolean): BuiltTool {
+		return {
+			...makeMockTool('silence', async () => ({ silent: true })),
+			endsTurn,
+		};
+	}
+
+	it('stops after the call, without asking the model again', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true)], 1);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+		);
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
+	});
+
+	it('stops after the call when streaming', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true)], 1);
+		streamText.mockReturnValue(
+			makeStreamWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+		);
+
+		const chunks = await collectChunks(
+			(await runtime.stream('say nothing', { maxIterations: 5 })).stream,
+		);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
+	it('stops after a batch that mixes the call with another tool', async () => {
+		const other = makeMockTool('other', async () => ({ ok: true }));
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true), other], 2);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'other', args: {} },
+				{ toolCallId: 'tc-2', toolName: 'silence', args: {} },
+			]),
+		);
+
+		await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops after resuming a call that suspended next to it', async () => {
+		const { runtime } = createRuntimeWithTools(
+			[silenceTool(() => true), makeInterruptibleTool()],
+			2,
+		);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+				{ toolCallId: 'tc-2', toolName: 'silence', args: {} },
+			]),
+		);
+
+		const first = await runtime.generate('say nothing', { maxIterations: 5 });
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(resumed.finishReason).toBe('stop');
+	});
+
+	it('keeps going when the output does not end the turn', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => false)], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+	});
+});
+
+describe('Tool builder — ending the turn', () => {
+	it('rejects a tool that ends the turn and transforms its model output', () => {
+		const tool = new Tool('silence')
+			.description('Stay silent')
+			.input(z.object({}))
+			.handler(async () => ({ silent: true }))
+			.endsTurnWhen(() => true)
+			.toModelOutput((output) => output);
+
+		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
+	});
+});

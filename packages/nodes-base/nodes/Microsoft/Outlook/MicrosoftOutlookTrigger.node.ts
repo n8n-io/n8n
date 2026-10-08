@@ -138,44 +138,15 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
-		let responseData;
 
 		const now = DateTime.now().toISO();
 		const startDate = (webhookData.lastTimeChecked as string) || now;
-		const endDate = now;
-		try {
-			const pollStartDate = startDate;
-			const pollEndDate = endDate;
+		// A failure is rethrown so the engine records a failed execution and runs the
+		// error workflow. The cursor stays put, so the next poll retries the same window.
+		const { items, cursor } = await getPollResponse.call(this, startDate, now);
 
-			responseData = await getPollResponse.call(this, pollStartDate, pollEndDate);
+		webhookData.lastTimeChecked = cursor;
 
-			if (!responseData?.length) {
-				webhookData.lastTimeChecked = endDate;
-				return null;
-			}
-		} catch (error) {
-			if (this.getMode() === 'manual' || !webhookData.lastTimeChecked) {
-				throw error;
-			}
-			const workflow = this.getWorkflow();
-			const node = this.getNode();
-			this.logger.error(
-				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${error.description}'`,
-				{
-					node: node.name,
-					workflowId: workflow.id,
-					error,
-				},
-			);
-			return null;
-		}
-
-		webhookData.lastTimeChecked = endDate;
-
-		if (Array.isArray(responseData) && responseData.length) {
-			return [responseData];
-		}
-
-		return null;
+		return items.length ? [items] : null;
 	}
 }

@@ -74,8 +74,8 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	/**
 	 * `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'`
-	 * talks to the published n8n Chat channel. See `capabilities` for what
-	 * that channel cannot do.
+	 * talks to the published n8n Chat channel. See `capabilities` for the
+	 * differences between channels.
 	 */
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
@@ -116,15 +116,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const { showError } = useToast();
 	const channel = params.channel ?? ref<AgentChatChannel>('chat');
 	/**
-	 * What the current channel supports. n8n Chat has no steer or
-	 * background-task routes, and no single default thread to fall back to
-	 * like the builder's test chat — `previewHistory` gates that fallback.
+	 * What the current channel supports. n8n Chat has no single default thread
+	 * to fall back to like the builder's test chat — `previewHistory` gates
+	 * that fallback.
 	 */
 	const capabilities = computed(() => ({
-		steer: channel.value !== 'n8n-chat',
-		backgroundTasks: channel.value !== 'n8n-chat',
 		previewHistory: channel.value !== 'n8n-chat',
-		reorder: channel.value !== 'n8n-chat',
+		/** n8n Chat has no session detail view to link a background job's trace to. */
+		traceLinks: channel.value !== 'n8n-chat',
 	}));
 
 	const messages = ref<ChatMessage[]>([]);
@@ -160,7 +159,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isCancelling = ref(false);
 	const canSteer = computed(
 		() =>
-			capabilities.value.steer &&
 			!!steerableExecutionId.value &&
 			steerableExecutionId.value === activeExecutionId.value &&
 			!isCancelling.value &&
@@ -414,7 +412,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		targetQueueId: string,
 		expectedQueueIds: string[],
 	): Promise<void> {
-		if (!capabilities.value.reorder) return;
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		if (!threadId || disposed || isReorderingQueue.value) return;
 		const target = targetKey();
@@ -427,6 +424,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ targetQueueId, expectedQueueIds },
+				channel.value,
 			);
 		} catch (error) {
 			if (!disposed && target === targetKey()) {
@@ -459,6 +457,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ executionId },
+				channel.value,
 			);
 			if (disposed || target !== targetKey()) return;
 			queuedMessages.value = queuedMessages.value.map((item) =>

@@ -246,15 +246,20 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 }));
 
 vi.mock('../composables/useAgentChatStream', () => ({
-	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
+	useAgentChatStream: (options: {
+		channel?: { value: 'chat' | 'n8n-chat' };
+		onHistoryLoaded: (count: number) => void;
+	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
-			capabilities: computed(() => ({
-				steer: true,
-				reorder: true,
-				backgroundTasks: true,
-				previewHistory: true,
-			})),
+			capabilities: computed(() => {
+				// Mirrors the composable: every capability is off on the n8n Chat channel.
+				const isPreview = options.channel?.value !== 'n8n-chat';
+				return {
+					previewHistory: isPreview,
+					traceLinks: isPreview,
+				};
+			}),
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
@@ -481,6 +486,29 @@ describe('AgentChatPanel', () => {
 				const rows = wrapper.findAll('[data-testid="chat-queued-message"]');
 				expect(rows).toHaveLength(1);
 				expect(rows[0].text()).toContain('second message');
+				wrapper.unmount();
+			});
+
+			it('blocks reordering while the preview hides a queued message', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = ['1', '2', '3'].map((id) => ({
+					id,
+					steeringExecutionId: null,
+					message: id === '1' ? 'hello agent' : `message ${id}`,
+					createdAt: new Date().toISOString(),
+				}));
+				await flushPromises();
+
+				// The hidden item would be missing from the reorder's expected ids.
+				const handles = wrapper.findAll('[data-testid="chat-queue-drag-handle"]');
+				expect(handles).toHaveLength(2);
+				for (const handle of handles) {
+					expect(handle.attributes('disabled')).toBeDefined();
+				}
 				wrapper.unmount();
 			});
 
@@ -1099,6 +1127,14 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
+		it('does not link a plan to the builder trace on the n8n Chat channel', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
 		it('links a plan to the current session trace only when the session is available', async () => {
 			messagesMock.value = [planMessage(planView())];
 			const wrapper = mountPanel();
@@ -1573,6 +1609,21 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.get('[data-testid="agent-background-jobs-trace"]').attributes('href')).toBe(
 				'/projects/p1/agents/a1/sessions/t2',
 			);
+			wrapper.unmount();
+		});
+
+		it('shows the background tasks section for n8n Chat but hides the trace link', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({
+				backgroundJobsActive: true,
+				continueSessionId: 't1',
+				channel: 'n8n-chat',
+			});
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			await panel.get('button').trigger('click');
+			// `/sessions/<threadId>` is the builder's session view, which needs
+			// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
 			wrapper.unmount();
 		});
 
