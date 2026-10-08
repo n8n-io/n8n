@@ -27,9 +27,8 @@ export const ReviewDetailScrollContainerKey: InjectionKey<Readonly<Ref<HTMLEleme
 /**
  * Routing contract for the review inbox.
  *
- * Path: /reviews/:reviewRequestId?
- *   - `:reviewRequestId` is the open review (deep-linkable). Absent = inbox
- *     with nothing selected. Selection always navigates via router.replace.
+ * Path: /inbox/reviews/:reviewId. Use /inbox with nothing selected.
+ * Selection always navigates with router.replace.
  *
  * Query params hold filter state; adding a filter must not require a routing
  * change — reserve the key here, hydrate it in the view, and write it with

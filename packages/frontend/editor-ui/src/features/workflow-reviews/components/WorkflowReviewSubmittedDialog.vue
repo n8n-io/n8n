@@ -42,7 +42,7 @@ const { submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 					<N8nLink
 						:to="{
 							name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-							params: { reviewRequestId: workflowReviewRequestId },
+							params: { reviewId: workflowReviewRequestId },
 						}"
 					>
 						{{ i18n.baseText('workflowReviews.submitted.description.submission') }}

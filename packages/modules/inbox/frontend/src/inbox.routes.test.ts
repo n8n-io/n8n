@@ -1,71 +1,148 @@
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { InboxModule } from './inbox.module';
-import { selectionFromQuery } from './inbox.routes';
+import { inboxItemLocation, isInboxRoute, selectionFromRoute } from './inbox.routes';
 
-it('preserves review selection and tabs from an old deep link', async () => {
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ settings: { inbox: { enabled: true } } }),
+}));
+
+function createInboxRouter() {
 	const routes = (InboxModule.routes ?? []).map((route) =>
-		route.path === '/inbox'
-			? { ...route, beforeEnter: undefined, component: { template: '<div />' } }
-			: route,
+		'component' in route ? { ...route, component: { template: '<div />' } } : route,
 	);
-	const router = createRouter({ history: createMemoryHistory(), routes });
-	await router.push('/reviews/review-1?state=closed&tab=changes');
-	expect(router.currentRoute.value.path).toBe('/inbox');
+	return createRouter({ history: createMemoryHistory(), routes });
+}
+
+const result = {
+	type: 'self_healing_result',
+	id: 'result-1',
+	state: 'open',
+	projectId: 'project',
+	workflowId: 'workflow',
+	workflowName: 'Workflow',
+	summary: 'Summary',
+	outcome: 'fix_ready',
+	createdAt: '',
+	updatedAt: '',
+	completedAt: '',
+} as const;
+
+it.each([
+	['/reviews/review-1', '/inbox/reviews/review-1'],
+	['/inbox?type=workflow_review&itemId=review-1', '/inbox/reviews/review-1'],
+	[
+		'/inbox?type=self_healing_result&itemId=result-1&projectId=project&workflowId=workflow',
+		'/inbox/assistant-results/result-1',
+	],
+])('redirects %s and preserves filters and the detail tab', async (legacyUrl, path) => {
+	const router = createInboxRouter();
+	await router.push(
+		`${legacyUrl}${legacyUrl.includes('?') ? '&' : '?'}state=closed&tab=changes&filter=a&filter=b`,
+	);
+	expect(router.currentRoute.value.path).toBe(path);
 	expect(router.currentRoute.value.query).toEqual({
-		type: 'workflow_review',
-		itemId: 'review-1',
+		...(path.includes('assistant-results') ? { projectId: 'project', workflowId: 'workflow' } : {}),
 		state: 'closed',
 		tab: 'changes',
+		filter: ['a', 'b'],
 	});
 });
 
-it('requires all identifiers for a saved result selection', () => {
-	expect(selectionFromQuery({ type: 'self_healing_result', itemId: 'result' })).toBeNull();
-	expect(
-		selectionFromQuery({
-			type: 'self_healing_result',
-			itemId: 'result',
-			projectId: 'project',
-			workflowId: 'workflow',
-		}),
-	).toEqual({
-		type: 'self_healing_result',
-		id: 'result',
-		projectId: 'project',
-		workflowId: 'workflow',
-	});
+it('redirects the old review list without selecting an item', async () => {
+	const router = createInboxRouter();
+	await router.push('/reviews?state=closed');
+	expect(router.currentRoute.value.fullPath).toBe('/inbox?state=closed');
+	expect(selectionFromRoute(router.currentRoute.value)).toBeNull();
 });
 
-it('keeps the detail tab when the same row is selected again', async () => {
-	const { inboxItemLocation } = await import('./inbox.routes');
-	const item = {
-		type: 'self_healing_result',
-		id: 'result',
-		state: 'open',
-		projectId: 'project',
-		workflowId: 'workflow',
-		workflowName: 'Workflow',
-		summary: 'Summary',
-		outcome: 'fix_ready',
-		createdAt: '',
-		updatedAt: '',
-		completedAt: '',
-	} as const;
-	expect(inboxItemLocation(item, { type: item.type, itemId: item.id, tab: 'changes' })).toEqual({
-		name: 'Inbox',
-		query: {
-			type: item.type,
-			itemId: item.id,
-			projectId: 'project',
-			workflowId: 'workflow',
-			tab: 'changes',
+it.each([
+	['/inbox/reviews/review-1', { type: 'workflow_review', id: 'review-1' }],
+	[
+		'/inbox/assistant-results/result-1?projectId=project&workflowId=workflow',
+		{
+			type: result.type,
+			id: result.id,
+			projectId: result.projectId,
+			workflowId: result.workflowId,
 		},
+	],
+])('selects the item when opening %s directly', async (path, selection) => {
+	const router = createInboxRouter();
+	await router.push(path);
+	expect(selectionFromRoute(router.currentRoute.value)).toEqual(selection);
+});
+
+it('uses the item in the path when stale selection query parameters exist', async () => {
+	const router = createInboxRouter();
+	await router.push('/inbox/reviews/review-1?type=self_healing_result&itemId=old');
+	expect(selectionFromRoute(router.currentRoute.value)).toEqual({
+		type: 'workflow_review',
+		id: 'review-1',
+	});
+});
+
+it.each(['', '?projectId=project', '?workflowId=workflow'])(
+	'requires Assistant scope: %s',
+	async (query) => {
+		const router = createInboxRouter();
+		await router.push(`/inbox/assistant-results/result-1${query}`);
+		expect(selectionFromRoute(router.currentRoute.value)).toBeNull();
+	},
+);
+
+it.each([
+	['Inbox', true],
+	['WorkflowReviewRequestsView', true],
+	['InboxAssistantResult', true],
+	['Workflow', false],
+	[undefined, false],
+])('recognizes the Inbox route %s: %s', (name, expected) => {
+	expect(isInboxRoute({ name })).toBe(expected);
+});
+
+it('keeps the tab only when selecting the same item', async () => {
+	const router = createInboxRouter();
+	await router.push(
+		'/inbox/assistant-results/result-1?projectId=project&workflowId=workflow&state=closed&tab=changes',
+	);
+	expect(router.resolve(inboxItemLocation(result, router.currentRoute.value))).toMatchObject({
+		path: '/inbox/assistant-results/result-1',
+		query: { projectId: 'project', workflowId: 'workflow', state: 'closed', tab: 'changes' },
 	});
 	expect(
-		inboxItemLocation(item, { type: 'workflow_review', itemId: item.id, tab: 'changes' }),
+		router.resolve(inboxItemLocation({ ...result, id: 'result-2' }, router.currentRoute.value))
+			.query,
 	).toEqual({
-		name: 'Inbox',
-		query: { type: item.type, itemId: item.id, projectId: 'project', workflowId: 'workflow' },
+		projectId: 'project',
+		workflowId: 'workflow',
+		state: 'closed',
 	});
+	await router.push('/inbox/reviews/result-1?state=closed&tab=changes');
+	expect(router.resolve(inboxItemLocation(result, router.currentRoute.value)).query).toEqual({
+		projectId: 'project',
+		workflowId: 'workflow',
+		state: 'closed',
+	});
+});
+
+it('restores selection and tabs when navigating back and forward', async () => {
+	const router = createInboxRouter();
+	await router.push('/inbox');
+	await router.push('/inbox/reviews/review-1?tab=changes');
+	await router.push(inboxItemLocation(result, router.currentRoute.value));
+	router.back();
+	await vi.waitFor(() =>
+		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/review-1?tab=changes'),
+	);
+	expect(selectionFromRoute(router.currentRoute.value)).toEqual({
+		type: 'workflow_review',
+		id: 'review-1',
+	});
+	router.forward();
+	await vi.waitFor(() =>
+		expect(router.currentRoute.value.path).toBe('/inbox/assistant-results/result-1'),
+	);
+	expect(selectionFromRoute(router.currentRoute.value)?.id).toBe(result.id);
+	expect(router.currentRoute.value.query.tab).toBeUndefined();
 });

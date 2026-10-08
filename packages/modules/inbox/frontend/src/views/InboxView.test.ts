@@ -3,9 +3,10 @@ import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/fron
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { defineComponent, type PropType } from 'vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 
-import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
+import type { InboxItemChange } from '../inbox.constants';
+import { InboxModule } from '../inbox.module';
 import { createInboxListSlice, useInboxStore } from '../inbox.store';
 import InboxView from './InboxView.vue';
 
@@ -18,11 +19,13 @@ let reportChange: (change: InboxItemChange) => void;
 const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
-		{ path: '/inbox', name: INBOX_VIEW, component: { template: '<div />' } },
+		...(InboxModule.routes ?? []).map((route) =>
+			'component' in route ? { ...route, beforeEnter: undefined, component: InboxView } : route,
+		),
 		{ path: '/:pathMatch(.*)*', name: 'not-found', component: { template: '<div />' } },
 	],
 });
-const renderComponent = createComponentRenderer(InboxView, {
+const renderOptions = {
 	global: {
 		plugins: [router],
 		stubs: {
@@ -66,7 +69,9 @@ const renderComponent = createComponentRenderer(InboxView, {
 			},
 		},
 	},
-});
+};
+const renderComponent = createComponentRenderer(InboxView, renderOptions);
+const renderRoutedComponent = createComponentRenderer(RouterView, renderOptions);
 
 let store: ReturnType<typeof mockedStore<typeof useInboxStore>>;
 beforeEach(async () => {
@@ -93,8 +98,26 @@ it('refreshes the list and summary on mount', async () => {
 	expect(detailMounted).not.toHaveBeenCalled();
 });
 
+it('keeps the loaded list when navigating between Inbox routes', async () => {
+	const { getByTestId, queryByTestId } = renderRoutedComponent();
+	await waitAllPromises();
+	store.lists.waiting.items = [reviewItem(), resultItem()];
+	store.lists.waiting.nextCursor = 'next-page';
+	for (const button of ['select-review', 'select-result', 'clear-review']) {
+		getByTestId(button).click();
+		await waitAllPromises();
+	}
+	expect(router.currentRoute.value.fullPath).toBe('/inbox');
+	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
+	expect(queryByTestId('result-detail')).not.toBeInTheDocument();
+	expect(store.reset).toHaveBeenCalledOnce();
+	expect(store.refreshListAndSummary).toHaveBeenCalledOnce();
+	expect(store.lists.waiting.items).toEqual([reviewItem(), resultItem()]);
+	expect(store.lists.waiting.nextCursor).toBe('next-page');
+});
+
 it('passes the selected review and list fallback to its detail entry', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	store.lists.waiting.items = [reviewItem()];
 	const { getByTestId } = renderComponent();
 	expect(getByTestId('review-detail')).toHaveAttribute('data-id', 'req-1');
@@ -102,24 +125,21 @@ it('passes the selected review and list fallback to its detail entry', async () 
 });
 
 it('selects a result with the same ID without rendering the review entry', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	const { getByTestId, queryByTestId } = renderComponent();
 	getByTestId('select-result').click();
 	await waitAllPromises();
 	expect(router.currentRoute.value.query).toEqual({
-		type: 'self_healing_result',
-		itemId: 'req-1',
 		projectId: 'p1',
 		workflowId: 'w1',
 	});
+	expect(router.currentRoute.value.path).toBe('/inbox/assistant-results/req-1');
 	expect(getByTestId('result-detail')).toHaveAttribute('data-id', 'req-1');
 	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
 });
 
 it('clears all selection fields and keeps the current state', async () => {
-	await router.replace(
-		'/inbox?type=self_healing_result&itemId=r1&projectId=p1&workflowId=w1&state=closed',
-	);
+	await router.replace('/inbox/assistant-results/r1?projectId=p1&workflowId=w1&state=closed');
 	const { getByTestId } = renderComponent();
 	getByTestId('clear-review').click();
 	await waitAllPromises();
@@ -127,7 +147,7 @@ it('clears all selection fields and keeps the current state', async () => {
 });
 
 it('clears a disabled-source deep link without mounting its detail entry', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	store.disabledSources = ['workflow_review'];
 	renderComponent();
 	await waitAllPromises();
@@ -136,7 +156,7 @@ it('clears a disabled-source deep link without mounting its detail entry', async
 });
 
 it('unmounts the selected detail when its source becomes disabled', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	const { queryByTestId } = renderComponent();
 	store.disabledSources = ['workflow_review'];
 	await waitAllPromises();
@@ -145,7 +165,7 @@ it('unmounts the selected detail when its source becomes disabled', async () => 
 });
 
 it('removes only the unavailable identity from both lists and keeps its detail selected', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	store.lists.waiting.items = [reviewItem(), resultItem()];
 	store.lists.closed.items = [reviewItem()];
 	const { getByTestId } = renderComponent();
@@ -162,58 +182,53 @@ it.each([
 	['changes', 'changes'],
 	['bogus', 'activity'],
 ])('maps the tab query %s to %s', async (query, tab) => {
-	await router.replace(`/inbox?type=workflow_review&itemId=req-1&tab=${query}`);
+	await router.replace(`/inbox/reviews/req-1?tab=${query}`);
 	const { getByTestId } = renderComponent();
 	expect(getByTestId('review-detail')).toHaveAttribute('data-tab', tab);
 });
 
 it('writes detail tabs to the URL and keeps selection and state', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1&state=closed');
+	await router.replace('/inbox/reviews/req-1?state=closed');
 	const { getByTestId } = renderComponent();
 	getByTestId('select-changes-tab').click();
 	await waitAllPromises();
 	expect(router.currentRoute.value.query).toEqual({
-		type: 'workflow_review',
-		itemId: 'req-1',
 		state: 'closed',
 		tab: 'changes',
 	});
+	expect(router.currentRoute.value.path).toBe('/inbox/reviews/req-1');
 	getByTestId('select-activity-tab').click();
 	await waitAllPromises();
 	expect(router.currentRoute.value.query).toEqual({
-		type: 'workflow_review',
-		itemId: 'req-1',
 		state: 'closed',
 	});
 });
 
 it('follows a selected item to Closed after its detail reports the new state', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	renderComponent();
 	store.refreshListAndSummary.mockClear();
 	reportChange({ type: 'workflow_review', id: 'req-1', state: 'closed' });
 	await waitAllPromises();
 	expect(store.refreshListAndSummary).toHaveBeenCalledOnce();
-	expect(router.currentRoute.value.fullPath).toBe(
-		'/inbox?type=workflow_review&itemId=req-1&state=closed',
-	);
+	expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1?state=closed');
 });
 
 it.each([undefined, 'open'] as const)(
 	'refreshes without navigation for state %s',
 	async (state) => {
-		await router.replace('/inbox?type=workflow_review&itemId=req-1');
+		await router.replace('/inbox/reviews/req-1');
 		renderComponent();
 		store.refreshListAndSummary.mockClear();
 		reportChange({ type: 'workflow_review', id: 'req-1', state });
 		await waitAllPromises();
 		expect(store.refreshListAndSummary).toHaveBeenCalledOnce();
-		expect(router.currentRoute.value.fullPath).toBe('/inbox?type=workflow_review&itemId=req-1');
+		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1');
 	},
 );
 
 it('does not replace the URL when already on Closed', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1&state=closed');
+	await router.replace('/inbox/reviews/req-1?state=closed');
 	renderComponent();
 	const replace = vi.spyOn(router, 'replace');
 	reportChange({ type: 'workflow_review', id: 'req-1', state: 'closed' });
@@ -224,7 +239,7 @@ it('does not replace the URL when already on Closed', async () => {
 it.each(['select-other-review', 'select-result'])(
 	'reconciles a late decision without following it after %s',
 	async (target) => {
-		await router.replace('/inbox?type=workflow_review&itemId=req-1');
+		await router.replace('/inbox/reviews/req-1');
 		const { getByTestId } = renderComponent();
 		const finishOldDecision = reportChange;
 		getByTestId(target).click();
@@ -239,7 +254,7 @@ it.each(['select-other-review', 'select-result'])(
 );
 
 it('ignores callbacks after the Inbox view unmounts', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	const { unmount } = renderComponent();
 	unmount();
 	store.refreshListAndSummary.mockClear();
@@ -248,7 +263,7 @@ it('ignores callbacks after the Inbox view unmounts', async () => {
 });
 
 it('dereferences the current detail entry for background refresh', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	const { getByTestId, unmount } = renderComponent();
 	const refreshSelected = store.activate.mock.calls[0][0];
 	await refreshSelected?.();
@@ -267,7 +282,7 @@ it('dereferences the current detail entry for background refresh', async () => {
 });
 
 it('leaves another page unchanged when an old entry reports a tab or item change', async () => {
-	await router.replace('/inbox?type=workflow_review&itemId=req-1');
+	await router.replace('/inbox/reviews/req-1');
 	const { getByTestId } = renderComponent();
 	const oldTab = getByTestId('select-changes-tab');
 	await router.replace('/settings/roles?tab=roles');

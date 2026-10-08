@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
+import { isInboxRoute } from '@n8n/frontend-module-inbox';
 
 /**
  * This composable holds reusable logic that detects the current page type
@@ -23,7 +23,7 @@ export const useProjectPages = () => {
 			route.name === VIEWS.SHARED_CREDENTIALS,
 	);
 
-	const isWorkflowReviewsSubPage = computed(() => route.name === INBOX_VIEW);
+	const isWorkflowReviewsSubPage = computed(() => isInboxRoute(route));
 
 	return reactive({
 		isOverviewSubPage,

@@ -1,4 +1,24 @@
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import type { RouteRecordSingleView } from 'vue-router';
+
+const inboxView = {
+	component: async () => await import('./views/InboxView.vue'),
+	async beforeEnter(to) {
+		const { useSettingsStore } = await import('@n8n/stores/settings.store');
+		if (useSettingsStore().settings.inbox?.enabled !== true) return '/';
+		const { type, itemId, ...query } = to.query;
+		if (to.name === 'Inbox' && typeof itemId === 'string' && itemId) {
+			if (type === 'workflow_review') {
+				return { name: 'WorkflowReviewRequestsView', params: { reviewId: itemId }, query };
+			}
+			if (type === 'self_healing_result') {
+				return { name: 'InboxAssistantResult', params: { resultId: itemId }, query };
+			}
+		}
+		return;
+	},
+	meta: { layout: 'default', middleware: ['authenticated', 'custom'] },
+} satisfies Pick<RouteRecordSingleView, 'component' | 'beforeEnter' | 'meta'>;
 
 export const InboxModule = defineFrontendModule({
 	id: 'inbox',
@@ -8,24 +28,29 @@ export const InboxModule = defineFrontendModule({
 	routes: [
 		{
 			path: '/reviews/:reviewRequestId?',
-			name: 'WorkflowReviewRequestsView',
-			redirect: (to) => ({
-				name: 'Inbox',
-				query:
-					typeof to.params.reviewRequestId === 'string' && to.params.reviewRequestId
-						? { ...to.query, type: 'workflow_review', itemId: to.params.reviewRequestId }
-						: to.query,
-			}),
+			redirect: (to) =>
+				typeof to.params.reviewRequestId === 'string' && to.params.reviewRequestId
+					? {
+							name: 'WorkflowReviewRequestsView',
+							params: { reviewId: to.params.reviewRequestId },
+							query: to.query,
+						}
+					: { name: 'Inbox', query: to.query },
 		},
 		{
+			...inboxView,
 			path: '/inbox',
 			name: 'Inbox',
-			component: async () => await import('./views/InboxView.vue'),
-			async beforeEnter() {
-				const { useSettingsStore } = await import('@n8n/stores/settings.store');
-				return useSettingsStore().settings.inbox?.enabled === true || '/';
-			},
-			meta: { layout: 'default', middleware: ['authenticated', 'custom'] },
+		},
+		{
+			...inboxView,
+			path: '/inbox/reviews/:reviewId',
+			name: 'WorkflowReviewRequestsView',
+		},
+		{
+			...inboxView,
+			path: '/inbox/assistant-results/:resultId',
+			name: 'InboxAssistantResult',
 		},
 	],
 });

@@ -12,7 +12,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import InboxList from '../components/InboxList.vue';
 import { INBOX_REFRESH_INTERVAL, INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
-import { inboxItemLocation, selectionFromQuery } from '../inbox.routes';
+import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
@@ -51,7 +51,7 @@ const sidebarResizer = useResizablePanel({
 	},
 });
 const sidebarWidth = sidebarResizer.width;
-const selection = computed(() => selectionFromQuery(route.query));
+const selection = computed(() => selectionFromRoute(route));
 const selectedKey = computed(() =>
 	selection.value ? `${selection.value.type}:${selection.value.id}` : null,
 );
@@ -72,7 +72,7 @@ let deactivate: (() => void) | undefined;
 let refreshInterval: ReturnType<typeof setInterval> | undefined;
 
 function isOnInbox() {
-	return route.name === INBOX_VIEW;
+	return isInboxRoute(route);
 }
 // Reset on entry. A layout-swap copy can unmount after the next view has mounted.
 store.reset();
@@ -93,13 +93,13 @@ watch(
 );
 
 function onSelect(item: InboxItem) {
-	void router.replace(inboxItemLocation(item, route.query));
+	void router.replace(inboxItemLocation(item, route));
 }
 function onClearSelection() {
 	if (!isOnInbox()) return;
 	const query = { ...route.query };
 	for (const key of ['type', 'itemId', 'projectId', 'workflowId', 'tab']) delete query[key];
-	void router.replace({ query });
+	void router.replace({ name: INBOX_VIEW, query });
 }
 function onActiveTabChange(tab: 'open' | 'closed') {
 	const query = { ...route.query };
