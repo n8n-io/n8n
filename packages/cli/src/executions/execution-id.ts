@@ -7,6 +7,9 @@ export type ExecutionIdV2 = string & { readonly __brand: 'ExecutionIdV2' };
 /** A v1 id is numeric and a v2 id is a UUID, so the shape alone picks the backend. */
 export const isExecutionIdV2 = (id: string): id is ExecutionIdV2 => UUID_V7_PATTERN.test(id);
 
+/** The v1 execution table has a numeric id column, so only a numeric id can name a row. */
+export const isExecutionIdV1 = (id: string): boolean => /^\d+$/.test(id);
+
 /**
  * Mints an id for a run the control plane hands to the engine.
  *

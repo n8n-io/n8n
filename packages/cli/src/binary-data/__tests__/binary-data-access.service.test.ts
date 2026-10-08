@@ -3,20 +3,27 @@ import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowSharingService } from '@n8n/backend-services';
 
+import type { ExecutionSnapshot } from '@n8n/engine';
+import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+
 import { BinaryDataAccessService } from '../binary-data-access.service';
 
 describe('BinaryDataAccessService', () => {
 	const workflowSharingService = mock<WorkflowSharingService>();
 	const executionRepository = mock<ExecutionRepository>();
 	const binaryDataRepository = mock<BinaryDataRepository>();
+	const dataPlane = mock<EngineDataPlaneProxyService>();
 	const service = new BinaryDataAccessService(
 		workflowSharingService,
 		executionRepository,
 		binaryDataRepository,
+		dataPlane,
 	);
 
 	const user = mock<User>();
 	const uuid = '2c3f1e5a-0b6d-4c8e-9f11-abc123def456';
+	/** Engine v2 mints uuidv7 execution ids, which the v1 execution table cannot hold. */
+	const v2ExecutionId = '019a4c2e-7b3d-7c1e-8f2a-3b4c5d6e7f80';
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -28,16 +35,14 @@ describe('BinaryDataAccessService', () => {
 				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1']);
 				executionRepository.existsForAccessibleWorkflows.mockResolvedValue(true);
 
-				const id = `${mode}:workflows/wf1/executions/exec1/binary_data/${uuid}`;
+				const id = `${mode}:workflows/wf1/executions/1/binary_data/${uuid}`;
 				const result = await service.hasReadAccess(user, id);
 
 				expect(result).toBe(true);
 				expect(workflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
 					scopes: ['workflow:read'],
 				});
-				expect(executionRepository.existsForAccessibleWorkflows).toHaveBeenCalledWith('exec1', [
-					'wf1',
-				]);
+				expect(executionRepository.existsForAccessibleWorkflows).toHaveBeenCalledWith('1', ['wf1']);
 				expect(binaryDataRepository.findSourceByFileId).not.toHaveBeenCalled();
 			});
 		});
@@ -46,14 +51,14 @@ describe('BinaryDataAccessService', () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 			executionRepository.existsForAccessibleWorkflows.mockResolvedValue(false);
 
-			const id = `filesystem-v2:workflows/wf1/executions/exec1/binary_data/${uuid}`;
+			const id = `filesystem-v2:workflows/wf1/executions/1/binary_data/${uuid}`;
 			expect(await service.hasReadAccess(user, id)).toBe(false);
 		});
 
 		test('resolves the execution from a database row', async () => {
 			binaryDataRepository.findSourceByFileId.mockResolvedValue({
 				sourceType: 'execution',
-				sourceId: 'exec9',
+				sourceId: '9',
 			});
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf9']);
 			executionRepository.existsForAccessibleWorkflows.mockResolvedValue(true);
@@ -62,9 +67,8 @@ describe('BinaryDataAccessService', () => {
 
 			expect(result).toBe(true);
 			expect(binaryDataRepository.findSourceByFileId).toHaveBeenCalledWith(uuid);
-			expect(executionRepository.existsForAccessibleWorkflows).toHaveBeenCalledWith('exec9', [
-				'wf9',
-			]);
+			expect(executionRepository.existsForAccessibleWorkflows).toHaveBeenCalledWith('9', ['wf9']);
+			expect(dataPlane.getExecution).not.toHaveBeenCalled();
 		});
 
 		test('denies a database row that is not an execution', async () => {
@@ -126,6 +130,96 @@ describe('BinaryDataAccessService', () => {
 
 				expect(await service.hasReadAccess(user, `database:${uuid}`)).toBe(false);
 				expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+			});
+		});
+
+		// An engine v2 execution has no row in the execution table, and its uuid
+		// would fail the numeric lookup. The path, or the data plane, names the
+		// workflow instead.
+		describe('for a binary of an engine v2 execution', () => {
+			beforeEach(() => {
+				executionRepository.existsForAccessibleWorkflows.mockRejectedValue(
+					new Error('invalid input syntax for type integer: "NaN"'),
+				);
+			});
+
+			describe('in a path-format id', () => {
+				const v2Id = (mode: string) =>
+					`${mode}:workflows/wf1/executions/${v2ExecutionId}/binary_data/${uuid}`;
+
+				test.each(['filesystem', 'filesystem-v2', 's3', 'azure'])(
+					'grants access from the workflow in the path for mode %s, without an execution lookup',
+					async (mode) => {
+						workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1']);
+
+						expect(await service.hasReadAccess(user, v2Id(mode))).toBe(true);
+						expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+						expect(dataPlane.getExecution).not.toHaveBeenCalled();
+					},
+				);
+
+				test('denies when the user cannot read the workflow in the path', async () => {
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf2']);
+
+					expect(await service.hasReadAccess(user, v2Id('filesystem-v2'))).toBe(false);
+				});
+			});
+
+			describe('in a database row', () => {
+				beforeEach(() => {
+					binaryDataRepository.findSourceByFileId.mockResolvedValue({
+						sourceType: 'execution',
+						sourceId: v2ExecutionId,
+					});
+				});
+
+				test('grants access from the workflow the data plane names, without the steps', async () => {
+					dataPlane.getExecution.mockResolvedValue(mock<ExecutionSnapshot>({ workflowId: 'wf9' }));
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf9']);
+
+					expect(await service.hasReadAccess(user, `database:${uuid}`)).toBe(true);
+					expect(dataPlane.getExecution).toHaveBeenCalledWith(v2ExecutionId);
+					expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+				});
+
+				test('denies when the user cannot read the workflow the data plane names', async () => {
+					dataPlane.getExecution.mockResolvedValue(mock<ExecutionSnapshot>({ workflowId: 'wf9' }));
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1']);
+
+					expect(await service.hasReadAccess(user, `database:${uuid}`)).toBe(false);
+				});
+
+				test('denies when the data plane knows no such execution', async () => {
+					dataPlane.getExecution.mockResolvedValue(undefined);
+
+					expect(await service.hasReadAccess(user, `database:${uuid}`)).toBe(false);
+					expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
+				});
+
+				test('propagates a data plane error, so the controller answers with an error', async () => {
+					dataPlane.getExecution.mockRejectedValue(new Error('engine unreachable'));
+
+					await expect(service.hasReadAccess(user, `database:${uuid}`)).rejects.toThrow(
+						'engine unreachable',
+					);
+					expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
+				});
+			});
+		});
+
+		// The execution id column is numeric, so an id that is neither a v1 number
+		// nor a v2 uuid must be refused before it reaches the query as NaN.
+		describe('for a path id whose execution segment names no execution', () => {
+			test.each([
+				['a non-numeric id', 'abc'],
+				['a uuid that is not v7', '2c3f1e5a-0b6d-4c8e-9f11-abc123def456'],
+			])('denies %s without a lookup', async (_, executionId) => {
+				const id = `filesystem-v2:workflows/wf1/executions/${executionId}/binary_data/${uuid}`;
+
+				expect(await service.hasReadAccess(user, id)).toBe(false);
+				expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
+				expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+				expect(dataPlane.getExecution).not.toHaveBeenCalled();
 			});
 		});
 
