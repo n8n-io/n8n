@@ -3,6 +3,7 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -12,7 +13,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, ref } from 'vue';
 
 import { promotePackage } from '../promotionsSettings.api';
 
@@ -33,7 +34,6 @@ const rootStore = useRootStore();
 
 const commitMessage = ref('');
 const isSubmitting = ref(false);
-const messageInput = useTemplateRef<InstanceType<typeof N8nInput>>('messageInput');
 
 const isPromoteDisabled = computed(
 	() => isSubmitting.value || commitMessage.value.trim().length === 0,
@@ -54,11 +54,6 @@ function close() {
 function onOpenChange(value: boolean) {
 	if (value || isSubmitting.value) return;
 	close();
-}
-
-function onOpenAutoFocus(event: Event) {
-	event.preventDefault();
-	void nextTick(() => messageInput.value?.focus());
 }
 
 async function submit() {
@@ -93,7 +88,6 @@ async function submit() {
 		size="medium"
 		:aria-description="i18n.baseText('settings.promotions.promote.dialog.ariaDescription')"
 		data-test-id="promote-instance-dialog"
-		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
 		<N8nDialogHeader>
@@ -102,48 +96,49 @@ async function submit() {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<form :class="$style.form" @submit.prevent="submit">
-			<N8nText color="text-base">{{ bodyText }}</N8nText>
+		<N8nDialogBody>
+			<form id="promote-instance-form" :class="$style.form" @submit.prevent="submit">
+				<N8nText color="text-base">{{ bodyText }}</N8nText>
 
-			<N8nInputLabel
-				input-name="promote-commit-message"
-				:label="i18n.baseText('settings.promotions.promote.dialog.commitMessage.label')"
-				required
+				<N8nInputLabel
+					input-name="promote-commit-message"
+					:label="i18n.baseText('settings.promotions.promote.dialog.commitMessage.label')"
+					required
+				>
+					<N8nInput
+						id="promote-commit-message"
+						v-model="commitMessage"
+						type="textarea"
+						:rows="3"
+						:disabled="isSubmitting"
+						:placeholder="
+							i18n.baseText('settings.promotions.promote.dialog.commitMessage.placeholder')
+						"
+						data-test-id="promote-commit-message"
+					/>
+				</N8nInputLabel>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				type="button"
+				variant="outline"
+				:disabled="isSubmitting"
+				data-test-id="promote-cancel-button"
+				@click="close"
 			>
-				<N8nInput
-					id="promote-commit-message"
-					ref="messageInput"
-					v-model="commitMessage"
-					type="textarea"
-					:rows="3"
-					:disabled="isSubmitting"
-					:placeholder="
-						i18n.baseText('settings.promotions.promote.dialog.commitMessage.placeholder')
-					"
-					data-test-id="promote-commit-message"
-				/>
-			</N8nInputLabel>
-
-			<N8nDialogFooter>
-				<N8nButton
-					type="button"
-					variant="outline"
-					:disabled="isSubmitting"
-					data-test-id="promote-cancel-button"
-					@click="close"
-				>
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton
-					type="submit"
-					:disabled="isPromoteDisabled"
-					:loading="isSubmitting"
-					data-test-id="promote-confirm-button"
-				>
-					{{ i18n.baseText('settings.promotions.promote.dialog.confirm') }}
-				</N8nButton>
-			</N8nDialogFooter>
-		</form>
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+			<N8nButton
+				type="submit"
+				form="promote-instance-form"
+				:disabled="isPromoteDisabled"
+				:loading="isSubmitting"
+				data-test-id="promote-confirm-button"
+			>
+				{{ i18n.baseText('settings.promotions.promote.dialog.confirm') }}
+			</N8nButton>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
