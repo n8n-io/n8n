@@ -433,6 +433,34 @@ Use the workflow SDK.`,
 		});
 	});
 
+	it('keeps an added reference whose parent is a base skill', async () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'owner', name: 'Owner', description: 'Owner.', instructions: 'Owner body.' },
+		]);
+		const reference = {
+			id: 'owner-detail',
+			name: 'Owner detail',
+			description: 'Detail.',
+			instructions: 'Detail body.',
+			parents: ['owner'],
+			reference: { owner: 'owner', path: 'references/owner-detail.md' },
+		};
+
+		const extended = extendRuntimeSkillSource(source, [
+			reference,
+			{ ...reference, id: 'orphan', name: 'Orphan', parents: ['missing'] },
+		]);
+
+		expect(extended.registry.skills.map((skill) => skill.id)).toEqual(['owner', 'owner-detail']);
+		expect(extended.registry.skills[1]).toMatchObject({
+			parents: ['owner'],
+			reference: { owner: 'owner', path: 'references/owner-detail.md' },
+		});
+		await expect(extended.loadSkill('owner-detail')).resolves.toMatchObject({
+			instructions: 'Detail body.',
+		});
+	});
+
 	it('returns the source unchanged when every added skill collides', () => {
 		const source = createRuntimeSkillSource([
 			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Body.' },

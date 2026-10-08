@@ -299,7 +299,7 @@ describe('createBuildWorkflowTool', () => {
 	describe('publish state', () => {
 		it('warns that a save to a published workflow is not live', async () => {
 			// No verification runs here. Without this, a trigger-only workflow or a
-			// repair that skips verify-built-workflow has no deterministic signal
+			// repair that skips workflow_builder_verify_built_workflow has no deterministic signal
 			// that the fix is sitting in a draft.
 			const { context, filePath } = makeContext({});
 			vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
@@ -579,7 +579,9 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
-		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
+		expect(result.postBuildFlow?.instructions).toContain(
+			'## After workflow_builder_build_workflow succeeds',
+		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
@@ -587,7 +589,7 @@ describe('createBuildWorkflowTool', () => {
 			'never offer publishing as an alternative to the live test',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `executions(action="list")`',
+			'A user-run execution counts only after `workflow_builder_executions(action="list")`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
@@ -2712,7 +2714,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('Failed to bind source file');
 		expect(result.remediation?.guidance).toContain(
-			'Call build-workflow again with the same filePath and omit workflowId',
+			'Call workflow_builder_build_workflow again with the same filePath and omit workflowId',
 		);
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();

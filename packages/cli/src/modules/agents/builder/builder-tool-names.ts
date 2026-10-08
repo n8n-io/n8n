@@ -1,34 +1,37 @@
+import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+
 /**
  * Tool names used by the agent builder. Centralised so tool implementations,
  * prompts, and tests can't drift on string typos.
  *
- * Keep registered tool IDs stable — they are part of the model/tool contract
- * and may appear in checkpoints. Prefer clearer descriptions and UI i18n
- * labels over renaming existing IDs.
+ * The values come from `AGENT_BUILDER_TOOL_NAMES` in `@n8n/api-types`. When you
+ * rename a tool, add the former name to `LEGACY_BUILDER_TOOL_NAMES` there so
+ * persisted checkpoints still resolve.
  *
- * The interactive tools (`ask_credential`, `ask_embedding_credential`,
- * `ask_questions`, `configure_channel`) are NOT listed here — their names live
- * in `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
+ * The interactive tools (`ASK_CREDENTIAL_TOOL_NAME`,
+ * `ASK_EMBEDDING_CREDENTIAL_TOOL_NAME`, `ASK_QUESTIONS_TOOL_NAME`,
+ * `CONFIGURE_CHANNEL_TOOL_NAME`) are NOT listed here — they live in
+ * `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
  * alongside the suspend/resume schemas they share with instance AI's FE cards.
  */
 export const BUILDER_TOOLS = {
-	// WRITE_CONFIG / PATCH_CONFIG / PUBLISH_AGENT / UNPUBLISH_AGENT values must
-	// match `CONFIG_MUTATION_TOOL_NAMES` in `@n8n/api-types`
-	// (agents/agent-interaction.schema.ts).
-	WRITE_CONFIG: 'write_config',
-	PATCH_CONFIG: 'patch_config',
-	BUILD_CUSTOM_TOOL: 'build_custom_tool',
-	CREATE_SKILLS: 'create_skills',
-	UPDATE_SKILL: 'update_skill',
-	CREATE_TASKS: 'create_tasks',
-	UPDATE_TASK: 'update_task',
-	FINISH_SETUP: 'finish_setup',
-	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
-	CALL_AGENT: 'call_agent',
-	PUBLISH_AGENT: 'publish_agent',
-	UNPUBLISH_AGENT: 'unpublish_agent',
-	RESOLVE_LLM: 'resolve_llm',
-	VERIFY_MCP_SERVER: 'verify_mcp_server',
+	WRITE_CONFIG: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
+	PATCH_CONFIG: AGENT_BUILDER_TOOL_NAMES.PATCH_CONFIG,
+	BUILD_CUSTOM_TOOL: AGENT_BUILDER_TOOL_NAMES.BUILD_CUSTOM_TOOL,
+	CREATE_SKILLS: AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,
+	UPDATE_SKILL: AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
+	CREATE_TASKS: AGENT_BUILDER_TOOL_NAMES.CREATE_TASKS,
+	UPDATE_TASK: AGENT_BUILDER_TOOL_NAMES.UPDATE_TASK,
+	FINISH_SETUP: AGENT_BUILDER_TOOL_NAMES.FINISH_SETUP,
+	GET_RESOURCE_LOCATOR_OPTIONS: AGENT_BUILDER_TOOL_NAMES.GET_RESOURCE_LOCATOR_OPTIONS,
+	CALL_AGENT: AGENT_BUILDER_TOOL_NAMES.CALL_AGENT,
+	PUBLISH_AGENT: AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT,
+	UNPUBLISH_AGENT: AGENT_BUILDER_TOOL_NAMES.UNPUBLISH_AGENT,
+	RESOLVE_LLM: AGENT_BUILDER_TOOL_NAMES.RESOLVE_LLM,
+	VERIFY_MCP_SERVER: AGENT_BUILDER_TOOL_NAMES.VERIFY_MCP_SERVER,
+	SEARCH_NODES: AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	GET_NODE_TYPES: AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	LIST_CREDENTIALS: AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];

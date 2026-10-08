@@ -3,6 +3,7 @@ import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	createRuntimeSkillSource,
 	createSkillLoadTool,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillSource,
@@ -442,6 +443,25 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 			);
 			expect(text).toContain(`[Skill path: "${referencePath}"]`);
 			expect(text).toContain(`Model rules in ${root}.`);
+		});
+
+		it('materializes an in-memory reference under an owner that does not list it', async () => {
+			const source = extendRuntimeSkillSource(createReferenceSource(), [
+				{
+					id: 'agents-config',
+					name: 'agents-config',
+					description: 'Load before a config write.',
+					instructions: 'Config rules.',
+					parents: ['agents'],
+					reference: { owner: 'agents', path: 'references/agents-config.md' },
+				},
+			]);
+
+			const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
+
+			expect(bundle?.files.get(`${skillsRoot}/agents/references/agents-config.md`)).toContain(
+				'Config rules.',
+			);
 		});
 	});
 

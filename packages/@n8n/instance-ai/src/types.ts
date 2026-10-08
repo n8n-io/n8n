@@ -6,6 +6,7 @@ import type {
 	CheckpointStore,
 	ExecutionOptions,
 	MemoryTaskUsageReport,
+	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
@@ -63,7 +64,6 @@ import type {
 	conversationHistorySearchHitSchema,
 	conversationHistorySearchResultSchema,
 } from './tools/conversation-history.schema';
-import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationClaim,
@@ -866,7 +866,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflows` and `credentials` already fetch those, and the entry carries the ids
+ * the live record: `workflow_builder_workflows` and `workflow_builder_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -1199,7 +1199,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data-tables tool). */
+ *  Table the caller already created (via the workflow_builder_data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -1370,69 +1370,18 @@ export interface InstanceAiWorkflowTemplateService {
 	): Promise<{ available: true; template: Record<string, unknown> } | { available: false }>;
 }
 
-// ── Builder delegate (sub-agent) ─────────────────────────────────────────────
+// ── Builder delegate ─────────────────────────────────────────────────────────
 
-/** Reference to a workflow the current instance-AI session built or touched. */
-export interface SessionWorkflowRef {
-	id: string;
-	name: string;
-	description?: string;
-}
-
-/** Instance-AI-scoped builder session. */
-export interface BuilderDelegateSession {
-	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
+/** Instance AI run that the builder tools belong to. Used for telemetry. */
+export interface BuilderToolsSession {
 	threadId: string;
-	/** The visible Instance AI thread this build turn belongs to — used to bill builder OM usage against the conversation the user sees, not the private `ia-builder:` session. */
-	hostThreadId: string;
-	/** The Instance AI run id this build turn belongs to — used for OM billing dedupe. */
 	runId: string;
-	/**
-	 * Host-resolved model for the builder run — overrides the agents-module
-	 * builder's own model settings so the sub-agent inherits the instance-AI
-	 * model. Always set: Instance AI is the only streaming caller.
-	 */
-	modelConfig: ModelConfig;
-	/**
-	 * Host telemetry for the builder run — produced from the parent instance-AI
-	 * trace context so the builder's LLM/tool spans join the parent trace.
-	 */
-	telemetry?: Telemetry | BuiltTelemetry;
-	/**
-	 * Parent trace's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
-	 * When set, the builder forwards its own observational-memory task events
-	 * to it via `Agent.memoryTaskObserver()`, so the builder's memory LLM spans
-	 * can outlive the parent trace's root finalization.
-	 */
-	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
-	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
-	abortSignal: AbortSignal;
-	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
-	mcpTools?: InstanceAiToolRegistry;
-}
-
-/** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
-export interface BuilderTurnStream {
-	fullStream: AsyncIterable<unknown>;
-	text: Promise<string>;
-	/** Structured host artifacts the embedded builder reported during this turn. */
-	requiredArtifacts?: Promise<BuilderRequiredArtifact[]>;
-}
-
-/** Reference to a suspended builder tool call awaiting user input. */
-export interface BuilderOpenSuspension {
-	runId: string;
-	toolCallId: string;
 }
 
 /**
- * Narrow delegate wrapping the agents-module builder for sub-agent use.
- * Provided by the host (cli) only when the agents module is active. Runs the
- * builder's full interactive toolset — `streamBuild`/`resumeBuild` may
- * suspend, which the caller cascades through its own suspend/resume so the
- * builder's questions survive a process restart.
+ * The agents-module builder, as the orchestrator uses it. The host (cli)
+ * supplies it only when the agents module is active.
  */
-
 export interface InstanceAiBuilderDelegate {
 	/**
 	 * `options.id` creates the agent under an id the frontend already minted for
@@ -1453,23 +1402,19 @@ export interface InstanceAiBuilderDelegate {
 		/** True when the id collided and an existing row was adopted instead of created. */
 		adopted?: boolean;
 	}>;
-	streamBuild(
-		agentId: string,
-		message: string,
-		session: BuilderDelegateSession,
-	): Promise<BuilderTurnStream>;
-	resumeBuild(
-		agentId: string,
-		resume: { runId: string; toolCallId: string; resumeData: unknown },
-		session: BuilderDelegateSession,
-	): Promise<BuilderTurnStream>;
-	/** All suspended tool calls on the builder's open checkpoint for this session thread ([] when none). */
-	findOpenSuspensions(
-		agentId: string,
-		session: BuilderDelegateSession,
-	): Promise<BuilderOpenSuspension[]>;
-	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
-	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
+	/**
+	 * Builder tools that act on the agent `resolveTargetAgentId` returns. The
+	 * resolver runs on each tool call, so the target can change during a run.
+	 * A call without a resolved target fails.
+	 */
+	getBuilderTools(
+		resolveTargetAgentId: () => Promise<string | undefined>,
+		session: BuilderToolsSession,
+	): BuiltTool[];
+	/** Runtime skills that the builder tools rely on, such as `agent-builder-config`. */
+	getRuntimeSkills(): RuntimeSkill[];
+	/** Preview link and model recommendations for the target agent. */
+	getBuilderSessionContext(agentId: string): Promise<string>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
@@ -1576,7 +1521,7 @@ export interface InstanceAiContext {
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
-	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * context. Lets domain tools (e.g. workflow_builder_build_workflow) emit explicit child runs
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
@@ -1585,7 +1530,7 @@ export interface InstanceAiContext {
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
-	 * is built. When true, the `workflows` list action advertises folder fields
+	 * is built. When true, the `workflow_builder_workflows` list action advertises folder fields
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
@@ -1608,7 +1553,7 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
-	/** Optional — presence gates the `execute` action on the `nodes` tool. */
+	/** Optional — presence gates the `execute` action on the `workflow_builder_nodes` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
@@ -1624,9 +1569,9 @@ export interface InstanceAiContext {
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
 	connectedMcpServices?: ConnectedMcpService[];
-	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
+	/** The n8n Agent that the builder tools change. `agent_builder_select_agent` sets it. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
-	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
+	/** Agent builder tools and helpers. Present only when the agents module is active. */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
 	 * The agent-preview session referenced by this thread, bound when a user sends
@@ -1655,11 +1600,11 @@ export interface InstanceAiContext {
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
-	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
+	 *  verifying — `workflow_builder_executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
 	allowedRunWorkflowNames?: ReadonlySet<string>;
-	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
+	/** Force `workflow_builder_executions(action="run")` through HITL even when a scoped checkpoint override exists. */
 	requireRunWorkflowApproval?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
@@ -1686,7 +1631,7 @@ export interface InstanceAiContext {
 	runId?: string;
 	/**
 	 * Run-scoped outcome tracking for browser-assisted credential setup. The
-	 * credentials tool marks an attempt pending when it hands off to the LLM
+	 * workflow_builder_credentials tool marks an attempt pending when it hands off to the LLM
 	 * with `needsBrowserSetup`; the browser tool wrapper reports each
 	 * `browser_create_credential` outcome. The host resolves the terminal
 	 * success/failure telemetry when the run finishes.
@@ -1721,7 +1666,7 @@ export interface InstanceAiContext {
 	onArtifactChanged?: (artifact: InstanceAiChangedArtifact) => Promise<void>;
 	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
-	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * workflow_builder_build_workflow on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
 	 * the same thread uses the persisted `workflows:update:<id>` session grant
 	 * written at create time — this in-memory set alone does not survive a new run.
@@ -1759,7 +1704,7 @@ export interface InstanceAiContext {
 	 *  the model's API knowledge. */
 	outputSchemaLookup?: OutputSchemaLookup;
 	/**
-	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * Runtime-only workflow build loop context. The direct `workflow_builder_build_workflow` tool
 	 * reports build outcomes here so planned build follow-ups and verification
 	 * tools can share the same work item without a detached builder sub-agent.
 	 */
@@ -1779,8 +1724,6 @@ export interface InstanceAiContext {
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
-	/** Ask-user decisions waiting for the next successful Agent Builder handoff. */
-	resolvedUserDecisions?: ResolvedUserDecision[];
 }
 
 // ── Setup panel v2 ───────────────────────────────────────────────────────────
@@ -2281,11 +2224,11 @@ export interface OrchestrationContext {
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
 	/** True when the current run was started by the replan pipeline after a failed
-	 *  background task. Set by the host, not by user text — the create-tasks guard
+	 *  background task. Set by the host, not by user text — the workflow_builder_create_tasks guard
 	 *  reads this instead of substring-matching `currentUserMessage`. */
 	isReplanFollowUp?: boolean;
 	/** True when the current run was started to execute a planned-task checkpoint.
-	 *  The orchestrator should run the checkpoint's spec and call complete-checkpoint. */
+	 *  The orchestrator should run the checkpoint's spec and call workflow_builder_complete_checkpoint. */
 	isCheckpointFollowUp?: boolean;
 	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
 	 *  Used by the post-run deadlock fallback in the service. */
@@ -2333,9 +2276,3 @@ export interface CreateInstanceAgentOptions {
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
-
-export type ResolvedUserDecision = {
-	question: string;
-	answer: string;
-	skipped?: boolean;
-};

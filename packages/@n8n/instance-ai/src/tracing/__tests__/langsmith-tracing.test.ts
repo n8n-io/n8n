@@ -1031,7 +1031,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-call',
 								toolCallId: 'toolu-1',
-								toolName: 'credentials',
+								toolName: 'workflow_builder_credentials',
 								input: { action: 'list', name: 'Slack account' },
 								providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 							},
@@ -1043,7 +1043,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-result',
 								toolCallId: 'toolu-1',
-								toolName: 'credentials',
+								toolName: 'workflow_builder_credentials',
 								output: {
 									ok: true,
 									items: [{ name: 'Slack account', apiKey: 'sk-secret' }],
@@ -1055,7 +1055,7 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.prompt.tools': [
 					JSON.stringify({
 						type: 'function',
-						name: 'credentials',
+						name: 'workflow_builder_credentials',
 						description: 'List credentials',
 						input_schema: {
 							type: 'object',
@@ -1084,7 +1084,7 @@ describe('createInstanceAiTraceContext', () => {
 					id: 'toolu-1',
 					type: 'function',
 					function: {
-						name: 'credentials',
+						name: 'workflow_builder_credentials',
 						arguments: JSON.stringify({ action: 'list', name: 'Slack account' }),
 					},
 				},
@@ -1093,7 +1093,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(prompt.input[2]).toEqual({
 			role: 'tool',
 			tool_call_id: 'toolu-1',
-			name: 'credentials',
+			name: 'workflow_builder_credentials',
 			content: JSON.stringify({
 				ok: true,
 				items: [{ name: 'Slack account', apiKey: '[redacted]' }],
@@ -1606,7 +1606,7 @@ describe('createInstanceAiTraceContext', () => {
 					name: 'data-table-manager',
 					description: 'Manage n8n Data Tables directly.',
 					category: 'data',
-					recommendedTools: ['data-tables'],
+					recommendedTools: ['workflow_builder_data_tables'],
 					instructions: 'Full skill instructions must stay out of trace inputs.',
 				},
 			]),
@@ -1741,13 +1741,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['workflow_builder_ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('workflow_builder_ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped workflow_builder_ask_user tool is not executable');
 		}
 
 		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -2026,13 +2026,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['workflow_builder_ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('workflow_builder_ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped workflow_builder_ask_user tool is not executable');
 		}
 
 		const result = await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {

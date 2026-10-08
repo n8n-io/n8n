@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { NodeTypes } from '@/node-types';
 
 import {
+	assignCredentialToNodeTools,
 	listAiGatewayManagedCredentialTypes,
 	reconcileNodeToolGatewayCredentials,
 } from '../reconcile-node-tool-gateway-credentials';
@@ -406,5 +407,63 @@ describe('listAiGatewayManagedCredentialTypes', () => {
 		});
 		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } })];
 		expect(listAiGatewayManagedCredentialTypes(tools, nodeTypes)).toEqual([]);
+	});
+});
+
+describe('assignCredentialToNodeTools', () => {
+	const credential = { id: 'g1', name: 'Gmail account' };
+
+	it('fills every empty slot of the type and counts them', () => {
+		const tools = [nodeTool('n8n-nodes-base.gmailTool'), nodeTool('n8n-nodes-base.gmailTool')];
+		const filled = assignCredentialToNodeTools(
+			tools,
+			nodeTypesWithCredentials(['gmailOAuth2']),
+			'gmailOAuth2',
+			credential,
+		);
+		expect(filled).toBe(2);
+		expect(tools.map((t) => t.node.credentials)).toEqual([
+			{ gmailOAuth2: credential },
+			{ gmailOAuth2: credential },
+		]);
+	});
+
+	it('keeps a real credential and a managed marker', () => {
+		const tools = [
+			nodeTool('n8n-nodes-base.gmailTool', { gmailOAuth2: { id: 'other', name: 'Other' } }),
+			nodeTool('n8n-nodes-base.gmailTool', { gmailOAuth2: { ...SENTINEL } }),
+		];
+		const filled = assignCredentialToNodeTools(
+			tools,
+			nodeTypesWithCredentials(['gmailOAuth2']),
+			'gmailOAuth2',
+			credential,
+		);
+		expect(filled).toBe(0);
+		expect(tools[0].node.credentials).toEqual({ gmailOAuth2: { id: 'other', name: 'Other' } });
+		expect(tools[1].node.credentials).toEqual({ gmailOAuth2: SENTINEL });
+	});
+
+	it('skips a node whose type does not declare the credential', () => {
+		const tools = [nodeTool('n8n-nodes-base.slackTool')];
+		const filled = assignCredentialToNodeTools(
+			tools,
+			nodeTypesWithCredentials(['slackApi']),
+			'gmailOAuth2',
+			credential,
+		);
+		expect(filled).toBe(0);
+		expect(tools[0].node.credentials).toBeUndefined();
+	});
+
+	it('skips a slot hidden by the current authentication option', () => {
+		const tools = [nodeTool('n8n-nodes-base.service')];
+		const filled = assignCredentialToNodeTools(
+			tools,
+			nodeTypesWithDescription(multiAuthNodeDescription),
+			'serviceApiKey',
+			{ id: 'k1', name: 'Key' },
+		);
+		expect(filled).toBe(0);
 	});
 });

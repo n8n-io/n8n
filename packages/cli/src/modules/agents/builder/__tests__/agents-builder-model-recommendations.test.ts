@@ -110,11 +110,11 @@ describe('builder model recommendations', () => {
 		expect(section).not.toContain('text-embedding-3-large');
 	});
 
-	it('routes distinct target-agent functions into autonomously managed skills', () => {
+	it('routes separate target-agent jobs into skills and keeps a single job in instructions', () => {
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-target-skills');
 
-		expect(skill?.description).toContain('designing, creating, or editing target-agent behavior');
-		expect(skill?.description).toContain('without calling it a skill');
+		expect(skill?.description).toContain('two or more separate jobs');
+		expect(skill?.description).toContain('not for an agent with one job');
 		expect(skill?.recommendedTools).toEqual(
 			expect.arrayContaining([
 				'agent-context',

@@ -87,12 +87,19 @@ import {
 	buildFinishSetupTool,
 	buildResolveLlmTool,
 } from './interactive';
+import type {
+	FinishSetupConfigApplyResult,
+	FinishSetupConfigWrites,
+} from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
+import {
+	assignCredentialToNodeTools,
+	listAiGatewayManagedCredentialTypes,
+} from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
 
@@ -603,7 +610,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
-					this.createFinishSetupTool(credentialService, agentId, projectId, track),
+					this.createFinishSetupTool(credentialService, agentId, projectId, user, track),
 					agentId,
 					projectId,
 					(result) => result.completed === true,
@@ -639,6 +646,7 @@ export class AgentsBuilderToolsService {
 		credentialService: InstanceAiCredentialService,
 		agentId: string,
 		projectId: string,
+		user: User,
 		track: BuilderTrackFn,
 	): BuiltTool {
 		return buildFinishSetupTool({
@@ -646,6 +654,8 @@ export class AgentsBuilderToolsService {
 			agentId,
 			projectId,
 			track,
+			applySetupToConfig: async (writes) =>
+				await this.applyFinishSetupToConfig(agentId, projectId, user, writes),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
@@ -1426,6 +1436,79 @@ export class AgentsBuilderToolsService {
 		);
 		// Based on a fresh read, so the saved config can hold edits the model has not seen.
 		return { applied: true, config: saved.config, configHash: saved.configHash };
+	}
+
+	/**
+	 * Writes the results of a completed setup flow into the config: each
+	 * credential into the empty node-tool slots of its type, and each answer to
+	 * its config path. A path that does not resolve is reported, not fatal.
+	 */
+	private async applyFinishSetupToConfig(
+		agentId: string,
+		projectId: string,
+		user: User,
+		writes: FinishSetupConfigWrites,
+	): Promise<FinishSetupConfigApplyResult> {
+		const empty = { credentialTypes: [], paths: [] };
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return { ...empty, errors: editorLock.errors };
+
+		const snapshot = await this.getConfigSnapshot(agentId, projectId);
+		if (!snapshot.config) {
+			return { ...empty, errors: [{ path: '(root)', message: 'Agent has no JSON config yet.' }] };
+		}
+
+		const jsonpatch = (await import('fast-json-patch')).default;
+		let next = jsonpatch.deepClone(snapshot.config) as AgentJsonConfig;
+		const credentialTypes: string[] = [];
+		for (const credential of writes.credentials) {
+			const filled = assignCredentialToNodeTools(
+				next.tools,
+				this.nodeTypes,
+				credential.credentialType,
+				{
+					id: credential.id,
+					name: credential.name,
+				},
+			);
+			if (filled > 0) credentialTypes.push(credential.credentialType);
+		}
+
+		const paths: string[] = [];
+		const errors: Array<{ path: string; message: string }> = [];
+		for (const { path, value } of writes.values) {
+			const op: Operation = { op: 'add', path, value };
+			const invalid = jsonpatch.validate([op], next);
+			if (invalid) {
+				errors.push({ path, message: invalid.message ?? 'Config path does not resolve' });
+				continue;
+			}
+			next = jsonpatch.applyPatch(next, [op]).newDocument;
+			paths.push(path);
+		}
+
+		if (credentialTypes.length === 0 && paths.length === 0) {
+			return { ...empty, ...(errors.length ? { errors } : {}) };
+		}
+
+		const validated = this.validateBuilderConfig(next, snapshot.config);
+		if (!validated.ok) return { ...empty, errors: validated.errors };
+		const saved = await this.saveBuilderConfig(
+			agentId,
+			projectId,
+			user,
+			validated.config,
+			snapshot.configHash,
+			next,
+			true,
+		);
+		if (!saved.ok) return { ...empty, errors: saved.errors };
+		return {
+			credentialTypes,
+			paths,
+			configHash: saved.configHash,
+			...(errors.length ? { errors } : {}),
+		};
 	}
 
 	private async getFreshConfigSnapshot(

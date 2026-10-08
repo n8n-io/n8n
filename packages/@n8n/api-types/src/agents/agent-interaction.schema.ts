@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AGENT_BUILDER_TOOL_NAMES } from '../builder-tool-names';
 import { channelConfigSchema, credentialRequestSchema } from '../schemas/instance-ai.schema';
 
 /**
@@ -11,12 +12,12 @@ import { channelConfigSchema, credentialRequestSchema } from '../schemas/instanc
  * `agent-builder-interactive.ts`'s doc comment); these schemas cover the
  * three tools whose suspend/resume payload matches instance-AI's own
  * confirmation-request/confirm-response wire contract:
- * `ask_questions`, `ask_credential`/`ask_embedding_credential`, and
- * `configure_channel`.
+ * `agent_builder_ask_questions`, `agent_builder_ask_credential`/
+ * `agent_builder_ask_embedding_credential`, and `agent_builder_configure_channel`.
  */
 
-export const ASK_QUESTIONS_TOOL_NAME = 'ask_questions' as const;
-export const CONFIGURE_CHANNEL_TOOL_NAME = 'configure_channel' as const;
+export const ASK_QUESTIONS_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS;
+export const CONFIGURE_CHANNEL_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL;
 
 /**
  * Stable code on `BuilderNotConfiguredError` (`packages/cli/src/modules/agents/builder/errors.ts`)
@@ -36,20 +37,19 @@ export const BUILDER_NOT_CONFIGURED_CODE = 'BUILDER_NOT_CONFIGURED' as const;
 export const BUILDER_CHECKPOINT_UNAVAILABLE_CODE = 'BUILDER_CHECKPOINT_UNAVAILABLE' as const;
 
 /**
- * Agent-builder tools whose success should set `configUpdated` on `build-agent`
+ * Agent-builder tools whose success should set `configUpdated` on `agent_builder_build_agent`
  * (refresh the agent artifact preview). Includes config writers and publish
- * lifecycle tools. Values must match `BUILDER_TOOLS` in
- * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.
+ * lifecycle tools.
  */
 export const CONFIG_MUTATION_TOOL_NAMES = [
-	'write_config',
-	'patch_config',
-	'publish_agent',
-	'unpublish_agent',
+	AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
+	AGENT_BUILDER_TOOL_NAMES.PATCH_CONFIG,
+	AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT,
+	AGENT_BUILDER_TOOL_NAMES.UNPUBLISH_AGENT,
 ] as const;
 
 // ---------------------------------------------------------------------------
-// ask_questions
+// agent_builder_ask_questions
 // ---------------------------------------------------------------------------
 
 export const interactionQuestionSchema = z.object({
@@ -92,7 +92,7 @@ export const questionsResumeSchema = z.object({
 export type QuestionsResumeData = z.infer<typeof questionsResumeSchema>;
 
 // ---------------------------------------------------------------------------
-// ask_credential / ask_embedding_credential
+// agent_builder_ask_credential / agent_builder_ask_embedding_credential
 // ---------------------------------------------------------------------------
 
 export const credentialSuspendPayloadSchema = z.object({
@@ -120,7 +120,7 @@ export const credentialResumeSchema = z.union([
 export type CredentialResumeData = z.infer<typeof credentialResumeSchema>;
 
 // ---------------------------------------------------------------------------
-// configure_channel
+// agent_builder_configure_channel
 // ---------------------------------------------------------------------------
 
 export const channelSuspendPayloadSchema = z.object({

@@ -37,11 +37,19 @@ export interface LoadRuntimeSkillSourceFromDirectoryOptions {
 }
 
 export function createRuntimeSkillSource(skills: RuntimeSkill[]): RuntimeSkillSource {
-	const normalizedSkills = normalizeRuntimeSkills(skills);
+	return createSourceFromSkills(skills);
+}
+
+/** `externalParentIds` are skills outside `skills` that a reference may name as a parent. */
+function createSourceFromSkills(
+	skills: RuntimeSkill[],
+	externalParentIds: ReadonlySet<string> = new Set(),
+): RuntimeSkillSource {
+	const normalizedSkills = normalizeRuntimeSkills(skills, externalParentIds);
 	const skillsById = new Map(normalizedSkills.map((skill) => [skill.id, skill]));
 
 	return {
-		registry: createRuntimeSkillRegistry(normalizedSkills),
+		registry: createRegistryFromNormalized(normalizedSkills),
 		loadSkill: async (skillId) => {
 			const skill = skillsById.get(skillId);
 			return await Promise.resolve(skill ?? null);
@@ -49,8 +57,7 @@ export function createRuntimeSkillSource(skills: RuntimeSkill[]): RuntimeSkillSo
 	};
 }
 
-export function createRuntimeSkillRegistry(skills: RuntimeSkill[]): RuntimeSkillRegistry {
-	const normalizedSkills = normalizeRuntimeSkills(skills);
+function createRegistryFromNormalized(normalizedSkills: RuntimeSkill[]): RuntimeSkillRegistry {
 	const entries = normalizedSkills.map(toRegistryEntry).sort(compareRegistryEntries);
 
 	return {
@@ -58,6 +65,10 @@ export function createRuntimeSkillRegistry(skills: RuntimeSkill[]): RuntimeSkill
 		skillsHash: hashRegistry(entries),
 		skills: entries,
 	};
+}
+
+export function createRuntimeSkillRegistry(skills: RuntimeSkill[]): RuntimeSkillRegistry {
+	return createRegistryFromNormalized(normalizeRuntimeSkills(skills));
 }
 
 /**
@@ -98,14 +109,18 @@ export function filterRuntimeSkillSource(
 
 /**
  * Add in-memory skills to an already-loaded source. Skills of the base source
- * win on an id collision. Recomputes `skillsHash` for the merged catalog.
+ * win on an id collision. An added reference can name a base skill as its
+ * parent. Recomputes `skillsHash` for the merged catalog.
  */
 export function extendRuntimeSkillSource(
 	source: RuntimeSkillSource,
 	skills: RuntimeSkill[],
 ): RuntimeSkillSource {
 	const baseIds = new Set(source.registry.skills.map((skill) => skill.id));
-	const added = createRuntimeSkillSource(skills.filter((skill) => !baseIds.has(skill.id)));
+	const added = createSourceFromSkills(
+		skills.filter((skill) => !baseIds.has(skill.id)),
+		baseIds,
+	);
 	if (added.registry.skills.length === 0) return source;
 
 	const addedIds = new Set(added.registry.skills.map((skill) => skill.id));
@@ -326,8 +341,11 @@ function assertSharedReferencesExist(skills: RuntimeSkill[]): void {
  * Adds skills that share a reference to its parents, drops parents that are
  * not in the set, and drops references left without a parent.
  */
-function resolveReferenceParents(skills: RuntimeSkill[]): RuntimeSkill[] {
-	const ids = new Set(skills.map((skill) => skill.id));
+function resolveReferenceParents(
+	skills: RuntimeSkill[],
+	externalParentIds: ReadonlySet<string> = new Set(),
+): RuntimeSkill[] {
+	const ids = new Set([...externalParentIds, ...skills.map((skill) => skill.id)]);
 	const sharers = new Map<string, string[]>();
 	for (const skill of skills) {
 		// The catalog hides a skill by `parents`; materialization and file lookups key on `reference`.
@@ -368,8 +386,13 @@ export function formatSkillValidationErrors(
 		.join(' ');
 }
 
-function normalizeRuntimeSkills(skills: RuntimeSkill[]): RuntimeSkill[] {
-	const sortedSkills = resolveReferenceParents(skills).sort(compareRuntimeSkills);
+function normalizeRuntimeSkills(
+	skills: RuntimeSkill[],
+	externalParentIds?: ReadonlySet<string>,
+): RuntimeSkill[] {
+	const sortedSkills = resolveReferenceParents(skills, externalParentIds).sort(
+		compareRuntimeSkills,
+	);
 	const seenIds = new Set<string>();
 	const seenNames = new Set<string>();
 	const seenSourceDirectories = new Set<string>();

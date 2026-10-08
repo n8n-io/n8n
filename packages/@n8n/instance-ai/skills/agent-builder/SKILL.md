@@ -76,14 +76,21 @@ The target Agent is the AI Agent that you configure for the user. Changes to
 config, tools, memory, integrations, and target-Agent skills affect the target
 Agent, not your own behavior.
 
-Keep the target Agent instructions lightweight: identity, overall purpose, and
-rules that apply to every operation. Put each distinct or conditional function
-in its own focused target-Agent skill. For example, creating tickets, reviewing
-images, and generating reports are separate skills, not one large instructions
-block. Infer the right skill boundaries, then create missing skills or update
-existing ones as part of the build, even when the user never says "skill".
-Load `agent-builder-target-skills` whenever you design or change how the
-target Agent performs a function.
+Put the target Agent's behavior in `instructions` by default: identity,
+purpose, and the rules and steps for its job. Create target-Agent skills only
+when one of these is true:
+
+- The user asks for skills.
+- The Agent has two or more separate jobs with their own procedures, for
+  example creating tickets, reviewing images, and generating reports. Put each
+  job in its own skill and keep `instructions` to the rules that apply to all
+  of them.
+- One procedure is long or conditional enough that it would bury the general
+  rules in `instructions`.
+
+An Agent with one job, such as answering support questions with a few tools,
+needs no skills. Load `agent-builder-target-skills` only when you create or
+change a skill.
 
 Scheduled tasks inherit these instructions and can use the configured skills.
 Keep each task objective focused on its session-specific outcome, context,
@@ -241,10 +248,12 @@ During an initial build:
   everything pending: the model choice and open decisions as `questions`, one
   `credentialRequests` entry per credential slot, and one `channels` entry per
   drafted channel integration. It configures or skips each channel itself, as
-  the last cards in the flow. Resolve its results: call
-  `agent_builder_resolve_llm` with the model answer, patch returned credential
-  ids into the config, and verify MCP servers. Then finish every build step
-  that waited on that setup.
+  the last cards in the flow. It writes each resolved credential into the
+  empty node-tool slots of its type, and each answer that has a `configPath`,
+  and lists them in `appliedToConfig`. Do not patch those again. Resolve only
+  the rest: call `agent_builder_resolve_llm` with the model answer, verify MCP
+  servers, and fix any `configApplyErrors`. If nothing is left, go straight to
+  the test.
 - Do not call `agent_builder_configure_channel` again after
   `agent_builder_finish_setup` handles a channel card.
 - After `agent_builder_finish_setup`, end your reply with a short setup
@@ -278,15 +287,17 @@ confirm those selections before you finish the build.
 4. In the next response, call `agent_builder_get_node_types` for the node
    results you will use, and resolve the model in the same response (see
    Model selection).
-5. Write the config once, with everything discovery found: the name,
-   lightweight target-Agent `instructions`, the model, the node tools, and the
-   drafts for setup that the user must finish. Do not write a partial config
-   and patch it in the next step. Never write empty placeholders, and never wait
-   for setup answers before you write instructions, tools, skills, or tasks.
-6. Create or update the focused skills and tasks that the target Agent's
-   functions need, whether or not the user named those artifact types. Use
-   `agent_builder_patch_config` only for changes that discovery could not know
-   before the config write.
+5. Write the config once, with everything discovery found: the name, the
+   target-Agent `instructions`, the model, every node tool, and the drafts for
+   setup that the user must finish. Do not write a partial config and patch it
+   in the next step. Never write empty placeholders, and never wait for setup
+   answers before you write instructions, tools, skills, or tasks. When a tool
+   needs a value that only the user knows, such as a recipient address, write
+   the tool now with that field empty, and ask for it in
+   `agent_builder_finish_setup` with `configPath` set to that field.
+6. Create skills only when Target Agent says so, and create the tasks that
+   the user's schedule needs. Use `agent_builder_patch_config` only for changes
+   that discovery could not know before the config write.
 7. Follow Config freshness for every config mutation: chain each write from
    the `configHash` that your previous write returned.
 8. When both skill and task batches are fully specified, call
@@ -296,8 +307,7 @@ confirm those selections before you finish the build.
 9. When only pending setup remains, call `agent_builder_finish_setup` once with
    every pending item, per Initial build. Before that call, make sure that
    every item that does not need user input is done. After it returns, resolve
-   each item from its results and finish every build step that waited on that
-   input. Outside an initial build, if pending setup remains at the end of the
+   only the items that `appliedToConfig` does not list. Outside an initial build, if pending setup remains at the end of the
    turn, end with a summary of what is missing, and finish those items in later
    turns. Base any follow-up patch on the `config` and `configHash` that
    `agent_builder_finish_setup` returns (or on your last `configHash` when it

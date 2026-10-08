@@ -11,7 +11,7 @@ export function targetSkillsSkill(): RuntimeSkill {
 		id: 'agent-builder-target-skills',
 		name: 'Agent Builder Target Skills',
 		description:
-			'Use when designing, creating, or editing target-agent behavior that belongs in focused load-on-demand skills, including when the user describes a function without calling it a skill; not for builder guidance or universal target-agent instructions.',
+			'Use when creating or editing target-agent skills: the user asks for skills, the agent has two or more separate jobs with their own procedures, or an existing skill needs a change; not for an agent with one job, builder guidance, or universal target-agent instructions.',
 		recommendedTools: [
 			'agent-context',
 			'agent_builder_update_skill',
@@ -30,21 +30,27 @@ export function targetSkillsSkill(): RuntimeSkill {
 		instructions: `\
 ## Purpose
 
-Use this to design, create, and edit focused load-on-demand instructions for
-the target agent. Keep the target agent's always-on instructions limited to its
-identity, overall purpose, and rules that apply to every operation.
+Use this to create and edit load-on-demand instructions for the target agent.
+By default, the target agent's behavior lives in its main instructions. Skills
+are for agents whose jobs are too separate or too long to share one set of
+instructions.
 
 ## Use when
 
-- The target agent has a distinct function, workflow, playbook, policy, style
-  guide, or domain behavior that should load only for relevant requests.
-- The user asks to change how the target agent performs an existing function,
-  even when they do not mention skills.
-- A build contains multiple functions. Create one focused skill per function;
-  infer this decomposition without asking the user to label anything a skill.
+- The user asks for skills.
+- The target agent has two or more separate jobs with their own procedures,
+  for example creating tickets, reviewing images, and generating reports.
+  Create one skill per job; infer this split without asking the user to label
+  anything a skill.
+- One procedure is long or conditional enough that it would bury the general
+  rules in the main instructions.
+- The user asks to change how the target agent performs a function that an
+  attached skill already owns.
 
 ## Don't use when:
 
+- The target agent has one job. Put its rules and steps in the main
+  instructions, even when they run to several paragraphs.
 - The behavior is the target agent's identity, overall purpose, or a rule that
   truly applies to every operation; keep that in the main instructions.
 - The request changes only a tool, integration, model, or memory setting and
@@ -74,9 +80,9 @@ placeholder or vague skill.
 
 ## Workflow
 
-- Classify requested behavior before writing: identity, overall purpose, and
-  universal rules stay in main instructions; each distinct or conditional
-  function becomes a focused skill.
+- Classify requested behavior before writing: identity, overall purpose,
+  universal rules, and the procedure of a single-job agent stay in main
+  instructions; each separate job of a multi-job agent becomes a skill.
 - Call \`agent-context({ type: "config" })\` and use its \`skills\` refs as the authoritative set of
   skills attached to the target agent.
 - Call \`agent-context({ type: "skills" })\` once and compare its metadata with the attached ids from
