@@ -1,8 +1,4 @@
-import {
-	ExportPackageRequestDto,
-	ImportPackageRequestDto,
-	ImportPackageSelectionRequestDto,
-} from '@n8n/api-types';
+import { ExportPackageRequestDto, ImportPackageSelectionRequestDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -52,17 +48,12 @@ type ExportPackageRequest = AuthenticatedRequest<
 	}
 >;
 
-type ImportPackageRequest = PackageRequest.Import & {
-	files?: Express.Multer.File[];
-};
-
 type ImportPackageSelectionRequest = PackageRequest.ImportSelection & {
 	files?: Express.Multer.File[];
 };
 
 type N8nPackagesHandlers = {
 	exportPackage: PublicAPIEndpoint<ExportPackageRequest>;
-	importPackage: PublicAPIEndpoint<ImportPackageRequest>;
 	importPackageSelection: PublicAPIEndpoint<ImportPackageSelectionRequest>;
 };
 
@@ -189,64 +180,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				) {
 					throw new UserError(error.message, { description: error.description });
 				}
-				throw error;
-			}
-		},
-	],
-	importPackage: [
-		publicApiCompositeScope('workflow:import'),
-		async (req, res) => {
-			let projectId: string | undefined;
-			let folderId: string | undefined;
-
-			try {
-				const payload = ImportPackageRequestDto.safeParse(req.body ?? {});
-				if (!payload.success) {
-					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
-				}
-
-				projectId = payload.data.projectId;
-				folderId = payload.data.folderId;
-
-				assertPackageImportApiKeyScopes(req);
-
-				const packageFile = resolveImportPackageUpload(req);
-
-				const result = await Container.get(N8nPackagesService).importPackage({
-					user: req.user,
-					apiKeyScopes: req.tokenGrant?.apiKeyScopes,
-					projectId,
-					folderId,
-					credentialMatchingMode: payload.data.credentialMatchingMode,
-					credentialMissingMode: payload.data.credentialMissingMode,
-					bindings: {
-						credentials: new Map(Object.entries(payload.data.bindings.credentials ?? {})),
-					},
-					workflowConflictPolicy: payload.data.workflowConflictPolicy,
-					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
-					workflowIdPolicy: payload.data.workflowIdPolicy,
-					missingNodeTypeMode: payload.data.missingNodeTypeMode,
-					projectConflictPolicy: payload.data.projectConflictPolicy,
-					folderConflictPolicy: payload.data.folderConflictPolicy,
-					overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
-					dataTableMatchingMode: payload.data.dataTableMatchingMode,
-					dataTableMissingMode: payload.data.dataTableMissingMode,
-					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
-					variableMissingMode: payload.data.variableMissingMode,
-					variableConflictPolicy: payload.data.variableConflictPolicy,
-					variableParentPolicy: payload.data.variableParentPolicy,
-					tagMissingMode: payload.data.tagMissingMode,
-					tagConflictPolicy: payload.data.tagConflictPolicy,
-					packageBuffer: packageFile.buffer,
-				});
-				return res.status(200).json(result);
-			} catch (error) {
-				Container.get(EventService).emit('n8n-package-import-failed', {
-					user: req.user,
-					reason: classifyPackageFailure(error),
-					...(projectId ? { projectId } : {}),
-					...(folderId ? { folderId } : {}),
-				});
 				throw error;
 			}
 		},
