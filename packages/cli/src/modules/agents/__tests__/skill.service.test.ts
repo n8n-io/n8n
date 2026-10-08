@@ -629,6 +629,41 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('canAccess', () => {
+		it('lets every user read an instance skill', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+
+			expect(await service.canAccess(user, skillRow('skill_a'), 'read')).toBe(true);
+		});
+
+		it("needs skill:read for another user's skill", async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+
+			expect(await service.canAccess(user, skillRow('skill_a', { userId: 'other' }), 'read')).toBe(
+				false,
+			);
+			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:read');
+		});
+
+		it('checks the scope of the operation on the project of a project skill', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			expect(
+				await service.canAccess(user, skillRow('skill_a', { projectId: PROJECT }), 'delete'),
+			).toBe(false);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:delete'], false, {
+				projectId: PROJECT,
+			});
+		});
+
+		it('needs skill:delete to delete an instance skill', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			expect(await service.canAccess(user, skillRow('skill_a'), 'delete')).toBe(true);
+			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:delete');
+		});
+	});
+
 	describe('assertCanEdit', () => {
 		it('names the skills the user cannot edit', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(false);
