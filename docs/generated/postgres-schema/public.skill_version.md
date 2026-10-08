@@ -14,12 +14,13 @@
 | name | varchar(128) |  | false |  |  | Free-text skill name, as it was when this version was saved |
 | skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| version | integer |  | false |  |  | 1..n per skill. Each Save adds one; none ever changes |
+| version | integer |  | false |  |  | 1..n per skill. A Save that changes the content adds one; none ever changes |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_skill_version_version | CHECK | CHECK ((version > 0)) |
 | FK_9565d0fbf32cd463f9b47c7adab | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_f87064c0a29efd2d5195328d91a | FOREIGN KEY | FOREIGN KEY ("skillId") REFERENCES skill(id) ON DELETE CASCADE |
 | PK_05167d59ac7599128e22400172d | PRIMARY KEY | PRIMARY KEY (id) |

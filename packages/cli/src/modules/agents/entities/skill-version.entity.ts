@@ -1,5 +1,5 @@
 import { JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
+import { Check, Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 /**
  * SKILL.md frontmatter fields other than name and description, e.g. `allowed-tools`,
@@ -8,11 +8,12 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 export type SkillFrontmatter = Record<string, unknown>;
 
 /**
- * One saved version of a skill. Every Save adds the next number; a version never
- * changes. Agents read the latest one unless a revert pinned an older one.
+ * One saved version of a skill. A Save that changes the content adds the next number;
+ * a version never changes. Agents read the latest one unless a revert pinned an older one.
  */
 @Entity({ name: 'skill_version' })
 @Index(['skillId', 'version'], { unique: true })
+@Check('"version" > 0')
 export class SkillVersion extends WithTimestamps {
 	@PrimaryColumn({ type: 'uuid' })
 	id: string;

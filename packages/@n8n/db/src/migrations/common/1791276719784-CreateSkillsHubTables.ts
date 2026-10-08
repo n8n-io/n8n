@@ -10,8 +10,9 @@ const AGENT_HISTORY_SKILL_TABLE = 'agent_history_skill';
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
  * A skill belongs to one target: a user ("Just you", for the assistant only), a project
  * (team or personal, for its agents and its assistant sessions), or the instance (neither
- * set). Its name and content live in numbered, immutable versions: every Save creates
- * the next one, agents read the latest, and agent publishes pin the one they ran. There
+ * set). Its name and content live in numbered, immutable versions: a Save that changes
+ * the content creates the next one, agents read the latest, and agent publishes pin the
+ * one they ran. There
  * is no draft row; an editor keeps unsaved changes to itself until Save.
  */
 export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
@@ -77,13 +78,15 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 
 	private async createSkillVersionTable({
 		schemaBuilder: { createTable, column },
+		tablePrefix,
+		escape,
 	}: MigrationContext) {
 		await createTable(SKILL_VERSION_TABLE)
 			.withColumns(
 				column('id').uuid.primary,
 				column('skillId').varchar(36).notNull,
 				column('version').int.notNull.comment(
-					'1..n per skill. Each Save adds one; none ever changes',
+					'1..n per skill. A Save that changes the content adds one; none ever changes',
 				),
 				column('name')
 					.varchar(128)
@@ -101,6 +104,7 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
 			.withTimestamps.withUniqueConstraintOn(['skillId', 'version'])
+			.withCheck(`CHK_${tablePrefix}skill_version_version`, `${escape.columnName('version')} > 0`)
 			.withForeignKey('skillId', {
 				tableName: SKILL_TABLE,
 				columnName: 'id',
