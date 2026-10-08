@@ -55,15 +55,15 @@ exclude = [
 	'/oauth2?/(v\d+/)?(token|authorize)',
 	'^https?://[^/]+\.googleapis\.com',
 	'^https?://graph\.microsoft\.com',
-	'^https://api\.smith\.langchain\.com',
+	'^https://(eu\.)?api\.smith\.langchain\.com',
 	'^https://www\.reddit\.com/.*\.json$',
 	# A URL prefix that the editor appends package names to.
 	'^https://www\.npmjs\.com/package/$',
 	# Bot checks block GitHub runners, also in a browser.
 	'^https://www\.contentful\.com/',
 	'^https://postgrest\.org/',
-	# The OpenAI dashboard passes the bot check only sometimes. Its docs moved to developers.openai.com.
-	'^https://platform\.openai\.com/',
+	# The OpenAI dashboard passes the bot check only sometimes. Its docs paths redirect, so lychee checks them.
+	'^https://platform\.openai\.com/(api-keys|assistants|home|playground|settings|storage|usage)',
 	# Private to n8n employees.
 	'^https://n8nio\.slack\.com/',
 	'^https://github\.com/n8n-io/license-management',
