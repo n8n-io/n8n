@@ -1116,8 +1116,11 @@ export class SourceControlImportService {
 		};
 
 		await mapInBatches(workflows, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
-			const { id, name, nodes, owner } = await this.parseWorkflowFromFile(file.file);
-			if (!id || !nodes) return;
+			const { id, versionId, name, nodes, connections, owner } = await this.parseWorkflowFromFile(
+				file.file,
+			);
+			// The import skips a file missing these before the policy runs.
+			if (!id || !versionId || !nodes || !connections) return;
 
 			const projectId = await targetProjectId(owner);
 			await evaluate(file, workflowImportPolicyContext({ id, name, nodes }, projectId));

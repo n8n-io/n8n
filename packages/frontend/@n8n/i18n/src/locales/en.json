@@ -4522,6 +4522,7 @@
 	"settings.sourceControl.modals.pull.policyBlocked": "Blocked by policy",
 	"settings.sourceControl.modals.pull.policyBlocked.tooltip": "A policy blocks this item. The pull will skip it.",
 	"settings.sourceControl.modals.pull.policyBlockedCallout": "{count} item is blocked by a policy and won't be pulled. | {count} items are blocked by a policy and won't be pulled.",
+	"settings.sourceControl.modals.pull.policyCheckFailedCallout": "We couldn't check {count} item against your policies. The pull may fail. Try again in a moment. | We couldn't check {count} items against your policies. The pull may fail. Try again in a moment.",
 	"settings.sourceControl.modals.pull.policyBlockedGroup": "Not pulled · blocked by policy ({count})",
 	"settings.sourceControl.modals.pull.dataTablesWarning": "The following data table has schema changes. Column removal will cause data loss that cannot be recovered: | The following data table has schema changes. Column removal will cause data loss that cannot be recovered: | The following {count} data tables have schema changes. Column removal will cause data loss that cannot be recovered:",
 	"settings.sourceControl.modals.pullResult.title": "Auto-publish results",

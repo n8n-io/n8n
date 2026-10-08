@@ -1021,6 +1021,9 @@ describe('SourceControlPullModal', () => {
 			expect(queryByTestId('source-control-pull-policy-blocked')).not.toBeInTheDocument();
 			expect(queryByTestId('source-control-pull-policy-callout')).not.toBeInTheDocument();
 			expect(queryByTestId('source-control-pull-policy-group')).not.toBeInTheDocument();
+			expect(
+				queryByTestId('source-control-pull-policy-check-failed-callout'),
+			).not.toBeInTheDocument();
 		});
 
 		it('puts the number of pullable items on the button for a partial pull', () => {
@@ -1063,6 +1066,27 @@ describe('SourceControlPullModal', () => {
 			});
 
 			expect(getByTestId('force-pull')).toBeDisabled();
+		});
+
+		it('warns separately when the policy could not check an item', () => {
+			const uncheckedWorkflow: SourceControlledFile = {
+				...sampleFiles[0],
+				contentImportPolicy: {
+					violations: [],
+					checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+				},
+			};
+
+			const { getByTestId, queryByTestId } = renderModal({
+				pinia,
+				props: { data: { eventBus, status: [uncheckedWorkflow, sampleFiles[1]] } },
+			});
+
+			expect(getByTestId('source-control-pull-policy-check-failed-callout')).toHaveTextContent(
+				"We couldn't check 1 item against your policies.",
+			);
+			expect(queryByTestId('source-control-pull-policy-group')).not.toBeInTheDocument();
+			expect(getByTestId('force-pull')).toBeEnabled();
 		});
 
 		it('does not mark a blocked workflow for auto-publish', async () => {

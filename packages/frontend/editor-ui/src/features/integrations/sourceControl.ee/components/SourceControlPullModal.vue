@@ -20,6 +20,7 @@ import {
 	getStatusText,
 	getStatusTheme,
 	isBlockedByPolicy,
+	isPolicyCheckFailed,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '../sourceControl.utils';
 import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
@@ -254,6 +255,7 @@ const dataTableWarningMessage = computed(() => {
 });
 
 const policyBlockedCount = computed(() => status.value.filter(isBlockedByPolicy).length);
+const policyCheckFailedCount = computed(() => status.value.filter(isPolicyCheckFailed).length);
 
 const LISTED_TYPES: SourceControlledFileType[] = [
 	SOURCE_CONTROL_FILE_TYPE.workflow,
@@ -534,6 +536,19 @@ onMounted(() => {
 						i18n.baseText('settings.sourceControl.modals.pull.policyBlockedCallout', {
 							adjustToNumber: policyBlockedCount,
 							interpolate: { count: `${policyBlockedCount}` },
+						})
+					}}
+				</N8nCallout>
+				<N8nCallout
+					v-if="policyCheckFailedCount > 0"
+					theme="warning"
+					class="mb-xs"
+					data-test-id="source-control-pull-policy-check-failed-callout"
+				>
+					{{
+						i18n.baseText('settings.sourceControl.modals.pull.policyCheckFailedCallout', {
+							adjustToNumber: policyCheckFailedCount,
+							interpolate: { count: `${policyCheckFailedCount}` },
 						})
 					}}
 				</N8nCallout>

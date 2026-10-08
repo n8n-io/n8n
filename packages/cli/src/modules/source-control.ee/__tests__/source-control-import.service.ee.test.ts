@@ -2943,6 +2943,13 @@ describe('SourceControlImportService', () => {
 			...overrides,
 		});
 
+		const remoteWorkflow = (fields: Record<string, unknown>) => ({
+			versionId: 'v1',
+			nodes,
+			connections: {},
+			...fields,
+		});
+
 		const givenFiles = (contents: Record<string, unknown>) => {
 			fsReadFile.mockImplementation(async (path) => JSON.stringify(contents[path as string]));
 		};
@@ -2962,7 +2969,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('evaluates an incoming workflow with the same context the pull enforces', async () => {
-			givenFiles({ '/mock/wf.json': { id: 'wf1', name: 'Workflow 1', nodes } });
+			givenFiles({ '/mock/wf.json': remoteWorkflow({ id: 'wf1', name: 'Workflow 1' }) });
 			const files = [file({ file: '/mock/wf.json', id: 'wf1' })];
 
 			await service.previewContentImportPolicy(files, userId);
@@ -2976,8 +2983,8 @@ describe('SourceControlImportService', () => {
 
 		it('marks a blocked workflow and leaves an allowed one unmarked', async () => {
 			givenFiles({
-				'/mock/blocked.json': { id: 'blocked', name: 'Blocked', nodes },
-				'/mock/allowed.json': { id: 'allowed', name: 'Allowed', nodes },
+				'/mock/blocked.json': remoteWorkflow({ id: 'blocked', name: 'Blocked' }),
+				'/mock/allowed.json': remoteWorkflow({ id: 'allowed', name: 'Allowed' }),
 			});
 			policyEnforcementService.evaluateContentImport.mockImplementation(async (context) =>
 				'workflow' in context && context.workflow.id === 'blocked'
@@ -3006,15 +3013,27 @@ describe('SourceControlImportService', () => {
 			expect(policyEnforcementService.evaluateContentImport).not.toHaveBeenCalled();
 		});
 
+		it('skips a workflow file the import would reject as incomplete', async () => {
+			givenFiles({
+				'/mock/wf.json': remoteWorkflow({ id: 'wf1', name: 'Workflow 1', versionId: undefined }),
+			});
+
+			await service.previewContentImportPolicy(
+				[file({ file: '/mock/wf.json', id: 'wf1' })],
+				userId,
+			);
+
+			expect(policyEnforcementService.evaluateContentImport).not.toHaveBeenCalled();
+		});
+
 		it('targets a team project the pull has not created yet, without creating it', async () => {
 			projectRepository.findOne.mockResolvedValue(null);
 			givenFiles({
-				'/mock/wf.json': {
+				'/mock/wf.json': remoteWorkflow({
 					id: 'wf1',
 					name: 'Workflow 1',
-					nodes,
 					owner: { type: 'team', teamId: 'new-team', teamName: 'New team' },
-				},
+				}),
 			});
 
 			await service.previewContentImportPolicy(
@@ -3053,8 +3072,8 @@ describe('SourceControlImportService', () => {
 				Object.assign(new Project(), { id: 'team-1', type: 'team' }),
 			);
 			givenFiles({
-				'/mock/a.json': { id: 'a', name: 'A', nodes, owner },
-				'/mock/b.json': { id: 'b', name: 'B', nodes, owner },
+				'/mock/a.json': remoteWorkflow({ id: 'a', name: 'A', owner }),
+				'/mock/b.json': remoteWorkflow({ id: 'b', name: 'B', owner }),
 			});
 
 			await service.previewContentImportPolicy(

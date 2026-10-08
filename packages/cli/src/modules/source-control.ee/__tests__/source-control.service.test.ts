@@ -1129,7 +1129,7 @@ describe('SourceControlService', () => {
 			const files = [mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow' })];
 			mockStatusService.getStatus.mockResolvedValue(files);
 
-			await sourceControlService.getStatus(globalAdminUser, {
+			await sourceControlService.getStatus(globalAdminUserWithId, {
 				direction: 'pull',
 				verbose: false,
 				preferLocalVersion: false,
@@ -1137,7 +1137,7 @@ describe('SourceControlService', () => {
 
 			expect(sourceControlImportService.previewContentImportPolicy).toHaveBeenCalledWith(
 				files,
-				globalAdminUser.id,
+				globalAdminUserWithId.id,
 			);
 		});
 

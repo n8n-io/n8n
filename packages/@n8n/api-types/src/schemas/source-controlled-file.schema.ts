@@ -61,7 +61,7 @@ export const SourceControlledFileSchema = z.object({
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
 	publishingError: z.string().optional(),
 	publishingErrorDetails: workflowPublishBlockedDetailsSchema.optional(),
-	/** On a pull status, what the pull would skip. On a pull result, what it skipped. */
+	/** Pull status: what the policy preview found. Pull result: why the pull skipped the file. */
 	contentImportPolicy: contentImportPolicyResultSchema.optional(),
 });
 

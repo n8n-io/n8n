@@ -32,6 +32,10 @@ export const getStatusTheme = (status: SourceControlledFileStatus) => {
 export const isBlockedByPolicy = (file: SourceControlledFile) =>
 	(file.contentImportPolicy?.violations.length ?? 0) > 0;
 
+/** A policy check failed on this file, so the pull is likely to fail as a whole. */
+export const isPolicyCheckFailed = (file: SourceControlledFile) =>
+	!isBlockedByPolicy(file) && (file.contentImportPolicy?.checkErrors.length ?? 0) > 0;
+
 type StatusPriority = Partial<Record<SourceControlledFileStatus, number>>;
 const pullStatusPriority: StatusPriority = {
 	[SOURCE_CONTROL_FILE_STATUS.modified]: 2,
