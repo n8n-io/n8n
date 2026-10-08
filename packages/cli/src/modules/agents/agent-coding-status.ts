@@ -1,94 +1,260 @@
-// Keep Git and process inspection in one sandbox request.
-export const CODING_STOP_SCRIPT = `import os, pathlib, signal, sys, time
-global_meta, current_meta, all_apps = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3] == 'all'
-metas = [global_meta, *[p.parent for p in (global_meta / 'sessions').glob('*/app.pid')]] if all_apps else [current_meta]
-for meta in metas:
-    if all_apps and meta == current_meta: continue
-    pid_file = meta / 'app.pid'
-    if not pid_file.exists(): continue
-    try:
-        pid = int(pid_file.read_text())
-        if pid <= 1: continue
-        if not (meta / 'app.exit').exists() and not (meta / 'app.stopped').exists():
-            os.killpg(pid, signal.SIGTERM)
-            for attempt in range(20):
-                time.sleep(0.1)
-                try: os.killpg(pid, 0)
-                except ProcessLookupError: break
-            else: os.killpg(pid, signal.SIGKILL)
-    except (ValueError, ProcessLookupError): pass
-    (meta / 'app.stopped').write_text('stopped')`;
+import type { AgentCodingStatus } from '@n8n/api-types';
+import { OperationalError } from 'n8n-workflow';
+import { z } from 'zod';
 
-export const CODING_STATUS_SCRIPT = `import json, os, pathlib, subprocess, sys, urllib.request
-workspace, port, probe_path, mode, session_id = pathlib.Path(sys.argv[1]), int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
-global_meta = workspace / '.coding'
-def read(meta, name):
-    try: return (meta / name).read_text().strip()
-    except FileNotFoundError: return ''
-def exit_code(meta, name):
-    value = read(meta, name + '.exit')
-    return int(value) if value else None
-def alive(meta, name):
-    if exit_code(meta, name) is not None or read(meta, name + '.stopped'): return False
-    try:
-        os.kill(int(read(meta, name + '.pid')), 0)
-        return True
-    except (ValueError, ProcessLookupError, PermissionError): return False
-def git(repo, *args):
-    return subprocess.run(['git', '-C', str(repo), *args], capture_output=True).stdout.decode('utf-8', 'replace')
-def status(session=None):
-    meta = global_meta if not session or session['original'] else global_meta / 'sessions' / session['id']
-    repo = workspace / 'repo' if not session or session['original'] else meta / 'repo'
-    base = session['baseCommit'] if session else 'HEAD'
-    setup_exit, check_exit = exit_code(meta, 'setup'), exit_code(meta, 'check')
-    phase = 'not_started'
-    if alive(meta, 'setup'): phase = read(meta, 'stage') or 'installing'
-    elif setup_exit is not None: phase = 'ready' if setup_exit == 0 else 'error'
-    elif (repo / '.git').exists(): phase = 'ready'
-    changes = {}
-    entries = iter(git(repo, 'diff', '--no-ext-diff', '--no-renames', '--name-status', '-z', base, '--').split('\\0'))
-    for change in entries:
-        if change:
-            path = next(entries, '')
-            changes[path] = {'path': path, 'status': change, 'additions': 0, 'deletions': 0}
-    for entry in git(repo, 'diff', '--no-ext-diff', '--no-renames', '--numstat', '-z', base, '--').split('\\0'):
-        parts = entry.split('\\t', 2)
-        if len(parts) == 3 and parts[2] in changes:
-            changes[parts[2]].update(additions=int(parts[0]) if parts[0].isdigit() else 0, deletions=int(parts[1]) if parts[1].isdigit() else 0)
-    for path in git(repo, 'ls-files', '--others', '--exclude-standard', '-z').split('\\0'):
-        if not path: continue
-        additions = 0
-        try:
-            target = repo / path
-            if target.is_file() and not target.is_symlink() and target.stat().st_size <= 1048576:
-                data = target.read_bytes()
-                if b'\\0' not in data: additions = len(data.splitlines())
-        except OSError: pass
-        changes[path] = {'path': path, 'status': '??', 'additions': additions, 'deletions': 0}
-    dirty = git(repo, 'status', '--porcelain=v1', '--untracked-files=all', '--no-renames', '-z')
-    app = 'stopped'
-    if alive(meta, 'app'):
-        app = 'starting'
-        try:
-            urllib.request.urlopen('http://127.0.0.1:' + str(port) + probe_path, timeout=1).close()
-            app = 'running'
-        except Exception: pass
-    elif exit_code(meta, 'app') not in (None, 0) and not read(meta, 'app.stopped'): app = 'error'
-    check = 'not_started'
-    if alive(meta, 'check'): check = 'running'
-    elif check_exit is not None: check = 'passed' if check_exit == 0 else 'failed'
-    return {'phase': phase, 'branch': git(repo, 'branch', '--show-current').strip(), 'changes': sorted(changes.values(), key=lambda c: c['path']),
-        'uncommittedChanges': len([entry for entry in dirty.split('\\0') if entry]), 'uncommittedPaths': [entry[3:] for entry in dirty.split('\\0') if entry], 'app': app, 'check': check,
-        'setupExitCode': setup_exit, 'checkExitCode': check_exit}
-if mode == 'sessions':
-    sessions = []
-    for path in sorted((global_meta / 'sessions').glob('*/session.json')):
-        session = json.loads(path.read_text())
-        if 'worktreeId' in session: continue
-        if session['id'] != path.parent.name: continue
-        sessions.append({**session, 'status': status(session)})
-    branches = git(workspace / 'repo', 'for-each-ref', '--format=%(refname:short)', 'refs/heads/', 'refs/remotes/origin/').splitlines()
-    print(json.dumps({'sessions': sessions, 'branches': [b for b in branches if b != 'origin/HEAD']}))
-else:
-    session = json.loads((global_meta / 'sessions' / session_id / 'session.json').read_text()) if session_id else None
-    print(json.dumps(status(session)))`;
+/** A launched script touches its heartbeat file at this interval. */
+export const CODING_HEARTBEAT_INTERVAL_SECONDS = 5;
+
+/**
+ * A heartbeat older than this means that the process stopped without an exit code, for example
+ * after an idle stop. Six missed beats give a busy sandbox enough time.
+ */
+export const CODING_HEARTBEAT_STALE_SECONDS = 30;
+
+// Raw file contents and probes that the sandbox facts script prints. All decisions are made here.
+const CodingProcessFactsSchema = z.object({
+	pid: z.string().nullable(),
+	exit: z.string().nullable(),
+	stopped: z.string().nullable(),
+	started: z.string().nullable(),
+	heartbeatAgeMs: z.number().nullable(),
+	alive: z.boolean(),
+});
+export type CodingProcessFacts = z.infer<typeof CodingProcessFactsSchema>;
+
+const CodingGitFactsSchema = z.object({
+	branch: z.string(),
+	nameStatus: z.string(),
+	numstat: z.string(),
+	porcelain: z.string(),
+	untracked: z.array(z.object({ path: z.string(), additions: z.number().int().nonnegative() })),
+});
+export type CodingGitFacts = z.infer<typeof CodingGitFactsSchema>;
+
+const CodingMetaFactsSchema = z.object({
+	stage: z.string(),
+	repoExists: z.boolean(),
+	appResponds: z.boolean(),
+	processes: z.object({
+		setup: CodingProcessFactsSchema,
+		app: CodingProcessFactsSchema,
+		check: CodingProcessFactsSchema,
+	}),
+	git: CodingGitFactsSchema,
+});
+export type CodingMetaFacts = z.infer<typeof CodingMetaFactsSchema>;
+
+const CodingStatusOutputSchema = z.object({
+	incarnation: z.string(),
+	status: CodingMetaFactsSchema,
+});
+
+const CodingSessionsOutputSchema = z.object({
+	incarnation: z.string(),
+	sessions: z.array(z.object({ session: z.record(z.unknown()), status: CodingMetaFactsSchema })),
+	branches: z.string(),
+});
+
+/**
+ * - idle: never launched.
+ * - exited: wrote an exit code.
+ * - stopped: a user stopped it.
+ * - restarted: launched before the sandbox last restarted, so the process is gone and its PID can
+ *   belong to another process.
+ * - lost: launched in this sandbox run, but the process is gone or its heartbeat is stale.
+ */
+export type CodingProcessState = 'idle' | 'running' | 'exited' | 'stopped' | 'lost' | 'restarted';
+
+type Change = AgentCodingStatus['changes'][number];
+
+export function parseExitCode(text: string | null): number | null {
+	const value = text?.trim() ?? '';
+	return /^-?\d+$/.test(value) ? Number(value) : null;
+}
+
+export function isHeartbeatFresh(ageMs: number | null): boolean {
+	return ageMs !== null && Number.isFinite(ageMs) && ageMs <= CODING_HEARTBEAT_STALE_SECONDS * 1000;
+}
+
+export function codingProcessState(
+	facts: CodingProcessFacts,
+	incarnation: string,
+): CodingProcessState {
+	if (parseExitCode(facts.exit) !== null) return 'exited';
+	if (facts.stopped !== null) return 'stopped';
+	if (facts.pid === null) return 'idle';
+	if (facts.started?.trim() !== incarnation) return 'restarted';
+	return facts.alive && isHeartbeatFresh(facts.heartbeatAgeMs) ? 'running' : 'lost';
+}
+
+function setupPhase(
+	state: CodingProcessState,
+	exitCode: number | null,
+	facts: CodingMetaFacts,
+): AgentCodingStatus['phase'] {
+	const stage = facts.stage.trim();
+	switch (state) {
+		case 'running':
+			return stage === 'cloning' || stage === 'ready' ? stage : 'installing';
+		case 'exited':
+			return exitCode === 0 ? 'ready' : 'error';
+		case 'restarted':
+			return 'restarted';
+		case 'idle':
+			// A checkout that this service did not set up (for example the original one) is ready.
+			return facts.repoExists ? 'ready' : 'not_started';
+		default:
+			return 'stopped';
+	}
+}
+
+function appState(state: CodingProcessState, facts: CodingMetaFacts): AgentCodingStatus['app'] {
+	if (state === 'running') return facts.appResponds ? 'running' : 'starting';
+	const app = facts.processes.app;
+	// A stop sends SIGTERM, so a non-zero exit code after a stop is not an error.
+	if (state === 'exited' && parseExitCode(app.exit) !== 0 && app.stopped === null) return 'error';
+	return 'stopped';
+}
+
+function checkState(
+	state: CodingProcessState,
+	exitCode: number | null,
+): AgentCodingStatus['check'] {
+	switch (state) {
+		case 'running':
+			return 'running';
+		case 'exited':
+			return exitCode === 0 ? 'passed' : 'failed';
+		case 'idle':
+			return 'not_started';
+		default:
+			return 'stopped';
+	}
+}
+
+const NUMSTAT_COUNT = /^\d+$/;
+
+/** Reads one `git diff --numstat -z` entry. Binary files show '-' and count as 0. */
+export function parseNumstatEntry(
+	entry: string,
+): { path: string; additions: number; deletions: number } | undefined {
+	const first = entry.indexOf('\t');
+	// Without a first tab the search from index 0 also finds none.
+	const second = entry.indexOf('\t', first + 1);
+	if (second === -1) return undefined;
+	const additions = entry.slice(0, first);
+	const deletions = entry.slice(first + 1, second);
+	return {
+		path: entry.slice(second + 1),
+		additions: NUMSTAT_COUNT.test(additions) ? Number(additions) : 0,
+		deletions: NUMSTAT_COUNT.test(deletions) ? Number(deletions) : 0,
+	};
+}
+
+// UTF-8 byte order is code point order, which keeps the order stable for every file name.
+function byPath(left: Change, right: Change): number {
+	return Buffer.compare(Buffer.from(left.path), Buffer.from(right.path));
+}
+
+export function parseCodingChanges(git: CodingGitFacts): Change[] {
+	const changes = new Map<string, Change>();
+	const entries = git.nameStatus.split('\0');
+	for (let index = 0; index < entries.length; index++) {
+		const status = entries[index];
+		if (!status) continue;
+		index++;
+		const path = entries[index];
+		// Output cut after a status has no path. Skip that entry.
+		if (!path) continue;
+		changes.set(path, { path, status, additions: 0, deletions: 0 });
+	}
+	for (const entry of git.numstat.split('\0')) {
+		const stats = parseNumstatEntry(entry);
+		const change = stats && changes.get(stats.path);
+		if (!stats || !change) continue;
+		change.additions = stats.additions;
+		change.deletions = stats.deletions;
+	}
+	for (const file of git.untracked) {
+		changes.set(file.path, {
+			path: file.path,
+			status: '??',
+			additions: file.additions,
+			deletions: 0,
+		});
+	}
+	return [...changes.values()].sort(byPath);
+}
+
+/** Reads `git status --porcelain=v1 -z --no-renames` output. Each entry is "XY path". */
+export function parseUncommittedPaths(porcelain: string): string[] {
+	return porcelain
+		.split('\0')
+		.filter((entry) => entry)
+		.map((entry) => entry.slice(3));
+}
+
+/**
+ * Reads `git for-each-ref --format=%(refname:short)%09%(symref)` output: one "name<TAB>target"
+ * line for each ref. A ref with a target is an alias, for example refs/remotes/origin/HEAD. Git
+ * shortens that alias to the bare remote name "origin", which is not a branch. A ref name cannot
+ * contain a tab, so the first tab ends the name.
+ */
+export function parseCodingBranches(output: string): string[] {
+	const branches: string[] = [];
+	for (const line of output.split(/\r?\n/)) {
+		const tab = line.indexOf('\t');
+		const name = tab === -1 ? line : line.slice(0, tab);
+		const symbolic = tab !== -1 && tab < line.length - 1;
+		if (name && !symbolic && name !== 'origin/HEAD') branches.push(name);
+	}
+	return branches;
+}
+
+export function codingStatusFromFacts(
+	facts: CodingMetaFacts,
+	incarnation: string,
+): AgentCodingStatus {
+	const { setup, app, check } = facts.processes;
+	const setupExitCode = parseExitCode(setup.exit);
+	const checkExitCode = parseExitCode(check.exit);
+	const uncommittedPaths = parseUncommittedPaths(facts.git.porcelain);
+	return {
+		phase: setupPhase(codingProcessState(setup, incarnation), setupExitCode, facts),
+		branch: facts.git.branch.trim(),
+		changes: parseCodingChanges(facts.git),
+		uncommittedChanges: uncommittedPaths.length,
+		uncommittedPaths,
+		app: appState(codingProcessState(app, incarnation), facts),
+		check: checkState(codingProcessState(check, incarnation), checkExitCode),
+		setupExitCode,
+		checkExitCode,
+	};
+}
+
+function parseOutput<T>(schema: z.ZodType<T>, stdout: string): T {
+	try {
+		return schema.parse(JSON.parse(stdout));
+	} catch (cause) {
+		throw new OperationalError('The sandbox returned a coding status that cannot be read', {
+			cause,
+		});
+	}
+}
+
+export function parseCodingStatusOutput(stdout: string): AgentCodingStatus {
+	const output = parseOutput(CodingStatusOutputSchema, stdout);
+	return codingStatusFromFacts(output.status, output.incarnation);
+}
+
+/** Session fields stay unchecked here. The service checks them with AgentCodingSessionSchema. */
+export function parseCodingSessionsOutput(stdout: string) {
+	const output = parseOutput(CodingSessionsOutputSchema, stdout);
+	return {
+		sessions: output.sessions.map((entry) => ({
+			...entry.session,
+			status: codingStatusFromFacts(entry.status, output.incarnation),
+		})),
+		branches: parseCodingBranches(output.branches),
+	};
+}

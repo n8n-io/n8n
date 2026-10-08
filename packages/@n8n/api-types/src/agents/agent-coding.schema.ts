@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { Z } from '../zod-class';
 
+const CHECK_TIMEOUT_MESSAGE = 'Enter a check time limit from 1 to 240 minutes';
+
 export const AgentCodingConfigSchema = z.object({
 	repositoryUrl: z
 		.string()
@@ -15,9 +17,20 @@ export const AgentCodingConfigSchema = z.object({
 	runCommand: z.string().max(10_000).default(''),
 	checkCommand: z.string().max(10_000).default(''),
 	port: z.number().int().min(1).max(65535).default(3000),
+	// Optional so that saved configs and typed literals stay valid. When the field is missing,
+	// the server applies defaultCodingCheckTimeoutMinutes().
+	checkTimeoutMinutes: z
+		.number({ invalid_type_error: CHECK_TIMEOUT_MESSAGE })
+		.int(CHECK_TIMEOUT_MESSAGE)
+		.min(1, CHECK_TIMEOUT_MESSAGE)
+		.max(240, CHECK_TIMEOUT_MESSAGE)
+		.optional(),
 });
 
 export type AgentCodingConfig = z.infer<typeof AgentCodingConfigSchema>;
+
+/** Time limit for the check command when the coding config does not set one. */
+export const DEFAULT_CODING_CHECK_TIMEOUT_MINUTES = 10;
 
 export const AgentCodingActionSchema = z.object({
 	action: z.enum(['prepare', 'start', 'stop', 'check', 'undo', 'commit', 'push']),
@@ -79,7 +92,8 @@ export const AgentCodingSessionSchema = z.object({
 export type AgentCodingSession = z.infer<typeof AgentCodingSessionSchema>;
 
 export const AgentCodingStatusSchema = z.object({
-	phase: z.enum(['not_started', 'cloning', 'installing', 'ready', 'error']),
+	// 'stopped': setup stopped before it finished. 'restarted': the sandbox restarted during setup.
+	phase: z.enum(['not_started', 'cloning', 'installing', 'ready', 'error', 'stopped', 'restarted']),
 	branch: z.string(),
 	changes: z.array(
 		z.object({
@@ -92,7 +106,8 @@ export const AgentCodingStatusSchema = z.object({
 	uncommittedChanges: z.number().default(0),
 	uncommittedPaths: z.array(z.string()).default([]),
 	app: z.enum(['stopped', 'starting', 'running', 'error']),
-	check: z.enum(['not_started', 'running', 'passed', 'failed']),
+	// 'stopped': the check stopped before it finished, for example after a sandbox restart.
+	check: z.enum(['not_started', 'running', 'passed', 'failed', 'stopped']),
 	setupExitCode: z.number().nullable(),
 	checkExitCode: z.number().nullable(),
 });
@@ -142,4 +157,16 @@ export const N8N_CODING_DEFAULTS = {
 		'pnpm --filter n8n exec concurrently --kill-others "pnpm --workspace-root dev:be" "pnpm --workspace-root dev:fe:editor"',
 	checkCommand: 'pnpm agent:typecheck',
 	port: 8080,
+	// The monorepo typecheck takes longer than the general default.
+	checkTimeoutMinutes: 30,
 };
+
+/**
+ * The check time limit that applies when the coding config does not set one. n8n configs that were
+ * saved before the field existed keep the longer limit of the monorepo.
+ */
+export function defaultCodingCheckTimeoutMinutes(repositoryUrl: string): number {
+	return repositoryUrl.includes('n8n-io/n8n')
+		? N8N_CODING_DEFAULTS.checkTimeoutMinutes
+		: DEFAULT_CODING_CHECK_TIMEOUT_MINUTES;
+}

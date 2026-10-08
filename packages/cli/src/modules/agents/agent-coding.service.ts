@@ -44,7 +44,15 @@ import {
 	codingSessionPaths,
 	readCodingSession,
 } from './agent-coding-session';
-import { CODING_STATUS_SCRIPT, CODING_STOP_SCRIPT } from './agent-coding-status';
+import {
+	buildLaunchCommand,
+	buildLaunchScript,
+	buildSetupBootstrap,
+	buildStatusCommand,
+	buildStopCommand,
+	codingCheckTimeLimitSeconds,
+} from './agent-coding-scripts';
+import { parseCodingSessionsOutput, parseCodingStatusOutput } from './agent-coding-status';
 import { SandboxPreviewService } from './sandbox-preview/sandbox-preview.service';
 
 interface CodingContext {
@@ -121,22 +129,22 @@ export class AgentCodingService {
 		return join(context.root, path);
 	}
 
-	private async inspect(context: CodingContext, mode: 'status' | 'sessions'): Promise<unknown> {
+	/**
+	 * Returns the raw output of the facts script. Callers parse it with parseCodingStatusOutput()
+	 * or parseCodingSessionsOutput().
+	 */
+	private async inspect(context: CodingContext, mode: 'status' | 'sessions'): Promise<string> {
 		const probePath = context.config.repositoryUrl.includes('n8n-io/n8n')
 			? '/healthz/readiness'
 			: '/';
-		const args = [
-			context.handle.workspaceRoot,
-			String(context.config.port),
+		const command = buildStatusCommand({
+			workspaceRoot: context.handle.workspaceRoot,
+			port: context.config.port,
 			probePath,
 			mode,
-			context.session?.id ?? '',
-		];
-		const result = await this.checked(
-			context,
-			`python3 - ${args.map(shellEscape).join(' ')} <<'PY'\n${CODING_STATUS_SCRIPT}\nPY`,
-		);
-		return JSON.parse(result.stdout);
+			sessionId: context.session?.id,
+		});
+		return (await this.checked(context, command)).stdout;
 	}
 
 	async status(
@@ -145,9 +153,8 @@ export class AgentCodingService {
 		user: User,
 		sessionId?: string,
 	): Promise<AgentCodingStatus> {
-		return AgentCodingStatusSchema.parse(
-			await this.inspect(await this.context(projectId, agentId, user, sessionId), 'status'),
-		);
+		const context = await this.context(projectId, agentId, user, sessionId);
+		return parseCodingStatusOutput(await this.inspect(context, 'status'));
 	}
 
 	async sessions(projectId: string, agentId: string, user: User): Promise<AgentCodingSessions> {
@@ -157,7 +164,7 @@ export class AgentCodingService {
 				sessions: z.array(AgentCodingSessionSchema.extend({ status: AgentCodingStatusSchema })),
 				branches: z.array(z.string()),
 			})
-			.parse(await this.inspect(context, 'sessions'));
+			.parse(parseCodingSessionsOutput(await this.inspect(context, 'sessions')));
 		const threads = await this.threadRepository.findCodingSessionThreads(
 			projectId,
 			agentId,
@@ -216,7 +223,7 @@ export class AgentCodingService {
 			LockNamespace.KNOWN_LOCKS,
 			`coding:${context.handle.cacheKey}`,
 			async () => {
-				const state = AgentCodingStatusSchema.parse(await this.inspect(context, 'status'));
+				const state = parseCodingStatusOutput(await this.inspect(context, 'status'));
 				if (state.phase !== 'ready')
 					throw new BadRequestError('Prepare the repository before creating a session');
 				if (request.original) {
@@ -272,11 +279,12 @@ export class AgentCodingService {
 				}
 				await this.saveSession(context, session);
 				if (!request.original) {
-					await this.setupWorktree({
+					const worktree = {
 						...context,
 						session,
 						...codingSessionPaths(context.handle.workspaceRoot, session),
-					});
+					};
+					await this.launch(worktree, 'setup', this.worktreeSetupCommand(worktree));
 				}
 				return session;
 			},
@@ -301,7 +309,7 @@ export class AgentCodingService {
 				);
 				if (session.archivedAt)
 					throw new BadRequestError('Reopen this worktree before starting a chat');
-				const status = AgentCodingStatusSchema.parse(await this.inspect(context, 'status'));
+				const status = parseCodingStatusOutput(await this.inspect(context, 'status'));
 				if (status.phase !== 'ready')
 					throw new BadRequestError('Prepare the worktree before starting a chat');
 				const id = randomUUID();
@@ -359,17 +367,14 @@ export class AgentCodingService {
 		await context.handle.filesystem.moveFile(temporaryPath, path, { overwrite: true });
 	}
 
-	private async setupWorktree(context: CodingContext) {
-		await this.launch(
-			context,
-			'setup',
-			[
-				`printf installing > ${shellEscape(join(context.meta, 'stage'))}`,
-				`cd ${shellEscape(context.root)}`,
-				context.config.setupCommand || 'true',
-				`printf ready > ${shellEscape(join(context.meta, 'stage'))}`,
-			].join('\n'),
-		);
+	/** The setup script of a worktree. The worktree exists, so setup only installs. */
+	private worktreeSetupCommand(context: CodingContext): string {
+		return [
+			`printf installing > ${shellEscape(join(context.meta, 'stage'))}`,
+			`cd ${shellEscape(context.root)}`,
+			context.config.setupCommand || 'true',
+			`printf ready > ${shellEscape(join(context.meta, 'stage'))}`,
+		].join('\n');
 	}
 
 	async archiveSession(
@@ -512,7 +517,7 @@ export class AgentCodingService {
 
 	async preview(projectId: string, agentId: string, user: User, sessionId?: string) {
 		const context = await this.context(projectId, agentId, user, sessionId);
-		const state = AgentCodingStatusSchema.parse(await this.inspect(context, 'status'));
+		const state = parseCodingStatusOutput(await this.inspect(context, 'status'));
 		if (!['starting', 'running'].includes(state.app)) {
 			throw new BadRequestError('Run the app for this session before opening its preview');
 		}
@@ -609,7 +614,7 @@ export class AgentCodingService {
 
 	private async prepare(context: CodingContext, projectId: string, agentId: string, user: User) {
 		if (context.session && !context.session.original) {
-			await this.setupWorktree(context);
+			await this.launch(context, 'setup', this.worktreeSetupCommand(context));
 			return;
 		}
 		if (await context.handle.filesystem.exists(join(context.root, '.git'))) {
@@ -642,7 +647,7 @@ export class AgentCodingService {
 	private async start(context: CodingContext) {
 		if (!context.config.runCommand.trim())
 			throw new BadRequestError('Add a run command in coding settings');
-		const state = AgentCodingStatusSchema.parse(await this.inspect(context, 'status'));
+		const state = parseCodingStatusOutput(await this.inspect(context, 'status'));
 		if (state.phase !== 'ready') throw new BadRequestError('Wait for this session to finish setup');
 		const env: NodeJS.ProcessEnv = { N8N_USER_FOLDER: join(context.meta, 'app-data') };
 		if (context.handle.sandbox.getPreviewUrl) {
@@ -663,20 +668,9 @@ export class AgentCodingService {
 		return `exec 9>${shellEscape(join(context.handle.workspaceRoot, '.coding', 'preview.lock'))}\nflock -w 30 9 || exit 1`;
 	}
 
-	private stopCommand(context: CodingContext, all: boolean): string {
-		const args = [
-			join(context.handle.workspaceRoot, '.coding'),
-			context.meta,
-			all ? 'all' : 'current',
-		];
-		return `python3 - ${args.map(shellEscape).join(' ')} <<'PY'\n${CODING_STOP_SCRIPT}\nPY`;
-	}
-
 	private async stopApp(context: CodingContext) {
-		await this.checked(
-			context,
-			`${this.previewLock(context)}\n${this.stopCommand(context, false)}`,
-		);
+		const stop = buildStopCommand(context.handle.workspaceRoot, context.meta, false);
+		await this.checked(context, `${this.previewLock(context)}\n${stop}`);
 	}
 
 	private async launch(
@@ -685,43 +679,30 @@ export class AgentCodingService {
 		command: string,
 		env?: NodeJS.ProcessEnv,
 	) {
-		const pid = shellEscape(join(context.meta, `${name}.pid`));
-		const exit = shellEscape(join(context.meta, `${name}.exit`));
+		const { workspaceRoot } = context.handle;
 		const script = join(context.meta, `${name}.sh`);
-		const sharedMeta = join(context.handle.workspaceRoot, '.coding');
-		const nodeDir = join(sharedMeta, 'node');
-		const pnpmHome = join(sharedMeta, 'pnpm');
-		const nodeBootstrap = context.config.repositoryUrl.includes('n8n-io/n8n')
-			? `if [ ! -x ${shellEscape(join(nodeDir, 'bin/node'))} ] && [ "$(node -p 'Number(process.versions.node.split(".")[0])')" -ne 24 ]; then\nmkdir -p ${shellEscape(nodeDir)}\ncurl -fsSL https://nodejs.org/dist/v24.14.0/node-v24.14.0-linux-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/').tar.xz | tar -xJ -C ${shellEscape(nodeDir)} --strip-components=1\nfi\n`
-			: '';
-		const bootstrap =
-			name === 'setup'
-				? `${nodeBootstrap}if [ ! -x ${shellEscape(join(pnpmHome, 'bin/pnpm'))} ]; then\ncurl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12.4.2 PNPM_HOME=${shellEscape(pnpmHome)} SHELL=/bin/bash ENV=${shellEscape(join(context.meta, 'bashrc'))} bash\nfi\n`
-				: '';
 		await context.handle.filesystem.writeFile(
 			script,
-			[
-				'#!/bin/bash',
-				'set -e',
-				'set -o pipefail',
-				`trap 'printf "%s" "$?" > ${exit}' EXIT`,
-				`export PNPM_HOME=${shellEscape(pnpmHome)}`,
-				`export PATH="$PNPM_HOME/bin":${shellEscape(join(nodeDir, 'bin'))}:"$PATH"`,
-				bootstrap,
+			buildLaunchScript({
+				workspaceRoot,
+				meta: context.meta,
+				name,
 				command,
-			].join('\n'),
+				bootstrap:
+					name === 'setup' ? buildSetupBootstrap(context.config, workspaceRoot, context.meta) : '',
+				timeLimitSeconds: name === 'check' ? codingCheckTimeLimitSeconds(context.config) : 0,
+			}),
 		);
+		const app = name === 'app';
 		await this.checked(
 			context,
-			[
-				'set -e',
-				...(name === 'app' ? [this.previewLock(context)] : []),
-				`if [ -f ${pid} ] && [ ! -f ${exit} ] && [ ! -f ${shellEscape(join(context.meta, `${name}.stopped`))} ] && kill -0 "$(cat ${pid})" 2>/dev/null; then exit 0; fi`,
-				...(name === 'app' ? [this.stopCommand(context, true)] : []),
-				`rm -f ${exit} ${shellEscape(join(context.meta, `${name}.stopped`))}`,
-				`nohup setsid bash ${shellEscape(script)} > ${shellEscape(join(context.meta, `${name}.log`))} 2>&1 < /dev/null ${name === 'app' ? '9>&-' : ''} &`,
-				`printf '%s' "$!" > ${pid}`,
-			].join('\n'),
+			buildLaunchCommand({
+				meta: context.meta,
+				name,
+				script,
+				lock: app ? this.previewLock(context) : undefined,
+				beforeLaunch: app ? buildStopCommand(workspaceRoot, context.meta, true) : undefined,
+			}),
 			{ env },
 		);
 	}

@@ -359,6 +359,8 @@ export class AgentSandboxRuntimeService {
 			provider === 'daytona'
 				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, lifecycle)
 				: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
+		// Only Daytona takes a size per sandbox. The n8n sandbox service creates a sandbox from
+		// { id, ephemeral } only, so an n8n sandbox always gets the default size of the service.
 		if (
 			config.provider === 'daytona' &&
 			labels[LABEL_SANDBOX_KIND] === 'workspace' &&

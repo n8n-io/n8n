@@ -159,6 +159,10 @@ function activity(session: AgentCodingSessionSummary) {
 	if (session.archivedAt) return i18n.baseText('agents.coding.sessions.archived');
 	if (session.activity === 'running') return i18n.baseText('agents.coding.sessions.working');
 	if (session.activity === 'waiting') return i18n.baseText('agents.coding.sessions.waiting');
+	if (session.status.phase === 'stopped')
+		return i18n.baseText('agents.coding.sessions.setupStopped');
+	if (session.status.phase === 'restarted')
+		return i18n.baseText('agents.coding.sessions.restarted');
 	if (session.status.phase === 'error' || session.activity === 'error')
 		return i18n.baseText('agents.coding.sessions.failed');
 	if (session.status.phase !== 'ready') return i18n.baseText('agents.coding.sessions.preparing');
@@ -174,10 +178,16 @@ function sessionBusy(session: AgentCodingSessionSummary) {
 	);
 }
 
+/** Setup stopped before it finished, so the worktree must be prepared again. */
+function setupInterrupted(session: AgentCodingSessionSummary) {
+	return session.status.phase === 'stopped' || session.status.phase === 'restarted';
+}
+
 function sessionIcon(session: AgentCodingSessionSummary) {
 	if (session.archivedAt) return 'archive';
 	if (sessionBusy(session)) return 'spinner';
 	if (session.status.phase === 'error' || session.activity === 'error') return 'circle-alert';
+	if (setupInterrupted(session)) return 'circle-pause';
 	if (session.activity === 'waiting') return 'message-circle';
 	if (session.activity === 'completed') return 'circle-check';
 	return 'git-branch';
@@ -691,6 +701,10 @@ defineExpose({ openNewSession });
 .sessionStatus[data-activity='error'],
 .sessionStatus[data-phase='error'] {
 	color: var(--text-color--danger);
+}
+.sessionStatus[data-phase='stopped'],
+.sessionStatus[data-phase='restarted'] {
+	color: var(--text-color--warning);
 }
 .sessionStats {
 	display: flex;
