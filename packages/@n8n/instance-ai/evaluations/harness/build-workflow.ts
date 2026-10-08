@@ -348,13 +348,20 @@ export interface BuildResult {
 	credentialSetup?: CredentialSetupRunFacts;
 }
 
-/** Why a build's iteration stays out of scoring; undefined when it is scored. */
-export function notScoredReason(build: BuildResult): string | undefined {
+/** A harness fault that decides the iteration without grading. `counted` faults fail it as
+ *  `framework_issue`; the others keep it out of the pass rate. */
+export function harnessFault(build: BuildResult): { reason: string; counted: boolean } | undefined {
 	if (build.priorRunFailed) {
-		return `prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`;
+		return {
+			reason: `prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+			counted: false,
+		};
 	}
 	if (build.foreignWorkflowReads?.length) {
-		return `the agent read workflows another build made (${build.foreignWorkflowReads.join(', ')})`;
+		return {
+			reason: `the agent read workflows another build made (${build.foreignWorkflowReads.join(', ')})`,
+			counted: true,
+		};
 	}
 	return undefined;
 }

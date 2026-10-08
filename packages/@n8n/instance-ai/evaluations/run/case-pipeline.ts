@@ -21,7 +21,7 @@ import {
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
-import { buildFailedOnInfra, notScoredReason } from '../harness/build-workflow';
+import { buildFailedOnInfra, harnessFault } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import { selectScenarioWorkflowId } from '../harness/scenario-execution';
@@ -243,8 +243,8 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// that succeeded: `buildFailedOnInfra` returns false there, so the case would
 		// otherwise be scored as an agent failure on a premise that never existed. A read of
 		// another build's workflow takes the same route: the run did not start clean.
-		const notScored = notScoredReason(build);
-		if (notScored) {
+		const fault = harnessFault(build);
+		if (fault) {
 			const capturedAgent = agentRef ? await agentContextByKey.get(cacheKey) : undefined;
 			return await attachExpectations({
 				buildSuccess: build.success,
@@ -252,15 +252,14 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				...(capturedAgent ? { agentContext: capturedAgent.rendered } : {}),
 				...(capturedAgent?.artifact ? { agentArtifact: capturedAgent.artifact } : {}),
 				passed: false,
-				// Not graded rather than failed — the same treatment an ungraded expectation
-				// gets, so this stays out of the pass rate instead of landing in the
-				// builder's baseline as a red.
-				incomplete: true,
+				// A missing premise is not graded, so it stays out of the pass rate. A counted
+				// fault fails the run, but as framework_issue, not in the builder's baseline.
+				...(fault.counted ? {} : { incomplete: true }),
 				score: 0,
-				reasoning: `Not scored: ${notScored}`,
+				reasoning: `${fault.counted ? 'Harness fault' : 'Not scored'}: ${fault.reason}`,
 				failureCategory: 'framework_issue',
 				attribution: 'framework_issue',
-				execErrors: [notScored],
+				execErrors: [fault.reason],
 				buildDurationMs,
 				...buildSpendFields,
 				execDurationMs: 0,

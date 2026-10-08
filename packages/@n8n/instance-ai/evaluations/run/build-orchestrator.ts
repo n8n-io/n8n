@@ -38,8 +38,8 @@ import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
 import {
 	buildFailedOnInfra,
+	harnessFault,
 	leakHaystackFor,
-	notScoredReason,
 	redactLocalRunSecrets,
 	searchableBuildText,
 	scrubLocalSecretsFromBuild,
@@ -477,16 +477,23 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// would still score on them.
 		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
 			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
-		const notScored = notScoredReason(build);
-		if (notScored) {
-			const unjudged = allFailVerdicts(collectExpectations(testCase), `not judged — ${notScored}`);
+		const fault = harnessFault(build);
+		if (fault) {
+			const unjudged = allFailVerdicts(
+				collectExpectations(testCase),
+				`not judged — ${fault.reason}`,
+			);
 			// The row for this build is re-stamped `timeout` too, so the two agree.
 			buildExpectationsByKey.set(
 				key,
 				Promise.resolve(
 					build.timeout
 						? timedOut(unjudged)
-						: unjudged.map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
+						: unjudged.map((verdict) => ({
+								...verdict,
+								incomplete: !fault.counted,
+								attribution: 'framework_issue' as const,
+							})),
 				),
 			);
 			return;

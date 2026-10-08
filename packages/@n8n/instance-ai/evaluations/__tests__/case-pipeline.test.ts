@@ -188,7 +188,9 @@ describe('createCasePipeline', () => {
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 
-	it("routes a build that read another build's workflow to framework_issue", async () => {
+	// Unlike a missing premise, a run that did not start clean still counts, so a leak
+	// shows in the pass rate. The attribution keeps it out of the builder's numbers.
+	it("fails a build that read another build's workflow as framework_issue, and counts it", async () => {
 		const lane = makeLane();
 		const cached: CachedBuild = {
 			build: { ...okBuild(), foreignWorkflowReads: ['other-wf'] },
@@ -201,10 +203,10 @@ describe('createCasePipeline', () => {
 
 		expect(output).toMatchObject({
 			passed: false,
-			incomplete: true,
 			failureCategory: 'framework_issue',
 			attribution: 'framework_issue',
 		});
+		expect(output.incomplete).toBeFalsy();
 		expect(String(output.reasoning)).toContain('another build');
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
