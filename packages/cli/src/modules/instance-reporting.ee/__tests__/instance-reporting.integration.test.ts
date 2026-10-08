@@ -493,85 +493,98 @@ describe('instance reporting retries', () => {
 		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-28');
 	});
 
-	test('sends the total on and before the first billable day and billable after it in the first report', async () => {
-		await seedCompactedExecutions('hour', {
-			'2026-03-20T10:00:00': 3,
-			'2026-03-21T10:00:00': 4,
-			'2026-03-22T08:00:00': 2,
-			'2026-03-22T15:00:00': 5,
-			'2026-03-23T10:00:00': 6,
-			'2026-03-24T10:00:00': 7,
-			'2026-03-25T10:00:00': 8,
+	describe('choice between the billable number and the total number', () => {
+		describe('when the first day with billable data is in the report', () => {
+			test('sends the total number for that day and earlier days, and the billable number for later days', async () => {
+				await seedCompactedExecutions('hour', {
+					'2026-03-20T10:00:00': 3,
+					'2026-03-21T10:00:00': 4,
+					'2026-03-22T08:00:00': 2,
+					'2026-03-22T15:00:00': 5,
+					'2026-03-23T10:00:00': 6,
+					'2026-03-24T10:00:00': 7,
+					'2026-03-25T10:00:00': 8,
+				});
+				await seedCompactedExecutions(
+					'hour',
+					{
+						'2026-03-22T15:00:00': 4,
+						'2026-03-23T10:00:00': 5,
+						'2026-03-24T10:00:00': 6,
+						'2026-03-25T10:00:00': 7,
+					},
+					'billable',
+				);
+
+				const harness = makeHarness([accepted()]);
+				await harness.task.run();
+
+				expect(dailyPoints(sentPayload(harness, 0))).toEqual([
+					{ date: '2026-03-20', value: 3 },
+					{ date: '2026-03-21', value: 4 },
+					{ date: '2026-03-22', value: 7 },
+					{ date: '2026-03-23', value: 5 },
+					{ date: '2026-03-24', value: 6 },
+					{ date: '2026-03-25', value: 7 },
+				]);
+			});
 		});
-		await seedCompactedExecutions(
-			'hour',
-			{
-				'2026-03-22T15:00:00': 4,
-				'2026-03-23T10:00:00': 5,
-				'2026-03-24T10:00:00': 6,
-				'2026-03-25T10:00:00': 7,
-			},
-			'billable',
-		);
 
-		const harness = makeHarness([accepted()]);
-		await harness.task.run();
+		describe('when the first day with billable data is before the report', () => {
+			test('sends only the billable number for every day in the report', async () => {
+				await seedDeliveredReport('2026-03-23');
+				await seedCompactedExecutions('hour', {
+					'2026-03-22T10:00:00': 3,
+					'2026-03-23T10:00:00': 4,
+					'2026-03-24T10:00:00': 6,
+					'2026-03-25T10:00:00': 8,
+				});
+				await seedCompactedExecutions(
+					'hour',
+					{
+						'2026-03-22T10:00:00': 2,
+						'2026-03-23T10:00:00': 3,
+						'2026-03-24T10:00:00': 5,
+						'2026-03-25T10:00:00': 7,
+					},
+					'billable',
+				);
 
-		expect(dailyPoints(sentPayload(harness, 0))).toEqual([
-			{ date: '2026-03-20', value: 3 },
-			{ date: '2026-03-21', value: 4 },
-			{ date: '2026-03-22', value: 7 },
-			{ date: '2026-03-23', value: 5 },
-			{ date: '2026-03-24', value: 6 },
-			{ date: '2026-03-25', value: 7 },
-		]);
-	});
+				const harness = makeHarness([accepted()]);
+				await harness.task.run();
 
-	test('sends 0 for a day after the first billable day without billable executions', async () => {
-		await seedCompactedExecutions('hour', {
-			'2026-03-22T10:00:00': 5,
-			'2026-03-23T10:00:00': 3,
-			'2026-03-24T10:00:00': 2,
-			'2026-03-25T10:00:00': 8,
+				expect(dailyPoints(sentPayload(harness, 0))).toEqual([
+					{ date: '2026-03-24', value: 5 },
+					{ date: '2026-03-25', value: 7 },
+				]);
+			});
 		});
-		await seedCompactedExecutions(
-			'hour',
-			{ '2026-03-22T10:00:00': 4, '2026-03-23T10:00:00': 3, '2026-03-25T10:00:00': 7 },
-			'billable',
-		);
 
-		const harness = makeHarness([accepted()]);
-		await harness.task.run();
+		describe('when a day after the first day with billable data has no billable executions', () => {
+			test('sends 0 for that day', async () => {
+				await seedCompactedExecutions('hour', {
+					'2026-03-22T10:00:00': 5,
+					'2026-03-23T10:00:00': 3,
+					'2026-03-24T10:00:00': 2,
+					'2026-03-25T10:00:00': 8,
+				});
+				await seedCompactedExecutions(
+					'hour',
+					{ '2026-03-22T10:00:00': 4, '2026-03-23T10:00:00': 3, '2026-03-25T10:00:00': 7 },
+					'billable',
+				);
 
-		expect(dailyPoints(sentPayload(harness, 0))).toEqual([
-			{ date: '2026-03-22', value: 5 },
-			{ date: '2026-03-23', value: 3 },
-			{ date: '2026-03-24', value: 0 },
-			{ date: '2026-03-25', value: 7 },
-		]);
-	});
+				const harness = makeHarness([accepted()]);
+				await harness.task.run();
 
-	test('sends only the days after the last delivered day, with the total for the first billable day', async () => {
-		await seedDeliveredReport('2026-03-23');
-		await seedCompactedExecutions('hour', {
-			'2026-03-22T10:00:00': 3,
-			'2026-03-23T10:00:00': 4,
-			'2026-03-24T10:00:00': 6,
-			'2026-03-25T10:00:00': 8,
+				expect(dailyPoints(sentPayload(harness, 0))).toEqual([
+					{ date: '2026-03-22', value: 5 },
+					{ date: '2026-03-23', value: 3 },
+					{ date: '2026-03-24', value: 0 },
+					{ date: '2026-03-25', value: 7 },
+				]);
+			});
 		});
-		await seedCompactedExecutions(
-			'hour',
-			{ '2026-03-24T10:00:00': 5, '2026-03-25T10:00:00': 7 },
-			'billable',
-		);
-
-		const harness = makeHarness([accepted()]);
-		await harness.task.run();
-
-		expect(dailyPoints(sentPayload(harness, 0))).toEqual([
-			{ date: '2026-03-24', value: 6 },
-			{ date: '2026-03-25', value: 7 },
-		]);
 	});
 
 	test('resumes the retry budget and the remaining wait after a restart', async () => {

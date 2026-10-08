@@ -112,6 +112,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	// The reported day held 42 executions.
 	insightsService.getDailyExecutionTotals.mockResolvedValue(totalsByDay({ [REPORT_DATE]: 42 }));
 	insightsService.getFirstBillableDay.mockResolvedValue(null);
+	insightsService.getDailyBillableExecutions.mockResolvedValue(new Map());
 	// No insights data: an instance that has not compacted anything yet.
 	insightsService.getEarliestDataDate.mockResolvedValue(null);
 
@@ -911,85 +912,103 @@ describe('InstanceReportingService', () => {
 			]);
 		});
 
-		test('reports the total on and before the first billable day and billable executions after it', async () => {
-			const { service, reportRepository, insightsService, http } = makeHarness();
-			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-21');
-			insightsService.getFirstBillableDay.mockResolvedValue('2026-03-23');
-			insightsService.getDailyExecutionTotals.mockResolvedValue(
-				totalsByDay({ '2026-03-22': 5, '2026-03-23': 7 }),
-			);
-			insightsService.getDailyBillableExecutions.mockResolvedValue(
-				totalsByDay({ '2026-03-24': 3, '2026-03-25': 4 }),
-			);
+		describe('choice between the billable number and the total number', () => {
+			describe('when insights has no billable data', () => {
+				test('uses only the total number for every day in the report', async () => {
+					const { service, reportRepository, insightsService, http } = makeHarness();
+					reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
+					insightsService.getDailyExecutionTotals.mockResolvedValue(
+						totalsByDay({ '2026-03-24': 5, '2026-03-25': 6 }),
+					);
 
-			await service.sendReport(new Date());
+					await service.sendReport(new Date());
 
-			expect(dailyPoints(http)).toEqual([
-				{ value: 5, date: '2026-03-22' },
-				{ value: 7, date: '2026-03-23' },
-				{ value: 3, date: '2026-03-24' },
-				{ value: 4, date: '2026-03-25' },
-			]);
-			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
-				startDate: new Date('2026-03-22T00:00:00.000Z'),
-				endDate: new Date('2026-03-23T00:00:00.000Z'),
+					expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledExactlyOnceWith({
+						startDate: new Date('2026-03-24T00:00:00.000Z'),
+						endDate: new Date('2026-03-25T00:00:00.000Z'),
+					});
+					expect(insightsService.getDailyBillableExecutions).not.toHaveBeenCalled();
+					expect(dailyPoints(http)).toEqual([
+						{ value: 5, date: '2026-03-24' },
+						{ value: 6, date: '2026-03-25' },
+					]);
+				});
 			});
-			expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledWith({
-				startDate: new Date('2026-03-24T00:00:00.000Z'),
-				endDate: new Date('2026-03-25T00:00:00.000Z'),
+
+			describe('when the first day with billable data is in the report', () => {
+				test('uses the total number for that day and earlier days, and the billable number for later days', async () => {
+					const { service, reportRepository, insightsService, http } = makeHarness();
+					reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-21');
+					insightsService.getFirstBillableDay.mockResolvedValue('2026-03-23');
+					insightsService.getDailyExecutionTotals.mockResolvedValue(
+						totalsByDay({ '2026-03-22': 5, '2026-03-23': 7 }),
+					);
+					insightsService.getDailyBillableExecutions.mockResolvedValue(
+						totalsByDay({ '2026-03-24': 3, '2026-03-25': 4 }),
+					);
+
+					await service.sendReport(new Date());
+
+					expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledExactlyOnceWith({
+						startDate: new Date('2026-03-22T00:00:00.000Z'),
+						endDate: new Date('2026-03-23T00:00:00.000Z'),
+					});
+					expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledExactlyOnceWith({
+						startDate: new Date('2026-03-24T00:00:00.000Z'),
+						endDate: new Date('2026-03-25T00:00:00.000Z'),
+					});
+					expect(dailyPoints(http)).toEqual([
+						{ value: 5, date: '2026-03-22' },
+						{ value: 7, date: '2026-03-23' },
+						{ value: 3, date: '2026-03-24' },
+						{ value: 4, date: '2026-03-25' },
+					]);
+				});
 			});
-		});
 
-		test('reports only billable executions when the first billable day is before the reported days', async () => {
-			const { service, reportRepository, insightsService, http } = makeHarness();
-			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
-			insightsService.getFirstBillableDay.mockResolvedValue('2026-03-01');
-			insightsService.getDailyBillableExecutions.mockResolvedValue(
-				totalsByDay({ '2026-03-24': 3, '2026-03-25': 4 }),
-			);
+			describe('when the first day with billable data is before the report', () => {
+				test('uses only the billable number for every day in the report', async () => {
+					const { service, reportRepository, insightsService, http } = makeHarness();
+					reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
+					insightsService.getFirstBillableDay.mockResolvedValue('2026-03-01');
+					insightsService.getDailyBillableExecutions.mockResolvedValue(
+						totalsByDay({ '2026-03-24': 3, '2026-03-25': 4 }),
+					);
 
-			await service.sendReport(new Date());
+					await service.sendReport(new Date());
 
-			expect(dailyPoints(http)).toEqual([
-				{ value: 3, date: '2026-03-24' },
-				{ value: 4, date: '2026-03-25' },
-			]);
-			expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
-		});
+					expect(insightsService.getDailyBillableExecutions).toHaveBeenCalledExactlyOnceWith({
+						startDate: new Date('2026-03-24T00:00:00.000Z'),
+						endDate: new Date('2026-03-25T00:00:00.000Z'),
+					});
+					expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
+					expect(dailyPoints(http)).toEqual([
+						{ value: 3, date: '2026-03-24' },
+						{ value: 4, date: '2026-03-25' },
+					]);
+				});
+			});
 
-		test('reports only totals when insights has no billable executions', async () => {
-			const { service, reportRepository, insightsService, http } = makeHarness();
-			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
-			insightsService.getDailyExecutionTotals.mockResolvedValue(
-				totalsByDay({ '2026-03-24': 5, '2026-03-25': 6 }),
-			);
+			describe('when a day after the first day with billable data has no billable executions', () => {
+				test('uses 0 for that day', async () => {
+					const { service, reportRepository, insightsService, http } = makeHarness();
+					reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
+					insightsService.getFirstBillableDay.mockResolvedValue('2026-03-20');
+					insightsService.getDailyExecutionTotals.mockResolvedValue(
+						totalsByDay({ '2026-03-24': 5, '2026-03-25': 6 }),
+					);
+					insightsService.getDailyBillableExecutions.mockResolvedValue(
+						totalsByDay({ '2026-03-25': 4 }),
+					);
 
-			await service.sendReport(new Date());
+					await service.sendReport(new Date());
 
-			expect(dailyPoints(http)).toEqual([
-				{ value: 5, date: '2026-03-24' },
-				{ value: 6, date: '2026-03-25' },
-			]);
-			expect(insightsService.getDailyBillableExecutions).not.toHaveBeenCalled();
-		});
-
-		test('reports 0 for a day after the first billable day without billable executions', async () => {
-			const { service, reportRepository, insightsService, http } = makeHarness();
-			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
-			insightsService.getFirstBillableDay.mockResolvedValue('2026-03-20');
-			insightsService.getDailyExecutionTotals.mockResolvedValue(
-				totalsByDay({ '2026-03-24': 5, '2026-03-25': 6 }),
-			);
-			insightsService.getDailyBillableExecutions.mockResolvedValue(
-				totalsByDay({ '2026-03-25': 4 }),
-			);
-
-			await service.sendReport(new Date());
-
-			expect(dailyPoints(http)).toEqual([
-				{ value: 0, date: '2026-03-24' },
-				{ value: 4, date: '2026-03-25' },
-			]);
+					expect(dailyPoints(http)).toEqual([
+						{ value: 0, date: '2026-03-24' },
+						{ value: 4, date: '2026-03-25' },
+					]);
+				});
+			});
 		});
 
 		describe('on the first report', () => {

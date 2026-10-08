@@ -30,11 +30,11 @@ default) into daily rows, so a report never carries a day older than 89 days.
 Inside the sent range, a day without data is `0`.
 [RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the exact rules.
 
-The `daily` count is the `billable` insight, which n8n records from 2.40.0.
-The first day with `billable` rows and every day before it carry succeeded plus
-failed executions instead, because that first day can mix an older version with
-2.40.0 or later. Every later day carries `billable`, also when it is `0`.
-Without any `billable` rows, every day carries succeeded plus failed executions.
+Insights data only has a `billable` number on instances that run 2.40.0 or
+higher. Before then, only the `total` number is available. The first day with
+`billable` data is not a full 24-hour window on 2.40.0 or higher, so instance
+reports send the `total` number for that day and every day before it. Every
+later day sends the `billable` number, also when it is `0`.
 
 Known limits:
 
