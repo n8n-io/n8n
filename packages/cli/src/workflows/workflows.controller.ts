@@ -230,6 +230,7 @@ export class WorkflowsController {
 					includeTags: !this.globalConfig.tags.disabled,
 					includeParentFolder: true,
 					includeActiveVersion: true,
+					publishHistory: 'latestActivation',
 				},
 			);
 
@@ -263,6 +264,7 @@ export class WorkflowsController {
 				includeTags: !this.globalConfig.tags.disabled,
 				includeParentFolder: true,
 				includeActiveVersion: true,
+				publishHistory: 'latestActivation',
 			},
 		);
 
@@ -463,6 +465,7 @@ export class WorkflowsController {
 			name,
 			description,
 			expectedChecksum,
+			publishHistory: 'latestActivation',
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);

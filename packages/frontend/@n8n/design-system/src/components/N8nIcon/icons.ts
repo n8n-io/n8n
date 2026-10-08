@@ -43,6 +43,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
+import WhatsApp from './custom/whatsapp.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
@@ -193,6 +194,8 @@ import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMinus from '~icons/lucide/minus';
+import IconLucideMonitor from '~icons/lucide/monitor';
+import IconLucideMoon from '~icons/lucide/moon';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
@@ -318,6 +321,7 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
 	teams: Teams,
 	spinner: Spinner,
 	xmark: IconLucideX,
@@ -540,6 +544,7 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	whatsapp: WhatsApp,
 	teams: Teams,
 	azure: Azure,
 	entra: Entra,
@@ -703,6 +708,8 @@ export const updatedIconSet = {
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
 	minus: IconLucideMinus,
+	monitor: IconLucideMonitor,
+	moon: IconLucideMoon,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,

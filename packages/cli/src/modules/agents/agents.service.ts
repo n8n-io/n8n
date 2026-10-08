@@ -10,6 +10,8 @@ import {
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentModelCredentialConfig,
+	type AgentN8nChatThreadSummary,
+	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
@@ -25,12 +27,14 @@ import { v4 as uuid } from 'uuid';
 // in this area (see `agents-credential-provider.ts`). Resolved lazily by DI.
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { ConflictError } from '@n8n/errors';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentsSettingsService } from './agents-settings.service';
@@ -38,6 +42,7 @@ import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { toAgentRef } from './utils/agent-ref';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
@@ -49,6 +54,8 @@ import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
 type CreateAgentOptions = {
+	/** Who asked for the create, named on the policy block audit event. */
+	actor: PolicyActor;
 	availableInMCP?: boolean;
 	id?: string;
 	adoptOnCollision?: boolean;
@@ -86,6 +93,7 @@ export class AgentsService {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly agentPolicyService: AgentPolicyService,
 	) {}
 
 	/**
@@ -108,7 +116,7 @@ export class AgentsService {
 	 * dedicated "User duplicated agent" event for that case (carrying the
 	 * source agent id), mirroring "User duplicated workflow".
 	 */
-	async create(projectId: string, name: string, options: CreateAgentOptions = {}): Promise<Agent> {
+	async create(projectId: string, name: string, options: CreateAgentOptions): Promise<Agent> {
 		return (await this.createOrAdopt(projectId, name, options)).agent;
 	}
 
@@ -121,6 +129,7 @@ export class AgentsService {
 		projectId: string,
 		name: string,
 		{
+			actor,
 			availableInMCP = false,
 			id,
 			adoptOnCollision = false,
@@ -129,7 +138,7 @@ export class AgentsService {
 			skills,
 			tools,
 			user,
-		}: CreateAgentOptions = {},
+		}: CreateAgentOptions,
 	): Promise<{ agent: Agent; adopted: boolean }> {
 		await this.settingsService.assertEnabled();
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(projectId, name, {
@@ -137,6 +146,7 @@ export class AgentsService {
 			user,
 			defaultModel,
 		});
+		await this.agentPolicyService.enforceSave(projectId, null, schemaConfig, null, actor);
 
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
@@ -338,12 +348,81 @@ export class AgentsService {
 	): Promise<AgentChatListResponse> {
 		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		// Usage counts are only meaningful (and only needed) for the usage sort.
+		const usageCounts =
+			options.sortBy === 'usage:desc'
+				? await this.agentExecutionService.countN8nChatThreadsByAgent(user.id, projectIds)
+				: undefined;
 		const { count, data } = await this.agentRepository.findByProjectIdsPaginated(
 			projectIds,
 			options,
-			{ withProject: true },
+			{ withProject: true, usageCounts },
 		);
 		return { count, data: data.map(toChatListItem) };
+	}
+
+	/**
+	 * One agent over n8n Chat (see the controller route's doc for the audience
+	 * this serves). Scoped like {@link findChatReachableByUserPaginated}.
+	 * Returns `null` when missing, unreachable, or unpublished to n8n Chat —
+	 * the controller turns all three into the same 404.
+	 */
+	async findChatReachableAgentForUser(
+		agentId: string,
+		user: User,
+	): Promise<AgentChatListItem | null> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
+		return agent ? toChatListItem(agent) : null;
+	}
+
+	/**
+	 * The user's own n8n Chat threads across every agent they can currently
+	 * reach over n8n Chat: a project where they hold `agent:execute`, with a
+	 * published config that carries the channel. Scoping by agent id (not just
+	 * project) keeps a thread out of the list the moment its agent's channel is
+	 * unpublished, even if the user still belongs to the project.
+	 */
+	async findN8nChatThreadsForUser(
+		user: User,
+		options: { limit: number; cursor?: string; agentId?: string },
+	): Promise<AgentN8nChatThreadsResponse> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agentIds = options.agentId
+			? await this.reachableAgentIds(options.agentId, projectIds)
+			: await this.agentRepository.findChatReachableIds(projectIds);
+		return await this.agentExecutionService.findN8nChatThreadsForAgents(
+			user.id,
+			agentIds,
+			options.limit,
+			options.cursor,
+		);
+	}
+
+	/**
+	 * Checks reachability for one agent directly, instead of loading every
+	 * reachable id and filtering in memory. An unreachable `agentId` resolves
+	 * to no agent ids, not an error — the caller already can't see that
+	 * agent's threads either way.
+	 */
+	private async reachableAgentIds(agentId: string, projectIds: string[] | null): Promise<string[]> {
+		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
+		return agent ? [agent.id] : [];
+	}
+
+	/**
+	 * One of the user's own n8n Chat threads, scoped like
+	 * {@link findN8nChatThreadsForUser}. Returns `null` when the thread doesn't
+	 * exist, isn't owned by this user, or its agent isn't reachable over n8n
+	 * Chat anymore — the controller turns all three into the same 404.
+	 */
+	async findN8nChatThreadForUser(
+		user: User,
+		threadId: string,
+	): Promise<AgentN8nChatThreadSummary | null> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agentIds = await this.agentRepository.findChatReachableIds(projectIds);
+		return await this.agentExecutionService.findN8nChatThreadForAgents(user.id, agentIds, threadId);
 	}
 
 	/** The agents overview list: every project the user belongs to, no scope check. */
@@ -415,7 +494,7 @@ export class AgentsService {
 	private async prepareInitialConfig(
 		projectId: string,
 		name: string,
-		{ schema, user, defaultModel }: CreateAgentOptions,
+		{ schema, user, defaultModel }: Pick<CreateAgentOptions, 'schema' | 'user' | 'defaultModel'>,
 	): Promise<ReturnType<typeof decomposeJsonConfig>> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
@@ -540,16 +619,12 @@ export class AgentsService {
 	}
 }
 
-/**
- * Keeps the chat list to what the page renders. The icon comes from the
- * published snapshot, the same config the run would use.
- */
+/** Keeps the chat list to what the page renders: icon and blurb from the published snapshot. */
 function toChatListItem(agent: Agent): AgentChatListItem {
-	const personalisation = agent.activeVersion?.schema?.personalisation;
+	const description = agent.activeVersion?.schema?.description;
 	return {
-		id: agent.id,
-		name: agent.name,
-		...(personalisation ? { personalisation } : {}),
+		...toAgentRef(agent),
+		...(description ? { description } : {}),
 		project: { id: agent.projectId, name: agent.project.name },
 	};
 }

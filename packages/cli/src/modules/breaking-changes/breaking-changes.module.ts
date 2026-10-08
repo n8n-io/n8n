@@ -35,7 +35,10 @@ export class BreakingChangesModule implements ModuleInterface {
 		const { MigrationFindingSync } = await import(
 			'./database/entities/migration-finding-sync.entity.js'
 		);
+		const { MigrationWorkflowOwner } = await import(
+			'./database/entities/migration-workflow-owner.entity.js'
+		);
 
-		return [MigrationFinding, MigrationFindingSync];
+		return [MigrationFinding, MigrationFindingSync, MigrationWorkflowOwner];
 	}
 }

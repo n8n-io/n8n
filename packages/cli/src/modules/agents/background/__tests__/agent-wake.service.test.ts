@@ -1,4 +1,5 @@
 import type { SerializableAgentState } from '@n8n/agents';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { LockService, Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
@@ -27,6 +28,7 @@ import type { AgentBackgroundJobService } from '../agent-background-job.service'
 import {
 	formatPauseHandoff,
 	formatWakeMessage,
+	REPLACED_PAUSE_GROUP_NOTICE,
 	WAKE_RESULT_TEXT_MAX_CHARS,
 } from '../background-job-messages';
 
@@ -84,7 +86,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumed.mockResolvedValue([makeJob()]);
-	jobRepository.findRequestedPauses.mockResolvedValue([]);
+	jobRepository.hasRequestedStop.mockResolvedValue(false);
 	executionRepository.existsRunningByThread.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
@@ -127,7 +129,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 
 describe('AgentWakeService', () => {
 	it('delivers a stopped group once and marks it only after the report finishes', async () => {
-		const { service, jobRepository, orchestrator } = setup();
+		const { service, backgroundJobService, jobRepository, orchestrator } = setup();
 		const report = createDeferredPromise();
 		const started = createDeferredPromise();
 		const handoffs = Array.from({ length: 5 }, (_, index) => ({
@@ -147,9 +149,26 @@ describe('AgentWakeService', () => {
 				result: JSON.stringify(handoff),
 			}),
 		);
+		jobs.push(
+			makeJob({
+				id: 'workflow',
+				kind: 'workflow',
+				status: 'cancelled',
+				pauseRequestId: 'stop-1',
+				result: `\n${REPLACED_PAUSE_GROUP_NOTICE}`,
+			}),
+		);
 		jobRepository.findWakeableUnconsumed
-			.mockResolvedValueOnce([...jobs, makeJob({ id: 'later' })])
+			.mockResolvedValueOnce(
+				jobs.map((job) => (job.kind === 'workflow' ? { ...job, result: null } : job)),
+			)
 			.mockResolvedValue([]);
+		backgroundJobService.retainLatestStopGroup.mockImplementationOnce(async () => {
+			jobRepository.findWakeableUnconsumed.mockResolvedValueOnce([
+				...jobs,
+				makeJob({ id: 'later' }),
+			]);
+		});
 		orchestrator.executeForWake.mockImplementation(async () => {
 			started.resolve();
 			await report.promise;
@@ -169,18 +188,26 @@ describe('AgentWakeService', () => {
 				message.indexOf('</background-jobs-settled>'),
 			),
 		) as Array<{ jobId: string; result: string; truncated?: boolean }>;
-		expect(payload).toHaveLength(5);
-		for (const [index, job] of payload.entries()) {
+		expect(payload).toHaveLength(6);
+		for (const [index, job] of payload.slice(0, 5).entries()) {
 			expect(job.jobId).toBe(`job-${index + 1}`);
 			expect(job.truncated).toBeUndefined();
 			expect(JSON.parse(job.result)).toEqual(handoffs[index]);
 		}
+		expect(payload[5]).toMatchObject({
+			jobId: 'workflow',
+			kind: 'workflow',
+			status: 'cancelled',
+			progressUnavailable: true,
+			previousStoppedGroupReplaced: true,
+		});
+		expect(payload[5]).not.toHaveProperty('result');
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		report.resolve();
 		await wake;
 		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith(
 			'thread-1',
-			['job-1', 'job-2', 'job-3', 'job-4', 'job-5'],
+			['job-1', 'job-2', 'job-3', 'job-4', 'job-5', 'workflow'],
 			true,
 		);
 		await service.attemptWake('thread-1');
@@ -309,15 +336,20 @@ describe('AgentWakeService', () => {
 
 	describe('getBackgroundUpdates', () => {
 		it.each([
-			{ state: 'empty', jobs: [] },
-			{ state: 'suspended', jobs: [makeJob({ status: 'suspended', settledAt: null })] },
-		])('returns no hint when the thread has no pending results ($state)', async ({ jobs }) => {
+			{ state: 'empty', jobs: [], stoppedHere: false },
+			{
+				state: 'suspended',
+				jobs: [makeJob({ status: 'suspended', settledAt: null })],
+				stoppedHere: false,
+			},
+			{ state: 'requested stop', jobs: [], stoppedHere: true },
+		])('returns a stop hint only for a requested stop ($state)', async ({ jobs, stoppedHere }) => {
 			const { service, jobRepository } = setup();
 			jobRepository.findWakeableUnconsumed.mockResolvedValue(jobs);
+			jobRepository.hasRequestedStop.mockResolvedValue(stoppedHere);
 
-			await expect(
-				service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`),
-			).resolves.toBeUndefined();
+			const hint = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
+			expect(hint !== undefined).toBe(stoppedHere);
 		});
 
 		it('quotes job titles in the hint to check settled jobs', async () => {
@@ -694,6 +726,90 @@ describe('AgentWakeService', () => {
 			);
 		});
 
+		it('passes a published identity to the orchestrator for a production n8n Chat wake', async () => {
+			const { service, jobRepository, orchestrator } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+
+			await service.attemptWake('thread-1');
+
+			expect(orchestrator.executeForWake).toHaveBeenCalledWith(
+				expect.objectContaining({
+					identity: {
+						type: 'published',
+						integrationType: N8N_CHAT_INTEGRATION_TYPE,
+						principalHash,
+					},
+				}),
+			);
+		});
+
+		it('rejects a production n8n Chat identity whose principal hash does not match', async () => {
+			const { service, jobRepository, orchestrator } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: otherPrincipalHash,
+				}),
+			]);
+
+			await service.attemptWake('thread-1');
+
+			expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it('rejects a production n8n Chat wake when its user no longer exists or is disabled', async () => {
+			const gone = setup();
+			gone.jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+			gone.userRepository.findByIdWithRole.mockResolvedValue(null);
+			await gone.service.attemptWake('thread-1');
+			expect(gone.orchestrator.executeForWake).not.toHaveBeenCalled();
+
+			const disabled = setup();
+			disabled.jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+			disabled.userRepository.findByIdWithRole.mockResolvedValue({
+				...user,
+				disabled: true,
+			} as never);
+			await disabled.service.attemptWake('thread-1');
+			expect(disabled.orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(disabled.jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it('rejects a production n8n Chat wake when its user can no longer execute the agent', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await service.attemptWake('thread-1');
+
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:execute'], false, {
+				projectId: 'project-1',
+			});
+			expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
 		it('leaves results pending when the parent agent no longer exists', async () => {
 			const { service, agentRepository, orchestrator, jobRepository } = setup();
 			agentRepository.findById.mockResolvedValue(null);
@@ -870,7 +986,13 @@ describe('formatPauseHandoff', () => {
 describe('formatWakeMessage', () => {
 	it('divides the text limit equally between jobs and marks truncated text', () => {
 		const jobs = [
-			makeJob({ id: 'job-1', result: 'a'.repeat(WAKE_RESULT_TEXT_MAX_CHARS) }),
+			makeJob({
+				id: 'job-1',
+				kind: 'workflow',
+				status: 'cancelled',
+				pauseRequestId: 'stop-1',
+				result: `${'a'.repeat(WAKE_RESULT_TEXT_MAX_CHARS)}\n${REPLACED_PAUSE_GROUP_NOTICE}`,
+			}),
 			makeJob({ id: 'job-2', title: 'Second job', result: null, error: 'b'.repeat(100) }),
 		];
 
@@ -883,7 +1005,11 @@ describe('formatWakeMessage', () => {
 		) as Array<{ jobId: string; result?: string; error?: string; truncated?: boolean }>;
 
 		expect(payload).toHaveLength(2);
-		expect(payload[0]).toMatchObject({ jobId: 'job-1', truncated: true });
+		expect(payload[0]).toMatchObject({
+			jobId: 'job-1',
+			truncated: true,
+			previousStoppedGroupReplaced: true,
+		});
 		expect(payload[0]?.result).toHaveLength(WAKE_RESULT_TEXT_MAX_CHARS / 2);
 		expect(payload[1]).toMatchObject({ jobId: 'job-2', error: 'b'.repeat(100) });
 		expect(payload[1]?.truncated).toBeUndefined();

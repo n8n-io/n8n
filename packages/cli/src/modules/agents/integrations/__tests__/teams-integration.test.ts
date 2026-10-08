@@ -288,4 +288,80 @@ describe('TeamsIntegration', () => {
 			await context.statusHandle?.clearBeforeResponse();
 		});
 	});
+
+	describe('messages without a mention', () => {
+		const allOn = {
+			teamChannels: true,
+			readAllChannelMessages: true,
+			groupChats: true,
+			readAllGroupMessages: true,
+		};
+
+		function teamsConfig(settings: Record<string, boolean> | undefined) {
+			return { type: 'teams', credentialId: CREDENTIAL_ID, settings } as never;
+		}
+
+		function activity(
+			conversationType: string,
+			from: Record<string, unknown> = { id: '29:alice' },
+		) {
+			return { raw: { conversation: { conversationType }, from } };
+		}
+
+		it.each([
+			['channel', allOn, true],
+			['groupChat', allOn, true],
+			['channel', { ...allOn, readAllChannelMessages: false }, false],
+			['groupChat', { ...allOn, readAllGroupMessages: false }, false],
+			['channel', { ...allOn, teamChannels: false }, false],
+			['groupChat', { ...allOn, groupChats: false }, false],
+			// One surface's toggle never opens the other.
+			['groupChat', { teamChannels: true, readAllChannelMessages: true }, false],
+			['channel', { groupChats: true, readAllGroupMessages: true }, false],
+			['channel', undefined, false],
+			['personal', allOn, false],
+		])('runs a %s message with settings %j: %s', (conversationType, settings, expected) => {
+			expect(
+				integration.shouldHandleUnmentionedMessage({
+					message: activity(conversationType),
+					integration: teamsConfig(settings),
+				}),
+			).toBe(expected);
+		});
+
+		it.each([{ id: '28:other-bot' }, { id: '29:x', role: 'bot' }])(
+			'ignores a message from bot %j',
+			(from) => {
+				expect(
+					integration.shouldHandleUnmentionedMessage({
+						message: activity('channel', from),
+						integration: teamsConfig(allOn),
+					}),
+				).toBe(false);
+			},
+		);
+
+		it.each([
+			['a new mention', { isNewMention: true, isMention: false, type: 'channel' }, 'required'],
+			[
+				'a mention in a joined thread',
+				{ isNewMention: false, isMention: true, type: 'channel' },
+				'required',
+			],
+			['a direct message', { isNewMention: false, isMention: false, type: 'personal' }, 'required'],
+			['a channel message', { isNewMention: false, isMention: false, type: 'channel' }, 'optional'],
+			[
+				'a group chat message',
+				{ isNewMention: false, isMention: false, type: 'groupChat' },
+				'optional',
+			],
+		])('expects a reply to %s: %s', (_label, { isNewMention, isMention, type }, expected) => {
+			expect(
+				integration.getReplyExpectation({
+					message: { isMention, ...activity(type) },
+					isNewMention,
+				}),
+			).toBe(expected);
+		});
+	});
 });
