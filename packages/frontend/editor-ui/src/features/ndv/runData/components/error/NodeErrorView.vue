@@ -187,7 +187,7 @@ function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (
 		!nodeType ||
 		('hidden' in nodeType && nodeType.hidden) ||
-		('deprecated' in nodeType && nodeType.deprecated)
+		nodeTypesStore.getNodeType(nodeType.type, nodeType.typeVersion)?.deprecated
 	) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}

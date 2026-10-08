@@ -80,7 +80,6 @@ const extensions = computed(() => {
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
-		EditorView.editable.of(!props.isReadOnly),
 		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fillParent ? '100%' : '40vh',

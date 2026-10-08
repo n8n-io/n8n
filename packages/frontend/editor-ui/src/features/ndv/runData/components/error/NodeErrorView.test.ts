@@ -183,6 +183,18 @@ describe('NodeErrorView.vue', () => {
 		expect(getByText('Test stack trace')).toBeTruthy();
 	});
 
+	it('tags the node version as deprecated when the node type is deprecated', () => {
+		// @ts-expect-error - Mock node type store method
+		mockNodeTypeStore.getNodeType = vi.fn(() => ({ deprecated: true }));
+		mockNodeTypeStore.getNodeVersions = vi.fn(() => [2]);
+
+		const { getByText } = renderComponent({
+			props: { error, showDetails: true },
+		});
+
+		expect(getByText('(Deprecated)')).toBeTruthy();
+	});
+
 	describe('circular error payloads', () => {
 		// Streamed request bodies (e.g. a binary file upload) reach the UI with a
 		// circular object graph; interpolating one used to throw and blank the panel.

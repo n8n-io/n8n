@@ -1080,11 +1080,13 @@ describe('useContextMenu', () => {
 			for (const id of [
 				'extract_sub_workflow',
 				'toggle_activation',
+				'duplicate',
 				'execute',
 				'rename',
 			] as const) {
 				expect(actions.value.find((action) => action.id === id)?.disabled).toBe(true);
 			}
+			expect(actions.value.find((action) => action.id === 'delete')?.disabled).toBe(false);
 		});
 	});
 
