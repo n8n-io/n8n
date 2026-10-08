@@ -1,6 +1,7 @@
 import { AgentJsonConfigSchema } from '@n8n/api-types';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+import { ZodError } from 'zod';
 
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
@@ -197,7 +198,7 @@ describe('AgentExporter', () => {
 	])('rejects an invalid $kind before writing', async ({ corrupt }) => {
 		const { agent, draft, exporter } = setup();
 		corrupt(draft);
-		await expect(exporter.prepare(agent)).rejects.toThrow();
+		await expect(exporter.prepare(agent)).rejects.toThrow(ZodError);
 	});
 
 	it('rejects invalid task cron expressions', async () => {
