@@ -76,6 +76,7 @@ import {
 	ChevronDown as BrandChevronDown,
 	ChevronLeft as BrandChevronLeft,
 	ChevronRight as BrandChevronRight,
+	ChevronRight12 as BrandChevronRight12,
 	ChevronsDownUp as BrandChevronsDownUp,
 	ChevronsLeft as BrandChevronsLeft,
 	ChevronsRight as BrandChevronsRight,
@@ -576,6 +577,7 @@ export const updatedIconSet = {
 	// brand-only
 	'arrow-to-bracket-right': BrandLogIn,
 	// 12px glyph for 12px slots; the 16px set blurs when scaled down
+	'chevron-right-12': BrandChevronRight12,
 	'robot-12': BrandRobot12,
 	'n8n-assistant': BrandN8nAssistant,
 	briefcase: BrandBriefcase,

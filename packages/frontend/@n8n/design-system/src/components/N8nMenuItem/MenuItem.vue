@@ -183,7 +183,12 @@ const tooltipPlacement = computed(() => {
 						{{ item.creditsTag }}
 					</N8nBadge>
 				</div>
-				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
+				<N8nIcon
+					v-if="item.children && !compact"
+					icon="chevron-right-12"
+					:size="12"
+					color="text-light"
+				/>
 			</N8nRoute>
 		</N8nTooltip>
 	</div>

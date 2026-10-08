@@ -27,6 +27,7 @@ export { default as CheckCheck } from './custom/brand/checks--outline-16.svg';
 export { default as ChevronDown } from './custom/brand/chevron-down--outline-16.svg';
 export { default as ChevronLeft } from './custom/brand/chevron-left--outline-16.svg';
 export { default as ChevronRight } from './custom/brand/chevron-right--outline-16.svg';
+export { default as ChevronRight12 } from './custom/brand/chevron-right--outline-12.svg';
 export { default as ChevronsDownUp } from './custom/brand/chevrons-down-up--outline-16.svg';
 export { default as ChevronsLeft } from './custom/brand/chevrons-left--outline-16.svg';
 export { default as ChevronsRight } from './custom/brand/chevrons-right--outline-16.svg';

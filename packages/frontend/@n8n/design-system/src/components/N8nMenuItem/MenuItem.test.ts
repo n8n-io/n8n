@@ -259,7 +259,7 @@ describe('N8nMenuItem', () => {
 				},
 				global: { stubs: { ...stubs, N8nIcon: true } },
 			});
-			expect(html()).toContain('icon="chevron-right"');
+			expect(html()).toContain('icon="chevron-right-12"');
 		});
 
 		it('should not render chevron icon when compact', () => {
