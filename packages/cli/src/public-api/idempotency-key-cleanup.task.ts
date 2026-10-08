@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { IDEMPOTENCY_KEY_TTL_MS } from '@n8n/db';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskSchedule, SystemTaskTarget } from '@n8n/decorators';
 
 import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 
@@ -12,13 +12,10 @@ export class IdempotencyKeyCleanupTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'cluster',
-		durable: false,
-		runOnTakeover: true,
-	};
+		leaderTimer: { runOnTakeover: true },
+	} satisfies SystemTaskTarget;
 
 	constructor(
 		private readonly logger: Logger,

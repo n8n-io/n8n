@@ -1,6 +1,6 @@
 import { WorkflowsConfig } from '@n8n/config';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowPublicationOutboxCleanupService } from './workflow-publication-outbox-cleanup.service';
 
@@ -16,17 +16,15 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 		this.workflowsConfig.publicationOutboxCleanupIntervalSeconds,
 	);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'cluster',
-		durable: true,
-		/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
-		runOnTakeover: true,
-	};
-
-	/** Only the in-memory timer, which runs whenever the task does not run durably, honors this. */
-	readonly retryDelaySeconds = 30;
+		scheduler: { maxAttempts: 3 },
+		leaderTimer: {
+			/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
+			runOnTakeover: true,
+			retryDelaySeconds: 30,
+		},
+	} satisfies SystemTaskTarget;
 
 	constructor(
 		private readonly workflowsConfig: WorkflowsConfig,

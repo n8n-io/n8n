@@ -21,8 +21,11 @@ describe('WorkflowStatisticsRollupTask', () => {
 
 		expect(task.name).toBe('workflow-statistics-rollup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 5 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
+		expect(task.target).toMatchObject({
+			scope: 'cluster',
+			scheduler: { maxAttempts: 3 },
+			leaderTimer: { runOnTakeover: true },
+		});
 	});
 
 	it.each([
@@ -36,7 +39,7 @@ describe('WorkflowStatisticsRollupTask', () => {
 			const task = makeTask({ leaseDurationSeconds });
 			const signal = new AbortController().signal;
 
-			await task.run(signal, { durable: true });
+			await task.run(signal, { runner: 'scheduler' });
 
 			expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, runBudgetMs);
 		},
@@ -46,7 +49,7 @@ describe('WorkflowStatisticsRollupTask', () => {
 		const task = makeTask({ leaseDurationSeconds: 1 });
 		const signal = new AbortController().signal;
 
-		await task.run(signal, { durable: false });
+		await task.run(signal, { runner: 'leaderTimer' });
 
 		expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, 4000);
 	});

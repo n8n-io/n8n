@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { MessageEventBus } from './message-event-bus';
 
@@ -16,14 +16,11 @@ export class EventBusUnsentMessageFlushTask implements SystemTask {
 		this.globalConfig.eventBus.checkUnsentInterval,
 	);
 
-	/** A destination can receive a message twice if its confirmation is still in flight. */
-	readonly effects: SystemTaskEffects = 'non-idempotent';
-
 	/** The unsent messages are in the event log files of this process, so no other instance can send them. */
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'instance',
 		instanceTypes: ['main', 'worker', 'webhook'],
-	};
+	} satisfies SystemTaskTarget;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,

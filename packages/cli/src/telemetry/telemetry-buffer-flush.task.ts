@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { Telemetry } from '@/telemetry';
 
@@ -13,14 +13,11 @@ export class TelemetryBufferFlushTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(6 * Time.hours.toSeconds);
 
-	/** A flush sends what it drains, so a repeat can report the same events twice. */
-	readonly effects: SystemTaskEffects = 'non-idempotent';
-
 	/** The buffer belongs to this process, so no other instance can drain it. */
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'instance',
 		instanceTypes: ['main', 'worker', 'webhook'],
-	};
+	} satisfies SystemTaskTarget;
 
 	constructor(private readonly telemetry: Telemetry) {}
 
