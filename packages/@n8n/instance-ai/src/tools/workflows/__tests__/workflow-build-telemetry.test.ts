@@ -51,6 +51,17 @@ describe('trackWorkflowSourceBuild', () => {
 		});
 	});
 
+	it('does not record a save that waits for approval', () => {
+		trackWorkflowSourceBuild(makeContext(), {
+			result: 'suspended',
+			stage: 'hitl',
+			binding,
+			targetWorkflowId: 'wf-1',
+		});
+
+		expect(emitBuilderMetric).not.toHaveBeenCalled();
+	});
+
 	it('records a failed build with its stage and remediation', () => {
 		trackWorkflowSourceBuild(makeContext(), {
 			result: 'failure',

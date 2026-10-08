@@ -1128,7 +1128,11 @@ function isLiveTraceHandle(
 
 /** Whether {@link emitTraceOnlyChildRun} would export a run, so callers can skip costly payloads. */
 export function canEmitTraceOnlyChildRun(fallbackTracing: InstanceAiTraceContext | undefined) {
-	return getCurrentProductTrace() !== undefined || isLiveTraceHandle(fallbackTracing);
+	const currentTrace = getCurrentProductTrace();
+	return (
+		(currentTrace !== undefined && !currentTrace.runtime.shutdown) ||
+		isLiveTraceHandle(fallbackTracing)
+	);
 }
 
 /**

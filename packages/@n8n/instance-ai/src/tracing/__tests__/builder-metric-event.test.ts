@@ -23,7 +23,7 @@ describe('emitBuilderMetric', () => {
 			workflow_id: undefined,
 		});
 
-		expect(startChildRun).toHaveBeenCalledWith(
+		expect(startChildRun.mock.calls[0]).toStrictEqual([
 			{ id: 'actor-run-1' },
 			{
 				name: 'workflow_build',
@@ -32,11 +32,11 @@ describe('emitBuilderMetric', () => {
 				tags: [BUILDER_METRIC_TAG],
 				metadata: { success: false, stage: 'parse' },
 			},
-		);
-		expect(finishRun).toHaveBeenCalledWith(
+		]);
+		expect(finishRun.mock.calls[0]).toStrictEqual([
 			{ id: 'run-1' },
 			{ outputs: { success: false, stage: 'parse' } },
-		);
+		]);
 	});
 
 	it('does not throw when the trace export fails', async () => {

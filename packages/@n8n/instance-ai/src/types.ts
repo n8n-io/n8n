@@ -14,6 +14,7 @@ import type {
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
+	AgentConfigValidationIssueCode,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -1490,7 +1491,7 @@ export interface InstanceAiBuilderDelegate {
 export interface AgentValidationSummary {
 	valid: boolean;
 	/** Distinct validation issue codes, sorted. */
-	issueCodes: string[];
+	issueCodes: AgentConfigValidationIssueCode[];
 	issueCount: number;
 	capabilityCount: number;
 }

@@ -43,7 +43,7 @@ export async function emitAgentBuildMetrics(args: {
 		operation,
 		activity,
 		config_updated: configUpdated,
-		user_wait_ms: userWaitMs ?? 0,
+		user_wait_ms: userWaitMs,
 	});
 
 	// No trace, no validation: it costs a draft read and credential checks.

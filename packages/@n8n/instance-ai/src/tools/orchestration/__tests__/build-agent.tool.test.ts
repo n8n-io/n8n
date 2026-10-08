@@ -506,6 +506,9 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			error: 'stream exploded',
 		});
+		expect(emitAgentBuildMetrics).toHaveBeenCalledWith(
+			expect.objectContaining({ agentId: 'agent-1', outcome: 'failed', configUpdated: false }),
+		);
 	});
 
 	it('binds directly to an existing agentId without creating a new agent', async () => {

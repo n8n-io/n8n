@@ -617,6 +617,7 @@ async function runBuilderConsumeLoop(params: {
 				...targetIdentity(target),
 			});
 		}
+		await recordPass('failed', carriedConfigUpdated);
 		throw error;
 	}
 

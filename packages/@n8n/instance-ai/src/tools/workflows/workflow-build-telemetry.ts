@@ -73,6 +73,8 @@ export function trackWorkflowSourceBuild(
 				}
 			: {}),
 	});
+	// A suspended save waits for approval and reports its real result after the resume.
+	if (input.result === 'suspended') return;
 	void emitBuilderMetric(context.tracing, 'workflow_build', {
 		success: input.result === 'success',
 		result: input.result,

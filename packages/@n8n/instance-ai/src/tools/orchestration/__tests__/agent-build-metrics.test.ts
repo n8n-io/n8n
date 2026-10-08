@@ -110,12 +110,7 @@ describe('emitAgentBuildMetrics', () => {
 			configUpdated: true,
 		});
 
-		expect(emitBuilderMetric).toHaveBeenCalledWith(
-			tracing,
-			'agent_build',
-			expect.objectContaining({ user_wait_ms: 0 }),
-		);
-
+		expect(vi.mocked(emitBuilderMetric).mock.calls[0][2].user_wait_ms).toBeUndefined();
 		expect(emitBuilderMetric).toHaveBeenCalledWith(
 			tracing,
 			'agent_verification',
