@@ -131,6 +131,11 @@ beforeAll(async () => {
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
+		mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 	);
 });
 

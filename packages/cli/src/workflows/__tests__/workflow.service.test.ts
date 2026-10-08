@@ -136,6 +136,11 @@ describe('WorkflowService', () => {
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 		});
 
@@ -511,6 +516,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 
 			vi.clearAllMocks();
@@ -1356,6 +1366,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 
 			// Bypass validation internals
@@ -2114,6 +2129,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 		});
 
@@ -2256,6 +2276,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 		});
 
@@ -2563,6 +2588,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 		});
 
@@ -2734,6 +2764,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 		});
 
@@ -2916,6 +2951,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 		});
 
@@ -3020,6 +3060,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 		});
 
@@ -3123,6 +3168,11 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
+<<<<<<< HEAD
+=======
+				mock(), // restrictedNodeTypesProvider
+				mock(),
+>>>>>>> ea8417e2 (feat(core): Block create/update of workflows with deprecated nodes (#31360))
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
