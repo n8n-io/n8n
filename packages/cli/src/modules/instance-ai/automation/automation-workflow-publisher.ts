@@ -20,11 +20,22 @@ export class AutomationWorkflowPublisher {
 	) {}
 
 	/**
+	 * Fails while a user edits the workflow in the editor. Callers check this before they change
+	 * the workflow, so that a refused publish changes nothing.
+	 *
+	 * @throws LockedError when someone holds the editor write lock
+	 */
+	async assertEditable(workflowId: string): Promise<void> {
+		await this.collaborationService.ensureWorkflowEditable(workflowId);
+	}
+
+	/**
 	 * Publishes one version of the workflow as the user. Honours the editor write lock like the
 	 * REST API, and tells open editors to reload. Returns true when a version is live.
 	 */
 	async activate(user: User, workflowId: string, options: PublishOptions): Promise<boolean> {
-		await this.collaborationService.ensureWorkflowEditable(workflowId);
+		// The lock can appear after the check that ran before the first change.
+		await this.assertEditable(workflowId);
 		const workflow = await this.workflowService.activateWorkflow(user, workflowId, options);
 		// The workflow is live already, so a failed notification must not report a failure.
 		await this.collaborationService

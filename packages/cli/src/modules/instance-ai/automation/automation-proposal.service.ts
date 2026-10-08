@@ -25,7 +25,7 @@ import {
 	LOCAL_CARD_TARGET,
 	type ProposalRecommendation,
 	type ProposalRequest,
-	runningNodes,
+	recommendationNodeTypes,
 } from './automation-card';
 import { AutomationBlockedError, isExpectedFailure } from './automation-errors';
 import { chooseCron, type CronChoice, triggerCronOf } from './automation-schedule';
@@ -55,6 +55,7 @@ const ACTION_SOURCE: Record<CapabilitySurface, WorkflowActionSource> = {
 /** Recommends where the workflow runs. B05 knows only this instance. */
 async function recommendLocal(nodeTypes: string[]): Promise<ProposalRecommendation> {
 	// Loaded at the first call, so that MCP requests do not load the Assistant package at boot.
+	// The first call still loads the whole package. BACKLOG Q10: import a subpath of it.
 	const { recommendRunTarget } = await lazyImport<typeof InstanceAi>(
 		async () => await import('@n8n/instance-ai'),
 	);
@@ -114,9 +115,7 @@ export class AutomationProposalService {
 			trigger.canActivate &&
 			!isBlockedByAdmin(context, 'publishWorkflow') &&
 			(await this.hasScope(workflow.id, context.user, 'workflow:publish'));
-		const recommendation = await recommendLocal(
-			runningNodes(workflow.nodes).map((node) => node.type),
-		);
+		const recommendation = await recommendLocal(recommendationNodeTypes(workflow.nodes));
 		const card = buildAutomationCard({
 			workflow,
 			request,
@@ -135,6 +134,7 @@ export class AutomationProposalService {
 	 *
 	 * @throws AutomationBlockedError when an admin blocked the action for the n8n Assistant
 	 * @throws UserError when the user cannot reach, restore or turn on the workflow
+	 * @throws LockedError when someone edits the workflow in the editor and it must be turned on
 	 */
 	async apply(
 		request: AutomationRequest,
@@ -193,10 +193,10 @@ export class AutomationProposalService {
 
 	/** True when a version of the workflow is live now, as the stored workflow says. */
 	private async isLive(workflowId: string, user: User): Promise<boolean> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+		const head = await this.workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 			'workflow:read',
 		]);
-		return (workflow?.activeVersionId ?? null) !== null;
+		return (head?.activeVersionId ?? null) !== null;
 	}
 
 	private async findWorkflow(workflowId: string, context: CapabilityContext) {
@@ -205,15 +205,16 @@ export class AutomationProposalService {
 		]);
 	}
 
+	/** Reads only a few columns. The caller has loaded the nodes and sharings already. */
 	private async hasScope(
 		workflowId: string,
 		user: User,
 		scope: 'workflow:publish' | 'workflow:delete',
 	): Promise<boolean> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+		const head = await this.workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 			scope,
 		]);
-		return workflow !== null;
+		return head !== null;
 	}
 
 	/** Keeping an archived workflow restores it, which the Assistant gates like a delete. */
@@ -246,5 +247,7 @@ export class AutomationProposalService {
 				`You do not have permission to turn on "${workflow.name}". Ask the owner of the workflow to turn it on. Nothing was changed.`,
 			);
 		}
+		// A lock that a user holds in the editor would stop the publish after the keep.
+		await this.publisher.assertEditable(workflow.id);
 	}
 }

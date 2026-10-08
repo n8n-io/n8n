@@ -1,6 +1,10 @@
 import fc from 'fast-check';
 
-import { type AutomationNode, classifyAutomationTrigger } from '../automation-trigger';
+import {
+	type AutomationNode,
+	canStartAutomation,
+	classifyAutomationTrigger,
+} from '../automation-trigger';
 
 // The pools come from the spec and are kept apart from the implementation on purpose.
 const ACTIVATING_TYPES = [
@@ -91,6 +95,17 @@ describe('classifyAutomationTrigger (property)', () => {
 				expect(classifyAutomationTrigger(nodes)).toEqual(
 					classifyAutomationTrigger(nodes.filter(isEnabled)),
 				);
+			}),
+			{ numRuns: 300 },
+		);
+	});
+});
+
+describe('canStartAutomation (property)', () => {
+	it('is true exactly for the types that can turn a workflow on', () => {
+		fc.assert(
+			fc.property(fc.oneof(fc.constantFrom(...KNOWN_TYPES), plainType), (type) => {
+				expect(canStartAutomation(type)).toBe(ACTIVATING_TYPES.includes(type));
 			}),
 			{ numRuns: 300 },
 		);

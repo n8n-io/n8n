@@ -1,20 +1,18 @@
 import type { WorkflowEntity } from '@n8n/db';
-import { BadRequestError, UnexpectedError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import { getStaticSubworkflowId } from '../entities/workflow/references/sub-workflow-node.reference';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
-import type { ImportResult } from '../n8n-packages.types';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import type {
 	PackageNodeTypeRequirement,
 	PackageRequirements,
+	PackageVariableRequirement,
 	PackageWorkflowRequirement,
 } from '../spec/requirements.schema';
 
 export type CredentialSummary = { name: string; type: string };
-
-export type CredentialNeedingSetup = CredentialSummary & { id: string };
 
 /** What another instance must have, so that the exported workflow runs there. */
 export type WorkflowPackageRequirements = {
@@ -22,23 +20,15 @@ export type WorkflowPackageRequirements = {
 	credentials: CredentialSummary[];
 };
 
-export type ImportedWorkflowPackage = {
-	workflowId: string;
-	workflowName: string;
-	created: boolean;
-	credentialsNeedingSetup: CredentialNeedingSetup[];
-	missingNodeTypes: string[];
-	warnings: string[];
-};
-
-type NodeTypeVersion = Pick<PackageNodeTypeRequirement, 'type' | 'typeVersion'>;
+export type NodeTypeVersion = Pick<PackageNodeTypeRequirement, 'type' | 'typeVersion'>;
 
 /** A node type and version as one string, for example "n8n-nodes-base.slack@2.3". */
 export function nodeTypeLabel({ type, typeVersion }: NodeTypeVersion): string {
 	return `${type}@${typeVersion}`;
 }
 
-function uniqueSorted(values: string[]): string[] {
+/** The values once each, in sort order. */
+export function uniqueSorted(values: readonly string[]): string[] {
 	return [...new Set(values)].sort();
 }
 
@@ -94,6 +84,11 @@ export function assertNoSubWorkflowCalls(workflow: Pick<WorkflowEntity, 'id' | '
 	);
 }
 
+/** A workflow as the tool texts name it, for example "Alert the team" (wf-1). */
+export function workflowLabel({ id, name }: Pick<PackageWorkflowRequirement, 'id' | 'name'>): string {
+	return name === undefined ? `"${id}"` : `"${name}" (${id})`;
+}
+
 /**
  * What the package does not copy: the workflows that it refers to but does not hold. After
  * {@link assertNoSubWorkflowCalls}, such a reference is the error workflow of the workflow.
@@ -102,12 +97,24 @@ export function notCopiedWorkflowWarnings(
 	references: readonly Pick<PackageWorkflowRequirement, 'id' | 'name'>[] = [],
 	errorWorkflowId: string | undefined,
 ): string[] {
-	return references.map(({ id, name }) => {
-		const label = name === undefined ? `"${id}"` : `"${name}" (${id})`;
-		return id === errorWorkflowId
-			? `The error workflow ${label} is not in the package. Choose an error workflow for the copy in its workflow settings.`
+	return references.map((reference) => {
+		const label = workflowLabel(reference);
+		return reference.id === errorWorkflowId
+			? `The package does not hold the error workflow ${label}. A new copy keeps the link only if the user who imports it can use that workflow there. Otherwise, choose an error workflow in the settings of the copy.`
 			: `The package refers to workflow ${label}, but does not hold it.`;
 	});
+}
+
+/**
+ * The variables that the workflow uses. The package holds their names only, so the instance that
+ * imports it must have them.
+ */
+export function notCopiedVariablesWarning(
+	variables: readonly Pick<PackageVariableRequirement, 'name'>[] = [],
+): string | undefined {
+	const names = uniqueSorted(variables.map(({ name }) => name));
+	if (names.length === 0) return undefined;
+	return `The workflow uses ${names.length} variable(s): ${names.join(', ')}. The package holds their names, but not their values. Make sure that the instance that imports the package has them.`;
 }
 
 /**
@@ -147,83 +154,4 @@ export function assertNoArchivedWorkflow(
 			'The package holds an archived workflow. Restore the workflow, then export it again.',
 		);
 	}
-}
-
-/**
- * The stub credentials that this import created, with their new ids. A stub has no data, so the
- * user must set it up before the workflow can run.
- */
-export function credentialsNeedingSetup(
-	result: Pick<ImportResult, 'credentials' | 'bindings'>,
-	requirements: PackageRequirements | undefined,
-): CredentialNeedingSetup[] {
-	const bySourceId = new Map((requirements?.credentials ?? []).map((c) => [c.id, c]));
-	return result.credentials.stubbed.flatMap((sourceId) => {
-		const requirement = bySourceId.get(sourceId);
-		const id = result.bindings.credentials[sourceId];
-		if (requirement === undefined || id === undefined) return [];
-		return [{ name: requirement.name, type: requirement.type, id }];
-	});
-}
-
-type DataTableOutcome = Pick<ImportResult, 'dataTables'>['dataTables'];
-
-/** The data tables that the workflow uses but that the import neither found nor created. */
-function missingDataTablesWarning(
-	outcome: DataTableOutcome,
-	requirements: PackageRequirements | undefined,
-): string | undefined {
-	const required = requirements?.dataTables ?? [];
-	const missing = required.length - outcome.matched - outcome.created;
-	if (missing <= 0) return undefined;
-	const names = uniqueSorted(required.map(({ name }) => name)).join(', ');
-	return `${missing} of the ${required.length} data table(s) that the workflow uses are not in the target project, and the import did not create them. The workflow uses: ${names}. Create the missing tables, then select them in the workflow.`;
-}
-
-/** What the import left out or created empty, so that the user can complete the copy. */
-export function importWarnings(
-	result: Pick<ImportResult, 'tags' | 'dataTables'>,
-	requirements: PackageRequirements | undefined,
-): string[] {
-	const warnings: string[] = [];
-	const skippedTags = uniqueSorted(result.tags.skipped);
-	if (skippedTags.length > 0) {
-		warnings.push(
-			`The import did not add ${skippedTags.length} tag(s), because this instance does not have them: ${skippedTags.join(', ')}.`,
-		);
-	}
-	if (result.dataTables.created > 0) {
-		warnings.push(
-			`The import created ${result.dataTables.created} empty data table(s) for the workflow. The package holds no rows.`,
-		);
-	}
-	const missingDataTables = missingDataTablesWarning(result.dataTables, requirements);
-	if (missingDataTables !== undefined) warnings.push(missingDataTables);
-	return warnings;
-}
-
-type ImportSummaryInput = {
-	result: Pick<ImportResult, 'workflows' | 'credentials' | 'bindings' | 'tags' | 'dataTables'>;
-	sourceWorkflowId: string;
-	requirements: PackageRequirements | undefined;
-	missingNodeTypes: readonly NodeTypeVersion[];
-};
-
-/** The outcome of importing a one-workflow package, as the import tool reports it. */
-export function summariseImport(input: ImportSummaryInput): ImportedWorkflowPackage {
-	const { result, sourceWorkflowId, requirements, missingNodeTypes } = input;
-	const workflow = result.workflows.find((w) => w.sourceWorkflowId === sourceWorkflowId);
-	if (workflow === undefined) {
-		throw new UnexpectedError('The import result does not include the workflow of the package', {
-			extra: { sourceWorkflowId },
-		});
-	}
-	return {
-		workflowId: workflow.localId,
-		workflowName: workflow.name,
-		created: workflow.status === 'created',
-		credentialsNeedingSetup: credentialsNeedingSetup(result, requirements),
-		missingNodeTypes: nodeTypeLabels(missingNodeTypes),
-		warnings: importWarnings(result, requirements),
-	};
 }

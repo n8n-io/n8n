@@ -5,9 +5,9 @@ import {
 	type AutomationRecommendationReason,
 	type AutomationRunTarget,
 } from '@n8n/api-types';
-import { STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
+import { isTriggerNodeType, STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 
-import type { AutomationNode, AutomationTrigger } from './automation-trigger';
+import { type AutomationNode, type AutomationTrigger, canStartAutomation } from './automation-trigger';
 
 /** What the model asked the card to say. */
 export type ProposalRequest = { title: string; why: string[]; cron?: string };
@@ -46,6 +46,17 @@ export const LOCAL_CARD_TARGET: AutomationRunTarget = {
 /** The nodes that run, in their order. Sticky notes and disabled nodes do nothing. */
 export function runningNodes(nodes: readonly AutomationNode[]): AutomationNode[] {
 	return nodes.filter((node) => node.type !== STICKY_NODE_TYPE && node.disabled !== true);
+}
+
+/**
+ * The node types that decide where the workflow runs. A trigger that cannot start the workflow
+ * on its own (manual, manual chat, evaluation, sub-workflow or error trigger) is left out, so
+ * that the recommendation does not count it as an always-on trigger.
+ */
+export function recommendationNodeTypes(nodes: readonly AutomationNode[]): string[] {
+	return runningNodes(nodes)
+		.map((node) => node.type)
+		.filter((type) => canStartAutomation(type) || !isTriggerNodeType(type));
 }
 
 /** The running nodes that the card can show as steps. A node without a type has no icon. */

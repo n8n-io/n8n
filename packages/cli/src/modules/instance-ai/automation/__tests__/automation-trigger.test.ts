@@ -1,5 +1,6 @@
 import {
 	type AutomationNode,
+	canStartAutomation,
 	classifyAutomationTrigger,
 	triggerKindOf,
 } from '../automation-trigger';
@@ -61,6 +62,29 @@ describe('triggerKindOf', () => {
 		'toString',
 	])('does not treat %j as a trigger of an automation', (type) => {
 		expect(triggerKindOf(type)).toBeUndefined();
+	});
+});
+
+describe('canStartAutomation', () => {
+	it.each([SCHEDULE, CRON, WEBHOOK, FORM, CHAT, SLACK_TRIGGER, EMAIL_IMAP])(
+		'is true for %s, which starts the workflow on its own',
+		(type) => {
+			expect(canStartAutomation(type)).toBe(true);
+		},
+	);
+
+	it.each([
+		MANUAL,
+		MANUAL_CHAT,
+		LEGACY_START,
+		EXECUTE_WORKFLOW_TRIGGER,
+		ERROR_TRIGGER,
+		EVALUATION_TRIGGER,
+		SLACK,
+		STICKY,
+		'',
+	])('is false for %j, which a person or n8n must start', (type) => {
+		expect(canStartAutomation(type)).toBe(false);
 	});
 });
 

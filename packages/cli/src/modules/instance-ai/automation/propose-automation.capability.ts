@@ -17,6 +17,7 @@ import {
 	type CapabilityCard,
 	type CapabilityCardPayload,
 	type CapabilityContext,
+	type CapabilitySurface,
 	type CapabilityToolDefinition,
 	defineCapability,
 } from '@/services/capabilities/capability';
@@ -46,7 +47,7 @@ const inputSchema = {
 		.max(200)
 		.optional()
 		.describe(
-			'Five-field cron expression of the schedule trigger, for example "0 8 * * 1-5". Leave it out for other triggers. When the Schedule Trigger has one cron rule, the card shows that rule. A cron that is not valid, or that differs from that rule, is ignored with a warning.',
+			'Five-field cron expression of the schedule trigger as you understand it, for example "0 8 * * 1-5". Leave it out for other triggers. The card shows only the schedule that n8n reads from the Schedule Trigger. When your cron differs from it, or n8n cannot show the schedule as one cron expression, the result has a warning.',
 		),
 	activate: z
 		.boolean()
@@ -73,8 +74,17 @@ const DESCRIPTION = [
 	'Offer to keep a workflow and turn it on, so that it runs on its own on this n8n instance.',
 	'Call it after you built and tested a workflow that the user wants to repeat (for example on a schedule, or each time a form, chat message, webhook or app event arrives), or when the user asks to automate a workflow.',
 	'Do not call it for a one-off job, or for a workflow that the user wants to run only by hand.',
-	'In the n8n Assistant the user answers on a card: turn it on, save it but leave it off, or not now. The result says if the workflow is kept and active.',
-].join(' ');
+];
+
+const DESCRIPTION_OF_SURFACE: Record<CapabilitySurface, string> = {
+	assistant:
+		'The user answers on a card: turn it on, save it but leave it off, or not now. Keeping an archived workflow restores it. The result says if the workflow is kept and active.',
+	// The built-in MCP tools do not act on archived workflows, so this tool does not restore them.
+	mcp: 'The workflow must be available in MCP and must not be archived. Set activate to true to turn it on after it is saved. The result says if the workflow is kept and active.',
+};
+
+const describeFor = (surface: CapabilitySurface) =>
+	[...DESCRIPTION, DESCRIPTION_OF_SURFACE[surface]].join(' ');
 
 const loadProposalService = async () => {
 	const { AutomationProposalService } = await lazyImport<typeof ProposalServiceModule>(
@@ -147,7 +157,7 @@ function buildTool(context: CapabilityContext): CapabilityToolDefinition<typeof 
 	return {
 		name: PROPOSE_AUTOMATION_CAPABILITY_NAME,
 		config: {
-			description: DESCRIPTION,
+			description: describeFor(context.surface),
 			inputSchema,
 			outputSchema: automationProposalResultSchema.shape,
 			annotations: {

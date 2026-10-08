@@ -1,11 +1,11 @@
 import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { AiBuilderTemporaryWorkflowRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { WorkflowProvenanceService } from '../provenance/workflow-provenance.service';
+import { AutomationTemporaryMarker } from './automation-temporary-marker';
 
 /** The fields of the stored workflow that `keep` reads. */
 export type KeptWorkflow = { id: string; name: string; isArchived: boolean; versionId: string };
@@ -19,8 +19,7 @@ export type KeptWorkflow = { id: string; name: string; isArchived: boolean; vers
 export class AutomationWorkflowKeeper {
 	constructor(
 		private readonly workflowService: WorkflowService,
-		private readonly temporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
-		private readonly provenanceService: WorkflowProvenanceService,
+		private readonly temporaryMarker: AutomationTemporaryMarker,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
@@ -32,7 +31,7 @@ export class AutomationWorkflowKeeper {
 	 * @throws UserError when the instance is read-only or the user cannot restore the workflow
 	 */
 	async keep(user: User, workflow: KeptWorkflow): Promise<string> {
-		const isTemporary = await this.temporaryWorkflowRepository.existsForWorkflow(workflow.id);
+		const isTemporary = await this.temporaryMarker.isMarked(workflow.id);
 		if (!workflow.isArchived && !isTemporary) return workflow.versionId;
 
 		if (this.instanceWriteAccess.isReadOnly()) {
@@ -41,7 +40,7 @@ export class AutomationWorkflowKeeper {
 			);
 		}
 		const versionId = workflow.isArchived ? await this.restore(user, workflow) : workflow.versionId;
-		if (isTemporary) await this.clearTemporaryMarker(user, workflow.id);
+		if (isTemporary) await this.temporaryMarker.clear(user, workflow.id);
 		return versionId;
 	}
 
@@ -54,12 +53,5 @@ export class AutomationWorkflowKeeper {
 			);
 		}
 		return restored.versionId;
-	}
-
-	/** Records the chat that built the workflow, then removes the marker that names the chat. */
-	private async clearTemporaryMarker(user: User, workflowId: string): Promise<void> {
-		const threadId = await this.temporaryWorkflowRepository.findThreadIdForWorkflow(workflowId);
-		if (threadId) await this.provenanceService.record(workflowId, threadId, user.id);
-		await this.temporaryWorkflowRepository.unmark(workflowId);
 	}
 }

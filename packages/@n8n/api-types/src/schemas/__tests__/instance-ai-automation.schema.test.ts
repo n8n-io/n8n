@@ -112,6 +112,7 @@ describe('automationProposalCardSchema', () => {
 		['a step without a type', { steps: [{ name: 'Step', type: '' }] }],
 		['an unknown trigger kind', { trigger: { kind: 'email' } }],
 		['an empty cron', { trigger: { kind: 'schedule', cron: '' } }],
+		['a cron over 100 characters', { trigger: { kind: 'schedule', cron: '0'.repeat(101) } }],
 		[
 			'a recommendation without reasons',
 			{ recommended: { targetId: 'local', kind: 'local', reasons: [] } },

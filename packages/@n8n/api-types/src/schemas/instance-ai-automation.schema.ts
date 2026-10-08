@@ -11,6 +11,8 @@ export const AUTOMATION_PROPOSAL_LIMITS = {
 	whyLength: 200,
 	steps: 12,
 	sharedWith: 10,
+	/** A five-field cron is short. The bound keeps long text from the trigger off the card. */
+	cronLength: 100,
 } as const;
 
 /**
@@ -83,10 +85,11 @@ export const automationProposalCardSchema = z.object({
 	trigger: z.object({
 		kind: automationTriggerKindSchema,
 		/**
-		 * Five-field cron expression of the schedule. When the Schedule Trigger has one cron rule,
-		 * this is that rule. Absent when the card cannot say when the workflow runs.
+		 * Five-field cron expression of the schedule, as the server reads it from the Schedule
+		 * Trigger. Never the text of the model. Absent when the card cannot say when the workflow
+		 * runs.
 		 */
-		cron: z.string().min(1).optional(),
+		cron: z.string().min(1).max(AUTOMATION_PROPOSAL_LIMITS.cronLength).optional(),
 	}),
 	/**
 	 * The first running nodes of the workflow in their order, for the node icons. Sticky notes and

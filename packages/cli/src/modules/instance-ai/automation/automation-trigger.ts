@@ -59,6 +59,12 @@ export function triggerKindOf(nodeType: string): AutomationTriggerKind | undefin
 	return nodeType.endsWith('Trigger') ? 'app-event' : 'other';
 }
 
+/** True for a node type that starts the workflow on its own when the workflow is active. */
+export function canStartAutomation(nodeType: string): boolean {
+	const kind = triggerKindOf(nodeType);
+	return kind !== undefined && kind !== 'manual';
+}
+
 /**
  * Finds what starts the workflow. The first enabled trigger that is not manual wins, because it
  * is the one that runs the automation. Disabled nodes cannot start a run, so they do not count.
