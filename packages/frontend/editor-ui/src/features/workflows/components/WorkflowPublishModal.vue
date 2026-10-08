@@ -4,18 +4,18 @@ import {
 	ref,
 	h,
 	onMounted,
-	onBeforeUnmount,
+	watch,
+	nextTick,
 	useTemplateRef,
 	type DeepReadonly,
 	type VNode,
 } from 'vue';
-import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
+import { N8nCallout, N8nButton, N8nDialog, N8nDialogBody, N8nLink } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@n8n/composables/useToast';
@@ -28,8 +28,18 @@ import WorkflowActivationErrorMessage from '@/features/workflows/components/Work
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
-const modalBus = createEventBus();
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[WORKFLOW_PUBLISH_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	if (uiStore.modalsById[WORKFLOW_PUBLISH_MODAL_KEY]?.open !== true) return;
+	uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -124,13 +134,20 @@ onMounted(() => {
 	if (!description.value && currentVersionData?.description) {
 		description.value = currentVersionData.description;
 	}
-
-	modalBus.on('opened', onModalOpened);
 });
 
-onBeforeUnmount(() => {
-	modalBus.off('opened', onModalOpened);
-});
+watch(
+	modalOpen,
+	(open) => {
+		if (!open) return;
+		void nextTick(() => {
+			void nextTick(() => {
+				onModalOpened();
+			});
+		});
+	},
+	{ immediate: true },
+);
 
 function findManagedOpenAiCredentialId(
 	usedCredentials: DeepReadonly<Record<string, IUsedCredential>>,
@@ -224,7 +241,7 @@ function onPublishSucceeded() {
 	});
 
 	// For now, just close the modal after successful activation
-	modalBus.emit('close');
+	closeDialog();
 }
 
 async function handlePublish() {
@@ -266,20 +283,16 @@ async function handlePublish() {
 </script>
 
 <template>
-	<Modal
-		max-width="500px"
-		max-height="85vh"
-		:name="WORKFLOW_PUBLISH_MODAL_KEY"
-		:center="true"
-		:show-close="true"
-		:close-on-click-modal="false"
-		:event-bus="modalBus"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:container-class="$style.dialog"
+		:header="i18n.baseText('workflows.publishModal.title')"
+		:close-on-overlay-click="false"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<N8nHeading size="xlarge">{{ i18n.baseText('workflows.publishModal.title') }}</N8nHeading>
-		</template>
-		<template #content>
-			<div :class="$style.content">
+		<N8nDialogBody>
+			<div :class="$style.content" data-test-id="workflowPublish-modal">
 				<N8nCallout
 					v-if="activeCalloutId === 'noTrigger'"
 					theme="danger"
@@ -305,7 +318,7 @@ async function handlePublish() {
 							<N8nLink
 								size="small"
 								:to="`/workflow/${workflowDocumentStore.workflowId}/${node.id}`"
-								@click="modalBus.emit('close')"
+								@click="closeDialog"
 								>{{ node.name }}</N8nLink
 							>
 						</li>
@@ -340,7 +353,7 @@ async function handlePublish() {
 						:disabled="publishing"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-publish-cancel-button"
-						@click="modalBus.emit('close')"
+						@click="closeDialog"
 					/>
 					<N8nButton
 						:disabled="isPublishDisabled"
@@ -351,15 +364,23 @@ async function handlePublish() {
 					/>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+.dialog {
+	display: flex;
+	flex-direction: column;
+	max-height: 85vh;
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	min-height: 0;
+	overflow-y: auto;
 }
 
 .actions {
