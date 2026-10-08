@@ -188,6 +188,27 @@ describe('createCasePipeline', () => {
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 
+	it("routes a build that read another build's workflow to framework_issue", async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), foreignWorkflowReads: ['other-wf'] },
+			lane,
+			buildDurationMs: 42,
+		};
+		const pipeline = createCasePipeline(makeDeps(makeOrchestrator(cached)));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(String(output.reasoning)).toContain('another build');
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
 	it('preserves agent metadata when a prior run failed', async () => {
 		const lane = makeLane();
 		const build = okBuild({

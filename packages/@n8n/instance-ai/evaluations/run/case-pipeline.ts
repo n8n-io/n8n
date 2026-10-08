@@ -21,7 +21,7 @@ import {
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
-import { buildFailedOnInfra } from '../harness/build-workflow';
+import { buildFailedOnInfra, notScoredReason } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import { selectScenarioWorkflowId } from '../harness/scenario-execution';
@@ -241,8 +241,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// grading against history the instance does not have. Checked BEFORE every other
 		// branch, and independently of `build.success`, because the biting case is a build
 		// that succeeded: `buildFailedOnInfra` returns false there, so the case would
-		// otherwise be scored as an agent failure on a premise that never existed.
-		if (build.priorRunFailed) {
+		// otherwise be scored as an agent failure on a premise that never existed. A read of
+		// another build's workflow takes the same route: the run did not start clean.
+		const notScored = notScoredReason(build);
+		if (notScored) {
 			const capturedAgent = agentRef ? await agentContextByKey.get(cacheKey) : undefined;
 			return await attachExpectations({
 				buildSuccess: build.success,
@@ -255,10 +257,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				// builder's baseline as a red.
 				incomplete: true,
 				score: 0,
-				reasoning: `Prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+				reasoning: `Not scored: ${notScored}`,
 				failureCategory: 'framework_issue',
 				attribution: 'framework_issue',
-				execErrors: [build.priorRunFailed],
+				execErrors: [notScored],
 				buildDurationMs,
 				...buildSpendFields,
 				execDurationMs: 0,

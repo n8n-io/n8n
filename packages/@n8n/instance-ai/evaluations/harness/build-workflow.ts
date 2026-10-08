@@ -71,6 +71,7 @@ import {
 	extractOutcomeFromEvents,
 	mergeSeededConversationMetrics,
 } from '../outcome/event-parser';
+import { findForeignWorkflowReads } from '../outcome/foreign-reads';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
@@ -78,6 +79,7 @@ import type {
 	BuildTimeout,
 	BuildTrace,
 	CapturedEvent,
+	CapturedToolCall,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenario,
@@ -333,6 +335,8 @@ export interface BuildResult {
 	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
 	 *  otherwise be scored as an agent failure. */
 	priorRunFailed?: string;
+	/** Workflows the agent read that this build neither created nor seeded. Not scored. */
+	foreignWorkflowReads?: string[];
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -342,6 +346,17 @@ export interface BuildResult {
 	 *  ordinary case; present even on a failed build, so the deterministic checks
 	 *  can report WHY nothing was created. */
 	credentialSetup?: CredentialSetupRunFacts;
+}
+
+/** Why a build's iteration stays out of scoring; undefined when it is scored. */
+export function notScoredReason(build: BuildResult): string | undefined {
+	if (build.priorRunFailed) {
+		return `prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`;
+	}
+	if (build.foreignWorkflowReads?.length) {
+		return `the agent read workflows another build made (${build.foreignWorkflowReads.join(', ')})`;
+	}
+	return undefined;
 }
 
 /**
@@ -599,6 +614,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		buildProject
 			? { buildProjectId: buildProject.projectId, buildUserId: buildProject.userId }
 			: {};
+	let parsedToolCalls: CapturedToolCall[] | undefined;
+	const foreignReadFields = () => {
+		const toolCalls = parsedToolCalls ?? extractOutcomeFromEvents(events).toolCalls;
+		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, restoredWorkflowIds);
+		if (foreignWorkflowReads.length === 0) return {};
+		logger.warn(
+			`  The agent read workflows another build made: ${foreignWorkflowReads.join(', ')}`,
+		);
+		return { foreignWorkflowReads };
+	};
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// Scenario seed tables are created empty before the build
@@ -1263,6 +1288,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
+		parsedToolCalls = eventOutcome.toolCalls;
 		// Restored workflows keep a seeded build scoreable/cleanable even if the
 		// live turn touches no workflow tool; live ids stay first (primary artifact).
 		const threadWorkflowIds = [
@@ -1335,6 +1361,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
 					...buildProjectFields(),
+					...foreignReadFields(),
 					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
@@ -1362,6 +1389,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
 				...buildProjectFields(),
+				...foreignReadFields(),
 				createdFolderIds: restoredFolderIds,
 				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
@@ -1412,6 +1440,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
@@ -1437,6 +1466,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,

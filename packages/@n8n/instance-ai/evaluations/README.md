@@ -860,6 +860,8 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 
 Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
 
+If the agent still reads a workflow that its build did not create or seed, the run is not scored: its rows and expectations are marked `framework_issue`, and the log names the workflow.
+
 ### Credentials
 
 By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.

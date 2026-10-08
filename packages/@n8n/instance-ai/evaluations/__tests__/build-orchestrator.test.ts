@@ -644,6 +644,25 @@ describe('createBuildOrchestrator', () => {
 		expect(verdicts?.[0].attribution).toBe('framework_issue');
 	});
 
+	it("does not judge expectations when the agent read another build's workflow", async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const building = vi.fn().mockResolvedValue(okBuild({ foreignWorkflowReads: ['other-wf'] }));
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['builds the digest'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts?.[0].incomplete).toBe(true);
+		expect(verdicts?.[0].reason).toContain('another build');
+		expect(verdicts?.[0].attribution).toBe('framework_issue');
+	});
+
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
 		const lane = makeLane(1, tracedBuild);

@@ -39,6 +39,7 @@ import { attributionForExpectation } from '../harness/attribution';
 import {
 	buildFailedOnInfra,
 	leakHaystackFor,
+	notScoredReason,
 	redactLocalRunSecrets,
 	searchableBuildText,
 	scrubLocalSecretsFromBuild,
@@ -476,11 +477,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// would still score on them.
 		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
 			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
-		if (build.priorRunFailed) {
-			const unjudged = allFailVerdicts(
-				collectExpectations(testCase),
-				`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
-			);
+		const notScored = notScoredReason(build);
+		if (notScored) {
+			const unjudged = allFailVerdicts(collectExpectations(testCase), `not judged — ${notScored}`);
 			// The row for this build is re-stamped `timeout` too, so the two agree.
 			buildExpectationsByKey.set(
 				key,
