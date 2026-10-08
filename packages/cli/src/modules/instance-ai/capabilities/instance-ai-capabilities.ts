@@ -2,7 +2,8 @@ import { Container } from '@n8n/di';
 
 import type { Capability } from '@/services/capabilities/capability';
 import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
-import { parseScheduleCapability } from '@/services/capabilities/parse-schedule.capability';
+
+import { parseScheduleCapability } from './parse-schedule.capability';
 
 /**
  * The capabilities that the instance-ai module owns. The module registers them in `init()`, so

@@ -1,12 +1,12 @@
 import { Container } from '@n8n/di';
 
 import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
-import { parseScheduleCapability } from '@/services/capabilities/parse-schedule.capability';
 
 import {
 	INSTANCE_AI_CAPABILITIES,
 	registerInstanceAiCapabilities,
 } from '../instance-ai-capabilities';
+import { parseScheduleCapability } from '../parse-schedule.capability';
 
 const namesOn = (registry: CapabilityRegistry, surface: 'mcp' | 'assistant') =>
 	registry.list(surface).map((capability) => capability.name);

@@ -48,6 +48,8 @@ describe('InstanceAiModule', () => {
 				.map((capability) => capability.name);
 
 		beforeEach(() => {
+			// init() gets these services from the container. Stub each new service that init() gets
+			// here. Without a stub, the test builds the real service, which can need a database.
 			mockInstance(InstanceCredentialBroker);
 			mockInstance(InstanceAiSettingsService);
 			mockInstance(SandboxSettingsService);

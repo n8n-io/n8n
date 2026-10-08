@@ -5,12 +5,11 @@ import fc from 'fast-check';
 import { mock } from 'vitest-mock-extended';
 
 import { toAssistantTool } from '@/modules/instance-ai/capabilities/assistant-capability-bridge';
-import { McpService } from '@/modules/mcp/mcp.service';
-
 import {
 	PARSE_SCHEDULE_MAX_TEXT_LENGTH,
 	parseScheduleCapability,
-} from '../parse-schedule.capability';
+} from '@/modules/instance-ai/capabilities/parse-schedule.capability';
+import { McpService } from '@/modules/mcp/mcp.service';
 
 type CallResult = {
 	content: { type: string; text?: string }[];
