@@ -3236,3 +3236,136 @@ describe('getThreadMemory', () => {
 		});
 	});
 });
+
+describe('InstanceAiService — personal integrations in a shared thread', () => {
+	type EnvironmentService = {
+		createExecutionEnvironment: (
+			user: User,
+			threadId: string,
+			runId: string,
+			abortSignal: AbortSignal,
+		) => Promise<unknown>;
+	} & Record<string, unknown>;
+
+	const gateway = {
+		isConnected: true,
+		getAvailableTools: () => [],
+		getStatus: () => ({ toolCategories: [] }),
+	};
+	const browser = { getAvailableTools: () => [], setDomainGate: vi.fn() };
+
+	/** A service that reaches the end of the environment setup, with a connected computer and browser. */
+	function makeService(accessScope: 'user' | 'project', browserUseEnabled: boolean) {
+		const service = Object.create(InstanceAiService.prototype) as EnvironmentService;
+		const context: Record<string, unknown> = {};
+		const forContext = vi.fn(() => ({ search: vi.fn() }));
+		const findMcpServer = vi.fn(() => browser);
+		const createContext = vi.fn(() => context);
+		Object.assign(service, {
+			areMcpConnectionsAvailable: vi.fn(() => false),
+			settingsService: {
+				getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, browserUseEnabled })),
+				getSandboxStatus: vi.fn(() => ({
+					enabled: true,
+					provider: 'n8n-sandbox',
+					workflowBuilderAvailable: true,
+					unavailableReason: null,
+				})),
+				isLocalGatewayDisabledForUser: vi.fn(async () => false),
+				getPermissions: vi.fn(() => ({})),
+			},
+			gatewayService: { findGateway: vi.fn(() => gateway), applyToolPolicy: vi.fn() },
+			aiService: { isProxyEnabled: vi.fn(() => false) },
+			adapterService: {
+				createContext,
+				getNodeDefinitionDirs: vi.fn(() => []),
+				resolveExperimentGates: vi.fn().mockResolvedValue({
+					configEvalsEnabled: false,
+					conversationHistoryEnabled: true,
+					progressiveBuildingEnabled: false,
+					conciseStyleEnabled: false,
+					nodeUsageEnabled: false,
+					nodeContextEnabled: false,
+					folderExplorationEnabled: false,
+					aiPreferencesEnabled: false,
+					setupPanelEnabled: false,
+				}),
+			},
+			conversationHistoryService: { forContext },
+			instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
+			modelService: { resolveAgentModelConfig: vi.fn(async () => 'model-1') },
+			systemAgents: {
+				findThread: vi.fn(async () => ({ projectId: 'project-1', accessScope, ownerId: 'user-1' })),
+			},
+			agentMemory: { getThread: vi.fn(async () => undefined) },
+			dbIterationLogStorage: {},
+			dbSnapshotStorage: {},
+			instanceAiConfig: {},
+			aiConfig: {},
+			defaultTimeZone: 'UTC',
+			eventBus: {},
+			logger: { warn: vi.fn() },
+			telemetry: { track: vi.fn() },
+			oauth2CallbackUrl: 'http://localhost/rest/oauth2-credential/callback',
+			webhookBaseUrl: 'http://localhost/webhook',
+			formBaseUrl: 'http://localhost/form',
+			setupPanelByThread: new Map(),
+			schedulePlannedTasks: vi.fn(),
+			domainAccessTrackersByThread: new Map(),
+			browserSessionService: { findMcpServer },
+			threadGrantRepo: { findKeys: vi.fn(async () => new Set<string>()) },
+			sandboxService: new InstanceAiSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
+				logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+				errorReporter: { error: vi.fn() } as unknown as ErrorReporter,
+				settingsService: {
+					resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
+					resolveN8nSandboxConfig: vi.fn(async () => ({})),
+				},
+				aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			}),
+			evalCredentialAllowlists: new EvalThreadCredentialAllowlistService(),
+			instanceAiErrorReporter: createInstanceAiErrorReporterMock(),
+			aiUsageService: { isParameterValueSharingAllowed: vi.fn(async () => true) },
+			creditService: { claimRunUsage: vi.fn(), ensureQuotaLockApplied: vi.fn(async () => {}) },
+		});
+		return { service, context, forContext, findMcpServer, createContext };
+	}
+
+	const start = async (service: EnvironmentService) =>
+		await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			new AbortController().signal,
+		);
+
+	it('gives a private thread the computer, the browser and the past chats of its owner', async () => {
+		const withGateway = makeService('user', false);
+		await start(withGateway.service);
+		expect(withGateway.context.localMcpServer).toBe(gateway);
+		expect(withGateway.forContext).toHaveBeenCalledWith('user-1', 'project-1', 'thread-1');
+
+		const withBrowser = makeService('user', true);
+		withBrowser.service.gatewayService = { findGateway: vi.fn(), applyToolPolicy: vi.fn() };
+		await start(withBrowser.service);
+		expect(withBrowser.context.localMcpServer).toBe(browser);
+	});
+
+	it('runs a shared thread without the computer, the browser or the past chats of its owner', async () => {
+		const { service, context, forContext, findMcpServer, createContext } = makeService(
+			'project',
+			true,
+		);
+
+		await start(service);
+
+		expect(context.localMcpServer).toBeUndefined();
+		expect(findMcpServer).not.toHaveBeenCalled();
+		expect(forContext).not.toHaveBeenCalled();
+		expect(createContext).toHaveBeenCalledWith(
+			fakeUser,
+			expect.objectContaining({ projectId: 'project-1', conversationHistory: undefined }),
+		);
+	});
+});

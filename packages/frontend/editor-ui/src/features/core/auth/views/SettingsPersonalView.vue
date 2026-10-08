@@ -25,6 +25,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
 import { confirmPasswordEventBus } from '../auth.eventBus';
+import ExperienceModeSwitch from '@/features/ai/instanceAi/experience/ExperienceModeSwitch.vue';
 
 import {
 	N8nAvatar,
@@ -512,6 +513,7 @@ onBeforeUnmount(() => {
 				</N8nInputLabel>
 			</div>
 		</div>
+		<ExperienceModeSwitch :is-collapsed="false" variant="settings" />
 		<div>
 			<N8nButton
 				float="right"

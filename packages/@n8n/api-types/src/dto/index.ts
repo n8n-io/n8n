@@ -42,6 +42,21 @@ export {
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
 
+export { LinkInstanceRequestDto } from './linked-instances/link-instance-request.dto';
+export { UpdateLinkedInstanceRequestDto } from './linked-instances/update-linked-instance-request.dto';
+export {
+	LINKED_INSTANCE_INPUT_MESSAGES,
+	LINKED_INSTANCE_MAX_URL_LENGTH,
+	LINKED_INSTANCE_STATUSES,
+	linkedInstanceNameSchema,
+	linkedInstanceRemoteProjectIdSchema,
+	linkedInstanceTokenSchema,
+	linkedInstanceUrlSchema,
+	type LinkedInstanceRemoteProject,
+	type LinkedInstanceStatus,
+	type LinkedInstanceSummary,
+} from './linked-instances/linked-instance.schema';
+
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 

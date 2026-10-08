@@ -114,8 +114,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 					id: threadId,
 					agentId,
 					projectId,
-					...access,
-					ownerId: access.ownerId ?? IsNull(),
+					// A shared thread keeps its owner, so an owner's access matches it on the owner.
+					...(access.ownerId
+						? { ownerId: access.ownerId }
+						: { accessScope: access.accessScope, ownerId: IsNull() }),
 				},
 				lock: isPostgres ? { mode: 'pessimistic_write' } : undefined,
 			});
@@ -302,21 +304,39 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
-	/** Top-level private sessions of one user with one agent, newest first. */
+	/** Top-level sessions that one user owns with one agent, private or shared, newest first. */
 	async findOwnedByAgent(
 		agentId: string,
 		ownerId: string,
 		options: { limit?: number } = {},
 	): Promise<AgentExecutionThread[]> {
 		return await this.find({
-			where: {
-				agentId,
-				ownerId,
-				accessScope: 'user',
-				parentThreadId: IsNull(),
-			},
+			where: { agentId, ownerId, parentThreadId: IsNull() },
 			order: { updatedAt: 'DESC', id: 'DESC' },
 			...(options.limit ? { take: options.limit } : {}),
+		});
+	}
+
+	/**
+	 * Top-level sessions of one agent that a user can open, newest first: the sessions
+	 * the user owns, and the sessions other owners shared in `sharedProjectIds`.
+	 */
+	async findVisibleByAgent(
+		agentId: string,
+		userId: string,
+		sharedProjectIds: string[],
+	): Promise<AgentExecutionThread[]> {
+		const owned = { agentId, ownerId: userId, parentThreadId: IsNull() };
+		const shared = {
+			agentId,
+			accessScope: 'project' as const,
+			ownerId: Not(IsNull()),
+			projectId: In(sharedProjectIds),
+			parentThreadId: IsNull(),
+		};
+		return await this.find({
+			where: sharedProjectIds.length > 0 ? [owned, shared] : owned,
+			order: { updatedAt: 'DESC', id: 'DESC' },
 		});
 	}
 
@@ -330,18 +350,23 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return rows.map(({ id }) => id);
 	}
 
-	/** One page of a user's sessions with an agent, newest first, for keyset pagination. */
-	async findOwnedHistoryPage(
+	/**
+	 * One page of the sessions with an agent that a user can open, newest first, for keyset
+	 * pagination. Same rule as `findVisibleByAgent`.
+	 */
+	async findVisibleHistoryPage(
 		agentId: string,
-		ownerId: string,
-		limit: number,
-		search?: string,
-		before?: { updatedAt: Date; id: string },
+		viewer: { userId: string; sharedProjectIds: string[] },
+		page: { limit: number; search?: string; before?: { updatedAt: Date; id: string } },
 	): Promise<AgentExecutionThread[]> {
+		const { limit, search, before } = page;
+		const visible =
+			viewer.sharedProjectIds.length > 0
+				? "(thread.ownerId = :ownerId OR (thread.accessScope = 'project' AND thread.ownerId IS NOT NULL AND thread.projectId IN (:...sharedProjectIds)))"
+				: 'thread.ownerId = :ownerId';
 		const query = this.createQueryBuilder('thread')
 			.where('thread.agentId = :agentId', { agentId })
-			.andWhere('thread.ownerId = :ownerId', { ownerId })
-			.andWhere("thread.accessScope = 'user'")
+			.andWhere(visible, { ownerId: viewer.userId, sharedProjectIds: viewer.sharedProjectIds })
 			.andWhere('thread.parentThreadId IS NULL');
 		if (search?.trim()) {
 			query.andWhere('LOWER(thread.title) LIKE :search', {
@@ -374,12 +399,36 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	/** A session that the user owns, private or shared. */
 	async findOwnedById(
 		agentId: string,
 		ownerId: string,
 		threadId: string,
 	): Promise<AgentExecutionThread | null> {
-		return await this.findOneBy({ id: threadId, agentId, ownerId, accessScope: 'user' });
+		return await this.findOneBy({ id: threadId, agentId, ownerId });
+	}
+
+	/**
+	 * Share a private session with its project. The session keeps its owner. Returns false
+	 * when the session is not a private session of this owner.
+	 */
+	async shareWithProject(threadId: string, ownerId: string): Promise<boolean> {
+		const result = await this.update(
+			{ id: threadId, ownerId, accessScope: 'user', parentThreadId: IsNull() },
+			{ accessScope: 'project' },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** The shared sessions of an agent among `threadIds`. */
+	async findSharedByIds(agentId: string, threadIds: string[]): Promise<AgentExecutionThread[]> {
+		if (threadIds.length === 0) return [];
+		return await this.findBy({
+			id: In(threadIds),
+			agentId,
+			accessScope: 'project',
+			ownerId: Not(IsNull()),
+		});
 	}
 
 	async updateOwned(
@@ -444,9 +493,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
+			// A shared session keeps its owner, so only the owner deletes it.
 			where: [
-				{ id: threadId, projectId, agentId, accessScope: 'project' },
-				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+				{ id: threadId, projectId, agentId, accessScope: 'project', ownerId: IsNull() },
+				{ id: threadId, projectId, agentId, ownerId: userId },
 			],
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,

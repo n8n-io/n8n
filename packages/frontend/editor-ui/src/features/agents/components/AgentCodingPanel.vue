@@ -4,6 +4,7 @@ import { useIntervalFn } from '@vueuse/core';
 import {
 	AgentCodingConfigSchema,
 	N8N_CODING_DEFAULTS,
+	defaultCodingCheckTimeoutMinutes,
 	type AgentCodingConfig,
 	type AgentCodingStatus,
 } from '@n8n/api-types';
@@ -47,12 +48,16 @@ const setupCommand = ref(N8N_CODING_DEFAULTS.setupCommand);
 const runCommand = ref(N8N_CODING_DEFAULTS.runCommand);
 const checkCommand = ref(N8N_CODING_DEFAULTS.checkCommand);
 const port = ref(String(N8N_CODING_DEFAULTS.port));
+// Empty means the default limit of the repository, which the placeholder shows.
+const checkTimeoutMinutes = ref(String(N8N_CODING_DEFAULTS.checkTimeoutMinutes));
 const labels = computed(() => ({
 	not_started: i18n.baseText('agents.coding.status.notStarted'),
 	cloning: i18n.baseText('agents.coding.status.cloning'),
 	installing: i18n.baseText('agents.coding.status.installing'),
 	ready: i18n.baseText('agents.coding.status.ready'),
 	error: i18n.baseText('agents.coding.status.error'),
+	stopped: i18n.baseText('agents.coding.status.stopped'),
+	restarted: i18n.baseText('agents.coding.status.restarted'),
 }));
 const repositoryName = computed(() =>
 	props.config?.repositoryUrl
@@ -96,6 +101,7 @@ function configure() {
 		runCommand.value = config.runCommand;
 		checkCommand.value = config.checkCommand;
 		port.value = String(config.port);
+		checkTimeoutMinutes.value = config.checkTimeoutMinutes?.toString() ?? '';
 	}
 	error.value = '';
 	open.value = true;
@@ -109,11 +115,13 @@ watch(
 			runCommand.value = N8N_CODING_DEFAULTS.runCommand;
 			checkCommand.value = N8N_CODING_DEFAULTS.checkCommand;
 			port.value = String(N8N_CODING_DEFAULTS.port);
+			checkTimeoutMinutes.value = String(N8N_CODING_DEFAULTS.checkTimeoutMinutes);
 		} else {
 			setupCommand.value = 'pnpm install';
 			runCommand.value = 'pnpm dev --host 0.0.0.0';
 			checkCommand.value = '';
 			port.value = '3000';
+			checkTimeoutMinutes.value = '';
 			branch.value = '';
 		}
 	},
@@ -130,6 +138,9 @@ async function save() {
 		runCommand: runCommand.value,
 		checkCommand: checkCommand.value,
 		port: Number(port.value),
+		checkTimeoutMinutes: String(checkTimeoutMinutes.value).trim()
+			? Number(checkTimeoutMinutes.value)
+			: undefined,
 	});
 	if (!parsed.success) {
 		error.value = parsed.error.issues.map((issue) => issue.message).join('. ');
@@ -230,6 +241,16 @@ async function save() {
 						/></N8nInputLabel>
 						<N8nInputLabel :label="i18n.baseText('agents.coding.checkCommand')"
 							><N8nInput v-model="checkCommand"
+						/></N8nInputLabel>
+						<N8nInputLabel
+							:label="i18n.baseText('agents.coding.checkTimeout')"
+							input-name="agent-coding-check-timeout"
+							><N8nInput
+								id="agent-coding-check-timeout"
+								v-model="checkTimeoutMinutes"
+								type="number"
+								:placeholder="String(defaultCodingCheckTimeoutMinutes(repositoryUrl))"
+								data-testid="agent-coding-check-timeout"
 						/></N8nInputLabel>
 						<N8nInputLabel :label="i18n.baseText('agents.coding.previewPort')"
 							><N8nInput v-model="port" type="number"

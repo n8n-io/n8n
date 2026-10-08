@@ -63,7 +63,8 @@ type EndpointGroup =
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'linked-instances';
 
 type ModuleName =
 	| 'agents'
@@ -85,7 +86,8 @@ type ModuleName =
 	| 'token-exchange'
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'linked-instances';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

@@ -166,6 +166,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
+			// Experience modes are on only while the Assistant is on. The next fetch replaces this value.
+			experience: prev?.experience && {
+				...prev.experience,
+				enabled: prev.experience.enabled && adminRes.enabled,
+			},
 		};
 		settingsStore.moduleSettings = {
 			...ms,

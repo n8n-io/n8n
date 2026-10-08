@@ -255,6 +255,31 @@ function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPer
 	return messages;
 }
 
+type AnswerAuthor = Pick<AgentPersistedMessageContentPart, 'approvedBy' | 'declinedBy'>;
+
+/** Who answered each suspended tool call, from the recorded answers. A later answer wins. */
+function answerAuthorsByToolCall(executions: ExecutionTranscript[]): Map<string, AnswerAuthor> {
+	const answers = new Map<string, AnswerAuthor>();
+	for (const event of executions.flatMap((execution) => execution.timeline ?? [])) {
+		if (event.type !== 'hitl-response' || !event.respondedBy) continue;
+		const author = { id: event.respondedBy.id, name: event.respondedBy.name };
+		const declined = isRecord(event.response) && event.response.approved === false;
+		answers.set(event.toolCallId, declined ? { declinedBy: author } : { approvedBy: author });
+	}
+	return answers;
+}
+
+function applyAnswerAuthors(
+	messages: AgentPersistedMessageDto[],
+	executions: ExecutionTranscript[],
+): void {
+	const answers = answerAuthorsByToolCall(executions);
+	if (answers.size === 0) return;
+	for (const part of messages.flatMap((message) => message.content)) {
+		if (isToolCallWithId(part)) Object.assign(part, answers.get(part.toolCallId));
+	}
+}
+
 export function executionsToMessagesDto(
 	executions: ExecutionTranscript[],
 ): AgentPersistedMessageDto[] {
@@ -293,6 +318,7 @@ export function executionsToMessagesDto(
 	for (const [message, duplicateIndexes] of duplicatePartIndexesByMessage) {
 		message.content = message.content.filter((_, index) => !duplicateIndexes.has(index));
 	}
+	applyAnswerAuthors(messages, executions);
 
 	return messages.filter(
 		(message) =>

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
+import { automationProposalCardSchema } from './instance-ai-automation.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
@@ -968,6 +969,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders the "waiting for a test request" card with the armed test URLs',
 		),
+	automationProposal: automationProposalCardSchema
+		.optional()
+		.describe('When present, renders the card that offers to keep the workflow and turn it on'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -2168,6 +2172,18 @@ export type InstanceAiSSEConnectionState =
 // Thread Inspector types (debug panel — raw agent memory inspection)
 // ---------------------------------------------------------------------------
 
+/** The team project that the owner shared a thread with. */
+export interface InstanceAiThreadSharedWith {
+	projectId: string;
+	projectName: string;
+}
+
+/** The owner of a shared thread. Every turn of the thread runs as this user. */
+export interface InstanceAiThreadOwner {
+	id: string;
+	name: string;
+}
+
 export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	id: string;
 	title?: string;
@@ -2176,6 +2192,15 @@ export interface InstanceAiThreadInfo extends InstanceAiThreadOverview {
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
+	/** Set when the owner shared the thread. Members of the project can read it and answer its cards. */
+	sharedWith?: InstanceAiThreadSharedWith;
+	/** Set on a shared thread. Only this user can send messages to it. */
+	owner?: InstanceAiThreadOwner;
+}
+
+/** Response of `POST /instance-ai/threads/:threadId/share`. */
+export interface InstanceAiShareThreadResponse {
+	thread: InstanceAiThreadInfo;
 }
 
 export interface InstanceAiThreadListResponse {

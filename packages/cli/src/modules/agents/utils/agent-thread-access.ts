@@ -45,8 +45,15 @@ export function canContinueThreadInN8nChat(
 	);
 }
 
+/**
+ * A thread that its owner shared with the thread's project. Teammates can read it.
+ * Other project threads (for example chat integrations) have no owner.
+ */
+export function isSharedThread(thread: Pick<AgentExecutionThread, 'accessScope' | 'ownerId'>) {
+	return thread.accessScope === 'project' && thread.ownerId !== null;
+}
+
+/** A shared thread keeps its owner, so only the owner continues it, as before the share. */
 export function canUseTopLevelDraftThread(thread: AgentExecutionThread, userId: string): boolean {
-	return (
-		thread.accessScope === 'user' && thread.ownerId === userId && thread.parentThreadId === null
-	);
+	return thread.ownerId === userId && thread.parentThreadId === null;
 }

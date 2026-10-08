@@ -323,3 +323,88 @@ describe('getInfo()', () => {
 		expect(info.provider).toBe('n8n-sandbox');
 	});
 });
+
+describe('getPortRoute()', () => {
+	it('returns the service route to the port without the API key', async () => {
+		const apiKey = `test-key-${crypto.randomUUID()}`;
+		const sandbox = new N8nSandboxServiceSandbox({ apiKey, serviceUrl: 'https://sandbox.test' });
+
+		const route = await sandbox.getPortRoute(5173);
+
+		expect(route).toEqual({
+			serviceUrl: 'https://sandbox.test',
+			path: '/sandboxes/sb-123/ports/5173',
+		});
+		expect(JSON.stringify(route)).not.toContain(apiKey);
+	});
+
+	it('starts the sandbox once and reuses it for later routes', async () => {
+		const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
+
+		await sandbox.getPortRoute(3000);
+		const second = await sandbox.getPortRoute(8080);
+
+		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
+		expect(second.path).toBe('/sandboxes/sb-123/ports/8080');
+	});
+
+	it('names the configured sandbox id in the path', async () => {
+		const id = '44444444-4444-4444-8444-444444444444';
+		mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id }));
+		const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), id });
+
+		const route = await sandbox.getPortRoute(5678);
+
+		expect(route.path).toBe(`/sandboxes/${id}/ports/5678`);
+	});
+
+	it('trims spaces and trailing slashes from the service URL', async () => {
+		const sandbox = new N8nSandboxServiceSandbox({
+			...makeDefaultOptions(),
+			serviceUrl: '  https://sandbox.test/base//  ',
+		});
+
+		const route = await sandbox.getPortRoute(5173);
+
+		expect(route.serviceUrl).toBe('https://sandbox.test/base');
+	});
+
+	it.each([1, 65_535])('accepts the boundary port %d', async (port) => {
+		const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
+
+		await expect(sandbox.getPortRoute(port)).resolves.toEqual(
+			expect.objectContaining({ path: `/sandboxes/sb-123/ports/${port}` }),
+		);
+	});
+
+	it.each([0, -1, 65_536, 80.5, Number.NaN, Number.POSITIVE_INFINITY])(
+		'rejects port %d without starting the sandbox',
+		async (port) => {
+			const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
+
+			await expect(sandbox.getPortRoute(port)).rejects.toThrow(
+				'Sandbox port must be a whole number from 1 to 65535',
+			);
+			expect(mockCreateSandbox).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([undefined, '', '  ', '/'])(
+		'rejects a missing service URL (%j) without starting the sandbox',
+		async (serviceUrl) => {
+			const sandbox = new N8nSandboxServiceSandbox({ apiKey: 'key', serviceUrl });
+
+			await expect(sandbox.getPortRoute(5173)).rejects.toThrow(
+				'Sandbox service URL is not configured',
+			);
+			expect(mockCreateSandbox).not.toHaveBeenCalled();
+		},
+	);
+
+	it('fails when the sandbox cannot start', async () => {
+		mockCreateSandbox.mockRejectedValue(new SandboxServiceError('unavailable', 503));
+		const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
+
+		await expect(sandbox.getPortRoute(5173)).rejects.toThrow('unavailable');
+	});
+});

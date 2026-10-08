@@ -54,8 +54,13 @@ That divergence is exactly why this project exists.
 
 | File | Role |
 | --- | --- |
-| `mutate.mjs` | The whole engine. Runs Stryker over a package and emits an actionable summary. Exposed as `pnpm mutate`. |
-| `mutate.test.mjs` | Unit tests for its pure helpers (`node --test 'scripts/mutation-health/*.test.mjs'`). |
+| `mutate.mjs` | The entry point, exposed as `pnpm mutate`. Reads the command line, plans the runs, runs Stryker and prints the summary. |
+| `plan.mjs`, `targets.mjs` | What a run mutates: targets, diff ranges, test files and which packages can be scored. |
+| `stryker.mjs` | How a run starts: the run config, the Stryker process and signal handling. |
+| `sandbox-mirror.mjs` | Where the sandbox goes. See [Sandbox runs](#sandbox-runs). |
+| `summary.mjs` | Scoring, the gate and `summary.json`. |
+| `vitest-compat.mjs`, `vitest-compat-runner.mjs` | The `vitest-compat` Stryker test runner. See [Vitest 5](#vitest-5). |
+| `*.test.mjs`, `test-doubles.mjs` | Unit tests (`node --test scripts/mutation-health/*.test.mjs`). They start no Stryker run. CI runs them in the "Workflow scripts" job, which installs only `.github/scripts`, so a test must not need a root dependency such as Stryker. Inject a stand-in, or skip the test when the dependency is missing. |
 | `stryker.default.mjs` | Shared Stryker config for any vitest package. A package that needs special handling ships its own `stryker.config.mjs`, which `mutate.mjs` prefers. |
 | `stryker.cli.mjs` | The default plus `vitest.related: false`, used for `packages/cli` targets. See [Scoping the tests](#scoping-the-tests-with---test-files). |
 
@@ -63,6 +68,10 @@ Outputs land in `<package>/reports/mutation/` (gitignored):
 
 - `raw.json` — the full Stryker Mutation Testing Elements report (600 KB+; don't read it directly).
 - `summary.json` — the compact actionable summary: every survivor's location, mutator, replacement, and covering tests. **This is the file to read.**
+- `stryker.run.json` — the exact config the tool gave Stryker. Read it when a run does not do what
+  you expect. It can name the sandbox mirror (see [Sandbox runs](#sandbox-runs)), which is gone
+  after the run. To repeat a run, run `pnpm mutate` again with the same arguments, not
+  `stryker run` on this file.
 
 ## Usage
 
@@ -86,27 +95,45 @@ pnpm mutate src/cron.ts --package-dir packages/workflow
 # One file, scoped to the tests that must kill its mutants.
 pnpm mutate packages/cli/src/credentials/external-secrets.utils.ts:32-68 \
   --test-files packages/cli/src/credentials/__tests__/external-secrets.utils.test.ts
+
+# A package whose `test` script does not run vitest: name the test command.
+pnpm mutate packages/quality/testing/playwright/coverage-options.ts \
+  --test-files coverage-options.test.ts --test-command 'pnpm exec vitest run'
 ```
 
 Exit codes: `0` gate passed · `1` gate failed (summary.json still written — this is the
-iterate signal) · `2` usage error · `3` Stryker could not run. A toolchain failure is
-**never** `1`, so a broken checkout can't be mistaken for a score of zero.
+iterate signal) · `2` usage or config error · `3` Stryker could not run · `130` / `143` the run
+was cancelled. A toolchain failure is **never** `1`, so a broken checkout can't be mistaken for a
+score of zero.
 
 ### Why `--diff` is fast
 
-Two things do the work:
+Three things do the work:
 
 1. **Patch scoping.** Stryker's mutation-range syntax (`file.ts:13-16`) means only the mutants
    inside your changed lines are generated. You're scored on the lines you touched, not on
    inherited debt.
-2. **One dry run per package.** Targets are comma-joined into a single `--mutate` argument.
-   Repeated `--mutate` flags silently *overwrite* each other in Stryker's CLI, so comma-joining
-   is the only way to batch — and it means a package pays for its dry run once, not once per file.
+2. **One dry run per package.** All the targets of a package go into one Stryker run, so a
+   package pays for its dry run once, not once per file.
+3. **Per-test coverage.** The default runner records which tests cover each mutant during the
+   dry run. Each mutant then runs only those tests, in a Vitest process that stays alive
+   between mutants.
 
-On top of that, Stryker's vitest runner only loads the tests *related* to the mutated files, so
-cost tracks the related suite rather than package size. Measured end-to-end, whole-file:
-`@n8n/decorators` 1s · `@n8n/scheduler` 3s · `packages/workflow` 13s · `nodes-base` 26s ·
-`packages/cli` 88s. Line-scoping cuts these further.
+On top of that, Stryker's vitest runner loads only the tests *related* to the mutated files, so
+cost tracks the related suite rather than package size.
+
+Measured with the sandbox runs of this tool (Vitest 5.0.1, 4 workers):
+
+| Target | Mutants | Default runner | Command runner |
+| --- | --- | --- | --- |
+| `@n8n/instance-ai` `utils/model-config-id.ts` | 38 | 5–11 s | 16 s |
+| `@n8n/scheduler` `core/clock-skew.ts` | 15 | 5 s | — |
+| `@n8n/instance-ai` `automation/schedule-phrase.ts` | 350 | 54 s | 11 min 45 s ¹ |
+| `packages/cli` `credentials/external-secrets.utils.ts:32-68` | 11 | 26 s | — |
+
+¹ Measured with 2 workers. Both runners found the same 8 survivors.
+
+A `packages/cli` run spends most of its time on the sandbox copy and the cli test setup.
 
 ### Scoping the tests with `--test-files`
 
@@ -115,13 +142,16 @@ walks the import graph of the mutated file and runs every test file that reaches
 right default for most packages, and it is what keeps cost tracking the related suite rather than
 package size.
 
-`--test-files` replaces that discovery with an explicit list. The value goes to Stryker's
-[`testFiles`](https://stryker-mutator.io/docs/stryker-js/configuration/#testfiles-string) config
-field, so only those files run — which also answers a sharper question: can this module's *own*
-unit tests kill its mutants, without help from the rest of the suite?
+`--test-files` replaces that discovery with an explicit list. With the default runner the list
+goes to Stryker's [`testFiles`](https://stryker-mutator.io/docs/stryker-js/configuration/#testfiles-string)
+config field, so only those files run. With `--test-command` the files go onto the end of the
+command, because the command runner does not accept `testFiles`. The list also answers a
+sharper question: can this module's *own* unit tests kill its mutants, without help from the
+rest of the suite?
 
 The flag repeats and it also takes a comma-separated list. Paths may be repo-relative (what you
-type) or package-relative (what Stryker matches); `mutate.mjs` converts them. Globs work.
+type) or package-relative (what Stryker matches); `mutate.mjs` converts them. Globs work with the
+default runner. A test command gets each path as one quoted argument, so a glob is not expanded.
 
 ```bash
 pnpm mutate packages/@n8n/crdt/src/utils.ts --test-files packages/@n8n/crdt/src/__tests__/utils.test.ts
@@ -145,38 +175,83 @@ Mutating packages/cli needs --test-files.
 ```
 
 Those runs also get `stryker.cli.mjs` instead of the shared default — same settings, with
-`vitest.related` turned off, because the explicit list already decides the scope. With it, the
-example above runs its 36-test file and finishes in seconds.
+`vitest.related` turned off, because the explicit list already decides the scope.
 
 In diff mode, the changed CLI test files provide the same explicit list. If a
 CLI patch changes source without changing a test, the command fails before
 Stryker starts. Add or update a covering test, or run a named target with the
 existing covering tests passed through `--test-files`.
 
-### In-place mutation
+### Test runners
 
-Runs use Stryker's `--inPlace`. Its default sandbox copy breaks on any package whose vitest
-config resolves a workspace dependency through a path alias — the alias doesn't survive the
-copy, and `packages/cli` dies on `ERR_LOAD_URL … .stryker-tmp/@n8n/backend-test-utils`.
+| Runner | When | How it runs a mutant | Coverage in the summary |
+| --- | --- | --- | --- |
+| `vitest-compat` | By default, for every config that uses the `vitest` runner | Runs only the tests that cover the mutant, in a Vitest process that stays alive | Yes |
+| `command` | With `--test-command <cmd>` | Runs `<cmd> <test files>` in a new shell for each mutant | No (`cov n/a`) |
 
-Stryker restores your files on a clean exit and on `Ctrl-C`, but not after a crash, a timeout or
-a `SIGTERM` — and its preprocessing reaches past the mutate targets, so a target-only snapshot
-left mutated files behind.
+Use `--test-command` only for a package whose `test` script does not run vitest, such as the
+playwright package (`test:unit` runs its unit tests). The command runner has no per-test
+coverage, so:
 
-`mutate.mjs` therefore snapshots the **whole working tree** before the run:
+- every mutant runs every named test file, and pays the start-up time of the command;
+- `NoCoverage` never appears: a mutant that no test reaches is `Survived`, which also fails the gate;
+- `coveringTests` in `summary.json` is empty;
+- a command that finds no test file fails the dry run. The tool records it as a score-0 red
+  result, as it does when the vitest runner finds no test.
 
-- the exact bytes of every tracked file that is already dirty, plus every target. In `--diff`
-  mode those files hold *uncommitted work*, so `git checkout --` is not a safe undo.
-- the dirty set itself. Anything dirty *after* the run that was clean before it was changed by
-  Stryker, and git holds its pre-run state, so `git checkout --` is the right undo there.
+Name the test files with `--test-files`. Without them the command runs the package's whole
+suite for each mutant. `--test-command` needs a single target, so it does not combine with
+`--diff`.
 
-One cleanup routine restores that snapshot and deletes every `stryker-setup-*.js` the vitest
-runner left under the repo root. It is idempotent and registered on every exit path: the usual
-one, an uncaught exception, `SIGINT` and `SIGTERM`. A cancelled run exits `130` (`143` for
-`SIGTERM`) with a clean `git status`.
+## Vitest 5
 
-One caveat: files you edit in another terminal *while a run is in flight* look like Stryker's
-work and are reverted. Don't edit the repo during a run.
+`@stryker-mutator/vitest-runner` 10.0.0 is tested against Vitest 4.1. The repo uses Vitest 5.
+With the plain runner every mutant survived, and Stryker printed `Ran 0.00 tests per mutant`.
+The cause is the test filter. For each mutant the runner runs only the tests that cover it, and it
+selects them with a `testNamePattern` regex built from names that join the suite and the test
+with a space (`suite test`). Vitest 4 matched the pattern against names in that form. Vitest 5
+matches it against `fullTestName`, which joins them with ` > ` (`suite > test`). The pattern then
+misses every test inside a `describe`, so no test runs. `coverageAnalysis: 'off'` and `'all'` do
+not help: the runner records per-test coverage in each dry run, and Stryker then sends the same
+per-test filter.
+
+`vitest-compat-runner.mjs` is a small Stryker plugin that wraps the runner. Before Vitest starts,
+it changes each space in the pattern to "space or ` > `". It makes one more change: a test file
+that throws on import fails the dry run with that file's error. The plain runner drops such a
+file without an error, and the run then reads as "no covering tests".
+
+`mutate.mjs` gives the `vitest-compat` runner to every config that uses `vitest`, including
+the package-local configs of `packages/workflow` and `@n8n/scheduler`. Remove the name fix when
+the runner supports Vitest 5.
+
+## Sandbox runs
+
+Every run uses Stryker's sandbox: Stryker copies the package and mutates the copy, never your
+files. Nothing is restored after a run, and you can keep working in the repo while a run is in
+flight.
+
+The default sandbox sits two levels below the package (`<package>/.stryker-tmp/sandbox-*/`). A
+config path that leaves the package then points to the wrong place. Examples are the cli aliases
+`../@n8n/telemetry/src` and `../@n8n/mcp-apps/src/server`, and the `@nodes-testing` alias of
+`nodes-base` and `nodes-langchain`. Stryker corrects such paths in `tsconfig.json`, but not in a
+vite or vitest config.
+
+`mutate.mjs` therefore puts the sandbox in a **mirror** of the repo under `.stryker-tmp/` at the
+repo root (gitignored). The mirror has real directories along the package's path, with a symbolic
+link to each real entry beside that path. The sandbox has the same depth as the package, so `..`
+from the sandbox reaches the same files as `..` from the package. Stryker's tsconfig correction is
+turned off for these runs, because the paths are already right.
+
+After each run Stryker removes its sandbox and the tool removes the mirror. The removal unlinks
+each link and never follows one, so it never deletes a real file. A crash can leave a
+`.stryker-tmp/mirror-*` directory behind: it holds only directories and links, and you can delete
+it.
+
+The tool refuses a config that turns on Stryker's in place mode, with exit `2`.
+
+Results that Stryker keeps for `incremental` runs go to a file for each runner (for example
+`stryker-incremental.vitest-compat.json`). The runners name tests differently, so their results do
+not mix. This also drops the results that the plain runner recorded under Vitest 5.
 
 ## Which packages can be scored
 
@@ -184,6 +259,9 @@ Any package whose `test` script runs **vitest** — which, since the Jest migrat
 of them, including `nodes-base`, `nodes-langchain`, `cli` and `db`. `--diff` derives eligibility
 per file and prints a one-line reason for anything it skips; there is no curated list to
 maintain.
+
+A package whose `test` script does not run vitest, such as the playwright package, can be scored
+as a named target with [`--test-command`](#test-runners).
 
 Not scored:
 
@@ -201,7 +279,7 @@ A run passes only when **both**:
 1. Mutation score meets `STRYKER_THRESHOLD` (default `80`), **and**
 2. Zero `Survived` / `NoCoverage` mutants remain — every unkilled mutant must be explicitly justified as `Ignored` via a `// Stryker disable next-line <Mutator>: <reason>` comment in the source.
 
-Stryker excludes `Ignored` mutants from both numerator and denominator of the score (see `scoreFromCounts` in `mutate.mjs`), so marking a genuine equivalent as ignored is **not** padding — it's the documented mechanism for "this mutant is equivalent / not behaviour-bearing, here's why". The score becomes a coarse floor; the real gate is "no unjustified survivors". This stops agents from padding the suite with trivial tests to clear `80%` while leaving real behaviour gaps unasserted. See [DEVP-442](https://linear.app/n8n/issue/DEVP-442) for the motivation.
+Stryker excludes `Ignored` mutants from both numerator and denominator of the score (see `scoreFromCounts` in `summary.mjs`), so marking a genuine equivalent as ignored is **not** padding — it's the documented mechanism for "this mutant is equivalent / not behaviour-bearing, here's why". The score becomes a coarse floor; the real gate is "no unjustified survivors". This stops agents from padding the suite with trivial tests to clear `80%` while leaving real behaviour gaps unasserted. See [DEVP-442](https://linear.app/n8n/issue/DEVP-442) for the motivation.
 
 `summary.json` surfaces every `Ignored` mutant alongside its disable-comment reason so reviewers can spot-check the justifications — those become the high-signal review artifact rather than N padding tests.
 

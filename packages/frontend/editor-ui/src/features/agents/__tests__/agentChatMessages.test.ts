@@ -279,14 +279,25 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 			},
 		];
 
-		const [assistant] = convertDbMessages(dbMessages);
+		const messages = convertDbMessages(dbMessages);
 
-		expect(assistant.content).toBe('Before the card.After the card.');
-		expect(assistant.renderParts).toEqual([
-			{ type: 'text', text: 'Before the card.' },
-			{ type: 'interactive', toolCallId: 'card-1' },
-			{ type: 'text', text: 'After the card.' },
+		// Text and the card call map to separate messages in persisted order.
+		expect(messages.map((message) => message.content)).toEqual([
+			'Before the card.',
+			'',
+			'After the card.',
 		]);
+		expect(messages[1].renderParts).toEqual([{ type: 'interactive', toolCallId: 'card-1' }]);
+
+		// The card renders in the tool run, between the two texts.
+		const groups = buildDisplayGroups(messages);
+		expect(groups).toHaveLength(2);
+		expect(groups[0]).toMatchObject({ kind: 'message', message: { content: 'Before the card.' } });
+		expect(groups[1]).toMatchObject({
+			kind: 'toolRun',
+			interactives: [{ toolCallId: 'card-1' }],
+			finalMessage: { content: 'After the card.' },
+		});
 	});
 
 	it('sets state:error when tool-call block is rejected', () => {

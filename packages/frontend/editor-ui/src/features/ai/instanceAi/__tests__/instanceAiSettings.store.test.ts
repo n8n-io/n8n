@@ -576,6 +576,37 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.workflowBuilderAvailable).toBe(false);
 			expect(ms?.sandboxUnavailableReason).toBeNull();
 		});
+
+		it.each([true, false])(
+			'keeps the experience mode settings when the Assistant is saved as enabled: %s',
+			async (enabled) => {
+				setModuleSettings(settingsStore, {
+					experience: { enabled: true, defaultMode: 'simple' },
+				});
+				mockUpdateSettings.mockResolvedValue({
+					enabled,
+					permissions: {},
+					mcpServers: '',
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					sandboxImage: '',
+					sandboxTimeout: 60,
+					daytonaCredentialId: null,
+					n8nSandboxCredentialId: null,
+					searchCredentialId: null,
+					localGatewayDisabled: false,
+				});
+				settingsStore.getModuleSettings = vi.fn().mockResolvedValue(undefined);
+
+				await store.persistEnabled(enabled);
+
+				// The switch stays until the next fetch, and goes away with the Assistant.
+				expect(settingsStore.moduleSettings['instance-ai']?.experience).toEqual({
+					enabled,
+					defaultMode: 'simple',
+				});
+			},
+		);
 	});
 
 	describe('unexpected disconnects', () => {

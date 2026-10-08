@@ -41,6 +41,12 @@ import {
 	setMessageInteractives,
 	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	getMessageSegmentKind,
+	getTextSegmentKind,
+	startsNewSegment,
+	type MessageSegmentKind,
+} from '@/features/ai/shared/agentsChat/messageSegments';
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
@@ -604,6 +610,29 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return msg;
 	}
 
+	/**
+	 * The message for the next text or tool output. A switch between text and
+	 * tool calls starts a new message, so the chat shows them in the order the
+	 * agent produced them. Reloaded history splits by the same rule.
+	 */
+	function ensureSegment(
+		session: StreamSession,
+		kind: MessageSegmentKind | undefined,
+	): ChatMessage {
+		const open = session.current && getMessageSegmentKind(session.current);
+		if (startsNewSegment(open, kind)) session.current = undefined;
+		return ensureCurrent(session);
+	}
+
+	/** The message of this stream that already holds the call, if any. */
+	function findStreamToolMessage(
+		session: StreamSession,
+		toolCallId: string,
+	): ChatMessage | undefined {
+		const found = findToolCallById(toolCallId);
+		return found && session.minted.has(found.msg) ? found.msg : undefined;
+	}
+
 	function attachBudgetNotice(
 		session: StreamSession,
 		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
@@ -985,7 +1014,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.reasoningStartedAt.set(event.id, Date.now());
 				break;
 			case 'text-delta': {
-				const msg = ensureCurrent(session);
+				const msg = ensureSegment(session, getTextSegmentKind(event.delta));
 				msg.content += event.delta;
 				break;
 			}
@@ -1000,8 +1029,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				settleReasoning(session, event.id);
 				break;
 			case 'tool-input-start': {
-				const msg = ensureCurrent(session);
-				if (msg.content && !msg.content.endsWith('\n')) msg.content += '\n';
+				const msg =
+					findStreamToolMessage(session, event.toolCallId) ?? ensureSegment(session, 'tools');
 				msg.toolCalls = msg.toolCalls ?? [];
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
@@ -1020,7 +1049,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
 				// or push one if `tool-input-start` was missing.
-				const msg = ensureCurrent(session);
+				const msg =
+					findStreamToolMessage(session, event.toolCallId) ?? ensureSegment(session, 'tools');
 				msg.toolCalls = msg.toolCalls ?? [];
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
@@ -1124,7 +1154,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					tc.runId = payload.runId;
 					tc.suspendPayload = payload.input;
 				} else {
-					msg = ensureCurrent(session);
+					msg = ensureSegment(session, 'tools');
 					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,

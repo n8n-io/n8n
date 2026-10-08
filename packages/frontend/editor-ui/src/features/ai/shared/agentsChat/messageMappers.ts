@@ -3,6 +3,7 @@ import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	type AgentBuilderOpenSuspension,
+	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -18,9 +19,17 @@ import {
 } from './n8nChatInteraction';
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
-import type { ToolCallState } from './constants';
-import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
-import { summariseToolCall } from './interactiveSummary';
+import { isDelegateSubAgentTool } from './delegateTool';
+import {
+	getPersistedPartSegmentKind,
+	getSegmentMessageId,
+	splitIntoSegments,
+} from './messageSegments';
+import {
+	attachmentFromPersistedPart,
+	reasoningSegmentFromPersistedPart,
+	toolCallFromPersistedPart,
+} from './persistedParts';
 import type {
 	ApprovalInput,
 	ChatMessage,
@@ -236,8 +245,143 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 	return undefined;
 }
 
+type PersistedPartEntry = [index: number, part: AgentPersistedMessageContentPart];
+
+interface HistoryMessageContext {
+	msg: AgentPersistedMessageDto;
+	role: ChatMessage['role'];
+	/** The persisted id. The first segment keeps it. */
+	messageId: string;
+	failed: boolean;
+}
+
+interface SegmentContent {
+	text: string;
+	thinking: string;
+	thinkingSegments: ThinkingSegment[];
+	toolCalls: ToolCall[];
+	renderParts: ChatMessageRenderPart[];
+	interactives: InteractivePayload[];
+	attachments: ChatMessageAttachment[];
+	awaitingUser: boolean;
+}
+
+function toChatRole(msg: AgentPersistedMessageDto): ChatMessage['role'] | null {
+	if (!Array.isArray(msg.content)) return null;
+	return msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
+}
+
+/** An open card puts the message, and the call, in the awaiting-user state. */
+function addInteractive(
+	context: HistoryMessageContext,
+	content: SegmentContent,
+	toolCall: ToolCall,
+	interactive: InteractivePayload,
+): void {
+	if (
+		interactive.resolvedAt === undefined &&
+		!context.failed &&
+		context.msg.executionStatus !== 'running'
+	) {
+		toolCall.state = TOOL_CALL_STATE.SUSPENDED;
+		content.awaitingUser = true;
+	}
+	content.interactives.push(interactive);
+	content.renderParts.push({ type: 'interactive', toolCallId: interactive.toolCallId });
+}
+
+function addPart(
+	context: HistoryMessageContext,
+	content: SegmentContent,
+	[partIndex, part]: PersistedPartEntry,
+): void {
+	if (part.type === 'text' && part.text) {
+		content.text += part.text;
+		content.renderParts.push({ type: 'text', text: part.text });
+	} else if (part.type === 'file' && part.fileId) {
+		content.attachments.push(attachmentFromPersistedPart(part, part.fileId));
+	} else if (part.type === 'reasoning' && part.text) {
+		content.thinking += part.text;
+		// The index in the whole persisted message keeps the id stable.
+		const id = `${context.messageId}:reasoning:${partIndex}`;
+		content.thinkingSegments.push(reasoningSegmentFromPersistedPart(part, part.text, id));
+	} else if (part.type === 'tool-call' && part.toolName) {
+		const toolCall = toolCallFromPersistedPart(part, part.toolName, context.failed);
+		content.toolCalls.push(toolCall);
+		const interactive = rebuildInteractiveFromHistory(toolCall);
+		if (interactive) addInteractive(context, content, toolCall, interactive);
+	}
+}
+
+function historyStatus(
+	context: HistoryMessageContext,
+	awaitingUser: boolean,
+): ChatMessage['status'] {
+	if (awaitingUser) return CHAT_MESSAGE_STATUS.AWAITING_USER;
+	if (context.failed) return CHAT_MESSAGE_STATUS.ERROR;
+	return context.msg.executionStatus === 'running' ? CHAT_MESSAGE_STATUS.STREAMING : undefined;
+}
+
+/** Fields that come from the persisted message and not from its parts. */
+function historyMessageFields(
+	context: HistoryMessageContext,
+	segmentIndex: number,
+): Partial<ChatMessage> {
+	const { msg, role } = context;
+	// A malformed wire timestamp must not reach the transcript as NaN: it would
+	// silence every later timestamp divider in the chat.
+	const createdAt = msg.createdAt ? Date.parse(msg.createdAt) : NaN;
+	return {
+		...(msg.author && { author: msg.author }),
+		...(msg.executionId ? { executionId: msg.executionId } : {}),
+		// Only the first segment carries the signal: each copy renders its own card.
+		...(role === 'assistant' && segmentIndex === 0 && msg.backgroundTaskSignal
+			? { backgroundJobSignal: msg.backgroundTaskSignal }
+			: {}),
+		...(Number.isFinite(createdAt) && { createdAt }),
+	};
+}
+
+function convertSegment(
+	context: HistoryMessageContext,
+	entries: PersistedPartEntry[],
+	segmentIndex: number,
+): ChatMessage {
+	const content: SegmentContent = {
+		text: '',
+		thinking: '',
+		thinkingSegments: [],
+		toolCalls: [],
+		renderParts: [],
+		interactives: [],
+		attachments: [],
+		awaitingUser: false,
+	};
+	for (const entry of entries) addPart(context, content, entry);
+
+	const status = historyStatus(context, content.awaitingUser);
+	const chatMessage: ChatMessage = {
+		...historyMessageFields(context, segmentIndex),
+		id: getSegmentMessageId(context.messageId, segmentIndex),
+		role: context.role,
+		content: content.text,
+		...(content.renderParts.length > 0 && { renderParts: content.renderParts }),
+		thinking: content.thinking || undefined,
+		...(content.thinkingSegments.length > 0 && { thinkingSegments: content.thinkingSegments }),
+		toolCalls: content.toolCalls.length > 0 ? content.toolCalls : undefined,
+		...(content.attachments.length > 0 && { attachments: content.attachments }),
+		...(status && { status }),
+	};
+	setMessageInteractives(chatMessage, content.interactives);
+	return chatMessage;
+}
+
 /**
  * Convert persisted agent messages into the frontend ChatMessage format.
+ *
+ * An assistant message becomes one ChatMessage for each run of text or of tool
+ * calls, in persisted order, the same as the live stream. A user message stays
+ * whole: callers read one message for each input.
  *
  * Whenever a tool call is interactive, we attach a reconstructed
  * `InteractivePayload` so the UI re-renders the card in either its open
@@ -247,116 +391,21 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 	const result: ChatMessage[] = [];
 
 	for (const msg of dbMessages) {
-		if (!msg.role || !Array.isArray(msg.content)) continue;
-
-		const role: ChatMessage['role'] | null =
-			msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
+		const role = toChatRole(msg);
 		if (role === null) continue;
 
-		let text = '';
-		let thinking = '';
-		const thinkingSegments: ThinkingSegment[] = [];
-		const toolCalls: ToolCall[] = [];
-		const renderParts: ChatMessageRenderPart[] = [];
-		const interactives: InteractivePayload[] = [];
-		const attachments: ChatMessageAttachment[] = [];
-		let status: ChatMessage['status'];
-		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
-		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
-		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
-
-		for (const [partIndex, part] of msg.content.entries()) {
-			if (part.type === 'text' && part.text) {
-				text += part.text;
-				renderParts.push({ type: 'text', text: part.text });
-			} else if (part.type === 'file' && part.fileId) {
-				attachments.push({
-					fileId: part.fileId,
-					fileName: part.fileName ?? 'attachment',
-					mimeType: part.mimeType ?? 'application/octet-stream',
-					sizeBytes: part.sizeBytes,
-				});
-			} else if (part.type === 'reasoning' && part.text) {
-				thinking += part.text;
-				thinkingSegments.push({
-					id: `${msg.id}:reasoning:${partIndex}`,
-					content: part.text,
-					...(part.startTime !== undefined && { startTime: part.startTime }),
-					...(part.endTime !== undefined && { endTime: part.endTime }),
-				});
-			} else if (part.type === 'tool-call' && part.toolName) {
-				let state: ToolCallState;
-				let output: unknown;
-				const canceled = part.canceled === true;
-				if (part.state === 'resolved') {
-					output = part.output;
-					if (canceled) {
-						state = TOOL_CALL_STATE.CANCELLED;
-					} else if (isFailedDelegateOutput(part.toolName, part.output)) {
-						state = TOOL_CALL_STATE.ERROR;
-					} else {
-						state = TOOL_CALL_STATE.DONE;
-					}
-				} else if (part.state === 'rejected') {
-					state = TOOL_CALL_STATE.ERROR;
-					output = part.error;
-				} else if (failed) {
-					state = TOOL_CALL_STATE.ERROR;
-					output = part.error;
-				} else {
-					state = TOOL_CALL_STATE.RUNNING;
-					output = undefined;
-				}
-
-				const toolCall: ToolCall = {
-					tool: part.toolName,
-					toolCallId: part.toolCallId ?? '',
-					input: part.input,
-					...(output !== undefined && { output }),
-					...(canceled && { canceled }),
-					state,
-					...(part.startTime !== undefined && { startTime: part.startTime }),
-					...(part.endTime !== undefined && { endTime: part.endTime }),
-					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
-					...(part.childTrace && { childProgress: part.childTrace }),
-					displaySummary: summariseToolCall(part.toolName, output, part.input),
-				};
-				toolCalls.push(toolCall);
-
-				const rebuilt = rebuildInteractiveFromHistory(toolCall);
-				if (!rebuilt) continue;
-				if (rebuilt.resolvedAt === undefined && !failed && msg.executionStatus !== 'running') {
-					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
-					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
-				}
-				interactives.push(rebuilt);
-				renderParts.push({ type: 'interactive', toolCallId: rebuilt.toolCallId });
-			}
-		}
-
-		// A malformed wire timestamp must not reach the transcript as NaN: it would
-		// silence every later timestamp divider in the chat.
-		const createdAt = msg.createdAt ? Date.parse(msg.createdAt) : NaN;
-
-		const chatMessage: ChatMessage = {
-			id: msg.id ?? crypto.randomUUID(),
+		const context: HistoryMessageContext = {
+			msg,
 			role,
-			content: text,
-			...(msg.author && { author: msg.author }),
-			...(renderParts.length > 0 && { renderParts }),
-			thinking: thinking || undefined,
-			...(thinkingSegments.length > 0 && { thinkingSegments }),
-			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-			...(attachments.length > 0 && { attachments }),
-			...(status && { status }),
-			...(msg.executionId ? { executionId: msg.executionId } : {}),
-			...(role === 'assistant' && msg.backgroundTaskSignal
-				? { backgroundJobSignal: msg.backgroundTaskSignal }
-				: {}),
-			...(Number.isFinite(createdAt) && { createdAt }),
+			messageId: msg.id ?? crypto.randomUUID(),
+			failed: msg.executionStatus === 'error' || msg.executionStatus === 'interrupted',
 		};
-		setMessageInteractives(chatMessage, interactives);
-		result.push(chatMessage);
+		const entries = [...msg.content.entries()];
+		const segments =
+			role === 'assistant'
+				? splitIntoSegments(entries, ([, part]) => getPersistedPartSegmentKind(part))
+				: [entries];
+		result.push(...segments.map((segment, index) => convertSegment(context, segment, index)));
 
 		// A turn that ended in an error carries the recorded run error — render
 		// it as its own error bubble, mirroring what the live stream showed.
@@ -364,7 +413,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		// nothing at all) with no explanation.
 		if (msg.executionError) {
 			result.push({
-				id: `${chatMessage.id}:error`,
+				id: `${context.messageId}:error`,
 				role: 'assistant',
 				content: msg.executionError,
 				toolCalls: [],

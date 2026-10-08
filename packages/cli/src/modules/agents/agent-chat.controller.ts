@@ -69,6 +69,7 @@ import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
+import { SystemAgentThreadGuard } from './system-agents/system-agent-thread-guard';
 import { Container } from '@n8n/di';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -374,6 +375,12 @@ export class AgentChatController {
 		if (this.systemAgents.has(agentId)) {
 			// Code-defined instance agents (the n8n Assistant) build their own runtime.
 			const systemAgents = Container.get(SystemAgentExecutionService);
+			// Answer with an HTTP status before the stream opens.
+			await Container.get(SystemAgentThreadGuard).checkSend({
+				agentId,
+				user: req.user,
+				sessionId: newSession ? undefined : sessionId,
+			});
 			await this.relayQueuedMessage(
 				res,
 				async () =>
@@ -465,19 +472,23 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
+		// Instance agent answers are checked before the stream opens, to answer with a status.
+		const answer = this.systemAgents.has(agentId)
+			? await Container.get(SystemAgentThreadGuard).checkAnswer({
+					agentId,
+					user: req.user,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+				})
+			: undefined;
 		const execution = this.createChatExecution(res);
 		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
 		try {
 			abortSignal.throwIfAborted();
-			if (this.systemAgents.has(agentId)) {
-				await Container.get(SystemAgentExecutionService).resumeRun({
-					agentId,
-					user: req.user,
-					runId,
-					toolCallId,
-					resumeData,
-					send,
-				});
+			if (answer) {
+				await Container.get(SystemAgentExecutionService).resumeRun(answer, send);
 				return;
 			}
 			const result = await this.agentTestRunService.resumePreparedDraftRun({
@@ -944,11 +955,14 @@ export class AgentChatController {
 			agentId,
 			threadId,
 		);
+		const checkpointUserId = userIdFromDraftChatMemoryResourceId(
+			checkpoint?.persistence?.resourceId ?? '',
+		);
 		if (
 			checkpoint &&
 			(thread?.accessScope === 'project'
-				? userIdFromDraftChatMemoryResourceId(checkpoint.persistence?.resourceId ?? '') !==
-					undefined
+				? // A shared thread runs in its owner's memory. Other project threads use none.
+					checkpointUserId !== undefined && checkpointUserId !== thread.ownerId
 				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
 					(!thread &&
 						!(await this.agentExecutionService.canUseDraftThread(

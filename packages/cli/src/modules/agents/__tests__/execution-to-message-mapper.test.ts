@@ -619,3 +619,128 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 });
+
+describe('who answered a suspended tool call', () => {
+	const toolCall = (toolCallId: string, endTime = 0) => ({
+		type: 'tool-call' as const,
+		kind: 'tool' as const,
+		name: 'deploy_workflow',
+		toolCallId,
+		input: { workflowId: 'wf-1' },
+		output: endTime > 0 ? { deployed: true } : undefined,
+		startTime: 100,
+		endTime,
+		success: endTime > 0,
+	});
+	const suspension = (toolCallId: string) => ({
+		type: 'suspension' as const,
+		toolName: 'deploy_workflow',
+		toolCallId,
+		timestamp: 110,
+		suspendPayload: { message: 'Deploy?' },
+	});
+	const answer = (
+		toolCallId: string,
+		response: unknown,
+		respondedBy?: { id: string; name: string },
+	) => ({
+		type: 'hitl-response' as const,
+		toolCallId,
+		response,
+		timestamp: 300,
+		...(respondedBy ? { respondedBy } : {}),
+	});
+	const grace = { id: 'user-2', name: 'Grace Hopper' };
+
+	/** The turn that suspended, then the resumed turn with the answer. */
+	const answeredTurns = (response: unknown, respondedBy?: { id: string; name: string }) => [
+		execution({ id: 'suspended', timeline: [toolCall('tc-1'), suspension('tc-1')] }),
+		execution({
+			id: 'resumed',
+			userMessage: null,
+			timeline: [answer('tc-1', response, respondedBy), toolCall('tc-1', 400)],
+		}),
+	];
+
+	const toolParts = (executions: AgentExecution[]) =>
+		executionsToMessagesDto(executions)
+			.flatMap((message) => message.content)
+			.filter((part) => part.type === 'tool-call');
+
+	it('marks an approved tool call with the user who approved it', () => {
+		const parts = toolParts(answeredTurns({ approved: true }, grace));
+
+		expect(parts).toHaveLength(1);
+		expect(parts[0]).toMatchObject({
+			toolCallId: 'tc-1',
+			state: 'resolved',
+			suspendPayload: { message: 'Deploy?' },
+			approvedBy: grace,
+		});
+		expect(parts[0]).not.toHaveProperty('declinedBy');
+	});
+
+	it('marks a declined tool call with the user who declined it', () => {
+		const [part] = toolParts(answeredTurns({ approved: false }, grace));
+
+		expect(part).toMatchObject({ declinedBy: grace });
+		expect(part).not.toHaveProperty('approvedBy');
+	});
+
+	it('treats an answer without an approved field as an approval', () => {
+		const [part] = toolParts(answeredTurns({ answers: [] }, grace));
+
+		expect(part).toMatchObject({ approvedBy: grace });
+	});
+
+	it('adds no author to an answer recorded without one', () => {
+		const [part] = toolParts(answeredTurns({ approved: true }));
+
+		expect(part).not.toHaveProperty('approvedBy');
+		expect(part).not.toHaveProperty('declinedBy');
+	});
+
+	it('uses the later answer when a call was answered twice', () => {
+		const ada = { id: 'user-1', name: 'Ada Lovelace' };
+		const turns = [
+			...answeredTurns({ approved: false }, ada),
+			execution({
+				id: 'again',
+				userMessage: null,
+				timeline: [answer('tc-1', { approved: true }, grace)],
+			}),
+		];
+
+		const [part] = toolParts(turns);
+
+		expect(part).toMatchObject({ approvedBy: grace });
+	});
+
+	it('marks only the answered call', () => {
+		const turns = [
+			execution({
+				id: 'suspended',
+				timeline: [toolCall('tc-1'), toolCall('tc-2', 200), suspension('tc-1')],
+			}),
+			execution({
+				id: 'resumed',
+				userMessage: null,
+				timeline: [answer('tc-1', { approved: true }, grace), toolCall('tc-1', 400)],
+			}),
+		];
+
+		const parts = toolParts(turns);
+
+		expect(parts.find((part) => part.toolCallId === 'tc-2')).not.toHaveProperty('approvedBy');
+		expect(parts.find((part) => part.toolCallId === 'tc-1')).toMatchObject({ approvedBy: grace });
+	});
+
+	it('copies the author, so a change to one message does not change another', () => {
+		const turns = answeredTurns({ approved: true }, grace);
+		const [part] = toolParts(turns);
+
+		part.approvedBy!.name = 'Changed';
+
+		expect(turns[1].timeline?.[0]).toMatchObject({ respondedBy: { name: 'Grace Hopper' } });
+	});
+});

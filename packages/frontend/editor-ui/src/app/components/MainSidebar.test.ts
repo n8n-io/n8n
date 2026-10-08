@@ -12,6 +12,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
+import type { FrontendModuleSettings } from '@n8n/api-types';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 
 const openTopUpMock = vi.hoisted(() => vi.fn());
@@ -81,6 +82,30 @@ describe('MainSidebar', () => {
 
 	it('renders the sidebar without error', () => {
 		expect(() => renderComponent()).not.toThrow();
+	});
+
+	describe('Interface switch', () => {
+		it('is absent while experience modes are off', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('experience-mode-switch')).not.toBeInTheDocument();
+		});
+
+		it('renders below the bottom menu when experience modes are on', () => {
+			settingsStore.moduleSettings = {
+				'instance-ai': {
+					enabled: true,
+					experience: { enabled: true, defaultMode: 'simple' },
+				} as NonNullable<FrontendModuleSettings['instance-ai']>,
+			};
+
+			const { getByRole, getByTestId } = renderComponent();
+
+			const group = getByRole('radiogroup', { name: 'Interface' });
+			expect(getByRole('radio', { name: 'Simple' })).toBeChecked();
+			const position = getByTestId('main-sidebar-settings').compareDocumentPosition(group);
+			expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		});
 	});
 
 	describe('Version Update CTA', () => {

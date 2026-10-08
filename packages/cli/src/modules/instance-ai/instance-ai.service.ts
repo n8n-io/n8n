@@ -1477,7 +1477,10 @@ export class InstanceAiService {
 		turnOptions: Partial<AssistantTurnOptions> = {},
 	) {
 		const memory = this.agentMemory;
-		const boundProjectId = await this.resolveThreadProjectId(threadId);
+		const session = await this.systemAgents.findThread(threadId);
+		const boundProjectId = session?.projectId;
+		// A shared chat runs as its owner without the owner's computer, browser and past chats.
+		const sharedThread = session?.accessScope === 'project';
 		if (!boundProjectId) {
 			throw new UnexpectedError(
 				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
@@ -1521,9 +1524,10 @@ export class InstanceAiService {
 		// Resumed segments use the gates bound to the original turn.
 		const { instanceContextEnabled, nodeUsageEnabled } = instanceContextGates ?? gates;
 		// One scoped reader backs both the tool and the first-turn hint.
-		const conversationHistory = conversationHistoryEnabled
-			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
-			: undefined;
+		const conversationHistory =
+			conversationHistoryEnabled && !sharedThread
+				? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
+				: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
 		const mode = turnOptions.buildMode ?? (progressiveBuildingEnabled ? 'progressive' : 'default');
 		// The operator pin sits below the request pin and the thread's own selection,
@@ -1578,10 +1582,13 @@ export class InstanceAiService {
 		// too so they are neither advertised to nor callable by the agent.
 		this.gatewayService.applyToolPolicy(user.id);
 		const gatewayMcpServer =
-			!localGatewayDisabledForUser && userGateway?.isConnected ? userGateway : undefined;
-		const browserMcpServer = browserUseEnabledGlobally
-			? this.browserSessionService.findMcpServer(user.id)
-			: undefined;
+			!sharedThread && !localGatewayDisabledForUser && userGateway?.isConnected
+				? userGateway
+				: undefined;
+		const browserMcpServer =
+			browserUseEnabledGlobally && !sharedThread
+				? this.browserSessionService.findMcpServer(user.id)
+				: undefined;
 		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
@@ -2668,11 +2675,6 @@ export class InstanceAiService {
 
 	private get assistantCheckpointStore(): CheckpointStore {
 		return Container.get(N8NCheckpointStorage).getStorage(ASSISTANT_AGENT_ID);
-	}
-
-	private async resolveThreadProjectId(threadId: string): Promise<string | undefined> {
-		const thread = await this.systemAgents.findThread(threadId);
-		return thread?.projectId;
 	}
 
 	/** The SDK creates the memory thread on the first message. Turn setup reads it before that. */

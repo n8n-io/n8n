@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "linked_instance" ("id" varchar PRIMARY KEY NOT NULL, "userId" varchar NOT NULL, "name" varchar(64) NOT NULL, "baseUrl" varchar(2048) NOT NULL, "tokenEncrypted" text NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('unknown'), "lastVerifiedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_linked_instance_status" CHECK ("status" IN ('online', 'offline', 'unauthorised', 'mcp-disabled', 'unknown')), CONSTRAINT "FK_d4eb138413c145f8eef4e603d82" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "linked_instance" ("id" varchar PRIMARY KEY NOT NULL, "userId" varchar NOT NULL, "name" varchar(64) NOT NULL, "baseUrl" varchar(2048) NOT NULL, "tokenEncrypted" text NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('unknown'), "lastVerifiedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "defaultRemoteProjectId" varchar(36), "defaultRemoteProjectName" varchar(255), CONSTRAINT "CHK_linked_instance_status" CHECK (("status" IN ('online', 'offline', 'unauthorised', 'mcp-disabled', 'unknown'))), CONSTRAINT "FK_d4eb138413c145f8eef4e603d82" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -17,6 +17,8 @@ CREATE TABLE "linked_instance" ("id" varchar PRIMARY KEY NOT NULL, "userId" varc
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | baseUrl | varchar(2048) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| defaultRemoteProjectId | varchar(36) |  | true |  |  |  |
+| defaultRemoteProjectName | varchar(255) |  | true |  |  |  |
 | id | varchar |  | false |  |  |  |
 | lastVerifiedAt | datetime(3) |  | true |  |  |  |
 | name | varchar(64) |  | false |  |  |  |
@@ -29,7 +31,7 @@ CREATE TABLE "linked_instance" ("id" varchar PRIMARY KEY NOT NULL, "userId" varc
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("status" IN ('online', 'offline', 'unauthorised', 'mcp-disabled', 'unknown')) |
+| - | CHECK | CHECK (("status" IN ('online', 'offline', 'unauthorised', 'mcp-disabled', 'unknown'))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_linked_instance_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -52,6 +54,8 @@ erDiagram
 "linked_instance" {
   varchar_2048_ baseUrl
   datetime_3_ createdAt
+  varchar_36_ defaultRemoteProjectId
+  varchar_255_ defaultRemoteProjectName
   varchar id PK
   datetime_3_ lastVerifiedAt
   varchar_64_ name

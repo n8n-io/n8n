@@ -3,22 +3,12 @@ import { Container } from '@n8n/di';
 import fc from 'fast-check';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { type CapabilitySurface, defineCapability } from '../capability';
+import { parseScheduleCapability } from '@/modules/instance-ai/capabilities/parse-schedule.capability';
+
+import type { CapabilitySurface } from '../capability';
 import { CapabilityRegistry } from '../capability-registry.service';
 import { CAPABILITY_TOOLS_BY_SCOPE, type CapabilityToolsByScope } from '../capability-scopes';
-import { parseScheduleCapability } from '../parse-schedule.capability';
-
-const capabilityNamed = (
-	name: string,
-	surfaces?: readonly CapabilitySurface[],
-	scope: McpScope = 'workflow:read',
-) =>
-	defineCapability({
-		name,
-		scope,
-		surfaces,
-		build: () => ({ name, config: { inputSchema: {} }, handler: () => ({ content: [] }) }),
-	});
+import { capabilityNamed } from './test-helpers';
 
 const names = (registry: CapabilityRegistry, surface: CapabilitySurface) =>
 	registry.list(surface).map((capability) => capability.name);

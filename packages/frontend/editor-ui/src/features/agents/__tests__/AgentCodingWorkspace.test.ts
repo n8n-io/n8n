@@ -155,3 +155,32 @@ it('ignores a late file response after its tab is closed and reopened', async ()
 	expect(firstPanel).not.toHaveTextContent('stale content');
 	expect(screen.getAllByRole('tab')).toHaveLength(3);
 });
+
+it.each([
+	['restarted', 'The sandbox restarted during setup'],
+	['stopped', 'Setup stopped before it finished'],
+] as const)('explains a %s setup and prepares the repository again', async (phase, label) => {
+	const ready: AgentCodingStatus = await api.status();
+	api.status.mockResolvedValue({ ...ready, phase, setupExitCode: null, app: 'stopped' });
+	api.action.mockResolvedValue({ accepted: true });
+	const user = userEvent.setup();
+	renderWorkspace();
+	await flushPromises();
+
+	expect(screen.getByText(label)).toBeInTheDocument();
+	await user.click(screen.getByRole('button', { name: 'Prepare repository' }));
+
+	expect(api.action).toHaveBeenCalledWith(expect.objectContaining({ action: 'prepare' }));
+});
+
+it('shows a check that stopped before it finished', async () => {
+	const ready: AgentCodingStatus = await api.status();
+	api.status.mockResolvedValue({ ...ready, check: 'stopped' });
+	const user = userEvent.setup();
+	renderWorkspace();
+	await flushPromises();
+
+	await user.click(screen.getByRole('button', { name: 'Logs' }));
+
+	expect(screen.getByRole('button', { name: 'Check stopped before it finished' })).toBeVisible();
+});

@@ -35,6 +35,7 @@ export type {
 	MkdirOptions,
 	ProviderStatus,
 	SandboxInfo,
+	SandboxPortRoute,
 	LocalFilesystemOptions,
 	LocalSandboxOptions,
 	DaytonaSandboxOptions,

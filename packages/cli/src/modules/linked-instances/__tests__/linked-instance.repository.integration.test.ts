@@ -13,6 +13,7 @@ import {
 } from '../database/repositories/linked-instance.repository';
 
 const MIGRATION_NAME = 'CreateLinkedInstanceTable1791401960379';
+const COLUMNS_MIGRATION_NAME = 'AddDefaultRemoteProjectToLinkedInstance1791416459011';
 
 let repository: LinkedInstanceRepository;
 let alice: User;
@@ -165,6 +166,62 @@ describe('LinkedInstanceRepository', () => {
 		await expect(repository.deleteForUser(alice.id, link.id)).resolves.toBe(false);
 	});
 
+	it('stores the default remote project, and leaves it empty when not given', async () => {
+		const withProject = await createLink(alice.id, {
+			defaultRemoteProjectId: 'Xk3pQ9aZ1bC2dE4f',
+			defaultRemoteProjectName: 'Ops',
+		});
+		const withoutProject = await createLink(alice.id, { baseUrl: 'http://localhost:5678' });
+
+		await expect(repository.findForUser(alice.id, withProject.id)).resolves.toMatchObject({
+			defaultRemoteProjectId: 'Xk3pQ9aZ1bC2dE4f',
+			defaultRemoteProjectName: 'Ops',
+		});
+		await expect(repository.findForUser(alice.id, withoutProject.id)).resolves.toMatchObject({
+			defaultRemoteProjectId: null,
+			defaultRemoteProjectName: null,
+		});
+	});
+
+	it("updates only the given columns of only the user's link", async () => {
+		const link = await createLink(alice.id, {
+			defaultRemoteProjectId: 'Xk3pQ9aZ1bC2dE4f',
+			defaultRemoteProjectName: 'Ops',
+		});
+		const otherLink = await createLink(alice.id, { baseUrl: 'http://localhost:5678' });
+
+		await expect(repository.updateForUser(bob.id, link.id, { name: 'Taken' })).resolves.toBe(false);
+		await expect(
+			repository.updateForUser(alice.id, link.id, {
+				name: 'Cloud EU',
+				tokenEncrypted: 'new ciphertext',
+				defaultRemoteProjectId: null,
+				defaultRemoteProjectName: null,
+			}),
+		).resolves.toBe(true);
+
+		await expect(repository.findForUser(alice.id, link.id)).resolves.toMatchObject({
+			name: 'Cloud EU',
+			baseUrl: 'https://acme.app.n8n.cloud',
+			tokenEncrypted: 'new ciphertext',
+			status: 'online',
+			lastVerifiedAt: new Date('2026-10-07T12:00:00.000Z'),
+			defaultRemoteProjectId: null,
+			defaultRemoteProjectName: null,
+		});
+		await expect(repository.findForUser(alice.id, otherLink.id)).resolves.toMatchObject({
+			name: 'Cloud',
+			tokenEncrypted: 'ciphertext',
+		});
+	});
+
+	it('reports whether the link exists when an update has no values', async () => {
+		const link = await createLink(alice.id);
+
+		await expect(repository.updateForUser(alice.id, link.id, {})).resolves.toBe(true);
+		await expect(repository.updateForUser(bob.id, link.id, {})).resolves.toBe(false);
+	});
+
 	it("updates the status of only the user's link", async () => {
 		const link = await createLink(alice.id);
 		const checkedAt = new Date('2026-10-08T08:30:00.000Z');
@@ -205,7 +262,7 @@ type WrappedMigration = new () => {
 	down(queryRunner: QueryRunner): Promise<void>;
 };
 
-describe(`${MIGRATION_NAME} migration`, () => {
+describe('linked_instance migrations', () => {
 	async function withQueryRunner(fn: (queryRunner: QueryRunner) => Promise<void>) {
 		const queryRunner = Container.get(DataSource).createQueryRunner();
 		try {
@@ -215,37 +272,77 @@ describe(`${MIGRATION_NAME} migration`, () => {
 		}
 	}
 
-	it('ran with the test database, and its down and up steps drop and create the table', async () => {
+	async function loadMigration(name: string) {
 		const dataSource = Container.get(DataSource);
 		const { tablePrefix } = Container.get(GlobalConfig).database;
 		const executed = await dataSource.query<MigrationRow[]>(
 			`SELECT name FROM ${dataSource.driver.escape(`${tablePrefix}migrations`)}`,
 		);
-		expect(executed.map(({ name }) => name)).toContain(MIGRATION_NAME);
+		expect(executed.map((row) => row.name)).toContain(name);
 
 		const MigrationClass = (dataSource.options.migrations as WrappedMigration[]).find(
-			(migration) => migration.name === MIGRATION_NAME,
+			(migration) => migration.name === name,
 		);
-		if (!MigrationClass) throw new Error(`The DataSource has no ${MIGRATION_NAME}`);
+		if (!MigrationClass) throw new Error(`The DataSource has no ${name}`);
 		// A copied template database (CI) skips the migration run that wraps the classes,
 		// and only a wrapped class accepts a query runner. A second wrap does nothing.
 		wrapMigration(MigrationClass);
-		const migration = new MigrationClass();
-		const tableName = `${tablePrefix}linked_instance`;
+		return new MigrationClass();
+	}
+
+	const tableName = () => `${Container.get(GlobalConfig).database.tablePrefix}linked_instance`;
+
+	it(`${MIGRATION_NAME} ran, and its down and up steps drop and create the table`, async () => {
+		const createTable = await loadMigration(MIGRATION_NAME);
+		const addColumns = await loadMigration(COLUMNS_MIGRATION_NAME);
 
 		await withQueryRunner(async (queryRunner) => {
-			await migration.down(queryRunner);
+			// The later migration goes down first and comes back last, as in a real rollback.
+			await addColumns.down(queryRunner);
+			await createTable.down(queryRunner);
 			try {
-				expect(await queryRunner.hasTable(tableName)).toBe(false);
+				expect(await queryRunner.hasTable(tableName())).toBe(false);
 			} finally {
 				// Re-create the table also when the check fails, so later tests have it.
-				await migration.up(queryRunner);
+				await createTable.up(queryRunner);
+				await addColumns.up(queryRunner);
 			}
-			expect(await queryRunner.hasTable(tableName)).toBe(true);
+			expect(await queryRunner.hasTable(tableName())).toBe(true);
 		});
 
 		// The re-created table keeps the unique rule.
 		await createLink(alice.id);
 		await expect(repository.createForUser(newLink(alice.id))).resolves.toBeNull();
+	});
+
+	it(`${COLUMNS_MIGRATION_NAME} adds the default project columns and keeps the rows and the rules`, async () => {
+		const migration = await loadMigration(COLUMNS_MIGRATION_NAME);
+		const link = await createLink(alice.id, {
+			defaultRemoteProjectId: 'Xk3pQ9aZ1bC2dE4f',
+			defaultRemoteProjectName: 'Ops',
+		});
+
+		await withQueryRunner(async (queryRunner) => {
+			await migration.down(queryRunner);
+			try {
+				expect(await queryRunner.hasColumn(tableName(), 'defaultRemoteProjectId')).toBe(false);
+				expect(await queryRunner.hasColumn(tableName(), 'defaultRemoteProjectName')).toBe(false);
+			} finally {
+				await migration.up(queryRunner);
+			}
+		});
+
+		// The row stays, and the new columns start empty.
+		await expect(repository.findForUser(alice.id, link.id)).resolves.toMatchObject({
+			name: 'Cloud',
+			tokenEncrypted: 'ciphertext',
+			defaultRemoteProjectId: null,
+			defaultRemoteProjectName: null,
+		});
+		// The copy of the table on SQLite keeps the unique rule and the user foreign key.
+		await expect(repository.createForUser(newLink(alice.id))).resolves.toBeNull();
+		await expect(repository.createForUser(newLink(randomUUID()))).rejects.toThrow();
+		await Container.get(UserRepository).delete({ id: alice.id });
+		await expect(repository.listForUser(alice.id)).resolves.toEqual([]);
 	});
 });

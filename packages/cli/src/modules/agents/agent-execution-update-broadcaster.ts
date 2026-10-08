@@ -85,7 +85,8 @@ export class AgentExecutionUpdateBroadcaster {
 
 	private async broadcastQueueUpdated(threadId: string): Promise<void> {
 		const thread = await this.threadRepository.findOneBy({ id: threadId });
-		if (!thread || thread.accessScope !== 'user' || !thread.ownerId) return;
+		// Threads with an owner: private threads and shared threads (readers get it too).
+		if (!thread?.ownerId) return;
 		const data = { projectId: thread.projectId, agentId: thread.agentId, threadId };
 		const userIds = await this.getRecipients(thread);
 		if (userIds.length === 0) return;

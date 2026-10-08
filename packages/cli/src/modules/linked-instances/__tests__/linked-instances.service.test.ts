@@ -1,109 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import type { Cipher } from 'n8n-core';
-import { mock } from 'vitest-mock-extended';
 
-import type { LinkedInstance } from '../database/entities/linked-instance.entity';
-import type { LinkedInstanceRepository } from '../database/repositories/linked-instance.repository';
 import { ADDRESS_ERROR_MESSAGES, LINK_INPUT_MESSAGES } from '../link-input';
-import { LinkedInstanceStore } from '../linked-instance.store';
 import {
 	DUPLICATE_LINK_MESSAGE,
 	LINK_NOT_FOUND_MESSAGE,
-	LinkedInstancesService,
 	PROBE_FAILURE_MESSAGES,
 } from '../linked-instances.service';
-import type {
-	RemoteInstanceClient,
-	RemoteInstanceClientFactory,
-	RemoteProbeResult,
-} from '../remote/remote-instance.client';
+import type { RemoteProbeResult } from '../remote/remote-instance.client';
+import { CLOUD, expectRejection, setup, user } from './linked-instances.test-helpers';
 
 const TOKEN = 'n8n_api_secret-token-0123456789';
-const CLOUD = 'https://acme.app.n8n.cloud';
-
-/** Reversible, and the ciphertext never contains the clear text. */
-const fakeCipher = () => {
-	const cipher = mock<Cipher>();
-	cipher.encryptV2.mockImplementation(
-		async (data) =>
-			`enc:${Buffer.from(typeof data === 'string' ? data : JSON.stringify(data)).toString('base64')}`,
-	);
-	cipher.decryptV2.mockImplementation(async (data) =>
-		Buffer.from(data.slice(4), 'base64').toString(),
-	);
-	return cipher;
-};
-
-/** An in-memory repository with the same ownership rules as the real one. */
-function fakeRepository() {
-	const rows: LinkedInstance[] = [];
-	const repository = mock<LinkedInstanceRepository>();
-	const owned = (userId: string, id: string) => (row: LinkedInstance) =>
-		row.userId === userId && row.id === id;
-
-	repository.listForUser.mockImplementation(async (userId) =>
-		rows.filter((row) => row.userId === userId),
-	);
-	repository.findForUser.mockImplementation(
-		async (userId, id) => rows.find(owned(userId, id)) ?? null,
-	);
-	repository.existsForUser.mockImplementation(async (userId, baseUrl) =>
-		rows.some((row) => row.userId === userId && row.baseUrl === baseUrl),
-	);
-	repository.createForUser.mockImplementation(async (input) => {
-		if (rows.some((row) => row.userId === input.userId && row.baseUrl === input.baseUrl)) {
-			return null;
-		}
-		const now = new Date('2026-10-07T12:00:00.000Z');
-		const row = { id: randomUUID(), ...input, createdAt: now, updatedAt: now } as LinkedInstance;
-		rows.push(row);
-		return row;
-	});
-	repository.deleteForUser.mockImplementation(async (userId, id) => {
-		const index = rows.findIndex(owned(userId, id));
-		if (index === -1) return false;
-		rows.splice(index, 1);
-		return true;
-	});
-	return { repository, rows };
-}
-
-function setup() {
-	const { repository, rows } = fakeRepository();
-	const cipher = fakeCipher();
-	const logger = mock<Logger>();
-	logger.scoped.mockReturnValue(logger);
-	const client = mock<RemoteInstanceClient>();
-	client.probe.mockResolvedValue({ ok: true, toolNames: ['search_workflows'] });
-	const clientFactory = mock<RemoteInstanceClientFactory>();
-	clientFactory.create.mockReturnValue(client);
-	const service = new LinkedInstancesService(
-		logger,
-		new LinkedInstanceStore(repository, cipher),
-		clientFactory,
-	);
-	return { service, repository, rows, cipher, logger, client, clientFactory };
-}
-
-const user = (id = randomUUID()) => mock<User>({ id });
-
-/** Checks the class and the exact message of a rejection. */
-async function expectRejection(
-	promise: Promise<unknown>,
-	errorClass: new (message: string) => Error,
-	message: string,
-) {
-	const error = await promise.then(
-		() => undefined,
-		(e: unknown) => e,
-	);
-	expect(error).toBeInstanceOf(errorClass);
-	expect(error).toHaveProperty('message', message);
-}
 
 const input = (overrides: Partial<{ name: string; address: string; token: string }> = {}) => ({
 	name: 'Cloud',
@@ -136,6 +44,7 @@ describe('LinkedInstancesService', () => {
 				status: 'online',
 				lastVerifiedAt: expect.any(String),
 				createdAt: '2026-10-07T12:00:00.000Z',
+				defaultRemoteProject: null,
 			});
 			expect(Object.keys(summary)).not.toContain('tokenEncrypted');
 		});

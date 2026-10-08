@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiSendMessageRequest,
@@ -15,6 +15,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AgentExecutionThread } from '../agents/entities/agent-execution-thread.entity';
 import type {
 	SystemAgentProvider,
+	SystemAgentSharingPolicy,
 	SystemAgentTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
@@ -29,6 +30,7 @@ import {
 	type AssistantTurnDefaults,
 } from './assistant-turn-options';
 import { InstanceAiService } from './instance-ai.service';
+import { ThreadSharingService } from './sharing/thread-sharing.service';
 
 /**
  * The n8n Assistant as an instance agent. The Agents runtime runs it; this
@@ -45,6 +47,11 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 		private readonly memory: N8nMemory,
 		private readonly attachments: AgentChatAttachmentService,
 	) {}
+
+	/** What teammates can do in a chat that its owner shared with the team project. */
+	get sharing(): SystemAgentSharingPolicy {
+		return Container.get(ThreadSharingService);
+	}
 
 	async authorize(user: User, projectId: string): Promise<boolean> {
 		if (!hasGlobalScope(user, 'instanceAi:message')) return false;

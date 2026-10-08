@@ -83,7 +83,8 @@ export type ConfirmationOptions<A> = {
 	defaultCard: () => CapabilityCard;
 	/** Only `values` of the answer is checked against `offered`. */
 	answerSchema: z.ZodType<CapabilityAnswer>;
-	applyAnswer?: (args: A, answer: CapabilityAnswer) => A;
+	/** `card` is the suspend payload from the checkpoint, so the client cannot change it. */
+	applyAnswer?: (args: A, answer: CapabilityAnswer, card: CapabilityCardPayload) => A;
 	/** Runs the capability handler with arguments that `parse` returned. */
 	run: (args: A) => Promise<unknown>;
 };
@@ -133,8 +134,14 @@ function parseAnswer(schema: z.ZodType<CapabilityAnswer>, resumeData: unknown): 
 	return parsed.data;
 }
 
-/** Rejects a chosen value that the card did not offer. The offer comes from the checkpoint. */
-export function assertAnswerWasOffered(answer: CapabilityAnswer, suspendPayload: unknown): void {
+/**
+ * Rejects a chosen value that the card did not offer. The offer comes from the checkpoint.
+ * Returns the card of the checkpoint.
+ */
+export function assertAnswerWasOffered(
+	answer: CapabilityAnswer,
+	suspendPayload: unknown,
+): CapabilityCardPayload {
 	const card = capabilityCardPayloadSchema.safeParse(suspendPayload);
 	if (!card.success) throw new UserError('The confirmation card of this call is missing');
 	const chosen = chosenValuesSchema.optional().safeParse(answer.values);
@@ -147,6 +154,7 @@ export function assertAnswerWasOffered(answer: CapabilityAnswer, suspendPayload:
 			throw new UserError(`The confirmation card did not offer this value for "${field}"`);
 		}
 	}
+	return card.data;
 }
 
 const blocked = () => ({ denied: true, message: BLOCKED_MESSAGE });
@@ -158,11 +166,13 @@ async function runResumedCall<A>(
 ): Promise<unknown> {
 	const answer = parseAnswer(options.answerSchema, ctx.resumeData);
 	if (!answer.approved) return { denied: true, message: DENIED_MESSAGE };
-	assertAnswerWasOffered(answer, ctx.suspendPayload);
+	const card = assertAnswerWasOffered(answer, ctx.suspendPayload);
 
 	// The answer can change the arguments, and so the permission that applies. Validate the
 	// arguments that the handler receives, and read their mode before the handler runs.
-	const applied = options.parse(options.applyAnswer ? options.applyAnswer(args, answer) : args);
+	const applied = options.parse(
+		options.applyAnswer ? options.applyAnswer(args, answer, card) : args,
+	);
 	if (options.mode(applied) === 'blocked') return blocked();
 	return await options.run(applied);
 }

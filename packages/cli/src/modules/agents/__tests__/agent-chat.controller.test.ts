@@ -8,7 +8,8 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { Container } from '@n8n/di';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
@@ -34,13 +35,19 @@ import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { SystemAgentExecutionService } from '../system-agents/system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import {
+	type CheckedAnswer,
+	SystemAgentThreadGuard,
+} from '../system-agents/system-agent-thread-guard';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 
-function makeController() {
+function makeController(systemAgents = new SystemAgentRegistry()) {
 	const agentsService =
 		mock<
 			Pick<
@@ -103,7 +110,7 @@ function makeController() {
 		messageQueue,
 		previewStreams,
 		agentsConfig,
-		new SystemAgentRegistry(),
+		systemAgents,
 	);
 
 	return {
@@ -503,6 +510,43 @@ describe('AgentChatController chat message history', () => {
 		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
 			...checkpoint,
 			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+		});
+		await expect(controller.getChatMessages(request as never)).rejects.toThrow(NotFoundError);
+	});
+
+	it('shows the open card of a shared thread, which runs in its owner memory', async () => {
+		const { controller, agentsService, agentsBuilderService, agentExecutionService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue(null);
+		agentExecutionService.findThreadById.mockResolvedValue(
+			mock<AgentExecutionThread>({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				accessScope: 'project',
+				ownerId: 'owner-1',
+			}),
+		);
+		const checkpoint = {
+			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:owner-1' },
+			messageList: { messages: [] },
+			pendingToolCalls: {},
+		} as unknown as SerializableAgentState;
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(checkpoint);
+		const request = {
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'teammate-1' },
+		};
+
+		await expect(controller.getChatMessages(request as never)).resolves.toMatchObject({
+			messages: [],
+			activeExecutionId: null,
+		});
+
+		// The memory of another user never shows in a shared thread.
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
+			...checkpoint,
+			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:teammate-1' },
 		});
 		await expect(controller.getChatMessages(request as never)).rejects.toThrow(NotFoundError);
 	});
@@ -1262,5 +1306,119 @@ describe('AgentChatController production n8n Chat', () => {
 			controller.updateProductionQueuedMessage(req, makeSseResponse([]), { message: 'x' }),
 		).rejects.toThrow(NotFoundError);
 		await expect(controller.removeProductionQueuedMessage(req)).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentChatController instance agent checks before the stream', () => {
+	const AGENT_ID = 'test-assistant';
+	const guard = mock<SystemAgentThreadGuard>();
+	const systemAgentExecution = mock<SystemAgentExecutionService>();
+	const request = { params: { projectId: 'project-1' }, user: { id: 'teammate-1' } } as never;
+
+	function makeSystemAgentController() {
+		const registry = new SystemAgentRegistry();
+		registry.register(mock<SystemAgentProvider>({ agentId: AGENT_ID, name: 'Test Assistant' }));
+		return makeController(registry);
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		Container.set(SystemAgentThreadGuard, guard);
+		Container.set(SystemAgentExecutionService, systemAgentExecution);
+	});
+
+	it('answers a refused message with its status and opens no stream', async () => {
+		const { controller, messageQueue } = makeSystemAgentController();
+		guard.checkSend.mockRejectedValue(new ForbiddenError('Only Ada can send messages here.'));
+		const res = makeSseResponse([]);
+
+		await expect(
+			controller.chat(request, res, AGENT_ID, { message: 'hi', sessionId: 'thread-1' } as never),
+		).rejects.toThrow('Only Ada can send messages here.');
+
+		expect(guard.checkSend).toHaveBeenCalledWith({
+			agentId: AGENT_ID,
+			user: { id: 'teammate-1' },
+			sessionId: 'thread-1',
+		});
+		expect(res.flushHeaders).not.toHaveBeenCalled();
+		expect(messageQueue.enqueue).not.toHaveBeenCalled();
+		expect(systemAgentExecution.prepareChatMessage).not.toHaveBeenCalled();
+	});
+
+	it('checks no session for a message that starts a new session', async () => {
+		const { controller } = makeSystemAgentController();
+		guard.checkSend.mockResolvedValue();
+		systemAgentExecution.prepareChatMessage.mockRejectedValue(new Error('stop here'));
+
+		await controller.chat(request, makeSseResponse([]), AGENT_ID, {
+			message: 'hi',
+			sessionId: 'thread-1',
+			newSession: true,
+		} as never);
+
+		expect(guard.checkSend).toHaveBeenCalledWith(expect.objectContaining({ sessionId: undefined }));
+		expect(systemAgentExecution.prepareChatMessage).toHaveBeenCalled();
+	});
+
+	it('answers a refused answer with its status and resumes nothing', async () => {
+		const { controller } = makeSystemAgentController();
+		guard.checkAnswer.mockRejectedValue(
+			new ConflictError('This request was already answered', undefined, {
+				answeredBy: { name: 'Ada' },
+			}),
+		);
+		const res = makeSseResponse([]);
+
+		await expect(
+			controller.chatResume(request, res, AGENT_ID, {
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+			} as never),
+		).rejects.toThrow(ConflictError);
+
+		expect(guard.checkAnswer).toHaveBeenCalledWith({
+			agentId: AGENT_ID,
+			user: { id: 'teammate-1' },
+			projectId: 'project-1',
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { approved: true },
+		});
+		expect(res.flushHeaders).not.toHaveBeenCalled();
+		expect(systemAgentExecution.resumeRun).not.toHaveBeenCalled();
+	});
+
+	it('resumes the checked answer on the stream', async () => {
+		const { controller } = makeSystemAgentController();
+		const answer = mock<CheckedAnswer>({ threadId: 'thread-1' });
+		guard.checkAnswer.mockResolvedValue(answer);
+		systemAgentExecution.resumeRun.mockImplementation(async (_answer, send) => {
+			send({ type: 'done', sessionId: 'thread-1', executionId: 'exec-1' });
+		});
+		const writes: string[] = [];
+
+		await controller.chatResume(request, makeSseResponse(writes), AGENT_ID, {
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: { approved: true },
+		} as never);
+
+		expect(systemAgentExecution.resumeRun).toHaveBeenCalledWith(answer, expect.any(Function));
+		expect(writes.some((line) => line.includes('"done"'))).toBe(true);
+	});
+
+	it('does not check project agents with the instance agent guard', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {});
+
+		await controller.chatResume(request, makeSseResponse([]), 'agent-1', {
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: {},
+		} as never);
+
+		expect(guard.checkAnswer).not.toHaveBeenCalled();
 	});
 });

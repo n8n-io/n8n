@@ -69,6 +69,7 @@ import { InstanceAiVerificationService } from './instance-ai-verification.servic
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService } from './onboarding';
 import { WorkflowProvenanceService } from './provenance/workflow-provenance.service';
+import { ThreadSharingService } from './sharing/thread-sharing.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -109,6 +110,7 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 		private readonly provenanceService: WorkflowProvenanceService,
+		private readonly threadSharing: ThreadSharingService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -336,7 +338,7 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
 		this.requireInstanceAiEnabled();
-		return await this.memoryService.listThreads(req.user.id);
+		return await this.threadSharing.listThreads(req.user);
 	}
 
 	@Get('/threads/history')
@@ -347,15 +349,16 @@ export class InstanceAiController {
 		@Query query: InstanceAiThreadHistoryQuery,
 	) {
 		this.requireInstanceAiEnabled();
-		return await this.memoryService.listThreadHistory(req.user.id, query);
+		return await this.threadSharing.listThreadHistory(req.user, query);
 	}
 
 	@Get('/threads/:threadId')
 	@GlobalScope('instanceAi:message')
 	async getThread(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		return { thread: await this.memoryService.getThreadInfo(threadId) };
+		// Teammates read a shared thread. Anyone else gets 404.
+		await this.threadSharing.assertCanRead(req.user, threadId);
+		return { thread: await this.threadSharing.getThreadInfo(req.user, threadId) };
 	}
 
 	@Post('/threads')
@@ -445,7 +448,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 	): Promise<InstanceAiThreadTabsResponse> {
 		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
+		await this.threadSharing.assertCanRead(req.user, threadId);
 		return { state: await this.threadTabsService.getState(threadId, req.user.id) };
 	}
 
@@ -493,7 +496,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		// Allow new threads — the frontend polls status before the first message is sent
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
+		await this.threadSharing.assertCanRead(req.user, threadId, { allowNew: true });
 		return await this.instanceAiService.getThreadStatus(threadId);
 	}
 

@@ -44,7 +44,16 @@ import {
 	codingSessionPaths,
 	readCodingSession,
 } from './agent-coding-session';
-import { CODING_STATUS_SCRIPT, CODING_STOP_SCRIPT } from './agent-coding-status';
+import {
+	buildLaunchCommand,
+	buildLaunchScript,
+	buildSetupBootstrap,
+	buildStatusCommand,
+	buildStopCommand,
+	codingCheckTimeLimitSeconds,
+} from './agent-coding-scripts';
+import { parseCodingSessionsOutput, parseCodingStatusOutput } from './agent-coding-status';
+import { SandboxPreviewService } from './sandbox-preview/sandbox-preview.service';
 
 interface CodingContext {
 	config: AgentCodingConfig;
@@ -56,6 +65,7 @@ interface CodingContext {
 
 @Service()
 export class AgentCodingService {
+	// oxlint-disable-next-line eslint/max-params -- DI constructor injection
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly workspaceService: AgentWorkspaceService,
@@ -63,6 +73,7 @@ export class AgentCodingService {
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly lockService: LockService,
+		private readonly sandboxPreviewService: SandboxPreviewService,
 	) {}
 
 	private async context(
@@ -122,18 +133,15 @@ export class AgentCodingService {
 		const probePath = context.config.repositoryUrl.includes('n8n-io/n8n')
 			? '/healthz/readiness'
 			: '/';
-		const args = [
-			context.handle.workspaceRoot,
-			String(context.config.port),
+		const command = buildStatusCommand({
+			workspaceRoot: context.handle.workspaceRoot,
+			port: context.config.port,
 			probePath,
 			mode,
-			context.session?.id ?? '',
-		];
-		const result = await this.checked(
-			context,
-			`python3 - ${args.map(shellEscape).join(' ')} <<'PY'\n${CODING_STATUS_SCRIPT}\nPY`,
-		);
-		return JSON.parse(result.stdout);
+			sessionId: context.session?.id,
+		});
+		const { stdout } = await this.checked(context, command);
+		return mode === 'status' ? parseCodingStatusOutput(stdout) : parseCodingSessionsOutput(stdout);
 	}
 
 	async status(
@@ -514,6 +522,13 @@ export class AgentCodingService {
 			throw new BadRequestError('Run the app for this session before opening its preview');
 		}
 		const sandbox = context.handle.sandbox;
+		if (context.handle.provider === 'n8n-sandbox') {
+			return await this.sandboxPreviewService.open(sandbox, {
+				userId: user.id,
+				projectId,
+				port: context.config.port,
+			});
+		}
 		if (!sandbox.getPreviewUrl) {
 			throw new BadRequestError('App preview requires the Daytona sandbox provider for this demo');
 		}
@@ -654,12 +669,7 @@ export class AgentCodingService {
 	}
 
 	private stopCommand(context: CodingContext, all: boolean): string {
-		const args = [
-			join(context.handle.workspaceRoot, '.coding'),
-			context.meta,
-			all ? 'all' : 'current',
-		];
-		return `python3 - ${args.map(shellEscape).join(' ')} <<'PY'\n${CODING_STOP_SCRIPT}\nPY`;
+		return buildStopCommand(context.handle.workspaceRoot, context.meta, all);
 	}
 
 	private async stopApp(context: CodingContext) {
@@ -675,43 +685,30 @@ export class AgentCodingService {
 		command: string,
 		env?: NodeJS.ProcessEnv,
 	) {
-		const pid = shellEscape(join(context.meta, `${name}.pid`));
-		const exit = shellEscape(join(context.meta, `${name}.exit`));
+		const { workspaceRoot } = context.handle;
 		const script = join(context.meta, `${name}.sh`);
-		const sharedMeta = join(context.handle.workspaceRoot, '.coding');
-		const nodeDir = join(sharedMeta, 'node');
-		const pnpmHome = join(sharedMeta, 'pnpm');
-		const nodeBootstrap = context.config.repositoryUrl.includes('n8n-io/n8n')
-			? `if [ ! -x ${shellEscape(join(nodeDir, 'bin/node'))} ] && [ "$(node -p 'Number(process.versions.node.split(".")[0])')" -ne 24 ]; then\nmkdir -p ${shellEscape(nodeDir)}\ncurl -fsSL https://nodejs.org/dist/v24.14.0/node-v24.14.0-linux-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/').tar.xz | tar -xJ -C ${shellEscape(nodeDir)} --strip-components=1\nfi\n`
-			: '';
-		const bootstrap =
-			name === 'setup'
-				? `${nodeBootstrap}if [ ! -x ${shellEscape(join(pnpmHome, 'bin/pnpm'))} ]; then\ncurl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12.4.2 PNPM_HOME=${shellEscape(pnpmHome)} SHELL=/bin/bash ENV=${shellEscape(join(context.meta, 'bashrc'))} bash\nfi\n`
-				: '';
 		await context.handle.filesystem.writeFile(
 			script,
-			[
-				'#!/bin/bash',
-				'set -e',
-				'set -o pipefail',
-				`trap 'printf "%s" "$?" > ${exit}' EXIT`,
-				`export PNPM_HOME=${shellEscape(pnpmHome)}`,
-				`export PATH="$PNPM_HOME/bin":${shellEscape(join(nodeDir, 'bin'))}:"$PATH"`,
-				bootstrap,
+			buildLaunchScript({
+				workspaceRoot,
+				meta: context.meta,
+				name,
 				command,
-			].join('\n'),
+				bootstrap:
+					name === 'setup' ? buildSetupBootstrap(context.config, workspaceRoot, context.meta) : '',
+				timeLimitSeconds: name === 'check' ? codingCheckTimeLimitSeconds(context.config) : 0,
+			}),
 		);
+		const app = name === 'app';
 		await this.checked(
 			context,
-			[
-				'set -e',
-				...(name === 'app' ? [this.previewLock(context)] : []),
-				`if [ -f ${pid} ] && [ ! -f ${exit} ] && [ ! -f ${shellEscape(join(context.meta, `${name}.stopped`))} ] && kill -0 "$(cat ${pid})" 2>/dev/null; then exit 0; fi`,
-				...(name === 'app' ? [this.stopCommand(context, true)] : []),
-				`rm -f ${exit} ${shellEscape(join(context.meta, `${name}.stopped`))}`,
-				`nohup setsid bash ${shellEscape(script)} > ${shellEscape(join(context.meta, `${name}.log`))} 2>&1 < /dev/null ${name === 'app' ? '9>&-' : ''} &`,
-				`printf '%s' "$!" > ${pid}`,
-			].join('\n'),
+			buildLaunchCommand({
+				meta: context.meta,
+				name,
+				script,
+				lock: app ? this.previewLock(context) : undefined,
+				beforeLaunch: app ? this.stopCommand(context, true) : undefined,
+			}),
 			{ env },
 		);
 	}

@@ -16,6 +16,7 @@ import {
 	type CapabilityAnswer,
 	type CapabilityAssistantOptions,
 	type CapabilityCallRunner,
+	type CapabilityCardPayload,
 	type CapabilityToolDefinition,
 	defineCapability,
 } from '../capability';
@@ -170,6 +171,53 @@ describe('capability confirmation', () => {
 				}),
 				{ numRuns: 100 },
 			);
+		});
+	});
+
+	describe('card of the checkpoint', () => {
+		it('gives applyAnswer the card that the first call suspended with', async () => {
+			const applyAnswer = vi.fn(
+				(args: SaveArgs, answer: CapabilityAnswer, _card: CapabilityCardPayload) =>
+					applyPublish(args, answer),
+			);
+			const pinnedCard = async () => ({
+				...(await publishCard()),
+				fields: { pinned: { versionId: 'v-7' } },
+			});
+
+			await approveWith({ publish: false }, withModes('always_allow', 'always_allow'), {
+				confirm: pinnedCard,
+				applyAnswer,
+				permission: permissionOf,
+			});
+
+			expect(applyAnswer).toHaveBeenCalledTimes(1);
+			const [args, answer, card] = applyAnswer.mock.calls[0];
+			expect(args).toEqual({ name: 'Invoices' });
+			expect(answer).toEqual({ approved: true, values: { publish: false } });
+			expect(card).toMatchObject({
+				message: 'Save "Invoices"?',
+				offered: { publish: [true, false] },
+				pinned: { versionId: 'v-7' },
+			});
+			expect(handler).toHaveBeenCalledWith({ name: 'Invoices', publish: false });
+		});
+
+		it('does not call applyAnswer for a declined card', async () => {
+			const applyAnswer = vi.fn(applyPublish);
+			const suspend = vi.fn(async (_payload: unknown) => SUSPENDED as never);
+			const options = { confirm: publishCard, applyAnswer, permission: permissionOf };
+			const permissions = withModes('always_allow', 'always_allow');
+			await call(buildTool(options, permissions), { suspend, resumeData: undefined });
+
+			await call(buildTool(options, permissions), {
+				suspend: vi.fn(),
+				resumeData: { approved: false },
+				suspendPayload: jsonParse<unknown>(JSON.stringify(suspend.mock.calls[0][0])),
+			});
+
+			expect(applyAnswer).not.toHaveBeenCalled();
+			expect(handler).not.toHaveBeenCalled();
 		});
 	});
 

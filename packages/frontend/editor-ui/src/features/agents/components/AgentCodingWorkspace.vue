@@ -175,6 +175,8 @@ const phaseLabels = computed(() => ({
 	installing: i18n.baseText('agents.coding.status.installing'),
 	ready: i18n.baseText('agents.coding.status.ready'),
 	error: i18n.baseText('agents.coding.status.error'),
+	stopped: i18n.baseText('agents.coding.status.stopped'),
+	restarted: i18n.baseText('agents.coding.status.restarted'),
 }));
 const appLabels = computed(() => ({
 	stopped: i18n.baseText('agents.coding.app.stopped'),
@@ -187,6 +189,7 @@ const checkLabels = computed(() => ({
 	running: i18n.baseText('agents.coding.check.running'),
 	passed: i18n.baseText('agents.coding.check.passed'),
 	failed: i18n.baseText('agents.coding.check.failed'),
+	stopped: i18n.baseText('agents.coding.check.stopped'),
 }));
 const preparing = computed(
 	() => status.value?.phase === 'cloning' || status.value?.phase === 'installing',
@@ -1159,6 +1162,10 @@ onBeforeUnmount(() => {
 .error,
 .fileError {
 	color: var(--text-color--danger);
+}
+.status[data-state='stopped'],
+.status[data-state='restarted'] {
+	color: var(--text-color--warning);
 }
 .error,
 .fileError {

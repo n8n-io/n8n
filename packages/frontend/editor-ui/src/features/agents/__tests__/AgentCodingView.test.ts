@@ -172,3 +172,21 @@ it('restores a chat link to its worktree after reloading', async () => {
 	);
 	expect(api.createSession).not.toHaveBeenCalled();
 });
+
+it.each([
+	['stopped', 'Setup stopped'],
+	['restarted', 'Sandbox restarted'],
+] as const)(
+	'shows a worktree with a %s setup as interrupted, not as preparing',
+	async (phase, text) => {
+		const listed = await api.sessions();
+		const [session] = listed.sessions;
+		session.status = { ...session.status, phase, setupExitCode: null };
+		api.sessions.mockResolvedValue({ ...listed, sessions: [session] });
+		renderView();
+		await flushPromises();
+
+		expect(screen.getByRole('button', { name: `My worktree, demo, ${text}` })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /Preparing/ })).not.toBeInTheDocument();
+	},
+);

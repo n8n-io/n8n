@@ -74,6 +74,7 @@ import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import type { WorkflowProvenanceService } from '../provenance/workflow-provenance.service';
+import type { ThreadSharingService } from '../sharing/thread-sharing.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -117,6 +118,7 @@ describe('InstanceAiController', () => {
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
 	const provenanceService = mock<WorkflowProvenanceService>();
+	const threadSharing = mock<ThreadSharingService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -142,6 +144,7 @@ describe('InstanceAiController', () => {
 		globalConfig,
 		threadTabsService,
 		provenanceService,
+		threadSharing,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -901,6 +904,40 @@ describe('InstanceAiController', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('listThreads')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
+
+		it('lists the own and the shared threads of the requesting user', async () => {
+			const list = { threads: [], total: 0, page: 0, hasMore: false };
+			threadSharing.listThreads.mockResolvedValue(list);
+
+			await expect(controller.listThreads(req)).resolves.toBe(list);
+			expect(threadSharing.listThreads).toHaveBeenCalledWith(req.user);
+		});
+
+		it('pages the history with the same rule', async () => {
+			const page = { threads: [], hasMore: false, nextCursor: null };
+			threadSharing.listThreadHistory.mockResolvedValue(page);
+
+			await expect(controller.listThreadHistory(req, res, { limit: 30 })).resolves.toBe(page);
+			expect(threadSharing.listThreadHistory).toHaveBeenCalledWith(req.user, { limit: 30 });
+		});
+	});
+
+	describe('getThread', () => {
+		it('returns the thread with its sharing fields to a user who can read it', async () => {
+			const thread = mock<InstanceAiThreadInfo>({ id: THREAD_ID });
+			threadSharing.getThreadInfo.mockResolvedValue(thread);
+
+			await expect(controller.getThread(req, res, THREAD_ID)).resolves.toEqual({ thread });
+			expect(threadSharing.assertCanRead).toHaveBeenCalledWith(req.user, THREAD_ID);
+			expect(threadSharing.getThreadInfo).toHaveBeenCalledWith(req.user, THREAD_ID);
+		});
+
+		it('answers 404 and reads nothing for a user who cannot read the thread', async () => {
+			threadSharing.assertCanRead.mockRejectedValueOnce(new NotFoundError('Thread not found'));
+
+			await expect(controller.getThread(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+			expect(threadSharing.getThreadInfo).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('workflow provenance', () => {
@@ -1213,13 +1250,13 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('saveThreadTabs')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 
-		it('should return the stored tabs of the user', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		it('should return the stored tabs to a user who can read the thread', async () => {
 			threadTabsService.getState.mockResolvedValue(tabsState);
 
 			const result = await controller.getThreadTabs(req, res, THREAD_ID);
 
 			expect(result).toEqual({ state: tabsState });
+			expect(threadSharing.assertCanRead).toHaveBeenCalledWith(req.user, THREAD_ID);
 			expect(threadTabsService.getState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
 		});
 
@@ -1248,8 +1285,10 @@ describe('InstanceAiController', () => {
 
 		it('should reject tabs of a thread that belongs to another user', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+			threadSharing.assertCanRead.mockRejectedValueOnce(new NotFoundError('Thread not found'));
 
-			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(ForbiddenError);
+			// Reading answers 404, as for an unknown thread. Saving stays with the owner.
+			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
 			await expect(
 				controller.saveThreadTabs(
 					req,
@@ -1263,7 +1302,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should reject tabs of a thread that does not exist', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			threadSharing.assertCanRead.mockRejectedValueOnce(new NotFoundError('Thread not found'));
 
 			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
 			expect(threadTabsService.getState).not.toHaveBeenCalled();
@@ -1276,6 +1315,28 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:message',
 				globalOnly: true,
 			});
+		});
+
+		it('returns the status to a reader and allows a thread that does not exist yet', async () => {
+			const status = {
+				hasActiveRun: false,
+				isSuspended: true,
+				backgroundTasks: [],
+				memoryTasks: [],
+			};
+			instanceAiService.getThreadStatus.mockResolvedValue(status);
+
+			await expect(controller.getThreadStatus(req, res, THREAD_ID)).resolves.toBe(status);
+			expect(threadSharing.assertCanRead).toHaveBeenCalledWith(req.user, THREAD_ID, {
+				allowNew: true,
+			});
+		});
+
+		it('answers 404 without a status read for a user who cannot read the thread', async () => {
+			threadSharing.assertCanRead.mockRejectedValueOnce(new NotFoundError('Thread not found'));
+
+			await expect(controller.getThreadStatus(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+			expect(instanceAiService.getThreadStatus).not.toHaveBeenCalled();
 		});
 	});
 

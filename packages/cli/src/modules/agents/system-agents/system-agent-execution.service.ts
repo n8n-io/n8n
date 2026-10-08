@@ -1,9 +1,9 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import type { AgentSseEvent } from '@n8n/api-types';
+import type { AgentMessageAuthor, AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -24,6 +24,7 @@ import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import { draftChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { SystemAgentRegistry } from './system-agent-registry';
+import type { CheckedAnswer } from './system-agent-thread-guard';
 import type {
 	SystemAgentProvider,
 	SystemAgentTurn,
@@ -41,8 +42,9 @@ const SYSTEM_AGENT_SOURCE = 'chat';
 
 /**
  * Runs code-defined instance agents on the Agents runtime. A conversation is
- * a private session (`accessScope = 'user'`). Its `projectId` is the working
- * project. The queue, steering, checkpoints, cancel and recording are the same
+ * a private session (`accessScope = 'user'`) until its owner shares it with the
+ * project (`accessScope = 'project'`, same owner). Its `projectId` is the working
+ * project. Every turn runs as the owner. The queue, steering, checkpoints, cancel and recording are the same
  * as for preview chat.
  */
 @Service()
@@ -145,6 +147,9 @@ export class SystemAgentExecutionService {
 	): Promise<AgentExecutionThread> {
 		const thread = await this.getThread(agentId, user, threadId);
 		if (changes.projectId && changes.projectId !== thread.projectId) {
+			if (thread.accessScope === 'project') {
+				throw new BadRequestError('A shared conversation cannot move to another project');
+			}
 			await this.assertCanUse(agentId, user, changes.projectId);
 			if (await this.isBusy(thread)) {
 				throw new UserError('Wait for the current turn to finish before you change the project');
@@ -307,7 +312,10 @@ export class SystemAgentExecutionService {
 		}));
 	}
 
-	/** Resume a suspended tool call. Runs the continuation in the background. */
+	/**
+	 * Resume a suspended tool call as the thread owner `user`. Runs the continuation in the
+	 * background. `answeredBy` is the user who answered, when it is not the owner.
+	 */
 	async resume(params: {
 		agentId: string;
 		user: User;
@@ -316,6 +324,7 @@ export class SystemAgentExecutionService {
 		runId?: string;
 		toolCallId?: string;
 		send?: (event: AgentSseEvent) => void;
+		answeredBy?: AgentMessageAuthor;
 	}): Promise<{ runId: string; toolCallId: string; done: Promise<void> }> {
 		const thread = await this.getThread(params.agentId, params.user, params.threadId);
 		const provider = await this.assertCanUse(params.agentId, params.user, thread.projectId);
@@ -357,7 +366,7 @@ export class SystemAgentExecutionService {
 			agentName: thread.agentName,
 			projectId: thread.projectId,
 			resourceId,
-			access: { accessScope: 'user', ownerId: params.user.id },
+			access: { accessScope: thread.accessScope, ownerId: params.user.id },
 			userMessage: null,
 			sessionMode: 'existing',
 			source: SYSTEM_AGENT_SOURCE,
@@ -371,6 +380,7 @@ export class SystemAgentExecutionService {
 			async () => ({
 				type: 'resume',
 				resumeData: params.resumeData,
+				...(params.answeredBy ? { answeredBy: params.answeredBy } : {}),
 				options: {
 					...handle.runOptions,
 					runId,
@@ -434,29 +444,23 @@ export class SystemAgentExecutionService {
 		};
 	}
 
-	/** Resume by run id, for the generic Agents chat resume endpoint. Streams to `send`. */
-	async resumeRun(params: {
-		agentId: string;
-		user: User;
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-		send: (event: AgentSseEvent) => void;
-	}): Promise<void> {
-		const provider = this.getProvider(params.agentId);
-		const state = await this.checkpointStorage.load(params.runId, params.agentId);
-		const threadId = state?.persistence?.threadId;
-		if (!threadId) throw new UserError('This action is no longer waiting for input');
+	/**
+	 * Resume an answer that `SystemAgentThreadGuard.checkAnswer` checked, for the generic
+	 * Agents chat resume endpoint. Runs as the thread owner. Streams to `send`.
+	 */
+	async resumeRun(answer: CheckedAnswer, send: (event: AgentSseEvent) => void): Promise<void> {
+		const provider = this.getProvider(answer.agentId);
 		const { done } = await this.resume({
-			agentId: params.agentId,
-			user: params.user,
-			threadId,
-			runId: params.runId,
-			toolCallId: params.toolCallId,
+			agentId: answer.agentId,
+			user: answer.runAs,
+			threadId: answer.threadId,
+			runId: answer.runId,
+			toolCallId: answer.toolCallId,
 			resumeData: provider.normalizeResumeData
-				? provider.normalizeResumeData(params.resumeData)
-				: params.resumeData,
-			send: params.send,
+				? provider.normalizeResumeData(answer.resumeData)
+				: answer.resumeData,
+			answeredBy: answer.answeredBy,
+			send,
 		});
 		await done;
 	}

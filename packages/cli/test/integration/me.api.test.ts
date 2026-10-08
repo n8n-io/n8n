@@ -17,6 +17,8 @@ import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
+import { UserService } from '@/services/user.service';
+
 // 'auth' serves GET /login and 'users' serves GET /users. Both return the saved settings of the current user.
 const testServer = utils.setupTestServer({ endpointGroups: ['me', 'auth', 'users'] });
 
@@ -252,6 +254,15 @@ describe('Member', () => {
 	});
 
 	describe('PATCH /me/settings', () => {
+		const storedSettings = async (userId: string) =>
+			(await Container.get(UserRepository).findOneByOrFail({ id: userId })).settings;
+
+		const listedUser = async (agent: SuperAgentTest, userId: string) => {
+			const response = await agent.get('/users').expect(200);
+			const items: { id: string; settings?: IUserSettings | null }[] = response.body.data.items;
+			return items.find((item) => item.id === userId);
+		};
+
 		test('should succeed with valid inputs', async () => {
 			const validPayload = {
 				easyAIWorkflowOnboarded: true,
@@ -306,15 +317,6 @@ describe('Member', () => {
 		});
 
 		describe('experienceMode', () => {
-			const storedSettings = async (userId: string) =>
-				(await Container.get(UserRepository).findOneByOrFail({ id: userId })).settings;
-
-			const listedUser = async (agent: SuperAgentTest, userId: string) => {
-				const response = await agent.get('/users').expect(200);
-				const items: { id: string; settings?: IUserSettings | null }[] = response.body.data.items;
-				return items.find((item) => item.id === userId);
-			};
-
 			test('should save the mode and return it for the current user', async () => {
 				const response = await authMemberAgent
 					.patch('/me/settings')
@@ -418,6 +420,44 @@ describe('Member', () => {
 					.expect(200);
 				expect(otherCurrentUser.body.data.settings?.experienceMode).toBeUndefined();
 				expect((await storedSettings(otherMember.id))?.experienceMode).toBeUndefined();
+			});
+		});
+
+		describe('overlapping updates and the users list', () => {
+			test('should keep both changes when two updates of different keys overlap', async () => {
+				for (let round = 0; round < 5; round++) {
+					const experienceMode = round % 2 === 0 ? 'power' : 'simple';
+
+					await Promise.all([
+						authMemberAgent.patch('/me/settings').send({ experienceMode }).expect(200),
+						authMemberAgent
+							.patch('/me/settings')
+							.send({ mcpJsonNudge: { impressions: round } })
+							.expect(200),
+					]);
+
+					expect(await storedSettings(member.id)).toMatchObject({
+						experienceMode,
+						mcpJsonNudge: { impressions: round },
+					});
+				}
+			});
+
+			test('should return the nudge count and the Assistant preferences for the current user in the users list', async () => {
+				const instanceAi = { credentialId: null, modelName: 'model-1', localGatewayDisabled: true };
+				await Container.get(UserService).updateSettings(member.id, { instanceAi });
+				await authMemberAgent
+					.patch('/me/settings')
+					.send({ mcpJsonNudge: { impressions: 2 }, experienceMode: 'power' })
+					.expect(200);
+
+				const self = await listedUser(authMemberAgent, member.id);
+
+				expect(self?.settings).toEqual({
+					instanceAi,
+					mcpJsonNudge: { impressions: 2 },
+					experienceMode: 'power',
+				});
 			});
 		});
 	});

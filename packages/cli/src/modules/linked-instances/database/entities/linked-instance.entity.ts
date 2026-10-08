@@ -1,7 +1,6 @@
+import type { LinkedInstanceStatus } from '@n8n/api-types';
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
-
-import type { LinkedInstanceStatus } from '../../linked-instances.types';
 
 /** Another n8n instance that one user linked. The user's deletion removes the row. */
 @Entity('linked_instance')
@@ -30,4 +29,12 @@ export class LinkedInstance extends WithTimestamps {
 
 	@DateTimeColumn({ nullable: true })
 	lastVerifiedAt: Date | null;
+
+	/** Project on the linked instance that gets new automations. Set with its name, or not at all. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	defaultRemoteProjectId: string | null;
+
+	/** Name of that project when it was last read from the linked instance. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	defaultRemoteProjectName: string | null;
 }

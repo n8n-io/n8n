@@ -19,6 +19,7 @@ import { InstanceAiService } from '../instance-ai.service';
 // Importing the controllers resolves their middleware from the container, which needs a database.
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
+vi.mock('../sharing/thread-sharing.controller', () => ({}));
 
 describe('InstanceAiModule', () => {
 	const usePruneInterval = (pruneInterval: number): void => {
@@ -48,6 +49,8 @@ describe('InstanceAiModule', () => {
 				.map((capability) => capability.name);
 
 		beforeEach(() => {
+			// init() gets these services from the container. Stub each new service that init() gets
+			// here. Without a stub, the test builds the real service, which can need a database.
 			mockInstance(InstanceCredentialBroker);
 			mockInstance(InstanceAiSettingsService);
 			mockInstance(SandboxSettingsService);
@@ -63,12 +66,12 @@ describe('InstanceAiModule', () => {
 			Container.set(CapabilityRegistry, new CapabilityRegistry());
 		});
 
-		// The module owns parse_schedule, so the Assistant keeps it when the mcp module is off.
-		it('registers parse_schedule for MCP clients and for the n8n Assistant', async () => {
+		// The module owns its capabilities, so the Assistant keeps them when the mcp module is off.
+		it('registers its capabilities for MCP clients and for the n8n Assistant', async () => {
 			await new InstanceAiModule().init();
 
-			expect(capabilityNames('mcp')).toEqual(['parse_schedule']);
-			expect(capabilityNames('assistant')).toEqual(['parse_schedule']);
+			expect(capabilityNames('mcp')).toEqual(['parse_schedule', 'propose_automation']);
+			expect(capabilityNames('assistant')).toEqual(['parse_schedule', 'propose_automation']);
 		});
 
 		it('registers each capability once, also when init runs again', async () => {
@@ -77,7 +80,7 @@ describe('InstanceAiModule', () => {
 			await instanceAiModule.init();
 			await instanceAiModule.init();
 
-			expect(capabilityNames('mcp')).toEqual(['parse_schedule']);
+			expect(capabilityNames('mcp')).toEqual(['parse_schedule', 'propose_automation']);
 		});
 	});
 });

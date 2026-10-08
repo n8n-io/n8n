@@ -12,6 +12,7 @@ import type { RegisterToolFn, ToolDefinition } from '@/modules/mcp/mcp.types';
 import {
 	type CapabilityAnswer,
 	type CapabilityCard,
+	type CapabilityCardPayload,
 	capabilityCardPayloadSchema,
 	type ConfirmationOptions,
 	DEFAULT_CAPABILITY_ANSWER_SCHEMA,
@@ -19,7 +20,11 @@ import {
 	runWithConfirmation,
 } from './capability-confirmation';
 
-export type { CapabilityAnswer, CapabilityCard } from './capability-confirmation';
+export type {
+	CapabilityAnswer,
+	CapabilityCard,
+	CapabilityCardPayload,
+} from './capability-confirmation';
 
 /** Where a capability is offered: to external MCP clients, to the n8n Assistant, or to both. */
 export type CapabilitySurface = 'mcp' | 'assistant';
@@ -31,9 +36,14 @@ export type CapabilityRequest = { user: User };
 
 /**
  * The request that a capability runs in. A capability reads `surface` to apply rules of one
- * surface only, for example the `availableInMCP` check for MCP clients.
+ * surface only, for example the `availableInMCP` check for MCP clients. On the Assistant
+ * surface, `permissions` holds the admin permission modes of the run, so that a card offers
+ * only the actions that an admin did not block.
  */
-export type CapabilityContext = CapabilityRequest & { surface: CapabilitySurface };
+export type CapabilityContext = CapabilityRequest & {
+	surface: CapabilitySurface;
+	permissions?: InstanceAiPermissions;
+};
 
 /** Runs one tool call for a surface, for example to record it in the audit log. */
 export type CapabilityCallRunner = (
@@ -85,8 +95,15 @@ export type CapabilityAssistantOptions<S extends z.ZodRawShape> = {
 	 * every other answer field here or in `applyAnswer`.
 	 */
 	answerSchema?: z.ZodType<CapabilityAnswer>;
-	/** Merges the answer into the arguments before the handler runs. Default: arguments unchanged. */
-	applyAnswer?: (args: CapabilityArgs<S>, answer: CapabilityAnswer) => CapabilityArgs<S>;
+	/**
+	 * Merges the answer into the arguments before the handler runs. Default: arguments unchanged.
+	 * `card` is the suspend payload from the server checkpoint, so the client cannot change it.
+	 */
+	applyAnswer?: (
+		args: CapabilityArgs<S>,
+		answer: CapabilityAnswer,
+		card: CapabilityCardPayload,
+	) => CapabilityArgs<S>;
 	/** The admin permission of the Assistant settings that applies to these arguments. */
 	permission?: (args: CapabilityArgs<S>) => keyof InstanceAiPermissions;
 };
@@ -271,7 +288,11 @@ export function defineCapability<S extends z.ZodRawShape>(input: CapabilityInput
 			if (!surfaces.includes('assistant')) {
 				throw new UnexpectedError(`Capability "${input.name}" is not offered to the n8n Assistant`);
 			}
-			const context: CapabilityContext = { ...request, surface: 'assistant' };
+			const context: CapabilityContext = {
+				...request,
+				surface: 'assistant',
+				...(permissions ? { permissions } : {}),
+			};
 			const definition = buildTool(context);
 			const options = input.assistant;
 			return {

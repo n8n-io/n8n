@@ -3,8 +3,11 @@ import type { ScheduleTrigger } from '@n8n/instance-ai';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import z from 'zod';
 
-import { type CapabilityToolDefinition, defineCapability } from './capability';
-import { PARSE_SCHEDULE_CAPABILITY_NAME } from './capability-scopes';
+import {
+	type CapabilityToolDefinition,
+	defineCapability,
+} from '@/services/capabilities/capability';
+import { PARSE_SCHEDULE_CAPABILITY_NAME } from '@/services/capabilities/capability-scopes';
 
 export { PARSE_SCHEDULE_CAPABILITY_NAME };
 

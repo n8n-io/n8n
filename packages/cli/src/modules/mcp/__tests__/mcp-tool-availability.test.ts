@@ -4,10 +4,10 @@ import * as permissions from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { parseScheduleCapability } from '@/modules/instance-ai/capabilities/parse-schedule.capability';
 import type { CapabilitySurface } from '@/services/capabilities/capability';
 import { CapabilityRegistry } from '@/services/capabilities/capability-registry.service';
 import { CAPABILITY_TOOLS_BY_SCOPE } from '@/services/capabilities/capability-scopes';
-import { parseScheduleCapability } from '@/services/capabilities/parse-schedule.capability';
 
 import {
 	getUnregisteredCapabilityTools,

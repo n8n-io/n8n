@@ -640,6 +640,9 @@ export type {
 	InstanceAiThreadServerState,
 	InstanceAiSSEConnectionState,
 	InstanceAiThreadInfo,
+	InstanceAiThreadSharedWith,
+	InstanceAiThreadOwner,
+	InstanceAiShareThreadResponse,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadHistoryResponse,
 	InstanceAiEnsureThreadResponse,
@@ -725,6 +728,7 @@ export {
 	readPendingInstanceAiSetupCredentialSelections,
 	type InstanceAiSetupCredentialSelection,
 } from './schemas/instance-ai-setup-credential-selection';
+export { sharedThreadApprovalScopes } from './instance-ai-sharing';
 
 export type {
 	McpRegistryServerStatus,
@@ -932,3 +936,4 @@ export { compareExecutionListItems } from './dto/executions/compare-execution-li
 
 export type * from './workflow-suggestions';
 export * from './instance-ai-provenance';
+export * from './schemas/instance-ai-automation.schema';

@@ -7,7 +7,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { AuthenticationMethod, ROLE } from '@n8n/api-types';
+import { AuthenticationMethod, ROLE, type FrontendModuleSettings } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -66,6 +66,36 @@ describe('SettingsPersonalView', () => {
 
 	afterAll(() => {
 		server.shutdown();
+	});
+
+	describe('Interface section', () => {
+		it('is absent while experience modes are off', async () => {
+			const { queryByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByRole('radiogroup', { name: 'Interface' })).not.toBeInTheDocument();
+		});
+
+		it('shows the switch and both descriptions when experience modes are on', async () => {
+			settingsStore.moduleSettings = {
+				'instance-ai': {
+					enabled: true,
+					experience: { enabled: true, defaultMode: 'power' },
+				} as NonNullable<FrontendModuleSettings['instance-ai']>,
+			};
+
+			const { getByRole, getByText } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByRole('radiogroup', { name: 'Interface' })).toBeInTheDocument();
+			expect(getByRole('radio', { name: 'Power' })).toBeChecked();
+			expect(
+				getByText('Just chat. n8n picks the settings and checks with you before anything risky.'),
+			).toBeVisible();
+			expect(
+				getByText('See every thread, plan and change. Choose where each task runs.'),
+			).toBeVisible();
+		});
 	});
 
 	it('should enable email and pw change', async () => {

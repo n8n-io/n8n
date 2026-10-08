@@ -28,7 +28,8 @@ const mockAgentMemory = {
 
 const mockThreads = {
 	findOneBy: vi.fn(),
-	findOwnedHistoryPage: vi.fn(),
+	findVisibleHistoryPage: vi.fn(),
+	findVisibleByAgent: vi.fn(),
 	findOwnedByAgent: vi.fn(),
 	findIdsOwnedByAgent: vi.fn(),
 	findByAgentUpdatedBefore: vi.fn(),
@@ -84,13 +85,13 @@ function makeSession(id: string, updatedAt: string, ownerId = 'user-1') {
 describe('InstanceAiMemoryService.listThreadHistory', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockThreads.findOwnedHistoryPage.mockReset();
+		mockThreads.findVisibleHistoryPage.mockReset();
 		mockGetThread.mockResolvedValue(null);
 	});
 
 	it('encodes the last returned row as the cursor and stops on the final page', async () => {
 		const rows = ['c', 'b', 'a'].map((id) => makeSession(id, '2026-02-01T00:00:00.000Z'));
-		mockThreads.findOwnedHistoryPage.mockResolvedValueOnce(rows).mockResolvedValueOnce([rows[2]]);
+		mockThreads.findVisibleHistoryPage.mockResolvedValueOnce(rows).mockResolvedValueOnce([rows[2]]);
 		const service = createService();
 		const first = await service.listThreadHistory('user-1', { limit: 2, search: 'invoice' });
 		expect(first.threads.map((thread) => thread.id)).toEqual(['c', 'b']);
@@ -101,31 +102,35 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 			search: 'invoice',
 			cursor: first.nextCursor!,
 		});
-		expect(mockThreads.findOwnedHistoryPage).toHaveBeenNthCalledWith(
-			1,
-			'n8n-assistant',
-			'user-1',
-			2,
-			'invoice',
-			undefined,
-		);
-		expect(mockThreads.findOwnedHistoryPage).toHaveBeenNthCalledWith(
-			2,
-			'n8n-assistant',
-			'user-1',
-			2,
-			'invoice',
-			{
-				id: 'b',
-				updatedAt: rows[1].updatedAt,
-			},
-		);
+		const viewer = { userId: 'user-1', sharedProjectIds: [] };
+		expect(mockThreads.findVisibleHistoryPage).toHaveBeenNthCalledWith(1, 'n8n-assistant', viewer, {
+			limit: 2,
+			search: 'invoice',
+			before: undefined,
+		});
+		expect(mockThreads.findVisibleHistoryPage).toHaveBeenNthCalledWith(2, 'n8n-assistant', viewer, {
+			limit: 2,
+			search: 'invoice',
+			before: { id: 'b', updatedAt: rows[1].updatedAt },
+		});
 		expect(second).toMatchObject({ hasMore: false, nextCursor: null });
 		expect(second.threads.map((thread) => thread.id)).toEqual(['a']);
 	});
 
+	it('pages the threads shared in the given projects too', async () => {
+		mockThreads.findVisibleHistoryPage.mockResolvedValueOnce([]);
+
+		await createService().listThreadHistory('user-1', { limit: 30 }, ['project-1']);
+
+		expect(mockThreads.findVisibleHistoryPage).toHaveBeenCalledWith(
+			'n8n-assistant',
+			{ userId: 'user-1', sharedProjectIds: ['project-1'] },
+			{ limit: 30, search: undefined, before: undefined },
+		);
+	});
+
 	it('returns an empty final page for a search with no matches', async () => {
-		mockThreads.findOwnedHistoryPage.mockResolvedValueOnce([]);
+		mockThreads.findVisibleHistoryPage.mockResolvedValueOnce([]);
 		expect(
 			await createService().listThreadHistory('user-1', { limit: 30, search: 'missing' }),
 		).toEqual({ threads: [], hasMore: false, nextCursor: null });
@@ -135,7 +140,7 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 		await expect(
 			createService().listThreadHistory('user-1', { limit: 30, cursor: 'invalid' }),
 		).rejects.toThrow('Invalid thread history cursor');
-		expect(mockThreads.findOwnedHistoryPage).not.toHaveBeenCalled();
+		expect(mockThreads.findVisibleHistoryPage).not.toHaveBeenCalled();
 	});
 });
 
@@ -152,7 +157,7 @@ describe('InstanceAiMemoryService.listThreads', () => {
 		running: status === 'running',
 	});
 
-	/** Newest first, as `findOwnedByAgent` returns the sessions. */
+	/** Newest first, as `findVisibleByAgent` returns the sessions. */
 	const storedSessions = (count: number) =>
 		Array.from({ length: count }, (_, i) =>
 			makeSession(`thread-${i}`, new Date(Date.UTC(2026, 9, 5) - i * 60_000).toISOString()),
@@ -188,7 +193,7 @@ describe('InstanceAiMemoryService.listThreads', () => {
 
 	it('adds the state fields to the first 50 threads only and keeps the stored order', async () => {
 		const sessions = storedSessions(60);
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce(sessions);
+		mockThreads.findVisibleByAgent.mockResolvedValueOnce(sessions);
 
 		const result = await createService().listThreads('user-1');
 
@@ -206,7 +211,7 @@ describe('InstanceAiMemoryService.listThreads', () => {
 
 	it('reads the states of a page with exactly one checkpoint read and one execution read', async () => {
 		const sessions = storedSessions(60);
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce(sessions);
+		mockThreads.findVisibleByAgent.mockResolvedValueOnce(sessions);
 
 		await createService().listThreads('user-1');
 
@@ -222,7 +227,7 @@ describe('InstanceAiMemoryService.listThreads', () => {
 
 	it('keeps the existing thread fields next to the new ones', async () => {
 		const [session] = storedSessions(1);
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce([session]);
+		mockThreads.findVisibleByAgent.mockResolvedValueOnce([session]);
 		mockGetThread.mockResolvedValueOnce({ id: session.id, title: 'Invoices', metadata: { a: 1 } });
 
 		const result = await createService().listThreads('user-1');
@@ -245,7 +250,7 @@ describe('InstanceAiMemoryService.listThreads', () => {
 
 	it('reads the states of the requested page, not of the first page', async () => {
 		const sessions = storedSessions(5);
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce(sessions);
+		mockThreads.findVisibleByAgent.mockResolvedValueOnce(sessions);
 
 		const result = await createService().listThreads('user-1', 1, 2);
 
@@ -261,7 +266,7 @@ describe('InstanceAiMemoryService.listThreads', () => {
 	});
 
 	it('returns the list without the state fields when a state read fails', async () => {
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce(storedSessions(3));
+		mockThreads.findVisibleByAgent.mockResolvedValueOnce(storedSessions(3));
 		mockExecutions.findRunSummariesByThreadIds.mockRejectedValueOnce(
 			new Error('database is locked'),
 		);
@@ -275,8 +280,26 @@ describe('InstanceAiMemoryService.listThreads', () => {
 		});
 	});
 
+	it('lists the own threads and the threads shared in the given projects', async () => {
+		mockThreads.findVisibleByAgent.mockResolvedValue([]);
+
+		await createService().listThreads('user-1');
+		await createService().listThreads('user-1', 0, 100, ['project-1', 'project-2']);
+
+		expect(mockThreads.findVisibleByAgent).toHaveBeenNthCalledWith(
+			1,
+			'n8n-assistant',
+			'user-1',
+			[],
+		);
+		expect(mockThreads.findVisibleByAgent).toHaveBeenNthCalledWith(2, 'n8n-assistant', 'user-1', [
+			'project-1',
+			'project-2',
+		]);
+	});
+
 	it('returns an empty list and reads no states for a user without threads', async () => {
-		mockThreads.findOwnedByAgent.mockResolvedValueOnce([]);
+		mockThreads.findVisibleByAgent.mockResolvedValueOnce([]);
 
 		await expect(createService().listThreads('user-1')).resolves.toEqual({
 			threads: [],

@@ -6,6 +6,7 @@ import type { CommandGroup, CommandBarItem } from '../types';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useExperienceModeCommands } from '@/features/ai/instanceAi/experience/useExperienceModeCommands';
 
 const NAME_KEYWORDS = [
 	'assistant',
@@ -23,6 +24,8 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 	const router = useRouter();
 	const instanceAiStore = useInstanceAiStore();
 	const isInstanceAiCommandsVisible = useInstanceAiAvailable();
+	// Outside the Assistant gate: every user can switch modes while they are on.
+	const experienceModeCommands = useExperienceModeCommands();
 
 	const filteredThreads = computed(() => {
 		const trimmed = (lastQuery.value || '').trim().toLowerCase();
@@ -45,7 +48,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 		})),
 	);
 
-	const commands = computed<CommandBarItem[]>(() => {
+	const assistantCommands = computed<CommandBarItem[]>(() => {
 		if (!isInstanceAiCommandsVisible.value) return [];
 
 		return [
@@ -89,6 +92,8 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 			},
 		];
 	});
+
+	const commands = computed(() => [...assistantCommands.value, ...experienceModeCommands.value]);
 
 	return {
 		commands,

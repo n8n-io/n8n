@@ -28,6 +28,8 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { registerInstanceAiCapabilities } from '@/modules/instance-ai/capabilities/instance-ai-capabilities';
+import { registerN8nPackagesCapabilities } from '@/modules/n8n-packages/capabilities/n8n-packages-capabilities';
+import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -126,9 +128,11 @@ describe('McpService capabilities', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		// What the instance-ai module registers in its init.
+		// What the instance-ai and n8n-packages modules register in their init.
 		Container.set(CapabilityRegistry, new CapabilityRegistry());
 		registerInstanceAiCapabilities(Container.get(CapabilityRegistry));
+		// The service below runs without the builder tools. The package flag is set here on its own.
+		registerN8nPackagesCapabilities(Container.get(CapabilityRegistry), true);
 		eventService = mockInstance(EventService);
 		service = buildService(eventService);
 	});
@@ -259,6 +263,93 @@ describe('McpService capabilities', () => {
 			expect(names).toContain('parse_schedule');
 			expect(names).toContain('search_workflows');
 			expect(result?.structuredContent).toEqual({ found: false });
+		});
+	});
+
+	describe('workflow package tools', () => {
+		const PACKAGE_TOOLS = ['export_workflow_package', 'import_workflow_package'];
+
+		afterEach(() => {
+			Container.set(PackageImportConfig, new PackageImportConfig());
+		});
+
+		it('offers both to an API key caller, with their annotations', async () => {
+			const { result } = await send<{ tools: ToolSummary[] }>(API_KEY_CALLER, 'tools/list');
+
+			const annotationsOf = (name: string) =>
+				result?.tools.find((tool) => tool.name === name)?.annotations;
+			expect(annotationsOf('export_workflow_package')).toEqual({
+				title: 'Export workflow package',
+				readOnlyHint: true,
+				openWorldHint: false,
+			});
+			expect(annotationsOf('import_workflow_package')).toEqual({
+				title: 'Import workflow package',
+				readOnlyHint: false,
+				destructiveHint: true,
+				idempotentHint: true,
+				openWorldHint: false,
+			});
+		});
+
+		it.each<[string, McpAuthContext, string[]]>([
+			[
+				'workflow:read offers export only',
+				{ grantedScopes: ['workflow:read'] },
+				['export_workflow_package'],
+			],
+			[
+				'workflow:write offers import only',
+				{ grantedScopes: ['workflow:write'] },
+				['import_workflow_package'],
+			],
+			[
+				'both scopes offer both',
+				{ grantedScopes: ['workflow:read', 'workflow:write'] },
+				PACKAGE_TOOLS,
+			],
+			['other scopes offer neither', { grantedScopes: ['execution:read', 'tag:read'] }, []],
+		])('OAuth: %s', async (_case, auth, expected) => {
+			const names = await listToolNames(auth);
+
+			expect(names.filter((name) => PACKAGE_TOOLS.includes(name))).toEqual(expected);
+		});
+
+		it('rejects a package over the import limit before the tool runs', async () => {
+			Container.get(PackageImportConfig).maxUncompressedBytes = 3;
+
+			const { result } = await send<CallResult>(API_KEY_CALLER, 'tools/call', {
+				name: 'import_workflow_package',
+				arguments: { packageBase64: 'YWJjZA==' },
+			});
+
+			expect(result?.isError).toBe(true);
+			expect(result?.content[0]?.text).toContain('Input validation error');
+			expect(result?.content[0]?.text).toContain('packageBase64');
+			expect(result?.content[0]?.text).toContain(
+				'The workflow package is larger than the limit of 3B. An admin can change the limit with N8N_IMPORT_MAX_UNCOMPRESSED_BYTES.',
+			);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('offers export but not import when the module registered without the workflow builder', async () => {
+			Container.set(CapabilityRegistry, new CapabilityRegistry());
+			registerN8nPackagesCapabilities(Container.get(CapabilityRegistry), false);
+
+			const names = await listToolNames(API_KEY_CALLER);
+
+			expect(names).toContain('export_workflow_package');
+			expect(names).not.toContain('import_workflow_package');
+		});
+
+		it('offers neither when the n8n-packages module registered nothing', async () => {
+			Container.set(CapabilityRegistry, new CapabilityRegistry());
+			registerInstanceAiCapabilities(Container.get(CapabilityRegistry));
+
+			const names = await listToolNames(API_KEY_CALLER);
+
+			expect(names).toContain('parse_schedule');
+			expect(names.filter((name) => PACKAGE_TOOLS.includes(name))).toEqual([]);
 		});
 	});
 
