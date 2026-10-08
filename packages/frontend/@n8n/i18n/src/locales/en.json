@@ -3907,6 +3907,7 @@
 	"settings.promotions.apply.toast.sourceChanged.title": "Apply paused",
 	"settings.promotions.apply.toast.sourceChanged.message": "The {branch} branch changed before Apply finished. Start Apply again to use the latest version.",
 	"settings.promotions.apply.toast.error": "Couldn't apply to the instance",
+	"settings.promotions.apply.toast.error.message": "Some changes may already be applied. Check the instance before you try again.",
 	"settings.promotions.apply.notConnected": "Connect the apply branch in the instance connection below before you apply.",
 	"settings.promotions.providers.title": "Git providers",
 	"settings.promotions.providers.description": "A provider holds the credentials for a Git host. Connections share the provider.",

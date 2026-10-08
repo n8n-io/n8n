@@ -211,8 +211,53 @@ describe('ApplyInstanceDialog', () => {
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 
-		await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(failure, expect.any(String)));
+		await waitFor(() =>
+			expect(mockShowError).toHaveBeenCalledWith(failure, "Couldn't apply to the instance", {
+				message: 'Some changes may already be applied. Check the instance before you try again.',
+			}),
+		);
 		expect(mockShowMessage).not.toHaveBeenCalled();
 		expect(emitted('update:open')).toBeUndefined();
+	});
+
+	it('reloads the project list when the apply fails', async () => {
+		// A failed apply can still have created or deleted projects.
+		api.applyPromotion.mockRejectedValueOnce(new Error('import failed'));
+		const projectsStore = useProjectsStore();
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads the project list when the binding flow closes without applying', async () => {
+		// A failed Continue keeps the flow open; the user then closes it.
+		api.applyPromotion.mockResolvedValue(blocked({ missingBindings: [credential] }));
+		const projectsStore = useProjectsStore();
+		const { findByTestId, emitted } = renderComponent({
+			global: {
+				stubs: {
+					PromotionBindingsFlow: defineComponent({
+						emits: ['update:open'],
+						setup:
+							(_, { emit }) =>
+							() =>
+								h('button', {
+									'data-test-id': 'stub-close',
+									onClick: () => emit('update:open', false),
+								}),
+					}),
+				},
+			},
+		});
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+		await userEvent.click(await findByTestId('stub-close'));
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		expect(emitted('update:open')).toEqual([[false]]);
 	});
 });

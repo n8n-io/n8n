@@ -120,7 +120,11 @@ async function submit() {
 		reportSourceChanged();
 		close();
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.promotions.apply.toast.error'));
+		// Apply can save some changes before a later step fails, so the project list can be stale.
+		toast.showError(error, i18n.baseText('settings.promotions.apply.toast.error'), {
+			message: i18n.baseText('settings.promotions.apply.toast.error.message'),
+		});
+		void refreshProjects();
 	} finally {
 		isSubmitting.value = false;
 	}
@@ -141,6 +145,8 @@ function onBindingsOpenChange(open: boolean) {
 	if (open) return;
 	blockedResult.value = undefined;
 	close();
+	// A failed Continue can leave part of the apply saved.
+	void refreshProjects();
 }
 </script>
 
