@@ -38,10 +38,10 @@ describe('observeSystemTaskRun', () => {
 		};
 
 	it.each([
-		{ mode: 'durable' as const, durable: true },
-		{ mode: 'leader_timer' as const, durable: false },
-		{ mode: 'instance_timer' as const, durable: false },
-	])('tells a $mode run whether it is durable', async ({ mode, durable }) => {
+		{ mode: 'durable' as const, runner: 'scheduler' },
+		{ mode: 'leader_timer' as const, runner: 'leaderTimer' },
+		{ mode: 'instance_timer' as const, runner: 'instanceTimer' },
+	])('tells a $mode run which runner started it', async ({ mode, runner }) => {
 		const run = vi.fn(resolves);
 		const signal = new AbortController().signal;
 
@@ -53,7 +53,7 @@ describe('observeSystemTaskRun', () => {
 			signal,
 		);
 
-		expect(run).toHaveBeenCalledExactlyOnceWith(signal, { durable });
+		expect(run).toHaveBeenCalledExactlyOnceWith(signal, { runner });
 	});
 
 	it('settles a run that throws synchronously as a failure, rather than rejecting', async () => {

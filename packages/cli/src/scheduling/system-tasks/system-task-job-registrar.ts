@@ -3,7 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ScheduledJob } from '@n8n/db';
 import { ScheduledJobRepository } from '@n8n/db';
-import type { SystemTask } from '@n8n/decorators';
+import type { SchedulerSystemTask } from '@n8n/decorators';
 import { resolveSystemTaskRunOptions, resolveSystemTaskSchedule } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { computeFirstRunAt, scheduleFromDefinition } from '@n8n/scheduler';
@@ -26,7 +26,7 @@ export type StaleSystemTaskJob = Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'
  * An interval task seeds at `now`; a cron task seeds at its next fire.
  */
 export function systemTaskProvisionRequest(
-	task: SystemTask,
+	task: SchedulerSystemTask,
 	systemTaskOwner: SystemTaskScheduledJobOwner,
 	defaultTimezone: string,
 	now: Date,
@@ -74,7 +74,7 @@ export class SystemTaskJobRegistrar {
 	}
 
 	/** Never throws: one task that cannot be provisioned must not stop the rest. */
-	async provision(task: SystemTask): Promise<void> {
+	async provision(task: SchedulerSystemTask): Promise<void> {
 		try {
 			const summary = await this.durableJobProvisioner.provision(
 				systemTaskProvisionRequest(
