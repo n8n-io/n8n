@@ -1261,6 +1261,23 @@ describe('generateMockHints', () => {
 		},
 	);
 
+	it('accepts empty triggerContent for a manual trigger and keeps the node hints', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: 'ctx', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+		);
+		const manual = makeWorkflow([
+			makeNode({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' }),
+			makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' }),
+		]);
+
+		const result = await generateMockHints({ workflow: manual, nodeNames: ['Start', 'Slack'] });
+
+		expect(generate).toHaveBeenCalledTimes(1);
+		expect(result.triggerContent).toEqual({});
+		expect(result.nodeHints).toEqual({ Slack: 'foo' });
+		expect(result.warnings).toEqual([]);
+	});
+
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');
 

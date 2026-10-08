@@ -11,6 +11,7 @@ import {
 	type IPinData,
 	type IWorkflowBase,
 	jsonParse,
+	MANUAL_TRIGGER_NODE_TYPE,
 	mapConnectionsByDestination,
 	UserError,
 } from 'n8n-workflow';
@@ -762,7 +763,13 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
-				if (Object.keys(triggerContent).length === 0 && !triggerEmitsNoItems) {
+				const startName =
+					typeof parsed.startNodeName === 'string' ? parsed.startNodeName : undefined;
+				if (
+					Object.keys(triggerContent).length === 0 &&
+					!triggerEmitsNoItems &&
+					!startsManually(workflow, startName)
+				) {
 					reason = 'empty triggerContent';
 				} else {
 					// Coerce nodeHints values to strings — LLM may return objects instead of strings
@@ -800,6 +807,19 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
 	);
 	return { ...emptyResult, warnings };
+}
+
+/**
+ * A manual trigger emits one empty item, so when no downstream node reads a field from it, an
+ * empty `triggerContent` is the right answer.
+ */
+export function startsManually(workflow: IWorkflowBase, startName?: string): boolean {
+	return workflow.nodes.some(
+		(node) =>
+			!node.disabled &&
+			node.type === MANUAL_TRIGGER_NODE_TYPE &&
+			(startName === undefined || node.name === startName),
+	);
 }
 
 function correctionFor(reason: string): string {

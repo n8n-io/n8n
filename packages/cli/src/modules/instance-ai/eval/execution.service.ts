@@ -40,6 +40,7 @@ import {
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
 	fileTypeFromMimeType,
+	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
 	TimeoutExecutionCancelledError,
 	UserError,
@@ -320,7 +321,11 @@ export class EvalExecutionService {
 
 		// A trigger pinned without content runs with no items and blames every downstream miss on the builder.
 		const triggerStart = this.triggerStartNode(workflowEntity, hints);
-		if (triggerStart && lacksTriggerContent(hints)) {
+		if (
+			triggerStart &&
+			triggerStart.type !== MANUAL_TRIGGER_NODE_TYPE &&
+			lacksTriggerContent(hints)
+		) {
 			throw new Error(
 				`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" (${hints.warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
 			);
