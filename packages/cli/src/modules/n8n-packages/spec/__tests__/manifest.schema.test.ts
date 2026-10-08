@@ -13,65 +13,6 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(validManifest)).not.toThrow();
 	});
 
-	it.each(['', 'projects/team/'])('accepts workflows and folders within scope "%s"', (prefix) => {
-		const manifest = {
-			...validManifest,
-			projects: prefix ? [{ id: 'project-1', name: 'Team', target: 'projects/team' }] : [],
-			workflows: [
-				{ id: 'wf-1', name: 'Support', target: `${prefix}workflows/support` },
-				{ id: 'wf-2', name: 'Nested', target: `${prefix}folders/support/child/workflows/nested` },
-			],
-			folders: [
-				{ id: 'folder-1', name: 'Support', target: `${prefix}folders/support` },
-				{ id: 'folder-2', name: 'Child', target: `${prefix}folders/support/child` },
-			],
-		};
-		expect(packageManifestSchema.parse(manifest)).toEqual(manifest);
-	});
-
-	it.each([
-		[['projects/team', 'projects/team'], false],
-		[['projects/team', 'projects/team/folders/nested'], false],
-		[['projects/team/folders/nested', 'projects/team'], false],
-		[['projects/team', 'projects/team-other', 'projects/team/folders/nested'], false],
-		[['projects/team', 'projects/team-other'], true],
-	])('validates project targets %j: %s', (targets, valid) => {
-		const manifest = {
-			...validManifest,
-			workflows: [],
-			projects: targets.map((target, index) => ({ id: `project-${index}`, name: 'Team', target })),
-		};
-		expect(packageManifestSchema.safeParse(manifest).success).toBe(valid);
-	});
-
-	it.each([
-		['workflows', 'agents/support'],
-		['folders', 'workflows/support'],
-		['workflows', 'projects/team-other/workflows/support'],
-		['folders', 'projects/team-other/folders/support'],
-		['workflows', 'workflows/support'],
-		['workflows', 'folders/support/workflows/nested'],
-		['folders', 'folders/support'],
-	])('rejects %s outside a declared scope: %s', (collection, target) => {
-		const manifest = {
-			...validManifest,
-			workflows: [],
-			projects: [{ id: 'project-1', name: 'Team', target: 'projects/team' }],
-			[collection]: [{ id: 'entry', name: 'Support', target }],
-		};
-		expect(packageManifestSchema.safeParse(manifest)).toMatchObject({
-			success: false,
-			error: {
-				issues: [
-					{
-						path: [collection, 0, 'target'],
-						message: `Package ${collection} target "${target}" is outside a declared package scope.`,
-					},
-				],
-			},
-		});
-	});
-
 	it.each([
 		['projects/team/workflows/entry', true],
 		['folders/parent/folders/child/workflows/entry', true],

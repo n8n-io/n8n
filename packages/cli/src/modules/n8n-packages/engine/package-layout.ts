@@ -8,6 +8,24 @@ import type { ManifestEntry } from '../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../spec/requirements.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
+export function foldersInScope(
+	entries: ManifestEntry[] | undefined,
+	basePrefix = '',
+): ManifestEntry[] {
+	return (entries ?? []).filter((entry) => entry.target.startsWith(`${basePrefix}folders/`));
+}
+
+export function workflowsInScope(
+	entries: ManifestEntry[] | undefined,
+	basePrefix = '',
+): ManifestEntry[] {
+	return (entries ?? []).filter(
+		(entry) =>
+			entry.target.startsWith(`${basePrefix}workflows/`) ||
+			entry.target.startsWith(`${basePrefix}folders/`),
+	);
+}
+
 export function needsBundledVariableValues(
 	request: ImportVariableProperties,
 	hasRequirements: boolean,

@@ -8,13 +8,13 @@ import { BadRequestError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { deriveParentFolderId } from './package-layout';
+import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { derivePublishedState } from '../entities/workflow/workflow-published-state';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
-import { entityFilePath, entriesInScope, workflowMetadataFilePath } from '../io/manifest-entry';
+import { entityFilePath, workflowMetadataFilePath } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
@@ -62,7 +62,7 @@ export class N8nPackageParser {
 		const folderTargetToId = new Map((manifest.folders ?? []).map((f) => [f.target, f.id]));
 
 		const workflows: PreparedWorkflow[] = [];
-		for (const entry of entriesInScope(manifest.workflows, ['workflows', 'folders'], basePrefix)) {
+		for (const entry of workflowsInScope(manifest.workflows, basePrefix)) {
 			const parentFolderId = deriveParentFolderId(entry.target, folderTargetToId);
 			workflows.push(await this.readWorkflow(reader, entry, parentFolderId));
 		}
@@ -73,7 +73,7 @@ export class N8nPackageParser {
 		const manifest = await this.getManifest(reader);
 
 		const folders: PreparedFolder[] = [];
-		for (const entry of entriesInScope(manifest.folders, ['folders'], basePrefix)) {
+		for (const entry of foldersInScope(manifest.folders, basePrefix)) {
 			folders.push(await this.readFolder(reader, entry));
 		}
 		return folders;

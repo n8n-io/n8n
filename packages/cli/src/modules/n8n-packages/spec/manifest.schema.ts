@@ -3,7 +3,6 @@ import { z } from 'zod';
 
 import { FORMAT_VERSION } from './constants';
 import { packageRequirementsSchema } from './requirements.schema';
-import { entriesInScope } from '../io/manifest-entry';
 
 export const manifestEntrySchema = z.object({
 	id: z.string().min(1),
@@ -42,46 +41,6 @@ function assertNoDuplicateIds(
 	}
 }
 
-function assertNoOverlappingProjectTargets(
-	projects: ManifestEntryList | undefined,
-	ctx: z.RefinementCtx,
-): void {
-	// Sort directory prefixes so sibling names cannot separate a parent from its descendants.
-	const scopes = (projects ?? []).map(({ target }) => `${target}/`).sort();
-	for (const [index, scope] of scopes.entries()) {
-		const previousScope = scopes[index - 1];
-		if (!previousScope || !scope.startsWith(previousScope)) continue;
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: ['projects'],
-			message: `Package project targets "${previousScope.slice(0, -1)}" and "${scope.slice(0, -1)}" overlap.`,
-		});
-	}
-}
-
-/** Reject misplaced entries before per-project filtering can hide them. */
-function assertScopedTargets(manifest: PackageManifest, ctx: z.RefinementCtx): void {
-	const scopes = (manifest.projects ?? []).map(({ target }) => `${target}/`);
-	if (scopes.length === 0) scopes.push('');
-	for (const [collection, directories] of [
-		['workflows', ['workflows', 'folders']],
-		['folders', ['folders']],
-	] as const) {
-		const entries = manifest[collection] ?? [];
-		const scopedEntries = new Set(
-			scopes.flatMap((scope) => entriesInScope(entries, directories, scope)),
-		);
-		for (const [index, entry] of entries.entries()) {
-			if (scopedEntries.has(entry)) continue;
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: [collection, index, 'target'],
-				message: `Package ${collection} target "${entry.target}" is outside a declared package scope.`,
-			});
-		}
-	}
-}
-
 export const packageManifestSchema = z
 	.object({
 		packageFormatVersion: z.literal(FORMAT_VERSION),
@@ -105,8 +64,6 @@ export const packageManifestSchema = z
 		assertNoDuplicateIds(manifest.dataTables, 'data table', ctx);
 		assertNoDuplicateIds(manifest.variables, 'variable', ctx);
 		assertNoDuplicateIds(manifest.tags, 'tag', ctx);
-		assertNoOverlappingProjectTargets(manifest.projects, ctx);
-		assertScopedTargets(manifest, ctx);
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;

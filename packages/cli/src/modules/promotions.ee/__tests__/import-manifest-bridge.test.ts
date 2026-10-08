@@ -9,13 +9,9 @@ import { readLeftoverManifest, writeImportManifest } from '../import-manifest-br
 
 describe('import-manifest-bridge', () => {
 	let exportFolder: string;
-	const projects = [{ id: 'p1', name: 'Alpha', target: 'projects/alpha' }];
 
 	beforeEach(async () => {
 		exportFolder = await mkdtemp(path.join(tmpdir(), 'n8n-import-manifest-'));
-		await writeTree({
-			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
-		});
 	});
 
 	afterEach(async () => {
@@ -36,7 +32,6 @@ describe('import-manifest-bridge', () => {
 			exportedAt: '2026-01-01T00:00:00.000Z',
 			sourceN8nVersion: '1.0.0',
 			sourceId: 'old',
-			projects,
 			...overrides,
 		});
 
@@ -48,7 +43,6 @@ describe('import-manifest-bridge', () => {
 					exportedAt: '2026-01-01T00:00:00.000Z',
 					sourceN8nVersion: '1.0.0',
 					sourceId: 'inst-1',
-					projects,
 					workflows: [{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' }],
 				}),
 			),
@@ -68,6 +62,7 @@ describe('import-manifest-bridge', () => {
 				variables: [{ id: 'v-old', name: 'API_KEY', target: 'projects/alpha/variables/api-key' }],
 				workflows: [{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' }],
 			}),
+			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
 			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
 			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),
 			'projects/alpha/credentials/c1/credential.json': JSON.stringify({ id: 'c1', name: 'C1' }),
@@ -81,7 +76,6 @@ describe('import-manifest-bridge', () => {
 				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
-				projects,
 				workflows: [{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' }],
 			}),
 			sourceId: 'inst-test',
@@ -161,7 +155,6 @@ describe('import-manifest-bridge', () => {
 				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
-				projects,
 				workflows: [{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' }],
 			}),
 			sourceId: 'inst-test',

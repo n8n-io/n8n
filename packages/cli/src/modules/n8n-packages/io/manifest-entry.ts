@@ -55,17 +55,6 @@ export function packageDirectory(
 	return basePrefix ? `${basePrefix}/${directory}` : directory;
 }
 
-export function entriesInScope(
-	entries: ManifestEntry[] | undefined,
-	collections: readonly ManifestEntityCollection[],
-	basePrefix = '',
-): ManifestEntry[] {
-	const prefixes = collections.map((collection) => `${basePrefix}${packageDirectory(collection)}/`);
-	return (entries ?? []).filter((entry) =>
-		prefixes.some((prefix) => entry.target.startsWith(prefix)),
-	);
-}
-
 /**
  * Inside the owner project's target when that project is part of the export,
  * otherwise the top-level collection directory.

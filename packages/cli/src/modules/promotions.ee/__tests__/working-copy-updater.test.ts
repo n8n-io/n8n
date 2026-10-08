@@ -747,7 +747,6 @@ describe('WorkingCopyUpdater', () => {
 			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
 			await writeTree(stagingFolder, {
 				'manifest.json': manifestFile(staging),
-				'projects/alpha/project.json': projectFile,
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 

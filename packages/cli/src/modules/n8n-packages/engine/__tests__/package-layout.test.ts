@@ -1,19 +1,23 @@
-import { entriesInScope } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
-import { deriveParentFolderId, placeByLayout } from '../package-layout';
+import {
+	deriveParentFolderId,
+	foldersInScope,
+	placeByLayout,
+	workflowsInScope,
+} from '../package-layout';
 
 const entry = (id: string, target: string): ManifestEntry => ({ id, name: id, target });
 
 describe('package-layout', () => {
-	describe('folder scope', () => {
+	describe('foldersInScope', () => {
 		it('keeps the whole folders/ subtree at package root, dropping project-nested folders', () => {
 			const entries = [
 				entry('a', 'folders/a'),
 				entry('b', 'folders/a/b'),
 				entry('c', 'projects/x/folders/c'),
 			];
-			expect(entriesInScope(entries, ['folders']).map((e) => e.id)).toEqual(['a', 'b']);
+			expect(foldersInScope(entries).map((e) => e.id)).toEqual(['a', 'b']);
 		});
 
 		it('scopes to a project prefix', () => {
@@ -22,28 +26,22 @@ describe('package-layout', () => {
 				entry('c', 'projects/x/folders/c'),
 				entry('d', 'projects/x/folders/c/d'),
 			];
-			expect(entriesInScope(entries, ['folders'], 'projects/x/').map((e) => e.id)).toEqual([
-				'c',
-				'd',
-			]);
+			expect(foldersInScope(entries, 'projects/x/').map((e) => e.id)).toEqual(['c', 'd']);
 		});
 
 		it('returns [] for undefined', () => {
-			expect(entriesInScope(undefined, ['folders'])).toEqual([]);
+			expect(foldersInScope(undefined)).toEqual([]);
 		});
 	});
 
-	describe('workflow scope', () => {
+	describe('workflowsInScope', () => {
 		it('keeps loose and folder-nested workflows at package root, dropping project-nested', () => {
 			const entries = [
 				entry('top', 'workflows/top'),
 				entry('inFolder', 'folders/a/workflows/inFolder'),
 				entry('inProject', 'projects/x/workflows/inProject'),
 			];
-			expect(entriesInScope(entries, ['workflows', 'folders']).map((e) => e.id)).toEqual([
-				'top',
-				'inFolder',
-			]);
+			expect(workflowsInScope(entries).map((e) => e.id)).toEqual(['top', 'inFolder']);
 		});
 
 		it('scopes to a project prefix (project-root and project-folder-nested)', () => {
@@ -52,9 +50,10 @@ describe('package-layout', () => {
 				entry('pRoot', 'projects/x/workflows/pRoot'),
 				entry('pFolder', 'projects/x/folders/a/workflows/pFolder'),
 			];
-			expect(
-				entriesInScope(entries, ['workflows', 'folders'], 'projects/x/').map((e) => e.id),
-			).toEqual(['pRoot', 'pFolder']);
+			expect(workflowsInScope(entries, 'projects/x/').map((e) => e.id)).toEqual([
+				'pRoot',
+				'pFolder',
+			]);
 		});
 	});
 
