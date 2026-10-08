@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nInput,
 	N8nInputLabel,
@@ -62,22 +63,24 @@ function close(): void {
 		data-test-id="credential-type-to-confirm-dialog"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.body">
-			<N8nText color="text-base">{{ message }}</N8nText>
-			<N8nInputLabel
-				:label="
-					i18n.baseText('credentialEdit.credentialEdit.confirmMessage.typeToConfirm', {
-						interpolate: { keyword: confirmKeyword },
-					})
-				"
-			>
-				<N8nInput
-					v-model="typed"
-					data-test-id="credential-type-to-confirm-input"
-					@keyup.enter="onConfirm"
-				/>
-			</N8nInputLabel>
-		</div>
+		<N8nDialogBody>
+			<div :class="$style.body">
+				<N8nText color="text-base">{{ message }}</N8nText>
+				<N8nInputLabel
+					:label="
+						i18n.baseText('credentialEdit.credentialEdit.confirmMessage.typeToConfirm', {
+							interpolate: { keyword: confirmKeyword },
+						})
+					"
+				>
+					<N8nInput
+						v-model="typed"
+						data-test-id="credential-type-to-confirm-input"
+						@keyup.enter="onConfirm"
+					/>
+				</N8nInputLabel>
+			</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
 				variant="outline"
