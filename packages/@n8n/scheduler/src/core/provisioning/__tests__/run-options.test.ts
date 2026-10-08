@@ -3,7 +3,7 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { InvalidRunOptionError } from '../../errors';
 import {
 	findOutdatedJobs,
-	resolveRunOptions,
+	resolveCoreRunOptions,
 	type RequestedRunOptions,
 	type RunOptionDefaults,
 	type RunOptions,
@@ -23,7 +23,7 @@ const resolve = (
 	requested: Partial<RequestedRunOptions> = {},
 	defaults: Partial<RunOptionDefaults> = {},
 ) =>
-	resolveRunOptions(
+	resolveCoreRunOptions(
 		{ misfirePolicy: ScheduledJobMisfirePolicy.Coalesce, ...requested },
 		{ ...DEFAULTS, ...defaults },
 	);
@@ -31,7 +31,7 @@ const resolve = (
 const resolveGrace = (misfireGraceSeconds: unknown, defaults: Partial<RunOptionDefaults> = {}) =>
 	resolve({ misfireGraceSeconds }, defaults);
 
-describe('resolveRunOptions', () => {
+describe('resolveCoreRunOptions', () => {
 	it('fills every omitted option from the instance defaults', () => {
 		expect(resolve()).toEqual({
 			runOptions: {

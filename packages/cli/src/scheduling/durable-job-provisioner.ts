@@ -13,7 +13,7 @@ import {
 	createJobProvisioner,
 	findOutdatedJobs,
 	InvalidRunOptionError,
-	resolveRunOptions,
+	resolveCoreRunOptions,
 	withOwnerKeys,
 } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -352,28 +352,10 @@ export class DurableJobProvisioner {
 		requested: Omit<ProvisionScope, 'owner' | 'taskType' | 'payload'>,
 		owner: ScheduledJobOwner,
 	): RunOptions {
-		const { runOptions, misfireGraceAdjustment } = this.resolveRunOptionsOrThrow(requested);
-		if (misfireGraceAdjustment) {
-			this.logger.warn(
-				misfireGraceAdjustment.direction === 'raised'
-					? "Raised a node's misfire grace to the scheduler's minimum"
-					: "Lowered a node's misfire grace to the scheduler's maximum",
-				{
-					...owner,
-					requestedMisfireGraceSeconds: misfireGraceAdjustment.requestedMisfireGraceSeconds,
-					misfireGraceSeconds: runOptions.misfireGraceSeconds,
-				},
-			);
-		}
-		return runOptions;
-	}
-
-	private resolveRunOptionsOrThrow(
-		requested: Omit<ProvisionScope, 'owner' | 'taskType' | 'payload'>,
-	): ResolvedRunOptions {
 		const { scheduler } = this.globalConfig;
+		let resolved: ResolvedRunOptions;
 		try {
-			return resolveRunOptions(requested, {
+			resolved = resolveCoreRunOptions(requested, {
 				maxAttempts: scheduler.maxAttempts,
 				timeoutSeconds: scheduler.taskTimeoutSeconds,
 				misfireGraceSeconds: scheduler.misfireGraceSeconds,
@@ -389,6 +371,20 @@ export class DurableJobProvisioner {
 			}
 			throw error;
 		}
+		const { runOptions, misfireGraceAdjustment } = resolved;
+		if (misfireGraceAdjustment) {
+			this.logger.warn(
+				misfireGraceAdjustment.direction === 'raised'
+					? "Raised a node's misfire grace to the scheduler's minimum"
+					: "Lowered a node's misfire grace to the scheduler's maximum",
+				{
+					...owner,
+					requestedMisfireGraceSeconds: misfireGraceAdjustment.requestedMisfireGraceSeconds,
+					misfireGraceSeconds: runOptions.misfireGraceSeconds,
+				},
+			);
+		}
+		return runOptions;
 	}
 
 	private deprovisionTransaction(scope: DeprovisionScope): RunInDeprovisionTransaction {

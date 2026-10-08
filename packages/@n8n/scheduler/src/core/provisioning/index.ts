@@ -1,7 +1,7 @@
 export { provision, deprovision } from './provision';
 export { scheduleFingerprint } from './schedule-identity';
 export { createJobProvisioner } from './provisioner';
-export { findOutdatedJobs, resolveRunOptions } from './run-options';
+export { findOutdatedJobs, resolveCoreRunOptions } from './run-options';
 export type {
 	MisfireGraceAdjustment,
 	OutdatedJobIds,
