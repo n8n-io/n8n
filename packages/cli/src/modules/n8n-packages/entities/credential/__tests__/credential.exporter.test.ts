@@ -129,6 +129,7 @@ describe('CredentialExporter', () => {
 				requirements: [
 					makeRequirement({ workflowId: 'wf-a' }),
 					makeRequirement({ workflowId: 'wf-b' }),
+					makeRequirement({ workflowId: 'wf-a' }),
 				],
 				writer,
 				credentialExportPolicy: 'expression-values-only',

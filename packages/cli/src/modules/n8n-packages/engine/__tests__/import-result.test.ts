@@ -1,17 +1,23 @@
 import type { PreparedWorkflow } from '../../entities/workflow/workflow-import.types';
 import type { ImportBindingMap } from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageRequirementConsumer,
+} from '../../spec/requirements.schema';
 import {
 	identifyRequirements,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 } from '../import-result';
 
-const requirement = (id: string, usedByWorkflows: string[]): PackageCredentialRequirement => ({
+const requirement = (
+	id: string,
+	usedBy: PackageRequirementConsumer[],
+): PackageCredentialRequirement => ({
 	id,
 	name: id,
 	type: 'githubApi',
-	usedBy: usedByWorkflows.map((workflowId) => ({ kind: 'workflow', id: workflowId })),
+	usedBy,
 });
 
 const prepared = (sourceWorkflowId: string): PreparedWorkflow =>
@@ -23,13 +29,21 @@ describe('identifyRequirements', () => {
 	});
 
 	it('keeps only selected workflow consumers, even when an Agent has the same ID', () => {
-		const requirements = [requirement('credA', ['W1', 'W2']), requirement('credB', ['W3'])];
-		requirements[0].usedBy.push({ kind: 'agent', id: 'W1' });
-		requirements[1].usedBy.push({ kind: 'agent', id: 'W1' });
+		const requirements = [
+			requirement('credA', [
+				{ kind: 'workflow', id: 'W1' },
+				{ kind: 'workflow', id: 'W2' },
+				{ kind: 'agent', id: 'W1' },
+			]),
+			requirement('credB', [
+				{ kind: 'workflow', id: 'W3' },
+				{ kind: 'agent', id: 'W1' },
+			]),
+		];
 
 		const scoped = identifyRequirements(requirements, [prepared('W1')]);
 
-		expect(scoped).toEqual([requirement('credA', ['W1'])]);
+		expect(scoped).toEqual([requirement('credA', [{ kind: 'workflow', id: 'W1' }])]);
 	});
 });
 
@@ -41,13 +55,17 @@ describe('scopeCredentialBindingsToRequirements', () => {
 
 	it('returns undefined when no bindings were supplied', () => {
 		expect(
-			scopeCredentialBindingsToRequirements(undefined, [requirement('credA', ['W1'])]),
+			scopeCredentialBindingsToRequirements(undefined, [
+				requirement('credA', [{ kind: 'workflow', id: 'W1' }]),
+			]),
 		).toBeUndefined();
 	});
 
 	it('keeps only bindings whose source id this scope requires', () => {
 		// Simulates a multi-project import where credB belongs to another project's workflows.
-		const scoped = scopeCredentialBindingsToRequirements(bindings, [requirement('credA', ['W1'])]);
+		const scoped = scopeCredentialBindingsToRequirements(bindings, [
+			requirement('credA', [{ kind: 'workflow', id: 'W1' }]),
+		]);
 
 		expect(scoped).toEqual(new Map([['credA', 'target-a']]));
 	});
@@ -59,8 +77,8 @@ describe('scopeCredentialBindingsToRequirements', () => {
 
 	it('keeps every binding when all are required by the scope', () => {
 		const scoped = scopeCredentialBindingsToRequirements(bindings, [
-			requirement('credA', ['W1']),
-			requirement('credB', ['W2']),
+			requirement('credA', [{ kind: 'workflow', id: 'W1' }]),
+			requirement('credB', [{ kind: 'workflow', id: 'W2' }]),
 		]);
 
 		expect(scoped).toEqual(bindings);
