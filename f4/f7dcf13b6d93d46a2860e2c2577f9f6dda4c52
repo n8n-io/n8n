@@ -1,0 +1,35 @@
+packages/cli/src/modules/breaking-changes/__tests__/migration-finding.repository.integration.test.ts
+  s_f6cb9d564dd95e::t_2123343fd38506 355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4f7dcf13b6d93d46a2860e2c2577f9f6dda4c52",
+  "prompts": {},
+  "sessions": {
+    "s_2956cab75a6463": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23bc5d43-edd4-415c-b854-b3f0f4c7dc7c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_c938ce9c58f06e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8d9bb5-2240-4e4d-a0d8-81edd6deceb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_f6cb9d564dd95e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3ea24e9-93d6-4835-b1aa-4d5102b51b13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
