@@ -1,4 +1,4 @@
-import { packageManifestSchema } from '../manifest.schema';
+import { manifestEntrySchema, packageManifestSchema } from '../manifest.schema';
 
 const validManifest = {
 	packageFormatVersion: '1',
@@ -11,6 +11,78 @@ const validManifest = {
 describe('packageManifestSchema', () => {
 	it('accepts a valid manifest', () => {
 		expect(() => packageManifestSchema.parse(validManifest)).not.toThrow();
+	});
+
+	it.each([
+		[
+			'workflows',
+			[
+				'workflows/support',
+				'folders/support/child/workflows/nested',
+				'projects/team/workflows/support',
+				'projects/team/folders/support/child/workflows/nested',
+			],
+		],
+		[
+			'folders',
+			[
+				'folders/support',
+				'folders/support/child',
+				'projects/team/folders/support',
+				'projects/team/folders/support/child',
+			],
+		],
+	] as const)('accepts root and declared project scopes for %s', (collection, targets) => {
+		const entries = targets.map((target, index) => ({ id: `${index}`, name: 'Support', target }));
+		const manifest = {
+			...validManifest,
+			projects: [{ id: 'project-1', name: 'Team', target: 'projects/team' }],
+			[collection]: entries,
+		};
+		expect(packageManifestSchema.parse(manifest)[collection]).toEqual(entries);
+	});
+
+	it.each([
+		['workflows', 'agents/support'],
+		['folders', 'workflows/support'],
+		['workflows', 'projects/team-other/workflows/support'],
+		['folders', 'projects/team-other/folders/support'],
+	])('rejects %s outside a declared scope: %s', (collection, target) => {
+		const manifest = {
+			...validManifest,
+			projects: [{ id: 'project-1', name: 'Team', target: 'projects/team' }],
+			[collection]: [{ id: 'entry', name: 'Support', target }],
+		};
+		expect(packageManifestSchema.safeParse(manifest)).toMatchObject({
+			success: false,
+			error: {
+				issues: [
+					{
+						path: [collection, 0, 'target'],
+						message: `Package ${collection} target "${target}" is outside a declared package scope.`,
+					},
+				],
+			},
+		});
+	});
+
+	it.each([
+		['projects/team/workflows/entry', true],
+		['folders/parent/folders/child/workflows/entry', true],
+		['/workflows/entry', false],
+		['C:/workflows/entry', false],
+		['workflows\\entry', false],
+		['workflows//entry', false],
+		['./workflows/entry', false],
+		['../workflows/entry', false],
+		['workflows/./entry', false],
+		['workflows/../entry', false],
+		['workflows/entry/', false],
+		['workflows/entry/.', false],
+		['workflows/entry/..', false],
+	])('validates target "%s": %s', (target, valid) => {
+		const entry = { ...validManifest.workflows[0], target };
+		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
 	});
 
 	it('rejects a manifest with an unsupported packageFormatVersion', () => {

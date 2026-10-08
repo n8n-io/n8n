@@ -1,12 +1,25 @@
+import path from 'node:path';
 import { z } from 'zod';
 
 import { FORMAT_VERSION } from './constants';
 import { packageRequirementsSchema } from './requirements.schema';
+import { entriesInScope } from '../io/manifest-entry';
 
 export const manifestEntrySchema = z.object({
 	id: z.string().min(1),
 	name: z.string(),
-	target: z.string().min(1),
+	// Scope filters compare prefixes before readers resolve paths.
+	// Canonical targets keep both steps consistent for every entity type.
+	target: z
+		.string()
+		.min(1)
+		.refine(
+			(target) =>
+				!path.win32.isAbsolute(target) &&
+				!target.includes('\\') &&
+				target.split('/').every((segment) => !['', '.', '..'].includes(segment)),
+			'Package target must be a canonical relative path',
+		),
 });
 
 type ManifestEntryList = Array<z.infer<typeof manifestEntrySchema>>;
@@ -26,6 +39,28 @@ function assertNoDuplicateIds(
 			});
 		}
 		seen.add(entry.id);
+	}
+}
+
+/** Reject misplaced entries before per-project filtering can hide them. */
+function assertScopedTargets(manifest: PackageManifest, ctx: z.RefinementCtx): void {
+	const scopes = ['', ...(manifest.projects ?? []).map(({ target }) => `${target}/`)];
+	for (const [collection, directories] of [
+		['workflows', ['workflows', 'folders']],
+		['folders', ['folders']],
+	] as const) {
+		const entries = manifest[collection] ?? [];
+		const scopedEntries = new Set(
+			scopes.flatMap((scope) => entriesInScope(entries, directories, scope)),
+		);
+		for (const [index, entry] of entries.entries()) {
+			if (scopedEntries.has(entry)) continue;
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [collection, index, 'target'],
+				message: `Package ${collection} target "${entry.target}" is outside a declared package scope.`,
+			});
+		}
 	}
 }
 
@@ -52,6 +87,7 @@ export const packageManifestSchema = z
 		assertNoDuplicateIds(manifest.dataTables, 'data table', ctx);
 		assertNoDuplicateIds(manifest.variables, 'variable', ctx);
 		assertNoDuplicateIds(manifest.tags, 'tag', ctx);
+		assertScopedTargets(manifest, ctx);
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;
