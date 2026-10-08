@@ -156,7 +156,6 @@ type PreparedWorkflowUpdate = {
 	updatePayload: QueryDeepPartialEntity<WorkflowEntity>;
 	cleared: PolicyCleared<'workflowSave'>;
 	saveNewVersion: boolean;
-	tagsDisabled: boolean;
 	versionIdToPublish: string | null;
 	settingsChanged: boolean;
 	options: WorkflowUpdateOptions &
@@ -896,7 +895,6 @@ export class WorkflowService {
 			updatePayload,
 			cleared,
 			saveNewVersion,
-			tagsDisabled: this.globalConfig.tags.disabled,
 			versionIdToPublish,
 			settingsChanged,
 			options: {
@@ -918,7 +916,7 @@ export class WorkflowService {
 		ctx: OperationContext = {},
 		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
 	) {
-		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
+		const { user, changes, updatePayload, cleared, saveNewVersion } = prepared;
 		const workflowId = prepared.workflow.id;
 		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
 		if (saveNewVersion) {
@@ -942,19 +940,14 @@ export class WorkflowService {
 			policyCleared: cleared,
 		});
 		if (tagIds) {
-			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
+			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, ctx);
 		}
-
-		const relations = ['tags', 'activeVersion'];
-
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations,
-		});
-
-		if (updatedWorkflow === null) {
+		const savedWorkflow = await this.workflowRepository.get(
+			{ id: workflowId },
+			{ relations: ['tags', 'activeVersion'] },
+			ctx,
+		);
+		if (!savedWorkflow) {
 			throw new BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);
