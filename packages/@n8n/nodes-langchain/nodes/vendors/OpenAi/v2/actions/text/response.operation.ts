@@ -681,7 +681,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				for (const tool of externalTools ?? []) {
 					if (tool.name === functionName) {
 						const parsedArgs: { input: string } = jsonParse(functionArgs);
-						const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
+						const functionInput = tool.schema.safeParse(parsedArgs)?.success
+							? parsedArgs
+							: (parsedArgs.input ?? parsedArgs);
 						functionResponse = await tool.invoke(functionInput);
 					}
 
