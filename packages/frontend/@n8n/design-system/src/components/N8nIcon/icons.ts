@@ -20,7 +20,7 @@ import NodePin from './custom/node-pin.svg';
 import NodePlay from './custom/brand/play--solid-16.svg';
 import NodePower from './custom/brand/power--solid-16.svg';
 import NodeSparkle from './custom/brand/sparkle--solid-16.svg';
-import NodeSuccess from './custom/node-success.svg';
+import NodeSuccess from './custom/brand/check--solid-16.svg';
 import NodeTrash from './custom/brand/trash--solid-16.svg';
 import NodeValidationError from './custom/brand/exclamation-triangle--solid-16.svg';
 import PopOut from './custom/brand/arrow-square-out--outline-16.svg';
