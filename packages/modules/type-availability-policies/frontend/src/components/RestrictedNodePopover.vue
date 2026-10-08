@@ -5,6 +5,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
+import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
@@ -20,7 +21,7 @@ const props = withDefaults(
 		align?: 'start' | 'center' | 'end';
 		sideOffset?: number;
 	}>(),
-	{ side: 'left', align: 'center', sideOffset: 24 },
+	{ scope: undefined, anchor: undefined, side: 'left', align: 'center', sideOffset: 24 },
 );
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
@@ -37,7 +38,7 @@ const isContactAdminOpen = ref(false);
 // Close for the contact-admin dialog, which this would otherwise cover.
 const { focused: anchorFocused } = useFocusWithin(anchorElement);
 const { focused: contentFocused } = useFocusWithin(contentRef);
-const open = computed(
+const wantsOpen = computed(
 	() =>
 		!isContactAdminOpen.value &&
 		(anchorHovered.value ||
@@ -46,6 +47,7 @@ const open = computed(
 			contentFocused.value ||
 			props.active),
 );
+const open = useExclusiveOpen(wantsOpen);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>

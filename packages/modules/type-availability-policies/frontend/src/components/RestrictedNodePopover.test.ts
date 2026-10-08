@@ -83,6 +83,22 @@ describe('RestrictedNodePopover', () => {
 		expect(screen.getByTestId('node-restricted-popover')).toBeInTheDocument();
 	});
 
+	it('closes at once when the pointer moves to another restricted row', async () => {
+		const otherAnchor = document.createElement('div');
+		document.body.appendChild(otherAnchor);
+		renderPopover({ anchor, nodeTypeName: 'Gmail' });
+		renderPopover({ anchor: otherAnchor, nodeTypeName: 'Slack' });
+
+		await userEvent.hover(anchor);
+		expect(await screen.findByText('Gmail')).toBeInTheDocument();
+
+		await userEvent.hover(otherAnchor);
+		expect(await screen.findByText('Slack')).toBeInTheDocument();
+		expect(screen.queryByText('Gmail')).not.toBeInTheDocument();
+
+		otherAnchor.remove();
+	});
+
 	it('opens while focus is inside the anchor row and closes when focus leaves', async () => {
 		const button = document.createElement('button');
 		anchor.appendChild(button);
