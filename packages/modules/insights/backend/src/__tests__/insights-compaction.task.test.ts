@@ -16,8 +16,7 @@ describe('InsightsCompactionTask', () => {
 			kind: 'interval',
 			intervalSeconds: insightsConfig.compactionIntervalMinutes * 60,
 		});
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
 	});
 
 	it.each([
@@ -31,9 +30,9 @@ describe('InsightsCompactionTask', () => {
 				compactionMaxRuntimeSeconds: maxRuntimeSeconds,
 			});
 
-			expect(new InsightsCompactionTask(config, compactionService).timeoutSeconds).toBe(
-				timeoutSeconds,
-			);
+			expect(
+				new InsightsCompactionTask(config, compactionService).target.scheduler.timeoutSeconds,
+			).toBe(timeoutSeconds);
 		},
 	);
 
