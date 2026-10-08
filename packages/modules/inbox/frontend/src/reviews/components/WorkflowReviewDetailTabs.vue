@@ -2,12 +2,12 @@
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, provide, useTemplateRef } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 
 import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
-import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
+import WorkflowReviewChangesList from './WorkflowReviewChangesList.vue';
 import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
 import WorkflowReviewDecisionPopover from './WorkflowReviewDecisionPopover.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
@@ -31,6 +31,19 @@ provide(ReviewDetailScrollContainerKey, useTemplateRef<HTMLElement>('detailBody'
 
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
+);
+
+// Held here, not in the list: the detail body remounts on every tab switch.
+const expandedWorkflowId = ref<string>();
+const firstWorkflowId = computed(() => detail.value?.workflows[0]?.workflowId);
+
+// Open the first workflow for each new review. A refetch of the same review keeps the choice.
+watch(
+	() => `${props.review.id}:${firstWorkflowId.value ?? ''}`,
+	() => {
+		expandedWorkflowId.value = firstWorkflowId.value;
+	},
+	{ immediate: true },
 );
 
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
@@ -190,15 +203,13 @@ const tabOptions = computed(() => [
 				>
 					{{ i18n.baseText('workflowReviews.changes.unavailable') }}
 				</N8nCallout>
-				<template v-else-if="detail.workflows.length > 0">
-					<WorkflowReviewChangesSection
-						v-for="workflow in detail.workflows"
-						:key="workflow.workflowId"
-						:workflow="workflow"
-						:state="detail.state"
-						:decision="detail.decision"
-					/>
-				</template>
+				<WorkflowReviewChangesList
+					v-else-if="detail.workflows.length > 0"
+					v-model:expanded="expandedWorkflowId"
+					:workflows="detail.workflows"
+					:state="detail.state"
+					:decision="detail.decision"
+				/>
 				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
 				<N8nCallout
 					v-else

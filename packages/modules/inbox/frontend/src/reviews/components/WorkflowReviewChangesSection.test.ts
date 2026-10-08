@@ -28,6 +28,8 @@ const DiffView = defineComponent({
 		'sourceLabel',
 		'targetLabel',
 		'showFullscreenButton',
+		'canvasIdPrefix',
+		'hideTitle',
 	],
 	setup(props) {
 		diffViewProps.push(props as SlotWorkflowDiffProps);
