@@ -2883,6 +2883,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@typescript-eslint/typescript-estree':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)
