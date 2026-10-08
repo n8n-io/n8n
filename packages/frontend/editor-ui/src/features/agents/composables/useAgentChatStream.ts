@@ -80,6 +80,8 @@ export interface UseAgentChatStreamParams {
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	/** The agent is no longer available in n8n Chat (unpublished before send, or mid-run/resume). */
+	onAgentUnavailable?: () => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
 }
@@ -1230,6 +1232,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
+				} else if (event.errorCode === 'agent_unavailable') {
+					params.onAgentUnavailable?.();
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
 				} else {

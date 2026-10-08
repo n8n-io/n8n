@@ -79,6 +79,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
+let onAgentUnavailable: (() => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -265,8 +266,10 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: (options: {
 		channel?: { value: 'chat' | 'n8n-chat' };
 		onHistoryLoaded: (count: number) => void;
+		onAgentUnavailable?: () => void;
 	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
+		onAgentUnavailable = options.onAgentUnavailable;
 		return {
 			capabilities: computed(() => {
 				// Mirrors the composable: every capability is off on the n8n Chat channel.
@@ -345,6 +348,7 @@ describe('AgentChatPanel', () => {
 		respondToApprovalMock.mockReset().mockResolvedValue(undefined);
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
+		onAgentUnavailable = undefined;
 	});
 
 	function mountPanel(
@@ -3102,6 +3106,14 @@ describe('AgentChatPanel', () => {
 				expect.any(Function),
 			);
 		});
+	});
+
+	it('emits agent-unavailable when the stream reports the agent is no longer available', () => {
+		const wrapper = mountPanel();
+
+		onAgentUnavailable?.();
+
+		expect(wrapper.emitted('agent-unavailable')).toHaveLength(1);
 	});
 });
 

@@ -25,6 +25,7 @@ import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTurnAlreadyRunningError } from '../agent-chat-execution.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -1124,7 +1125,7 @@ describe('AgentChatController production n8n Chat', () => {
 			message: 'hello',
 		} as never);
 		expect(writes).toContain(
-			'data: {"type":"error","message":"This agent is not available in n8n Chat.","errorCode":"agent_unavailable"}\n\n',
+			'data: {"type":"error","message":"This agent is not available in n8n Chat","errorCode":"agent_unavailable"}\n\n',
 		);
 		expect(agentExecutionOrchestratorService.executeForN8nChatPublished).not.toHaveBeenCalled();
 	});
@@ -1214,9 +1215,8 @@ describe('AgentChatController production n8n Chat', () => {
 		expect(writes.some((line) => line.includes('Session not found'))).toBe(true);
 	});
 
-	it('checks publication and the production checkpoint scope before resuming', async () => {
-		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
-		agentsService.isN8nChatPublished.mockResolvedValue(true);
+	it('passes the production checkpoint scope when resuming', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
 		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
 			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			yield { type: 'text-delta', id: 'text-1', delta: 'Done' };
@@ -1249,9 +1249,12 @@ describe('AgentChatController production n8n Chat', () => {
 		});
 	});
 
-	it('rejects production resume when the channel is not published', async () => {
-		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
-		agentsService.isN8nChatPublished.mockResolvedValue(false);
+	it('maps the agent becoming unavailable mid-resume to agent_unavailable', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		// eslint-disable-next-line require-yield
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {
+			throw new AgentN8nChatUnavailableError();
+		});
 		const writes: string[] = [];
 		await controller.productionChatResume(request as never, makeSseResponse(writes), 'agent-1', {
 			runId: 'run-1',
@@ -1259,7 +1262,6 @@ describe('AgentChatController production n8n Chat', () => {
 			resumeData: { approved: true },
 		} as never);
 
-		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
 		expect(writes.some((line) => line.includes('agent_unavailable'))).toBe(true);
 	});
 

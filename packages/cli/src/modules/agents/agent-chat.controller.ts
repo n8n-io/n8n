@@ -39,15 +39,13 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
-import {
-	AgentChatExecutionService,
-	AgentTurnAlreadyRunningError,
-} from './agent-chat-execution.service';
+import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionService } from './agent-execution.service';
 import {
 	type AgentSessionMode,
@@ -55,7 +53,7 @@ import {
 	threadBelongsTo,
 } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, initSseStream } from './agent-sse-stream';
+import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
@@ -233,13 +231,7 @@ export class AgentChatController {
 			send({ type: 'message-queued', queueId: result.item.id, sessionId: input.threadId });
 			await subscription?.done;
 		} catch (error) {
-			send({
-				type: 'error',
-				message: error instanceof Error ? error.message : 'Chat failed',
-				...(error instanceof AgentTurnAlreadyRunningError
-					? { errorCode: 'turn_already_running' }
-					: {}),
-			});
+			send(toChatErrorEvent(error, 'Chat failed'));
 		} finally {
 			// Committed messages own their attachments, including after a disconnect.
 			if (!accepted && attachments?.length) {
@@ -266,14 +258,9 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const resourceId = productionChatMemoryResourceId(req.user.id);
-		await this.relayQueuedMessage(res, async (send) => {
+		await this.relayQueuedMessage(res, async () => {
 			if (!(await this.agentsService.isN8nChatPublished(agentId, projectId))) {
-				send({
-					type: 'error',
-					message: 'This agent is not available in n8n Chat.',
-					errorCode: 'agent_unavailable',
-				});
-				return undefined;
+				throw new AgentN8nChatUnavailableError();
 			}
 			const sessionMode = payload.sessionId && !payload.newSession ? 'existing' : 'new';
 			// Keep a client session ID for a new session, so a retry stays a duplicate.
@@ -317,14 +304,6 @@ export class AgentChatController {
 		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
 		let executionId: string | undefined;
 		try {
-			if (!(await this.agentsService.isN8nChatPublished(agentId, req.params.projectId))) {
-				send({
-					type: 'error',
-					message: 'This agent is not available in n8n Chat.',
-					errorCode: 'agent_unavailable',
-				});
-				return;
-			}
 			abortSignal.throwIfAborted();
 			const stream = this.agentExecutionOrchestratorService.resumeForChat({
 				agentId,
@@ -354,13 +333,7 @@ export class AgentChatController {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
-			send({
-				type: 'error',
-				message: error instanceof Error ? error.message : 'Resume failed',
-				...(error instanceof AgentTurnAlreadyRunningError
-					? { errorCode: 'turn_already_running' }
-					: {}),
-			});
+			send(toChatErrorEvent(error, 'Resume failed'));
 		} finally {
 			execution.close();
 		}
@@ -470,14 +443,7 @@ export class AgentChatController {
 				});
 			}
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-			send({
-				type: 'error',
-				message: errorMessage,
-				...(error instanceof AgentTurnAlreadyRunningError
-					? { errorCode: 'turn_already_running' }
-					: {}),
-			});
+			send(toChatErrorEvent(error, 'Resume failed'));
 		} finally {
 			execution.close();
 		}
