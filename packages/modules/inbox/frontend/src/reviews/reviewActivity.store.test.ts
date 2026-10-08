@@ -64,19 +64,22 @@ describe('useReviewActivityStore', () => {
 		expect(store.loading).toBe(false);
 	});
 
-	it('does not complete an old post into a new entry for the same review', async () => {
+	it('shows a saved comment after returning to its review and keeps the new draft', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
 		const pending = createDeferredPromise<WorkflowReviewActivityEntry>();
 		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(pending.promise);
 		const store = useReviewActivityStore();
 		await store.fetchFeed('req-1');
 		const post = store.postComment('Sent comment');
-		store.reset();
+		await store.fetchFeed('req-2');
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['1', '10']),
+		);
 		await store.fetchFeed('req-1');
 		store.draft = 'Current draft';
 		pending.resolve(makeEntry('9'));
 		await expect(post).resolves.toBe(false);
-		expect(store.entries.map((entry) => entry.id)).toEqual(['1']);
+		expect(store.entries.map((entry) => entry.id)).toEqual(['1', '9', '10']);
 		expect(store.draft).toBe('Current draft');
 	});
 

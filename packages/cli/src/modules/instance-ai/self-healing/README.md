@@ -73,7 +73,7 @@ Normal chat ownership and tool permissions apply. Do not copy the background con
 
 ## Availability
 
-Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup to load review routes.
+Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to load review routes.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
 The rollout flag is separate from the future switch for new investigations. Saved review services
 do not check investigation enablement or Assistant model availability.

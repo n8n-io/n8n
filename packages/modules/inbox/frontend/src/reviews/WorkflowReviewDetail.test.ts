@@ -7,11 +7,14 @@ import { useToast } from '@n8n/composables/useToast';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 
 import { useReviewActivityStore } from './reviewActivity.store';
 import { useReviewDetailStore } from './reviewDetail.store';
 import WorkflowReviewDetail from './WorkflowReviewDetail.vue';
+import * as api from './workflowReviews.api';
 
+vi.mock('./workflowReviews.api');
 vi.mock('@n8n/composables/useToast', () => ({ useToast: vi.fn() }));
 vi.mock('./components/WorkflowReviewChangesSection.vue', () => ({
 	default: { template: '<div data-test-id="workflow-review-changes-section" />' },
@@ -19,8 +22,15 @@ vi.mock('./components/WorkflowReviewChangesSection.vue', () => ({
 const showError = vi.fn();
 const showMessage = vi.fn();
 const onItemChange = vi.fn();
+let isInboxActive = true;
+let selectedReviewId: string | null = 'req-1';
 const renderComponent = createComponentRenderer(WorkflowReviewDetail, {
-	props: { reviewId: 'req-1', onItemChange },
+	props: {
+		reviewId: 'req-1',
+		onItemChange,
+		isActive: () => isInboxActive,
+		isSelected: (id: string) => selectedReviewId === id,
+	},
 	global: {
 		stubs: {
 			WorkflowReviewDecisionPopover: {
@@ -51,6 +61,8 @@ let reviewStore: ReturnType<typeof mockedStore<typeof useReviewDetailStore>>;
 let activityStore: ReturnType<typeof mockedStore<typeof useReviewActivityStore>>;
 beforeEach(() => {
 	createTestingPinia();
+	isInboxActive = true;
+	selectedReviewId = 'req-1';
 	vi.clearAllMocks();
 	vi.mocked(useToast).mockReturnValue({ showError, showMessage } as unknown as ReturnType<
 		typeof useToast
@@ -233,6 +245,7 @@ describe('review decisions', () => {
 		const { getByTestId, rerender } = renderComponent();
 		await waitAllPromises();
 		getByTestId('approve-review').click();
+		selectedReviewId = 'req-2';
 		await rerender({ reviewId: 'req-2' });
 		await waitAllPromises();
 		activityStore.fetchFeed.mockClear();
@@ -260,12 +273,65 @@ describe('review decisions', () => {
 		const { getByTestId, unmount } = renderComponent();
 		await waitAllPromises();
 		getByTestId('approve-review').click();
+		isInboxActive = false;
 		unmount();
 
 		resolveDecision();
 		await waitAllPromises();
 
 		expect(showMessage).not.toHaveBeenCalled();
+	});
+	it.each(['another review', 'no review'])(
+		'reports a publication failure after the viewer selects %s',
+		async (selection) => {
+			const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
+			reviewStore.decideOnReview.mockReturnValueOnce(pending.promise);
+			const { getByTestId, rerender, unmount } = renderComponent();
+			await waitAllPromises();
+			getByTestId('approve-review').click();
+			if (selection === 'another review') {
+				selectedReviewId = 'req-2';
+				await rerender({ reviewId: 'req-2' });
+			} else {
+				selectedReviewId = null;
+				unmount();
+			}
+			await waitAllPromises();
+			activityStore.fetchFeed.mockClear();
+			pending.resolve(
+				decisionResponse({ autoPublish: { status: 'failed', message: 'Version not found' } }),
+			);
+			await waitAllPromises();
+
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					duration: 0,
+					message: 'Version not found. Publish the workflow manually to retry.',
+				}),
+			);
+			expect(activityStore.fetchFeed).not.toHaveBeenCalled();
+		},
+	);
+	it('reports a failed decision after the viewer selects another review', async () => {
+		const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
+		reviewStore.decideOnReview.mockReturnValueOnce(pending.promise);
+		const { getByTestId, rerender } = renderComponent();
+		await waitAllPromises();
+		getByTestId('approve-review').click();
+		selectedReviewId = 'req-2';
+		activityStore.currentReviewId = 'req-2';
+		await rerender({ reviewId: 'req-2' });
+		await waitAllPromises();
+		activityStore.fetchFeed.mockClear();
+		reviewStore.fetchDetail.mockClear();
+		const error = new Error('conflict');
+		pending.reject(error);
+		await waitAllPromises();
+
+		expect(showError).toHaveBeenCalledWith(error, 'Could not submit review decision');
+		expect(reviewStore.fetchDetail).toHaveBeenCalledWith('req-2');
+		expect(activityStore.fetchFeed).not.toHaveBeenCalled();
 	});
 	it('shows no failure toast once the viewer has left the page', async () => {
 		let rejectDecision!: (error: Error) => void;
@@ -279,6 +345,7 @@ describe('review decisions', () => {
 		const { getByTestId, unmount } = renderComponent();
 		await waitAllPromises();
 		getByTestId('approve-review').click();
+		isInboxActive = false;
 		unmount();
 
 		rejectDecision(new Error('conflict'));
@@ -315,6 +382,30 @@ describe('review decisions', () => {
 			'false',
 		);
 	});
+	it('keeps decisions locked after selection changes until the submitted action completes', async () => {
+		const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
+		reviewStore.decideOnReview.mockReturnValueOnce(pending.promise);
+		const { getByTestId, rerender } = renderComponent();
+		await waitAllPromises();
+		getByTestId('approve-review').click();
+		reviewStore.detail = createDetail({ id: 'req-2' });
+		selectedReviewId = 'req-2';
+		await rerender({ reviewId: 'req-2' });
+		await waitAllPromises();
+
+		expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
+			'data-deciding',
+			'true',
+		);
+		getByTestId('approve-review').click();
+		expect(reviewStore.decideOnReview).toHaveBeenCalledOnce();
+		pending.resolve(decisionResponse());
+		await waitAllPromises();
+		expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
+			'data-deciding',
+			'false',
+		);
+	});
 });
 
 describe('review detail ownership', () => {
@@ -334,35 +425,28 @@ describe('review detail ownership', () => {
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('List review');
 	});
 
-	it('reports a confirmed unavailable review and owns its empty state', async () => {
+	it('keeps the list title and row when detail reports a missing review', async () => {
 		const { getByTestId } = renderComponent();
 		reviewStore.detailNotFound = true;
 		await waitAllPromises();
-		expect(onItemChange).toHaveBeenCalledWith({
-			type: 'workflow_review',
-			id: 'req-1',
-			unavailable: true,
-		});
+		expect(onItemChange).not.toHaveBeenCalled();
 		expect(getByTestId('workflow-review-detail-not-found')).toBeInTheDocument();
-		expect(activityStore.reset).toHaveBeenCalledTimes(2);
-	});
-
-	it('offers retry when a deep-linked detail fails before any data is available', async () => {
-		reviewStore.detail = null;
-		reviewStore.fetchDetail.mockRejectedValueOnce(new Error('timeout'));
-		const { getByTestId, getByRole, queryByTestId } = renderComponent();
-		await waitAllPromises();
-		expect(getByTestId('workflow-review-detail-load-error')).toBeInTheDocument();
-		reviewStore.fetchDetail.mockImplementationOnce(async () => {
-			reviewStore.detail = createDetail();
-		});
-		getByRole('button', { name: 'Retry' }).click();
-		await waitAllPromises();
-		expect(queryByTestId('workflow-review-detail-load-error')).not.toBeInTheDocument();
 		expect(getByTestId('workflow-review-request-title')).toBeInTheDocument();
 	});
 
-	it('keeps the new selection and its note when an old selection completes', async () => {
+	it('shows the Inbox fallback after a failed detail load without a list item', async () => {
+		reviewStore.detail = null;
+		const error = new Error('timeout');
+		reviewStore.fetchDetail.mockRejectedValueOnce(error);
+		const { getByTestId } = renderComponent({
+			slots: { default: '<div data-test-id="inbox-fallback">Select an item</div>' },
+		});
+		await waitAllPromises();
+		expect(getByTestId('inbox-fallback')).toBeInTheDocument();
+		expect(showError).toHaveBeenCalledWith(error, 'Could not load workflow reviews');
+	});
+
+	it('refreshes the current review after returning to it and keeps its new note', async () => {
 		const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
 		reviewStore.clearDetail.mockImplementation(() => {
 			reviewStore.selectionRevision++;
@@ -371,15 +455,17 @@ describe('review detail ownership', () => {
 		const { getByTestId, rerender } = renderComponent();
 		await waitAllPromises();
 		getByTestId('approve-review').click();
+		selectedReviewId = 'req-2';
 		await rerender({ reviewId: 'req-2' });
+		selectedReviewId = 'req-1';
 		await rerender({ reviewId: 'req-1' });
 		activityStore.decisionNote = 'New note';
 		activityStore.fetchFeed.mockClear();
 		pending.resolve(decisionResponse({ autoPublish: { status: 'published' } }));
 		await waitAllPromises();
 		expect(activityStore.clearDecisionNote).not.toHaveBeenCalled();
-		expect(activityStore.fetchFeed).not.toHaveBeenCalled();
-		expect(showMessage).not.toHaveBeenCalled();
+		expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
+		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		expect(activityStore.decisionNote).toBe('New note');
 		expect(onItemChange).toHaveBeenCalledWith({
 			type: 'workflow_review',
@@ -389,8 +475,82 @@ describe('review detail ownership', () => {
 			updatedAt: '2024-01-02T00:00:00.000Z',
 		});
 	});
+	it.each(['loaded', 'loading'])(
+		'shows closed detail and saved activity after returning while approval is pending and detail is %s',
+		async (detailState) => {
+			createTestingPinia({ stubActions: false });
+			reviewStore = mockedStore(useReviewDetailStore);
+			activityStore = mockedStore(useReviewActivityStore);
+			const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
+			const detailRequest = createDeferredPromise<WorkflowReviewRequestDetail>();
+			vi.mocked(api.decideWorkflowReviewRequest).mockReturnValueOnce(pending.promise);
+			vi.mocked(api.fetchWorkflowReviewRequestDetail).mockImplementation(async (_context, id) =>
+				createDetail({ id }),
+			);
+			vi.mocked(api.fetchWorkflowReviewActivity).mockResolvedValue({
+				data: [],
+				nextCursor: null,
+				hasMore: false,
+			});
+			const { getByTestId, queryByTestId, rerender } = renderComponent();
+			await waitAllPromises();
+			getByTestId('approve-review').click();
+			selectedReviewId = 'req-2';
+			await rerender({ reviewId: 'req-2' });
+			await waitAllPromises();
+			if (detailState === 'loading') {
+				vi.mocked(api.fetchWorkflowReviewRequestDetail).mockReturnValueOnce(detailRequest.promise);
+			}
+			selectedReviewId = 'req-1';
+			await rerender({ reviewId: 'req-1' });
+			await waitAllPromises();
+			activityStore.decisionNote = 'New note';
+			vi.mocked(api.fetchWorkflowReviewRequestDetail).mockResolvedValue(
+				createDetail({ state: 'closed', decision: 'approved' }),
+			);
+			vi.mocked(api.fetchWorkflowReviewActivity).mockResolvedValue({
+				data: [
+					{
+						id: '2',
+						type: 'review.approved',
+						typeVersion: 1,
+						data: null,
+						createdBy: null,
+						createdAt: '2024-01-02T00:00:00.000Z',
+					},
+				],
+				nextCursor: null,
+				hasMore: false,
+			});
+			pending.resolve(decisionResponse());
+			await waitAllPromises();
+			detailRequest.resolve(createDetail());
+			await waitAllPromises();
 
-	it('reconciles a late action after unmount without touching a new entry for the same review', async () => {
+			expect(reviewStore.detail?.state).toBe('closed');
+			expect(activityStore.entries).toEqual([expect.objectContaining({ type: 'review.approved' })]);
+			expect(queryByTestId('workflow-review-decision-popover')).not.toBeInTheDocument();
+			expect(activityStore.decisionNote).toBe('New note');
+		},
+	);
+	it('reports a failed comment after the viewer switches from Activity to Changes', async () => {
+		const pending = createDeferredPromise<boolean>();
+		activityStore.postComment.mockReturnValueOnce(pending.promise);
+		activityStore.draft = 'Sent comment';
+		const { getByTestId, queryByTestId, rerender } = renderComponent();
+		await waitAllPromises();
+		await userEvent.click(getByTestId('send-message-button'));
+		await rerender({ tab: 'changes' });
+		expect(queryByTestId('workflow-review-comment-composer')).not.toBeInTheDocument();
+		const error = new Error('timeout');
+		pending.reject(error);
+		await waitAllPromises();
+
+		expect(showError).toHaveBeenCalledWith(error, 'Could not post comment');
+		expect(activityStore.draft).toBe('Sent comment');
+	});
+
+	it('refreshes a reselected review after its prior detail entry unmounts', async () => {
 		const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
 		reviewStore.clearDetail.mockImplementation(() => {
 			reviewStore.selectionRevision++;
@@ -417,9 +577,9 @@ describe('review detail ownership', () => {
 			updatedAt: '2024-01-02T00:00:00.000Z',
 		});
 		expect(activityStore.clearDecisionNote).not.toHaveBeenCalled();
-		expect(activityStore.fetchFeed).not.toHaveBeenCalled();
-		expect(reviewStore.fetchDetail).not.toHaveBeenCalled();
-		expect(showMessage).not.toHaveBeenCalled();
+		expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
+		expect(reviewStore.fetchDetail).toHaveBeenCalledWith('req-1');
+		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 		expect(activityStore.decisionNote).toBe('New note');
 	});
 

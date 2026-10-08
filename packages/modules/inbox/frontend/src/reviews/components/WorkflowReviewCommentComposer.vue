@@ -4,7 +4,7 @@ import { N8nChatInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { storeToRefs } from 'pinia';
-import { computed, onBeforeUnmount } from 'vue';
+import { computed } from 'vue';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
 
@@ -14,10 +14,6 @@ const i18n = useI18n();
 const { showError } = useToast();
 const store = useReviewActivityStore();
 const { posting, draft } = storeToRefs(store);
-let isMounted = true;
-onBeforeUnmount(() => {
-	isMounted = false;
-});
 
 // The full condition, not just `posting`: N8nChatInput uses `submitDisabled ?? …`,
 // so a bare `false` would replace its own empty/over-limit/disabled gate.
@@ -41,7 +37,7 @@ async function onSubmit() {
 		// Don't clear text typed while the post was in flight.
 		if (posted && draft.value === submitted) draft.value = '';
 	} catch (error) {
-		if (isMounted) showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
+		showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
 	}
 }
 </script>

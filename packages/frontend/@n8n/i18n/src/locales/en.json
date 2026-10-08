@@ -6,7 +6,7 @@
 	"inbox.outcome.needsAttention": "Needs attention",
 	"inbox.outcome.couldNotFix": "Could not fix",
 	"inbox.partial": "Some items couldn’t load. Retry to refresh the inbox.",
-	"inbox.loadError": "The inbox couldn’t load. Try again.",
+	"inbox.loadError": "Couldn't load inbox",
 	"inbox.loadMore": "Load more",
 	"inbox.empty.open": "No open items",
 	"inbox.empty.closed": "No closed items",

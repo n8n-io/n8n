@@ -1,13 +1,7 @@
 <script lang="ts" setup>
 import type { InboxItem } from '@n8n/api-types';
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import {
-	N8nEmptyState,
-	N8nLoading,
-	N8nResizeWrapper,
-	useResizablePanel,
-	type EmptyStateIconCards,
-} from '@n8n/design-system';
+import { N8nResizeWrapper, useResizablePanel } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -15,6 +9,7 @@ import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import InboxEmptyState from '../components/InboxEmptyState.vue';
 import InboxList from '../components/InboxList.vue';
 import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
@@ -24,8 +19,7 @@ import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue
 
 const store = useInboxStore();
 const settingsStore = useSettingsStore();
-const { activeTab, hasItems, loading, hasError, partial, isEmpty, openCount, closedCount } =
-	storeToRefs(store);
+const { activeTab, openCount, closedCount } = storeToRefs(store);
 const sections = computed(() =>
 	store.activeSectionKeys.map((key) => ({ key, ...store.lists[key] })),
 );
@@ -60,25 +54,20 @@ const selectedReviewItem = computed(() =>
 	selectedListItem.value?.type === 'workflow_review' ? selectedListItem.value : undefined,
 );
 const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'activity'));
-const alertIcon = { type: 'icon', value: 'circle-alert' } as const;
-const inboxIcon: EmptyStateIconCards = {
-	type: 'cards',
-	center: 'message-square-text',
-	sides: ['file-diff', 'git-branch', 'circle-check', 'list', 'message-square'],
-};
-const noSelectionHeading = computed(() => {
-	const count = activeTab.value === 'closed' ? closedCount.value : openCount.value;
-	if (count === null) return i18n.baseText(`inbox.items.${activeTab.value}`);
-	return i18n.baseText(`inbox.noSelection.title.${activeTab.value}`, {
-		adjustToNumber: count,
-		interpolate: { count: String(count) },
-	});
-});
 let isMounted = false;
 
 function isOnInbox() {
 	return isInboxRoute(route);
 }
+
+function isActive() {
+	return isMounted && isOnInbox();
+}
+
+function isSelectedReview(id: string) {
+	return selection.value?.type === 'workflow_review' && selection.value.id === id;
+}
+
 // Reset on entry. A layout-swap copy can unmount after the next view has mounted.
 store.reset();
 store.activeTab = route.query.state === 'closed' ? 'closed' : 'open';
@@ -90,9 +79,9 @@ watch(
 	},
 );
 watch(
-	() => store.disabledSources,
-	(types) => {
-		if (selection.value && types.includes(selection.value.type)) onClearSelection();
+	[selection, () => store.disabledSources],
+	([item, types]) => {
+		if (item && types.includes(item.type)) onClearSelection();
 	},
 	{ immediate: true },
 );
@@ -122,11 +111,7 @@ function onDetailTabChange(tab: 'activity' | 'changes') {
 function onItemChange(change: InboxItemChange) {
 	if (!isMounted || !isOnInbox()) return;
 	store.reconcileItemChange(change);
-	if (change.unavailable) {
-		void store.fetchSummary();
-		return;
-	}
-	if (!change.state) void store.refreshListAndSummary();
+	if (!change.state) void store.fetchActiveTab();
 	if (
 		change.state === 'closed' &&
 		activeTab.value !== 'closed' &&
@@ -174,7 +159,7 @@ onBeforeUnmount(() => {
 					@load-more="(section) => store.lists[section].loadMore()"
 					@retry="(section) => store.lists[section].retry()"
 					@refresh-section="(section) => store.lists[section].fetchList()"
-					@retry-active-tab="store.refreshListAndSummary()"
+					@retry-active-tab="store.fetchActiveTab()"
 				/>
 			</N8nResizeWrapper>
 			<div :class="$style.main">
@@ -186,11 +171,15 @@ onBeforeUnmount(() => {
 					:list-item="selectedReviewItem"
 					:tab="detailTab"
 					:on-item-change="onItemChange"
+					:is-active="isActive"
+					:is-selected="isSelectedReview"
 					@update:tab="onDetailTabChange"
-				/>
+				>
+					<InboxEmptyState />
+				</WorkflowReviewDetail>
 				<template v-else>
 					<div :class="$style.columnTitle" />
-					<div :class="[$style.mainBody, { [$style.emptyStateWrapper]: !selection && !loading }]">
+					<div :class="$style.mainBody">
 						<SelfHealingResultDetail
 							v-if="
 								selection?.type === 'self_healing_result' &&
@@ -199,40 +188,7 @@ onBeforeUnmount(() => {
 							:selection="selection"
 							@changed="store.refreshListAndSummary()"
 						/>
-						<N8nLoading v-else-if="loading && !hasItems" :loading="true" :rows="3" />
-						<N8nEmptyState
-							:class="$style.emptyState"
-							v-else-if="hasError && !hasItems"
-							:icon="alertIcon"
-							:heading="i18n.baseText('inbox.loadError')"
-							:button-text="i18n.baseText('generic.retry')"
-							@click:button="store.refreshListAndSummary()"
-						/>
-						<N8nEmptyState
-							:class="$style.emptyState"
-							v-else-if="partial && !hasItems"
-							:icon="alertIcon"
-							:heading="i18n.baseText('inbox.partial')"
-							:button-text="i18n.baseText('generic.retry')"
-							@click:button="store.refreshListAndSummary()"
-						/>
-						<N8nEmptyState
-							:class="$style.emptyState"
-							v-else-if="isEmpty"
-							:icon="inboxIcon"
-							:heading="
-								i18n.baseText(activeTab === 'open' ? 'inbox.empty.open' : 'inbox.empty.closed')
-							"
-							:description="i18n.baseText('inbox.empty.body')"
-							data-test-id="inbox-empty"
-						/>
-						<N8nEmptyState
-							:class="$style.emptyState"
-							v-else-if="hasItems"
-							:icon="inboxIcon"
-							:heading="noSelectionHeading"
-							:description="i18n.baseText('inbox.noSelection.body')"
-						/>
+						<InboxEmptyState v-else />
 					</div>
 				</template>
 			</div>
@@ -292,14 +248,5 @@ onBeforeUnmount(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-}
-.emptyStateWrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-.emptyStateWrapper .emptyState {
-	border: none;
-	padding: 0;
 }
 </style>

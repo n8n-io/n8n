@@ -4,7 +4,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState, N8nHeading, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 
 import type { InboxItemChange } from '../inbox.constants';
 import WorkflowReviewDetailTabs from './components/WorkflowReviewDetailTabs.vue';
@@ -20,6 +20,8 @@ const props = withDefaults(
 		listItem?: InboxWorkflowReviewItem;
 		tab?: WorkflowReviewDetailTab;
 		onItemChange: (change: InboxItemChange) => void;
+		isActive: () => boolean;
+		isSelected: (reviewId: string) => boolean;
 	}>(),
 	{ tab: 'activity' },
 );
@@ -27,13 +29,11 @@ const emit = defineEmits<{ 'update:tab': [tab: WorkflowReviewDetailTab] }>();
 
 const reviewStore = useReviewDetailStore();
 const activityStore = useReviewActivityStore();
-const { detail, detailLoading, detailNotFound } = storeToRefs(reviewStore);
+const { detail, detailLoading, detailNotFound, deciding } = storeToRefs(reviewStore);
 
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 
-const deciding = ref(false);
-const loadFailed = ref(false);
 const alertIcon = { type: 'icon', value: 'circle-alert' } as const;
 
 const review = computed(() => {
@@ -56,24 +56,13 @@ function ownsSelection(id: string, revision = selectionRevision) {
 	);
 }
 
-function handleLoadError(error: unknown, id: string, revision: number) {
-	if (!ownsSelection(id, revision)) {
-		return;
-	}
-
-	loadFailed.value = true;
-	showError(error, i18n.baseText('workflowReviews.error.load'));
-}
-
 async function loadDetail(id: string, revision: number) {
 	try {
 		await reviewStore.fetchDetail(id);
-
-		if (ownsSelection(id, revision)) {
-			loadFailed.value = false;
-		}
 	} catch (error) {
-		handleLoadError(error, id, revision);
+		if (props.isActive() && props.isSelected(id) && revision === reviewStore.selectionRevision) {
+			showError(error, i18n.baseText('workflowReviews.error.load'));
+		}
 	}
 }
 
@@ -86,23 +75,12 @@ watch(
 
 		selectionRevision = reviewStore.selectionRevision;
 		const revision = selectionRevision;
-		deciding.value = false;
-		loadFailed.value = false;
 
 		void loadDetail(id, revision);
 		void activityStore.fetchFeed(id);
 	},
 	{ immediate: true },
 );
-
-watch(detailNotFound, (notFound) => {
-	if (!notFound || !ownsSelection(props.reviewId)) {
-		return;
-	}
-
-	activityStore.reset();
-	props.onItemChange({ type: 'workflow_review', id: props.reviewId, unavailable: true });
-});
 
 function asSentence(message: string) {
 	const trimmed = message.trim();
@@ -119,21 +97,28 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 
 	// The Inbox can reconcile this result after the viewer selects another source.
 	const onItemChange = props.onItemChange;
+	const isActive = props.isActive;
+	const isSelected = props.isSelected;
 	deciding.value = true;
 
 	try {
 		const { autoPublish, state, decision, updatedAt } = await reviewStore.decideOnReview(id, input);
 		onItemChange({ type: 'workflow_review', id, state, decision, updatedAt });
 
-		if (!ownsSelection(id, revision)) {
-			return;
+		if (ownsSelection(id, revision)) {
+			activityStore.clearDecisionNote(input.note ?? '');
 		}
 
-		activityStore.clearDecisionNote(input.note ?? '');
-		void activityStore.fetchFeed(id);
+		if (isActive() && isSelected(id)) {
+			void activityStore.fetchFeed(id);
 
-		if (state === 'closed') {
-			void loadDetail(id, revision);
+			if (state === 'closed' || detail.value?.id !== id) {
+				void loadDetail(id, reviewStore.selectionRevision);
+			}
+		}
+
+		if (!isActive()) {
+			return;
 		}
 
 		if (autoPublish?.status === 'published') {
@@ -155,18 +140,22 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 	} catch (error) {
 		onItemChange({ type: 'workflow_review', id });
 
-		if (!ownsSelection(id, revision)) {
+		if (!isActive()) {
 			return;
 		}
 
 		showError(error, i18n.baseText('workflowReviews.decision.error.title'));
 
-		// Another reviewer can decide first. Keep the note while loading the current result.
-		await Promise.all([loadDetail(id, revision), activityStore.fetchFeed(id)]);
-	} finally {
-		if (ownsSelection(id, revision)) {
-			deciding.value = false;
+		const selectedId = activityStore.currentReviewId;
+		if (selectedId && isSelected(selectedId)) {
+			// Another reviewer can decide first. Keep the note while loading the current result.
+			await Promise.all([
+				loadDetail(selectedId, reviewStore.selectionRevision),
+				selectedId === id ? activityStore.fetchFeed(id) : undefined,
+			]);
 		}
+	} finally {
+		deciding.value = false;
 	}
 }
 
@@ -183,7 +172,7 @@ onBeforeUnmount(() => {
 	<section :class="$style.detail" data-test-id="workflow-review-detail">
 		<div :class="$style.columnTitle">
 			<div
-				v-if="review && !detailNotFound"
+				v-if="review"
 				:class="$style.reviewTitle"
 				data-test-id="workflow-review-request-title-row"
 			>
@@ -217,19 +206,7 @@ onBeforeUnmount(() => {
 				@update:tab="emit('update:tab', $event)"
 				@decide="onDecide"
 			/>
-			<div
-				v-else-if="loadFailed"
-				:class="$style.emptyStateWrapper"
-				data-test-id="workflow-review-detail-load-error"
-			>
-				<N8nEmptyState
-					:class="$style.emptyState"
-					:icon="alertIcon"
-					:heading="i18n.baseText('workflowReviews.error.load')"
-					:button-text="i18n.baseText('generic.retry')"
-					@click:button="loadDetail(reviewId, selectionRevision)"
-				/>
-			</div>
+			<slot v-else />
 		</div>
 	</section>
 </template>

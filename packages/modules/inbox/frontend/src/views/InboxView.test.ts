@@ -57,8 +57,9 @@ const renderOptions = {
 					reportChange = props.onItemChange;
 				},
 				template: `<div data-test-id="review-detail" :data-id="reviewId" :data-tab="tab" :data-title="listItem?.title">
-     <button data-test-id="select-changes-tab" @click="$emit('update:tab', 'changes')" />
-     <button data-test-id="select-activity-tab" @click="$emit('update:tab', 'activity')" />
+    <button data-test-id="select-changes-tab" @click="$emit('update:tab', 'changes')" />
+    <button data-test-id="select-activity-tab" @click="$emit('update:tab', 'activity')" />
+    <slot v-if="!listItem" />
     </div>`,
 			}),
 			SelfHealingResultDetail: {
@@ -84,6 +85,7 @@ beforeEach(async () => {
 	};
 	store = mockedStore(useInboxStore);
 	store.refreshListAndSummary.mockResolvedValue(undefined);
+	store.fetchActiveTab.mockResolvedValue(undefined);
 	store.fetchSummary.mockResolvedValue(undefined);
 	store.setActiveTab.mockResolvedValue(undefined);
 });
@@ -161,20 +163,14 @@ it('unmounts the selected detail when its source becomes disabled', async () => 
 	expect(queryByTestId('review-detail')).not.toBeInTheDocument();
 });
 
-it('removes only the unavailable identity from both lists and keeps its detail selected', async () => {
-	await router.replace('/inbox/reviews/req-1');
-	store.lists.waiting.items = [reviewItem(), resultItem()];
-	store.lists.closed.items = [reviewItem()];
-	const { getByTestId } = renderComponent();
-	reportChange({ type: 'workflow_review', id: 'req-1', unavailable: true });
+it('clears an already-disabled source when a deep link reuses the Inbox view', async () => {
+	store.disabledSources = ['workflow_review'];
+	renderRoutedComponent();
 	await waitAllPromises();
-	expect(store.reconcileItemChange).toHaveBeenCalledWith({
-		type: 'workflow_review',
-		id: 'req-1',
-		unavailable: true,
-	});
-	expect(store.fetchSummary).toHaveBeenCalledOnce();
-	expect(getByTestId('review-detail')).toHaveAttribute('data-id', 'req-1');
+	await router.replace('/inbox/reviews/req-1?state=closed&tab=changes');
+	await waitAllPromises();
+	expect(router.currentRoute.value.fullPath).toBe('/inbox?state=closed');
+	expect(detailMounted).not.toHaveBeenCalled();
 });
 
 it.each([
@@ -227,7 +223,8 @@ it.each([undefined, 'open'] as const)(
 		store.refreshListAndSummary.mockClear();
 		reportChange({ type: 'workflow_review', id: 'req-1', state });
 		await waitAllPromises();
-		expect(store.refreshListAndSummary).toHaveBeenCalledTimes(state ? 0 : 1);
+		expect(store.fetchActiveTab).toHaveBeenCalledTimes(state ? 0 : 1);
+		expect(store.refreshListAndSummary).not.toHaveBeenCalled();
 		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1');
 	},
 );
@@ -331,6 +328,36 @@ it('shows the Open empty state only after both groups load successfully', async 
 	store.lists.authored.hasLoaded = true;
 	await waitAllPromises();
 	expect(queryByTestId('inbox-empty')).toBeInTheDocument();
+});
+
+it('keeps the main loading state until both Open groups finish', async () => {
+	store.lists.waiting.items = [reviewItem()];
+	store.lists.waiting.hasLoaded = true;
+	store.lists.authored.loading = true;
+	const { queryByText } = renderComponent();
+	await waitAllPromises();
+	expect(queryByText('Open items')).not.toBeInTheDocument();
+
+	store.lists.authored.loading = false;
+	store.lists.authored.hasLoaded = true;
+	await waitAllPromises();
+	expect(queryByText('Open items')).toBeInTheDocument();
+});
+
+it('provides the list fallback when review detail has no data', async () => {
+	await router.replace('/inbox/reviews/unlisted');
+	store.lists.waiting.items = [reviewItem()];
+	store.lists.waiting.hasLoaded = true;
+	store.lists.authored.loading = true;
+	const { queryByText, queryByRole } = renderComponent();
+	await waitAllPromises();
+	expect(queryByText('Open items')).not.toBeInTheDocument();
+
+	store.lists.authored.loading = false;
+	store.lists.authored.hasLoaded = true;
+	await waitAllPromises();
+	expect(queryByText('Open items')).toBeInTheDocument();
+	expect(queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
 });
 
 it('does not show an empty Inbox when one group has rows and the other fails', async () => {

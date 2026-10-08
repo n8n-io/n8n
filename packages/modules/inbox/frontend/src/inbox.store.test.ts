@@ -66,6 +66,15 @@ beforeEach(() => {
 	);
 });
 
+it('keeps known counts when a later summary request fails', async () => {
+	const store = useInboxStore();
+	await store.fetchSummary();
+	vi.mocked(api.fetchInboxSummary).mockRejectedValueOnce(new Error('Summary unavailable'));
+	await store.fetchSummary();
+	expect(store.openCount).toBe(2);
+	expect(store.closedCount).toBe(1);
+});
+
 describe('Inbox list requests', () => {
 	it('restarts from the first page and exposes a failed reload', async () => {
 		const pending = createDeferredPromise<ListInboxResponse>();
@@ -398,13 +407,4 @@ it('removes an approved review from Open and updates the counts', async () => {
 	expect(store.lists.waiting.items).toEqual([result('review')]);
 	expect(store.openCount).toBe(1);
 	expect(store.closedCount).toBe(2);
-});
-
-it('removes only an unavailable item with the same source and ID', () => {
-	const store = useInboxStore();
-	store.lists.waiting.items = [reviewItem('review'), result('review')];
-	store.lists.closed.items = [reviewItem('review')];
-	store.reconcileItemChange({ type: 'workflow_review', id: 'review', unavailable: true });
-	expect(store.lists.waiting.items).toEqual([result('review')]);
-	expect(store.lists.closed.items).toEqual([]);
 });

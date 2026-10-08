@@ -56,7 +56,7 @@ describe('WorkflowReviewCommentComposer', () => {
 		expect(second.getByRole('textbox')).toHaveValue('');
 	});
 
-	it('does not show a failed post toast after the composer unmounts', async () => {
+	it('reports a failed post after a tab switch unmounts the composer', async () => {
 		const pending = createDeferredPromise<boolean>();
 		store.postComment.mockReturnValueOnce(pending.promise);
 		store.draft = 'Sent comment';
@@ -65,7 +65,8 @@ describe('WorkflowReviewCommentComposer', () => {
 		unmount();
 		pending.reject(new Error('timeout'));
 		await pending.promise.catch(() => {});
-		expect(showError).not.toHaveBeenCalled();
+		expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not post comment');
+		expect(store.draft).toBe('Sent comment');
 	});
 
 	it('disables the send button and the textarea when the viewer cannot comment', () => {

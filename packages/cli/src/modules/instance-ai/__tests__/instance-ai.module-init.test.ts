@@ -65,8 +65,8 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 });
 
 describe('InstanceAiModule.init', () => {
-	it('registers saved reviews only when self-healing is enabled', async () => {
-		const config = mockInstance(InstanceAiConfig, { selfHealingEnabled: false });
+	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
+		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
 		const sources = mockInstance(InboxSourceRegistry);
 		mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
@@ -85,7 +85,7 @@ describe('InstanceAiModule.init', () => {
 		expect(loadResultController).not.toHaveBeenCalled();
 		expect(sources.register).not.toHaveBeenCalled();
 
-		config.selfHealingEnabled = true;
+		config.workflowSuggestionsEnabled = true;
 		await new InstanceAiModule().init();
 
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();

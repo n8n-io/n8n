@@ -76,7 +76,7 @@ async function onComment() {
 		// would otherwise land nowhere the viewer can see.
 		emit('comment-posted');
 	} catch (error) {
-		if (isMounted) showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
+		showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
 	}
 }
 </script>

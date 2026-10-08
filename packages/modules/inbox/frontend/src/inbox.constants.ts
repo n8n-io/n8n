@@ -16,5 +16,4 @@ export type InboxItemChange = {
 	state?: InboxState;
 	decision?: WorkflowReviewRequestDecision;
 	updatedAt?: string;
-	unavailable?: boolean;
 };

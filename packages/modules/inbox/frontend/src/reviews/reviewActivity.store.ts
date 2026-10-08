@@ -11,7 +11,7 @@ const DEFAULT_LIMIT = 25;
 
 /**
  * The activity feed of one review. `entries` is ascending by id: the backend pages
- * backwards, so `loadMore` prepends older pages and `postComment` appends.
+ * backwards, so `loadMore` prepends older pages. Posted comments merge by id.
  */
 export const useReviewActivityStore = defineStore('workflowReviewActivity', () => {
 	const rootStore = useRootStore();
@@ -117,8 +117,8 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 	}
 
 	/**
-	 * Resolves `false` when the viewer moved to another review while the post was in flight:
-	 * the comment was written, but nothing about it belongs on the review they are reading now.
+	 * Resolves `false` after a selection change. The saved comment can still belong
+	 * in the current feed, but the caller must not clear a new draft.
 	 */
 	async function postComment(body: string): Promise<boolean> {
 		const reviewId = currentReviewId.value;
@@ -129,11 +129,13 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		posting.value = true;
 		try {
 			const entry = await createWorkflowReviewComment(rootStore.restApiContext, reviewId, { body });
-			if (requestSeq !== postSeq || currentReviewId.value !== reviewId) return false;
+			if (currentReviewId.value !== reviewId) return false;
 
 			// A feed refetch that raced this post may already carry the comment.
-			entries.value = [...entries.value.filter((existing) => existing.id !== entry.id), entry];
-			return true;
+			entries.value = [...entries.value.filter((existing) => existing.id !== entry.id), entry].sort(
+				(a, b) => Number(a.id) - Number(b.id),
+			);
+			return requestSeq === postSeq;
 		} finally {
 			// Only the newest post owns the flag: after A -> B -> A a stale post finishing would
 			// otherwise re-enable send while the post the user is waiting on is still in flight.

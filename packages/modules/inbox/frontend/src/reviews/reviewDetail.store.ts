@@ -15,6 +15,7 @@ export const useReviewDetailStore = defineStore('workflowReviewDetail', () => {
 	const detail = ref<WorkflowReviewRequestDetail | null>(null);
 	const detailLoading = ref(false);
 	const detailNotFound = ref(false);
+	const deciding = ref(false);
 	const selectionRevision = ref(0);
 	let requestSeq = 0;
 
@@ -32,8 +33,7 @@ export const useReviewDetailStore = defineStore('workflowReviewDetail', () => {
 			detailNotFound.value = false;
 		} catch (error) {
 			if (seq !== requestSeq) return;
-			if (error instanceof ResponseError && [403, 404].includes(error.httpStatusCode ?? 0)) {
-				detail.value = null;
+			if (error instanceof ResponseError && error.httpStatusCode === 404) {
 				detailNotFound.value = true;
 				return;
 			}
@@ -44,16 +44,13 @@ export const useReviewDetailStore = defineStore('workflowReviewDetail', () => {
 	}
 
 	async function decideOnReview(id: string, input: WorkflowReviewDecisionInput) {
-		const revision = selectionRevision.value;
 		const response = await decideWorkflowReviewRequest(rootStore.restApiContext, id, input);
-		if (revision === selectionRevision.value) {
+		if (detail.value?.id === id) {
 			requestSeq++;
 			detailLoading.value = false;
-			if (detail.value?.id === id) {
-				detail.value.decision = response.decision;
-				detail.value.state = response.state;
-				detail.value.updatedAt = response.updatedAt;
-			}
+			detail.value.decision = response.decision;
+			detail.value.state = response.state;
+			detail.value.updatedAt = response.updatedAt;
 		}
 		return response;
 	}
@@ -70,6 +67,7 @@ export const useReviewDetailStore = defineStore('workflowReviewDetail', () => {
 		detail,
 		detailLoading,
 		detailNotFound,
+		deciding,
 		selectionRevision,
 		fetchDetail,
 		decideOnReview,

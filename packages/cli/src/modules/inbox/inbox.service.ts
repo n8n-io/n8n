@@ -66,9 +66,6 @@ export class InboxService {
 	) {}
 
 	async list(user: User, query: ListInboxQueryDto): Promise<ListInboxResponse> {
-		if (query.state === 'closed' && query.category !== undefined) {
-			throw new BadRequestError('Inbox categories are only available for open items');
-		}
 		const sourceTypes = this.sourcesForCategory(query.category);
 		const cursor = query.cursor
 			? this.decodeCursor(query.cursor, query.state, query.category, sourceTypes)

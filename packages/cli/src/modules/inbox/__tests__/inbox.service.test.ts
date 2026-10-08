@@ -158,14 +158,15 @@ describe('InboxService', () => {
 	});
 
 	it.each(['waiting', 'authored'] as const)(
-		'rejects %s on Closed before reading sources',
+		'passes the %s category to Closed source reads',
 		async (category) => {
 			const source = createSource('workflow_review');
 			registry.register(source);
-			await expect(
-				service.list(user, { state: 'closed', category, limit: 15 }),
-			).rejects.toBeInstanceOf(BadRequestError);
-			expect(source.isEnabled).not.toHaveBeenCalled();
+			await service.list(user, { state: 'closed', category, limit: 15 });
+			expect(source.list).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ state: 'closed', category }),
+			);
 		},
 	);
 

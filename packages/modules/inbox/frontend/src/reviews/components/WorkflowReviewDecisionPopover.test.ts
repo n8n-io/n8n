@@ -106,6 +106,22 @@ describe('WorkflowReviewDecisionPopover', () => {
 		expect(store.decisionNote).toBe('New note');
 	});
 
+	it('reports a failed comment after the selected review changes', async () => {
+		const pending = createDeferredPromise<boolean>();
+		store.postComment.mockReturnValueOnce(pending.promise);
+		store.decisionNote = 'Sent comment';
+		const { getByTestId, unmount } = renderComponent();
+		await userEvent.click(getByTestId('workflow-review-decision-comment-button'));
+		unmount();
+		store.decisionNote = 'New note';
+		const error = new Error('timeout');
+		pending.reject(error);
+		await waitAllPromises();
+
+		expect(showError).toHaveBeenCalledWith(error, 'Could not post comment');
+		expect(store.decisionNote).toBe('New note');
+	});
+
 	it.each<[string, { viewerCanComment?: boolean; deciding?: boolean }, boolean]>([
 		['a viewer who is not allowed to comment', { viewerCanComment: false }, false],
 		['a comment that is already being posted', {}, true],

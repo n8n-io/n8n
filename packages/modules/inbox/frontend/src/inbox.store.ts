@@ -231,17 +231,16 @@ export const useInboxStore = defineStore('inbox', () => {
 		} catch (error) {
 			if (seq !== summaryRequestSeq) return;
 			removeDisabledSources(disabledTypesFromError(error));
-			openCount.value = null;
-			closedCount.value = null;
 		}
 	}
 
-	async function refreshListAndSummary() {
+	async function fetchActiveTab() {
 		if (!enabled.value) return;
-		await Promise.all([
-			...activeLists.value.map(async (list) => await list.fetchList()),
-			fetchSummary(),
-		]);
+		await Promise.all(activeLists.value.map(async (list) => await list.fetchList()));
+	}
+
+	async function refreshListAndSummary() {
+		await Promise.all([fetchActiveTab(), fetchSummary()]);
 	}
 
 	function reconcileItemChange(change: InboxItemChange) {
@@ -251,7 +250,7 @@ export const useInboxStore = defineStore('inbox', () => {
 			if (change.state) item.state = change.state;
 			if (change.updatedAt) item.updatedAt = change.updatedAt;
 			if (item.type === 'workflow_review' && change.decision) item.decision = change.decision;
-			if (change.unavailable || item.state !== activeTab.value) {
+			if (item.state !== activeTab.value) {
 				list.items = list.items.filter((row) => row !== item);
 			}
 		}
@@ -264,8 +263,7 @@ export const useInboxStore = defineStore('inbox', () => {
 	async function setActiveTab(tab: InboxState) {
 		if (activeTab.value === tab) return;
 		activeTab.value = tab;
-		if (enabled.value)
-			await Promise.allSettled(activeLists.value.map(async (list) => await list.fetchList()));
+		await fetchActiveTab();
 	}
 
 	function reset() {
@@ -293,6 +291,7 @@ export const useInboxStore = defineStore('inbox', () => {
 		closedCount,
 		disabledSources,
 		fetchSummary,
+		fetchActiveTab,
 		refreshListAndSummary,
 		reconcileItemChange,
 		setActiveTab,

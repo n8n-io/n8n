@@ -2,7 +2,7 @@
 
 These internal Instance AI services store proposed workflow changes for human review. Suggestions are separate from the workflow's saved editor draft. These services do not run investigations or expose HTTP endpoints. No Enterprise license is required.
 
-Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` and restart n8n to load the workflow event relay and its services. The flag defaults to `false`. Database entities and migrations remain registered in either state.
+Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and restart n8n to load the workflow event relay and its services. The flag defaults to `false`. Database entities and migrations remain registered in either state.
 
 ## Store a suggestion
 

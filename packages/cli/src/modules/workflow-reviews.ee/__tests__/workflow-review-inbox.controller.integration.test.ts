@@ -731,8 +731,13 @@ describe('GET /inbox', () => {
 			expect(authoredPage.nextCursor).toBeNull();
 		});
 
-		test('rejects categories on the Closed list', async () => {
-			await memberAgent.get('/inbox').query({ state: 'closed', category: 'authored' }).expect(400);
+		test('filters closed reviews by category too', async () => {
+			const closedMine = await openReviewBy(member.id, 'Closed mine', 'closed');
+			await openReviewBy(owner.id, 'Closed theirs', 'closed');
+
+			expect((await inbox(memberAgent, { state: 'closed', category: 'authored' })).ids).toEqual([
+				closedMine.id,
+			]);
 		});
 	});
 });
