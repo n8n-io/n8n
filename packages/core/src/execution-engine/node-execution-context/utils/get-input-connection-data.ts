@@ -536,7 +536,7 @@ export async function getInputConnectionData(
 				}
 
 				let currentNodeRunIndex = 0;
-				if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
+				if (Object.hasOwn(runExecutionData.resultData.runData, parentNode.name)) {
 					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
 				}
 
