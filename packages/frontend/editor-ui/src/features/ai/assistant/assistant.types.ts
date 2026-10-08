@@ -137,6 +137,8 @@ export namespace ChatRequest {
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		featureFlags?: BuilderFeatureFlags;
+		/** The project that the open canvas belongs to. The server checks access before using it. */
+		projectId?: string;
 		/** Builder mode: 'build' for direct generation, 'plan' for planning first */
 		mode?: 'build' | 'plan';
 		/** Resume payload for LangGraph interrupt() */

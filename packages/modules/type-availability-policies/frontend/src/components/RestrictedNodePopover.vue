@@ -20,8 +20,17 @@ const props = withDefaults(
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		align?: 'start' | 'center' | 'end';
 		sideOffset?: number;
+		/** The marker icon. Inline text uses the help icon, list rows the lock. */
+		icon?: 'lock' | 'circle-help';
 	}>(),
-	{ scope: undefined, anchor: undefined, side: 'left', align: 'center', sideOffset: 24 },
+	{
+		scope: undefined,
+		anchor: undefined,
+		side: 'left',
+		align: 'center',
+		sideOffset: 24,
+		icon: 'lock',
+	},
 );
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
@@ -31,7 +40,10 @@ const i18n = useI18n();
 
 const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
-const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
+const markerRef = ref<HTMLElement | null>(null);
+// Without a row to anchor to, the marker itself opens the card.
+const hoverTarget = computed(() => anchorElement.value ?? markerRef.value ?? undefined);
+const anchorHovered = useElementHover(hoverTarget, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
 watch(contentRef, (content) => {
 	if (!content) contentHovered.value = false;
@@ -39,7 +51,7 @@ watch(contentRef, (content) => {
 const isContactAdminOpen = ref(false);
 const activeElement = useActiveElement();
 const anchorFocused = computed(() =>
-	Boolean(anchorElement.value?.contains(activeElement.value ?? null)),
+	Boolean(hoverTarget.value?.contains(activeElement.value ?? null)),
 );
 const contentFocused = computed(() =>
 	Boolean(contentRef.value?.contains(activeElement.value ?? null)),
@@ -78,12 +90,13 @@ const scopeKey = computed<BaseTextKey>(
 		>
 			<template #trigger>
 				<span
+					ref="markerRef"
 					:class="$style.marker"
 					tabindex="0"
 					role="img"
 					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
 				>
-					<N8nIcon icon="lock" size="small" data-test-id="node-restricted-icon" />
+					<N8nIcon :icon="props.icon" size="small" data-test-id="node-restricted-icon" />
 				</span>
 			</template>
 			<template #content>

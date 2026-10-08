@@ -37,6 +37,12 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	}),
 }));
 
+const projectsState = vi.hoisted(() => ({ currentProjectId: undefined as string | undefined }));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectsState,
+}));
+
 vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
 	useFocusedNodesStore: () => ({
 		buildContextPayload: vi.fn().mockReturnValue([]),
@@ -355,6 +361,7 @@ describe('builder.utils', () => {
 
 		beforeEach(() => {
 			vi.clearAllMocks();
+			projectsState.currentProjectId = undefined;
 
 			// Setup default mock implementations
 			mockSimplifyWorkflowForAssistant.mockResolvedValue({
@@ -363,12 +370,33 @@ describe('builder.utils', () => {
 				nodes: mockWorkflow.nodes,
 				connections: mockWorkflow.connections,
 			});
+
 			mockSimplifyResultData.mockReturnValue({ runData: {} });
 			mockExtractExpressionsFromWorkflow.mockResolvedValue({});
 			mockGetNodesSchemas.mockReturnValue({
 				schemas: [{ nodeName: 'Node 1', schema: {} }],
 				pinnedNodeNames: [],
 			});
+		});
+
+		it('sends the project that the open canvas belongs to', async () => {
+			projectsState.currentProjectId = 'team-project';
+
+			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result.projectId).toBe('team-project');
+		});
+
+		it('sends no project when none is open', async () => {
+			projectsState.currentProjectId = undefined;
+
+			const result = await createBuilderPayload('test message', 'msg-1', {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result.projectId).toBeUndefined();
 		});
 
 		it('should include executionData and expressionValues when allowSendingParameterValues is true', async () => {

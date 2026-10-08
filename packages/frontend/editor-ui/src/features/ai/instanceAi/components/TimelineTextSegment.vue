@@ -20,6 +20,10 @@ const props = withDefaults(
 
 <template>
 	<N8nText size="large" :compact="props.compact">
-		<InstanceAiMarkdown :content="props.entry.content" :streaming="props.streaming" />
+		<InstanceAiMarkdown
+			:content="props.entry.content"
+			:streaming="props.streaming"
+			mark-restricted-nodes
+		/>
 	</N8nText>
 </template>

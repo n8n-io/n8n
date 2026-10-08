@@ -717,6 +717,34 @@ describe('instanceAi.reducer', () => {
 		});
 	});
 
+	describe('restricted-node-notice', () => {
+		test('a notice reaches the rendered tool call that found the blocked type', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'nodes'));
+
+			handleEvent(state, {
+				type: 'restricted-node-notice',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					nodeType: 'n8n-nodes-base.gmailTrigger',
+					displayName: 'Gmail Trigger',
+					scope: 'instance',
+				},
+			});
+
+			expect(state.messages[0].agentTree!.toolCalls[0].restrictedNodes).toEqual([
+				{
+					nodeType: 'n8n-nodes-base.gmailTrigger',
+					displayName: 'Gmail Trigger',
+					scope: 'instance',
+				},
+			]);
+			expect(state.messages).toHaveLength(1);
+		});
+	});
+
 	describe('unsafe identifiers', () => {
 		test('run-start with unsafe runId is ignored', () => {
 			const state = makeState();

@@ -7,6 +7,7 @@ import {
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
 	CODE_WORKFLOW_BUILDER_EXPERIMENT,
 	MERGE_ASK_BUILD_EXPERIMENT,
@@ -40,6 +41,7 @@ export async function createBuilderPayload(
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
 	const focusedNodesStore = useFocusedNodesStore();
+	const projectsStore = useProjectsStore();
 	const workflowContext: ChatRequest.WorkflowContext = {};
 
 	// When privacy is OFF (allowSendingParameterValues=false), exclude parameter values from workflow
@@ -105,6 +107,7 @@ export async function createBuilderPayload(
 		quickReplyType: options.quickReplyType,
 		workflowContext,
 		featureFlags,
+		projectId: projectsStore.currentProjectId,
 		mode: options.mode,
 	};
 }

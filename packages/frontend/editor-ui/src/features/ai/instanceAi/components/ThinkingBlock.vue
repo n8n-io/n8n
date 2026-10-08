@@ -101,6 +101,7 @@ const durationSec = computed<number | undefined>(() => {
 				<InstanceAiMarkdown
 					:content="entry.content"
 					:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
+					:mark-restricted-nodes="entry.type === 'text'"
 				/>
 			</div>
 

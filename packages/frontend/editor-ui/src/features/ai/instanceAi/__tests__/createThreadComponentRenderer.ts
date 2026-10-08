@@ -34,6 +34,7 @@ export function makeThread(): ThreadRuntime {
 		projectId: 'thread-project',
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
+		restrictedNodeIndex: new Map(),
 		activeArtifactId: undefined,
 		setActiveArtifactId: vi.fn(),
 		setOpenTabs: vi.fn(),
