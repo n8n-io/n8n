@@ -1,8 +1,15 @@
+import { defineComponent, h, nextTick, ref, type PropType, type Ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
-import type { AutomationProposalCard as Proposal } from '@n8n/api-types';
+import type {
+	AutomationProposalCard as Proposal,
+	InstanceAiConfirmRequest,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
+import { provideThread, type ThreadRuntime } from '../../../instanceAi.store';
+import { createTestRouter } from '../../../navigation/__tests__/navigationFixtures';
 import AutomationProposalCard from '../AutomationProposalCard.vue';
 import { makeManualProposal, makeProposal } from './automationProposalFixtures';
 
@@ -330,5 +337,341 @@ describe('AutomationProposalCard', () => {
 
 		expect(getByTitle(projectName)).toHaveTextContent(projectName);
 		expect(getByTestId('automation-proposal-visible-to')).toHaveTextContent(projectName);
+	});
+});
+
+const TURN_ON = {
+	kind: 'capabilityDecision',
+	approved: true,
+	values: { target: 'local', activate: true },
+};
+const SAVE = {
+	kind: 'capabilityDecision',
+	approved: true,
+	values: { target: 'local', activate: false },
+};
+const DECLINE = { kind: 'capabilityDecision', approved: false };
+const KEPT = { workflowId: 'wf-1', url: 'http://localhost:5678/workflow/wf-1', kept: true };
+
+/** The tool call that the thread mirror holds for the card, as the Assistant chat fills it. */
+function toolCall(fields: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
+	return {
+		toolCallId: 'tc-1',
+		toolName: 'propose_automation',
+		args: {},
+		isLoading: false,
+		...fields,
+	};
+}
+
+/** A chat that holds the card, so the card can read the result of its tool call. */
+const InChat = defineComponent({
+	props: {
+		proposal: { type: Object as PropType<Proposal>, required: true },
+		answer: { type: null, default: undefined },
+		call: {
+			type: Object as PropType<{ value: InstanceAiToolCallState | undefined }>,
+			default: undefined,
+		},
+		/** The answer that the chat holds, so a test can take it back as a failed request does. */
+		state: { type: Object as PropType<Ref<unknown>>, default: undefined },
+	},
+	setup(props) {
+		const call = props.call;
+		if (call) {
+			provideThread({
+				id: 'thread-1',
+				findToolCall: (id: string) => (id === 'tc-1' ? call.value : undefined),
+			} as unknown as ThreadRuntime);
+		}
+		// The chat resolves the card with the answer that the card sends.
+		const resolvedValue = props.state ?? ref<unknown>(props.answer);
+		const onSubmit = (body: InstanceAiConfirmRequest) => {
+			resolvedValue.value = body;
+		};
+		return () =>
+			h(AutomationProposalCard, {
+				proposal: props.proposal,
+				resolvedValue: resolvedValue.value,
+				toolCallId: 'tc-1',
+				onSubmit,
+			});
+	},
+});
+
+const renderInChat = createComponentRenderer(InChat, { pinia: createTestingPinia() });
+
+function renderAnswered(
+	answer: unknown,
+	{
+		proposal = makeProposal(),
+		call,
+		state,
+	}: {
+		proposal?: Proposal;
+		call?: { value: InstanceAiToolCallState | undefined };
+		state?: Ref<unknown>;
+	} = {},
+) {
+	return renderInChat({
+		props: { proposal, answer, call, state },
+		global: { plugins: [createTestRouter()], stubs: { RouterLink: false } },
+	});
+}
+
+describe('AutomationProposalCard after the answer', () => {
+	it('says that it is on, when and where it runs, and links to the workflow', () => {
+		const { getByTestId, getByRole, queryByTestId, queryAllByRole } = renderAnswered(TURN_ON);
+
+		expect(queryByTestId('automation-proposal-card')).not.toBeInTheDocument();
+		expect(queryAllByRole('button')).toHaveLength(0);
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			`It's on. "Morning digest" runs at 08:00, Monday through Friday (United Kingdom Time) on This computer.`,
+		);
+		const link = getByRole('link', { name: 'Open workflow "Morning digest"' });
+		expect(link).toBe(getByTestId('automation-proposal-open-workflow'));
+		expect(link).toHaveAttribute('href', '/workflow/wf-1');
+		expect(link).toHaveTextContent('Open workflow');
+	});
+
+	it('names the trigger of a workflow without a schedule, and a linked place by its label', () => {
+		const proposal = makeProposal({
+			trigger: { kind: 'webhook' },
+			recommended: { targetId: 'cloud-1', kind: 'linked', reasons: ['always-on-trigger'] },
+			targets: [{ id: 'cloud-1', kind: 'linked', label: 'Cloud', status: 'online' }],
+			offered: { target: ['cloud-1'], activate: [true, false] },
+		});
+		const { getByTestId } = renderAnswered(TURN_ON, { proposal });
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			`It's on. "Morning digest" runs when a request arrives on Cloud.`,
+		);
+	});
+
+	it('says that a saved workflow is off until the user turns it on', () => {
+		const { getByTestId } = renderAnswered(SAVE);
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			'Saved. "Morning digest" is off until you turn it on.',
+		);
+		expect(getByTestId('automation-proposal-open-workflow')).toHaveAttribute(
+			'href',
+			'/workflow/wf-1',
+		);
+	});
+
+	it('says that "Save" keeps the live version of a live workflow running', () => {
+		const proposal = makeProposal({ active: true, hasUnpublishedChanges: true });
+		const { getByTestId } = renderAnswered(SAVE, { proposal });
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			'Saved. The live version of "Morning digest" keeps running.',
+		);
+	});
+
+	it('says that a saved manual workflow is in the workflows, without asking to turn it on', async () => {
+		const { getByTestId, getByRole } = renderAnswered(undefined, {
+			proposal: makeManualProposal(),
+		});
+
+		await fireEvent.click(getByRole('button', { name: 'Save workflow' }));
+
+		const status = getByTestId('automation-proposal-resolved-status');
+		expect(status).toHaveTextContent('Saved. "Morning digest" is in your workflows.');
+		expect(status).not.toHaveTextContent('turn it on');
+		expect(getByTestId('automation-proposal-open-workflow')).toHaveAttribute(
+			'href',
+			'/workflow/wf-1',
+		);
+	});
+
+	it('says that a saved workflow stays off until someone turns it on, as the card said', async () => {
+		const proposal = makeProposal({
+			canActivate: false,
+			offered: { target: ['local'], activate: [false] },
+		});
+		const { getByTestId, getByRole } = renderAnswered(undefined, { proposal });
+		expect(getByTestId('automation-proposal-note')).toHaveTextContent(
+			'It stays off until someone turns it on.',
+		);
+
+		await fireEvent.click(getByRole('button', { name: 'Save workflow' }));
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			'Saved. "Morning digest" stays off until someone turns it on.',
+		);
+		expect(getByTestId('automation-proposal-open-workflow')).toBeInTheDocument();
+	});
+
+	it('says that a schedule it cannot describe runs at set times', () => {
+		const proposal = makeProposal({ trigger: { kind: 'schedule', cron: 'not a cron' } });
+		const { getByTestId } = renderAnswered(TURN_ON, { proposal });
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			`It's on. "Morning digest" runs at set times on This computer.`,
+		);
+	});
+
+	it('says "Not automated." for "Not now", without a link', () => {
+		const { getByTestId, queryByRole, queryByTestId } = renderAnswered(DECLINE);
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent('Not automated.');
+		expect(queryByTestId('automation-proposal-open-workflow')).not.toBeInTheDocument();
+		expect(queryByRole('link')).not.toBeInTheDocument();
+	});
+
+	it('says "Turning it on…" until the tool result arrives, then that it is on', async () => {
+		// Right after the answer, the chat keeps the answer in the place of the result.
+		const call = ref(toolCall({ result: TURN_ON }));
+		const { getByTestId } = renderAnswered(TURN_ON, { call });
+		const status = getByTestId('automation-proposal-resolved-status');
+		const iconOf = () => getByTestId('automation-proposal-resolved').querySelector('[data-icon]');
+
+		expect(status).toHaveTextContent('Turning it on…');
+		expect(getByTestId('automation-proposal-open-workflow')).toBeInTheDocument();
+		// The waiting state holds the place of the icon, so the text does not move later.
+		expect(iconOf()).toHaveAttribute('data-icon', 'loader-circle');
+		expect(iconOf()?.closest('[aria-hidden="true"]')).not.toBeNull();
+		expect(status.querySelector('[role="status"]')).toBeNull();
+
+		call.value = toolCall({ result: { ...KEPT, active: true } });
+		await nextTick();
+
+		expect(status).toHaveTextContent(`It's on. "Morning digest" runs at 08:00`);
+		expect(iconOf()).toHaveAttribute('data-icon', 'circle-check');
+	});
+
+	it('says that the workflow was saved but is off when the result is not active', async () => {
+		const call = ref(toolCall({ result: TURN_ON }));
+		const { getByTestId } = renderAnswered(TURN_ON, { call });
+
+		call.value = toolCall({
+			result: { ...KEPT, active: false, error: 'Saved "Morning digest", but could not turn it on' },
+		});
+		await nextTick();
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			"Saved, but it couldn't be turned on. Open the workflow to check it.",
+		);
+		expect(getByTestId('automation-proposal-open-workflow')).toHaveAttribute(
+			'href',
+			'/workflow/wf-1',
+		);
+	});
+
+	it.each([TURN_ON, SAVE])(
+		'says "Not automated" like the tool step when an admin blocked it, without a link',
+		(answer) => {
+			const blocked = toolCall({ result: { denied: true, message: 'Blocked' } });
+			const { getByTestId, queryByTestId } = renderAnswered(answer, { call: ref(blocked) });
+
+			expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+				'Not automated. "Morning digest" couldn\'t be saved.',
+			);
+			expect(queryByTestId('automation-proposal-open-workflow')).not.toBeInTheDocument();
+		},
+	);
+
+	it('asks the user to check the workflow when the call failed, because it may be kept', () => {
+		const failed = toolCall({ error: 'Could not reach the database' });
+		const { getByTestId } = renderAnswered(TURN_ON, { call: ref(failed) });
+
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent(
+			'Something went wrong with "Morning digest". Open the workflow to check it.',
+		);
+		expect(getByTestId('automation-proposal-open-workflow')).toHaveAttribute(
+			'href',
+			'/workflow/wf-1',
+		);
+	});
+
+	it('says that the changes are live after "Make changes live" on a live workflow', async () => {
+		const proposal = makeProposal({ active: true, hasUnpublishedChanges: true });
+		const call = ref(toolCall({ result: TURN_ON }));
+		const { getByTestId } = renderAnswered(TURN_ON, { proposal, call });
+		const status = getByTestId('automation-proposal-resolved-status');
+
+		expect(status).toHaveTextContent('Making your changes live…');
+
+		call.value = toolCall({ result: { ...KEPT, active: true } });
+		await nextTick();
+
+		expect(status).toHaveTextContent(
+			'Your changes are live. "Morning digest" runs at 08:00, Monday through Friday (United Kingdom Time) on This computer.',
+		);
+	});
+
+	it('announces the outcome politely, as one message', () => {
+		const { getByTestId } = renderAnswered(TURN_ON, { call: ref(toolCall({ result: TURN_ON })) });
+		const status = getByTestId('automation-proposal-resolved-status');
+
+		expect(status).toHaveAttribute('aria-live', 'polite');
+		expect(status).toHaveAttribute('aria-atomic', 'true');
+		expect(getByTestId('automation-proposal-resolved')).toHaveAccessibleName('Turning it on…');
+	});
+
+	it('keeps the open card for a value that is not an answer of the card', () => {
+		const { getByTestId, queryByTestId } = renderAnswered({ ...KEPT, active: true });
+
+		expect(getByTestId('automation-proposal-card')).toBeInTheDocument();
+		expect(queryByTestId('automation-proposal-resolved')).not.toBeInTheDocument();
+	});
+
+	it('moves focus to the outcome when the user answers, because the buttons go away', async () => {
+		const { getByTestId } = renderAnswered(undefined);
+
+		await fireEvent.click(getByTestId('automation-proposal-turn-on'));
+
+		expect(getByTestId('automation-proposal-resolved')).toHaveFocus();
+	});
+
+	it('leaves focus where it is for a card that was answered before it rendered', () => {
+		const { getByTestId } = renderAnswered(SAVE);
+
+		expect(getByTestId('automation-proposal-resolved')).not.toHaveFocus();
+	});
+
+	it('leaves focus where the user moved it when the chat takes a failed answer back', async () => {
+		const state = ref<unknown>(undefined);
+		const { getByTestId } = renderAnswered(undefined, { state });
+		const elsewhere = document.body.appendChild(document.createElement('button'));
+
+		await fireEvent.click(getByTestId('automation-proposal-turn-on'));
+		elsewhere.focus();
+		state.value = undefined;
+		await nextTick();
+		await nextTick();
+
+		expect(getByTestId('automation-proposal-card')).toBeInTheDocument();
+		expect(elsewhere).toHaveFocus();
+		elsewhere.remove();
+	});
+
+	it('lets the user answer again when the chat takes a failed answer back', async () => {
+		const state = ref<unknown>(undefined);
+		const { getByTestId, queryByTestId } = renderAnswered(undefined, { state });
+
+		await fireEvent.click(getByTestId('automation-proposal-turn-on'));
+		expect(getByTestId('automation-proposal-resolved')).toBeInTheDocument();
+
+		state.value = undefined;
+		await nextTick();
+
+		expect(queryByTestId('automation-proposal-resolved')).not.toBeInTheDocument();
+		// The outcome had focus. Focus moves to the card, not to the page.
+		await waitFor(() => expect(getByTestId('automation-proposal-card')).toHaveFocus());
+		for (const testId of [
+			'automation-proposal-turn-on',
+			'automation-proposal-save',
+			'automation-proposal-not-now',
+		]) {
+			expect(getByTestId(testId)).toBeEnabled();
+		}
+
+		await fireEvent.click(getByTestId('automation-proposal-not-now'));
+
+		expect(state.value).toEqual(DECLINE);
+		expect(getByTestId('automation-proposal-resolved-status')).toHaveTextContent('Not automated.');
+		expect(getByTestId('automation-proposal-resolved')).toHaveFocus();
 	});
 });

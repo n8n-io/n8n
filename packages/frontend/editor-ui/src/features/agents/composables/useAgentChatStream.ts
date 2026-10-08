@@ -48,6 +48,7 @@ import {
 	startsNewSegment,
 	type MessageSegmentKind,
 } from '@/features/ai/shared/agentsChat/messageSegments';
+import { keepSessionAnswers } from '@/features/ai/shared/agentsChat/resolvedCards';
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
@@ -209,6 +210,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 */
 	const warnings = ref<AgentChatWarning[]>([]);
 	const dismissedWarningKeys = new Set<string>();
+	// Card answers of this session, by tool call. A history refresh puts the tool result in their
+	// place, and an answered card that stays in the chat needs its answer.
+	const sessionAnswers = new Map<string, unknown>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -260,9 +264,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
-				messages.value = restoreBudgetNotices(
-					applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions),
-				);
+				const history = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+				messages.value = restoreBudgetNotices(keepSessionAnswers(history, sessionAnswers));
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
 				if (isCancelling.value) reconcileStop();
@@ -591,6 +594,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		terminalEventReceived: boolean;
 		/** Set when the error text is the server's reason for a refusal. It can name users. */
 		serverRefusal?: boolean;
+		/** Set by the first event that is not an error: the server took the request. */
+		started?: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -1327,6 +1332,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return { done: true };
 	}
 
+	/** The first event that is not an error shows that the server took the request. */
+	function noteStart(session: StreamSession, event: AgentSseEvent): void {
+		if (event.type !== 'error') session.started = true;
+	}
+
 	async function consumeStream(
 		response: Response,
 		session: StreamSession,
@@ -1354,6 +1364,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
+					noteStart(session, event);
 					const result =
 						event.type === 'execution-started' && session.needsStartValidation
 							? await handleDelayedExecutionStart(event, session)
@@ -1386,7 +1397,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	type StreamOutcome = 'completed' | 'failed' | 'aborted' | 'busy' | 'detached';
-	type PostResult = { outcome: StreamOutcome; rejection?: ChatRejection };
+	/** `started` tells a turn that failed after the server took the request from a refusal. */
+	type PostResult = { outcome: StreamOutcome; rejection?: ChatRejection; started?: boolean };
 
 	async function postAndConsume(
 		url: string,
@@ -1447,10 +1459,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			finalizeStream(session);
 			if (!session.errorEmitted) session.onAccepted?.();
-			return { outcome: session.errorEmitted ? 'failed' : 'completed' };
+			return { outcome: session.errorEmitted ? 'failed' : 'completed', started: session.started };
 		} catch (error) {
 			if (!isCurrent() || controller.signal.aborted) return { outcome: 'aborted' };
-			if (session.errorEmitted) return { outcome: 'failed' };
+			if (session.errorEmitted) return { outcome: 'failed', started: session.started };
 			if (session.userMessage && !session.queueId && !session.executionId)
 				showError(error, locale.baseText('agents.chat.queue.sendError'));
 			// A lost response cannot tell us whether the server accepted or finished the turn.
@@ -1641,11 +1653,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
-		const { outcome, rejection } = await postAndConsume(
+		rememberAnswer(payload);
+		const { outcome, rejection, started } = await postAndConsume(
 			url,
 			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
 			onAccepted,
 		);
+		forgetRefusedAnswer(payload, outcome, started);
 		let reconciled = false;
 		if (outcome === 'failed' || outcome === 'busy') {
 			reconciled = await refreshHistory();
@@ -1677,6 +1691,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 		reportResumeFailure(payload, outcome, rejection);
 		return outcome === 'busy' ? 'busy' : 'sent';
+	}
+
+	/** Keeps a card answer for later history reads. A steering message is not an answer. */
+	function rememberAnswer(payload: ResumePayload): void {
+		if (!('cancelled' in payload)) sessionAnswers.set(payload.toolCallId, payload.resumeData);
+	}
+
+	/**
+	 * The server did not take this answer, so the history must not show it. A turn that fails
+	 * after the server took the answer (for example a model error after the tool ran) keeps it.
+	 */
+	function forgetRefusedAnswer(payload: ResumePayload, outcome: StreamOutcome, started = false) {
+		if (outcome === 'busy' || (outcome === 'failed' && !started)) {
+			sessionAnswers.delete(payload.toolCallId);
+		}
 	}
 
 	/** A failed card answer. A steering message that cancels a card is not an answer. */

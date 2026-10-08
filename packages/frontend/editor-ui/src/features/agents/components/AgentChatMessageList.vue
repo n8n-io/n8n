@@ -8,6 +8,7 @@ import { useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
 import { isAssistantGroup, type DisplayGroup } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import { keepsResolvedCard } from '@/features/ai/shared/agentsChat/resolvedCards';
 import {
 	getMessageThinkingSegments,
 	getThinkingDurationSec,
@@ -92,11 +93,13 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
 
 /**
  * Tool approvals replace the composer. Answered chat cards collapse into
- * their tool-step summary. Display-only cards remain in the conversation.
+ * their tool-step summary. Display-only cards remain in the conversation, and
+ * so does an answered automation card, to show what happened.
  */
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
 	if (payload.toolName === APPROVAL_TOOL_NAME) return false;
 	if (!payload.resolvedAt) return !!payload.runId;
+	if (keepsResolvedCard(payload)) return true;
 	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
 

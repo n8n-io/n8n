@@ -7,6 +7,7 @@ import { N8nBadge, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { placeOf, sharedProjectCount } from './automationProposal';
+import { placeName as nameOfPlace } from './automationText';
 
 const props = defineProps<{
 	proposal: AutomationProposalCard;
@@ -29,10 +30,7 @@ const visibleToKey = computed(() =>
 		: 'instanceAi.automation.visibleTo',
 );
 
-const placeName = computed(() => {
-	if (!place.value.linked) return i18n.baseText('instanceAi.automation.place.thisComputer');
-	return place.value.linkedLabel ?? i18n.baseText('instanceAi.automation.place.otherInstance');
-});
+const placeName = computed(() => nameOfPlace(place.value));
 
 // A personal project is named "First Last <email>". The card shows only the name.
 const projectName = computed(() => {

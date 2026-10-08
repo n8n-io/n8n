@@ -71,6 +71,9 @@ const interactiveRenderers = [
 			return {
 				input: payload.input,
 				call: payload.call,
+				// An answered automation card stays and reads the result of its tool call.
+				resolvedValue: payload.resolvedValue,
+				toolCallId: payload.toolCallId,
 			};
 		},
 	},
