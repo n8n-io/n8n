@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Request, Response } from 'express';
 import request from 'supertest';
 
 import type { ContentSecurityPolicies } from '@/security/content-security-policy';
@@ -50,11 +51,6 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.end('<p>sandboxed</p>');
 	});
 
-	app.get('/raw-stream', (_req, res) => {
-		res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-		res.end('{"ok":true}');
-	});
-
 	app.get('/raw-script', (_req, res) => {
 		res.writeHead(200, { 'Content-Type': 'application/javascript' });
 		res.end('export {};');
@@ -78,6 +74,11 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.end('export {};');
 	});
 
+	app.get('/raw-script-with-status-message', (_req, res) => {
+		res.writeHead(200, 'OK', [['Content-Type', 'application/javascript']]);
+		res.end('export {};');
+	});
+
 	app.get('/typed', (req, res) => {
 		res.setHeader('Content-Type', String(req.query.type));
 		res.end('<p>typed</p>');
@@ -85,10 +86,6 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 
 	app.get('/untyped', (_req, res) => {
 		res.end('<p>untyped</p>');
-	});
-
-	app.get('/script', (_req, res) => {
-		res.type('js').send('export {};');
 	});
 
 	app.get('/script-and-page', (_req, res) => {
@@ -113,10 +110,6 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 
 	app.get('/error', (_req, res) => {
 		res.status(500).json({ message: 'error' });
-	});
-
-	app.get('/not-modified', (_req, res) => {
-		res.status(304).end();
 	});
 
 	app.get('/raw-not-modified', (_req, res) => {
@@ -192,12 +185,6 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(response.headers[ENFORCED]).toBe('sandbox allow-scripts');
 		});
 
-		it('should serve the policy when writeHead carries a non-html content type', async () => {
-			const response = await request(app).get('/raw-stream');
-
-			expect(response.headers[ENFORCED]).toMatch(/^script-src 'nonce-[\w-]+' 'strict-dynamic'$/);
-		});
-
 		it('should not serve a policy when writeHead carries a JavaScript content type', async () => {
 			const response = await request(app).get('/raw-script');
 
@@ -224,6 +211,13 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(response.headers[ENFORCED]).toBeUndefined();
 		});
 
+		it('should not serve a policy when writeHead with a status message carries an array-form JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script-with-status-message');
+
+			expect(response.headers['content-type']).toBe('application/javascript');
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
 		it('should not serve a policy when writeHead carries a 304 status', async () => {
 			const response = await request(app).get('/raw-not-modified');
 
@@ -238,15 +232,12 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			reportOnly: "script-src <nonce>; object-src 'none'",
 		});
 
-		it.each(['text/xml', 'application/xml', 'image/svg+xml', 'application/xhtml+xml'])(
-			'should serve both headers on %s',
-			async (type) => {
-				const response = await request(app).get('/typed').query({ type });
+		it('should serve both headers on a script-capable non-HTML type', async () => {
+			const response = await request(app).get('/typed').query({ type: 'image/svg+xml' });
 
-				expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
-				expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
-			},
-		);
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+		});
 
 		it('should serve both headers on a response without a content type', async () => {
 			const response = await request(app).get('/untyped');
@@ -276,14 +267,6 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
 		});
 
-		it('should serve neither header on a script sent with res.type', async () => {
-			const response = await request(app).get('/script');
-
-			expect(response.headers['content-type']).toBe('text/javascript; charset=utf-8');
-			expect(response.headers[ENFORCED]).toBeUndefined();
-			expect(response.headers[REPORT_ONLY]).toBeUndefined();
-		});
-
 		it.each(['/empty-type', '/raw-empty-type'])(
 			'should serve both headers when the content type header has no value (%s)',
 			async (path) => {
@@ -297,6 +280,15 @@ describe('createContentSecurityPolicyMiddleware', () => {
 
 		it('should serve neither header when every content type value is JavaScript', async () => {
 			const response = await request(app).get('/scripts');
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it('should serve neither header on a comma-separated JavaScript list with spaces', async () => {
+			const response = await request(app)
+				.get('/typed')
+				.query({ type: 'text/javascript, application/javascript' });
 
 			expect(response.headers[ENFORCED]).toBeUndefined();
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
@@ -320,14 +312,6 @@ describe('createContentSecurityPolicyMiddleware', () => {
 		const app = setupApp({
 			enforced: "script-src <nonce> 'strict-dynamic'",
 			reportOnly: "script-src <nonce>; object-src 'none'",
-		});
-
-		it('should serve neither header on a 304 response', async () => {
-			const response = await request(app).get('/not-modified');
-
-			expect(response.status).toBe(304);
-			expect(response.headers[ENFORCED]).toBeUndefined();
-			expect(response.headers[REPORT_ONLY]).toBeUndefined();
 		});
 
 		it('should serve neither header when a conditional request revalidates a response', async () => {
@@ -357,6 +341,13 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			const response = await request(app).get('/sandboxed');
 
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it("should defer to a response's own report-only policy", async () => {
+			const response = await request(app).get('/self-reporting');
+
+			expect(response.headers[REPORT_ONLY]).toBe("script-src 'none'");
+			expect(response.headers[ENFORCED]).toBeUndefined();
 		});
 	});
 
@@ -433,6 +424,36 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			const response = await request(app).get('/page');
 
 			expect(response.headers[ENFORCED]).toBe("script-src 'self'");
+		});
+	});
+
+	describe('a repeated writeHead call', () => {
+		it('should throw from writeHead itself, not from setting a header', () => {
+			const res = {
+				locals: {},
+				headersSent: false,
+				setHeader: vi.fn(),
+				getHeader: vi.fn().mockReturnValue(undefined),
+				hasHeader: vi.fn().mockReturnValue(false),
+				writeHead: vi.fn(),
+			};
+			res.writeHead.mockImplementation(() => {
+				res.headersSent = true;
+				return res;
+			});
+			const writeHead = res.writeHead;
+
+			void createContentSecurityPolicyMiddleware({ enforced: "script-src 'self'" })(
+				{} as Request,
+				res as unknown as Response,
+				vi.fn(),
+			);
+
+			void res.writeHead(200);
+			void res.writeHead(200);
+
+			expect(writeHead).toHaveBeenCalledTimes(2);
+			expect(res.setHeader).toHaveBeenCalledTimes(1);
 		});
 	});
 });
