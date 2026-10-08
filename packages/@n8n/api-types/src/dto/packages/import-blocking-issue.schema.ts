@@ -185,7 +185,7 @@ const folderRemovalForbiddenIssueSchema = z
 	})
 	.openapi(folderRemovalForbiddenIssueOpenApi);
 
-/** `destructive` operations delete the data in a column. */
+/** `destructive` operations remove the values in a column. */
 const dataTableSchemaOperationSchema = z
 	.discriminatedUnion('kind', [
 		z.object({

@@ -320,9 +320,9 @@ for `apply`: `blocked` again means that something still blocks, and
 so run the command again when it exits `4`.
 
 Add `--confirm-destructive-changes` to also apply destructive data table
-changes: removed, renamed, or retyped columns. The values in those columns are
-removed. Rows and other columns are kept. The flag applies all such changes when
-the command runs. This includes changes that the blocked Apply did not report.
+changes: removed or retyped columns. The values in those columns are removed.
+Rows and other columns are kept. The flag applies all such changes when the
+command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
 
 ## Apply a reviewed commit
@@ -397,9 +397,9 @@ the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
 
 Add `--confirm-destructive-changes` to also apply destructive data table
-changes: removed, renamed, or retyped columns. The values in those columns are
-removed. Rows and other columns are kept. The flag applies all such changes when
-the command runs. This includes changes that the blocked Apply did not report.
+changes: removed or retyped columns. The values in those columns are removed.
+Rows and other columns are kept. The flag applies all such changes when the
+command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
 
 ## `promotion-connection list-projects` / `add-project` / `remove-project`

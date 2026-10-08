@@ -120,9 +120,9 @@ requestBody:
             description: |-
               How strictly a matched data table's schema is compared. `keep-existing` (default) accepts a target table that has every package column with the same name and type. The target table can have extra columns. `fail` rejects any difference, including target-only columns. Under `keep-existing` and `fail`, a missing package column or a type mismatch rejects the import, and the target table does not change.
 
-              `overwrite` changes the matched target table to match the package and can delete data in specific columns while preserving rows. Removing, retyping, or renaming a column deletes the data in that column. The changes apply to all workflows that use the table. A blocked `keep-existing`, `fail`, or `overwrite-non-destructive` import lists them in `overwriteChanges`. Requires the `dataTable:update` scope only when a matched table changes.
+              `overwrite` changes the matched target table to match the package. It can remove or retype columns. The values in those columns are removed. Rows and other columns are kept. When the package has column ids, a column that is only renamed keeps its values. The changes apply to all workflows that use the table. A blocked `keep-existing`, `fail`, or `overwrite-non-destructive` import lists them in `overwriteChanges`. Requires the `dataTable:update` scope only when a matched table changes.
 
-              `overwrite-non-destructive` makes the same changes as `overwrite`, but only when none of them deletes data — removing or retyping a column (a target-only or renamed column counts as removed). If any matched table's change would delete data, the import writes nothing.
+              `overwrite-non-destructive` makes the same changes as `overwrite`, but rejects the import and writes nothing when a change removes or retypes a column. A target-only column counts as removed.
           variableMissingMode:
             type: string
             enum:

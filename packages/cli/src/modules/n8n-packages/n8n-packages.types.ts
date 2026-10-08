@@ -139,9 +139,9 @@ export const DataTableSchemaConflictPolicy = {
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
-	/** Changes a matched target table to match the package schema: renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. */
+	/** Changes a matched target table to match the package schema: renames the table, adds, renames, removes, and retypes columns, and sets the column order. The values in removed or retyped columns are removed. When the package has column ids, a column that is only renamed keeps its values. */
 	Overwrite: 'overwrite',
-	/** Like `overwrite`, but fails the import when a change deletes data: a removed (target-only or renamed) or retyped column. */
+	/** Like `overwrite`, but fails the import when a change removes or retypes a column. A target-only column counts as removed. */
 	OverwriteNonDestructive: 'overwrite-non-destructive',
 } as const;
 

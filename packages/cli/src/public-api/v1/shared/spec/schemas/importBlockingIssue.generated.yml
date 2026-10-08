@@ -461,7 +461,7 @@ oneOf:
                 - from
                 - to
                 - destructive
-          description: A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a matched target table's schema. `destructive` operations delete the data in a column.
+          description: A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a matched target table's schema. `destructive` operations remove the values in a column.
           type: object
         description: 'For `schema-incompatible`: the changes `overwrite` would make to the target table.'
       missingScope:

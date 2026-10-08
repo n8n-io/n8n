@@ -70,7 +70,7 @@ describe('toPackagesError', () => {
 			'data table "First" (dt1) does not match the package schema (missing columns: BaaId), used by workflow(s) wf1',
 		);
 		expect(hint).toContain(
-			'--data-table-schema-conflict-policy=overwrite would: remove column note (data lost), rename column mail to email, add column BaaId',
+			'--data-table-schema-conflict-policy=overwrite would: remove column note (values removed), rename column mail to email, add column BaaId',
 		);
 	});
 

@@ -179,7 +179,7 @@ export const dataTableUnresolvedFieldDocs = {
 export const dataTableSchemaOperationOpenApi: ZodOpenAPIMetadata = {
 	description:
 		'A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a ' +
-		"matched target table's schema. `destructive` operations delete the data in a column.",
+		"matched target table's schema. `destructive` operations remove the values in a column.",
 };
 
 export const dataTableUnresolvedIssueOpenApi: ZodOpenAPIMetadata = {
