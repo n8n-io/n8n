@@ -20,7 +20,7 @@ import type {
 	DataTableSchemaOperation,
 	DataTableUpdate,
 } from './data-table.types';
-import { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
+import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
@@ -115,6 +115,46 @@ export class DataTableImporter {
 			failures,
 			matchedCount,
 		};
+	}
+
+	/**
+	 * Matched tables that `overwrite-non-destructive` blocks, with every change
+	 * `overwrite` would make. A table has one project, so each id yields at most
+	 * one result.
+	 */
+	async findDestructiveChanges<T extends { id: string; projectId: string }>(
+		references: T[],
+		packageDataTables: SerializedDataTable[],
+	): Promise<Array<DataTableUpdate & { reference: T }>> {
+		if (!this.moduleRegistry.isActive('data-table')) return [];
+
+		const packageTablesById = new Map(
+			packageDataTables.map((table) => [table.id, normalizeColumnIndexes(table)]),
+		);
+		const targets = await this.dataTableService.findDataTablesByIds(references.map(({ id }) => id));
+		const targetsById = new Map(targets.map((table) => [table.id, table]));
+
+		return references.flatMap((reference) => {
+			const packageTable = packageTablesById.get(reference.id);
+			const target = matchTargetTable(DataTableMatchingMode.ById, reference, {
+				projectId: reference.projectId,
+				targetsById,
+			});
+			if (
+				!packageTable ||
+				!target ||
+				!findSchemaConflict(
+					DataTableSchemaConflictPolicy.OverwriteNonDestructive,
+					packageTable.columns,
+					target.columns,
+				)
+			) {
+				return [];
+			}
+			return [
+				{ table: packageTable, operations: diffDataTableSchema(packageTable, target), reference },
+			];
+		});
 	}
 
 	/**

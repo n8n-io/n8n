@@ -10,6 +10,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import {
 	buildAgentConfigFingerprint,
 	type AgentConfigFingerprint,
@@ -240,8 +241,15 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages', 'messagingState', 'canIncreaseBudget', 'budgetIncreasePending'],
-		emits: ['send-to-assistant', 'increase-budget'],
+		props: [
+			'messages',
+			'messagingState',
+			'canIncreaseBudget',
+			'budgetIncreasePending',
+			'retryMessageId',
+			'retryDisabled',
+		],
+		emits: ['send-to-assistant', 'increase-budget', 'retry'],
 	},
 }));
 
@@ -372,6 +380,186 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	describe('resend after an error', () => {
+		const failedMessages = (attachments?: ChatMessage['attachments']): ChatMessage[] => [
+			{ id: 'user', role: 'user', content: 'Find the invoice', attachments },
+			{
+				id: 'error',
+				role: 'assistant',
+				content: 'The model finished without returning an answer. Try again or use another model.',
+				status: 'error',
+			},
+		];
+		it('sends the original text and attachment through the normal send action', async () => {
+			const beforeSend = vi.fn();
+			const file = new File(['invoice'], 'invoice.txt', { type: 'text/plain' });
+			messagesMock.value = failedMessages([{ file, fileName: file.name, mimeType: file.type }]);
+			const wrapper = mountPanel({ beforeSend });
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			expect(list.props('retryMessageId')).toBe('user');
+			list.vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(beforeSend).toHaveBeenCalledOnce();
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'Find the invoice',
+				[file],
+				expect.any(Function),
+			);
+			expect(messagesMock.value.at(-1)?.status).toBe('error');
+			wrapper.unmount();
+		});
+
+		it.each([false, true])(
+			'resends from the preview page with attachments: %s',
+			async (withFile) => {
+				const file = new File(['invoice'], 'invoice.txt', { type: 'text/plain' });
+				messagesMock.value = failedMessages(
+					withFile ? [{ file, fileName: file.name, mimeType: file.type }] : undefined,
+				);
+				const router = createRouter({
+					history: createMemoryHistory(),
+					routes: [{ path: '/', component: { template: '<div />' } }],
+				});
+				const wrapper = mount(AgentPreviewChatPage, {
+					global: { plugins: [router] },
+					props: {
+						initialized: true,
+						projectId: 'p1',
+						agentId: 'a1',
+						agent: null,
+						localConfig: defaultAgentConfig,
+						connectedTriggers: [],
+						effectiveSessionId: 'thread-1',
+					},
+				});
+				await flushPromises();
+				wrapper.findComponent({ name: 'AgentChatMessageList' }).vm.$emit('retry', 'user');
+				await flushPromises();
+				expect(sendMessageMock).toHaveBeenCalledWith(
+					'Find the invoice',
+					withFile ? [file] : undefined,
+					expect.any(Function),
+				);
+				wrapper.unmount();
+			},
+		);
+
+		it.each(['draft', 'active', 'queue', 'budget'] as const)(
+			'does not resend with %s work',
+			async (state) => {
+				messagesMock.value = failedMessages();
+				const wrapper = mountPanel();
+				await flushPromises();
+				if (state === 'draft')
+					wrapper
+						.findComponent({ name: 'ChatInputBase' })
+						.vm.$emit('update:modelValue', 'New draft');
+				if (state === 'active') isStreamingMock.value = true;
+				if (state === 'queue')
+					queuedMessagesMock.value = [
+						{
+							id: 'q',
+							message: 'Next message',
+							attachments: [],
+							steeringExecutionId: null,
+							createdAt: new Date().toISOString(),
+						},
+					];
+				if (state === 'budget')
+					messagesMock.value[1].budgetNotices = [{ id: 'cap', code: 'budget.session' }];
+				await nextTick();
+				const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+				expect(list.props('retryDisabled')).toBe(true);
+				list.vm.$emit('retry', 'user');
+				await flushPromises();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				wrapper.unmount();
+			},
+		);
+
+		it('cancels resend if a turn starts while the attachment loads', async () => {
+			messagesMock.value = failedMessages([
+				{ fileId: 'stored', fileName: 'invoice.txt', mimeType: 'text/plain' },
+			]);
+			const download = createDeferredPromise<Response>();
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockReturnValue(download.promise);
+			const wrapper = mountPanel();
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			list.vm.$emit('retry', 'user');
+			list.vm.$emit('retry', 'user');
+			expect(fetchSpy).toHaveBeenCalledOnce();
+			isStreamingMock.value = true;
+			download.resolve(new Response('invoice'));
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+			fetchSpy.mockRestore();
+			wrapper.unmount();
+		});
+
+		it('keeps the failed message when an attachment download fails', async () => {
+			messagesMock.value = failedMessages([
+				{ fileId: 'stored', fileName: 'invoice.txt', mimeType: 'text/plain' },
+			]);
+			const fetchSpy = vi
+				.spyOn(globalThis, 'fetch')
+				.mockResolvedValue(new Response(null, { status: 404 }));
+			const wrapper = mountPanel();
+			await flushPromises();
+			wrapper.findComponent({ name: 'AgentChatMessageList' }).vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'agents.chat.retry.error');
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+			fetchSpy.mockRestore();
+			wrapper.unmount();
+		});
+
+		it('does not offer resend for an earlier failed turn after a newer message', async () => {
+			messagesMock.value = [
+				...failedMessages(),
+				{ id: 'new', role: 'user', content: 'New request' },
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(
+				wrapper.findComponent({ name: 'AgentChatMessageList' }).props('retryMessageId'),
+			).toBeUndefined();
+			wrapper.unmount();
+		});
+
+		it('offers resend for the current stream-stall error', async () => {
+			messagesMock.value = failedMessages();
+			messagesMock.value[1].content =
+				'The model stream stalled: no data received for 90 seconds. This is usually a transient connection issue — please try again.';
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(wrapper.findComponent({ name: 'AgentChatMessageList' }).props('retryMessageId')).toBe(
+				'user',
+			);
+			wrapper.unmount();
+		});
+
+		it.each([
+			'Invalid API key. Check the credential and try again.',
+			'The model reached its output token limit before it returned an answer. Reduce the request scope or use another model.',
+			'Unknown error',
+		])('does not offer or submit a retry for %s', async (content) => {
+			messagesMock.value = failedMessages();
+			messagesMock.value[1].content = content;
+			const wrapper = mountPanel();
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			expect(list.props('retryMessageId')).toBeUndefined();
+			list.vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+	});
 
 	it('reports the first user message, for a title before the thread has one', async () => {
 		messagesMock.value = [
@@ -823,6 +1011,20 @@ describe('AgentChatPanel', () => {
 			wrapper.findAll('[data-queue-id]').map((row) => row.attributes('data-queue-id')),
 		).toEqual(['2', '3']);
 		wrapper.unmount();
+	});
+
+	it('renders the attach button in the composer footer when the model accepts attachments', () => {
+		const wrapper = mountPanel();
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
+	});
+
+	it('hides the attach button when the model accepts no attachments', () => {
+		const wrapper = mountPanel({
+			agentConfig: { ...defaultAgentConfig, model: 'unknown-provider/model' },
+		});
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
 	});
 
 	it('moves a queued message to the composer after removal and sends it through the normal path', async () => {
