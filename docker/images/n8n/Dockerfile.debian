@@ -5,7 +5,7 @@ ARG N8N_VERSION=snapshot
 # is Debian 13, the same release and glibc as the base. Change the tag and the
 # digest together.
 ARG BUILDER_IMAGE=node:26.10.0-trixie-slim@sha256:930557a230abacbc3f4fd9b8648abf8f4bee1e17cb72195dcdfb2f709bc85b33
-ARG RUNTIME_IMAGE=n8nio/base:26.10.0-debian@sha256:6bb313ed7e110fe753bf7141be2fa99dbac60c9de6a39f6ad56ef5478dee8d48
+ARG RUNTIME_IMAGE=n8nio/base:26.10.0-debian@sha256:99164edce67b089c06fc5f88bf0f2f1ffc1700f7b7020086c14a75b30f59f1d9
 
 # The runtime base has no compiler, so this stage supplies one. Everything
 # after g++ is for the librdkafka build below.
