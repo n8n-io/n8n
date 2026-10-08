@@ -3,7 +3,7 @@ import { ActivityLogConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ActivityEventRepository } from '@n8n/db';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 /** Activity accrues steadily rather than in bursts, so an hourly sweep is enough to bound it. */
 const sweepIntervalSeconds = 1 * Time.hours.toSeconds;
@@ -19,15 +19,17 @@ export class ActivityPruningTask implements SystemTask {
 
 	schedule: SystemTaskSchedule = intervalFromSeconds(sweepIntervalSeconds);
 
-	/** Deleting rows already deleted is a no-op, so a repeated or retried run is harmless. */
-	effects: SystemTaskEffects = 'idempotent';
-
-	placement: SystemTaskPlacement = {
+	target = {
 		scope: 'cluster',
-		durable: true,
-		/** A new leader inherits whatever backlog built up while nobody was sweeping. */
-		runOnTakeover: true,
-	};
+		scheduler: {
+			/** Deleting rows already deleted is a no-op, so a repeated or retried run is harmless. */
+			maxAttempts: 3,
+		},
+		leaderTimer: {
+			/** A new leader inherits whatever backlog built up while nobody was sweeping. */
+			runOnTakeover: true,
+		},
+	} satisfies SystemTaskTarget;
 
 	constructor(
 		private readonly logger: Logger,
