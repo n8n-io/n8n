@@ -51,7 +51,7 @@ const buildRuntime = (
 		botSetupState: ref(null),
 		provisionedBot: ref(null),
 		subscriptions: ref([]),
-			installed: ref(false),
+		installed: ref(false),
 		provisionApp: vi.fn(),
 		loadSubscriptions: vi.fn(),
 		provisionBot: vi.fn(),
@@ -234,7 +234,16 @@ describe('AgentChannelTeamsSetupView', () => {
 	it('lets the modal finish when the channel is already connected', async () => {
 		const runtime = buildRuntime({
 			managedSetupAvailable: true,
-			managerCredentials: [{ id: 'm-1', name: 'Microsoft', connected: true }],
+			managerCredentials: [
+				{
+					id: 'm-1',
+					name: 'Microsoft',
+					connected: true,
+					reconnectRequired: false,
+					organizationName: 'Acme Corp',
+					tenantId: 'tenant-1',
+				},
+			],
 			adminConsentUrl: null,
 		});
 

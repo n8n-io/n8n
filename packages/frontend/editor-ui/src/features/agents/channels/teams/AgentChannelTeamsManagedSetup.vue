@@ -261,9 +261,23 @@ watch(
 );
 
 // Immediate, so it also covers reopening a setup that was signed in earlier.
+// Keyed on the credential too: switching between two signed-in accounts leaves
+// `connected` true, and the new tenant still has to be asked.
 watch(
-	connected,
-	(isConnected) => {
+	[connected, selectedCredentialId],
+	([isConnected, credentialId], previous) => {
+		// Everything the steps below produce belongs to the tenant that was signed
+		// in to: its subscriptions, its app registration, its bot. Another sign-in
+		// has to forget them, or the bot step offers a subscription from the one
+		// before it.
+		if (previous?.[1] && previous[1] !== credentialId) {
+			subscriptionsChecked.value = false;
+			subscriptionId.value = '';
+			props.runtime.subscriptions.value = [];
+			props.runtime.provisionedApp.value = null;
+			props.runtime.provisionedBot.value = null;
+			props.runtime.installed.value = false;
+		}
 		if (isConnected && !subscriptionsChecked.value) void checkSubscriptions();
 	},
 	{ immediate: true },
@@ -356,18 +370,38 @@ const persisted = ref(false);
  * session.
  */
 function persistChannel() {
-	const credentialId = provisionedApp.value?.credentialId;
-	if (credentialId) emit('provisioned', credentialId);
 	emit('persist');
 	persisted.value = true;
 }
+
+/**
+ * The credential is announced as soon as it exists, not only on the routes
+ * that save straight away. Done saves what the view holds, so a step finished
+ * some other way -- an app already published, an upload the poll noticed --
+ * would otherwise leave it with no credential to bind.
+ */
+watch(
+	() => provisionedApp.value?.credentialId,
+	(credentialId) => {
+		if (credentialId) emit('provisioned', credentialId);
+	},
+	{ immediate: true },
+);
 
 // Read by the channel modal when it saves, so the availability chosen here is
 // what gets stored rather than the defaults.
 // The steps past the connect -- publishing and adding -- happen here, and
 // some of them wait on Microsoft for hours. The modal stays until the user
 // says otherwise.
-defineExpose({ currentSettings, keepOpenAfterConnect: true, canFinish: persisted });
+/**
+ * Leaving is allowed once the step is finished, however it got there. Only
+ * publishing and handing over the package ran through here, so a setup
+ * reopened onto an app Microsoft already lists had nothing left to do and no
+ * way to save it.
+ */
+const canFinish = computed(() => persisted.value || installDone.value);
+
+defineExpose({ currentSettings, keepOpenAfterConnect: true, canFinish });
 
 /**
  * The upload happens in Teams, so nothing reaches n8n when it does. Microsoft

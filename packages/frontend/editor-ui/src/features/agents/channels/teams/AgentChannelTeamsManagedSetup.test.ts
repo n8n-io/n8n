@@ -344,6 +344,76 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		 * A failure reported at the foot of the stepper sits below the fold, so the
 		 * step just looked like a spinner that stopped.
 		 */
+		/**
+		 * Running the setup again over an app Microsoft already lists finishes
+		 * the step without this component publishing or handing over anything.
+		 * Without a Done button there was no way to bind the credential, so the
+		 * channel could not be saved to the agent at all.
+		 */
+		it('offers Done when the step was already finished elsewhere', async () => {
+			const Host = defineComponent({
+				components: { AgentChannelTeamsManagedSetup },
+				props: { hostProps: { type: Object, required: true } },
+				setup: () => ({ view: ref<{ canFinish?: boolean }>() }),
+				template: `
+					<div>
+						<AgentChannelTeamsManagedSetup ref="view" v-bind="hostProps" />
+						<span data-testid="can-finish">{{ String(view?.canFinish) }}</span>
+					</div>
+				`,
+			});
+			const hostProps = props(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					installed: ref(true),
+				}),
+			);
+			const { getByTestId } = createComponentRenderer(Host, { global: { stubs } })({
+				props: { hostProps },
+				pinia: createTestingPinia(),
+			});
+
+			await waitFor(() => expect(getByTestId('can-finish')).toHaveTextContent('true'));
+		});
+
+		/** Done saves what the view holds, so it has to hold the credential. */
+		it('hands over the credential without waiting to be told to save', async () => {
+			const { emitted } = render(
+				signedIn({
+					provisionedApp: ref({
+						credentialId: 'bot-cred-1',
+						appId: 'app-1',
+						appName: 'Support Bot (n8n)',
+						organizationName: 'Acme Corp',
+						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						secretExpiresAt: '2028-09-17T00:00:00Z',
+					}),
+					provisionedBot: ref({
+						botName: 'support-bot-1',
+						resourceGroup: 'n8n-agents',
+						subscriptionId: 'sub-1',
+					}),
+					installed: ref(true),
+				}),
+			);
+
+			await waitFor(() => expect(emitted().provisioned).toEqual([['bot-cred-1']]));
+			// Saving is the Done button's job, not something the open does.
+			expect(emitted().persist).toBeUndefined();
+		});
+
 		it('reports a failed step beside that step', async () => {
 			const provisionApp = vi
 				.fn()
@@ -399,6 +469,44 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 			await waitFor(() => expect(loadSubscriptions).toHaveBeenCalled());
 			expect(provisionApp).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * The app, the bot and the subscriptions all belong to the tenant that was
+		 * signed in to. Keeping them across a change of sign-in would offer the bot
+		 * step a subscription the new account cannot use.
+		 */
+		it('forgets what the previous sign-in produced when the account changes', async () => {
+			const otherCredential = { ...connectedCredential, id: 'cred-2', name: 'Other organization' };
+			const runtime = buildRuntime({
+				subscriptions: ref([{ id: 'sub-1', name: 'Production' }]),
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					secretExpiresAt: '2028-09-17T00:00:00Z',
+				}),
+			});
+			const { rerender } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+				runtime,
+			});
+			await waitFor(() => expect(runtime.loadSubscriptions).toHaveBeenCalledTimes(1));
+
+			await rerender(
+				props({
+					modelValue: 'cred-2',
+					setup: setupState({ managerCredentials: [connectedCredential, otherCredential] }),
+					runtime,
+				}),
+			);
+
+			await waitFor(() => expect(runtime.subscriptions.value).toEqual([]));
+			expect(runtime.provisionedApp.value).toBeNull();
+			expect(runtime.loadSubscriptions).toHaveBeenCalledTimes(2);
 		});
 
 		/** The subscription is the bot step's problem, and it says so there. */
@@ -805,7 +913,6 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 			expect(runtime.setupKind.value).toBe('manual');
 		});
-
 	});
 
 	it('selects a connected sign-in by itself', async () => {
