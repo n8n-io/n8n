@@ -136,6 +136,29 @@ describe('AgentChatPlan timer', () => {
 });
 
 describe('AgentChatPlan', () => {
+	it('keeps plan details and items in one scroll viewport', () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				plan: planView({
+					document: {
+						title: 'Research options',
+						presentation: { detail: 'Reviewed two sources.' },
+						items: [planTask(1)],
+					},
+				}),
+			},
+		});
+		try {
+			const viewport = wrapper.get('[data-reka-scroll-area-viewport]');
+			expect(viewport.element.tagName).toBe('DIV');
+			expect(viewport.text()).toContain('Reviewed two sources.');
+			expect(viewport.get('[data-testid="agent-chat-plan-items"]').text()).toContain('Task 1');
+			expect(viewport.attributes('style')).toContain('max-height: 20vh');
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
 	it('starts collapsed and supports keyboard expansion without changing focus', async () => {
 		const user = userEvent.setup();
 		const wrapper = mount(AgentChatPlan, { props: { plan: planView() }, attachTo: document.body });
