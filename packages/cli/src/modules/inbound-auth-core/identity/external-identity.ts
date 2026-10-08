@@ -25,7 +25,7 @@ function readClaim(
 }
 
 function nonEmptyString(value: unknown): string | undefined {
-	return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+	return typeof value === 'string' && value.trim() !== '' ? value : undefined;
 }
 
 function toScopes(value: unknown): string[] {
