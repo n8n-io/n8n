@@ -131,11 +131,11 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 		stubs: {
 			ParameterInputList: {
 				template:
-					'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}<slot /></div>',
+					'<div data-test-id="parameter-input-list" :data-read-only="isReadOnly">{{ JSON.stringify(parameters) }}<slot /></div>',
 				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
 			},
 			NodeCredentials: {
-				template: '<div data-test-id="node-credentials" />',
+				template: '<div data-test-id="node-credentials" :data-read-only="readonly" />',
 				props: ['node', 'readonly', 'showAll', 'hideIssues'],
 			},
 		},
@@ -283,6 +283,28 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		expect(getByTestId('node-credentials')).toBeTruthy();
+	});
+
+	it('locks parameters and credentials when read-only', () => {
+		const { getAllByTestId, getByTestId } = renderComponent({
+			props: { initialNode: createMockNode(), readOnly: true },
+		});
+
+		for (const list of getAllByTestId('parameter-input-list')) {
+			expect(list).toHaveAttribute('data-read-only', 'true');
+		}
+		expect(getByTestId('node-credentials')).toHaveAttribute('data-read-only', 'true');
+	});
+
+	it('leaves parameters and credentials editable by default', () => {
+		const { getAllByTestId, getByTestId } = renderComponent({
+			props: { initialNode: createMockNode() },
+		});
+
+		for (const list of getAllByTestId('parameter-input-list')) {
+			expect(list).toHaveAttribute('data-read-only', 'false');
+		}
+		expect(getByTestId('node-credentials')).toHaveAttribute('data-read-only', 'false');
 	});
 
 	it('should show no-parameters notice when all params are notice type', () => {

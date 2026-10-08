@@ -19,6 +19,7 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const form = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const credentialModalOpen = ref(false);
+const isRestricted = ref(false);
 const title = ref(initialTitle());
 
 const isOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
@@ -80,7 +81,7 @@ function handleRemove() {
 		v-if="canRender"
 		:open="isOpen"
 		:title="title"
-		:editable-title="!isCustomTool"
+		:editable-title="!isCustomTool && !isRestricted"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		data-testid="agent-tool-config-modal"
@@ -93,6 +94,7 @@ function handleRemove() {
 			:data="data"
 			@update:title="title = $event"
 			@update:credential-modal-open="credentialModalOpen = $event"
+			@update:restricted="isRestricted = $event"
 		/>
 
 		<template v-if="data.onRemove" #footerLeft>
@@ -102,7 +104,12 @@ function handleRemove() {
 			</N8nButton>
 		</template>
 		<template #footerActions>
-			<N8nButton variant="solid" data-testid="agent-tool-config-save" @click="handleConfirm">
+			<N8nButton
+				variant="solid"
+				:disabled="isRestricted"
+				data-testid="agent-tool-config-save"
+				@click="handleConfirm"
+			>
 				{{ i18n.baseText('generic.save') }}
 			</N8nButton>
 		</template>

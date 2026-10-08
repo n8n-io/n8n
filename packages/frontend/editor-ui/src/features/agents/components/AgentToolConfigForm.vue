@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import type { AgentConfigValidationIssue, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
+import {
+	ContactInstanceAdminModal,
+	useNodeTypeRestriction,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { extractFromAICalls, type INode } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { toPolicyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
 	toolRefToNode,
@@ -62,10 +69,13 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:title': [title: string];
 	'update:credentialModalOpen': [open: boolean];
+	'update:restricted': [restricted: boolean];
 }>();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const httpRequestUrlErrorKey =
 	'agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey;
 
@@ -112,6 +122,37 @@ const initialNode = computed<INode | null>(() =>
 				? toolRefToNode(toolModalData.value.toolRef)
 				: null,
 );
+
+const { isRestricted, restrictionScope } = useNodeTypeRestriction(() =>
+	initialNode.value ? toPolicyNodeType(initialNode.value.type) : null,
+);
+const restrictedToolName = computed(() =>
+	initialNode.value
+		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
+		: '',
+);
+const RESTRICTED_MESSAGE_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
+	instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+};
+const restrictedMessage = computed(() =>
+	i18n.baseText(
+		restrictionScope.value
+			? RESTRICTED_MESSAGE_KEY[restrictionScope.value]
+			: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
+		{ interpolate: { nodeType: restrictedToolName.value } },
+	),
+);
+const isContactAdminOpen = ref(false);
+
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+watch(isRestricted, (restricted) => emit('update:restricted', restricted), { immediate: true });
 
 const workflowInitialRef = computed<WorkflowToolRef | null>(() =>
 	isWorkflowTool.value && toolModalData.value?.toolRef.type === 'workflow'
@@ -235,6 +276,7 @@ function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerCo
 }
 
 function confirm(): boolean {
+	if (isRestricted.value) return false;
 	submitCount.value += 1;
 	if (!canSave.value) return false;
 
@@ -299,6 +341,24 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 
 <template>
 	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
+		<N8nCallout v-if="isRestricted" theme="warning" data-test-id="agent-tool-config-restricted">
+			{{ restrictedMessage }}
+			<template #actions>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					data-testid="agent-tool-config-contact-admin"
+					@click="isContactAdminOpen = true"
+				>
+					{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
+		<ContactInstanceAdminModal
+			v-if="isRestricted"
+			v-model:open="isContactAdminOpen"
+			:node-type-name="restrictedToolName"
+		/>
 		<N8nText
 			v-if="submitCount && !canSave"
 			size="small"
@@ -335,6 +395,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:initial-node="initialNode"
 				:existing-tool-names="data.existingToolNames"
 				:project-id="data.projectId"
+				:read-only="isRestricted"
 				content-test-id="agent-tool-config-mcp-content"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
@@ -348,6 +409,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:project-id="data.projectId"
 				:from-ai-disabled-parameters="fromAiDisabledParameters"
 				:parameter-issues="nodeParameterIssues"
+				:read-only="isRestricted"
 				content-test-id="node-tool-settings-content"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"

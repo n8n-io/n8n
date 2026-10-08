@@ -8,6 +8,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
@@ -64,6 +65,7 @@ function createToolSettingsStub(emitValid: boolean) {
 			'projectId',
 			'parameterIssues',
 			'fromAiDisabledParameters',
+			'readOnly',
 		],
 		emits: ['update:valid', 'update:node-name', 'update:node'],
 		setup(props, { emit, expose }) {
@@ -91,7 +93,11 @@ function createToolSettingsStub(emitValid: boolean) {
 			return {};
 		},
 		template: `
-			<div data-test-id="node-tool-settings-content" :data-project-id="projectId">
+			<div
+				data-test-id="node-tool-settings-content"
+				:data-project-id="projectId"
+				:data-read-only="readOnly"
+			>
 				<button
 					v-if="!fromAiDisabledParameters?.includes('url')"
 					data-test-id="from-ai-override-button"
@@ -205,6 +211,10 @@ function renderModal({
 				AgentToolConfigCustomContent: {
 					props: ['code'],
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
+				},
+				ContactInstanceAdminModal: {
+					props: ['open', 'nodeTypeName'],
+					template: '<div v-if="open" data-test-id="contact-instance-admin-modal" />',
 				},
 			},
 		},
@@ -492,5 +502,61 @@ describe('AgentToolConfigModal', () => {
 
 		expect(onRemove).toHaveBeenCalledOnce();
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	describe('restricted node types', () => {
+		beforeEach(() => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+		});
+
+		it('explains the restriction, locks the form and disables Save', async () => {
+			const onConfirm = vi.fn();
+			const { container, getByTestId } = renderModal({ valid: true, onConfirm });
+			await nextTick();
+
+			expect(getByTestId('agent-tool-config-restricted').textContent).toContain(
+				'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+			);
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'true');
+			expect(queryNativeTestId(container, 'agent-modal-title-input')).toBeNull();
+
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(true);
+			await fireEvent.click(saveBtn);
+			expect(onConfirm).not.toHaveBeenCalled();
+		});
+
+		it('opens the contact admin dialog from the callout', async () => {
+			const { container, getByTestId, queryByTestId } = renderModal();
+			await nextTick();
+
+			expect(queryByTestId('contact-instance-admin-modal')).toBeNull();
+			await fireEvent.click(getNativeTestId(container, 'agent-tool-config-contact-admin'));
+
+			expect(getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
+		});
+
+		it('keeps Remove so the agent can be repaired', async () => {
+			const onRemove = vi.fn();
+			const { container } = renderModal({ onRemove });
+			await nextTick();
+
+			await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
+
+			expect(onRemove).toHaveBeenCalledOnce();
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('leaves an unrestricted tool editable', async () => {
+			mockRestrictedNodeTypes();
+			const { container, getByTestId, queryByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(queryByTestId('agent-tool-config-restricted')).toBeNull();
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
+			expect(getNativeTestId(container, 'agent-modal-title-input')).toBeInTheDocument();
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(false);
+		});
 	});
 });
