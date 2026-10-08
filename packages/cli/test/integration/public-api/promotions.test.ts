@@ -684,9 +684,10 @@ describe('Promotions in Public API', () => {
 
 	describe('change preview', () => {
 		it('checks the scope of the requested direction and forwards the query', async () => {
+			const source = { configId: 'config1', branchName: 'main' };
 			const getChanges = vi
 				.spyOn(Container.get(PromotionChangeService), 'getChanges')
-				.mockResolvedValue({ commitSha: 'a'.repeat(40), changes: [] });
+				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
@@ -697,7 +698,7 @@ describe('Promotions in Public API', () => {
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
 				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
-				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), changes: [] });
+				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), source, changes: [] });
 				expect(getChanges).toHaveBeenLastCalledWith(
 					expect.objectContaining({ id: expect.any(String) }),
 					'proj1',
