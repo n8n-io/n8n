@@ -1129,7 +1129,18 @@ export class EvalExecutionService {
 						for (const { feature, reason } of pruned.skippedFeatures) {
 							if (feature !== 'memory') warn(`sub-agent ${subAgentId}'s ${feature}`, reason);
 						}
-						return pruned.config;
+						// The MCP mock knows only the calling agent's servers; another server
+						// would get a catalog invented without its own description.
+						const mocked = new Set((config.mcpServers ?? []).map((server) => server.url));
+						const mcpServers = pruned.config.mcpServers?.filter((server) => {
+							if (mocked.has(server.url)) return true;
+							warn(
+								`sub-agent ${subAgentId}'s MCP server "${server.name}"`,
+								'the eval mocks only the MCP servers of the agent the workflow calls.',
+							);
+							return false;
+						});
+						return mcpServers ? { ...pruned.config, mcpServers } : pruned.config;
 					},
 				},
 			};

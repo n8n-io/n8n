@@ -59,10 +59,12 @@ a card, long after the run's context was built.
 A Message an Agent node, or its tool version, runs another agent in-process, so
 no HTTP mock reaches it by itself. In an eval run the workflow eval gives that
 agent the Agent eval's seams (`prepareCalledAgent` in `execution.service.ts`):
-its node and workflow tools, MCP servers and fallback web search are mocked, and
-each mocked call is recorded under the calling node. The agent's own model call
-stays real, so its model needs a credential with a real key. The eval runs the
-agent's draft and turns off its memory, vector stores and chat integrations.
+its node and workflow tools, streamable-HTTP MCP servers and fallback web search
+are mocked, and each mocked call is recorded under the calling node. The agent's
+own model call stays real, so its model needs a credential with a real key. The
+eval runs the agent's draft and turns off its memory, vector stores, SSE MCP
+servers and chat integrations. A sub-agent keeps only the MCP servers its calling
+agent also has; the eval turns off the others and adds a warning.
 
 ## Agent model catalogs
 

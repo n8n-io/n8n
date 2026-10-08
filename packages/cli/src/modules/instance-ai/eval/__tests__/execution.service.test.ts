@@ -2235,6 +2235,36 @@ describe('EvalExecutionService', () => {
 			expect(result.nodeResults['Inner Message']).toBeUndefined();
 			expect(result.hints.warnings).toContainEqual(expect.stringContaining('sub-agent child-1'));
 		});
+
+		it("turns off a sub-agent's MCP servers that the calling agent's mock does not cover", async () => {
+			let childConfig: AgentJsonConfig | undefined;
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				const { instrumentation } = await (args[9] as PrepareWorkflowAgentForEval)(agentConfig);
+				childConfig = instrumentation.transformDelegatedAgentConfig?.(
+					{
+						...agentConfig,
+						memory: undefined,
+						vectorStores: undefined,
+						mcpServers: [
+							{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
+							{ name: 'github', url: 'https://mcp.github.com/mcp' },
+						],
+					} as unknown as AgentJsonConfig,
+					{ subAgentId: 'child-1' },
+				);
+				return { response: 'done' };
+			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(childConfig?.mcpServers).toEqual([
+				{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
+			]);
+			expect(result.hints.warnings).toContainEqual(
+				expect.stringMatching(/sub-agent child-1's MCP server "github"/),
+			);
+		});
 	});
 
 	// ── reserved node names ──────────────────────────────────────────
