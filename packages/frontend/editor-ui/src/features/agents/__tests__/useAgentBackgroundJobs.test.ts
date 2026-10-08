@@ -56,10 +56,17 @@ describe('useAgentBackgroundJobs', () => {
 	const threadId = ref('t1');
 	const active = ref(true);
 	const receivedJobs = ref<AgentBackgroundJobSignal['tasks']>([]);
-	function create() {
+	function create(channel?: 'chat' | 'n8n-chat') {
 		scope = effectScope();
 		const result = scope.run(() =>
-			useAgentBackgroundJobs({ projectId: 'p1', agentId: 'a1', threadId, active, receivedJobs }),
+			useAgentBackgroundJobs({
+				projectId: 'p1',
+				agentId: 'a1',
+				threadId,
+				active,
+				receivedJobs,
+				...(channel ? { channel } : {}),
+			}),
 		);
 		if (!result) throw new Error('Missing scope');
 		return result;
@@ -79,6 +86,29 @@ describe('useAgentBackgroundJobs', () => {
 		vi.useRealTimers();
 	});
 
+	it('threads the n8n Chat channel through fetch, stop, and approval requests', async () => {
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [job] });
+		vi.mocked(stopAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		vi.mocked(resumeAgentBackgroundJob).mockResolvedValue(undefined);
+		const { stopAll, respondToApproval } = create('n8n-chat');
+		await flushPromises();
+		expect(getAgentBackgroundJobs).toHaveBeenCalledWith({}, 'p1', 'a1', 't1', 'n8n-chat');
+
+		await stopAll();
+		expect(stopAgentBackgroundJobs).toHaveBeenCalledWith({}, 'p1', 'a1', 't1', 'n8n-chat');
+
+		const payload = { runId: 'run-1', toolCallId: 'gate-1', resumeData: { approved: true } };
+		await respondToApproval(payload);
+		expect(resumeAgentBackgroundJob).toHaveBeenCalledWith(
+			{},
+			'p1',
+			'a1',
+			't1',
+			payload,
+			'n8n-chat',
+		);
+	});
+
 	it('keeps accepted stops visible until settlement and ignores an earlier fetch', async () => {
 		const workflow = { ...job, id: 'workflow', kind: 'workflow' as const };
 		const sibling = { ...job, id: 'sibling' };
@@ -95,38 +125,48 @@ describe('useAgentBackgroundJobs', () => {
 		expect(isStopping.value).toBe(true);
 		expect(jobs.value).toHaveLength(3);
 		await stopAll();
-		expect(stopAgentBackgroundJobs).toHaveBeenCalledExactlyOnceWith({}, 'p1', 'a1', 't1');
+		expect(stopAgentBackgroundJobs).toHaveBeenCalledExactlyOnceWith(
+			{},
+			'p1',
+			'a1',
+			't1',
+			undefined,
+		);
 		const pausingJob = { ...job, pauseRequested: true };
 		const pausingSibling = { ...sibling, pauseRequested: true };
-		stopped.resolve({ tasks: [pausingJob, pausingSibling, workflow] });
+		const cancelledWorkflow = { ...workflow, status: 'cancelled' as const, pauseRequested: true };
+		stopped.resolve({ tasks: [pausingJob, pausingSibling, cancelledWorkflow] });
 		await stopping;
 		expect(isStopping.value).toBe(false);
-		expect(jobs.value).toEqual([pausingJob, pausingSibling, workflow]);
+		expect(jobs.value).toEqual([pausingJob, pausingSibling, cancelledWorkflow]);
 		const paused = { ...pausingJob, status: 'paused' as const };
 		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({
-			tasks: [paused, pausingSibling, workflow],
+			tasks: [paused, pausingSibling, cancelledWorkflow],
 		});
 		onEvent(update);
 		stale.resolve({ tasks: [job, sibling, workflow] });
 		await flushPromises();
-		expect(jobs.value).toEqual([paused, pausingSibling, workflow]);
-		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [workflow] });
+		expect(jobs.value).toEqual([paused, pausingSibling, cancelledWorkflow]);
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
 		onEvent(update);
 		await flushPromises();
-		expect(jobs.value).toEqual([workflow]);
-		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [job, workflow] });
+		expect(jobs.value).toEqual([]);
+		const replacement = { ...workflow, id: 'replacement-workflow' };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [job, replacement] });
 		onEvent(update);
 		await flushPromises();
-		expect(jobs.value).toEqual([job, workflow]);
+		expect(jobs.value).toEqual([job, replacement]);
 	});
 
 	it('keeps rows after a failed stop and permits a retry', async () => {
+		const workflow = { ...job, kind: 'workflow' as const };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [workflow] });
 		const { jobs, stopAll, isStopping } = create();
 		await flushPromises();
 		vi.mocked(stopAgentBackgroundJobs).mockRejectedValueOnce(new Error('Unavailable'));
 		await expect(stopAll()).rejects.toThrow('Unavailable');
 		expect(isStopping.value).toBe(false);
-		expect(jobs.value).toEqual([job]);
+		expect(jobs.value).toEqual([workflow]);
 		vi.mocked(stopAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
 		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
 		await stopAll();
@@ -233,7 +273,7 @@ describe('useAgentBackgroundJobs', () => {
 		vi.mocked(getAgentBackgroundJobs).mockReturnValueOnce(refresh.promise);
 		finishResponse();
 		await response;
-		expect(resumeAgentBackgroundJob).toHaveBeenCalledWith({}, 'p1', 'a1', 't1', payload);
+		expect(resumeAgentBackgroundJob).toHaveBeenCalledWith({}, 'p1', 'a1', 't1', payload, undefined);
 		expect(jobs.value[0].approval?.toolCallId).toBe('gate-2');
 		refresh.resolve({ tasks: [next] });
 		await flushPromises();
@@ -334,7 +374,7 @@ describe('useAgentBackgroundJobs', () => {
 		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
 		threadId.value = 't2';
 		await flushPromises();
-		expect(getAgentBackgroundJobs).toHaveBeenLastCalledWith({}, 'p1', 'a1', 't2');
+		expect(getAgentBackgroundJobs).toHaveBeenLastCalledWith({}, 'p1', 'a1', 't2', undefined);
 		resolveRequest({ tasks: [job] });
 		await flushPromises();
 		expect(jobs.value).toEqual([]);

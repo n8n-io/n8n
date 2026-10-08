@@ -213,7 +213,7 @@ describe('AgentMessageQueueConsumer', () => {
 			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
 		);
 		expect(chatExecutions.register).toHaveBeenCalledWith(
-			expect.objectContaining({ userId: 'user', productionN8nChat: true }),
+			expect.objectContaining({ userId: 'user', surface: 'n8n-chat' }),
 			expect.any(AbortController),
 		);
 		expect(orchestrator.executeForN8nChatPublished).toHaveBeenCalledWith(

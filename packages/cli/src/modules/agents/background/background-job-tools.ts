@@ -253,10 +253,10 @@ export function createResumeBackgroundJobsTool(
 ): BuiltTool {
 	return new Tool('resume_background_jobs')
 		.description(
-			'Resume user-paused background sub-agents in this Preview conversation from their saved state.',
+			'Resume paused sub-agents and identify cancelled workflows from the latest stop group in this conversation.',
 		)
 		.systemInstruction(
-			'Call resume_background_jobs only when the latest user message explicitly asks to continue stopped tasks. Do not call it for an unrelated message or an automatic notification. Never replace paused jobs with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. Continuing does not approve pending tools.',
+			'Call resume_background_jobs first when the latest user message explicitly asks to continue stopped tasks. Continue applies only to the latest stop group. Do not restart tasks from older stop groups unless the user explicitly asks for that work. Do not call this tool for an unrelated message or an automatic notification. Never replace paused sub-agents with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. The tool returns cancelled workflow references separately. It does not restart those workflows. Check conversation history and current jobs before repeating a workflow call, including repeated Continue requests. Call the normal workflow tool with inputs from the conversation only when a new execution is still needed. A new execution uses current configuration and starts from the beginning. Earlier actions can repeat and webhook URLs change. Continuing does not approve pending tools or bypass permissions.',
 		)
 		.input(z.object({}))
 		.handler(async (_input, ctx) => {
@@ -271,7 +271,7 @@ export function createResumeBackgroundJobsTool(
 			) {
 				return {
 					status: 'unavailable',
-					note: 'Resuming needs an explicit user request in Preview.',
+					note: 'Resuming needs an explicit user request in this conversation.',
 				};
 			}
 			const candidates = await options.jobService.preparePausedResume(
@@ -310,12 +310,13 @@ export function createResumeBackgroundJobsTool(
 					),
 				);
 				return {
-					status: 'resumed',
+					status: candidates.jobs.length > 0 ? 'resumed' : 'ready',
 					jobs: results.map((result, index) => ({
 						jobId: candidates.jobs[index].id,
 						status: result.status === 'fulfilled' ? 'resumed' : 'failed',
 						...(result.status === 'rejected' ? { error: String(result.reason) } : {}),
 					})),
+					workflowsToRestart: candidates.workflowsToRestart,
 				};
 			} finally {
 				await options.jobService.releaseResumeReservations(candidates.jobs, candidates.timeoutAt);

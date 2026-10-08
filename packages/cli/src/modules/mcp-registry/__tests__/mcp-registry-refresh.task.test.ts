@@ -23,7 +23,7 @@ describe('McpRegistryRefreshTask', () => {
 	it('should refresh the registry on run and hand it the abort signal', async () => {
 		const { signal } = new AbortController();
 
-		await task.run(signal);
+		await task.run(signal, { durable: true });
 
 		expect(mcpRegistryService.refreshFromApi).toHaveBeenCalledExactlyOnceWith(signal);
 	});
@@ -31,6 +31,8 @@ describe('McpRegistryRefreshTask', () => {
 	it('should let a failed refresh propagate to the runner', async () => {
 		mcpRegistryService.refreshFromApi.mockRejectedValue(new Error('api down'));
 
-		await expect(task.run(new AbortController().signal)).rejects.toThrow('api down');
+		await expect(task.run(new AbortController().signal, { durable: true })).rejects.toThrow(
+			'api down',
+		);
 	});
 });

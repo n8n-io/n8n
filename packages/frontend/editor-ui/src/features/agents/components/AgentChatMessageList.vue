@@ -6,11 +6,7 @@ import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteracti
 import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
-import {
-	buildDisplayGroups,
-	isAssistantGroup,
-	type DisplayGroup,
-} from '@/features/ai/shared/agentsChat/displayGroups';
+import { isAssistantGroup, type DisplayGroup } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	getMessageThinkingSegments,
@@ -34,6 +30,7 @@ import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
 import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
+import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
@@ -152,7 +149,12 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildDisplayGroups(props.messages));
+const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+const streamingGroupId = computed(() =>
+	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
 
 const formatChatDividerTimestamp = useChatDividerTimestamp();
 
@@ -545,8 +547,8 @@ watch(
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
-							!group.finalMessage.content &&
+							group.id === streamingGroupId &&
+							!group.finalMessage?.content &&
 							!group.toolCalls.length &&
 							!group.thinkingSegments.length
 						"

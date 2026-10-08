@@ -79,6 +79,11 @@ interface WorkflowAgentStreamParams {
 	message: string;
 	threadId: string;
 	telemetryAgentId: string;
+	/**
+	 * Saved agent this run spends against. Set when a workflow node targets a
+	 * saved agent. Inline runs leave it unset.
+	 */
+	savedAgentId?: string;
 	telemetryUserId?: string;
 	runType: AgentRunTelemetryType;
 	outputSchema?: JSONSchema7;
@@ -259,7 +264,7 @@ export class AgentWorkflowExecutionService {
 				sandboxPrincipalHash,
 				// A workflow execution cannot resume a suspended run — it throws
 				// instead (see `recorder.suspended` below).
-				{ supportsHitl: false },
+				{ supportsHitl: false, allowPlanTools: false },
 			);
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
@@ -395,6 +400,7 @@ export class AgentWorkflowExecutionService {
 	) {
 		const {
 			telemetryAgentId,
+			savedAgentId,
 			telemetryUserId,
 			runType,
 			tracing,
@@ -445,7 +451,14 @@ export class AgentWorkflowExecutionService {
 				...modelStreamStallOptions(this.aiConfig),
 				...(telemetry ? { telemetry } : {}),
 			},
-			{ budget, sessionId: threadId, agentId: telemetryAgentId },
+			{
+				budget,
+				sessionId: threadId,
+				// Spend stays on the telemetry id so an inline run still has a
+				// month bucket. The email uses the saved agent the node targets.
+				agentId: telemetryAgentId,
+				...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
+			},
 		);
 	}
 
@@ -634,6 +647,7 @@ export class AgentWorkflowExecutionService {
 			await this.prepareStoredWorkflowRun(params);
 		const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
 			telemetryAgentId: agentId,
+			savedAgentId: agentId,
 			runType,
 			budget,
 			recordingParams: { ...recordingParams, agentName: agentInstance.name },
@@ -727,7 +741,12 @@ export class AgentWorkflowExecutionService {
 		params: WorkflowExecutionContext,
 		run: Pick<
 			WorkflowAgentStreamParams,
-			'telemetryAgentId' | 'runType' | 'recordingParams' | 'sandboxScope' | 'budget'
+			| 'telemetryAgentId'
+			| 'savedAgentId'
+			| 'runType'
+			| 'recordingParams'
+			| 'sandboxScope'
+			| 'budget'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
 		const {
