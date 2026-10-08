@@ -92,7 +92,7 @@ it('blocks apply and asks to correct missing access', async () => {
 });
 
 it('lists destructive changes after the blocking conflicts and keeps apply blocked', async () => {
-	const { getByRole, getByText, getAllByText, queryByRole, queryByText } = await renderDialog({
+	const { getByRole, getByText, queryByRole, queryByText } = await renderDialog({
 		props: {
 			open: true,
 			blockedResult: blocked({
@@ -134,14 +134,9 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
-	expect(getByText('Columns: total (removed)')).toBeInTheDocument();
+	expect(getByText('Affected columns: total')).toBeInTheDocument();
 	expect(getByText('Invoices')).toBeInTheDocument();
-	expect(
-		getByText(
-			'Columns: amount (number to string), a (removed), b (removed), c (removed), d (removed) and 1 more',
-		),
-	).toBeInTheDocument();
-	expect(getAllByText('Team A: Workflow A')).toHaveLength(2);
+	expect(getByText('Affected columns: amount, a, b, c, d and 1 more')).toBeInTheDocument();
 	expect(precedes(getByText(/destination project is not a team project/), destructiveHeading)).toBe(
 		true,
 	);
