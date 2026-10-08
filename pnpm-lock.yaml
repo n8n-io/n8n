@@ -425,6 +425,9 @@ catalogs:
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
+    '@types/culori':
+      specifier: 4.0.1
+      version: 4.0.1
     '@types/estree':
       specifier: ^1.0.8
       version: 1.0.8
@@ -566,6 +569,9 @@ catalogs:
     csv-parse:
       specifier: 7.0.2
       version: 7.0.2
+    culori:
+      specifier: 4.0.2
+      version: 4.0.2
     dotenv:
       specifier: 17.2.3
       version: 17.2.3
@@ -2892,6 +2898,9 @@ importers:
       '@typescript-eslint/utils':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+      culori:
+        specifier: 'catalog:'
+        version: 4.0.2
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
@@ -2905,6 +2914,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/culori':
+        specifier: 'catalog:'
+        version: 4.0.1
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
@@ -14785,6 +14797,9 @@ packages:
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
 
+  '@types/culori@4.0.1':
+    resolution: {integrity: sha512-43M51r/22CjhbOXyGT361GZ9vncSVQ39u62x5eJdBQFviI8zWp2X5jzqg7k4M6PVgDQAClpy2bUe2dtwEgEDVQ==}
+
   '@types/dateformat@3.0.1':
     resolution: {integrity: sha512-KlPPdikagvL6ELjWsljbyDIPzNCeliYkqRpI+zea99vBBbCIA5JNshZAwQKTON139c87y9qvTFVgkFd14rtS4g==}
 
@@ -17363,6 +17378,10 @@ packages:
 
   csv-parse@7.0.2:
     resolution: {integrity: sha512-uKZghv9UmPkMVLYy//KZ9HFAIJsl7wkhoEdIL0+rhuSY9pZQlhaeGEDPIe+/w7eh81MOql8Q/9+inAGWG6ZHYA==}
+
+  culori@4.0.2:
+    resolution: {integrity: sha512-1+BhOB8ahCn4O0cep0Sh2l9KCOfOdY+BXJnKMHFFzDEouSr/el18QwXEMRlOj9UY5nCeA8UN3a/82rUWRBeyBw==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   curlconverter@4.12.0:
     resolution: {integrity: sha512-NcwPKJgu9DkCH4gQsnjnXuUtPrhLhoNwvIYTTS5rRrsCC/X2flUswtgmeCyV9ePGszXzFReXk5y/CdBxrsAQ8Q==}
@@ -32933,6 +32952,8 @@ snapshots:
 
   '@types/cookiejar@2.1.5': {}
 
+  '@types/culori@4.0.1': {}
+
   '@types/dateformat@3.0.1': {}
 
   '@types/debug@4.1.12':
@@ -35841,6 +35862,8 @@ snapshots:
   csstype@3.2.3: {}
 
   csv-parse@7.0.2: {}
+
+  culori@4.0.2: {}
 
   curlconverter@4.12.0:
     dependencies:
