@@ -416,4 +416,30 @@ describe('UserSelect', () => {
 			expect(optionIds).not.toContain('user-select-option-id-u1');
 		});
 	});
+
+	it('should show the name and the email of the selected user', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		await waitFor(() =>
+			expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)'),
+		);
+	});
+
+	it('should show only the name of the selected user when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('Alice Smith'));
+	});
+
+	it('should show the email of a selected user without a name when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u5', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('eve@example.com'));
+	});
 });

@@ -19,6 +19,8 @@ interface UserSelectProps {
 	loading?: boolean;
 	/** Set to false to keep the dropdown in the local stacking context, e.g. inside N8nDialog */
 	teleported?: boolean;
+	/** Show only the name of the selected user. The options still show the email. */
+	hideEmailInLabel?: boolean;
 }
 
 const props = withDefaults(defineProps<UserSelectProps>(), {
@@ -29,6 +31,7 @@ const props = withDefaults(defineProps<UserSelectProps>(), {
 	remote: false,
 	loading: false,
 	teleported: true,
+	hideEmailInLabel: false,
 });
 
 const emit = defineEmits<{
@@ -91,8 +94,10 @@ const setFilter = (value: string = '') => {
 const onBlur = () => emit('blur');
 const onFocus = () => emit('focus');
 
-const getLabel = (user: IUser) =>
-	(!user.fullName ? user.email : `${user.fullName} (${user.email})`) ?? '';
+const getLabel = (user: IUser) => {
+	if (!user.fullName) return user.email ?? '';
+	return props.hideEmailInLabel ? user.fullName : `${user.fullName} (${user.email})`;
+};
 </script>
 
 <template>
