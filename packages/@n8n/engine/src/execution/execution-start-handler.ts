@@ -58,7 +58,7 @@ export class ExecutionStartHandler {
 		// Seeded steps are recorded the same way, in the same batch, so a planner
 		// never queues a node the caller already holds the outputs of.
 		// The claim above makes this the only writer, so no row can exist yet.
-		const seededSteps = execution.seededSteps ?? [];
+		const seededSteps = Object.entries(execution.seededSteps ?? {});
 		const created = await this.stepStore.createSteps(event.executionId, [
 			{
 				nodeId: trigger.id,
@@ -66,7 +66,7 @@ export class ExecutionStartHandler {
 				status: 'completed',
 				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},
-			...seededSteps.map(({ nodeId, outputs }) => ({
+			...seededSteps.map(([nodeId, outputs]) => ({
 				nodeId,
 				iteration: 0,
 				status: 'completed' as const,
