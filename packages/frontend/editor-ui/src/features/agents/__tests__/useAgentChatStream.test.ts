@@ -359,6 +359,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				runId: 'run-1',
 				createdAt: '2026-01-02T00:00:00.000Z',
 				previewable: true,
+				onDisk: false,
 			},
 		];
 		globalThis.fetch = vi.fn(async () =>

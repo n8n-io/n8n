@@ -37,6 +37,16 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 		return await this.findBy({ threadId, ...scope });
 	}
 
+	async findNewestFirstByThread(
+		threadId: string,
+		scope: { projectId: string; agentId?: string } | { agentId: string },
+	): Promise<AgentChatAttachment[]> {
+		return await this.find({
+			where: { threadId, ...scope },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+	}
+
 	async findByIds(ids: string[]): Promise<AgentChatAttachment[]> {
 		return await this.findBy({ id: In(ids) });
 	}

@@ -750,6 +750,7 @@ export class AgentChatBridge {
 			inbound.attachments,
 			session.memory.threadId.id,
 			session.memory.resourceId,
+			message.id,
 		);
 		await this.enqueueTurn({
 			thread,
@@ -968,6 +969,7 @@ export class AgentChatBridge {
 		inboundAttachments: Attachment[],
 		threadId: string,
 		resourceId: string,
+		messageId?: string,
 	): Promise<{ attachments: StoredAttachmentRef[]; attachmentNotes: string[] }> {
 		const attachments: StoredAttachmentRef[] = [];
 		const attachmentNotes: string[] = [];
@@ -1019,6 +1021,7 @@ export class AgentChatBridge {
 					threadId,
 					resourceId,
 					source: this.integration.type,
+					messageId,
 					fileName: name,
 					mimeType,
 					data,

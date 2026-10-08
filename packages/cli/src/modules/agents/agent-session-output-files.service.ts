@@ -16,6 +16,7 @@ import { OperationalError, type IBinaryData } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentSessionUploadFilesService } from './agent-session-upload-files.service';
 import { AgentSessionOutputFile } from './entities/agent-session-output-file.entity';
 import { AgentSessionOutputFileRepository } from './repositories/agent-session-output-file.repository';
 import { absoluteSessionOutputDir, mimeTypeForOutputFileName } from './session-output-directory';
@@ -70,6 +71,7 @@ export class AgentSessionOutputFilesService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly repository: AgentSessionOutputFileRepository,
 		private readonly attachments: AgentChatAttachmentService,
+		private readonly uploads: AgentSessionUploadFilesService,
 	) {}
 
 	bindRun(ctx: {
@@ -165,18 +167,26 @@ export class AgentSessionOutputFilesService {
 		if (result.changed) await this.emitList(sessionId, attached);
 	}
 
+	async onUploadsMaterialized(sessionId: string): Promise<void> {
+		const attached = this.attached.get(sessionId);
+		if (attached) await this.emitList(sessionId, attached);
+	}
+
 	private async emitList(sessionId: string, identity: AgentSessionOutputIdentity): Promise<void> {
 		const emit = this.bound.get(sessionId)?.emit;
 		if (!emit || !identity.agentId) return;
-		const files = mergeSessionFiles(
-			await this.attachments.listSessionFiles(sessionId, {
-				projectId: identity.projectId,
-				agentId: identity.agentId,
-			}),
-			await this.listSessionFiles(sessionId, {
-				projectId: identity.projectId,
-				agentId: identity.agentId,
-			}),
+		const { files } = this.uploads.decorateList(
+			sessionId,
+			mergeSessionFiles(
+				await this.attachments.listSessionFiles(sessionId, {
+					projectId: identity.projectId,
+					agentId: identity.agentId,
+				}),
+				await this.listSessionFiles(sessionId, {
+					projectId: identity.projectId,
+					agentId: identity.agentId,
+				}),
+			),
 		);
 		emit(files);
 	}

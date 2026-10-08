@@ -3,6 +3,13 @@ import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix'
 import { Workspace, type WorkspaceFilesystem, type WorkspaceSandbox } from '@n8n/agents';
 import { UserError } from 'n8n-workflow';
 
+import {
+	resolveParentUploadPath,
+	sessionFileEnv,
+	sessionFilesInstruction,
+	type SessionUploadHost,
+} from './session-upload-directory';
+
 export function sessionOutputDir(sessionId: string): string {
 	return `outputs/${sessionId}`;
 }
@@ -72,6 +79,7 @@ export interface SessionOutputSyncHost {
 		workspaceRoot: string;
 		mutatedOutputFileName?: string;
 	}): Promise<{ errors: string[]; mutatedError?: string }>;
+	onUploadsMaterialized?(sessionId: string): Promise<void>;
 }
 
 export interface WrapSessionOutputsOptions {
@@ -81,6 +89,7 @@ export interface WrapSessionOutputsOptions {
 	parentFilesystem: WorkspaceFilesystem;
 	writerId: string;
 	host: SessionOutputSyncHost;
+	uploadHost?: SessionUploadHost;
 }
 
 class OutputCopyFilesystem implements WorkspaceFilesystem {
@@ -119,7 +128,7 @@ class OutputCopyFilesystem implements WorkspaceFilesystem {
 
 	getInstructions(): string {
 		const base = this.inner.getInstructions?.() ?? '';
-		return [base, sessionOutputInstruction(this.options.workspaceRoot, this.options.sessionId)]
+		return [base, sessionFilesInstruction(this.options.workspaceRoot, this.options.sessionId)]
 			.filter(Boolean)
 			.join('\n');
 	}
@@ -130,24 +139,40 @@ class OutputCopyFilesystem implements WorkspaceFilesystem {
 	_destroy = this.inner._destroy?.bind(this.inner);
 	getMountConfig = this.inner.getMountConfig?.bind(this.inner);
 
-	async readFile(...args: Parameters<WorkspaceFilesystem['readFile']>) {
-		return await this.inner.readFile(...args);
+	async readFile(path: string, options?: Parameters<WorkspaceFilesystem['readFile']>[1]) {
+		const target = await this.rewriteRead(path);
+		return target
+			? await this.options.parentFilesystem.readFile(target, options)
+			: await this.inner.readFile(path, options);
 	}
 
-	async exists(...args: Parameters<WorkspaceFilesystem['exists']>) {
-		return await this.inner.exists(...args);
+	async exists(path: string, options?: Parameters<WorkspaceFilesystem['exists']>[1]) {
+		const target = await this.rewriteRead(path);
+		return target
+			? await this.options.parentFilesystem.exists(target, options)
+			: await this.inner.exists(path, options);
 	}
 
-	async stat(...args: Parameters<WorkspaceFilesystem['stat']>) {
-		return await this.inner.stat(...args);
+	async stat(path: string, options?: Parameters<WorkspaceFilesystem['stat']>[1]) {
+		const target = await this.rewriteRead(path);
+		return target
+			? await this.options.parentFilesystem.stat(target, options)
+			: await this.inner.stat(path, options);
 	}
 
-	async readdir(...args: Parameters<WorkspaceFilesystem['readdir']>) {
-		return await this.inner.readdir(...args);
+	async readdir(path: string, options?: Parameters<WorkspaceFilesystem['readdir']>[1]) {
+		const target = await this.rewriteRead(path);
+		return target
+			? await this.options.parentFilesystem.readdir(target, options)
+			: await this.inner.readdir(path, options);
 	}
 
-	async mkdir(...args: Parameters<WorkspaceFilesystem['mkdir']>) {
-		return await this.inner.mkdir(...args);
+	async mkdir(path: string, options?: Parameters<WorkspaceFilesystem['mkdir']>[1]) {
+		const uploadAbs = this.uploadAbs(path);
+		const outputAbs = this.outputAbs(path);
+		const target = outputAbs ?? uploadAbs;
+		if (target) return await this.options.parentFilesystem.mkdir(target, options);
+		return await this.inner.mkdir(path, options);
 	}
 
 	async writeFile(
@@ -192,13 +217,8 @@ class OutputCopyFilesystem implements WorkspaceFilesystem {
 		options?: Parameters<WorkspaceFilesystem['copyFile']>[2],
 	) {
 		await this.mutate(dest, true, async (target) => {
+			const srcTarget = await this.rewriteRead(src);
 			if (target) {
-				const srcTarget = resolveParentOutputPath(
-					src,
-					this.options.workspaceRoot,
-					this.options.sessionId,
-					this.options.scopedRoot,
-				);
 				await this.options.parentFilesystem.copyFile(srcTarget ?? src, target, options);
 			} else await this.inner.copyFile(src, dest, options);
 		});
@@ -210,16 +230,48 @@ class OutputCopyFilesystem implements WorkspaceFilesystem {
 		options?: Parameters<WorkspaceFilesystem['moveFile']>[2],
 	) {
 		await this.mutate(dest, true, async (target) => {
+			const srcTarget = await this.rewriteRead(src);
 			if (target) {
-				const srcTarget = resolveParentOutputPath(
-					src,
-					this.options.workspaceRoot,
-					this.options.sessionId,
-					this.options.scopedRoot,
-				);
 				await this.options.parentFilesystem.moveFile(srcTarget ?? src, target, options);
 			} else await this.inner.moveFile(src, dest, options);
 		});
+	}
+
+	private outputAbs(path: string): string | null {
+		return resolveParentOutputPath(
+			path,
+			this.options.workspaceRoot,
+			this.options.sessionId,
+			this.options.scopedRoot,
+		);
+	}
+
+	private uploadAbs(path: string): string | null {
+		return resolveParentUploadPath(
+			path,
+			this.options.workspaceRoot,
+			this.options.sessionId,
+			this.options.scopedRoot,
+		);
+	}
+
+	private async rewriteRead(path: string): Promise<string | null> {
+		const uploadAbs = this.uploadAbs(path);
+		if (uploadAbs) {
+			await this.materializeUploads();
+			return uploadAbs;
+		}
+		return this.outputAbs(path);
+	}
+
+	private async materializeUploads(): Promise<void> {
+		if (!this.options.uploadHost) return;
+		const { changed } = await this.options.uploadHost.materialize({
+			sessionId: this.options.sessionId,
+			filesystem: this.options.parentFilesystem,
+			workspaceRoot: this.options.workspaceRoot,
+		});
+		if (changed) await this.options.host.onUploadsMaterialized?.(this.options.sessionId);
 	}
 
 	private async mutate(
@@ -227,17 +279,12 @@ class OutputCopyFilesystem implements WorkspaceFilesystem {
 		throwOnMutatedFailure: boolean,
 		run: (parentAbs: string | null) => Promise<void>,
 	): Promise<void> {
-		const parentAbs = resolveParentOutputPath(
-			path,
-			this.options.workspaceRoot,
-			this.options.sessionId,
-			this.options.scopedRoot,
-		);
-		await run(parentAbs);
+		const outputAbsPath = this.outputAbs(path);
+		const uploadAbsPath = this.uploadAbs(path);
+		await run(outputAbsPath ?? uploadAbsPath);
+		if (!outputAbsPath) return;
 		const outputAbs = absoluteSessionOutputDir(this.options.workspaceRoot, this.options.sessionId);
-		const mutatedOutputFileName = parentAbs
-			? relativeOutputFileName(parentAbs, outputAbs)
-			: undefined;
+		const mutatedOutputFileName = relativeOutputFileName(outputAbsPath, outputAbs);
 		const { mutatedError } = await this.options.host.sync({
 			sessionId: this.options.sessionId,
 			writerId: this.options.writerId,
@@ -256,17 +303,26 @@ function wrapSandbox(
 	const innerExecute = sandbox.executeCommand?.bind(sandbox);
 	const innerInstructions = sandbox.getInstructions?.bind(sandbox);
 	sandbox.getInstructions = () =>
-		[
-			innerInstructions?.() ?? '',
-			sessionOutputInstruction(options.workspaceRoot, options.sessionId),
-		]
+		[innerInstructions?.() ?? '', sessionFilesInstruction(options.workspaceRoot, options.sessionId)]
 			.filter(Boolean)
 			.join('\n');
 	if (!innerExecute) return sandbox;
 	sandbox.executeCommand = async (command, args, commandOptions) => {
+		if (options.uploadHost) {
+			const { changed } = await options.uploadHost.materialize({
+				sessionId: options.sessionId,
+				filesystem: options.parentFilesystem,
+				workspaceRoot: options.workspaceRoot,
+			});
+			if (changed) await options.host.onUploadsMaterialized?.(options.sessionId);
+		}
+		const env = {
+			...commandOptions?.env,
+			...sessionFileEnv(options.workspaceRoot, options.sessionId),
+		};
 		let result: Awaited<ReturnType<NonNullable<WorkspaceSandbox['executeCommand']>>> | undefined;
 		try {
-			result = await innerExecute(command, args, commandOptions);
+			result = await innerExecute(command, args, { ...commandOptions, env });
 			return result;
 		} finally {
 			const { errors } = await options.host.sync({

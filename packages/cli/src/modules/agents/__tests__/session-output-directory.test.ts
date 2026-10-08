@@ -8,6 +8,11 @@ import {
 	wrapWorkspaceForSessionOutputs,
 	type SessionOutputSyncHost,
 } from '../session-output-directory';
+import {
+	absoluteSessionUploadDir,
+	resolveParentUploadPath,
+	type SessionUploadHost,
+} from '../session-upload-directory';
 
 const sessionId = 'sess-1';
 const workspaceRoot = '/workspace';
@@ -113,5 +118,98 @@ describe('session-output-directory', () => {
 		const result = await wrapped.sandbox?.executeCommand?.('echo', ['ok']);
 		expect(result?.stderr).toContain('Output File exceeds 50 MB');
 		expect(result?.exitCode).toBe(0);
+	});
+
+	it('rewrites delegated upload reads onto the parent filesystem after materialize', async () => {
+		const inner = mock<WorkspaceFilesystem>();
+		const parent = mock<WorkspaceFilesystem>();
+		parent.readFile.mockResolvedValue('a,b\n1,2\n');
+		const host: SessionOutputSyncHost = {
+			sync: vi.fn().mockResolvedValue({ errors: [] }),
+		};
+		const uploadHost: SessionUploadHost = {
+			materialize: vi.fn().mockResolvedValue({ changed: false }),
+		};
+		const wrapped = wrapWorkspaceForSessionOutputs(
+			new Workspace({ filesystem: inner, sandbox: mock<WorkspaceSandbox>() }),
+			{
+				sessionId,
+				workspaceRoot,
+				scopedRoot,
+				parentFilesystem: parent,
+				writerId: 'child-1',
+				host,
+				uploadHost,
+			},
+		);
+
+		const content = await wrapped.filesystem?.readFile(`uploads/${sessionId}/m/data.csv`);
+
+		expect(uploadHost.materialize).toHaveBeenCalled();
+		expect(parent.readFile).toHaveBeenCalledWith(
+			`${absoluteSessionUploadDir(workspaceRoot, sessionId)}/m/data.csv`,
+			undefined,
+		);
+		expect(inner.readFile).not.toHaveBeenCalled();
+		expect(content).toBe('a,b\n1,2\n');
+	});
+
+	it('injects N8N_* env and materializes before executeCommand', async () => {
+		const executeCommand = vi.fn(async () => ({ stdout: '', stderr: '', exitCode: 0 }));
+		const sandbox = {
+			getInstructions: vi.fn(() => 'base'),
+			executeCommand,
+		};
+		const host: SessionOutputSyncHost = {
+			sync: vi.fn().mockResolvedValue({ errors: [] }),
+			onUploadsMaterialized: vi.fn().mockResolvedValue(undefined),
+		};
+		const uploadHost: SessionUploadHost = {
+			materialize: vi.fn().mockResolvedValue({ changed: true }),
+		};
+		const wrapped = wrapWorkspaceForSessionOutputs(
+			new Workspace({ sandbox: sandbox as unknown as WorkspaceSandbox }),
+			{
+				sessionId,
+				workspaceRoot,
+				scopedRoot: workspaceRoot,
+				parentFilesystem: mock<WorkspaceFilesystem>(),
+				writerId: 'parent',
+				host,
+				uploadHost,
+			},
+		);
+
+		expect(wrapped.sandbox?.getInstructions?.()).toContain('$N8N_UPLOADS_DIR');
+		expect(wrapped.sandbox?.getInstructions?.()).toContain('$N8N_OUTPUTS_DIR');
+		expect(wrapped.sandbox?.getInstructions?.()).toContain('workspace_run_javascript');
+		await wrapped.sandbox?.executeCommand?.('echo', ['ok'], {
+			env: { KEEP: 'yes', N8N_UPLOADS_DIR: 'wrong' },
+		});
+
+		expect(uploadHost.materialize).toHaveBeenCalled();
+		expect(host.onUploadsMaterialized).toHaveBeenCalledWith(sessionId);
+		expect(executeCommand).toHaveBeenCalledWith(
+			'echo',
+			['ok'],
+			expect.objectContaining({
+				env: expect.objectContaining({
+					KEEP: 'yes',
+					N8N_SESSION_ID: sessionId,
+					N8N_UPLOADS_DIR: `${workspaceRoot}/uploads/${sessionId}`,
+					N8N_OUTPUTS_DIR: `${workspaceRoot}/outputs/${sessionId}`,
+					N8N_UPLOADS_MANIFEST: `${workspaceRoot}/uploads/${sessionId}/manifest.json`,
+				}),
+			}),
+		);
+		expect(host.sync).toHaveBeenCalled();
+	});
+});
+
+describe('resolveParentUploadPath', () => {
+	it('rewrites relative uploads/<sessionId> paths to the parent upload dir', () => {
+		expect(
+			resolveParentUploadPath(`uploads/${sessionId}/a.csv`, workspaceRoot, sessionId, scopedRoot),
+		).toBe(`${workspaceRoot}/uploads/${sessionId}/a.csv`);
 	});
 });

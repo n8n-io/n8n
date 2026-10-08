@@ -82,6 +82,7 @@ describe('createWorkspaceTools', () => {
 		const names = tools.map((t) => t.name);
 
 		expect(names).toEqual(['workspace_execute_command']);
+		expect(names).not.toContain('workspace_run_javascript');
 	});
 
 	it('does not return execute_command when sandbox lacks executeCommand', () => {
@@ -103,7 +104,8 @@ describe('createWorkspaceTools', () => {
 		expect(names).toContain('workspace_read_tool_result');
 		expect(names).toContain('workspace_str_replace_file');
 		expect(names).toContain('workspace_execute_command');
-		expect(names).toHaveLength(13);
+		expect(names).toContain('workspace_run_javascript');
+		expect(names).toHaveLength(14);
 		expect(tools.find((tool) => tool.name === 'workspace_read_tool_result')?.outputTrust).toBe(
 			'untrusted',
 		);

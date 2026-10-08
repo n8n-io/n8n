@@ -13,6 +13,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentSessionOutputFilesService } from '../agent-session-output-files.service';
+import type { AgentSessionUploadFilesService } from '../agent-session-upload-files.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -55,6 +56,8 @@ function makeController() {
 	const sessionOutputFiles = mock<AgentSessionOutputFilesService>();
 	sessionOutputFiles.listSessionFiles.mockResolvedValue([]);
 	sessionOutputFiles.findByIdInThread.mockResolvedValue(null);
+	const sessionUploadFiles = mock<AgentSessionUploadFilesService>();
+	sessionUploadFiles.decorateList.mockImplementation((_sessionId, files) => ({ files }));
 	agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
 	agentChatAttachmentService.storeInbound.mockResolvedValue(
 		mock<AgentChatAttachment>({
@@ -105,6 +108,7 @@ function makeController() {
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
 		sessionOutputFiles,
+		sessionUploadFiles,
 		agentExecutionService,
 		backgroundJobService,
 		chatExecutionService,
@@ -126,6 +130,7 @@ function makeController() {
 		agentTestRunService,
 		agentChatAttachmentService,
 		sessionOutputFiles,
+		sessionUploadFiles,
 		agentsService: {
 			findById: agentsService.findById,
 			isN8nChatPublished: agentsService.isN8nChatPublished,
@@ -1299,6 +1304,7 @@ describe('AgentChatController session files', () => {
 				sizeBytes: 5,
 				createdAt: '2026-01-01T00:00:00.000Z',
 				previewable: true,
+				onDisk: false,
 			},
 		]);
 
@@ -1324,6 +1330,7 @@ describe('AgentChatController session files', () => {
 				sizeBytes: 5,
 				createdAt: '2026-01-01T00:00:00.000Z',
 				previewable: true,
+				onDisk: false,
 			},
 		]);
 		sessionOutputFiles.listSessionFiles.mockResolvedValue([
@@ -1336,6 +1343,7 @@ describe('AgentChatController session files', () => {
 				runId: 'run-1',
 				createdAt: '2026-01-02T00:00:00.000Z',
 				previewable: true,
+				onDisk: false,
 			},
 		]);
 
@@ -1344,6 +1352,39 @@ describe('AgentChatController session files', () => {
 				expect.objectContaining({ id: 'out-1', kind: 'output', fileName: 'hello.md' }),
 				expect.objectContaining({ id: 'att-1', kind: 'attachment' }),
 			],
+		});
+	});
+
+	it('returns decorated onDisk flags and skipped working-set entries', async () => {
+		const { controller, agentsService, sessionUploadFiles } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		sessionUploadFiles.decorateList.mockReturnValue({
+			files: [
+				{
+					id: 'att-1',
+					kind: 'attachment',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					sizeBytes: 5,
+					createdAt: '2026-01-01T00:00:00.000Z',
+					previewable: true,
+					onDisk: true,
+				},
+			],
+			workingSetSkipped: [
+				{
+					id: 'skip-1',
+					messageId: 'msg-old',
+					fileName: 'big.pdf',
+					sizeBytes: 9_000_000,
+					reason: 'working_set_cap',
+				},
+			],
+		});
+
+		await expect(controller.listSessionFiles(sessionReq)).resolves.toEqual({
+			files: [expect.objectContaining({ id: 'att-1', onDisk: true })],
+			workingSetSkipped: [expect.objectContaining({ id: 'skip-1', reason: 'working_set_cap' })],
 		});
 	});
 

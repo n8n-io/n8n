@@ -37,9 +37,24 @@ exposes this core workspace tool set:
 - `workspace_write_file`
 - `workspace_str_replace_file`
 - `workspace_execute_command`
+- `workspace_run_javascript`
 
 The underlying `Workspace` supports more filesystem operations. The lazy
 runtime filters the model-facing set to `CORE_WORKSPACE_TOOL_NAMES`.
+
+`workspace_run_javascript` runs `node` for 60 seconds. It does not install
+packages. The starter libraries (`exceljs`, `docx`, `sharp`) must already be
+in the sandbox image or Daytona snapshot. Use `workspace_execute_command` for
+jobs that need more than 60 seconds.
+
+Phase 4 Session Files needs a rebuilt Daytona snapshot (`scripts/build-snapshot.cjs`
+or `.github/workflows/release-build-daytona-snapshot.yml`) so `n8n/instance-ai:<ver>`
+includes those Node packages. The `n8n-sandbox-service-sandbox` image is not
+published from this repo; ship a new image with the same packages. Product
+Agents do not use the Instance AI snapshot. Point
+`N8N_AGENTS_AI_SANDBOX_IMAGE` / `N8N_AGENTS_AI_SANDBOX_SNAPSHOT` at an image
+or snapshot that already includes `exceljs`, `docx`, and `sharp`. Do not point
+Product Agents at `n8n/instance-ai:<ver>`.
 
 ## Providers
 
@@ -114,7 +129,7 @@ reattached. Initial setup creates or materializes:
 
 | Path                   | Purpose                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------ |
-| `package.json`         | Pinned `@n8n/workflow-sdk`, `tsx`, `typescript`, and Node type dependencies in normal mode |
+| `package.json`         | Pinned `@n8n/workflow-sdk`, `tsx`, `typescript`, Node types, and Session Files starter libraries (`exceljs`, `docx`, `sharp`) in normal mode |
 | `tsconfig.json`        | Strict TypeScript configuration                                                            |
 | `build.mjs`            | Workflow SDK execution and JSON conversion                                                 |
 | `node-types/index.txt` | Searchable node-type catalog                                                               |

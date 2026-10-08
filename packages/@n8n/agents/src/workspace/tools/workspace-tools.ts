@@ -12,6 +12,7 @@ import { createKillProcessTool, createListProcessesTool } from './process-tools'
 import { createReadFileTool } from './read-file';
 import { createReadToolResultTool } from './read-tool-result';
 import { createRmdirTool } from './rmdir';
+import { createRunJavascriptTool } from './run-javascript';
 import { createStrReplaceFileTool } from './str-replace-file';
 import { createWriteFileTool } from './write-file';
 
@@ -26,6 +27,7 @@ export const CORE_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'workspace_write_file',
 	'workspace_str_replace_file',
 	'workspace_execute_command',
+	'workspace_run_javascript',
 ]);
 
 export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
@@ -48,6 +50,9 @@ export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 
 	if (workspace.sandbox?.executeCommand) {
 		tools.push(createExecuteCommandTool(workspace.sandbox));
+		if (workspace.filesystem) {
+			tools.push(createRunJavascriptTool(workspace.sandbox, workspace.filesystem));
+		}
 	}
 
 	if (workspace.sandbox?.processes) {

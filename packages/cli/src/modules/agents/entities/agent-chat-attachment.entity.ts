@@ -47,6 +47,10 @@ export class AgentChatAttachment extends WithTimestampsAndStringId {
 	@Column({ type: 'text' })
 	binaryDataId: string;
 
+	/** User or platform message that introduced the file, when known. */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	messageId: string | null;
+
 	@Column({ type: 'varchar', length: 255 })
 	fileName: string;
 

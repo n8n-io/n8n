@@ -93,6 +93,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
 import { InstanceAiSessionOutputFilesService } from './instance-ai-session-output-files.service';
+import { InstanceAiSessionUploadFilesService } from './instance-ai-session-upload-files.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
@@ -141,6 +142,7 @@ export class InstanceAiController {
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 		private readonly chatAttachmentService: InstanceAiChatAttachmentService,
 		private readonly sessionOutputFiles: InstanceAiSessionOutputFilesService,
+		private readonly sessionUploadFiles: InstanceAiSessionUploadFilesService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -1008,12 +1010,13 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		this.assertSessionFilesEnabled();
 		await this.assertThreadAccess(req.user.id, sessionId);
-		return {
-			files: mergeSessionFiles(
+		return this.sessionUploadFiles.decorateList(
+			sessionId,
+			mergeSessionFiles(
 				await this.chatAttachmentService.listSessionFiles(sessionId),
 				await this.sessionOutputFiles.listSessionFiles(sessionId),
 			),
-		};
+		);
 	}
 
 	@Get('/sessions/:sessionId/files/:fileId/content')

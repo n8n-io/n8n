@@ -18,6 +18,7 @@ import {
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import { AgentSessionOutputFilesService } from './agent-session-output-files.service';
+import { AgentSessionUploadFilesService } from './agent-session-upload-files.service';
 import {
 	CHECKPOINT_RECONCILIATION_OVERFLOW,
 	N8NCheckpointStorage,
@@ -40,6 +41,7 @@ export class AgentWorkspaceService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly sessionOutputs: AgentSessionOutputFilesService,
+		private readonly sessionUploads: AgentSessionUploadFilesService,
 	) {}
 
 	async getAgentWorkspace(
@@ -145,6 +147,12 @@ export class AgentWorkspaceService {
 			agentId: params.agentId,
 			projectId: params.projectId,
 		});
+		this.sessionUploads.registerWorkspace(params.sessionId, {
+			filesystem: params.parentFilesystem,
+			workspaceRoot: params.workspaceRoot,
+			agentId: params.agentId,
+			projectId: params.projectId,
+		});
 		return wrapWorkspaceForSessionOutputs(workspace, {
 			sessionId: params.sessionId,
 			workspaceRoot: params.workspaceRoot,
@@ -152,6 +160,7 @@ export class AgentWorkspaceService {
 			parentFilesystem: params.parentFilesystem,
 			writerId: params.writerId,
 			host: this.sessionOutputs,
+			uploadHost: this.sessionUploads,
 		});
 	}
 

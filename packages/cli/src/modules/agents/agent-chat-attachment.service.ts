@@ -35,6 +35,7 @@ export interface StoreInboundAttachmentParams {
 	resourceId?: string;
 	/** Surface the file arrived from, e.g. 'chat', 'slack', 'telegram'. */
 	source: string;
+	messageId?: string;
 	fileName: string;
 	mimeType: string;
 	data: Buffer;
@@ -107,6 +108,7 @@ export class AgentChatAttachmentService {
 				mimeType: params.mimeType,
 				fileSizeBytes: params.data.byteLength,
 				source: params.source,
+				messageId: params.messageId ?? null,
 			});
 			return await this.repository.save(attachment);
 		} catch (error) {
@@ -126,12 +128,20 @@ export class AgentChatAttachmentService {
 		threadId: string,
 		scope: { projectId: string; agentId: string },
 	): Promise<SessionFileDto[]> {
-		const rows = await this.repository.findBy({
-			threadId,
-			projectId: scope.projectId,
-			agentId: scope.agentId,
-		});
+		const rows = await this.repository.findNewestFirstByThread(threadId, scope);
 		return rows.map((row) => toSessionFileDto(row));
+	}
+
+	async listForWorkingSet(
+		threadId: string,
+		scope: { projectId: string; agentId: string | null },
+	): Promise<AgentChatAttachment[]> {
+		return await this.repository.findNewestFirstByThread(
+			threadId,
+			scope.agentId
+				? { projectId: scope.projectId, agentId: scope.agentId }
+				: { projectId: scope.projectId },
+		);
 	}
 
 	async findByIdInThread(

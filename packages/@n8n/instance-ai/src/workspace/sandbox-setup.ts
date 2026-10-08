@@ -193,11 +193,17 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  * described above. Keep this in sync with the catalog entry on upgrades.
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
+const SANDBOX_EXCELJS_VERSION = '4.4.0';
+const SANDBOX_DOCX_VERSION = '9.9.0';
+const SANDBOX_SHARP_VERSION = '0.35.5';
 
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
 		typescript: SANDBOX_TYPESCRIPT_VERSION,
+		exceljs: SANDBOX_EXCELJS_VERSION,
+		docx: SANDBOX_DOCX_VERSION,
+		sharp: SANDBOX_SHARP_VERSION,
 	};
 	if (sdkSpecifier) {
 		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
@@ -221,7 +227,8 @@ function buildPackageJson(sdkSpecifier: string | null): string {
  * PACKAGE_JSON used for Dockerfile-baked images (Daytona / n8n-sandbox).
  *
  * Normal mode pins to the host SDK version. See `resolveHostDepVersion` for
- * why pinning matters.
+ * why pinning matters. Session Files run tools also pin exceljs, docx, and
+ * sharp so a cold Workspace can write xlsx, docx, and png without npm install.
  *
  * Linked-SDK mode intentionally omits @n8n/workflow-sdk from the baked image:
  * the host SDK may be ahead of npm on master, and the packed workspace tarball

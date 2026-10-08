@@ -94,8 +94,12 @@ export class InstanceAiChatAttachmentService {
 	}
 
 	async listSessionFiles(threadId: string): Promise<SessionFileDto[]> {
-		const rows = await this.repository.findByThread(threadId);
+		const rows = await this.repository.findNewestFirstByThread(threadId);
 		return rows.map((row) => toSessionFileDto(row));
+	}
+
+	async listForWorkingSet(threadId: string): Promise<InstanceAiChatAttachment[]> {
+		return await this.repository.findNewestFirstByThread(threadId);
 	}
 
 	async findByIdInThread(

@@ -17,6 +17,13 @@ export class InstanceAiChatAttachmentRepository extends Repository<InstanceAiCha
 		return await this.findBy({ threadId });
 	}
 
+	async findNewestFirstByThread(threadId: string): Promise<InstanceAiChatAttachment[]> {
+		return await this.find({
+			where: { threadId },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+	}
+
 	async findByThreadIds(threadIds: string[]): Promise<InstanceAiChatAttachment[]> {
 		if (threadIds.length === 0) return [];
 		return await this.findBy({ threadId: In(threadIds) });

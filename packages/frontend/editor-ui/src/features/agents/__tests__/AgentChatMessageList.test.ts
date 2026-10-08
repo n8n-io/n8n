@@ -1111,6 +1111,7 @@ describe('AgentChatMessageList', () => {
 						runId: 'run-1',
 						createdAt: '2026-01-02T00:00:00.000Z',
 						previewable: true,
+						onDisk: false,
 					},
 					{
 						id: 'out-2',
@@ -1121,6 +1122,7 @@ describe('AgentChatMessageList', () => {
 						runId: 'run-2',
 						createdAt: '2026-01-02T00:00:00.000Z',
 						previewable: true,
+						onDisk: false,
 					},
 				],
 				outputFileHref: (id: string) => `/files/${id}`,

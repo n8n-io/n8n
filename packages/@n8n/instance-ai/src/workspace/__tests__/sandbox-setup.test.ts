@@ -265,6 +265,9 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies['@n8n/workflow-sdk']).toBeDefined();
 		expect(packageJson.dependencies.tsx).toBeDefined();
 		expect(packageJson.dependencies.typescript).toBe('7.0.2');
+		expect(packageJson.dependencies.exceljs).toBe('4.4.0');
+		expect(packageJson.dependencies.docx).toBe('9.9.0');
+		expect(packageJson.dependencies.sharp).toBe('0.35.5');
 	});
 
 	it('should omit the registry SDK dependency when workspace SDK linking is enabled', async () => {
@@ -273,6 +276,9 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies).not.toHaveProperty('@n8n/workflow-sdk');
 		expect(packageJson.dependencies.tsx).toBeDefined();
 		expect(packageJson.dependencies.typescript).toBe('7.0.2');
+		expect(packageJson.dependencies.exceljs).toBe('4.4.0');
+		expect(packageJson.dependencies.docx).toBe('9.9.0');
+		expect(packageJson.dependencies.sharp).toBe('0.35.5');
 	});
 });
 /** npm install commands issued, ignoring how cwd/options were passed. */

@@ -44,6 +44,7 @@ function makeService() {
 			checkpointStorage,
 			agentsConfig,
 			mock(),
+			mock(),
 		),
 		filesystem,
 		sandbox,
@@ -90,6 +91,7 @@ describe('AgentWorkspaceService', () => {
 			'workspace_str_replace_file',
 			'workspace_write_file',
 			'workspace_execute_command',
+			'workspace_run_javascript',
 		]);
 	});
 
@@ -106,6 +108,7 @@ describe('AgentWorkspaceService', () => {
 			'workspace_str_replace_file',
 			'workspace_write_file',
 			'workspace_execute_command',
+			'workspace_run_javascript',
 		]);
 
 		await workspace.filesystem?.writeFile('notes.md', 'hello');

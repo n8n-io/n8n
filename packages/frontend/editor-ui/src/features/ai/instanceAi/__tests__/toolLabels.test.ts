@@ -23,6 +23,7 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.conversation-history': 'Past conversations',
 				'instanceAi.tools.conversation-history.search': 'Searching past conversations',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
+				'instanceAi.tools.workspace_run_javascript': 'Running JavaScript',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
 				'instanceAi.tools.n8n-docs': 'Reading n8n docs',
@@ -118,6 +119,7 @@ describe('getToolIcon', () => {
 	test('returns folder for workspace tools', () => {
 		expect(getToolIcon('workspace')).toBe('folder');
 		expect(getToolIcon('workspace_execute_command')).toBe('folder');
+		expect(getToolIcon('workspace_run_javascript')).toBe('folder');
 		expect(getToolIcon('workspace_read_file')).toBe('folder');
 	});
 
@@ -156,6 +158,7 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('build-agent', { operation: 'creating' })).toBe('Working with agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
+		expect(getToolLabel('workspace_run_javascript')).toBe('Running JavaScript');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
 		expect(getToolLabel('load_skill', { name: 'data-table-manager' })).toBe(
 			'Opening skill: data-table-manager',

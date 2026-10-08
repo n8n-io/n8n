@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentSessionOutputFilesService } from '../agent-session-output-files.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentSessionUploadFilesService } from '../agent-session-upload-files.service';
 import type { AgentSessionOutputFile } from '../entities/agent-session-output-file.entity';
 import type { AgentSessionOutputFileRepository } from '../repositories/agent-session-output-file.repository';
 
@@ -33,11 +34,14 @@ function makeService() {
 	repository.countByThread.mockResolvedValue(0);
 	repository.sumFileSizeBytesByThread.mockResolvedValue(0);
 	attachments.listSessionFiles.mockResolvedValue([]);
+	const uploads = mock<AgentSessionUploadFilesService>();
+	uploads.decorateList.mockImplementation((_sessionId, files) => ({ files }));
 	const service = new AgentSessionOutputFilesService(
 		mock<Logger>(),
 		binaryDataService,
 		repository,
 		attachments,
+		uploads,
 	);
 	return { service, binaryDataService, repository, attachments };
 }

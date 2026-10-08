@@ -103,6 +103,7 @@ import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiChatAttachmentService } from '../instance-ai-chat-attachment.service';
 import type { InstanceAiSessionOutputFilesService } from '../instance-ai-session-output-files.service';
+import type { InstanceAiSessionUploadFilesService } from '../instance-ai-session-upload-files.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 
 const USER_ID = 'user-1';
@@ -146,6 +147,8 @@ describe('InstanceAiController', () => {
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
 	const chatAttachmentService = mock<InstanceAiChatAttachmentService>();
 	const sessionOutputFiles = mock<InstanceAiSessionOutputFilesService>();
+	const sessionUploadFiles = mock<InstanceAiSessionUploadFilesService>();
+	sessionUploadFiles.decorateList.mockImplementation((_sessionId, files) => ({ files }));
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
@@ -182,6 +185,7 @@ describe('InstanceAiController', () => {
 		threadTabsService,
 		chatAttachmentService,
 		sessionOutputFiles,
+		sessionUploadFiles,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -199,6 +203,7 @@ describe('InstanceAiController', () => {
 		chatAttachmentService.sumFileSizeBytesByThread.mockResolvedValue(0);
 		sessionOutputFiles.listSessionFiles.mockResolvedValue([]);
 		sessionOutputFiles.findByIdInThread.mockResolvedValue(null);
+		sessionUploadFiles.decorateList.mockImplementation((_sessionId, files) => ({ files }));
 		globalConfig.instanceAi.sessionFilesEnabled = true;
 	});
 
@@ -2186,6 +2191,7 @@ describe('InstanceAiController', () => {
 					sizeBytes: 5,
 					createdAt: '2026-01-01T00:00:00.000Z',
 					previewable: true,
+					onDisk: false,
 				},
 			]);
 
@@ -2208,6 +2214,7 @@ describe('InstanceAiController', () => {
 					sizeBytes: 5,
 					createdAt: '2026-01-01T00:00:00.000Z',
 					previewable: true,
+					onDisk: false,
 				},
 			]);
 			sessionOutputFiles.listSessionFiles.mockResolvedValue([
@@ -2220,6 +2227,7 @@ describe('InstanceAiController', () => {
 					runId: 'run-1',
 					createdAt: '2026-01-02T00:00:00.000Z',
 					previewable: true,
+					onDisk: false,
 				},
 			]);
 
@@ -2228,6 +2236,38 @@ describe('InstanceAiController', () => {
 					expect.objectContaining({ id: 'out-1', kind: 'output' }),
 					expect.objectContaining({ id: 'att-1', kind: 'attachment' }),
 				],
+			});
+		});
+
+		it('returns decorated onDisk flags and skipped working-set entries', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			sessionUploadFiles.decorateList.mockReturnValue({
+				files: [
+					{
+						id: 'att-1',
+						kind: 'attachment',
+						fileName: 'notes.txt',
+						mimeType: 'text/plain',
+						sizeBytes: 5,
+						createdAt: '2026-01-01T00:00:00.000Z',
+						previewable: true,
+						onDisk: true,
+					},
+				],
+				workingSetSkipped: [
+					{
+						id: 'skip-1',
+						messageId: 'msg-old',
+						fileName: 'big.pdf',
+						sizeBytes: 9_000_000,
+						reason: 'working_set_cap',
+					},
+				],
+			});
+
+			await expect(controller.listSessionFiles(req, res, THREAD_ID)).resolves.toEqual({
+				files: [expect.objectContaining({ id: 'att-1', onDisk: true })],
+				workingSetSkipped: [expect.objectContaining({ id: 'skip-1', reason: 'working_set_cap' })],
 			});
 		});
 
@@ -2938,6 +2978,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiThreadTabsService>(),
 		mock<InstanceAiChatAttachmentService>(),
 		mock<InstanceAiSessionOutputFilesService>(),
+		mock<InstanceAiSessionUploadFilesService>(),
 	);
 
 	beforeEach(() => {

@@ -16,6 +16,7 @@ import { OperationalError, type IBinaryData } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
+import { InstanceAiSessionUploadFilesService } from './instance-ai-session-upload-files.service';
 import { InstanceAiSessionOutputFile } from './entities/instance-ai-session-output-file.entity';
 import { InstanceAiSessionOutputFileRepository } from './repositories/instance-ai-session-output-file.repository';
 import { absoluteSessionOutputDir, mimeTypeForOutputFileName } from './session-output-directory';
@@ -59,6 +60,7 @@ export class InstanceAiSessionOutputFilesService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly repository: InstanceAiSessionOutputFileRepository,
 		private readonly attachments: InstanceAiChatAttachmentService,
+		private readonly uploads: InstanceAiSessionUploadFilesService,
 	) {}
 
 	bindRun(ctx: {
@@ -149,15 +151,21 @@ export class InstanceAiSessionOutputFilesService {
 		if (result.changed) await this.emitList(sessionId);
 	}
 
+	async onUploadsMaterialized(sessionId: string): Promise<void> {
+		await this.emitList(sessionId);
+	}
+
 	private async emitList(sessionId: string): Promise<void> {
 		const emit = this.bound.get(sessionId)?.emit;
 		if (!emit) return;
-		emit(
+		const { files } = this.uploads.decorateList(
+			sessionId,
 			mergeSessionFiles(
 				await this.attachments.listSessionFiles(sessionId),
 				await this.listSessionFiles(sessionId),
 			),
 		);
+		emit(files);
 	}
 
 	private async deleteOutputs(

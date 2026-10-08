@@ -51,6 +51,7 @@ describe('Workspace integration with fakes', () => {
 		expect(names).toContain('workspace_file_stat');
 		expect(names).toContain('workspace_mkdir');
 		expect(names).toContain('workspace_execute_command');
+		expect(names).toContain('workspace_run_javascript');
 	});
 
 	describe('filesystem tools end-to-end', () => {
@@ -194,6 +195,7 @@ describe('Workspace integration with fakes', () => {
 			const tools = ws.getTools();
 			const names = tools.map((t) => t.name);
 			expect(names).toContain('workspace_execute_command');
+			expect(names).not.toContain('workspace_run_javascript');
 			expect(names).not.toContain('workspace_read_file');
 
 			await ws.destroy();

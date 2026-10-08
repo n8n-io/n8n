@@ -17,6 +17,7 @@ const imageFile: SessionFileDto = {
 	sizeBytes: 12,
 	createdAt: '2026-01-01T00:00:00.000Z',
 	previewable: true,
+	onDisk: false,
 };
 
 const textFile: SessionFileDto = {
@@ -27,6 +28,7 @@ const textFile: SessionFileDto = {
 	sizeBytes: 5,
 	createdAt: '2026-01-01T00:00:00.000Z',
 	previewable: true,
+	onDisk: false,
 };
 
 const pdfFile: SessionFileDto = {
@@ -37,6 +39,7 @@ const pdfFile: SessionFileDto = {
 	sizeBytes: 20,
 	createdAt: '2026-01-01T00:00:00.000Z',
 	previewable: false,
+	onDisk: false,
 };
 
 const outputFile: SessionFileDto = {
@@ -48,6 +51,7 @@ const outputFile: SessionFileDto = {
 	runId: 'run-1',
 	createdAt: '2026-01-02T00:00:00.000Z',
 	previewable: true,
+	onDisk: false,
 };
 
 function href(id: string) {

@@ -67,7 +67,7 @@ describe('InstanceAiChatAttachmentService', () => {
 
 	describe('listSessionFiles', () => {
 		it('maps rows to previewable session file DTOs', async () => {
-			repository.findByThread.mockResolvedValue([
+			repository.findNewestFirstByThread.mockResolvedValue([
 				{
 					id: 'att-1',
 					fileName: 'notes.txt',
@@ -93,6 +93,7 @@ describe('InstanceAiChatAttachmentService', () => {
 					sizeBytes: 5,
 					createdAt: '2026-01-01T00:00:00.000Z',
 					previewable: true,
+					onDisk: false,
 				},
 				{
 					id: 'att-2',
@@ -102,6 +103,7 @@ describe('InstanceAiChatAttachmentService', () => {
 					sizeBytes: 10,
 					createdAt: '2026-01-02T00:00:00.000Z',
 					previewable: false,
+					onDisk: false,
 				},
 			]);
 		});

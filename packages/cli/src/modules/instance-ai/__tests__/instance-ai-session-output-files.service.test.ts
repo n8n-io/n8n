@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiSessionOutputFilesService } from '../instance-ai-session-output-files.service';
 import type { InstanceAiChatAttachmentService } from '../instance-ai-chat-attachment.service';
+import type { InstanceAiSessionUploadFilesService } from '../instance-ai-session-upload-files.service';
 import type { InstanceAiSessionOutputFile } from '../entities/instance-ai-session-output-file.entity';
 import type { InstanceAiSessionOutputFileRepository } from '../repositories/instance-ai-session-output-file.repository';
 
@@ -29,11 +30,14 @@ function makeService() {
 	repository.countByThread.mockResolvedValue(0);
 	repository.sumFileSizeBytesByThread.mockResolvedValue(0);
 	attachments.listSessionFiles.mockResolvedValue([]);
+	const uploads = mock<InstanceAiSessionUploadFilesService>();
+	uploads.decorateList.mockImplementation((_sessionId, files) => ({ files }));
 	const service = new InstanceAiSessionOutputFilesService(
 		mock<Logger>(),
 		binaryDataService,
 		repository,
 		attachments,
+		uploads,
 	);
 	return { service, binaryDataService, repository };
 }

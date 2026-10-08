@@ -200,6 +200,7 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
 import { InstanceAiSessionOutputFilesService } from './instance-ai-session-output-files.service';
+import { InstanceAiSessionUploadFilesService } from './instance-ai-session-upload-files.service';
 import { wrapWorkspaceForSessionOutputs } from './session-output-directory';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -841,6 +842,7 @@ export class InstanceAiService {
 		private readonly aiUsageService: AiUsageService,
 		private readonly chatAttachmentService: InstanceAiChatAttachmentService,
 		private readonly sessionOutputFiles: InstanceAiSessionOutputFilesService,
+		private readonly sessionUploadFiles: InstanceAiSessionUploadFilesService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2778,6 +2780,10 @@ export class InstanceAiService {
 						filesystem: workspace.filesystem,
 						workspaceRoot: root,
 					});
+					this.sessionUploadFiles.registerWorkspace(threadId, {
+						filesystem: workspace.filesystem,
+						workspaceRoot: root,
+					});
 					return wrapWorkspaceForSessionOutputs(scoped, {
 						sessionId: threadId,
 						workspaceRoot: root,
@@ -2785,6 +2791,7 @@ export class InstanceAiService {
 						parentFilesystem: workspace.filesystem,
 						writerId: 'parent',
 						host: this.sessionOutputFiles,
+						uploadHost: this.sessionUploadFiles,
 					});
 				};
 

@@ -75,6 +75,7 @@ describe('AgentChatAttachmentService', () => {
 				threadId: 'thread-1',
 				resourceId: 'user-1',
 				source: 'chat',
+				messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a',
 				fileName: 'photo.png',
 				mimeType: 'image/png',
 				data: Buffer.from([1, 2, 3]),
@@ -94,6 +95,7 @@ describe('AgentChatAttachmentService', () => {
 			expect(stored.binaryDataId).toBe('filesystem-v2:agents/agent-1/attachments/att-1/x');
 			expect(stored.fileSizeBytes).toBe(3);
 			expect(stored.source).toBe('chat');
+			expect(stored.messageId).toBe('c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a');
 		});
 
 		it('throws when the binary storage mode does not persist ids (in-memory)', async () => {
@@ -156,7 +158,7 @@ describe('AgentChatAttachmentService', () => {
 
 	describe('listSessionFiles', () => {
 		it('maps rows to previewable session file DTOs', async () => {
-			repository.findBy.mockResolvedValue([
+			repository.findNewestFirstByThread.mockResolvedValue([
 				{
 					id: 'att-1',
 					fileName: 'notes.txt',
@@ -187,6 +189,7 @@ describe('AgentChatAttachmentService', () => {
 					sizeBytes: 5,
 					createdAt: '2026-01-01T00:00:00.000Z',
 					previewable: true,
+					onDisk: false,
 				},
 				{
 					id: 'att-2',
@@ -196,6 +199,7 @@ describe('AgentChatAttachmentService', () => {
 					sizeBytes: 10,
 					createdAt: '2026-01-02T00:00:00.000Z',
 					previewable: false,
+					onDisk: false,
 				},
 			]);
 		});

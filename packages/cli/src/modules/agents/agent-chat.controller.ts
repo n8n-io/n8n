@@ -41,6 +41,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentSessionOutputFilesService } from './agent-session-output-files.service';
+import { AgentSessionUploadFilesService } from './agent-session-upload-files.service';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { AgentSessionOutputFile } from './entities/agent-session-output-file.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
@@ -83,6 +84,7 @@ export class AgentChatController {
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly sessionOutputFiles: AgentSessionOutputFilesService,
+		private readonly sessionUploadFiles: AgentSessionUploadFilesService,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly chatExecutionService: AgentChatExecutionService,
@@ -123,8 +125,17 @@ export class AgentChatController {
 		threadId: string;
 		resourceId: string;
 		source?: string;
+		messageId?: string;
 	}): Promise<StoredAttachmentRef[] | undefined> {
-		const { attachments, agentId, projectId, threadId, resourceId, source = 'chat' } = params;
+		const {
+			attachments,
+			agentId,
+			projectId,
+			threadId,
+			resourceId,
+			source = 'chat',
+			messageId,
+		} = params;
 		if (!attachments?.length) return undefined;
 
 		const stored: StoredAttachmentRef[] = [];
@@ -147,6 +158,7 @@ export class AgentChatController {
 					threadId,
 					resourceId,
 					source,
+					messageId,
 					fileName: attachment.fileName,
 					mimeType,
 					data,
@@ -277,6 +289,7 @@ export class AgentChatController {
 				threadId,
 				resourceId,
 				source: N8N_CHAT_PRODUCTION_SOURCE,
+				messageId: payload.messageId,
 			});
 			return {
 				agentId,
@@ -418,6 +431,7 @@ export class AgentChatController {
 						projectId,
 						threadId,
 						resourceId,
+						messageId,
 					}),
 					userId: req.user.id,
 					resourceId,
@@ -972,8 +986,9 @@ export class AgentChatController {
 		const { projectId, agentId, sessionId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		return {
-			files: mergeSessionFiles(
+		return this.sessionUploadFiles.decorateList(
+			sessionId,
+			mergeSessionFiles(
 				await this.agentChatAttachmentService.listSessionFiles(sessionId, {
 					projectId,
 					agentId,
@@ -983,7 +998,7 @@ export class AgentChatController {
 					agentId,
 				}),
 			),
-		};
+		);
 	}
 
 	@Get('/:agentId/sessions/:sessionId/files/:fileId/content')

@@ -7973,6 +7973,7 @@
 	"instanceAi.tools.workspace_execute_command": "Running command",
 	"instanceAi.tools.workspace_execute_command.skill": "Running skill script",
 	"instanceAi.tools.workspace_execute_command.skillScript": "Running",
+	"instanceAi.tools.workspace_run_javascript": "Running JavaScript",
 	"instanceAi.tools.workspace_get_process_output": "Reading process output",
 	"instanceAi.tools.workspace_list_processes": "Listing processes",
 	"instanceAi.tools.workspace_kill_process": "Stopping process",

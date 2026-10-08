@@ -26,7 +26,7 @@ export function getSandboxWorkspaceSection(workspaceRoot?: string, sessionId?: s
 
 	const outputGuidance =
 		workspaceRoot && sessionId
-			? `\n\nWrite files the user should retrieve only under \`${workspaceRoot}/outputs/${sessionId}\`. Files anywhere else are Scratch Files and are not retrievable.`
+			? `\n\nRead this Session's Attachments from \`$N8N_UPLOADS_DIR\` (absolute: \`${workspaceRoot}/uploads/${sessionId}\`). The on-disk file list is \`$N8N_UPLOADS_MANIFEST\`. Do not open paths listed under skipped. Write files the user should retrieve only under \`$N8N_OUTPUTS_DIR\` (absolute: \`${workspaceRoot}/outputs/${sessionId}\`). Files anywhere else are Scratch Files and are not retrievable. Use \`workspace_run_javascript\` for short scripts (60 s); long jobs stay on \`workspace_execute_command\`.`
 			: '';
 
 	return `## Sandbox workspace
