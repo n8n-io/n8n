@@ -52,7 +52,10 @@ function toAuthTime(value: unknown): Date | undefined {
 				? Number(value)
 				: NaN;
 
-	return Number.isFinite(seconds) && seconds > 0 ? new Date(seconds * 1000) : undefined;
+	if (!Number.isFinite(seconds) || seconds <= 0) return undefined;
+	// A large finite value overflows the Date range and yields an Invalid Date.
+	const date = new Date(seconds * 1000);
+	return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 export function translateClaims(

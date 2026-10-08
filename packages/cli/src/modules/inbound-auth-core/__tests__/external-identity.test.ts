@@ -204,6 +204,7 @@ describe('translateClaims', () => {
 			['zero', 0],
 			['not numeric', 'yesterday'],
 			['an empty string', ''],
+			['beyond the Date range', 1e300],
 		])('leaves authTime absent when auth_time is %s', (_label, auth_time) => {
 			expect(expectOk(translate({ sub: 'u', auth_time })).assurance?.authTime).toBeUndefined();
 		});
