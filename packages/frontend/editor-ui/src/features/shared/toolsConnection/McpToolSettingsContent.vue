@@ -475,7 +475,6 @@ function handleRecovery() {
 
 .footer {
 	flex-shrink: 0;
-	padding-top: var(--spacing--md);
 	border-top: var(--border);
 }
 
