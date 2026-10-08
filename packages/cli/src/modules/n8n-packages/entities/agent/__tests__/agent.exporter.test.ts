@@ -201,14 +201,6 @@ describe('AgentExporter', () => {
 		await expect(exporter.prepare(agent)).rejects.toThrow(ZodError);
 	});
 
-	it('rejects invalid task cron expressions', async () => {
-		const { agent, draft, exporter } = setup();
-		draft.tasks.get(taskId)!.cronExpression = 'not a cron';
-		await expect(exporter.prepare(agent)).rejects.toThrow(
-			'Agent "support_source" task "support_source_task" has an invalid cron expression',
-		);
-	});
-
 	it('omits unused bodies and normalizes an omitted timezone', async () => {
 		const { agent, draft, exporter } = setup();
 		draft.skills.unused = { ...draft.skills['shared-skill'] };
@@ -217,7 +209,7 @@ describe('AgentExporter', () => {
 		delete task.timezone;
 		draft.tasks = new Map([
 			[taskId, task],
-			['unused', { ...task, cronExpression: 'invalid' }],
+			['unused', { ...task }],
 		]);
 		const snapshot = await exporter.prepare(agent);
 		expect(Object.keys(snapshot!.content.skills)).toEqual(['shared-skill']);
@@ -228,7 +220,6 @@ describe('AgentExporter', () => {
 	it('exports empty body maps for a null configuration', async () => {
 		const { agent, draft, exporter } = setup();
 		draft.schema = null;
-		draft.tasks.get(taskId)!.cronExpression = 'invalid';
 		expect((await exporter.prepare(agent))?.content).toEqual({
 			id: agent.id,
 			name: agent.name,

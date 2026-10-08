@@ -17,7 +17,6 @@ import {
 import type { PackageWriter } from '../../io/package-writer';
 import { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { SerializedAgent } from '../../spec/serialized/agent.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 
 @Service()
@@ -63,7 +62,6 @@ export class AgentExporter {
 		}
 
 		const content = this.serializer.serialize(agent, definition, integrations);
-		await this.validateTaskCrons(content);
 		return {
 			projectId: agent.projectId,
 			content,
@@ -91,19 +89,5 @@ export class AgentExporter {
 			formatEntityFile(snapshot.metadata),
 		);
 		return entry;
-	}
-
-	private async validateTaskCrons(agent: SerializedAgent): Promise<void> {
-		if (Object.keys(agent.tasks).length === 0) return;
-		const { isValidCronExpression } = await import(
-			'@/modules/agents/integrations/cron-validation.js'
-		);
-		for (const [id, task] of Object.entries(agent.tasks)) {
-			if (!isValidCronExpression(task.cronExpression)) {
-				throw new PackageExportBlockedError(
-					`Agent "${agent.id}" task "${id}" has an invalid cron expression. Export aborted.`,
-				);
-			}
-		}
 	}
 }
