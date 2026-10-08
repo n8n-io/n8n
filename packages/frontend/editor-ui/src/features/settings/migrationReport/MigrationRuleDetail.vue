@@ -55,9 +55,9 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
-// The page needs only `breakingChanges:list`. Choosing an owner or a state needs
-// `breakingChanges:migrate`, like Migrate.
-const canAssignOwner = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
+// The page needs only `breakingChanges:list`. A migration, a state change or
+// an owner choice needs `breakingChanges:migrate`.
+const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
@@ -197,6 +197,9 @@ function ownerLabel(workflow: AffectedWorkflow): string {
 	);
 }
 
+// Migrate needs the same scope as a state change.
+const showMigrate = computed(() => state.value.migratable && canMigrate.value);
+
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
 		{
@@ -231,7 +234,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			title: '',
 			key: 'actions',
 			value: () => '',
-			width: state.value.migratable ? 160 : 80,
+			width: showMigrate.value ? 160 : 80,
 			disableSort: true,
 		},
 	];
@@ -586,7 +589,7 @@ const sortedWorkflows = computed(() => {
 			</template>
 			<template #[`item.owner`]="{ item }">
 				<N8nUserSelect
-					v-if="canAssignOwner"
+					v-if="canMigrate"
 					size="small"
 					:users="ownerOptionsFor(item)"
 					hide-email-in-label
@@ -615,14 +618,14 @@ const sortedWorkflows = computed(() => {
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canAssignOwner || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
+						!canMigrate || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
 					"
 					@update:model-value="onFindingStatusChange(item, $event)"
 				/>
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions">
-					<template v-if="state.migratable">
+					<template v-if="showMigrate">
 						<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
 							{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
 						</N8nText>
@@ -675,7 +678,6 @@ const sortedWorkflows = computed(() => {
 	font-family: var(--font-family--monospace);
 }
 
-/* A borderless picker, so the owner reads as a value and not as a form field. */
 .ownerLabel {
 	display: flex;
 	align-items: center;

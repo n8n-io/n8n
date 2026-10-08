@@ -8,7 +8,8 @@ import {
 	UpdateMigrationFindingStatusRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
+import { WorkflowSharingService } from '@n8n/backend-services';
+import { AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -21,13 +22,17 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { MigrationOwnerAssignmentService } from './owners/migration-owner-assignment.service';
-import { MigrationFindingQueryService } from './query/migration-finding-query.service';
+import {
+	MigrationFindingQueryService,
+	type ReportScope,
+} from './query/migration-finding-query.service';
 import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from './triage/migration-finding-triage.service';
 import { isWorkflowLevelRule } from './types';
@@ -43,8 +48,22 @@ export class BreakingChangesController {
 		private readonly queryService: MigrationFindingQueryService,
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly triageService: MigrationFindingTriageService,
+		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly ownerAssignmentService: MigrationOwnerAssignmentService,
 	) {}
+
+	/**
+	 * A user who can edit every workflow reads the whole instance. Everyone else
+	 * reads the workflows they can edit, since those are the ones they can fix.
+	 */
+	private async scopeFor(user: User): Promise<ReportScope> {
+		if (hasGlobalScope(user, 'workflow:update')) return { kind: 'instance' };
+		const workflowIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(user, [
+			'workflow:update',
+		]);
+		// A workflow shared into two of the user's projects comes back twice.
+		return { kind: 'workflows', workflowIds: [...new Set(workflowIds)] };
+	}
 
 	/**
 	 * The report overview, read from the finding table. A first read, or a
@@ -53,26 +72,32 @@ export class BreakingChangesController {
 	@Get('/report')
 	@GlobalScope('breakingChanges:list')
 	async getDetectionReport(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
 		const version = query.version ?? DEFAULT_TARGET_VERSION;
+		const scope = await this.scopeFor(req.user);
 		await this.syncService.syncIfStale(version);
-		return await this.queryService.getLightReport(version);
+		return await this.queryService.getLightReport(version, scope);
 	}
 
 	/** Re-scans every workflow, updates the finding table, and returns the fresh overview. */
 	@Post('/report/refresh')
 	@GlobalScope('breakingChanges:list')
 	async regenerate(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
 		const version = query.version ?? DEFAULT_TARGET_VERSION;
+		// A full scan is an instance-wide operation, so a scoped reader may not start one.
+		const scope = await this.scopeFor(req.user);
+		if (scope.kind !== 'instance') {
+			throw new ForbiddenError('Only a user who can edit every workflow can refresh the report');
+		}
 		await this.syncService.sync(version);
-		return await this.queryService.getLightReport(version);
+		return await this.queryService.getLightReport(version, scope);
 	}
 
 	/**
@@ -83,7 +108,7 @@ export class BreakingChangesController {
 	@Get('/report/:ruleId')
 	@GlobalScope('breakingChanges:list')
 	async getDetectionReportForRule(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('ruleId') ruleId: string,
 	): Promise<BreakingChangeRuleDetailResult> {
@@ -95,8 +120,9 @@ export class BreakingChangesController {
 			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
 		}
 		const version = rule.getMetadata().version;
+		const scope = await this.scopeFor(req.user);
 		await this.syncService.syncIfStale(version);
-		return await this.queryService.getRuleFindings(version, ruleId);
+		return await this.queryService.getRuleFindings(version, ruleId, scope);
 	}
 
 	/** Sets the status a user picks for the finding of one rule on one workflow. */

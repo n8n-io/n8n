@@ -95,27 +95,39 @@ export class WorkflowSuggestionActionsService {
 		workflowId: string,
 		suggestionId: string,
 	): Promise<WorkflowSuggestionActionResult> {
-		const user = await this.service.requireEditor(actor.id, workflowId);
-		const found = await this.txRunner.run({}, async (ctx) => {
+		const outcome = await this.discardPending(actor, projectId, workflowId, suggestionId);
+		// Commit the outdated closure before rejecting the old project.
+		if (outcome === 'unavailable') throw new NotFoundError('Suggestion not found.');
+		return await this.service.getProposal(actor, projectId, workflowId, suggestionId);
+	}
+
+	// Result dismissal joins this write so both records commit together.
+	async discardPending(
+		actor: User,
+		projectId: string,
+		workflowId: string,
+		suggestionId: string,
+		ctx: OperationContext = {},
+	): Promise<'discarded' | 'already_closed' | 'unavailable'> {
+		return await this.txRunner.run(ctx, async (ctx) => {
+			const user = await this.service.requireEditor(actor.id, workflowId, ctx);
 			const { suggestion, target } = await this.service.reconcilePending(
 				suggestionId,
 				{ workflowId, projectId },
 				ctx,
 			);
-			if (!target.workflow || target.projectId !== projectId) return false;
+			if (!target.workflow || target.projectId !== projectId) return 'unavailable';
 			if (suggestion.state === 'pending') {
-				await this.suggestions.closePending(
+				const closed = await this.suggestions.closePending(
 					suggestion,
 					'discarded',
 					{ author: 'human', actorId: user.id },
 					ctx,
 				);
+				return closed ? 'discarded' : 'already_closed';
 			}
-			return true;
+			return 'already_closed';
 		});
-		// Commit the outdated closure before rejecting the old project.
-		if (!found) throw new NotFoundError('Suggestion not found.');
-		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
 	}
 
 	private async applySuggestion(

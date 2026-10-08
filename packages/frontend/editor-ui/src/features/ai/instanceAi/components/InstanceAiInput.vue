@@ -957,7 +957,6 @@ const resizable = computed(() => {
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"
-					:thread-id="props.currentThreadId || undefined"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
 			</template>
