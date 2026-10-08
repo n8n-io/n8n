@@ -22,6 +22,7 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		checkIsRepo: vi.fn(),
 		listRemote: vi.fn(),
 		clone: vi.fn(),
+		addRemote: vi.fn(),
 		show: vi.fn(),
 		branch: vi.fn(),
 	};
@@ -309,14 +310,10 @@ describe('PromotionsGitService (git operations)', () => {
 				'--initial-branch=main',
 				paths.nextRepositoryFolder,
 			]);
-			expect(mockGit.raw).toHaveBeenCalledWith([
-				'-C',
-				paths.nextRepositoryFolder,
-				'remote',
-				'add',
-				'origin',
-				remoteUrl,
-			]);
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({ baseDir: paths.nextRepositoryFolder }),
+			);
+			expect(mockGit.addRemote).toHaveBeenCalledWith('origin', remoteUrl);
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
 		});
 

@@ -175,7 +175,11 @@ export class PromotionsGitService {
 								}
 								// branchName is check-ref-format validated and passed without a shell.
 								await git.raw(['init', `--initial-branch=${branchName}`, nextRepositoryFolder]);
-								await git.raw(['-C', nextRepositoryFolder, 'remote', 'add', 'origin', remoteUrl]);
+								// simple-git 4 blocks `-C`, so add the remote from inside the new repository.
+								await simpleGit({ ...BASE_GIT_OPTIONS, baseDir: nextRepositoryFolder }).addRemote(
+									'origin',
+									remoteUrl,
+								);
 							} else {
 								await git.clone(remoteUrl, nextRepositoryFolder, [
 									'--branch',
@@ -539,6 +543,7 @@ export class PromotionsGitService {
 					...options,
 					config,
 					unsafe: { allowUnsafeCredentialHelper: true },
+					allowEnvironment: ['GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_TERMINAL_PROMPT', '0')
 					.env('N8N_GIT_USERNAME', credentials.username)
@@ -557,6 +562,7 @@ export class PromotionsGitService {
 				git = simpleGit({
 					...options,
 					unsafe: { allowUnsafeSshCommand: true },
+					allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_SSH_COMMAND', sshCommand)
 					.env('GIT_TERMINAL_PROMPT', '0');

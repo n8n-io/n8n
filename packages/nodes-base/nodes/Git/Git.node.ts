@@ -18,7 +18,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path';
 import type { ConfigListSummary, LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 import { URL, fileURLToPath } from 'url';
 
 import {
@@ -623,6 +623,8 @@ export class Git implements INodeType {
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: operation === 'clone' ? cloneStagingBase : resolvedRepositoryPath,
 					config: gitConfig,
+					// simple-git rejects GIT_* variables set with `.env()` unless they are listed here.
+					allowEnvironment: ['GIT_TERMINAL_PROMPT', 'GIT_ALLOW_PROTOCOL'],
 					...(Object.keys(unsafe).length > 0 && { unsafe }),
 				};
 

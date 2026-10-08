@@ -3,7 +3,7 @@ import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import simpleGit, { type SimpleGit } from 'simple-git';
+import { simpleGit, type SimpleGit } from 'simple-git';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { Container } from '@n8n/di';
 import { DeploymentConfig, SecurityConfig } from '@n8n/config';
@@ -38,8 +38,7 @@ const mockGit = {
 } as unknown as Mocked<SimpleGit>;
 
 vi.mock('simple-git', () => ({
-	__esModule: true,
-	default: vi.fn(() => mockGit),
+	simpleGit: vi.fn(() => mockGit),
 }));
 
 const mockSimpleGit = vi.mocked(simpleGit);
