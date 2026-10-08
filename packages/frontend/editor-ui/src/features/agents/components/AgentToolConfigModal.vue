@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
@@ -17,6 +18,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const form = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const credentialModalOpen = ref(false);
 const isRestricted = ref(false);
@@ -40,6 +42,14 @@ const removeLabel = computed(() => {
 	}
 	return i18n.baseText('agents.builder.tools.remove');
 });
+
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
 
 function initialTitle(): string {
 	if (props.data.kind === 'mcpServer') return props.data.mcpServer.name;

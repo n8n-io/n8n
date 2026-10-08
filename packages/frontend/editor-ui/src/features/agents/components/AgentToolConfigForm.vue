@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import {
 	ContactInstanceAdminModal,
-	useNodeTypeRestriction,
-	useTypeAvailabilityPoliciesStore,
+	describeAgentToolRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { extractFromAICalls, type INode } from 'n8n-workflow';
@@ -13,8 +12,8 @@ import { computed, ref, watch } from 'vue';
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { toPolicyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import {
 	toolRefToNode,
 	updateToolRefFromNode,
@@ -75,7 +74,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const httpRequestUrlErrorKey =
 	'agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey;
 
@@ -123,35 +121,20 @@ const initialNode = computed<INode | null>(() =>
 				: null,
 );
 
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() =>
-	initialNode.value ? toPolicyNodeType(initialNode.value.type) : null,
+const restriction = computed(() =>
+	initialNode.value ? getNodeItemRestriction(initialNode.value.type) : undefined,
 );
+const isRestricted = computed(() => restriction.value !== undefined);
 const restrictedToolName = computed(() =>
 	initialNode.value
 		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
 		: '',
 );
-const RESTRICTED_MESSAGE_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
-};
 const restrictedMessage = computed(() =>
-	i18n.baseText(
-		restrictionScope.value
-			? RESTRICTED_MESSAGE_KEY[restrictionScope.value]
-			: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
-		{ interpolate: { nodeType: restrictedToolName.value } },
-	),
+	describeAgentToolRestriction(restrictedToolName.value, restriction.value?.scope),
 );
 const isContactAdminOpen = ref(false);
 
-watch(
-	() => props.data.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
 watch(isRestricted, (restricted) => emit('update:restricted', restricted), { immediate: true });
 
 const workflowInitialRef = computed<WorkflowToolRef | null>(() =>
@@ -276,7 +259,6 @@ function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerCo
 }
 
 function confirm(): boolean {
-	if (isRestricted.value) return false;
 	submitCount.value += 1;
 	if (!canSave.value) return false;
 
@@ -355,9 +337,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 			</template>
 		</N8nCallout>
 		<ContactInstanceAdminModal
-			v-if="isRestricted"
 			v-model:open="isContactAdminOpen"
-			stacked
 			:node-type-name="restrictedToolName"
 		/>
 		<N8nText

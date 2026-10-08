@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
 import {
+	describeAgentToolRestriction,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,
@@ -108,5 +109,17 @@ describe('useNodeTypeRestriction', () => {
 			expect(isRestricted.value).toBe(true);
 			expect(restrictionScope.value).toBe('project');
 		});
+	});
+
+	it('describes an agent tool restriction by scope', () => {
+		expect(describeAgentToolRestriction('Slack', 'instance')).toBe(
+			"Slack is restricted on this instance. The agent can't use it.",
+		);
+		expect(describeAgentToolRestriction('Slack', 'project')).toBe(
+			"Slack is restricted in this project. The agent can't use it.",
+		);
+		expect(describeAgentToolRestriction('Slack')).toBe(
+			"Slack is restricted. The agent can't use it.",
+		);
 	});
 });

@@ -867,6 +867,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 	if (item.disabled) return;
 	if (item.status === 'connecting') return;
 	const isRestricted = item.kind === 'node' && Boolean(item.restriction);
+	if (isRestricted && !hasToolConnection(item.status)) return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
@@ -901,7 +902,6 @@ function handleRowActivate(item: ToolConnectionItem) {
 		}
 		return;
 	}
-	if (isRestricted) return;
 
 	// The row body activates the same action as the Install button, so a disabled
 	// (non-admin) or in-flight install must not be reachable through it.

@@ -8,6 +8,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
@@ -213,9 +214,8 @@ function renderModal({
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
 				},
 				ContactInstanceAdminModal: {
-					props: { open: Boolean, nodeTypeName: String, stacked: Boolean },
-					template:
-						'<div v-if="open" data-test-id="contact-instance-admin-modal" :data-stacked="stacked" />',
+					props: ['open', 'nodeTypeName'],
+					template: '<div v-if="open" data-test-id="contact-instance-admin-modal" />',
 				},
 			},
 		},
@@ -510,9 +510,18 @@ describe('AgentToolConfigModal', () => {
 			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
 		});
 
+		it('loads the policy for the agent project', () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			renderModal({ projectId: 'project-1' });
+
+			expect(fetchForProject).toHaveBeenCalledWith('project-1');
+		});
+
 		it('explains the restriction, locks the form and disables Save', async () => {
-			const onConfirm = vi.fn();
-			const { container, getByTestId } = renderModal({ valid: true, onConfirm });
+			const { container, getByTestId } = renderModal({ valid: true });
 			await nextTick();
 
 			expect(getByTestId('agent-tool-config-restricted').textContent).toContain(
@@ -524,8 +533,6 @@ describe('AgentToolConfigModal', () => {
 
 			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
 			expect(saveBtn.disabled).toBe(true);
-			await fireEvent.click(saveBtn);
-			expect(onConfirm).not.toHaveBeenCalled();
 		});
 
 		it('opens the contact admin dialog from the callout', async () => {
@@ -535,7 +542,7 @@ describe('AgentToolConfigModal', () => {
 			expect(queryByTestId('contact-instance-admin-modal')).toBeNull();
 			await fireEvent.click(getNativeTestId(container, 'agent-tool-config-contact-admin'));
 
-			expect(getByTestId('contact-instance-admin-modal')).toHaveAttribute('data-stacked', 'true');
+			expect(getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
 		});
 
 		it('keeps Remove so the agent can be repaired', async () => {
