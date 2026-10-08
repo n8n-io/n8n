@@ -39,6 +39,11 @@ const title = computed(() =>
 	}),
 );
 
+// Leaving the field empty shows no error. The "required" error waits for a submit.
+function onBlur() {
+	if (token.value.trim() !== '') touched.value = true;
+}
+
 const tokenError = computed(() => {
 	const key = accessTokenError(token.value);
 	if (key === undefined || !(touched.value || submitAttempted.value)) return undefined;
@@ -113,7 +118,7 @@ function onCloseAutoFocus(event: Event) {
 				:help="i18n.baseText('settings.linkedInstances.form.token.helper')"
 				:error="tokenError"
 				data-test-id="change-token-input"
-				@blur="touched = true"
+				@blur="onBlur"
 			/>
 			<N8nNotice
 				v-if="serverError"

@@ -37,9 +37,14 @@ const fields = {
 	token: useTemplateRef<InstanceType<typeof LinkFormField>>('tokenField'),
 };
 
-const errors = computed(() =>
-	validateLinkForm({ name: name.value, url: url.value, token: token.value }),
-);
+const values = computed(() => ({ name: name.value, url: url.value, token: token.value }));
+const errors = computed(() => validateLinkForm(values.value));
+
+// Leaving an empty field shows no error, so a user can move through the form freely.
+// The "required" errors wait for a submit.
+function onBlur(field: Field) {
+	if (values.value[field].trim() !== '') touched[field] = true;
+}
 
 // An error shows after the user leaves the field or tries to submit, not while they type.
 function errorFor(field: Field): string | undefined {
@@ -107,7 +112,12 @@ function onCloseAutoFocus(event: Event) {
 		@close-auto-focus="onCloseAutoFocus"
 		@update:open="emit('update:open', $event)"
 	>
-		<form :class="$style.form" novalidate data-test-id="link-instance-form" @submit.prevent="submit">
+		<form
+			:class="$style.form"
+			novalidate
+			data-test-id="link-instance-form"
+			@submit.prevent="submit"
+		>
 			<LinkFormField
 				id="link-instance-name"
 				ref="nameField"
@@ -116,7 +126,7 @@ function onCloseAutoFocus(event: Event) {
 				:placeholder="i18n.baseText('settings.linkedInstances.form.name.placeholder')"
 				:error="errorFor('name')"
 				data-test-id="link-instance-name-input"
-				@blur="touched.name = true"
+				@blur="onBlur('name')"
 			/>
 			<LinkFormField
 				id="link-instance-url"
@@ -126,7 +136,7 @@ function onCloseAutoFocus(event: Event) {
 				:placeholder="i18n.baseText('settings.linkedInstances.form.url.placeholder')"
 				:error="errorFor('url')"
 				data-test-id="link-instance-url-input"
-				@blur="touched.url = true"
+				@blur="onBlur('url')"
 			/>
 			<LinkFormField
 				id="link-instance-token"
@@ -137,7 +147,7 @@ function onCloseAutoFocus(event: Event) {
 				:help="i18n.baseText('settings.linkedInstances.form.token.helper')"
 				:error="errorFor('token')"
 				data-test-id="link-instance-token-input"
-				@blur="touched.token = true"
+				@blur="onBlur('token')"
 			/>
 			<N8nNotice
 				v-if="serverError"

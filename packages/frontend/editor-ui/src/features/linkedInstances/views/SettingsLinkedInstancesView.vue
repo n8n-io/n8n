@@ -43,6 +43,7 @@ let linkedId: string | undefined;
 
 // Until the first read ends, the page shows a skeleton instead of an empty list.
 const isFirstLoad = computed(() => !store.hasLoaded && !store.loadFailed);
+const isBusy = computed(() => isFirstLoad.value || store.isLoading);
 
 const focus = useFocusReturn(() => page.value?.$el);
 
@@ -158,7 +159,7 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<N8nSettingsSection :aria-busy="store.isLoading || undefined">
+		<N8nSettingsSection :aria-busy="isBusy || undefined">
 			<N8nLoading2 v-if="isFirstLoad" :rows="3" :shrink-last="false" />
 			<N8nEmptyState
 				v-else-if="store.loadFailed"

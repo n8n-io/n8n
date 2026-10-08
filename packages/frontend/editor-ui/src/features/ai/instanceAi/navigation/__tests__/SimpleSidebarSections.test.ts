@@ -66,7 +66,14 @@ const Parent = defineComponent({
 const renderSections = createComponentRenderer(Parent);
 const storage = new Map<string, string>();
 
-function render(props: Record<string, unknown> = {}) {
+type ParentProps = {
+	collapsed?: boolean;
+	items?: WorkspaceItem[];
+	nestedItemIds?: string[];
+	activeTabId?: string;
+};
+
+function render(props: ParentProps = {}) {
 	return renderSections({ props, global: { plugins: [createTestRouter()] } });
 }
 

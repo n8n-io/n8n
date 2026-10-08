@@ -224,9 +224,12 @@ describe('validateLinkForm', () => {
 		});
 	});
 
-	it.each(['name', 'url', 'token'] as const)('reports only the %s field when only it fails', (field) => {
-		const values = { ...valid(), [field]: '' };
+	it.each(['name', 'url', 'token'] as const)(
+		'reports only the %s field when only it fails',
+		(field) => {
+			const values = { ...valid(), [field]: '' };
 
-		expect(Object.keys(validateLinkForm(values))).toEqual([field]);
-	});
+			expect(Object.keys(validateLinkForm(values))).toEqual([field]);
+		},
+	);
 });

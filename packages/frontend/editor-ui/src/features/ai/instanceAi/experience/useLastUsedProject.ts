@@ -56,6 +56,7 @@ export function useLastUsedProject() {
 	function lastUsedProjectId(): string | undefined {
 		const userId = usersStore.currentUserId;
 		if (!userId) return undefined;
+		// This read makes a computed caller run again after each write.
 		void storedVersion.value;
 		return readProjectId(userId);
 	}

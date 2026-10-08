@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { ExperienceMode } from '@n8n/api-types';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import { stubLocalStorage } from '../../navigation/__tests__/navigationFixtures';
+import {
+	configureInstanceAi,
+	stubLocalStorage,
+} from '../../navigation/__tests__/navigationFixtures';
 import { resetExperienceModeState } from '../useExperienceMode';
 import { useNewChatProject } from '../useNewChatProject';
 
@@ -28,15 +30,9 @@ let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let scope = effectScope();
 
 function useMode(mode: ExperienceMode | 'flag-off') {
-	useSettingsStore().moduleSettings = {
-		'instance-ai': {
-			enabled: true,
-			experience:
-				mode === 'flag-off'
-					? { enabled: false, defaultMode: 'power' }
-					: { enabled: true, defaultMode: mode },
-		},
-	} as ReturnType<typeof useSettingsStore>['moduleSettings'];
+	configureInstanceAi(
+		mode === 'flag-off' ? { experienceModes: false } : { experienceModes: true, defaultMode: mode },
+	);
 }
 
 function myProjects(teamScopes: Record<string, string[]>) {

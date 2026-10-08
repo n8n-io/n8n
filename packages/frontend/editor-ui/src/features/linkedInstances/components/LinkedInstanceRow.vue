@@ -58,7 +58,11 @@ function onMenuSelect(id: string) {
 </script>
 
 <template>
-	<N8nSettingsRow layout="custom" :data-instance-id="instance.id" data-test-id="linked-instance-row">
+	<N8nSettingsRow
+		layout="custom"
+		:data-instance-id="instance.id"
+		data-test-id="linked-instance-row"
+	>
 		<div :class="$style.content">
 			<div :class="$style.info">
 				<div :class="$style.titleLine">

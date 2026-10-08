@@ -6,10 +6,13 @@ import AssistantAutomationsSection from './AssistantAutomationsSection.vue';
 import AssistantChatsSection from './AssistantChatsSection.vue';
 import SimpleWorkspaceDisclosure from './SimpleWorkspaceDisclosure.vue';
 
+/** A page that Simple mode moves from the top group into the Workspace. */
+type WorkspacePage = { item: IMenuItem; testId: string };
+
 const props = defineProps<{
 	collapsed: boolean;
 	/** The top-group items that Simple mode moves into the Workspace, only the ones the user can open. */
-	items: ReadonlyArray<{ item: IMenuItem; testId: string }>;
+	items: readonly WorkspacePage[];
 	/** The ids of the rows that the sidebar shows below these items in the Workspace (favourites, projects). */
 	nestedItemIds: readonly string[];
 	/** The sidebar item of the current page. */

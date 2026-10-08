@@ -83,7 +83,8 @@ export class TransferService {
 	/**
 	 * Exports the workflow here and imports it into the default project of the link. A repeated
 	 * move updates the same copy. Then puts the copy live and turns off the workflow here, when
-	 * asked. A failure after the import is a warning in the result.
+	 * asked. The workflow here stays on when the new version did not go live there. A failure
+	 * after the import is a warning in the result.
 	 * @throws {NotFoundError} when the user has no such link or cannot read the workflow
 	 * @throws {ForbiddenError} when `deactivateLocal` is set and the user cannot turn off the workflow
 	 * @throws {BadRequestError} when the linked instance cannot be used or refuses the workflow
