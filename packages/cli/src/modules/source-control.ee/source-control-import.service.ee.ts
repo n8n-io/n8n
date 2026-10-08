@@ -863,9 +863,13 @@ export class SourceControlImportService {
 		// endpoints. A re-sync that leaves the deprecated nodes untouched is
 		// allowed; introducing or in-place editing them through git is not.
 		if (existingWorkflow) {
-			this.deprecatedNodesValidationService.validateOnUpdate(nodes, existingWorkflow.nodes ?? []);
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				nodes,
+				existingWorkflow.nodes ?? [],
+				id,
+			);
 		} else {
-			this.deprecatedNodesValidationService.validateOnCreate(nodes);
+			this.deprecatedNodesValidationService.validateOnCreate(nodes, id);
 		}
 
 		await this.redactionEnforcementService.assertPolicyChangeAllowed(

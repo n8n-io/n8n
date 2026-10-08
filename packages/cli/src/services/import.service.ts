@@ -172,9 +172,13 @@ export class ImportService {
 			// deprecated nodes is allowed, but introducing new ones is not).
 			const existingNodes = workflow.id ? existingNodesByWorkflow.get(workflow.id) : undefined;
 			if (existingNodes) {
-				this.deprecatedNodesValidationService.validateOnUpdate(workflow.nodes, existingNodes);
+				this.deprecatedNodesValidationService.validateOnUpdate(
+					workflow.nodes,
+					existingNodes,
+					workflow.id,
+				);
 			} else {
-				this.deprecatedNodesValidationService.validateOnCreate(workflow.nodes);
+				this.deprecatedNodesValidationService.validateOnCreate(workflow.nodes, workflow.id);
 			}
 
 			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {

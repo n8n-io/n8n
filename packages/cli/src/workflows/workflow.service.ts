@@ -674,6 +674,7 @@ export class WorkflowService {
 			this.deprecatedNodesValidationService.validateOnUpdate(
 				workflowUpdateData.nodes,
 				workflow.nodes,
+				workflow.id,
 			);
 		}
 

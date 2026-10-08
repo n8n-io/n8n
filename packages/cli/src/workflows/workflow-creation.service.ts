@@ -224,13 +224,13 @@ export class WorkflowCreationService {
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 			rules,
 		);
+		this.deprecatedNodesValidationService.validateOnCreate(newWorkflow.nodes, newWorkflow.id);
 
 		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 			if (!batchContext) {
 				await this.findParentFolderInProjectOrFail(parentFolderId, effectiveProjectId);
 			}
 		}
-		this.deprecatedNodesValidationService.validateOnCreate(newWorkflow.nodes);
 
 		if ('pinData' in newWorkflow) {
 			WorkflowHelpers.validatePinDataSize(newWorkflow);

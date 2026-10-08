@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { NodesConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
@@ -19,6 +20,7 @@ import { NodeTypes } from '@/node-types';
 @Service()
 export class DeprecatedNodesValidationService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly nodesConfig: NodesConfig,
 		private readonly nodeTypes: NodeTypes,
 	) {}
@@ -27,7 +29,7 @@ export class DeprecatedNodesValidationService {
 	 * Throws if the incoming workflow contains any deprecated node. Use on
 	 * create and import paths where there is no prior workflow state.
 	 */
-	validateOnCreate(nodes: INode[]): void {
+	validateOnCreate(nodes: INode[], workflowId?: string): void {
 		if (!this.nodesConfig.blockDeprecated) return;
 
 		const violations: DeprecatedNodeViolation[] = [];
@@ -37,9 +39,7 @@ export class DeprecatedNodesValidationService {
 			}
 		}
 
-		if (violations.length > 0) {
-			throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
-		}
+		this.throwIfViolations(violations, workflowId);
 	}
 
 	/**
@@ -47,18 +47,18 @@ export class DeprecatedNodesValidationService {
 	 * an existing one in any way. Identity is matched by node `id`.
 	 *
 	 * Allowed:
-	 *  - keeping a deprecated node fully untouched
+	 *  - keeping a deprecated node untouched, apart from its position on the canvas
 	 *  - replacing a deprecated node with a non-deprecated one at the same id
 	 *    (the migration path for version-level deprecation)
 	 *  - deleting a deprecated node entirely
 	 *
 	 * Blocked:
 	 *  - adding a deprecated node
-	 *  - any in-place change to a deprecated node (parameters, name, position,
-	 *    typeVersion downgrade, etc.). The only way to "change" a deprecated
+	 *  - any in-place change to a deprecated node's type, typeVersion, parameters,
+	 *    credentials, name or disabled state. The only way to "change" a deprecated
 	 *    node is to remove it or upgrade it off the deprecated version.
 	 */
-	validateOnUpdate(incomingNodes: INode[], existingNodes: INode[]): void {
+	validateOnUpdate(incomingNodes: INode[], existingNodes: INode[], workflowId?: string): void {
 		if (!this.nodesConfig.blockDeprecated) return;
 
 		const existingById = new Map(existingNodes.map((n) => [n.id, n]));
@@ -75,14 +75,34 @@ export class DeprecatedNodesValidationService {
 				continue;
 			}
 
-			if (!isEqual(before, incoming)) {
+			if (!isEqual(this.frozenFields(before), this.frozenFields(incoming))) {
 				violations.push({ kind: 'edited', nodeName: incoming.name, nodeType: incoming.type });
 			}
 		}
 
-		if (violations.length > 0) {
-			throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
-		}
+		this.throwIfViolations(violations, workflowId);
+	}
+
+	private frozenFields(node: INode) {
+		return {
+			type: node.type,
+			typeVersion: node.typeVersion,
+			parameters: node.parameters,
+			credentials: node.credentials ?? {},
+			name: node.name,
+			disabled: node.disabled ?? false,
+		};
+	}
+
+	private throwIfViolations(violations: DeprecatedNodeViolation[], workflowId?: string) {
+		if (violations.length === 0) return;
+
+		this.logger.warn('Rejected workflow save with deprecated nodes', {
+			workflowId,
+			violations: violations.map(({ kind, nodeType }) => ({ kind, nodeType })),
+		});
+
+		throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
 	}
 
 	private isDeprecated(node: INode): boolean {

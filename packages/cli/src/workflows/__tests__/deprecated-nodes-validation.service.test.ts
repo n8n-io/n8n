@@ -1,8 +1,12 @@
+import type { Logger } from '@n8n/backend-common';
 import type { NodesConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
+import {
+	DeprecatedNodesError,
+	type DeprecatedNodeViolation,
+} from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
@@ -10,6 +14,7 @@ describe('DeprecatedNodesValidationService', () => {
 	let validator: DeprecatedNodesValidationService;
 	let nodesConfig: NodesConfig;
 	let nodeTypes: ReturnType<typeof mock<NodeTypes>>;
+	let logger: ReturnType<typeof mock<Logger>>;
 
 	const nodeTypeFor = (type: string, deprecated?: boolean): INodeType =>
 		mock<INodeType>({
@@ -22,6 +27,7 @@ describe('DeprecatedNodesValidationService', () => {
 	beforeEach(() => {
 		nodesConfig = { blockDeprecated: true } as NodesConfig;
 		nodeTypes = mock<NodeTypes>();
+		logger = mock<Logger>();
 
 		// By default: function + functionItem are deprecated, everything else isn't.
 		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
@@ -31,8 +37,18 @@ describe('DeprecatedNodesValidationService', () => {
 			return nodeTypeFor(type, false);
 		});
 
-		validator = new DeprecatedNodesValidationService(nodesConfig, nodeTypes);
+		validator = new DeprecatedNodesValidationService(logger, nodesConfig, nodeTypes);
 	});
+
+	const expectViolations = (run: () => void, violations: DeprecatedNodeViolation[]) => {
+		try {
+			run();
+			fail('expected to throw');
+		} catch (error) {
+			expect(error).toBeInstanceOf(DeprecatedNodesError);
+			expect((error as DeprecatedNodesError).meta.violations).toEqual(violations);
+		}
+	};
 
 	const makeNode = (overrides: Partial<INode> & Pick<INode, 'id' | 'type'>): INode => ({
 		name: overrides.id,
@@ -94,7 +110,7 @@ describe('DeprecatedNodesValidationService', () => {
 			expect(() => validator.validateOnUpdate([node], [node])).not.toThrow();
 		});
 
-		it('blocks position-only changes to a deprecated node', () => {
+		it('allows position-only changes to a deprecated node', () => {
 			const before = makeNode({
 				id: 'a',
 				type: 'n8n-nodes-base.function',
@@ -102,7 +118,74 @@ describe('DeprecatedNodesValidationService', () => {
 				position: [0, 0],
 			});
 			const after = { ...before, position: [200, 100] as [number, number] };
+			expect(() => validator.validateOnUpdate([after], [before])).not.toThrow();
+		});
+
+		it('allows a structurally equal copy of a deprecated node', () => {
+			const before = makeNode({
+				id: 'a',
+				type: 'n8n-nodes-base.function',
+				parameters: { functionCode: 'return items;' },
+				credentials: { someApi: { id: '1', name: 'Some API' } },
+			});
+			expect(() => validator.validateOnUpdate([structuredClone(before)], [before])).not.toThrow();
+		});
+
+		it('treats absent and default disabled and credentials as unchanged', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function' });
+			const after = { ...before, disabled: false, credentials: {} };
+			expect(() => validator.validateOnUpdate([after], [before])).not.toThrow();
+		});
+
+		it('blocks disabling an existing deprecated node', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after = { ...before, disabled: true };
 			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot modify.*Func/);
+		});
+
+		it('blocks changing the credentials of an existing deprecated node', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after = { ...before, credentials: { someApi: { id: '2', name: 'Other API' } } };
+			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot modify.*Func/);
+		});
+
+		it('treats a deprecated node sent with a new id as added', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after = { ...before, id: 'b' };
+			expectViolations(
+				() => validator.validateOnUpdate([after], [before]),
+				[{ kind: 'added', nodeName: 'Func', nodeType: 'n8n-nodes-base.function' }],
+			);
+		});
+
+		it('treats a deprecated node sent without an id as added', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after = { ...before, id: undefined as unknown as string };
+			expectViolations(
+				() => validator.validateOnUpdate([after], [before]),
+				[{ kind: 'added', nodeName: 'Func', nodeType: 'n8n-nodes-base.function' }],
+			);
+		});
+
+		it('treats a deprecated node reusing the id of a non-deprecated node as added', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.set', name: 'Set' });
+			const after = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Set' });
+			expectViolations(
+				() => validator.validateOnUpdate([after], [before]),
+				[{ kind: 'added', nodeName: 'Set', nodeType: 'n8n-nodes-base.function' }],
+			);
+		});
+
+		it('logs a warning with the workflow id when it rejects a save', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after = { ...before, parameters: { functionCode: 'return [];' } };
+			expect(() => validator.validateOnUpdate([after], [before], 'wf-1')).toThrow(
+				DeprecatedNodesError,
+			);
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				workflowId: 'wf-1',
+				violations: [{ kind: 'edited', nodeType: 'n8n-nodes-base.function' }],
+			});
 		});
 
 		it('blocks adding a deprecated node that did not exist before', () => {
