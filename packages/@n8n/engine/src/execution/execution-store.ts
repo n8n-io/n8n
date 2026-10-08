@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../graph';
+import type { StoredWorkflowGraph } from '../graph';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
@@ -19,7 +19,8 @@ interface BaseExecutionRecord {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
-	graph: WorkflowGraph;
+	/** As stored: the engine's own marks on top of what the caller sent. */
+	graph: StoredWorkflowGraph;
 	/** Stored for the read path only. Nothing on the execution path reads it. */
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
