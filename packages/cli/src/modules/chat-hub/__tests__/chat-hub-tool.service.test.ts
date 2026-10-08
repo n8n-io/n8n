@@ -339,6 +339,28 @@ describe('ChatHubToolService', () => {
 			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
 		});
 
+		it('rejects enabling a stored tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({ definition: deprecatedCodeTool, enabled: false }),
+			);
+
+			await expect(service.updateTool('tool-1', mockUser, { enabled: true })).rejects.toThrow(
+				DeprecatedNodesError,
+			);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('allows disabling a stored tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(makeTool({ definition: deprecatedCodeTool }));
+			chatToolRepository.updateTool.mockResolvedValue(makeTool({ enabled: false }));
+
+			await service.updateTool('tool-1', mockUser, { enabled: false });
+
+			expect(chatToolRepository.updateTool).toHaveBeenCalled();
+		});
+
 		it('should update tool definition and denormalized fields', async () => {
 			const existingTool = makeTool();
 			const updatedDef: INode = { ...mockDefinition, name: 'Updated Tool' };

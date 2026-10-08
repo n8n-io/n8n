@@ -130,6 +130,11 @@ export class ChatHubToolService {
 				updateData.typeVersion = updates.definition.typeVersion ?? 1;
 			}
 			if (updates.enabled !== undefined) {
+				if (updates.enabled) {
+					this.deprecatedNodesValidationService.validateOnCreate([
+						updates.definition ?? existingTool.definition,
+					]);
+				}
 				updateData.enabled = updates.enabled;
 			}
 
