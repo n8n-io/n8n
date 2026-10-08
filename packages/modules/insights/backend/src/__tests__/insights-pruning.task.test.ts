@@ -22,9 +22,8 @@ describe('InsightsPruningTask', () => {
 			kind: 'interval',
 			intervalSeconds: insightsConfig.pruneCheckIntervalHours * 3600,
 		});
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
-		expect(task.retryDelaySeconds).toBe(1);
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
+		expect(task.target.leaderTimer?.retryDelaySeconds).toBe(1);
 	});
 
 	it('should keep the whole-second rounding of a half-second prune-check cadence', () => {
@@ -48,9 +47,10 @@ describe('InsightsPruningTask', () => {
 		({ type, statementTimeoutMs, timeoutSeconds }) => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 
-			expect(new InsightsPruningTask(insightsConfig, database, pruningService).timeoutSeconds).toBe(
-				timeoutSeconds,
-			);
+			expect(
+				new InsightsPruningTask(insightsConfig, database, pruningService).target.scheduler
+					.timeoutSeconds,
+			).toBe(timeoutSeconds);
 		},
 	);
 
