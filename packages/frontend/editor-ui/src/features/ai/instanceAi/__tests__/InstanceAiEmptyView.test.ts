@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { TELEMETRY_EVENT } from '@n8n/telemetry'; // Experiment cleanup (124_workflow_previews_above_assistant)
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -38,6 +39,10 @@ const {
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
+		// Experiment cleanup (124_workflow_previews_above_assistant)
+		workflowPreviewsAboveAssistantEnabled: { value: false },
+		workflowPreviewsAboveAssistantVariant: { value: null as 'control' | 'variant' | null },
+		// EOF Experiment cleanup
 		splitBelowInputVariant: { value: false },
 		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
 		inspirationFromTaxonomyTreatmentEnabled: { value: false },
@@ -121,6 +126,33 @@ vi.mock('@/experiments/instanceAiPromptSuggestionsV2', () => ({
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION: 'v2',
 	InstanceAiPromptSuggestionsV2: promptSuggestionsV2Component,
 }));
+
+// Experiment cleanup (124_workflow_previews_above_assistant)
+vi.mock('@/experiments/workflowPreviewsAboveAssistant', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowPreviewsAboveAssistantExperiment: () => ({
+			isFeatureEnabled: computed(() => experimentMocks.workflowPreviewsAboveAssistantEnabled.value),
+			variant: computed(() => experimentMocks.workflowPreviewsAboveAssistantVariant.value),
+		}),
+		WorkflowPreviewsAboveAssistant: {
+			name: 'WorkflowPreviewsAboveAssistantStub',
+			emits: ['preview-prompt', 'use-example'],
+			template: `<div data-test-id="workflow-previews-above-assistant">
+				<button
+					data-test-id="workflow-preview-try-example"
+					@mouseenter="$emit('preview-prompt', 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt')"
+					@mouseleave="$emit('preview-prompt', null)"
+					@click="$emit('use-example', {
+						id: 'score-my-leads',
+						promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt',
+					})"
+				/>
+			</div>`,
+		},
+	};
+});
+// EOF Experiment cleanup
 
 vi.mock('@/experiments/instanceAiSplitEmptyState', async () => {
 	const { computed, h } = await import('vue');
@@ -277,6 +309,7 @@ const InstanceAiInputStub = defineComponent({
 		suggestionCatalogVersion: { type: String, required: false },
 		suggestionTelemetryPayload: { type: Object, required: false },
 		placeholderKey: { type: String, required: false },
+		previewPromptKey: { type: String, required: false }, // Experiment cleanup (124_workflow_previews_above_assistant)
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
@@ -384,6 +417,13 @@ const InstanceAiInputStub = defineComponent({
 					{ 'data-test-id': 'instance-ai-input-placeholder-key' },
 					props.placeholderKey ?? 'unset',
 				),
+				// Experiment cleanup (124_workflow_previews_above_assistant)
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-preview-prompt-key' },
+					props.previewPromptKey ?? 'unset',
+				),
+				// EOF Experiment cleanup
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-fixed-rows' },
@@ -469,6 +509,10 @@ describe('InstanceAiEmptyView', () => {
 		store.quotaLocked = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
+		// Experiment cleanup (124_workflow_previews_above_assistant)
+		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = false;
+		experimentMocks.workflowPreviewsAboveAssistantVariant.value = null;
+		// EOF Experiment cleanup
 		experimentMocks.splitBelowInputVariant.value = false;
 		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
@@ -523,6 +567,88 @@ describe('InstanceAiEmptyView', () => {
 			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
 		);
 	});
+
+	// Experiment cleanup (124_workflow_previews_above_assistant)
+	it('scaffolds the workflow preview layout without composer suggestions when enabled', () => {
+		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('workflow-previews-above-assistant-slot')).toBeInTheDocument();
+		expect(getByTestId('workflow-previews-above-assistant')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-empty-layout').className).toContain('workflowPreviewsLayout');
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
+	});
+
+	it.each(['control', 'variant'] as const)(
+		'reports the empty state view once with the %s variant of the workflow previews experiment',
+		(variant) => {
+			experimentMocks.workflowPreviewsAboveAssistantVariant.value = variant;
+			experimentMocks.workflowPreviewsAboveAssistantEnabled.value = variant === 'variant';
+
+			renderView();
+
+			expect(telemetryTrack).toHaveBeenCalledTimes(1);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED,
+				{ workflowPreviewsAboveAssistantVariant: variant },
+			);
+		},
+	);
+
+	it('does not report the empty state view when the user is not in the workflow previews experiment', () => {
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED,
+			expect.anything(),
+		);
+	});
+
+	it.each([
+		['proactive starter', () => (experimentMocks.proactiveAgentEnabled.value = true)],
+		['split layout', () => (experimentMocks.splitBelowInputVariant.value = true)],
+	])('does not report the empty state view when the %s replaces the layout', (_, arrange) => {
+		experimentMocks.workflowPreviewsAboveAssistantVariant.value = 'control';
+		arrange();
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED,
+			expect.anything(),
+		);
+	});
+
+	it('previews the example prompt in the placeholder and puts it in the composer on click', async () => {
+		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
+		const promptKey = 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt';
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-preview-prompt-key')).toHaveTextContent('unset');
+
+		await fireEvent.mouseEnter(getByTestId('workflow-preview-try-example'));
+		expect(getByTestId('instance-ai-input-preview-prompt-key')).toHaveTextContent(promptKey);
+
+		await fireEvent.mouseLeave(getByTestId('workflow-preview-try-example'));
+		expect(getByTestId('instance-ai-input-preview-prompt-key')).toHaveTextContent('unset');
+
+		await fireEvent.click(getByTestId('workflow-preview-try-example'));
+		await nextTick();
+
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
+			'Build a workflow that triggers when a new lead is created in Salesforce.',
+		);
+		expect(getByTestId('instance-ai-centered-input').className).toContain('promptInjected');
+		expect(replaceMock).not.toHaveBeenCalled();
+
+		await fireEvent.animationEnd(getByTestId('instance-ai-centered-input'));
+		expect(getByTestId('instance-ai-centered-input').className).not.toContain('promptInjected');
+	});
+	// EOF Experiment cleanup
 
 	it('passes personalized card suggestions when the v4 cards treatment resolves metadata', () => {
 		experimentMocks.personalizedPromptVariant.value = 'variant-cards';

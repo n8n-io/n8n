@@ -44,6 +44,7 @@ const setupSnapshotProps = {
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
@@ -193,6 +194,18 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
 		}),
 	},
+	// Experiment cleanup (124_workflow_previews_above_assistant)
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED: {
+		name: 'AI Assistant workflow previews above assistant exposed',
+		description:
+			'A user assigned to the workflow previews experiment (124) reached the n8n Assistant empty state, the view that hosts the previews above the chat input, including the control variant. Fires once per visit to that view. Does not fire on a thread, nor for the proactive starter or split empty-state layouts, which replace this view.',
+		properties: z.object({
+			workflowPreviewsAboveAssistantVariant: workflowPreviewsAboveAssistantVariant.describe(
+				'Variant of the 124_workflow_previews_above_assistant feature flag the user saw',
+			),
+		}),
+	},
+	// EOF Experiment cleanup
 	FREE_NUDGE_DISMISSED: {
 		name: 'Instance AI free nudge dismissed',
 		description: 'The user dismissed a visible Instance AI free-use nudge.',

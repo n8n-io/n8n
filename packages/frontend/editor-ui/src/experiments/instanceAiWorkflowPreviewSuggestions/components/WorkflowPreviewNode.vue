@@ -62,7 +62,9 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 			</Transition>
 			<span v-else :class="$style.iconFallback">{{ props.node.label.charAt(0) }}</span>
 		</div>
-		<span :class="$style.label">{{ props.node.label }}</span>
+		<slot name="label">
+			<span :class="$style.label">{{ props.node.label }}</span>
+		</slot>
 	</div>
 </template>
 
@@ -85,9 +87,12 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 	border-radius: var(--radius--lg);
 	background: var(--node--color--background, var(--color--background--light-3));
 	border: 1.5px solid
-		light-dark(
-			oklch(from var(--color--neutral-black) l c h / 0.1),
-			oklch(from var(--color--neutral-white) l c h / 0.15)
+		var(
+			--node--border-color,
+			light-dark(
+				oklch(from var(--color--neutral-black) l c h / 0.1),
+				oklch(from var(--color--neutral-white) l c h / 0.15)
+			)
 		);
 	color: var(--node--icon--color, var(--color--foreground--shade-1));
 	transition: border-color 0.2s ease;
