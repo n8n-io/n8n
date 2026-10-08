@@ -12,8 +12,8 @@ export const workflowNodeFieldDocs = {
 	typeVersion: { example: 1 },
 	contract: {
 		description:
-			'The exact contract version that a contract node runs. n8n writes it at save when node contracts are enabled.',
-		example: { version: '1.0.0', digest: 'sha256:<64 hex characters>' },
+			'The exact contract version that a contract node runs, and the semver range that it may update in. n8n writes it at save when node contracts are enabled. Send only `range` to let the save lock the newest version in the range.',
+		example: { range: '^1.0.0', version: '1.0.0', digest: 'sha256:<64 hex characters>' },
 	},
 	executeOnce: { example: false },
 	alwaysOutputData: { example: false },

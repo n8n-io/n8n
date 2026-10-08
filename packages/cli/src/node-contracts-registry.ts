@@ -37,6 +37,7 @@ import {
 	deniedPermissionClassOf,
 	embeddedContractsOf,
 	embeddedStoreDirOf,
+	isNodeContractPin,
 	isStoreStatusRecord,
 	storeIndexFileOf,
 	versionsOf,
@@ -1006,7 +1007,9 @@ export async function pinnedNodesOf(
 			const previous = stored.get(node.id);
 			const saved = previous?.type === node.type ? previous.contract : undefined;
 			const current = node.contract ?? saved;
-			const keepUnknown = current?.digest !== saved?.digest;
+			const keepUnknown =
+				isNodeContractPin(current) &&
+				(!isNodeContractPin(saved) || current.digest !== saved.digest);
 			const pin = action && (await store.pinOf(action.id, action.major, current, { keepUnknown }));
 			const manifest = action && pin && (await store.manifestOf(action.id, pin.digest));
 			if (manifest) assertFitsLock(node, manifest);

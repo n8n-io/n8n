@@ -436,6 +436,10 @@ export const setupTestServer = ({
 							'@/modules/type-availability-policies/type-availability-policies.module.js'
 						);
 						break;
+
+					case 'next-nodes-instance':
+						await import('@/modules/next-nodes-instance/next-nodes-instance.controller.js');
+						break;
 				}
 			}
 

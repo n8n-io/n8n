@@ -7,7 +7,13 @@ import { isRecord } from '@n8n/utils/is-record';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { rcompare, satisfies, subset, validRange } from 'semver';
-import { LoggerProxy, UserError, type INode, type INodeContractPin } from 'n8n-workflow';
+import {
+	LoggerProxy,
+	UserError,
+	type INode,
+	type INodeContractPin,
+	type INodeContractRange,
+} from 'n8n-workflow';
 
 import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './catalog';
 import { permissionsOf, type ContractPermissions, type PermissionRefusalListener } from './egress';
@@ -210,6 +216,15 @@ export const embeddedContractsOf = (packages: readonly SourcePackage[]): Embedde
 	};
 };
 
+/** A version of an action major that the host runs, see `ContractStore.majorVersionsOf`. */
+export interface ActionMajorVersion {
+	readonly version: string;
+	readonly digest: string;
+	readonly nodeContract: NodeContractVersion;
+	/** Set when a yank or revoke line applies to the version. A save does not lock it. */
+	readonly withdrawn?: 'yanked' | 'revoked';
+}
+
 /**
  * The store of action versions that n8n does not bundle. Each version is checked before the
  * store takes it: the digests of its blobs, the manifest against the lock, and the publisher
@@ -237,17 +252,23 @@ export interface ContractStore {
 	 * sync can fetch it. Else the newest bundled, stored or registry version in the range that is
 	 * not yanked or revoked. A registry version comes from the packument: the save downloads no
 	 * tarball. `undefined` when the major has no such version and `current` has no range. It
-	 * throws when the range is not inside the major or has no such version.
+	 * throws when the range is not inside the major or has no such version. A `current` with only
+	 * a range has no lock to keep.
 	 */
 	pinOf(
 		actionId: string,
 		major: number,
-		current?: INodeContractPin,
+		current?: INodeContractPin | INodeContractRange,
 		options?: {
 			/** Keeps a pin that no bundled or stored version knows, so that a sync can fetch it. */
 			keepUnknown?: boolean;
 		},
 	): Promise<INodeContractPin | undefined>;
+	/**
+	 * The versions of an action major that `pinOf` knows, newest first: bundled, stored and from
+	 * the registry packument. It downloads no tarball.
+	 */
+	majorVersionsOf(actionId: string, major: number): Promise<ActionMajorVersion[]>;
 	/**
 	 * The manifest of a bundled or stored version of an action, or `undefined`. It fetches nothing,
 	 * so a save can read it.
@@ -873,38 +894,67 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		};
 	};
 
-	const notWithdrawn = async <T extends CheckedVersion>(versions: readonly T[]) => {
-		const withdrawn = await Promise.all(versions.map(async (version) => await withdrawal(version)));
-		return versions.filter((_, index) => withdrawn[index] === undefined);
-	};
+	const withdrawnOf = (
+		status: StoreYank | StoreRevoke | undefined,
+	): Pick<ActionMajorVersion, 'withdrawn'> =>
+		status === undefined ? {} : { withdrawn: 'revoke' in status ? 'revoked' : 'yanked' };
 
 	/**
 	 * The registry versions of an action major that the host runs, from the packument only, so a
-	 * save downloads no tarball. `runnable` has no yanked or revoked version. A main that does not
-	 * fetch, or a registry that fails, gives none: the save uses the bundled and stored versions.
+	 * save downloads no tarball. A main that does not fetch, or a registry that fails, gives none:
+	 * the save uses the bundled and stored versions.
 	 */
-	const registryCandidatesOf = async (actionId: string, major: number) => {
-		if (!registryReader || !mayFetch()) return { all: [], runnable: [] };
+	const registryVersionsOf = async (
+		actionId: string,
+		major: number,
+	): Promise<ActionMajorVersion[]> => {
+		if (!registryReader || !mayFetch()) return [];
 		try {
 			const { versions, statuses } = await registryIndexOf(actionId);
-			const all = versions
+			return versions
 				.filter(
 					({ version, nodeContract }) =>
 						parseSemver(version).major === major && options.runsNodeContract(nodeContract),
 				)
-				.map(({ version, manifest }) => ({ semver: version, digest: manifest }));
-			const runnable = all.filter(({ semver }) => withdrawalOf(statuses, semver) === undefined);
-			return { all, runnable };
+				.map(({ version, manifest, nodeContract }) => ({
+					version,
+					digest: manifest,
+					nodeContract,
+					...withdrawnOf(withdrawalOf(statuses, version)),
+				}));
 		} catch (error) {
 			LoggerProxy.warn(
 				`Cannot read the versions of ${actionId} from the registry: ${errorMessage(error)}`,
 			);
-			return { all: [], runnable: [] };
+			return [];
 		}
 	};
 
 	const storedOf = async (actionId: string) =>
 		await cachedFor(storedById, actionId, async () => await storedManifests(actionId));
+
+	const majorVersionsOf = async (actionId: string, major: number) => {
+		const local = [...store.embedded.versionsOf(actionId), ...(await storedOf(actionId))].filter(
+			({ manifest }) =>
+				manifest.contract.version === major && options.runsNodeContract(manifest.nodeContract),
+		);
+		// The registry read puts the registry status lines into the store before the local check.
+		const registry = await registryVersionsOf(actionId, major);
+		const withdrawals = await Promise.all(local.map(async (version) => await withdrawal(version)));
+		// A stored line can yank a version that the registry does not yank, so local comes first.
+		const all = [
+			...local.map(({ manifest, digest }, index) => ({
+				version: manifest.semver,
+				digest,
+				nodeContract: manifest.nodeContract,
+				...withdrawnOf(withdrawals[index]),
+			})),
+			...registry,
+		];
+		return all
+			.filter(({ digest }, index) => all.findIndex((other) => other.digest === digest) === index)
+			.sort((a, b) => rcompare(a.version, b.version));
+	};
 
 	return {
 		registryUrl,
@@ -931,35 +981,22 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			return storedVersion(await load(actionId, pin));
 		},
 
+		majorVersionsOf,
+
 		async pinOf(actionId, major, current, { keepUnknown = false } = {}) {
-			const local = [...store.embedded.versionsOf(actionId), ...(await storedOf(actionId))].filter(
-				({ manifest }) =>
-					manifest.contract.version === major && options.runsNodeContract(manifest.nodeContract),
-			);
-			const registry = await registryCandidatesOf(actionId, major);
-			const known = [
-				...local.map(({ manifest, digest }) => ({ semver: manifest.semver, digest })),
-				...registry.all,
-			];
+			const known = await majorVersionsOf(actionId, major);
 			const isKnown = (pin: INodeContractPin) =>
-				known.some(({ semver, digest }) => semver === pin.version && digest === pin.digest);
+				known.some(({ version, digest }) => version === pin.version && digest === pin.digest);
 			const isUnknown = (pin: INodeContractPin) =>
-				!known.some(({ semver, digest }) => semver === pin.version || digest === pin.digest);
-			const candidates = [
-				...(await notWithdrawn(local)).map(({ manifest, digest }) => ({
-					semver: manifest.semver,
-					digest,
-				})),
-				// A stored line can yank a version that the registry does not yank.
-				...registry.runnable.filter(({ digest }) => !local.some((v) => v.digest === digest)),
-			].sort((a, b) => rcompare(a.semver, b.semver));
+				!known.some(({ version, digest }) => version === pin.version || digest === pin.digest);
+			const candidates = known.filter(({ withdrawn }) => withdrawn === undefined);
 			const [newest] = candidates;
 			const range =
 				typeof current?.range === 'string'
 					? current.range
 					: isNodeContractPin(current) && satisfies(current.version, `${major}.x`)
 						? `^${current.version}`
-						: newest && `^${newest.semver}`;
+						: newest && `^${newest.version}`;
 			if (range === undefined) return undefined;
 			if (validRange(range) === null || !subset(range, `${major}.x`)) {
 				throw new UserError(
@@ -971,14 +1008,14 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				satisfies(current.version, range) &&
 				(isKnown(current) || (keepUnknown && isUnknown(current)));
 			if (keeps) return current.range === range ? current : { ...current, range };
-			const lock = candidates.find(({ semver }) => satisfies(semver, range));
+			const lock = candidates.find(({ version }) => satisfies(version, range));
 			if (!lock) {
-				const versions = candidates.map(({ semver }) => semver).join(', ') || 'none';
+				const versions = candidates.map(({ version }) => version).join(', ') || 'none';
 				throw new UserError(
 					`No version of ${actionId} satisfies the range ${range}. Versions known: ${versions}`,
 				);
 			}
-			return { range, version: lock.semver, digest: lock.digest };
+			return { range, version: lock.version, digest: lock.digest };
 		},
 
 		async manifestOf(actionId, digest) {

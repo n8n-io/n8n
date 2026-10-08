@@ -1769,12 +1769,17 @@ export interface INodeContractPin {
 	digest: string;
 }
 
+/** A range with no lock yet, from a client. A save changes it to a pin of a version in the range. */
+export interface INodeContractRange {
+	range: string;
+}
+
 export interface INode {
 	id: string;
 	name: string;
 	typeVersion: number;
 	/** The contract version that a contract node runs. Other nodes do not have it. */
-	contract?: INodeContractPin;
+	contract?: INodeContractPin | INodeContractRange;
 	type: string;
 	position: [number, number];
 	disabled?: boolean;

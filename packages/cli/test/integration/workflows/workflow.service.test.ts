@@ -457,6 +457,16 @@ describe('update() with node contracts', () => {
 		]);
 	});
 
+	test('locks a range without a pin to the newest version in the range', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		await save([get()], workflow.id, owner);
+
+		const { saved } = await save([get({ range: '^3.0.0' })], workflow.id, owner);
+
+		expect(saved.map((node) => node.contract)).toEqual([{ ...headPin, range: '^3.0.0' }]);
+	});
+
 	test('writes no pin with node contracts off', async () => {
 		instanceAi.nodeContractsEnabled = false;
 		const owner = await createOwner();

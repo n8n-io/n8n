@@ -63,7 +63,8 @@ type EndpointGroup =
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'next-nodes-instance';
 
 type ModuleName =
 	| 'insights'

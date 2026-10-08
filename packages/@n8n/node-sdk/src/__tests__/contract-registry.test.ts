@@ -474,6 +474,22 @@ describe('contractStore', () => {
 			{ ...yank, signatures: [signStoreStatus(yank, privateKey)] },
 		]);
 		expect(await lockOfRange('~1.0.0')).toEqual(rangedPinOf('~1.0.0', '1.0.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, { range: '~1.0.0' })).toEqual(
+			rangedPinOf('~1.0.0', '1.0.0'),
+		);
+		await expect(storeOf().pinOf('demo.echo', 1, { range: '^2.0.0' })).rejects.toThrow(
+			'inside major 1',
+		);
+		expect(
+			(await storeOf().majorVersionsOf('demo.echo', 1)).map(({ version, withdrawn }) => ({
+				version,
+				withdrawn,
+			})),
+		).toEqual([
+			{ version: '1.1.0', withdrawn: undefined },
+			{ version: '1.0.1', withdrawn: 'yanked' },
+			{ version: '1.0.0', withdrawn: undefined },
+		]);
 	});
 
 	it('pins and resolves a bundled version without a registry', async () => {

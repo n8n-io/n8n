@@ -1,4 +1,9 @@
-import type { NextNodeActionConfig, NextNodeInstanceVersion, NextNodeParent } from '@n8n/api-types';
+import type {
+	NextNodeActionConfig,
+	NextNodeActionVersion,
+	NextNodeInstanceVersion,
+	NextNodeParent,
+} from '@n8n/api-types';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import {
 	NodeContractVersionRepository,
@@ -323,6 +328,14 @@ export class NextNodesInstanceService {
 		const config: unknown = JSON.parse(newest.row.bundle);
 		if (!isRecord(config)) throw new UnexpectedError(`The config of ${actionId} is not an object`);
 		return { semver: newest.manifest.semver, config };
+	}
+
+	/** The versions of an action major that a save can lock, newest first, see `ContractStore.majorVersionsOf`. */
+	async majorVersionsOf(actionId: string, major: number): Promise<NextNodeActionVersion[]> {
+		const versions = await (await this.store.open()).majorVersionsOf(actionId, major);
+		if (versions.length === 0)
+			throw new NotFoundError(`n8n knows no version of ${actionId} ${major}.x`);
+		return versions;
 	}
 
 	/** The shipped nodes that a custom action can extend, by name. */

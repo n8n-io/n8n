@@ -49,3 +49,13 @@ export interface NextNodeActionConfig {
 	readonly semver: string;
 	readonly config: Record<string, unknown>;
 }
+
+/** A version of an action major that a save can lock, as the editor lists it. */
+export interface NextNodeActionVersion {
+	readonly version: string;
+	readonly digest: string;
+	/** The node contract that the version implements, e.g. `2.11.0`. */
+	readonly nodeContract: string;
+	/** Set when a yank or revoke line applies to the version. A save does not lock it. */
+	readonly withdrawn?: 'yanked' | 'revoked';
+}

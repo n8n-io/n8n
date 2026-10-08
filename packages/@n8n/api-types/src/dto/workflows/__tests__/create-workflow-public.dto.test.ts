@@ -44,6 +44,29 @@ describe('CreateWorkflowPublicDto', () => {
 		).toBe(false);
 	});
 
+	test.each([
+		{ range: '^3.2.0', version: '3.2.0', digest: `sha256:${'a'.repeat(64)}` },
+		{ range: '^3.2.0' },
+	])('accepts the contract %o', (contract) => {
+		const [node] = validPayload.nodes;
+
+		expect(
+			CreateWorkflowPublicDto.safeParse({ ...validPayload, nodes: [{ ...node, contract }] }),
+		).toMatchObject({ success: true, data: { nodes: [{ contract }] } });
+	});
+
+	test.each([{}, { version: '3.2.0' }, { range: 3 }, { range: '^3.2.0', extra: 1 }, 'junk'])(
+		'rejects the contract %o',
+		(contract) => {
+			const [node] = validPayload.nodes;
+
+			expect(
+				CreateWorkflowPublicDto.safeParse({ ...validPayload, nodes: [{ ...node, contract }] })
+					.success,
+			).toBe(false);
+		},
+	);
+
 	test('rejects a non-string workflow description', () => {
 		expect(CreateWorkflowPublicDto.safeParse({ ...validPayload, description: 42 }).success).toBe(
 			false,

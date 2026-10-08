@@ -32,8 +32,12 @@ const workflowNodeWritePublicSchema = z
 		type: z.string().optional().openapi(workflowNodeFieldDocs.type),
 		typeVersion: z.number().optional().openapi(workflowNodeFieldDocs.typeVersion),
 		contract: z
-			.object({ version: z.string(), digest: z.string() })
-			.strict()
+			.union([
+				z
+					.object({ version: z.string(), digest: z.string(), range: z.string().optional() })
+					.strict(),
+				z.object({ range: z.string() }).strict(),
+			])
 			.optional()
 			.openapi(workflowNodeFieldDocs.contract),
 		executeOnce: z.boolean().optional().openapi(workflowNodeFieldDocs.executeOnce),
