@@ -159,12 +159,11 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 		await createTable(AGENT_HISTORY_SKILL_TABLE)
 			.withColumns(
 				column('agentVersionId').varchar(36).primary,
-				column('skillRefId')
-					.varchar(36)
-					.primary.comment('The ref id as written in that agent_history row schema'),
+				column('skillId').varchar(36).primary,
 				column('skillVersionId').uuid.notNull,
 			)
-			.withCreatedAt.withIndexOn(['skillVersionId'])
+			.withCreatedAt.withIndexOn(['skillId'])
+			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentVersionId', {
 				tableName: 'agent_history',
 				columnName: 'versionId',
@@ -173,6 +172,11 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 			// NO ACTION, not RESTRICT: the check runs at the end of the statement, so a
 			// user or project delete can remove its skills together with the agents that
 			// pin them. The service refuses to delete a pinned skill on its own.
+			.withForeignKey('skillId', {
+				tableName: SKILL_TABLE,
+				columnName: 'id',
+				onDelete: 'NO ACTION',
+			})
 			.withForeignKey('skillVersionId', {
 				tableName: SKILL_VERSION_TABLE,
 				columnName: 'id',

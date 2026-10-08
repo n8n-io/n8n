@@ -6,27 +6,29 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentVersionId | varchar(36) |  | false |  | [public.agent_history](public.agent_history.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| skillRefId | varchar(36) |  | false |  |  | The ref id as written in that agent_history row schema |
+| skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
 | skillVersionId | uuid |  | false |  | [public.skill_version](public.skill_version.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_336f09ba4a2710fada5962dc51f | FOREIGN KEY | FOREIGN KEY ("skillId") REFERENCES skill(id) |
 | FK_a8179c556e4eda4c6b2a680eb30 | FOREIGN KEY | FOREIGN KEY ("skillVersionId") REFERENCES skill_version(id) |
 | FK_b9bc0a61e01c457e1a9b272573d | FOREIGN KEY | FOREIGN KEY ("agentVersionId") REFERENCES agent_history("versionId") ON DELETE CASCADE |
-| PK_e4b39ec3f62eb41c0712b474ac8 | PRIMARY KEY | PRIMARY KEY ("agentVersionId", "skillRefId") |
+| PK_422273d97a47b5acf50c3f9f572 | PRIMARY KEY | PRIMARY KEY ("agentVersionId", "skillId") |
 | agent_history_skill_agentVersionId_not_null | n | NOT NULL "agentVersionId" |
 | agent_history_skill_createdAt_not_null | n | NOT NULL "createdAt" |
-| agent_history_skill_skillRefId_not_null | n | NOT NULL "skillRefId" |
+| agent_history_skill_skillId_not_null | n | NOT NULL "skillId" |
 | agent_history_skill_skillVersionId_not_null | n | NOT NULL "skillVersionId" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_336f09ba4a2710fada5962dc51 | CREATE INDEX "IDX_336f09ba4a2710fada5962dc51" ON public.agent_history_skill USING btree ("skillId") |
 | IDX_a8179c556e4eda4c6b2a680eb3 | CREATE INDEX "IDX_a8179c556e4eda4c6b2a680eb3" ON public.agent_history_skill USING btree ("skillVersionId") |
-| PK_e4b39ec3f62eb41c0712b474ac8 | CREATE UNIQUE INDEX "PK_e4b39ec3f62eb41c0712b474ac8" ON public.agent_history_skill USING btree ("agentVersionId", "skillRefId") |
+| PK_422273d97a47b5acf50c3f9f572 | CREATE UNIQUE INDEX "PK_422273d97a47b5acf50c3f9f572" ON public.agent_history_skill USING btree ("agentVersionId", "skillId") |
 
 ## Relations
 
@@ -34,12 +36,13 @@
 erDiagram
 
 "public.agent_history_skill" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
+"public.agent_history_skill" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id)"
 "public.agent_history_skill" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id)"
 
 "public.agent_history_skill" {
   varchar_36_ agentVersionId FK
   timestamp_3__with_time_zone createdAt
-  varchar_36_ skillRefId
+  varchar_36_ skillId FK
   uuid skillVersionId FK
 }
 "public.agent_history" {
@@ -52,6 +55,15 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.skill" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_16_ source
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.skill_version" {
   varchar_64_ contentHash

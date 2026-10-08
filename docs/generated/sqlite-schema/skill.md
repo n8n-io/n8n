@@ -17,7 +17,7 @@ CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
-| id | varchar(36) |  | false | [agent_skill_dependency](agent_skill_dependency.md) [skill_version](skill_version.md) |  |  |
+| id | varchar(36) |  | false | [agent_history_skill](agent_history_skill.md) [agent_skill_dependency](agent_skill_dependency.md) [skill_version](skill_version.md) |  |  |
 | projectId | varchar(36) |  | true |  | [project](project.md) |  |
 | source | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -49,6 +49,7 @@ CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "
 erDiagram
 
 "skill" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_history_skill" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -79,6 +80,12 @@ erDiagram
   varchar_128_ roleSlug FK
   TEXT settings
   datetime_3_ updatedAt
+}
+"agent_history_skill" {
+  varchar_36_ agentVersionId PK
+  datetime_3_ createdAt
+  varchar_36_ skillId PK
+  varchar skillVersionId FK
 }
 "agent_skill_dependency" {
   varchar_36_ agentId PK

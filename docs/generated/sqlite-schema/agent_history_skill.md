@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_history_skill" ("agentVersionId" varchar(36) NOT NULL, "skillRefId" varchar(36) NOT NULL, "skillVersionId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_b9bc0a61e01c457e1a9b272573d" FOREIGN KEY ("agentVersionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE, CONSTRAINT "FK_a8179c556e4eda4c6b2a680eb30" FOREIGN KEY ("skillVersionId") REFERENCES "skill_version" ("id") ON DELETE NO ACTION, PRIMARY KEY ("agentVersionId", "skillRefId"))
+CREATE TABLE "agent_history_skill" ("agentVersionId" varchar(36) NOT NULL, "skillId" varchar(36) NOT NULL, "skillVersionId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_b9bc0a61e01c457e1a9b272573d" FOREIGN KEY ("agentVersionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE, CONSTRAINT "FK_336f09ba4a2710fada5962dc51f" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE NO ACTION, CONSTRAINT "FK_a8179c556e4eda4c6b2a680eb30" FOREIGN KEY ("skillVersionId") REFERENCES "skill_version" ("id") ON DELETE NO ACTION, PRIMARY KEY ("agentVersionId", "skillId"))
 ```
 
 </details>
@@ -17,7 +17,7 @@ CREATE TABLE "agent_history_skill" ("agentVersionId" varchar(36) NOT NULL, "skil
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentVersionId | varchar(36) |  | false |  | [agent_history](agent_history.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| skillRefId | varchar(36) |  | false |  |  |  |
+| skillId | varchar(36) |  | false |  | [skill](skill.md) |  |
 | skillVersionId | varchar |  | false |  | [skill_version](skill_version.md) |  |
 
 ## Constraints
@@ -25,17 +25,19 @@ CREATE TABLE "agent_history_skill" ("agentVersionId" varchar(36) NOT NULL, "skil
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | agentVersionId | PRIMARY KEY | PRIMARY KEY (agentVersionId) |
-| skillRefId | PRIMARY KEY | PRIMARY KEY (skillRefId) |
-| sqlite_autoindex_agent_history_skill_1 | PRIMARY KEY | PRIMARY KEY (agentVersionId, skillRefId) |
+| skillId | PRIMARY KEY | PRIMARY KEY (skillId) |
+| sqlite_autoindex_agent_history_skill_1 | PRIMARY KEY | PRIMARY KEY (agentVersionId, skillId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_336f09ba4a2710fada5962dc51 | CREATE INDEX "IDX_336f09ba4a2710fada5962dc51" ON "agent_history_skill" ("skillId")  |
 | IDX_a8179c556e4eda4c6b2a680eb3 | CREATE INDEX "IDX_a8179c556e4eda4c6b2a680eb3" ON "agent_history_skill" ("skillVersionId")  |
-| sqlite_autoindex_agent_history_skill_1 | PRIMARY KEY (agentVersionId, skillRefId) |
+| sqlite_autoindex_agent_history_skill_1 | PRIMARY KEY (agentVersionId, skillId) |
 
 ## Relations
 
@@ -43,12 +45,13 @@ CREATE TABLE "agent_history_skill" ("agentVersionId" varchar(36) NOT NULL, "skil
 erDiagram
 
 "agent_history_skill" |o--|| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_history_skill" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_history_skill" }o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 
 "agent_history_skill" {
   varchar_36_ agentVersionId PK
   datetime_3_ createdAt
-  varchar_36_ skillRefId PK
+  varchar_36_ skillId PK
   varchar skillVersionId FK
 }
 "agent_history" {
@@ -61,6 +64,15 @@ erDiagram
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId PK
+}
+"skill" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_16_ source
+  datetime_3_ updatedAt
+  varchar userId FK
 }
 "skill_version" {
   varchar_64_ contentHash

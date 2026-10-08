@@ -85,7 +85,7 @@ erDiagram
 "public.agent_history_skill" {
   varchar_36_ agentVersionId FK
   timestamp_3__with_time_zone createdAt
-  varchar_36_ skillRefId
+  varchar_36_ skillId FK
   uuid skillVersionId FK
 }
 "public.agent_skill_dependency" {

@@ -121,7 +121,7 @@ erDiagram
 "agent_history_skill" {
   varchar_36_ agentVersionId PK
   datetime_3_ createdAt
-  varchar_36_ skillRefId PK
+  varchar_36_ skillId PK
   varchar skillVersionId FK
 }
 "agent_task_snapshot" {
