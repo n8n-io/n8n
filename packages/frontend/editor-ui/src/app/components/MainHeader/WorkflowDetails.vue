@@ -17,6 +17,7 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { PathItem } from '@n8n/design-system';
 import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import AssistantMadeBadge from '@/features/ai/instanceAi/provenance/AssistantMadeBadge.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
@@ -388,6 +389,11 @@ onBeforeUnmount(() => {
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
+				<AssistantMadeBadge
+					v-if="!isNewWorkflow"
+					:workflow-id="id"
+					:class="$style.assistantBadge"
+				/>
 			</span>
 		</span>
 
@@ -436,7 +442,8 @@ $--header-spacing: 20px;
 	align-items: center;
 	width: 100%;
 	flex: 1;
-	min-width: 0;
+	// No `min-width: 0` above the narrow width: the badges keep their smallest
+	// width, so the name shrinks first and no badge slides under the actions.
 	margin-right: $--header-spacing;
 }
 
@@ -492,5 +499,22 @@ $--header-spacing: 20px;
 	width: 100%;
 	flex: 1;
 	margin: 0 var(--spacing--md);
+
+	// Without badges, the margins must not take width from the name.
+	&:empty {
+		display: none;
+	}
+}
+
+// A narrow header keeps its width for the name and the actions. The spacer can
+// shrink to zero again, so the actions stay in view.
+@container workflow-header (max-width: 640px) {
+	.assistantBadge {
+		display: none;
+	}
+
+	.container :global(.spacer) {
+		min-width: 0;
+	}
 }
 </style>
