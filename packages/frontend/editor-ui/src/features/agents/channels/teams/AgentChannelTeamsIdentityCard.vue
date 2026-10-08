@@ -44,17 +44,20 @@ const i18n = useI18n();
 				{{ description }}
 			</N8nText>
 		</div>
-		<N8nButton
-			variant="outline"
-			size="medium"
-			:disabled="!ready || loading"
-			:loading="loading"
-			data-testid="teams-download-package"
-			@click="emit('download')"
-		>
-			{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-			<N8nIcon icon="download" size="medium" />
-		</N8nButton>
+		<!-- The recommended setup offers a menu here instead of the download. -->
+		<slot name="action">
+			<N8nButton
+				variant="outline"
+				size="medium"
+				:disabled="!ready || loading"
+				:loading="loading"
+				data-testid="teams-download-package"
+				@click="emit('download')"
+			>
+				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
+				<N8nIcon icon="download" size="medium" />
+			</N8nButton>
+		</slot>
 	</div>
 </template>
 

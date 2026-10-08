@@ -13,7 +13,9 @@ import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKi
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
 import AgentChannelTeamsEditView from './teams/AgentChannelTeamsEditView.vue';
-import AgentChannelTeamsSetup from './teams/AgentChannelTeamsSetup.vue';
+import AgentChannelTeamsSetupKindSelector from './teams/AgentChannelTeamsSetupKindSelector.vue';
+import AgentChannelTeamsSetupView from './teams/AgentChannelTeamsSetupView.vue';
+import { useTeamsChannelRuntime } from './teams/useTeamsChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
 import type {
@@ -28,6 +30,17 @@ function createDefaultRuntime(): AgentChannelRuntime {
 	const loading = ref(false);
 	return { load: async () => {}, loading: readonly(loading) };
 }
+
+const isTeamsResourcesNotDeletedWarning = (
+	warning: AgentIntegrationDisconnectWarning,
+): warning is AgentIntegrationDisconnectWarning & { action: { url: string } } => {
+	return (
+		warning.integrationType === 'teams' &&
+		warning.code === 'resources_not_deleted' &&
+		warning.action?.type === 'open_url' &&
+		!!warning.action?.url
+	);
+};
 
 const isSlackNotDeletedWarning = (
 	warning: AgentIntegrationDisconnectWarning,
@@ -120,9 +133,34 @@ const platforms = {
 	},
 	teams: {
 		type: 'teams',
-		setupComponent: AgentChannelTeamsSetup,
+		setupComponent: AgentChannelTeamsSetupView,
 		editComponent: AgentChannelTeamsEditView,
+		headerContent: {
+			setupModal: AgentChannelTeamsSetupKindSelector,
+		},
+		createRuntime: useTeamsChannelRuntime,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		presentDisconnectWarning: (warning, { text }) => {
+			if (!isTeamsResourcesNotDeletedWarning(warning)) {
+				return null;
+			}
+			return {
+				title: text('agents.channels.modal.teamsResourcesNotDeleted.title'),
+				message: h('span', [
+					text('agents.channels.modal.teamsResourcesNotDeleted.message'),
+					' ',
+					h(
+						'a',
+						{
+							href: warning.action.url,
+							target: '_blank',
+							rel: 'noopener noreferrer',
+						},
+						text('agents.channels.modal.teamsResourcesNotDeleted.link'),
+					),
+				]),
+			};
+		},
 	},
 	[N8N_CHAT_INTEGRATION_TYPE]: {
 		type: N8N_CHAT_INTEGRATION_TYPE,

@@ -33,7 +33,7 @@ configure({ testIdAttribute: 'data-testid' });
 const WHERE_TITLE = 'agents.channels.teams.setup.availability.whereTitle';
 
 const viewProps = {
-	mode: 'edit',
+	mode: 'edit' as const,
 	modelValue: 'cred-1',
 	integration: {
 		type: 'teams',
@@ -55,36 +55,44 @@ const viewProps = {
 	agentId: 'a',
 	forceNewCredential: false,
 	simpleSetup: false,
-	runtime: { load: vi.fn(), loading: { value: false } },
+	// Enough of the runtime for the settings to decide it has no recommended
+	// setup to offer, which is this view's ordinary case.
+	runtime: {
+		load: vi.fn(),
+		loading: { value: false },
+		managedSetup: {
+			value: { managedSetupAvailable: false, managerCredentials: [], adminConsentUrl: null },
+		},
+	} as never,
 };
 
 // The modal only ever talks to the outer view, so this stands in for it.
 const Host = defineComponent({
 	components: { AgentChannelTeamsEditView },
+	props: { props: { type: Object, default: () => viewProps } },
 	setup() {
 		const view = ref<InstanceType<typeof AgentChannelTeamsEditView>>();
 		async function save() {
 			await view.value?.beforeSave();
 			await view.value?.afterSave();
 		}
-		return { view, viewProps, save };
+		return { view, save };
 	},
 	template: `
 		<div>
-			<AgentChannelTeamsEditView ref="view" v-bind="viewProps" />
+			<AgentChannelTeamsEditView ref="view" v-bind="props" />
 			<span data-testid="save-label">{{ view?.saveLabel ?? '' }}</span>
 			<button data-testid="save" @click="save" />
 		</div>
 	`,
 });
 
-const renderHost = createComponentRenderer(Host, {
-	global: {
-		stubs: {
-			AgentIntegrationCredentialConnection: { template: '<div />' },
-		},
-	},
-});
+const stubs = { AgentIntegrationCredentialConnection: { template: '<div />' } };
+
+const renderHost = createComponentRenderer(Host, { global: { stubs } });
+
+/** Without the host, for the cases that only read what the settings render. */
+const renderView = createComponentRenderer(AgentChannelTeamsEditView, { global: { stubs } });
 
 describe('AgentChannelTeamsEditView', () => {
 	beforeEach(() => {
@@ -126,5 +134,15 @@ describe('AgentChannelTeamsEditView', () => {
 				expect.objectContaining({ groupChats: true }),
 			),
 		);
+	});
+
+	it('keeps the package where it could not', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: viewProps,
+			pinia: createTestingPinia(),
+		});
+
+		await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+		expect(queryByTestId('teams-settings-install')).not.toBeInTheDocument();
 	});
 });
