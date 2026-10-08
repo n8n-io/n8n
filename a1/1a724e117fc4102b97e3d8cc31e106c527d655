@@ -3,6 +3,7 @@ packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
   s_2397c9db9d923f::t_44b4b74c721935 41,183,195-198,200-201,205-211
   s_2397c9db9d923f::t_a5cea363e7c7b3 5,11-14,17-18,24-27,28-30,34-40,42,94-102,147-182,184-194,212-266
   s_2397c9db9d923f::t_08d26281303f5d 199,267
+  s_71ad2034164515::t_535f014c3e1bb6 15-16
 packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
   s_2397c9db9d923f::t_47b6a1c7d579b9 152
 packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
@@ -55,6 +56,14 @@ packages/cli/src/modules/promotions.ee/promotion-change.service.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
