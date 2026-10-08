@@ -116,6 +116,18 @@ describe('cleanupBuild', () => {
 		);
 	});
 
+	it('keeps the build user when another delete fails, so the retry still finds its project', async () => {
+		const { client, mocks } = makeClient({
+			deleteDataTable: vi.fn().mockRejectedValue(new Error('HTTP 502')),
+			deleteUser: vi.fn().mockResolvedValue(undefined),
+		});
+		const build = { ...makeBuild(), buildProjectId: 'build-project', buildUserId: 'build-user' };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		expect(mocks.deleteUser).not.toHaveBeenCalled();
+	});
+
 	it('reports not clean when the build user cannot be deleted, so the caller can retry', async () => {
 		const { client } = makeClient({
 			deleteUser: vi.fn().mockRejectedValue(new Error('HTTP 502')),

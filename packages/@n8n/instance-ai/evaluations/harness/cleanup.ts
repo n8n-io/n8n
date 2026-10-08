@@ -239,8 +239,9 @@ export async function cleanupBuild(
 		}
 	}
 
-	// Last: the user's delete takes its project and anything left in it.
-	if (build.buildUserId) {
+	// Last, and only once the rest is gone: the user's delete takes its project, so a
+	// retry of a failed delete needs the project to still exist.
+	if (build.buildUserId && clean) {
 		try {
 			await client.deleteUser(build.buildUserId);
 		} catch (error: unknown) {

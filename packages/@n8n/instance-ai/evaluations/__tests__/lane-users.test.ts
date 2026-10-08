@@ -179,7 +179,7 @@ describe('provisionCaseBuildUser', () => {
 
 describe('provisionBuildProject', () => {
 	it("accepts a pooled invite under the given name and returns that user's personal project", async () => {
-		const { client: ownerClient } = fakeOwnerClient();
+		const { client: ownerClient, inviteBatches } = fakeOwnerClient();
 		const pool = new LaneUserPool(ownerClient, 1);
 		const member = {
 			acceptInvitation: vi.fn().mockResolvedValue(undefined),
@@ -192,9 +192,12 @@ describe('provisionBuildProject', () => {
 			name: { firstName: 'Eval', lastName: 'Bot' },
 		});
 
-		expect(member.acceptInvitation).toHaveBeenCalledWith(
-			expect.objectContaining({ firstName: 'Eval', lastName: 'Bot', password: pool.password }),
-		);
+		expect(member.acceptInvitation).toHaveBeenCalledWith({
+			token: `token-${inviteBatches[0][0]}`,
+			firstName: 'Eval',
+			lastName: 'Bot',
+			password: pool.password,
+		});
 		expect(project).toEqual({ userId: 'u1', projectId: 'member-project' });
 	});
 });
