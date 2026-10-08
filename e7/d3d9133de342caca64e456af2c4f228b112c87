@@ -81,6 +81,8 @@ packages/cli/src/modules/promotions.ee/promotion-change.service.ts
   s_2397c9db9d923f::t_5d3d360c5e13dc 60-63
 packages/cli/src/modules/n8n-packages/engine/package-layout.ts
   s_2397c9db9d923f::t_4aec3aba3492c1 7
+  s_2397c9db9d923f::t_a5cea363e7c7b3 16-17,27
+  s_2397c9db9d923f::t_9919026d00107a 28
 ---
 {
   "schema_version": "authorship/3.0.0",
