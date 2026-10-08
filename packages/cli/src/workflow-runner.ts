@@ -644,6 +644,7 @@ export class WorkflowRunner {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
 			});
+			additionalData.pushRef = data.pushRef;
 
 			if (data.configureAdditionalData) {
 				await data.configureAdditionalData(additionalData);

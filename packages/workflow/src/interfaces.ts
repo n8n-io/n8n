@@ -3944,6 +3944,8 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	/** Editor session of a top-level run. Not passed on to sub-executions. */
+	pushRef?: string;
 	formBaseUrl: string;
 	formWaitingBaseUrl: string;
 	formTestBaseUrl: string;

@@ -25,6 +25,7 @@ import type {
 	ExecuteAgentWorkflowContext,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
+	Workflow,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -47,6 +48,7 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
@@ -598,6 +600,73 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
 				expect(integratedAdditionalData.userId).toBe('user-1');
+			});
+
+			describe('sub-workflow progress', () => {
+				const push = mockInstance(Push);
+				const executionsConfig = Container.get(ExecutionsConfig);
+				const parentNode: INode = {
+					id: 'parent-node',
+					name: 'Execute Sub-workflow',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				};
+
+				const runChild = async () =>
+					await executeWorkflow(
+						mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+						mock<IWorkflowExecuteAdditionalData>({
+							userId: 'user-1',
+							rootExecutionMode: undefined,
+							pushRef: 'push-ref-1',
+						}),
+						{
+							parentWorkflowId: 'parent-1',
+							executionMode: 'manual',
+							parentExecution: { executionId: 'parent-exec-1', workflowId: 'parent-1' },
+							node: parentNode,
+						},
+					);
+
+				beforeEach(() => {
+					executionsConfig.subworkflowProgressEnabled = true;
+					push.send.mockClear();
+				});
+
+				afterEach(() => {
+					executionsConfig.subworkflowProgressEnabled = false;
+				});
+
+				it("sends progress to the parent's editor session", async () => {
+					await runChild();
+					const [integratedAdditionalData, , runExecutionData] =
+						vi.mocked(WorkflowExecute).mock.calls[0];
+
+					await integratedAdditionalData.hooks!.runHook('workflowExecuteBefore', [
+						mock<Workflow>(),
+						runExecutionData,
+					]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'subworkflowExecutionStarted',
+							data: expect.objectContaining({
+								parentExecutionId: 'parent-exec-1',
+								parentNodeName: parentNode.name,
+							}),
+						}),
+						'push-ref-1',
+					);
+				});
+
+				it('does not pass the editor session on to a nested sub-workflow', async () => {
+					await runChild();
+
+					const [integratedAdditionalData] = vi.mocked(WorkflowExecute).mock.calls[0];
+					expect(integratedAdditionalData.pushRef).toBeUndefined();
+				});
 			});
 		});
 

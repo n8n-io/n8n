@@ -237,6 +237,7 @@ export class JobProcessor {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
 			});
+			additionalData.pushRef = pushRef;
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {

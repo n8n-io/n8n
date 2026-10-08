@@ -203,4 +203,11 @@ export class ExecutionsConfig {
 	 */
 	@Env('N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION')
 	preExecuteErrorCreatesExecution: boolean = false;
+
+	/**
+	 * Whether a sub-workflow streams per-node progress to the editor session of its
+	 * parent, for live progress on the "Execute Sub-workflow" node. Off while it rolls out.
+	 */
+	@Env('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS')
+	subworkflowProgressEnabled: boolean = false;
 }

@@ -591,6 +591,7 @@ describe('GlobalConfig', () => {
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
 			preExecuteErrorCreatesExecution: false,
+			subworkflowProgressEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,

@@ -1,3 +1,4 @@
+import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
@@ -15,6 +16,7 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	INode,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -23,7 +25,14 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import {
+	getChildNodes,
+	getParentNodes,
+	mapConnectionsByDestination,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+	STICKY_NODE_TYPE,
+} from 'n8n-workflow';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
@@ -42,7 +51,7 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { isWorkflowIdValid } from '@/utils';
+import { findSubworkflowStartOrUndefined, isWorkflowIdValid } from '@/utils';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 import { getLastExecutedNodeData, getLastExecutedNodeRuns } from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -476,6 +485,155 @@ function hookFunctionsPush(
 	});
 }
 
+/**
+ * Upper bound on the distinct nodes a sub-workflow run can reach, used to scale
+ * the editor's progress arc. Nodes off the start node's path never run, so they
+ * are left out. Branches make it an over-estimate.
+ */
+function countReachableNodes(workflowData: IWorkflowBase): number {
+	const executable = workflowData.nodes.filter(
+		// Sticky notes and disabled nodes never execute.
+		(node) => !node.disabled && node.type !== STICKY_NODE_TYPE,
+	);
+
+	const startNode = findSubworkflowStartOrUndefined(workflowData.nodes);
+	// No entry point: the run will fail anyway, so fall back rather than report 0.
+	if (!startNode) return executable.length;
+
+	const reachable = new Set([
+		startNode.name,
+		...getChildNodes(workflowData.connections, startNode.name),
+	]);
+
+	// Sub-nodes (AI models, memory, tools) connect *into* their parent, so they're
+	// not main descendants — but they execute and report progress.
+	const connectionsByDestination = mapConnectionsByDestination(workflowData.connections);
+	for (const nodeName of [...reachable]) {
+		for (const subNode of getParentNodes(connectionsByDestination, nodeName, 'ALL_NON_MAIN')) {
+			reachable.add(subNode);
+		}
+	}
+
+	return executable.filter((node) => reachable.has(node.name)).length;
+}
+
+/**
+ * Push hooks for a sub-workflow execution. Forwards a lightweight progress
+ * stream to the editor session that started the parent, so the canvas can show
+ * live progress on the parent's "Execute Sub-workflow" node.
+ */
+function hookFunctionsPushSubExecution(
+	hooks: ExecutionLifecycleHooks,
+	workflowData: IWorkflowBase,
+	parentExecution: RelatedExecution,
+	parentNode: INode,
+	pushRef: string,
+) {
+	const pushInstance = Container.get(Push);
+
+	let cachedTotalNodes: number | undefined;
+	const getTotalNodes = (): number => (cachedTotalNodes ??= countReachableNodes(workflowData));
+
+	// Unique nodes, not executions: a looping child re-runs the same nodes, and
+	// counting each run would push the indicator past its total.
+	const reachedNodeNames = new Set<string>();
+
+	// Each node emits a before/after pair, and each push is a pubsub broadcast in
+	// scaling mode. Only the latest state renders, so coalesce to one per window.
+	const getThrottleMs = () => (getTotalNodes() >= 50 ? 250 : 100);
+	let lastEmitAt = 0;
+	let pending: PushPayload<'subworkflowNodeProgress'> | undefined;
+	let timer: NodeJS.Timeout | undefined;
+
+	function cancelPending() {
+		if (timer) {
+			clearTimeout(timer);
+			timer = undefined;
+		}
+		pending = undefined;
+	}
+
+	function flush() {
+		if (timer) {
+			clearTimeout(timer);
+			timer = undefined;
+		}
+		if (!pending) return;
+		pushInstance.send({ type: 'subworkflowNodeProgress', data: pending }, pushRef);
+		lastEmitAt = Date.now();
+		pending = undefined;
+	}
+
+	function queueProgress(
+		nodeName: string,
+		phase: 'running' | 'success' | 'error',
+		childId: string,
+	) {
+		reachedNodeNames.add(nodeName);
+
+		pending = {
+			parentExecutionId: parentExecution.executionId,
+			parentNodeName: parentNode.name,
+			executionId: childId,
+			currentNodeName: nodeName,
+			// Not clamped to `totalNodes`: that is only an estimate, this is exact.
+			currentNodeIndex: reachedNodeNames.size,
+			totalNodes: getTotalNodes(),
+			phase,
+		};
+		const throttleMs = getThrottleMs();
+		const elapsed = Date.now() - lastEmitAt;
+		if (elapsed >= throttleMs) {
+			flush();
+			return;
+		}
+		if (timer) return;
+		timer = setTimeout(flush, throttleMs - elapsed);
+		// Never hold the process open for a progress overlay.
+		timer.unref?.();
+	}
+
+	hooks.addHandler('workflowExecuteBefore', function () {
+		pushInstance.send(
+			{
+				type: 'subworkflowExecutionStarted',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					totalNodes: getTotalNodes(),
+				},
+			},
+			pushRef,
+		);
+	});
+
+	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
+		queueProgress(nodeName, 'running', this.executionId);
+	});
+
+	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
+		queueProgress(nodeName, data?.error ? 'error' : 'success', this.executionId);
+	});
+
+	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+		// `finished` clears the overlay, so a queued snapshot would be wasted.
+		cancelPending();
+		pushInstance.send(
+			{
+				type: 'subworkflowExecutionFinished',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					status: fullRunData.status,
+				},
+			},
+			pushRef,
+		);
+	});
+}
+
 function hookFunctionsPreExecute(
 	hooks: ExecutionLifecycleHooks,
 	source?: IWorkflowExecutionDataProcess['source'],
@@ -825,10 +983,17 @@ export function getLifecycleHooksForSubExecutions(
 	executionId: string,
 	workflowData: IWorkflowBase,
 	userId?: string,
-	parentExecution?: RelatedExecution,
-	projectId?: string,
-	projectName?: string,
+	options: {
+		parentExecution?: RelatedExecution;
+		projectId?: string;
+		projectName?: string;
+		/** The "Execute Sub-workflow" node in the parent workflow that spawned this execution. */
+		parentNode?: INode;
+		/** Editor session of the parent. Only a top-level run has one. */
+		parentPushRef?: string;
+	} = {},
 ): ExecutionLifecycleHooks {
+	const { parentExecution, projectId, projectName, parentNode, parentPushRef } = options;
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
@@ -839,6 +1004,14 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsStatistics(hooks);
 	hookFunctionsPreExecute(hooks);
 	hookFunctionsPostExecute(hooks);
+	if (
+		parentExecution &&
+		parentNode &&
+		parentPushRef &&
+		Container.get(ExecutionsConfig).subworkflowProgressEnabled
+	) {
+		hookFunctionsPushSubExecution(hooks, workflowData, parentExecution, parentNode, parentPushRef);
+	}
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
