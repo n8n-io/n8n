@@ -255,6 +255,12 @@ describe('DeprecatedNodesValidationService', () => {
 			expect(() => validator.validateOnUpdate([after], [before])).not.toThrow();
 		});
 
+		it('allows replacing a deprecated node with a different node type at the same id', () => {
+			const before = makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func' });
+			const after = makeNode({ id: 'a', type: 'n8n-nodes-base.code', name: 'Func' });
+			expect(() => validator.validateOnUpdate([after], [before])).not.toThrow();
+		});
+
 		it('allows deleting a deprecated node', () => {
 			const before = [
 				makeNode({ id: 'a', type: 'n8n-nodes-base.set' }),
