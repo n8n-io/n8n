@@ -2184,12 +2184,47 @@ describe('SourceControlImportService', () => {
 			const project = await createTeamProject();
 			const credential = await createCredentials(credentialAttributes(), project);
 
-			await pullService.deleteTeamProjectsNotInWorkfolder(owner, [
-				mock<SourceControlledFile>({ id: project.id }),
-			]);
+			await pullService.deleteTeamProjectsNotInWorkfolder(
+				owner,
+				[mock<SourceControlledFile>({ id: project.id })],
+				[],
+			);
 
 			await expect(projectRepository.findOneBy({ id: project.id })).resolves.toBeNull();
 			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.toBeNull();
+		});
+
+		it('keeps a credential of a deleted team project when its import into a new project was skipped', async () => {
+			const owner = await getGlobalOwner();
+			const oldProject = await createTeamProject();
+			const newProject = await createTeamProject();
+			const credential = await createCredentials(credentialAttributes(), oldProject);
+			const credentialFile = mock<SourceControlledFile>({ id: credential.id });
+
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
+			const stub: ExportableCredential = {
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: {},
+				ownedBy: { type: 'team', teamId: newProject.id, teamName: newProject.name },
+			};
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			mockPolicyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+				new PolicyViolationError([
+					{ kind: 'credential-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+				]),
+			);
+
+			await pullService.importCredentialsFromWorkFolder([credentialFile], owner.id);
+			await pullService.deleteTeamProjectsNotInWorkfolder(
+				owner,
+				[mock<SourceControlledFile>({ id: oldProject.id })],
+				[credentialFile],
+			);
+
+			await expect(projectRepository.findOneBy({ id: oldProject.id })).resolves.toBeNull();
+			await expect(credentialsRepository.findOneBy({ id: credential.id })).resolves.not.toBeNull();
 		});
 
 		it('deletes a credential that has no owner', async () => {

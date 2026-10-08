@@ -1911,7 +1911,11 @@ export class SourceControlImportService {
 		}
 	}
 
-	async deleteTeamProjectsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
+	async deleteTeamProjectsNotInWorkfolder(
+		user: User,
+		candidates: SourceControlledFile[],
+		credentialsInWorkfolder: SourceControlledFile[],
+	) {
 		if (candidates.length === 0) {
 			return;
 		}
@@ -1922,7 +1926,17 @@ export class SourceControlImportService {
 			// A credential without an owner row cannot be found or deleted later, so delete them first.
 			const ownedCredentials =
 				await this.sharedCredentialsRepository.findOwnedCredentialsByProjects(candidateIds);
+			const credentialIdsInWorkfolder = new Set(credentialsInWorkfolder.map((c) => c.id));
 			for (const credential of ownedCredentials) {
+				// The work folder moved this credential to another project, but its import was
+				// skipped (e.g. blocked by policy). Git has no secret values, so keep the local ones:
+				// a later pull can still give the credential its new owner.
+				if (credentialIdsInWorkfolder.has(credential.id)) {
+					this.logger.warn(
+						`Keeping credential ${credential.id} of deleted project: it was not imported into its new project`,
+					);
+					continue;
+				}
 				await this.credentialsService.delete(user, credential.id);
 			}
 

@@ -709,6 +709,7 @@ export class SourceControlService {
 		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(
 			user,
 			projectsToBeDeleted,
+			credentialsToBeImported,
 		);
 
 		// #region Tracking Information
