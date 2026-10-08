@@ -10,7 +10,11 @@ export type RestrictedNodeEntry = NonNullable<InstanceAiToolCallState['restricte
 function collectFromAgentNode(node: InstanceAiAgentNode, found: Map<string, RestrictedNodeEntry>) {
 	for (const toolCall of node.toolCalls) {
 		for (const restricted of toolCall.restrictedNodes ?? []) {
-			if (!found.has(restricted.nodeType)) found.set(restricted.nodeType, restricted);
+			// The instance scope is the wider restriction, so a later run can replace a project one.
+			const known = found.get(restricted.nodeType);
+			if (!known || (known.scope === 'project' && restricted.scope === 'instance')) {
+				found.set(restricted.nodeType, restricted);
+			}
 		}
 	}
 	for (const child of node.children) collectFromAgentNode(child, found);

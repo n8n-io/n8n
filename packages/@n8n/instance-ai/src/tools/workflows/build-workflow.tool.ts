@@ -553,7 +553,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		grouping,
 	});
 	trackWorkflowSourceBuild(context, {
-		result: 'failure',
+		result: remediation.category === 'blocked' ? 'blocked' : 'failure',
 		stage,
 		binding,
 		targetWorkflowId,

@@ -15,8 +15,8 @@ export const RESTRICTED_NODE_GUIDANCE =
  * The nodes of a built workflow whose type a policy denies. The save refuses these, so the
  * builder learns before the save and can ask the user what to use instead.
  *
- * Types the saved workflow already has pass, as at the save: a policy change never makes an
- * existing workflow uneditable.
+ * A node that the saved workflow already has passes, as at the save: a policy change never makes
+ * an existing workflow uneditable. A new node of the same type does not pass.
  */
 export async function findRestrictedNodeBlockers(
 	context: InstanceAiContext,
@@ -35,13 +35,20 @@ export async function findRestrictedNodeBlockers(
 	if (restricted.length === 0) return none;
 
 	const restrictedByName = new Map(restricted.map((node) => [node.name, node]));
-	const alreadySaved = new Set((savedWorkflow?.nodes ?? []).map((node) => node.type));
+	const savedNodes = savedWorkflow?.nodes ?? [];
+	const isAlreadySaved = (node: { id?: string; name?: string; type: string }) =>
+		savedNodes.some(
+			(saved) =>
+				saved.type === node.type &&
+				((node.id !== undefined && saved.id === node.id) ||
+					(node.name !== undefined && saved.name === node.name)),
+		);
 
 	const blocking: ValidationWarning[] = [];
 	const found = new Map<string, RestrictedNodeSummary>();
 	for (const node of workflow.nodes ?? []) {
 		const match = restrictedByName.get(node.type);
-		if (!match || alreadySaved.has(node.type)) continue;
+		if (!match || isAlreadySaved(node)) continue;
 
 		found.set(match.name, match);
 		blocking.push({

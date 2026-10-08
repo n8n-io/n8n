@@ -50,10 +50,12 @@ export class BuilderRestrictedNodeTypes {
 		user: User,
 		editorProjectId?: string,
 	): Promise<string> {
+		// The id comes from the client, so the user must be able to read that workflow.
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
-		const owningProject = workflowId
-			? await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId)
-			: undefined;
+		const owningProject =
+			workflowId && (await userHasScopes(user, ['workflow:read'], false, { workflowId }))
+				? await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId)
+				: undefined;
 		if (owningProject) return owningProject.id;
 
 		// The editor sends this id, so the user must be able to create workflows there.

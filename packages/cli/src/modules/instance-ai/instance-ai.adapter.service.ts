@@ -2749,30 +2749,41 @@ export class InstanceAiAdapterService {
 			credentialsFinderService,
 			loadNodesAndCredentials,
 			aiGatewayService,
+			sharedWorkflowRepository,
 		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
-		// One policy read per adapter.
-		let restrictions: Promise<ReadonlyMap<string, TypeRestriction>> | undefined;
-		const getRestrictions = async (): Promise<ReadonlyMap<string, TypeRestriction>> => {
-			restrictions ??= (async () => {
-				try {
-					return await Container.get(TypeRestrictionProviderProxy).findRestrictedTypes(
-						'credential',
-						boundProjectId ?? null,
-						Object.keys(loadNodesAndCredentials.knownCredentials ?? {}),
-					);
-				} catch (error) {
-					this.logger.warn('Failed to read credential type restrictions', { error });
-					restrictions = undefined;
-					return new Map<string, TypeRestriction>();
-				}
-			})();
-			return await restrictions;
+		// One policy read per adapter and project.
+		const restrictionsByProject = new Map<string, Promise<ReadonlyMap<string, TypeRestriction>>>();
+		const getRestrictions = async (
+			projectId: string | null = boundProjectId ?? null,
+		): Promise<ReadonlyMap<string, TypeRestriction>> => {
+			const key = projectId ?? '';
+			let pending = restrictionsByProject.get(key);
+			if (!pending) {
+				pending = (async () => {
+					try {
+						return await Container.get(TypeRestrictionProviderProxy).findRestrictedTypes(
+							'credential',
+							projectId,
+							Object.keys(loadNodesAndCredentials.knownCredentials ?? {}),
+						);
+					} catch (error) {
+						this.logger.warn('Failed to read credential type restrictions', { error });
+						restrictionsByProject.delete(key);
+						return new Map<string, TypeRestriction>();
+					}
+				})();
+				restrictionsByProject.set(key, pending);
+			}
+			return await pending;
 		};
 		/** Credentials of a restricted type cannot go on a saved workflow, so none is offered. */
-		const withoutRestrictedTypes = async <T extends { type: string }>(items: T[]): Promise<T[]> => {
-			const restricted = await getRestrictions();
+		const withoutRestrictedTypes = async <T extends { type: string }>(
+			items: T[],
+			projectId?: string | null,
+		): Promise<T[]> => {
+			const restricted = await getRestrictions(projectId);
 			return restricted.size === 0 ? items : items.filter((item) => !restricted.has(item.type));
 		};
 
@@ -2811,8 +2822,13 @@ export class InstanceAiAdapterService {
 								projectId: options.projectId!,
 							});
 
+					const scopeProjectId = options.workflowId
+						? ((await sharedWorkflowRepository.getWorkflowOwningProject(options.workflowId))?.id ??
+							null)
+						: options.projectId!;
 					const filtered = await withoutRestrictedTypes(
 						options.type ? scoped.filter((c) => c.type === options.type) : scoped,
+						scopeProjectId,
 					);
 
 					return filtered.map(
@@ -2825,12 +2841,15 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				const credentials = await credentialsService.getMany(user, {
-					listQueryOptions: {
-						filter: options?.type ? { type: options.type } : undefined,
-					},
-					includeGlobal: true,
-				});
+				const credentials = await withoutRestrictedTypes(
+					await credentialsService.getMany(user, {
+						listQueryOptions: {
+							filter: options?.type ? { type: options.type } : undefined,
+						},
+						includeGlobal: true,
+					}),
+					null,
+				);
 
 				return credentials.map(
 					(c): CredentialSummary => ({
@@ -3100,7 +3119,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async listHttpCredentialHosts(): Promise<CredentialHostInfo[]> {
-				if (httpCredentialHostsCache) return httpCredentialHostsCache;
+				if (httpCredentialHostsCache) return await withoutRestrictedTypes(httpCredentialHostsCache);
 
 				const { knownCredentials } = loadNodesAndCredentials;
 				const result: CredentialHostInfo[] = [];
@@ -3129,7 +3148,7 @@ export class InstanceAiAdapterService {
 				}
 
 				httpCredentialHostsCache = result;
-				return result;
+				return await withoutRestrictedTypes(result);
 			},
 
 			async getAccountContext(credentialId: string) {

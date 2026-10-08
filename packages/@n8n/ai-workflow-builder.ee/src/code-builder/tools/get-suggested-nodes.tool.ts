@@ -20,7 +20,10 @@ const GetSuggestedNodesSchema = z.object({
 
 type GetSuggestedNodesInput = z.infer<typeof GetSuggestedNodesSchema>;
 
-export function createGetSuggestedNodesTool(nodeTypeParser: NodeTypeParser) {
+export function createGetSuggestedNodesTool(
+	nodeTypeParser: NodeTypeParser,
+	excludedNodeIds?: ReadonlySet<string>,
+) {
 	return new DynamicStructuredTool({
 		name: 'get_suggested_nodes',
 		description: `Returns curated node recommendations by workflow technique category.
@@ -28,7 +31,7 @@ export function createGetSuggestedNodesTool(nodeTypeParser: NodeTypeParser) {
 Available categories: ${categoryList.join(', ')}`,
 		schema: GetSuggestedNodesSchema,
 		func: async (input: GetSuggestedNodesInput): Promise<string> => {
-			return getSuggestedNodes(nodeTypeParser, input.categories);
+			return getSuggestedNodes(nodeTypeParser, input.categories, { excludedNodeIds });
 		},
 	});
 }

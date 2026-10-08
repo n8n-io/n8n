@@ -3184,7 +3184,7 @@ describe('createBuildWorkflowTool', () => {
 
 	it('refuses a workflow that uses a restricted node type and tells the host', async () => {
 		const onRestrictedNodes = vi.fn();
-		const { context, filePath } = makeContext({
+		const { context, filePath, trackTelemetry } = makeContext({
 			overrides: {
 				onRestrictedNodes,
 				nodeService: {
@@ -3236,6 +3236,10 @@ describe('createBuildWorkflowTool', () => {
 			},
 		});
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({ result: 'blocked', stage: 'validation' }),
+		);
 		expect(onRestrictedNodes).toHaveBeenCalledWith('tc-build', [
 			{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'instance' },
 		]);

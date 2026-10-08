@@ -279,7 +279,7 @@ async function handleList(
 			query: input.query,
 			gatewayCreditsOnly: input.gatewayCreditsOnly,
 		}),
-		input.gatewayCreditsOnly ? {} : findRestrictedMatches(context, toolCallId, input.query),
+		findRestrictedMatches(context, toolCallId, input.query),
 	]);
 	return { nodes, ...restricted };
 }
@@ -292,7 +292,7 @@ async function handleSearch(
 ) {
 	const [result, restricted] = await Promise.all([
 		searchNodes(context, input, cache),
-		input.connectionType ? {} : findRestrictedMatches(context, toolCallId, input.query),
+		findRestrictedMatches(context, toolCallId, input.query),
 	]);
 	return { ...result, ...restricted };
 }
@@ -486,7 +486,12 @@ async function handleTypeDefinition(
 async function handleSuggested(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'suggested' }>,
+	toolCallId: string | undefined,
 ) {
+	const restrictedNodes = await findRestricted(context, (restricted) => [...restricted]);
+	const restrictedByName = new Map(restrictedNodes.map((node) => [node.name, node]));
+	const withheld = new Map<string, (typeof restrictedNodes)[number]>();
+
 	const results: Array<{
 		category: string;
 		description: string;
@@ -498,8 +503,13 @@ async function handleSuggested(
 	for (const cat of input.categories) {
 		const data = suggestedNodesData[cat];
 		if (data) {
+			const allowed = data.nodes.filter((node) => {
+				const restricted = restrictedByName.get(node.name);
+				if (restricted) withheld.set(restricted.name, restricted);
+				return !restricted;
+			});
 			const suggestedNodes = await Promise.all(
-				data.nodes.map(async (node) => await enrichWithSetupPreference(context, node)),
+				allowed.map(async (node) => await enrichWithSetupPreference(context, node)),
 			);
 			results.push({
 				category: cat,
@@ -512,7 +522,10 @@ async function handleSuggested(
 		}
 	}
 
-	return { results, unknownCategories };
+	if (withheld.size === 0) return { results, unknownCategories };
+
+	reportRestricted(context, toolCallId, [...withheld.values()]);
+	return { results, unknownCategories, restricted: describeRestricted([...withheld.values()]) };
 }
 
 async function handleExploreResources(
@@ -766,7 +779,7 @@ export function createNodesTool(
 				case 'type-definition':
 					return await handleTypeDefinition(context, input, ctx.loadSkill, ctx.toolCallId);
 				case 'suggested':
-					return await handleSuggested(context, input);
+					return await handleSuggested(context, input, ctx.toolCallId);
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
 				case 'execute':

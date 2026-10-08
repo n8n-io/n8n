@@ -503,7 +503,7 @@ function enhanceRestrictedNodeLink(link: HTMLAnchorElement, href: string): void 
 	}
 
 	const marker = document.createElement('span');
-	marker.dataset.restrictedMarker = 'true';
+	marker.dataset.restrictedMarker = String(nextRestrictedMarkerId++);
 	marker.dataset.nodeType = nodeType;
 	marker.className = styles.restrictedMarker;
 
@@ -513,10 +513,13 @@ function enhanceRestrictedNodeLink(link: HTMLAnchorElement, href: string): void 
 }
 
 interface RestrictedMarker {
+	/** Stable for the life of the marker element, so a popover keeps its own state. */
+	id: string;
 	el: HTMLElement;
 	entry: RestrictedNodeEntry;
 }
 
+let nextRestrictedMarkerId = 0;
 const restrictedMarkers = shallowRef<RestrictedMarker[]>([]);
 
 function collectRestrictedMarkers(): void {
@@ -528,7 +531,7 @@ function collectRestrictedMarkers(): void {
 			const entry = el.dataset.nodeType
 				? thread.restrictedNodeIndex.get(el.dataset.nodeType)
 				: undefined;
-			return entry ? [{ el, entry: { ...entry } }] : [];
+			return entry ? [{ id: el.dataset.restrictedMarker ?? '', el, entry: { ...entry } }] : [];
 		},
 	);
 
@@ -538,8 +541,9 @@ function collectRestrictedMarkers(): void {
 		next.length === previous.length &&
 		next.every(
 			(marker, i) =>
-				marker.el === previous[i].el &&
+				marker.id === previous[i].id &&
 				marker.entry.nodeType === previous[i].entry.nodeType &&
+				marker.entry.displayName === previous[i].entry.displayName &&
 				marker.entry.scope === previous[i].entry.scope,
 		);
 	if (!unchanged) restrictedMarkers.value = next;
@@ -563,7 +567,7 @@ onUpdated(() => {
 <template>
 	<div ref="wrapperRef" @click="handleLinkClick">
 		<ChatMarkdownChunk :source="source" />
-		<Teleport v-for="(marker, i) in restrictedMarkers" :key="i" :to="marker.el">
+		<Teleport v-for="marker in restrictedMarkers" :key="marker.id" :to="marker.el">
 			<RestrictedNodePopover
 				:node-type-name="marker.entry.displayName"
 				:scope="marker.entry.scope"

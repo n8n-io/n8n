@@ -83,6 +83,28 @@ describe('collectRestrictedNodes', () => {
 		expect(found.has(gmailTrigger.nodeType)).toBe(true);
 	});
 
+	test('lets a later instance-scoped verdict replace a project-scoped one for the same type', () => {
+		const projectEntry = { ...gmailTrigger, scope: 'project' as const };
+
+		const found = collectRestrictedNodes([
+			message('m1', agentNode({ toolCalls: [toolCall('tc-1', [projectEntry])] })),
+			message('m2', agentNode({ toolCalls: [toolCall('tc-2', [gmailTrigger])] })),
+		]);
+
+		expect(found.get(gmailTrigger.nodeType)?.scope).toBe('instance');
+	});
+
+	test('keeps the instance scope when a later run reports the project one', () => {
+		const projectEntry = { ...gmailTrigger, scope: 'project' as const };
+
+		const found = collectRestrictedNodes([
+			message('m1', agentNode({ toolCalls: [toolCall('tc-1', [gmailTrigger])] })),
+			message('m2', agentNode({ toolCalls: [toolCall('tc-2', [projectEntry])] })),
+		]);
+
+		expect(found.get(gmailTrigger.nodeType)?.scope).toBe('instance');
+	});
+
 	test('finds nothing when no tool call reports a restriction', () => {
 		expect(
 			collectRestrictedNodes([

@@ -752,19 +752,23 @@ async function handleDelete(
 const RESTRICTED_CREDENTIAL_GUIDANCE =
 	'A policy restricts the credential type that matches. Do not use a generic or templated auth type to get around it, and do not pick another service on your own. Tell the user which credential type is restricted and ask what to use instead.';
 
-async function findRestrictedCredentialTypes(context: InstanceAiContext, query: string) {
+async function loadRestrictedCredentialTypes(context: InstanceAiContext) {
 	if (!context.credentialService.listRestrictedTypes) return [];
 
 	try {
-		return matchRestrictedByQuery(
-			query,
-			await context.credentialService.listRestrictedTypes(),
-			(type) => type.type,
-		);
+		return await context.credentialService.listRestrictedTypes();
 	} catch {
 		// Search still works without the hint.
 		return [];
 	}
+}
+
+async function findRestrictedCredentialTypes(context: InstanceAiContext, query: string) {
+	return matchRestrictedByQuery(
+		query,
+		await loadRestrictedCredentialTypes(context),
+		(type) => type.type,
+	);
 }
 
 async function handleSearchTypes(
@@ -774,7 +778,14 @@ async function handleSearchTypes(
 	// Enumerate n8n Connect–supported types regardless of query.
 	if (input.gatewayCreditsOnly) {
 		const types = (await context.credentialService.listAiGatewayCredentialTypes?.()) ?? [];
-		return { results: types.map((type) => ({ type, gatewayCredits: true })) };
+		const restricted = new Set(
+			(await loadRestrictedCredentialTypes(context)).map((restrictedType) => restrictedType.type),
+		);
+		return {
+			results: types
+				.filter((type) => !restricted.has(type))
+				.map((type) => ({ type, gatewayCredits: true })),
+		};
 	}
 
 	if (!context.credentialService.searchCredentialTypes) {

@@ -940,6 +940,24 @@ describe('credentials tool', () => {
 			expect(failing).not.toHaveProperty('restricted');
 		});
 
+		it('leaves restricted credential types out of the Gateway credits list', async () => {
+			const context = createMockContext();
+			context.credentialService.listAiGatewayCredentialTypes = vi
+				.fn()
+				.mockResolvedValue(['slackApi', 'notionApi']);
+			context.credentialService.listRestrictedTypes = vi
+				.fn()
+				.mockResolvedValue([{ type: 'slackApi', displayName: 'Slack API', scope: 'instance' }]);
+
+			const result = await executeTool(
+				createCredentialsTool(context),
+				{ action: 'search-types' as const, gatewayCreditsOnly: true },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ results: [{ type: 'notionApi', gatewayCredits: true }] });
+		});
+
 		it('should filter out generic auth types', async () => {
 			const searchResults = [
 				{ type: 'slackApi', displayName: 'Slack API' },

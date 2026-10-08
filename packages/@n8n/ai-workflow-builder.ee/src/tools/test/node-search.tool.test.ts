@@ -130,6 +130,24 @@ describe('NodeSearchTool', () => {
 			);
 		});
 
+		it('adds a note when a sub-node search names a restricted type in its query', async () => {
+			const tool = createNodeSearchTool(nodeTypesList, [
+				{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'instance' },
+			]).tool;
+
+			const result = await tool.invoke(
+				{
+					queries: [buildNodeSearchQuery('subNodeSearch', 'gmail', NodeConnectionTypes.AiTool)],
+				},
+				createToolConfig('search_nodes', 'test-call-sub'),
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			expect(content.update.messages[0]?.kwargs.content).toContain(
+				'Restricted node types that match your search',
+			);
+		});
+
 		it('adds no note when the query names no restricted type', async () => {
 			const tool = createNodeSearchTool(nodeTypesList, [
 				{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'instance' },

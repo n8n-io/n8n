@@ -69,11 +69,27 @@ describe('BuilderRestrictedNodeTypes', () => {
 		expect(nodeTypes.getByName).not.toHaveBeenCalled();
 	});
 
+	it('ignores a workflow that the user may not read, so the client cannot pick another project', async () => {
+		vi.mocked(userHasScopes).mockImplementation(
+			async (_user, scopes) => !scopes.includes('workflow:read'),
+		);
+
+		await service.find(payloadFor('someone-elses-workflow'), user);
+
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['workflow:read'], false, {
+			workflowId: 'someone-elses-workflow',
+		});
+		expect(sharedWorkflowRepository.getWorkflowOwningProject).not.toHaveBeenCalled();
+		expect(findRestrictedTypes).toHaveBeenCalledWith('node', 'personal', expect.any(Array));
+	});
+
 	it('prefers the project that owns the saved workflow over the one the editor reports', async () => {
 		await service.find(payloadFor('wf-1'), user, 'editor-project');
 
 		expect(findRestrictedTypes).toHaveBeenCalledWith('node', 'project-1', expect.any(Array));
-		expect(userHasScopes).not.toHaveBeenCalled();
+		expect(userHasScopes).not.toHaveBeenCalledWith(user, ['workflow:create'], false, {
+			projectId: 'editor-project',
+		});
 	});
 
 	it('uses the editor project for a workflow that is not saved yet, when the user may create there', async () => {

@@ -1855,6 +1855,7 @@ function createNodeAdapterServiceForTests(
 		credentialsService?: Record<string, unknown>;
 		credentialsFinderService?: Record<string, unknown>;
 		executeNodeService?: Record<string, unknown>;
+		sharedWorkflowRepository?: Record<string, unknown>;
 		projectId?: string;
 	},
 ) {
@@ -1878,7 +1879,9 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
+		(options?.sharedWorkflowRepository ?? {}) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[5],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
 		(options?.credentialsService ?? {}) as unknown as ConstructorParameters<
@@ -8436,10 +8439,22 @@ describe('createCredentialAdapter', () => {
 			);
 
 		const adapter = (
-			options: { projectId?: string; usable?: Array<Record<string, unknown>> } = {},
+			options: {
+				projectId?: string;
+				usable?: Array<Record<string, unknown>>;
+				all?: Array<Record<string, unknown>>;
+				owningProjectId?: string;
+			} = {},
 		) =>
 			createNodeAdapterServiceForTests([], {
 				projectId: options.projectId,
+				sharedWorkflowRepository: {
+					getWorkflowOwningProject: vi
+						.fn()
+						.mockResolvedValue(
+							options.owningProjectId ? { id: options.owningProjectId } : undefined,
+						),
+				},
 				loadNodesAndCredentials: {
 					getCredential: (type: string) => ({
 						type: { name: type, displayName: type === 'slackApi' ? 'Slack API' : 'Notion API' },
@@ -8448,6 +8463,7 @@ describe('createCredentialAdapter', () => {
 				},
 				credentialsService: {
 					getCredentialsAUserCanUseInAWorkflow: vi.fn().mockResolvedValue(options.usable ?? []),
+					getMany: vi.fn().mockResolvedValue(options.all ?? []),
 				},
 			}).credentialService;
 
@@ -8492,6 +8508,79 @@ describe('createCredentialAdapter', () => {
 			const credentials = await adapter({ projectId: 'project-1', usable }).list();
 
 			expect(credentials.map((c) => c.id)).toEqual(['c2']);
+		});
+
+		it('offers no credential of a restricted type in the unscoped list either', async () => {
+			restrict(['slackApi', 'instance']);
+			const all = [
+				{ id: 'c1', name: 'Slack', type: 'slackApi' },
+				{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			];
+
+			const credentials = await adapter({ all }).list();
+
+			expect(credentials.map((c) => c.id)).toEqual(['c2']);
+			expect(findRestrictedTypes).toHaveBeenCalledWith('credential', null, expect.any(Array));
+		});
+
+		it("checks the caller's project when the run has no bound project", async () => {
+			findRestrictedTypes.mockImplementation(
+				async (_kind, projectId) =>
+					new Map(
+						projectId === 'other-project' ? [['slackApi', { scope: 'project' as const }]] : [],
+					),
+			);
+			const usable = [
+				{ id: 'c1', name: 'Slack', type: 'slackApi' },
+				{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			];
+
+			const credentials = await adapter({ usable }).list({ projectId: 'other-project' });
+
+			expect(findRestrictedTypes).toHaveBeenCalledWith(
+				'credential',
+				'other-project',
+				expect.any(Array),
+			);
+			expect(credentials.map((c) => c.id)).toEqual(['c2']);
+		});
+
+		it("checks the owning project of a caller's workflow when the run has no bound project", async () => {
+			findRestrictedTypes.mockImplementation(
+				async (_kind, projectId) =>
+					new Map(
+						projectId === 'owner-project' ? [['slackApi', { scope: 'project' as const }]] : [],
+					),
+			);
+			const usable = [{ id: 'c1', name: 'Slack', type: 'slackApi' }];
+
+			const credentials = await adapter({ usable, owningProjectId: 'owner-project' }).list({
+				workflowId: 'wf-1',
+			});
+
+			expect(credentials).toEqual([]);
+		});
+
+		it('leaves restricted types out of the HTTP credential host list', async () => {
+			restrict(['slackApi', 'instance']);
+			const service = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: {
+					getCredential: (type: string) => ({
+						type: {
+							name: type,
+							displayName: type,
+							authenticate: {},
+							properties: [],
+							test: { request: { baseURL: `https://${type}.example.com` } },
+						},
+					}),
+					knownCredentials: { slackApi: {}, notionApi: {} },
+				},
+			}).credentialService;
+
+			const hosts = (await service.listHttpCredentialHosts?.()) ?? [];
+
+			expect(hosts.map((host) => host.type)).not.toContain('slackApi');
 		});
 
 		it('reads the policy once for the whole run', async () => {

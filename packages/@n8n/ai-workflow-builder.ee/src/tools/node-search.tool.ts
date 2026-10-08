@@ -168,7 +168,7 @@ export function createNodeSearchTool(
 
 				// Build response message
 				const restrictedNote = describeRestrictedMatches(
-					queries.flatMap((q) => (q.queryType === 'name' && q.query ? [q.query] : [])),
+					queries.flatMap((q) => (q.query ? [q.query] : [])),
 					restrictedNodeTypes,
 				);
 				const responseMessage = [buildResponseMessage(allResults, nodeTypes), restrictedNote]

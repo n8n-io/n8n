@@ -554,6 +554,7 @@ export {
 	instanceAiBuildModeSchema,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
+	restrictedNodeNoticePayloadSchema,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -619,9 +620,11 @@ export type {
 	InstanceAiSetupItemsEvent,
 	InstanceAiPreferencesAppliedEvent,
 	InstanceAiPreferenceCardEvent,
+	InstanceAiRestrictedNodeNoticeEvent,
 	InstanceAiPreferenceCardUndoResponse,
 	InstanceAiPreferenceCardEditResponse,
 	PreferenceCardPayload,
+	RestrictedNodeNoticePayload,
 	AiPreferencesAppliedPayload,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,

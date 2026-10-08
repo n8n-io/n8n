@@ -142,9 +142,9 @@ When the request needs a restricted type:
    replacement yourself.
 2. Tell the user in one or two sentences. Write the display name exactly as
    `restricted[].displayName` gives it. Say that the node is restricted on this
-   instance, or in this project when `scope` is `project`. Say that the rest of
-   the request is not affected. Do not explain policies and do not name who to
-   contact.
+   instance, or in this project when `scope` is `project`. Say which parts of the
+   request you can still build without it. Do not explain policies and do not
+   name who to contact.
 3. Search with `nodes(action="search")` for up to three allowed types that do
    the same job. Skip any type that the result lists as restricted.
 4. Make one `ask-user` call with one `single` question, for example "The Gmail
@@ -159,9 +159,14 @@ When the request needs a restricted type:
 Ask even when one alternative is clearly best. The user decides the replacement.
 
 A `credentials(action="search-types")` result can also carry a `restricted` list of
-credential types. Handle it the same way. Do not use the type. Do not use a generic
-or templated auth type to get around it. Name the restricted credential type in your
-reply and ask the user what to use instead.
+credential types. Follow the same steps, with these changes:
+
+- Do not use the type. Do not use a generic or templated auth type to get around it.
+- Search for alternatives with `credentials(action="search-types")`, not with
+  `nodes`. Offer only credential types that the result does not list as
+  restricted, and do not offer a different service as a credential alternative.
+- Name the restricted credential type in your reply, then ask with one `ask-user`
+  call as in step 4.
 
 ## Placeholders
 

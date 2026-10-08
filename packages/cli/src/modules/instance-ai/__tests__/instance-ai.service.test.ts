@@ -38,6 +38,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		patchThread: vi.fn(async () => {}),
 		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
 			context.setupItemsEmitter !== undefined,
+		createRestrictedNodeNoticePublisher: vi.fn(() => vi.fn()),
 		createSetupItemsEmitter: vi.fn(() => ({
 			emit: vi.fn(),
 			announce: vi.fn(),
@@ -263,6 +264,7 @@ import {
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	createOrchestratorRunControl,
+	createRestrictedNodeNoticePublisher,
 	createSetupItemsEmitter,
 	createSandbox,
 	createWorkspace,
@@ -1072,6 +1074,14 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ mcpConnectionsAvailable: true }),
+		);
+		expect(createRestrictedNodeNoticePublisher).toHaveBeenCalledWith(
+			expect.objectContaining({
+				eventBus: expect.anything(),
+				threadId: expect.any(String),
+				runId: expect.any(String),
+				agentId: expect.any(String),
+			}),
 		);
 		if (snapshotMode === 'off') {
 			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();

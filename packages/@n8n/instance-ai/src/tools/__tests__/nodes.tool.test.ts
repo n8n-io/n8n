@@ -831,6 +831,60 @@ describe('nodes tool', () => {
 			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-5', [gmailTrigger]);
 		});
 
+		it('still reports a restricted type when the search also names a connection type', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query: 'gmail', connectionType: 'ai_tool' } as never,
+				{ toolCallId: 'tc-7' } as never,
+			);
+
+			expect(result).toMatchObject({ restricted: [{ name: gmailTrigger.name }] });
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-7', [gmailTrigger]);
+		});
+
+		it('still reports a restricted type when the list is limited to Gateway credits', async () => {
+			const { context } = contextWithRestricted();
+
+			const result = await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'list', query: 'gmail', gatewayCreditsOnly: true } as never,
+				{ toolCallId: 'tc-8' } as never,
+			);
+
+			expect(result).toMatchObject({ restricted: [{ name: gmailTrigger.name }] });
+		});
+
+		it('withholds a restricted node from the curated suggestions and says so', async () => {
+			const { context, onRestrictedNodes } = contextWithRestricted();
+			const category = Object.keys(suggestedNodesData).find(
+				(key) => suggestedNodesData[key].nodes.length > 1,
+			)!;
+			const [withheldNode, ...others] = suggestedNodesData[category].nodes;
+			(context.nodeService.listRestricted as Mock).mockResolvedValue([
+				{ name: withheldNode.name, displayName: 'Withheld', scope: 'instance' },
+			]);
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('none'));
+
+			const result = (await executeTool(
+				createNodesTool(context, 'full'),
+				{ action: 'suggested', categories: [category] } as never,
+				{ toolCallId: 'tc-9' } as never,
+			)) as {
+				results: Array<{ suggestedNodes: Array<{ name: string }> }>;
+				restricted: Array<{ name: string }>;
+			};
+
+			const names = result.results[0].suggestedNodes.map((node) => node.name);
+			expect(names).not.toContain(withheldNode.name);
+			expect(names).toEqual(others.map((node) => node.name));
+			expect(result.restricted).toEqual([expect.objectContaining({ name: withheldNode.name })]);
+			expect(onRestrictedNodes).toHaveBeenCalledWith('tc-9', [
+				{ name: withheldNode.name, displayName: 'Withheld', scope: 'instance' },
+			]);
+		});
+
 		it('keeps working when the host reports no restrictions or fails to list them', async () => {
 			const { context, onRestrictedNodes } = contextWithRestricted();
 			(context.nodeService.listRestricted as Mock).mockRejectedValue(new Error('policy down'));

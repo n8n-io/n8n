@@ -246,6 +246,26 @@ describe('InstanceAiMarkdown', () => {
 			expect(popover).toHaveTextContent('Restricted in this project');
 		});
 
+		it('gives each marker its own stable identity, so popovers keep their own state', async () => {
+			restrict();
+			const link = `<a href="n8n-restricted-node://${encodeURIComponent(GMAIL)}">Gmail Trigger</a>`;
+
+			const { getByTestId } = renderComponent({
+				props: {
+					content: `The ${link} and again the ${link}.`,
+					streaming: true,
+					markRestrictedNodes: true,
+				},
+			});
+			await nextTick();
+
+			const ids = [
+				...getByTestId('markdown-output').querySelectorAll<HTMLElement>('[data-restricted-marker]'),
+			].map((marker) => marker.dataset.restrictedMarker);
+			expect(ids).toHaveLength(2);
+			expect(new Set(ids).size).toBe(2);
+		});
+
 		it('leaves the text alone unless the caller marks restricted nodes, as for reasoning text', () => {
 			restrict();
 

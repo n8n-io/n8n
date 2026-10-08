@@ -139,11 +139,12 @@ export class CodeBuilderAgent {
 			undefined,
 			config.restrictedNodeTypes,
 		);
+		const restrictedNodeIds = new Set(config.restrictedNodeTypes?.map((node) => node.name));
 		const getTool = createCodeBuilderGetTool({
 			nodeDefinitionDirs: config.nodeDefinitionDirs,
-			restrictedNodeIds: new Set(config.restrictedNodeTypes?.map((node) => node.name)),
+			restrictedNodeIds,
 		});
-		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser);
+		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser, restrictedNodeIds);
 		this.tools = [searchTool, getTool, suggestedNodesTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 

@@ -55,14 +55,27 @@ describe('findRestrictedNodeBlockers', () => {
 		expect(result.blocking[0].message).toContain("this project's policy");
 	});
 
-	it('lets a type the saved workflow already has pass', async () => {
+	it('lets a node that the saved workflow already has pass', async () => {
 		const result = await findRestrictedNodeBlockers(
 			contextWith(async () => await Promise.resolve([gmailTrigger])),
 			workflow(node('Gmail Trigger', gmailTrigger.name)),
-			workflow(node('Old name', gmailTrigger.name)),
+			workflow(node('Gmail Trigger', gmailTrigger.name)),
 		);
 
 		expect(result).toEqual({ blocking: [], restricted: [] });
+	});
+
+	it('does not let a new node of an already saved restricted type pass', async () => {
+		const result = await findRestrictedNodeBlockers(
+			contextWith(async () => await Promise.resolve([gmailTrigger])),
+			workflow(
+				node('Gmail Trigger', gmailTrigger.name),
+				node('Second Gmail Trigger', gmailTrigger.name),
+			),
+			workflow(node('Gmail Trigger', gmailTrigger.name)),
+		);
+
+		expect(result.blocking.map((warning) => warning.nodeName)).toEqual(['Second Gmail Trigger']);
 	});
 
 	it('finds nothing when no type is restricted', async () => {
