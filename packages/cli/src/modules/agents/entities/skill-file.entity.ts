@@ -12,7 +12,4 @@ export class SkillFile extends WithTimestamps {
 
 	@Column({ type: 'text' })
 	content: string;
-
-	@Column({ type: 'int' })
-	sizeBytes: number;
 }

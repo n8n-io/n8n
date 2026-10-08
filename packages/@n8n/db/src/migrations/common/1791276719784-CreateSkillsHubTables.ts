@@ -10,9 +10,9 @@ const AGENT_HISTORY_SKILL_TABLE = 'agent_history_skill';
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
  * A skill belongs to one target: a user ("Just you", for the assistant only), a project
  * (team or personal, for its agents and its assistant sessions), or the instance (neither
- * set). Its name and content live in versions: the row with a NULL version is the
- * editable draft; Save copies it into numbered, immutable versions, which agents read
- * and agent publishes pin.
+ * set). Its name and content live in numbered, immutable versions: every Save creates
+ * the next one, agents read the latest, and agent publishes pin the one they ran. There
+ * is no draft row; an editor keeps unsaved changes to itself until Save.
  */
 export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -76,21 +76,18 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 	}
 
 	private async createSkillVersionTable({
-		schemaBuilder: { createTable, createIndex, column },
-		escape,
+		schemaBuilder: { createTable, column },
 	}: MigrationContext) {
 		await createTable(SKILL_VERSION_TABLE)
 			.withColumns(
 				column('id').uuid.primary,
 				column('skillId').varchar(36).notNull,
-				column('version').int.comment(
-					'NULL for the editable draft. Save creates 1..n, which never change',
+				column('version').int.notNull.comment(
+					'1..n per skill. Each Save adds one; none ever changes',
 				),
 				column('name')
 					.varchar(128)
-					.notNull.comment(
-						'Free-text skill name. The draft holds the current name, a saved version the name it was saved with',
-					),
+					.notNull.comment('Free-text skill name, as it was when this version was saved'),
 				column('description').varchar(1024).notNull,
 				column('instructions').text.notNull,
 				column('frontmatter').json.comment(
@@ -99,12 +96,11 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 				column('contentHash')
 					.varchar(64)
 					.notNull.comment(
-						'sha256 of name, description, instructions, frontmatter and files. Save creates no version when the draft matches the latest one',
+						'sha256 of name, description, instructions, frontmatter and files. Save creates no version when the content matches the latest one',
 					),
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
 			.withTimestamps.withUniqueConstraintOn(['skillId', 'version'])
-			.withIndexOn(['skillId', 'contentHash'])
 			.withForeignKey('skillId', {
 				tableName: SKILL_TABLE,
 				columnName: 'id',
@@ -115,16 +111,6 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			});
-
-		// One draft per skill. The unique (skillId, version) constraint does not cover
-		// it, because NULL versions are distinct there.
-		await createIndex(
-			SKILL_VERSION_TABLE,
-			['skillId'],
-			true,
-			undefined,
-			`${escape.columnName('version')} IS NULL`,
-		);
 	}
 
 	private async createSkillFileTable({ schemaBuilder: { createTable, column } }: MigrationContext) {
@@ -133,7 +119,6 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 				column('skillVersionId').uuid.primary,
 				column('path').varchar(512).primary.comment('Relative path, references/*.md in v1'),
 				column('content').text.notNull,
-				column('sizeBytes').int.notNull.comment('UTF-8 byte length of content'),
 			)
 			.withTimestamps.withForeignKey('skillVersionId', {
 				tableName: SKILL_VERSION_TABLE,

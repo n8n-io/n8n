@@ -7,7 +7,6 @@
 | content | text |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | path | varchar(512) |  | false |  |  | Relative path, references/*.md in v1 |
-| sizeBytes | integer |  | false |  |  | UTF-8 byte length of content |
 | skillVersionId | uuid |  | false |  | [public.skill_version](public.skill_version.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -20,7 +19,6 @@
 | skill_file_content_not_null | n | NOT NULL content |
 | skill_file_createdAt_not_null | n | NOT NULL "createdAt" |
 | skill_file_path_not_null | n | NOT NULL path |
-| skill_file_sizeBytes_not_null | n | NOT NULL "sizeBytes" |
 | skill_file_skillVersionId_not_null | n | NOT NULL "skillVersionId" |
 | skill_file_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -41,7 +39,6 @@ erDiagram
   text content
   timestamp_3__with_time_zone createdAt
   varchar_512_ path
-  integer sizeBytes
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt
 }

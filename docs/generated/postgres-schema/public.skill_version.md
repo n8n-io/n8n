@@ -4,17 +4,17 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| contentHash | varchar(64) |  | false |  |  | sha256 of name, description, instructions, frontmatter and files. Save creates no version when the draft matches the latest one |
+| contentHash | varchar(64) |  | false |  |  | sha256 of name, description, instructions, frontmatter and files. Save creates no version when the content matches the latest one |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | description | varchar(1024) |  | false |  |  |  |
 | frontmatter | json |  | true |  |  | SKILL.md frontmatter fields other than name and description, e.g. allowed-tools |
 | id | uuid |  | false | [public.agent_history_skill](public.agent_history_skill.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.skill_file](public.skill_file.md) |  |  |
 | instructions | text |  | false |  |  |  |
-| name | varchar(128) |  | false |  |  | Free-text skill name. The draft holds the current name, a saved version the name it was saved with |
+| name | varchar(128) |  | false |  |  | Free-text skill name, as it was when this version was saved |
 | skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| version | integer |  | true |  |  | NULL for the editable draft. Save creates 1..n, which never change |
+| version | integer |  | false |  |  | 1..n per skill. Each Save adds one; none ever changes |
 
 ## Constraints
 
@@ -32,13 +32,12 @@
 | skill_version_name_not_null | n | NOT NULL name |
 | skill_version_skillId_not_null | n | NOT NULL "skillId" |
 | skill_version_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| skill_version_version_not_null | n | NOT NULL version |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_03898a31727c7de3351839d67f | CREATE INDEX "IDX_03898a31727c7de3351839d67f" ON public.skill_version USING btree ("skillId", "contentHash") |
-| IDX_skill_version_skillId | CREATE UNIQUE INDEX "IDX_skill_version_skillId" ON public.skill_version USING btree ("skillId") WHERE (version IS NULL) |
 | PK_05167d59ac7599128e22400172d | CREATE UNIQUE INDEX "PK_05167d59ac7599128e22400172d" ON public.skill_version USING btree (id) |
 | UQ_93bb78a1eb4e0890fac6b69df95 | CREATE UNIQUE INDEX "UQ_93bb78a1eb4e0890fac6b69df95" ON public.skill_version USING btree ("skillId", version) |
 
@@ -99,7 +98,6 @@ erDiagram
   text content
   timestamp_3__with_time_zone createdAt
   varchar_512_ path
-  integer sizeBytes
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt
 }

@@ -1,16 +1,18 @@
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-/** SKILL.md frontmatter fields other than name and description, e.g. `allowed-tools`. */
-export type SkillFrontmatter = Record<string, string>;
+/**
+ * SKILL.md frontmatter fields other than name and description, e.g. `allowed-tools`,
+ * stored as given. The standard allows objects and lists, so values are not narrowed.
+ */
+export type SkillFrontmatter = Record<string, unknown>;
 
 /**
- * Content of a skill. `version` NULL is the editable draft (one per skill); Save
- * creates the numbered versions, which never change and which agents read.
+ * One saved version of a skill. Every Save adds the next number; a version never
+ * changes. Agents read the latest one unless a revert pinned an older one.
  */
 @Entity({ name: 'skill_version' })
 @Index(['skillId', 'version'], { unique: true })
-@Index(['skillId', 'contentHash'])
 export class SkillVersion extends WithTimestamps {
 	@PrimaryColumn({ type: 'uuid' })
 	id: string;
@@ -18,10 +20,10 @@ export class SkillVersion extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36 })
 	skillId: string;
 
-	@Column({ type: 'int', nullable: true })
-	version: number | null;
+	@Column({ type: 'int' })
+	version: number;
 
-	/** Free-text name. The draft holds the current name, a saved version the name it was saved with. */
+	/** Free-text name, as it was when this version was saved. */
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
@@ -36,7 +38,7 @@ export class SkillVersion extends WithTimestamps {
 
 	/**
 	 * sha256 of name, description, instructions, frontmatter and files (see
-	 * `skillContentHash`). Save creates no version when the draft matches the latest one.
+	 * `skillContentHash`). Save creates no version when the content matches the latest one.
 	 */
 	@Column({ type: 'varchar', length: 64 })
 	contentHash: string;

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varchar(36) NOT NULL, "version" integer, "name" varchar(128) NOT NULL, "description" varchar(1024) NOT NULL, "instructions" text NOT NULL, "frontmatter" text, "contentHash" varchar(64) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "UQ_93bb78a1eb4e0890fac6b69df95" UNIQUE ("skillId", "version"), CONSTRAINT "FK_f87064c0a29efd2d5195328d91a" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9565d0fbf32cd463f9b47c7adab" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varchar(36) NOT NULL, "version" integer NOT NULL, "name" varchar(128) NOT NULL, "description" varchar(1024) NOT NULL, "instructions" text NOT NULL, "frontmatter" text, "contentHash" varchar(64) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "UQ_93bb78a1eb4e0890fac6b69df95" UNIQUE ("skillId", "version"), CONSTRAINT "FK_f87064c0a29efd2d5195328d91a" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9565d0fbf32cd463f9b47c7adab" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -25,7 +25,7 @@ CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varch
 | name | varchar(128) |  | false |  |  |  |
 | skillId | varchar(36) |  | false |  | [skill](skill.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| version | INTEGER |  | true |  |  |  |
+| version | INTEGER |  | false |  |  |  |
 
 ## Constraints
 
@@ -41,8 +41,6 @@ CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varch
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_03898a31727c7de3351839d67f | CREATE INDEX "IDX_03898a31727c7de3351839d67f" ON "skill_version" ("skillId", "contentHash")  |
-| IDX_skill_version_skillId | CREATE UNIQUE INDEX "IDX_skill_version_skillId" ON "skill_version" ("skillId") WHERE "version" IS NULL |
 | sqlite_autoindex_skill_version_1 | PRIMARY KEY (id) |
 | sqlite_autoindex_skill_version_2 | UNIQUE (skillId, version) |
 
@@ -103,7 +101,6 @@ erDiagram
   TEXT content
   datetime_3_ createdAt
   varchar_512_ path PK
-  INTEGER sizeBytes
   varchar skillVersionId PK
   datetime_3_ updatedAt
 }
