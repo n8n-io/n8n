@@ -9,7 +9,6 @@ import { v4 as uuid, v7 as uuidv7 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
-import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
@@ -822,12 +821,7 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentMessageRepository>(),
 			);
 			const wakeService = new AgentWakeService(
-				mock<AgentTaskCancellationRepository>({
-					pendingThreads: async () => [],
-				}),
-				mock<AgentTaskCancellationService>(),
-				mock<AgentExecutionThreadRepository>(),
-				mock<AgentExecutionUpdateBroadcaster>(),
+				mock<AgentTaskCancellationRepository>(),
 				repository,
 				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,

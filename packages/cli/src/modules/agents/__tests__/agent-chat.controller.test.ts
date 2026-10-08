@@ -9,7 +9,6 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
-import { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -94,10 +93,8 @@ function makeController() {
 	);
 
 	const taskCancellation = mock<AgentTaskCancellationService>();
-	const wakeService = mock<AgentWakeService>();
 	const controller = new AgentChatController(
 		taskCancellation,
-		wakeService,
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		mock<AgentTestChatService>(),
@@ -115,7 +112,6 @@ function makeController() {
 
 	return {
 		taskCancellation,
-		wakeService,
 		controller,
 		agentsConfig,
 		messageQueue,
@@ -1427,13 +1423,12 @@ describe('AgentChatController task cancellation', () => {
 		user: { id: 'user' },
 	};
 
-	it('passes the displayed plan and request identity to cancellation', async () => {
-		const { controller, agentsService, taskCancellation, wakeService } = makeController();
+	it('stops the displayed plan without an automatic wake', async () => {
+		const { controller, agentsService, taskCancellation } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
-		const payload = { planId: 'plan', cancellationId: 'cancel' };
+		const payload = { planId: 'plan' };
 		await controller.cancelTasks(request as never, makeSseResponse([]), payload);
-		expect(taskCancellation.request).toHaveBeenCalledWith('thread', 'plan', 'cancel');
-		expect(wakeService.requestWake).toHaveBeenCalledWith('thread');
+		expect(taskCancellation.request).toHaveBeenCalledWith('thread', 'plan');
 	});
 
 	it('rejects cancellation and state reads for a session the user cannot access', async () => {
@@ -1443,7 +1438,6 @@ describe('AgentChatController task cancellation', () => {
 		await expect(
 			controller.cancelTasks(request as never, makeSseResponse([]), {
 				planId: null,
-				cancellationId: 'cancel',
 			}),
 		).rejects.toThrow('Session not found');
 		await expect(controller.getTaskCancellation(request as never)).rejects.toThrow(

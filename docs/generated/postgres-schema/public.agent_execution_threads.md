@@ -9,13 +9,14 @@
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
-| id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_message_queue](public.agent_message_queue.md) [public.agent_plan](public.agent_plan.md) [public.agent_task_cancellation](public.agent_task_cancellation.md) [public.agent_thread_grants](public.agent_thread_grants.md) |  |  |
+| id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_message_queue](public.agent_message_queue.md) [public.agent_plan](public.agent_plan.md) [public.agent_thread_grants](public.agent_thread_grants.md) |  |  |
 | ownerId | uuid |  | true |  | [public.user](public.user.md) | User who started this private session |
 | parentAgentId | varchar(36) |  | true |  |  | Saved agent id of the parent that delegated this subagent run. |
 | parentThreadId | varchar(128) |  | true |  |  | Parent session thread id that delegated this subagent run. |
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
 | sessionNumber | integer | 0 | false |  |  |  |
 | taskId | varchar(32) |  | true |  |  | Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows |
+| taskStop | json |  | true |  |  | Latest task stop boundary and unresolved stop errors |
 | taskVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) | Published agent_history version that supplied the task snapshot |
 | title | varchar(255) |  | true |  |  |  |
 | totalCompletionTokens | integer | 0 | false |  |  |  |
@@ -66,7 +67,6 @@ erDiagram
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_plan" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
-"public.agent_task_cancellation" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_thread_grants" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -85,6 +85,7 @@ erDiagram
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
+  json taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   integer totalCompletionTokens
@@ -154,20 +155,6 @@ erDiagram
   integer formatVersion
   uuid id
   integer revision
-  varchar_128_ threadId FK
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agent_task_cancellation" {
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone cutoffAt
-  json failures
-  json generation
-  uuid id
-  uuid planId FK
-  text report
-  varchar_16_ reportStatus
-  timestamp_3__with_time_zone settledAt
-  varchar_16_ status
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }

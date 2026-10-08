@@ -391,14 +391,11 @@ describe('Task cancellation', () => {
 				document: { ...plan.document, items: [planTask(1, 'done'), planTask(2, 'cancelled')] },
 			},
 			cancellation: {
-				id: 'cancel',
 				planId: plan.planId,
 				status: 'stopped',
 				requestedAt: '',
-				settledAt: '',
 				failures: [],
-				reportStatus: 'reported',
-				report: '',
+				summary: { completed: 1, canceled: 2 },
 				plan: null,
 				heldQueueIds: [],
 			},
@@ -416,14 +413,11 @@ describe('Task cancellation', () => {
 			props: {
 				plan,
 				cancellation: {
-					id: 'cancel',
 					planId: plan.planId,
 					status: 'failed',
 					requestedAt: '',
-					settledAt: null,
 					failures: [{ jobId: 'job', title: 'Waiting workflow' }],
-					reportStatus: 'pending',
-					report: '',
+					summary: { completed: 1, canceled: 2 },
 					plan: null,
 					heldQueueIds: [],
 				},
@@ -431,6 +425,7 @@ describe('Task cancellation', () => {
 		});
 		await wrapper.get('button').trigger('click');
 		expect(wrapper.text()).toContain('Waiting workflow');
+		expect(wrapper.get('button').text()).toContain('agents.chat.tasks.stopFailedTitle');
 		expect(wrapper.get('[data-testid="agent-chat-plan-stop"]').text()).toBe(
 			'agents.chat.tasks.retry',
 		);

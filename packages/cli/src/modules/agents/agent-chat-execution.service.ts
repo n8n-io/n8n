@@ -113,22 +113,6 @@ export class AgentChatExecutionService {
 		}
 	}
 
-	/** The durable task fence stops the running loop at its next tool or model boundary. */
-	async cancelTasksInRuntime(context: ExecutionContext): Promise<void> {
-		await this.lockService.withLease(
-			LockNamespace.KNOWN_LOCKS,
-			`agent-preview-turn:${context.threadId}`,
-			async () => {
-				const execution = await this.getOwnedExecution(context);
-				if (!execution) throw new NotFoundError('Execution not found');
-				await this.steering.close(context.threadId, context.executionId);
-				// Keep active tool handlers attached until their results are saved.
-				if (execution.status !== 'running')
-					await this.cancelRecordedSuspension({ ...context, scope: 'foreground' });
-			},
-		);
-	}
-
 	async requestCancel(context: ExecutionContext): Promise<boolean> {
 		return await this.lockService.withLease(
 			LockNamespace.KNOWN_LOCKS,

@@ -1,30 +1,41 @@
+import type { SerializableAgentState } from '@n8n/agents';
+import { AgentsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { DataSource, In, IsNull, MoreThanOrEqual, Not } from '@n8n/typeorm';
+import { jsonParse, UserError } from 'n8n-workflow';
 
-import { AgentTaskCancellation } from '../entities/agent-task-cancellation.entity';
+import { checkpointExecutionId } from '../types/agent-queued-message';
+import type { AgentTaskStop } from '../types/agent-task-stop';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
 
+type TaskStopScope = AgentTaskStop & { threadId: string };
+
 @Service()
-export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCancellation> {
+export class AgentTaskCancellationRepository extends BaseRepository<AgentExecutionThread> {
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
 		private readonly threads: AgentExecutionThreadRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {
-		super(AgentTaskCancellation, dataSource.manager, transactionRunner);
+		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
-	async latest(threadId: string, ctx: OperationContext = {}) {
-		return await this.managerFor(ctx).findOne(AgentTaskCancellation, {
-			where: { threadId },
-			order: { createdAt: 'DESC', id: 'DESC' },
-		});
+	async latest(threadId: string, ctx: OperationContext = {}): Promise<TaskStopScope | null> {
+		const thread = await this.managerFor(ctx).findOneBy(AgentExecutionThread, { id: threadId });
+		return thread?.taskStop ? { ...thread.taskStop, threadId } : null;
+	}
+
+	async saveStop(stop: TaskStopScope, ctx: OperationContext) {
+		const { threadId, ...taskStop } = stop;
+		await this.managerFor(ctx).update(AgentExecutionThread, { id: threadId }, { taskStop });
+		return stop;
 	}
 
 	async captureGeneration(threadId: string, ctx: OperationContext) {
@@ -57,56 +68,9 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 		};
 	}
 
-	async findRequest(threadId: string, id: string, ctx: OperationContext = {}) {
-		return await this.managerFor(ctx).findOneBy(AgentTaskCancellation, { threadId, id });
-	}
-
-	async saveRequest(request: AgentTaskCancellation, ctx: OperationContext) {
-		return await this.managerFor(ctx).save(AgentTaskCancellation, request);
-	}
-
-	async insertRequest(request: AgentTaskCancellation, ctx: OperationContext) {
-		await this.managerFor(ctx).insert(AgentTaskCancellation, {
-			id: request.id,
-			threadId: request.threadId,
-			planId: request.planId,
-			status: request.status,
-			generation: request.generation,
-			cutoffAt: request.cutoffAt,
-			settledAt: request.settledAt,
-			failures: request.failures,
-			reportStatus: request.reportStatus,
-			report: request.report,
-		});
-	}
-
-	async pendingThreads() {
-		const requests = await this.find({
-			where: [{ status: 'stopping' }, { status: 'stopped', reportStatus: 'pending' }],
-		});
-		return [...new Set(requests.map((request) => request.threadId))];
-	}
-
 	async blocksQueue(threadId: string, ctx: OperationContext) {
-		const request = await this.latest(threadId, ctx);
-		return !!request && (request.status !== 'stopped' || request.reportStatus === 'pending');
-	}
-
-	async claimReport(id: string) {
-		const result = await this.update(
-			{ id, status: 'stopped', reportStatus: 'pending' },
-			{
-				reportStatus: 'claimed',
-			},
-		);
-		return result.affected === 1;
-	}
-
-	async finishReport(id: string, succeeded: boolean) {
-		await this.update(
-			{ id, reportStatus: 'claimed' },
-			{ reportStatus: succeeded ? 'reported' : 'failed' },
-		);
+		const stop = await this.latest(threadId, ctx);
+		return !!stop && (await this.unfinishedWork(stop, ctx)).length > 0;
 	}
 
 	/** Lock ancestors first so dispatch and cancellation use the same admission boundary. */
@@ -115,23 +79,14 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 		for (const thread of lineage.toReversed()) await this.threads.lockById(thread.id, ctx);
 	}
 
-	async assertWakeAdmission(
-		threadId: string,
-		wake: { jobIds: string[]; cancellationId?: string },
-		ctx: OperationContext,
-	) {
+	async assertWakeAdmission(threadId: string, wake: { jobIds: string[] }, ctx: OperationContext) {
 		if (await this.isCancelled(threadId, undefined, ctx))
 			throw new UserError('These background tasks were canceled');
 		const request = await this.latest(threadId, ctx);
 		if (!request) return;
-		if (
-			wake.cancellationId === request.id &&
-			request.status === 'stopped' &&
-			request.reportStatus === 'claimed'
-		)
-			return;
+
 		const targeted = new Set((await this.targetedJobs(request, ctx)).map((job) => job.id));
-		if (wake.cancellationId || !wake.jobIds.length || wake.jobIds.some((id) => targeted.has(id))) {
+		if (!wake.jobIds.length || wake.jobIds.some((id) => targeted.has(id))) {
 			throw new UserError('These background tasks were canceled');
 		}
 	}
@@ -148,7 +103,6 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 		for (const thread of lineage) {
 			const request = await this.latest(thread.id, ctx);
 			if (!request) continue;
-			if (request.status !== 'stopped') return true;
 			if (thread.id !== threadId) {
 				const child = lineage[lineage.indexOf(thread) - 1];
 				const job = await manager.findOneBy(AgentBackgroundJob, { childThreadId: child.id });
@@ -172,7 +126,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 		return false;
 	}
 
-	async targetedJobs(request: AgentTaskCancellation, ctx: OperationContext = {}) {
+	async targetedJobs(request: TaskStopScope, ctx: OperationContext = {}) {
 		const manager = this.managerFor(ctx);
 		const jobs: AgentBackgroundJob[] = [];
 		const visited = new Set<string>();
@@ -183,7 +137,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 			visited.add(threadId);
 			const children = await manager.find(AgentBackgroundJob, {
 				where:
-					threadId === request.threadId && request.status === 'stopped'
+					threadId === request.threadId
 						? [
 								{ parentThreadId: threadId, id: In(request.generation.jobIds) },
 								{
@@ -198,9 +152,7 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 			const delegated = await manager.find(AgentExecutionThread, {
 				where: {
 					parentThreadId: threadId,
-					...(threadId === request.threadId && request.status === 'stopped'
-						? { id: In(request.generation.threadIds) }
-						: {}),
+					...(threadId === request.threadId ? { id: In(request.generation.threadIds) } : {}),
 				},
 			});
 			pending.push(...delegated.map((thread) => thread.id));
@@ -208,34 +160,9 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 		return jobs;
 	}
 
-	async reopenForLateDispatch(threadId: string, ctx: OperationContext) {
-		for (const thread of await this.lineage(threadId, ctx)) {
-			const request = await this.latest(thread.id, ctx);
-			if (request) {
-				request.status = 'stopping';
-				request.settledAt = null;
-				await this.saveRequest(request, ctx);
-				return;
-			}
-		}
-	}
-
-	async hasNewWork(request: AgentTaskCancellation, ctx: OperationContext) {
-		const scope = {
-			parentThreadId: request.threadId,
-			status: In(['running', 'suspended', 'paused']),
-			id: Not(In(request.generation.jobIds)),
-		};
-		return await this.managerFor(ctx).existsBy(AgentBackgroundJob, [
-			{ ...scope, sourceExecutionId: IsNull() },
-			{ ...scope, sourceExecutionId: Not(In(request.generation.executionIds)) },
-		]);
-	}
-
-	async targetedDescendants(request: AgentTaskCancellation, ctx: OperationContext = {}) {
+	async targetedDescendants(request: TaskStopScope, ctx: OperationContext = {}) {
 		const jobs = await this.targetedJobs(request, ctx);
 		const threads = [
-			request.threadId,
 			...request.generation.threadIds,
 			...jobs.flatMap((job) => (job.childThreadId ? [job.childThreadId] : [])),
 		];
@@ -253,20 +180,66 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentTaskCan
 		});
 	}
 
-	async hasRunningWork(request: AgentTaskCancellation, ctx: OperationContext) {
-		const threads = (await this.targetedDescendants(request, ctx)).map((thread) => thread.id);
-		if (
-			await this.managerFor(ctx).existsBy(AgentCheckpoint, {
-				threadId: In(threads),
+	async unfinishedWork(request: TaskStopScope, ctx: OperationContext = {}) {
+		const manager = this.managerFor(ctx);
+		const children = await this.targetedDescendants(request, ctx);
+		const childIds = children.map((thread) => thread.id);
+		const executions = await manager.find(AgentExecution, {
+			where: [
+				{ threadId: request.threadId, id: In(request.generation.executionIds), status: 'running' },
+				{ threadId: In(childIds), status: 'running' },
+			],
+		});
+		const checkpoints = await manager.find(AgentCheckpoint, {
+			where: {
+				threadId: In([request.threadId, ...childIds]),
 				state: Not(IsNull()),
 				expired: false,
-			})
-		)
-			return true;
-		return await this.managerFor(ctx).existsBy(AgentExecution, [
-			{ threadId: request.threadId, id: In(request.generation.executionIds), status: 'running' },
-			{ threadId: In(threads), status: 'running' },
-		]);
+				updatedAt: MoreThanOrEqual(
+					new Date(
+						Date.now() - this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
+					),
+				),
+			},
+		});
+		const jobs = await this.targetedJobs(request, ctx);
+		return [
+			...request.failures.filter((failure) => {
+				const job = jobs.find((item) => item.id === failure.jobId);
+				return job?.status !== 'completed' && job?.status !== 'failed';
+			}),
+			...jobs
+				.filter((job) => ['running', 'suspended', 'paused'].includes(job.status))
+				.map((job) => ({ jobId: job.id, title: job.title })),
+			...executions.map((execution) => ({
+				jobId: execution.id,
+				title:
+					children.find((child) => child.id === execution.threadId)?.agentName ??
+					'Current response',
+			})),
+			...checkpoints
+				.filter((checkpoint) => {
+					if (checkpoint.threadId !== request.threadId) return true;
+					const state = jsonParse<SerializableAgentState | null>(checkpoint.state ?? '', {
+						fallbackValue: null,
+					});
+					if (state?.status !== 'suspended') return false;
+					const executionId = checkpointExecutionId(state);
+					return !executionId || request.generation.executionIds.includes(executionId);
+				})
+				.flatMap((checkpoint) =>
+					checkpoint.threadId
+						? [
+								{
+									jobId: checkpoint.threadId,
+									title:
+										children.find((child) => child.id === checkpoint.threadId)?.agentName ??
+										'Current response',
+								},
+							]
+						: [],
+				),
+		];
 	}
 
 	async consumeTargetedMail(ids: string[], ctx: OperationContext) {

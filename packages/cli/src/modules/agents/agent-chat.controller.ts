@@ -37,7 +37,6 @@ import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 
 import { AgentTaskCancellationService } from './agent-task-cancellation.service';
-import { AgentWakeService } from './background/agent-wake.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -77,7 +76,6 @@ import { withOpenSuspensions } from './utils/messages-envelope';
 export class AgentChatController {
 	constructor(
 		private readonly taskCancellation: AgentTaskCancellationService,
-		private readonly wakeService: AgentWakeService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
@@ -865,13 +863,7 @@ export class AgentChatController {
 		@Body payload: AgentTaskCancellationDto,
 	): Promise<AgentTaskCancellationState> {
 		await this.assertTaskCancellationAccess(req);
-		const state = await this.taskCancellation.request(
-			req.params.threadId,
-			payload.planId,
-			payload.cancellationId,
-		);
-		await this.wakeService.requestWake(req.params.threadId);
-		return state;
+		return await this.taskCancellation.request(req.params.threadId, payload.planId);
 	}
 
 	@Get('/:agentId/chat/:threadId/task-cancellation')

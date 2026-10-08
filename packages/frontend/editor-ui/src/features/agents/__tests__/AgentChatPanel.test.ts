@@ -1278,14 +1278,11 @@ describe('AgentChatPanel', () => {
 
 		it('shows new running jobs after an earlier cancellation', () => {
 			cancellationMock.value = {
-				id: 'cancel',
 				planId: null,
 				status: 'stopped',
 				requestedAt: new Date().toISOString(),
-				settledAt: new Date().toISOString(),
 				failures: [],
-				reportStatus: 'reported',
-				report: '',
+				summary: { completed: 1, canceled: 2 },
 				plan: null,
 				heldQueueIds: [],
 			};

@@ -14,7 +14,7 @@ import { AgentPlanService } from '../agent-plan.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
-import type { AgentTaskCancellation } from '../entities/agent-task-cancellation.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentPlanTask } from '../plans/agent-plan.schema';
@@ -43,7 +43,7 @@ function setup() {
 	const locks = mock<LockService>();
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
 	const checkpoints = mock<N8NCheckpointStorage>();
-	let saved: AgentTaskCancellation | null = null;
+	let saved: Awaited<ReturnType<AgentTaskCancellationRepository['latest']>> = null;
 	let work = [
 		mock<AgentBackgroundJob>({
 			id: 'completed',
@@ -67,13 +67,10 @@ function setup() {
 	];
 	repository.captureGeneration.mockResolvedValue({ executionIds: [], jobIds: [], threadIds: [] });
 	repository.latest.mockImplementation(async () => saved);
-	repository.findRequest.mockImplementation(async () => saved);
-	repository.saveRequest.mockImplementation(async (value) => (saved = value));
-	repository.insertRequest.mockImplementation(async (value) => {
-		saved = value;
-	});
+	repository.saveStop.mockImplementation(async (value) => (saved = value));
 	repository.targetedJobs.mockImplementation(async () => work);
 	repository.targetedDescendants.mockResolvedValue([]);
+	repository.unfinishedWork.mockImplementation(async () => saved?.failures ?? []);
 	jobs.cancelPermanently.mockImplementation(async (_threadId, id) => {
 		work = work.map((job) => (job.id === id ? { ...job, status: 'cancelled' } : job));
 	});
@@ -104,7 +101,17 @@ function setup() {
 		updates,
 		checkpoints,
 	);
-	return { service, repository, queue, plans, jobs, chat, checkpoints, work: () => work };
+	return {
+		service,
+		repository,
+		executions,
+		queue,
+		plans,
+		jobs,
+		chat,
+		checkpoints,
+		work: () => work,
+	};
 }
 
 it('preserves Done and Failed results and cancels unfinished tasks and groups', () => {
@@ -132,7 +139,7 @@ it('preserves Done and Failed results and cancels unfinished tasks and groups', 
 it('saves the request and holds pending messages before stopping all kinds of work', async () => {
 	const { service, repository, queue, jobs, work } = setup();
 	const state = await service.request('thread', null);
-	expect(repository.insertRequest.mock.invocationCallOrder[0]).toBeLessThan(
+	expect(repository.saveStop.mock.invocationCallOrder[0]).toBeLessThan(
 		jobs.cancelPermanently.mock.invocationCallOrder[0],
 	);
 	expect(queue.holdPending.mock.invocationCallOrder[0]).toBeLessThan(
@@ -144,7 +151,35 @@ it('saves the request and holds pending messages before stopping all kinds of wo
 		['thread', 'paused'],
 	]);
 	expect(work()[0]).toMatchObject({ status: 'completed', result: 'Saved result' });
-	expect(state).toMatchObject({ status: 'stopped', reportStatus: 'pending', failures: [] });
+	expect(state).toMatchObject({
+		status: 'stopped',
+		summary: { completed: 1, canceled: 3 },
+		failures: [],
+	});
+});
+
+it('stops the current response through runtime coordination after saving the boundary', async () => {
+	const { service, repository, executions, chat } = setup();
+	repository.captureGeneration.mockResolvedValue({
+		executionIds: ['response'],
+		jobIds: [],
+		threadIds: [],
+	});
+	executions.findLatestByThreadId.mockResolvedValue(
+		mock<AgentExecution>({ id: 'response', status: 'running' }),
+	);
+	await service.request('thread', null);
+	expect(chat.requestCancel).toHaveBeenCalledExactlyOnceWith({
+		projectId: 'project',
+		agentId: 'agent',
+		threadId: 'thread',
+		executionId: 'response',
+		userId: 'user',
+		scope: 'foreground',
+	});
+	expect(repository.saveStop.mock.invocationCallOrder[0]).toBeLessThan(
+		chat.requestCancel.mock.invocationCallOrder[0],
+	);
 });
 
 it('rejects a stale displayed plan before it changes the queue or jobs', async () => {
@@ -154,33 +189,38 @@ it('rejects a stale displayed plan before it changes the queue or jobs', async (
 	expect(jobs.cancelPermanently).not.toHaveBeenCalled();
 });
 
-it('returns the same completed cancellation for repeated clicks', async () => {
-	const { service, jobs, queue } = setup();
-	const first = await service.request('thread', null);
-	const calls = jobs.cancelPermanently.mock.calls.length;
-	expect((await service.request('thread', null)).id).toBe(first.id);
-	expect(jobs.cancelPermanently).toHaveBeenCalledTimes(calls);
-	expect(queue.holdPending).toHaveBeenCalledTimes(1);
+it('targets current work on each Stop without a saved operation identity', async () => {
+	const { service, repository, queue, work } = setup();
+	await service.request('thread', null);
+	work().push(
+		mock<AgentBackgroundJob>({ id: 'new-job', parentThreadId: 'thread', status: 'running' }),
+	);
+	const second = await service.request('thread', null);
+	expect(repository.captureGeneration).toHaveBeenCalledTimes(2);
+	expect(queue.holdPending).toHaveBeenCalledTimes(2);
+	expect(work().find((job) => job.id === 'new-job')?.status).toBe('cancelled');
+	expect(second).not.toHaveProperty('id');
 });
 
-it('keeps a failed stop retryable and does not close the plan', async () => {
-	const { service, jobs, plans } = setup();
+it('keeps a failed stop visible until the user requests another stop', async () => {
+	const { service, jobs } = setup();
 	jobs.cancelPermanently.mockRejectedValueOnce(new Error('Unavailable'));
 	const failed = await service.request('thread', null);
 	expect(failed.status).toBe('failed');
 	expect(failed.failures).toContainEqual({ jobId: 'nested', title: 'Nested task' });
-	expect(plans.cancelPlan).not.toHaveBeenCalled();
 	const retried = await service.request('thread', null);
-	expect(retried.id).toBe(failed.id);
 	expect(retried.status).toBe('stopped');
 });
 
-it('waits for running executions to settle before reporting Stopped', async () => {
-	const { service, repository } = setup();
-	repository.hasRunningWork.mockResolvedValueOnce(true).mockResolvedValue(false);
-	expect((await service.request('thread', null)).status).toBe('stopping');
-	await service.reconcile('thread');
+it('reads remaining work without repeating stop attempts', async () => {
+	const { service, repository, jobs } = setup();
+	repository.unfinishedWork
+		.mockResolvedValueOnce([{ jobId: 'parent', title: 'Current response' }])
+		.mockResolvedValue([]);
+	expect((await service.request('thread', null)).status).toBe('failed');
+	const calls = jobs.cancelPermanently.mock.calls.length;
 	expect((await service.state('thread'))?.status).toBe('stopped');
+	expect(jobs.cancelPermanently).toHaveBeenCalledTimes(calls);
 });
 
 it('preserves a job that completes while its stop request fails', async () => {

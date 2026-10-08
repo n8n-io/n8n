@@ -30,15 +30,11 @@ export interface AgentTaskStopFailure {
 }
 
 export interface AgentTaskCancellationState {
-	id: string;
 	planId: string | null;
-	status: 'stopping' | 'failed' | 'stopped';
+	status: 'failed' | 'stopped';
 	requestedAt: string;
-	settledAt: string | null;
 	failures: AgentTaskStopFailure[];
-	reportStatus: 'pending' | 'claimed' | 'reported' | 'failed';
-	/** Saved facts remain available if the acknowledgement cannot be generated. */
-	report: string;
+	summary: { completed: number; canceled: number };
 	plan: AgentPlanSnapshotDto | null;
 	heldQueueIds: string[];
 }

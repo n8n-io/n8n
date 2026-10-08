@@ -53,18 +53,18 @@ const elapsed = computed(() => {
 	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
 	return formatAgentElapsedTime(endTime - startTime.value);
 });
-const label = computed(() =>
-	props.cancellation?.status === 'stopped'
-		? i18n.baseText('agents.chat.tasks.stopped')
-		: props.stopping
-			? i18n.baseText('agents.chat.tasks.stopping')
-			: props.plan.closed
-				? (props.plan.document.presentation?.detail ?? props.plan.document.title)
-				: (props.plan.document.presentation?.label ??
-					i18n.baseText('agents.chat.plan.title', {
-						interpolate: { title: props.plan.document.title },
-					})),
-);
+const label = computed(() => {
+	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
+	if (props.cancellation?.status === 'failed')
+		return i18n.baseText('agents.chat.tasks.stopFailedTitle');
+	if (props.cancellation?.status === 'stopped') return i18n.baseText('agents.chat.tasks.stopped');
+	return props.plan.closed
+		? (props.plan.document.presentation?.detail ?? props.plan.document.title)
+		: (props.plan.document.presentation?.label ??
+				i18n.baseText('agents.chat.plan.title', {
+					interpolate: { title: props.plan.document.title },
+				}));
+});
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
@@ -225,11 +225,13 @@ const summary = computed(() => {
 				{{ cancellation.failures.map((failure) => failure.title).join(', ') }}
 			</p>
 			<p
-				v-if="cancellation?.status === 'stopped' && cancellation.reportStatus !== 'reported'"
+				v-if="cancellation?.status === 'stopped' && !stopping && !canStop"
 				:class="$style.detail"
 				role="status"
 			>
-				{{ i18n.baseText('agents.chat.tasks.fallback') }}
+				{{
+					i18n.baseText('agents.chat.tasks.stoppedNotice', { interpolate: cancellation.summary })
+				}}
 			</p>
 		</N8nAiActivityStepGroup>
 	</div>

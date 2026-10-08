@@ -18,19 +18,9 @@ export function useAgentTaskCancellation(target: {
 	const visibility = useDocumentVisibility();
 	const state = ref<AgentTaskCancellationState | null>(null);
 	const sending = ref(false);
-	const isStopping = computed(() => sending.value || state.value?.status === 'stopping');
+	const isStopping = computed(() => sending.value);
 	let revision = 0;
 	let disposed = false;
-	let timer: ReturnType<typeof setTimeout> | undefined;
-
-	function schedule() {
-		clearTimeout(timer);
-		if (state.value?.status === 'stopping' || state.value?.reportStatus === 'pending') {
-			timer = setTimeout(() => {
-				void refresh();
-			}, 1500);
-		}
-	}
 
 	async function refresh() {
 		const threadId = target.threadId();
@@ -46,8 +36,6 @@ export function useAgentTaskCancellation(target: {
 			if (!disposed && current === revision) state.value = result;
 		} catch {
 			// A new conversation has no persisted thread yet. Keep the last confirmed state.
-		} finally {
-			if (!disposed && current === revision) schedule();
 		}
 	}
 
@@ -64,7 +52,6 @@ export function useAgentTaskCancellation(target: {
 				threadId,
 				{
 					planId: target.planId(),
-					cancellationId: state.value?.status === 'failed' ? state.value.id : crypto.randomUUID(),
 				},
 			);
 			if (!disposed && current === revision) state.value = result;
@@ -78,7 +65,7 @@ export function useAgentTaskCancellation(target: {
 
 	const unsubscribe = push.addEventListener((event) => {
 		if (
-			event.type === 'agentBackgroundTasksUpdated' &&
+			(event.type === 'agentBackgroundTasksUpdated' || event.type === 'agentExecutionUpdated') &&
 			event.data.threadId === target.threadId() &&
 			event.data.agentId === target.agentId() &&
 			event.data.projectId === target.projectId()
@@ -89,7 +76,6 @@ export function useAgentTaskCancellation(target: {
 		[target.projectId, target.agentId, target.threadId],
 		() => {
 			revision++;
-			clearTimeout(timer);
 			state.value = null;
 			sending.value = false;
 			void refresh();
@@ -102,7 +88,6 @@ export function useAgentTaskCancellation(target: {
 	onScopeDispose(() => {
 		disposed = true;
 		revision++;
-		clearTimeout(timer);
 		unsubscribe();
 	});
 	return { state, isStopping, stopAll, refresh };

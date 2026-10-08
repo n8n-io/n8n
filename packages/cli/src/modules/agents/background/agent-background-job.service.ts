@@ -206,7 +206,10 @@ export class AgentBackgroundJobService {
 		}
 
 		if (await this.cancellations.isCancelled(params.parentThreadId, params.sourceExecutionId)) {
-			await this.requestWakeSafely(params.parentThreadId);
+			await this.cancelPermanently(
+				params.parentThreadId,
+				outcome.inserted ? params.id : outcome.existing.id,
+			);
 		}
 		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
 	}

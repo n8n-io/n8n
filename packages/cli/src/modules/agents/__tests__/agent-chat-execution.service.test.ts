@@ -365,13 +365,3 @@ it('foreground Stop removes a suspended checkpoint without canceling detached jo
 	expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
 	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
 });
-
-it('task cancellation closes admission without detaching an active tool handler', async () => {
-	const { service, steering, backgroundJobs } = makeService();
-	const controller = new AbortController();
-	service.register(context, controller);
-	await service.cancelTasksInRuntime(context);
-	expect(steering.close).toHaveBeenCalledWith(context.threadId, context.executionId);
-	expect(controller.signal.aborted).toBe(false);
-	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
-});

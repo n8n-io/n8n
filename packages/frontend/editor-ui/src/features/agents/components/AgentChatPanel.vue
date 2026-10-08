@@ -1406,12 +1406,17 @@ onBeforeUnmount(() => {
 						<p
 							v-if="
 								!currentPlan &&
-								currentCancellation?.status === 'stopped' &&
-								currentCancellation.reportStatus !== 'reported'
+								!canStopBackgroundJobs &&
+								!isStopping &&
+								currentCancellation?.status === 'stopped'
 							"
 							role="status"
 						>
-							{{ locale.baseText('agents.chat.tasks.fallback') }}
+							{{
+								locale.baseText('agents.chat.tasks.stoppedNotice', {
+									interpolate: currentCancellation.summary,
+								})
+							}}
 						</p>
 						<div :class="$style.backgroundJobActions">
 							<N8nLink

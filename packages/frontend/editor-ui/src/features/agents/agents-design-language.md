@@ -237,6 +237,21 @@ and output in the collapsed details and the trace. Keep earlier failed calls
 visible after a successful retry. Unexpected failures keep the existing error
 treatment.
 
+## Stop tasks in Agent Preview
+
+Place **Stop all tasks** beside **View trace** in the expanded plan card.
+Use the same action in the background task card when there is no plan.
+Disable the action during the request and show **Stopping tasks…**.
+Keep the user's expansion choice. Restore focus when the action disappears.
+
+After work stops, show **Stopped** and a fixed notice with completed and
+canceled counts. Keep saved results and the trace. If work remains, show its
+names and **Stop all tasks again**. Do not generate an agent response for this
+notice. Composer Stop controls only the current response.
+
+Keep queued user messages held until the user selects **Send** on a row.
+Old task notifications do not restart the chat.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent

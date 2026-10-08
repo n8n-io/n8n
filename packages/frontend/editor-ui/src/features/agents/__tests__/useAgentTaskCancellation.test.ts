@@ -21,14 +21,11 @@ const push = reactive({
 });
 let onEvent: (event: PushMessage) => void;
 const stopped: AgentTaskCancellationState = {
-	id: 'cancellation',
 	planId: null,
 	status: 'stopped',
 	requestedAt: '2026-10-01T10:00:00.000Z',
-	settledAt: '2026-10-01T10:01:00.000Z',
 	failures: [],
-	reportStatus: 'reported',
-	report: '',
+	summary: { completed: 1, canceled: 2 },
 	plan: null,
 	heldQueueIds: ['1'],
 };
@@ -69,7 +66,7 @@ it('ignores a stale read after a cancellation response', async () => {
 	expect(state.state.value).toEqual(stopped);
 });
 
-it('disables repeated clicks and reuses the failed cancellation identity on retry', async () => {
+it('disables repeated clicks and sends a fresh Stop without a cancellation identity', async () => {
 	const response = createDeferredPromise<AgentTaskCancellationState>();
 	const failed: AgentTaskCancellationState = {
 		...stopped,
@@ -85,7 +82,6 @@ it('disables repeated clicks and reuses the failed cancellation identity on retr
 	expect(state.isStopping.value).toBe(true);
 	expect(cancelAgentTasks).toHaveBeenCalledExactlyOnceWith({}, 'project', 'agent', 'thread', {
 		planId: null,
-		cancellationId: 'cancellation',
 	});
 	vi.mocked(getAgentTaskCancellation).mockResolvedValue(stopped);
 	response.resolve(stopped);

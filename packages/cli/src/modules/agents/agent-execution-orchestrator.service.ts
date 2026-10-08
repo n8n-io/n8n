@@ -215,7 +215,6 @@ export interface ExecuteForTaskNowConfig extends AgentExecutionInput {
 
 export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	wakeJobIds?: string[];
-	cancellationId?: string;
 	backgroundJobSignal: AgentBackgroundJobSignal;
 	pauseReport?: boolean;
 	abortSignal: AbortSignal;
@@ -229,7 +228,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 }
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
-	wake?: { jobIds: string[]; cancellationId?: string };
+	wake?: { jobIds: string[] };
 	onAdmitted?: () => Promise<void>;
 	access: AgentThreadAccess;
 	productionN8nChat?: boolean;
@@ -1669,7 +1668,6 @@ export class AgentExecutionOrchestratorService {
 			isWakeRun: true,
 			wake: {
 				jobIds: config.wakeJobIds ?? config.backgroundJobSignal.tasks.map((job) => job.id),
-				cancellationId: config.cancellationId,
 			},
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',

@@ -99,8 +99,9 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	executionRepository.findRunningByThread.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
+	const cancellation = mock<AgentTaskCancellationRepository>();
 	const service = new AgentBackgroundJobService(
-		mock<AgentTaskCancellationRepository>(),
+		cancellation,
 		jobRepository,
 		executionRepository,
 		executionPersistence,
@@ -113,6 +114,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	);
 	return {
 		service,
+		cancellation,
 		checkpointStorage,
 		jobRepository,
 		executionRepository,
@@ -1145,6 +1147,15 @@ describe('registerWorkflowJob', () => {
 		workflowId: 'workflow-1',
 		executionId: 'exec-1',
 	};
+
+	it('stops a workflow registered after its source was canceled without waking the parent', async () => {
+		const { service, cancellation } = setup();
+		cancellation.isCancelled.mockResolvedValue(true);
+		const stop = vi.spyOn(service, 'cancelPermanently').mockResolvedValue();
+		await service.registerWorkflowJob({ ...workflowParams, sourceExecutionId: 'old-response' });
+		expect(cancellation.isCancelled).toHaveBeenCalledWith('thread-1', 'old-response');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('thread-1', 'wf-job-1');
+	});
 
 	it('registers a running workflow job keyed to its execution', async () => {
 		const { service, jobRepository, updateBroadcaster } = setup();

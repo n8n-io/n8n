@@ -9,7 +9,6 @@ import { AgentCheckpoint } from '@/modules/agents/entities/agent-checkpoint.enti
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
-import { AgentTaskCancellation } from '@/modules/agents/entities/agent-task-cancellation.entity';
 import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
@@ -60,23 +59,15 @@ describe('Task cancellation persistence', () => {
 	});
 	afterAll(async () => await testDb.terminate());
 
-	async function request(
-		status: AgentTaskCancellation['status'] = 'stopping',
-		planId: string | null = null,
-	) {
-		return await repository.saveRequest(
-			Object.assign(new AgentTaskCancellation(), {
-				id: randomUUID(),
-				generation: await repository.captureGeneration(thread.id, {}),
+	async function request(planId: string | null = null) {
+		return await repository.saveStop(
+			{
 				threadId: thread.id,
 				planId,
-				cutoffAt,
-				status,
+				requestedAt: cutoffAt.toISOString(),
+				generation: await repository.captureGeneration(thread.id, {}),
 				failures: [],
-				reportStatus: 'pending',
-				report: '',
-				settledAt: status === 'stopped' ? afterStop : null,
-			}),
+			},
 			{},
 		);
 	}
@@ -94,7 +85,7 @@ describe('Task cancellation persistence', () => {
 		return await queue.enqueue(thread.id, input.id, { kind: 'preview' }, {});
 	}
 
-	it('keeps the original request when a different session reuses its ID', async () => {
+	it('stores only the latest stop boundary on its chat', async () => {
 		const original = await request();
 		const other = await db.getRepository(AgentExecutionThread).save({
 			id: randomUUID(),
@@ -103,11 +94,23 @@ describe('Task cancellation persistence', () => {
 			projectId,
 			sessionNumber: 2,
 		});
-		await expect(
-			repository.insertRequest({ ...original, threadId: other.id }, {}),
-		).rejects.toThrow();
-		expect((await repository.findRequest(thread.id, original.id))?.threadId).toBe(thread.id);
+		expect(
+			(await db.getRepository(AgentExecutionThread).findOneByOrFail({ id: thread.id })).taskStop,
+		).toMatchObject({ requestedAt: original.requestedAt });
 		expect(await repository.latest(other.id)).toBeNull();
+		const execution = await db.getRepository(AgentExecution).save({
+			id: randomUUID(),
+			threadId: thread.id,
+			status: 'success',
+		});
+		await request();
+		expect((await repository.latest(thread.id))?.generation.executionIds).toContain(execution.id);
+		const runner = db.createQueryRunner();
+		try {
+			expect(await runner.hasTable('agent_task_cancellation')).toBe(false);
+		} finally {
+			await runner.release();
+		}
 	});
 
 	it('keeps holds across fresh reads and releases only the selected message', async () => {
@@ -131,12 +134,10 @@ describe('Task cancellation persistence', () => {
 		const old = await db
 			.getRepository(AgentExecution)
 			.save({ id: randomUUID(), threadId: thread.id, status: 'success', createdAt: beforeStop });
-		const cancellation = await request();
+		await request();
 		const newer = await db
 			.getRepository(AgentExecution)
 			.save({ id: randomUUID(), threadId: thread.id, status: 'running', createdAt: afterStop });
-		expect(await repository.isCancelled(thread.id, newer.id)).toBe(true);
-		await repository.saveRequest({ ...cancellation, status: 'stopped' }, {});
 		expect(await repository.isCancelled(thread.id, old.id)).toBe(true);
 		expect(await repository.isCancelled(thread.id, newer.id)).toBe(false);
 	});
@@ -148,12 +149,12 @@ describe('Task cancellation persistence', () => {
 			status: 'success',
 			createdAt: afterStop,
 		});
-		await request('stopped');
+		await request();
 		expect(await repository.isCancelled(thread.id, execution.id)).toBe(true);
 	});
 
 	it('permits work admitted after cancellation even when its timestamp is earlier', async () => {
-		const cancellation = await request('stopped');
+		const cancellation = await request();
 		const execution = await db.getRepository(AgentExecution).save({
 			id: randomUUID(),
 			threadId: thread.id,
@@ -173,10 +174,61 @@ describe('Task cancellation persistence', () => {
 			sourceExecutionId: execution.id,
 			createdAt: beforeStop,
 		});
-		expect(await repository.hasNewWork(cancellation, {})).toBe(true);
 		expect((await repository.targetedJobs(cancellation)).map((item) => item.id)).not.toContain(
 			job.id,
 		);
+	});
+
+	it('does not include descendants from a later user request', async () => {
+		const stop = await request();
+		const child = await db.getRepository(AgentExecutionThread).save({
+			id: randomUUID(),
+			agentId,
+			agentName: 'New child',
+			projectId,
+			parentThreadId: thread.id,
+			sessionNumber: 2,
+		});
+		await db
+			.getRepository(AgentExecution)
+			.save({ id: randomUUID(), threadId: child.id, status: 'running' });
+		expect(await repository.targetedDescendants(stop)).toEqual([]);
+		expect(await repository.unfinishedWork(stop)).toEqual([]);
+		expect(await repository.isCancelled(child.id)).toBe(false);
+	});
+
+	it('uses live checkpoints instead of old suspension flags', async () => {
+		const execution = await db.getRepository(AgentExecution).save({
+			id: randomUUID(),
+			threadId: thread.id,
+			status: 'success',
+			hitlStatus: 'suspended',
+		});
+		const stop = await request();
+		const runId = randomUUID();
+		await db.getRepository(AgentCheckpoint).save({
+			runId,
+			agentId,
+			threadId: thread.id,
+			expired: false,
+			state: JSON.stringify({
+				status: 'suspended',
+				persistence: {
+					threadId: thread.id,
+					hostMetadata: { n8nExecutionId: execution.id },
+				},
+			}),
+		});
+		expect(await repository.unfinishedWork(stop)).toEqual([
+			{ jobId: thread.id, title: 'Current response' },
+		]);
+		await db
+			.getRepository(AgentCheckpoint)
+			.update({ runId }, { updatedAt: new Date('2000-01-01') });
+		expect(await repository.unfinishedWork(stop)).toEqual([]);
+		await db.getRepository(AgentCheckpoint).update({ runId }, { updatedAt: new Date() });
+		await db.getRepository(AgentCheckpoint).update({ runId }, { state: null, expired: true });
+		expect(await repository.unfinishedWork(stop)).toEqual([]);
 	});
 
 	it('blocks a child admitted before cancellation even if its thread starts later', async () => {
@@ -201,7 +253,7 @@ describe('Task cancellation persistence', () => {
 			childThreadId: child.id,
 			createdAt: beforeStop,
 		});
-		await request('stopped');
+		await request();
 		expect(await repository.isCancelled(child.id)).toBe(true);
 	});
 
@@ -220,12 +272,15 @@ describe('Task cancellation persistence', () => {
 		await db
 			.getRepository(AgentCheckpoint)
 			.save({ runId, agentId, threadId: child.id, state: '{}', expired: false });
-		expect(await repository.hasRunningWork(cancellation, {})).toBe(true);
+		expect(await repository.unfinishedWork(cancellation, {})).not.toEqual([]);
 		await db.getRepository(AgentCheckpoint).update({ runId }, { state: null });
-		expect(await repository.hasRunningWork(cancellation, {})).toBe(false);
+		expect(await repository.unfinishedWork(cancellation, {})).toEqual([]);
 	});
 
-	it('rejects dispatch while cancellation owns the conversation', async () => {
+	it('rejects dispatch from a canceled execution', async () => {
+		const source = await db
+			.getRepository(AgentExecution)
+			.save({ id: randomUUID(), threadId: thread.id, status: 'running' });
 		await request();
 		await expect(
 			Container.get(AgentBackgroundJobRepository).insertSubAgentJobIfCapacity(
@@ -237,6 +292,7 @@ describe('Task cancellation persistence', () => {
 					parentResourceId: 'draft-chat:test',
 					parentPrincipalHash: 'principal',
 					title: 'Late task',
+					sourceExecutionId: source.id,
 					subAgentId: agentId,
 					childThreadId: randomUUID(),
 					timeoutAt: afterStop,
@@ -250,7 +306,7 @@ describe('Task cancellation persistence', () => {
 		const source = await db
 			.getRepository(AgentExecution)
 			.save({ id: randomUUID(), threadId: thread.id, status: 'success', createdAt: beforeStop });
-		const cancellation = await request('stopped');
+		const cancellation = await request();
 		const id = randomUUID();
 		await Container.get(AgentBackgroundJobRepository).insertWorkflowJobOrGetExisting({
 			id,
@@ -264,16 +320,19 @@ describe('Task cancellation persistence', () => {
 			childExecutionId: '123',
 			sourceExecutionId: source.id,
 		});
-		expect((await repository.latest(thread.id))?.status).toBe('stopping');
+		expect(await repository.latest(thread.id)).toEqual(cancellation);
 		expect((await repository.targetedJobs(cancellation)).map((job) => job.id)).toContain(id);
 	});
 
-	it('commits the closed plan and its final history revision with cancellation', async () => {
+	it('keeps plan history and blocks late writes after Stop', async () => {
+		await db
+			.getRepository(AgentExecution)
+			.save({ id: randomUUID(), threadId: thread.id, status: 'running' });
 		const plan = await plans.createActivePlan(
 			{ id: randomUUID(), threadId: thread.id, formatVersion: 1, data: { result: 'Saved' } },
 			{},
 		);
-		const cancellation = await request('stopping', plan.id);
+		await request(plan.id);
 		await expect(
 			plans.replacePlan(
 				{ threadId: thread.id, planId: plan.id, expectedRevision: 1, formatVersion: 1, data: {} },
@@ -291,7 +350,6 @@ describe('Task cancellation persistence', () => {
 				},
 				ctx,
 			);
-			await repository.saveRequest({ ...cancellation, status: 'stopped' }, ctx);
 		});
 		const current = await plans.findPlan(thread.id, plan.id, {});
 		const history = await plans.findRevision(thread.id, plan.id, 2, {});
@@ -306,7 +364,7 @@ describe('Task cancellation persistence', () => {
 		});
 	});
 
-	it('rejects an old automatic wake at admission and permits only the claimed cancellation report', async () => {
+	it('blocks an old wake even if the job finished before Stop', async () => {
 		const job = await db.getRepository(AgentBackgroundJob).save({
 			id: randomUUID(),
 			parentThreadId: thread.id,
@@ -316,35 +374,21 @@ describe('Task cancellation persistence', () => {
 			title: 'Completed task',
 			kind: 'subagent',
 			status: 'completed',
-			createdAt: beforeStop,
+			result: 'Saved output',
 		});
-		const cancellation = await request('stopped');
+		const stop = await request();
+		await repository.consumeTargetedMail(
+			(await repository.targetedJobs(stop)).map((item) => item.id),
+			{},
+		);
 		await expect(
 			repository.assertWakeAdmission(thread.id, { jobIds: [job.id] }, {}),
 		).rejects.toThrow('These background tasks were canceled');
-		await repository.claimReport(cancellation.id);
-		await expect(
-			repository.assertWakeAdmission(
-				thread.id,
-				{ jobIds: [], cancellationId: cancellation.id },
-				{},
-			),
-		).resolves.toBeUndefined();
 		await expect(repository.assertWakeAdmission(thread.id, { jobIds: [] }, {})).rejects.toThrow(
 			'These background tasks were canceled',
 		);
-	});
-
-	it('claims one acknowledgement and leaves its saved fallback after a restart', async () => {
-		const cancellation = await request('stopped');
-		const claims = await Promise.all([
-			repository.claimReport(cancellation.id),
-			repository.claimReport(cancellation.id),
-		]);
-		expect(claims.filter(Boolean)).toHaveLength(1);
-		expect((await repository.findRequest(thread.id, cancellation.id))?.reportStatus).toBe(
-			'claimed',
-		);
-		expect(await repository.claimReport(cancellation.id)).toBe(false);
+		expect(
+			await db.getRepository(AgentBackgroundJob).findOneByOrFail({ id: job.id }),
+		).toMatchObject({ result: 'Saved output', notifiedAt: expect.any(Date) });
 	});
 });

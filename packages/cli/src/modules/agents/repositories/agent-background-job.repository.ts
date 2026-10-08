@@ -99,10 +99,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				})
 				.orIgnore()
 				.execute();
-			// A workflow can reach Wait after Stop. Keep its receipt so cancellation can retry.
-			if (await this.cancellations.isCancelled(job.parentThreadId, job.sourceExecutionId, ctx)) {
-				await this.cancellations.reopenForLateDispatch(job.parentThreadId, ctx);
-			}
+			// The service stops late workflow receipts before returning them to the caller.
 		});
 
 		const inserted = await this.existsBy({ id: job.id });
