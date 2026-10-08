@@ -1,6 +1,10 @@
-import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentIntegrationDisconnectWarning,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
@@ -11,6 +15,7 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
+	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -21,6 +26,7 @@ import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import type { ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
+import { TeamsCleanupService } from './teams-cleanup.service';
 import { READ_PERMISSIONS } from './teams-manifest.service';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
@@ -106,6 +112,20 @@ const TENANT_ID_DOMAIN =
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
 	readonly type = 'teams';
+
+	/**
+	 * Deletes nothing. The app registration, the bot and the catalogued Teams app
+	 * depend on each other, and colleagues may already have the app installed, so
+	 * the user is told what is left rather than having it removed for them.
+	 */
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
+		return await Container.get(TeamsCleanupService).describeLeftovers({
+			projectId: ctx.projectId,
+			credentialId: ctx.credentialId,
+		});
+	}
 
 	readonly credentialTypes = ['microsoftEntraServicePrincipalApi'];
 

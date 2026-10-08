@@ -8,6 +8,11 @@ import {
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 import type { TeamsCredentialCheckService } from '../integrations/platforms/teams/teams-credential-check.service';
+import type { TeamsBotProvisioningService } from '../integrations/platforms/teams/teams-bot-provisioning.service';
+import type { TeamsCatalogService } from '../integrations/platforms/teams/teams-catalog.service';
+import type { TeamsEntraProvisioningService } from '../integrations/platforms/teams/teams-entra-provisioning.service';
+import type { TeamsSetupTelemetryService } from '../integrations/platforms/teams/teams-setup-telemetry.service';
+import type { TeamsManagedSetupService } from '../integrations/platforms/teams/teams-managed-setup.service';
 import type { TeamsSetupService } from '../integrations/platforms/teams/teams-setup.service';
 
 /** Reached by the Azure portal and the browser's save dialog, not by the app. */
@@ -26,6 +31,12 @@ describe('AgentTeamsIntegrationsController', () => {
 		['getSetupState', 'agent:update'],
 		['downloadPackage', 'agent:update'],
 		['checkCredential', 'agent:update'],
+		['checkInstalledApp', 'agent:update'],
+		['listAzureSubscriptions', 'agent:update'],
+		['provisionBot', 'agent:update'],
+		['provisionApp', 'agent:update'],
+		['getManagedSetupState', 'agent:update'],
+		['createManagerCredential', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -39,6 +50,11 @@ describe('AgentTeamsIntegrationsController', () => {
 				controller: new AgentTeamsIntegrationsController(
 					setupService,
 					mock<TeamsCredentialCheckService>(),
+					mock<TeamsManagedSetupService>(),
+					mock<TeamsEntraProvisioningService>(),
+					mock<TeamsBotProvisioningService>(),
+					mock<TeamsCatalogService>(),
+					mock<TeamsSetupTelemetryService>(),
 				),
 			};
 		};
