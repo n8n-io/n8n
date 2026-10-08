@@ -32,8 +32,8 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
-import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
+import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';

@@ -46,12 +46,12 @@ import {
 	staticErrorWorkflowId,
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { RestrictedNodeTypesProviderProxy } from './restricted-node-types-provider-proxy.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
-import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';

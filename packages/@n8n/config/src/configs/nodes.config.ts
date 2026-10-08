@@ -49,6 +49,7 @@ export class NodesConfig {
 	/** Memory limit in MB for the Merge node's SQL sandbox. */
 	@Env('NODES_MERGE_SQL_SANDBOX_MEMORY_LIMIT_MB', z.coerce.number().int().positive())
 	mergeSqlSandboxMemoryLimitMb: number = 64;
+
 	/**
 	 * Refuse deprecated nodes. Saving or importing a workflow fails if it adds or
 	 * changes one. A sub-workflow from inline JSON, a URL or a file, or a single

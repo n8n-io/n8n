@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from '@n8n/errors';
 
 export type DeprecatedNodeViolation = {
 	kind: 'added' | 'edited';
