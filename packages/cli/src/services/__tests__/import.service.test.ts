@@ -135,7 +135,7 @@ describe('ImportService', () => {
 			mockPolicyEnforcementService,
 			mockSharedWorkflowRepository,
 			mockWorkflowRepository,
-			mock(), // deprecatedNodesValidationService
+			mock(),
 		);
 	});
 

@@ -123,7 +123,7 @@ describe('WorkflowCreationService', () => {
 			policyEnforcementServiceMock,
 			workflowRepositoryMock,
 			nodeGroupRulesFlagGateMock,
-			mock(), // deprecatedNodesValidationService
+			mock(),
 		);
 	});
 
