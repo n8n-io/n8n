@@ -46,16 +46,15 @@ export class ExecutionsPruningService {
 
 	/** Delete soft-deleted executions in batches until one comes back short or the signal aborts. */
 	async hardDelete(signal: AbortSignal): Promise<void> {
+		const { hardDeletionBatchSize } = this.executionRepository;
 		let deletedCount = 0;
+		let hasMore = true;
 
-		while (!signal.aborted) {
+		while (hasMore && !signal.aborted) {
 			const refs = await this.executionRepository.findSoftDeletedExecutions();
-			if (signal.aborted) break;
-			deletedCount += await this.hardDeleteBatch(refs, signal);
-
-			if (refs.length < this.executionRepository.hardDeletionBatchSize) break;
-
-			await this.waitBetweenBatches(signal);
+			hasMore = refs.length === hardDeletionBatchSize;
+			if (!signal.aborted) deletedCount += await this.hardDeleteBatch(refs, signal);
+			if (hasMore) await this.waitBetweenBatches(signal);
 		}
 
 		this.logger.debug('Hard-deleted executions', { count: deletedCount });
