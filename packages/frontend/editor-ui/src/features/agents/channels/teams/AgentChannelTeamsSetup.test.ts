@@ -67,6 +67,7 @@ const withBot = () =>
 		botId: CLIENT_ID,
 		deployToAzureUrl: DEPLOY_URL,
 		credentialClaimedBy: null,
+		provisionedByN8n: true,
 		defaultDisplayName: DEFAULT_NAME,
 		defaultDescription: DEFAULT_DESCRIPTION,
 	});
@@ -115,6 +116,7 @@ describe('AgentChannelTeamsSetup', () => {
 			botId: null,
 			deployToAzureUrl: DEPLOY_URL,
 			credentialClaimedBy: null,
+			provisionedByN8n: true,
 			defaultDisplayName: DEFAULT_NAME,
 			defaultDescription: DEFAULT_DESCRIPTION,
 		});
@@ -272,6 +274,7 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: null,
 				deployToAzureUrl: null,
 				credentialClaimedBy: null,
+				provisionedByN8n: true,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -1047,7 +1050,7 @@ describe('AgentChannelTeamsSetup', () => {
 				const { getByTestId } = renderHost({ props: { viewProps: settingsProps() } });
 
 				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
-				expect(getByTestId('save-label')).toHaveTextContent('');
+				expect(getByTestId('save-label')).toBeEmptyDOMElement();
 				await fireEvent.click(getByTestId('save'));
 
 				await waitFor(() => expect(getByTestId('saved-settings')).not.toBeEmptyDOMElement());
@@ -1090,7 +1093,7 @@ describe('AgentChannelTeamsSetup', () => {
 				const { getByTestId, rerender } = renderHost({ props: { viewProps: settingsProps() } });
 
 				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
-				expect(getByTestId('save-label')).toHaveTextContent('');
+				expect(getByTestId('save-label')).toBeEmptyDOMElement();
 				await rerender({ viewProps: settingsProps({ modelValue: 'cred-2' }) });
 
 				await waitFor(() =>
@@ -1143,7 +1146,7 @@ describe('AgentChannelTeamsSetup', () => {
 				});
 
 				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
-				expect(getByTestId('save-label')).toHaveTextContent('');
+				expect(getByTestId('save-label')).toBeEmptyDOMElement();
 				await openAvailability(getByTestId);
 				await fireEvent.click(getByTestId('teams-read-channels'));
 
@@ -1221,7 +1224,7 @@ describe('AgentChannelTeamsSetup', () => {
 				await fireEvent.click(getByTestId('save'));
 
 				await waitFor(() => expect(getByTestId('saved-settings')).not.toBeEmptyDOMElement());
-				expect(getByTestId('save-label')).toHaveTextContent('');
+				expect(getByTestId('save-label')).toBeEmptyDOMElement();
 				expect(fetchTeamsAppPackage).not.toHaveBeenCalled();
 			});
 		});
@@ -1277,6 +1280,7 @@ describe('AgentChannelTeamsSetup', () => {
 				// The server withholds the deployment for the same reason.
 				deployToAzureUrl: null,
 				credentialClaimedBy: 'Sales Bot',
+				provisionedByN8n: true,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});

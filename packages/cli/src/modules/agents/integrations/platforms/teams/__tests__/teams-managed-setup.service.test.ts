@@ -147,6 +147,24 @@ describe('TeamsManagedSetupService', () => {
 			});
 		});
 
+		/**
+		 * A sign-in made before publishing existed carries no catalogue consent,
+		 * and both scopes are admin-consent-only -- so it has to be redone rather
+		 * than fail on the publish call.
+		 */
+		it('asks for a reconnect when the grant predates the catalogue scopes', async () => {
+			withManagerCredential({
+				oauthTokenData: {
+					access_token: 'token',
+					refresh_token: 'refresh-1',
+					scope: 'openid https://graph.microsoft.com/Application.ReadWrite.All',
+				},
+			});
+
+			const [summary] = (await service.getSetupState(scope)).managerCredentials;
+			expect(summary).toMatchObject({ connected: true, reconnectRequired: true });
+		});
+
 		it('asks for a reconnect when a required scope is missing from the grant', async () => {
 			withManagerCredential({
 				oauthTokenData: {
