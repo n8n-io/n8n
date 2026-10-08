@@ -1,3 +1,12 @@
+## [2.43.2](https://github.com/n8n-io/n8n/compare/n8n@2.43.1...n8n@2.43.2) (2026-10-08)
+
+
+### Bug Fixes
+
+* **core:** Fix Kimi K3 and other OpenAI-compatible Assistant model providers on self-hosted Assistant ([#40552](https://github.com/n8n-io/n8n/issues/40552)) ([509a3f3](https://github.com/n8n-io/n8n/commit/509a3f36a8443e544714e3874dc55ba14f2c9463))
+* **editor:** Show the Agent artifact while the builder creates it ([#40550](https://github.com/n8n-io/n8n/issues/40550)) ([204e2dd](https://github.com/n8n-io/n8n/commit/204e2ddf1745095f940659d827b6f8ca000ead49))
+
+
 ## [2.43.1](https://github.com/n8n-io/n8n/compare/n8n@2.43.0...n8n@2.43.1) (2026-10-07)
 
 
