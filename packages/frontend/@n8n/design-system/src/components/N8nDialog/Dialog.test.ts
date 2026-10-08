@@ -3,8 +3,10 @@ import { render, waitFor } from '@testing-library/vue';
 import { DialogRoot, DialogTrigger, DialogPortal } from 'reka-ui';
 import { ref } from 'vue';
 
+import N8nFormInput from '../N8nFormInput';
 import {
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogClose,
 	N8nDialogContent,
 	N8nDialogDescription,
@@ -22,6 +24,7 @@ const renderDialog = (
 	return render({
 		components: {
 			N8nDialog,
+			N8nDialogBody,
 			N8nDialogHeader,
 			N8nDialogTitle,
 			N8nDialogDescription,
@@ -37,9 +40,11 @@ const renderDialog = (
 			<N8nDialog v-model:open="isOpen" v-bind="props">
 				<N8nDialogHeader>
 					<N8nDialogTitle>Test Dialog Title</N8nDialogTitle>
-					<N8nDialogDescription>Test dialog description text.</N8nDialogDescription>
 				</N8nDialogHeader>
-				<div data-test-id="dialog-body">Dialog body content</div>
+				<N8nDialogBody>
+					<N8nDialogDescription>Test dialog description text.</N8nDialogDescription>
+					<div data-test-id="dialog-body">Dialog body content</div>
+				</N8nDialogBody>
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
 						<button data-test-id="dialog-cancel">Cancel</button>
@@ -63,6 +68,7 @@ const renderPrimitiveDialog = (
 			DialogPortal,
 			N8nDialogOverlay,
 			N8nDialogContent,
+			N8nDialogBody,
 			N8nDialogHeader,
 			N8nDialogTitle,
 			N8nDialogDescription,
@@ -82,9 +88,11 @@ const renderPrimitiveDialog = (
 					<N8nDialogContent v-bind="contentProps">
 						<N8nDialogHeader>
 							<N8nDialogTitle>Test Dialog Title</N8nDialogTitle>
-							<N8nDialogDescription>Test dialog description text.</N8nDialogDescription>
 						</N8nDialogHeader>
-						<div data-test-id="dialog-body">Dialog body content</div>
+						<N8nDialogBody>
+							<N8nDialogDescription>Test dialog description text.</N8nDialogDescription>
+							<div data-test-id="dialog-body">Dialog body content</div>
+						</N8nDialogBody>
 						<N8nDialogFooter>
 							<N8nDialogClose as-child>
 								<button data-test-id="dialog-cancel">Cancel</button>
@@ -187,6 +195,7 @@ describe('N8nDialog', () => {
 			const { getByTestId, getByRole, getByText } = render({
 				components: {
 					N8nDialog,
+					N8nDialogBody,
 				},
 				setup() {
 					const isOpen = ref(false);
@@ -195,7 +204,9 @@ describe('N8nDialog', () => {
 				template: `
 					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
 					<N8nDialog v-model:open="isOpen" aria-label="Fallback Title">
-						<p>Content without DialogTitle component</p>
+						<N8nDialogBody>
+							<p>Content without DialogTitle component</p>
+						</N8nDialogBody>
 					</N8nDialog>
 				`,
 			});
@@ -219,6 +230,8 @@ describe('N8nDialog', () => {
 			const { getByTestId, getByRole, getByText } = render({
 				components: {
 					N8nDialog,
+					N8nDialogBody,
+					N8nDialogHeader,
 					N8nDialogTitle,
 				},
 				setup() {
@@ -228,8 +241,12 @@ describe('N8nDialog', () => {
 				template: `
 					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
 					<N8nDialog v-model:open="isOpen" aria-description="Fallback Description">
-						<N8nDialogTitle>Test Title</N8nDialogTitle>
-						<p>Content without DialogDescription component</p>
+						<N8nDialogHeader>
+							<N8nDialogTitle>Test Title</N8nDialogTitle>
+						</N8nDialogHeader>
+						<N8nDialogBody>
+							<p>Content without DialogDescription component</p>
+						</N8nDialogBody>
 					</N8nDialog>
 				`,
 			});
@@ -254,6 +271,7 @@ describe('N8nDialog', () => {
 			const { getByTestId, getByRole } = render({
 				components: {
 					N8nDialog,
+					N8nDialogBody,
 				},
 				setup() {
 					const isOpen = ref(false);
@@ -262,7 +280,9 @@ describe('N8nDialog', () => {
 				template: `
 					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
 					<N8nDialog v-model:open="isOpen">
-						<p>Content without any title</p>
+						<N8nDialogBody>
+							<p>Content without any title</p>
+						</N8nDialogBody>
 					</N8nDialog>
 				`,
 			});
@@ -308,6 +328,7 @@ describe('N8nDialog', () => {
 			const { getByTestId, getByRole } = render({
 				components: {
 					N8nDialog,
+					N8nDialogBody,
 				},
 				setup() {
 					const isOpen = ref(false);
@@ -316,7 +337,9 @@ describe('N8nDialog', () => {
 				template: `
 					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
 					<N8nDialog v-model:open="isOpen" aria-label="Accessible Title">
-						<p>Content with ariaLabel prop</p>
+						<N8nDialogBody>
+							<p>Content with ariaLabel prop</p>
+						</N8nDialogBody>
 					</N8nDialog>
 				`,
 			});
@@ -394,6 +417,7 @@ describe('N8nDialog', () => {
 			const { queryByRole, getByRole, rerender } = render({
 				components: {
 					N8nDialog,
+					N8nDialogHeader,
 					N8nDialogTitle,
 				},
 				props: {
@@ -401,7 +425,9 @@ describe('N8nDialog', () => {
 				},
 				template: `
 					<N8nDialog :open="isOpen">
-						<N8nDialogTitle>Controlled Dialog</N8nDialogTitle>
+						<N8nDialogHeader>
+							<N8nDialogTitle>Controlled Dialog</N8nDialogTitle>
+						</N8nDialogHeader>
 					</N8nDialog>
 				`,
 			});
@@ -426,6 +452,7 @@ describe('N8nDialog', () => {
 			const { getByTestId, getByRole } = render({
 				components: {
 					N8nDialog,
+					N8nDialogHeader,
 					N8nDialogTitle,
 				},
 				setup() {
@@ -435,7 +462,9 @@ describe('N8nDialog', () => {
 				template: `
 					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
 					<N8nDialog v-model:open="isOpen" @escape-key-down="escapeHandler">
-						<N8nDialogTitle>Test</N8nDialogTitle>
+						<N8nDialogHeader>
+							<N8nDialogTitle>Test</N8nDialogTitle>
+						</N8nDialogHeader>
 					</N8nDialog>
 				`,
 			});
@@ -512,6 +541,91 @@ describe('N8nDialog', () => {
 			});
 		});
 
+		describe('closeOnOverlayClick', () => {
+			async function clickOverlay() {
+				const dialog = document.querySelector('[role="dialog"]');
+				const overlay = dialog?.previousElementSibling;
+				if (!overlay) throw new Error('Dialog overlay was not rendered');
+				await userEvent.setup().click(overlay);
+			}
+
+			it('closes when the user clicks the overlay', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, queryByRole } = renderDialog();
+
+				await user.click(getByTestId('dialog-trigger'));
+				await clickOverlay();
+
+				await waitFor(() => {
+					expect(queryByRole('dialog')).not.toBeInTheDocument();
+				});
+			});
+
+			it('stays open when closeOnOverlayClick is false', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, getByRole } = renderDialog({ closeOnOverlayClick: false });
+
+				await user.click(getByTestId('dialog-trigger'));
+				await clickOverlay();
+
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+		});
+
+		describe('closeOnEscape', () => {
+			it('closes when the user presses Escape', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, queryByRole } = renderDialog();
+
+				await user.click(getByTestId('dialog-trigger'));
+				await user.keyboard('{Escape}');
+
+				await waitFor(() => {
+					expect(queryByRole('dialog')).not.toBeInTheDocument();
+				});
+			});
+
+			it('stays open when closeOnEscape is false', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, getByRole } = renderDialog({ closeOnEscape: false });
+
+				await user.click(getByTestId('dialog-trigger'));
+				await user.keyboard('{Escape}');
+
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			it('still emits escapeKeyDown when closeOnEscape is false', async () => {
+				const user = userEvent.setup();
+				const escapeHandler = vi.fn();
+				const { getByTestId, getByRole } = render({
+					components: {
+						N8nDialog,
+						N8nDialogHeader,
+						N8nDialogTitle,
+					},
+					setup() {
+						const isOpen = ref(false);
+						return { isOpen, escapeHandler };
+					},
+					template: `
+						<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+						<N8nDialog v-model:open="isOpen" :close-on-escape="false" @escape-key-down="escapeHandler">
+							<N8nDialogHeader>
+								<N8nDialogTitle>Test</N8nDialogTitle>
+							</N8nDialogHeader>
+						</N8nDialog>
+					`,
+				});
+
+				await user.click(getByTestId('dialog-trigger'));
+				await user.keyboard('{Escape}');
+
+				expect(escapeHandler).toHaveBeenCalled();
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+		});
+
 		describe('disableOutsidePointerEvents', () => {
 			it('should have disableOutsidePointerEvents enabled by default', async () => {
 				const user = userEvent.setup();
@@ -560,6 +674,38 @@ describe('N8nDialog', () => {
 			expect(getByTestId('dialog-cancel')).toBeInTheDocument();
 			expect(getByTestId('dialog-confirm')).toBeInTheDocument();
 		});
+
+		it('should keep header, body, and footer as separate regions', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole, getByText } = renderDialog();
+
+			await user.click(getByTestId('dialog-trigger'));
+
+			const dialog = getByRole('dialog');
+			const header = dialog.querySelector('[data-slot="dialog-header"]');
+			const body = dialog.querySelector('[data-slot="dialog-body"]');
+			const footer = dialog.querySelector('[data-slot="dialog-footer"]');
+
+			expect(header).toBeInTheDocument();
+			expect(body).toBeInTheDocument();
+			expect(footer).toBeInTheDocument();
+			expect(header).toContainElement(getByText('Test Dialog Title'));
+			expect(body).toContainElement(getByTestId('dialog-body'));
+			expect(footer).toContainElement(getByTestId('dialog-cancel'));
+			expect(body).not.toContainElement(footer);
+			expect(
+				header!.compareDocumentPosition(body!) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			expect(
+				body!.compareDocumentPosition(footer!) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+
+			const closeButton = getByRole('button', { name: 'Close dialog' });
+			expect(header).not.toContainElement(closeButton);
+			expect(
+				footer!.compareDocumentPosition(closeButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+		});
 	});
 
 	describe('keyboard navigation', () => {
@@ -589,26 +735,67 @@ describe('N8nDialog', () => {
 			expect(document.activeElement).toBe(trigger);
 		});
 
+		it('tabs from an autofocused field to the next field after content changes', async () => {
+			const user = userEvent.setup();
+			const { getByRole } = render({
+				components: { N8nDialog, N8nFormInput },
+				setup() {
+					const isOpen = ref(false);
+					const key = ref('');
+					const value = ref('');
+					return { isOpen, key, value };
+				},
+				template: `
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" header="Create variable">
+						<N8nFormInput v-model="key" label="Key" name="key" required focus-initially />
+						<N8nFormInput v-model="value" label="Value" name="value" type="textarea" />
+					</N8nDialog>
+				`,
+			});
+
+			await user.click(document.querySelector('[data-test-id="dialog-trigger"]')!);
+			const dialog = getByRole('dialog');
+			const keyInput = document.getElementById('key') as HTMLInputElement;
+			const valueInput = document.getElementById('value') as HTMLTextAreaElement;
+
+			await waitFor(() => expect(document.activeElement).toBe(keyInput));
+
+			// A validation message or icon mount adds nodes. That must not move focus.
+			dialog.appendChild(document.createElement('span'));
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			expect(document.activeElement).toBe(keyInput);
+
+			await user.tab();
+			expect(document.activeElement).toBe(valueInput);
+		});
+
 		it('should cycle focus with Tab key', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, getByLabelText } = renderDialog();
 
 			await user.click(getByTestId('dialog-trigger'));
 
-			const closeButton = getByLabelText('Close dialog');
 			const cancelButton = getByTestId('dialog-cancel');
 			const confirmButton = getByTestId('dialog-confirm');
+			const closeButton = getByLabelText('Close dialog');
 
-			// Get all focusable elements and verify tab cycles through them
-			const focusableElements = [closeButton, cancelButton, confirmButton];
+			// The dialog opens on the first action. The close button is the last stop.
+			await waitFor(() => {
+				expect(document.activeElement).toBe(cancelButton);
+			});
 
-			// Tab through elements multiple times to verify cycling
-			const totalTabs = focusableElements.length * 2;
-			for (let i = 0; i < totalTabs; i++) {
-				await user.tab();
-				// Focus should stay within the dialog's focusable elements
-				expect(focusableElements.includes(document.activeElement as HTMLElement)).toBe(true);
-			}
+			await user.tab();
+			expect(document.activeElement).toBe(confirmButton);
+
+			await user.tab();
+			expect(document.activeElement).toBe(closeButton);
+
+			await user.tab();
+			expect(document.activeElement).toBe(cancelButton);
+
+			await user.tab({ shift: true });
+			expect(document.activeElement).toBe(closeButton);
 		});
 	});
 
