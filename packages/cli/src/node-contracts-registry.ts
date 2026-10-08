@@ -14,18 +14,23 @@ import { execFile } from 'child_process';
 import { readFile } from 'fs/promises';
 import {
 	contractInputOf,
+	credentialTypeOfBundle,
 	credentialTypeOfManifest,
+	derivedOf,
 	fixedInputIssues,
 	hostRuntime,
 	nodeContractRangeOf,
 	nodeNameOf,
 	permissionsOf,
+	plainFieldsOf,
 	runsNodeContract,
+	toCredentialType,
 	toVersionedNodeType,
 	toVersionedToolType,
 	toolUiOf,
 	toVersionedTriggerType,
 	verifiedBundleOf,
+	type AnyCredentialType,
 	type PackedVersion,
 	type HostRuntime,
 	type PermissionRefusal,
@@ -33,12 +38,14 @@ import {
 import {
 	bundledCredentialsOf,
 	bundledIdsOf,
+	canonicalJson,
 	compareSemver,
 	deniedPermissionClassOf,
 	embeddedContractsOf,
 	embeddedStoreDirOf,
 	isNodeContractPin,
 	isStoreStatusRecord,
+	storeBlobFileOf,
 	storeIndexFileOf,
 	versionsOf,
 	type ContractKeys,
@@ -52,7 +59,7 @@ import {
 import type { RuntimeAvailability, RuntimeName } from '@n8n/node-sdk/runtimes';
 import type { GuestRuntime } from '@n8n/node-sdk/sandbox';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import {
 	credentialTypeToJSON,
 	DirectoryLoader,
@@ -68,6 +75,7 @@ import {
 	jsonParse,
 	UserError,
 	type VersionedNodeType,
+	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type ICredentialTypeData,
 	type INode,
@@ -467,6 +475,15 @@ export class ContractNodeLoader implements NodeLoader {
 
 	private credentialTypes: ICredentialTypeData = {};
 
+	/** The credential types with `derive` and their bundle hashes, by name. */
+	private derivingTypes: ReadonlyMap<
+		string,
+		{ readonly type: AnyCredentialType; readonly bundleHash: string }
+	> = new Map();
+
+	/** What `derive` gave, by bundle hash and the fields without secrets. */
+	private derived = new Map<string, ICredentialDataDecryptedObject>();
+
 	private typesReleased = false;
 
 	/**
@@ -545,13 +562,22 @@ export class ContractNodeLoader implements NodeLoader {
 			const supportedNodes = [...this.nodes]
 				.filter(([, { type }]) => credentialNamesOf(type).includes(manifest.name))
 				.map(([name]) => name);
+			const withCode = manifest.bundleHash === undefined ? undefined : this.bundledTypeOf(manifest);
 			const type = {
-				...credentialTypeOfManifest(manifest),
+				...((withCode && toCredentialType(withCode)) ?? credentialTypeOfManifest(manifest)),
 				supportedNodes,
 				toJSON: credentialTypeToJSON,
 			};
-			return { id: manifest.id, sourcePath: file, type };
+			return { id: manifest.id, sourcePath: file, type, withCode, manifest };
 		});
+		this.derivingTypes = new Map(
+			credentials.flatMap(({ withCode, manifest }) =>
+				withCode?.derive && manifest.bundleHash
+					? [[withCode.name, { type: withCode, bundleHash: manifest.bundleHash }]]
+					: [],
+			),
+		);
+		this.derived = new Map();
 		this.credentialTypes = Object.fromEntries(
 			credentials.map(({ sourcePath, type }) => [type.name, { type, sourcePath }]),
 		);
@@ -615,6 +641,36 @@ export class ContractNodeLoader implements NodeLoader {
 		return node;
 	}
 
+	/**
+	 * The OAuth2 data that `derive` of a credential type gives from the stored data, by n8n field
+	 * name. `undefined` for a type without `derive`. It stays by bundle hash and the fields
+	 * without secrets.
+	 */
+	derivedCredentialData(
+		credentialType: string,
+		data: ICredentialDataDecryptedObject,
+	): ICredentialDataDecryptedObject | undefined {
+		const deriving = this.derivingTypes.get(credentialType);
+		if (!deriving) return undefined;
+		const { type, bundleHash } = deriving;
+		const fields = createHash('sha256').update(canonicalJson(plainFieldsOf(type, data)));
+		const key = `${bundleHash}:${fields.digest('hex')}`;
+		const known = this.derived.get(key);
+		if (known) return known;
+		const derived = derivedOf(type, data) ?? {};
+		const { authorizationEndpoint, tokenEndpoint, scope, authorizationQuery } = derived;
+		const values: ICredentialDataDecryptedObject = {
+			...(authorizationEndpoint === undefined ? {} : { authUrl: authorizationEndpoint }),
+			...(tokenEndpoint === undefined ? {} : { accessTokenUrl: tokenEndpoint }),
+			...(scope === undefined ? {} : { scope }),
+			...(authorizationQuery === undefined
+				? {}
+				: { authQueryParameters: new URLSearchParams(authorizationQuery).toString() }),
+		};
+		this.derived.set(key, values);
+		return values;
+	}
+
 	getCredential(credentialType: string) {
 		const loaded = this.credentialTypes[credentialType];
 		if (!loaded) throw new UnrecognizedCredentialTypeError(credentialType);
@@ -672,14 +728,30 @@ export class ContractNodeLoader implements NodeLoader {
 		);
 		const others = [...stored.values()].filter((manifest) => {
 			if (names.has(manifest.name) || this.hasOtherCredentialType(manifest.name)) return false;
-			if (manifest.scheme.kind !== 'custom') return true;
+			if (manifest.scheme.kind !== 'custom' && manifest.bundleHash === undefined) return true;
 			Container.get(Logger).warn(
-				`${manifest.id}@${manifest.semver} does not load: a custom scheme needs a credential bundle`,
+				`${manifest.id}@${manifest.semver} does not load: n8n runs the code of a bundled credential type only`,
 			);
 			return false;
 		});
 		const file = others.length > 0 ? Container.get(NodeContractsStore).dir : '';
 		return [...bundled, ...others.map((manifest) => ({ file, manifest }))];
+	}
+
+	/**
+	 * The credential type of a bundled manifest with a bundle. The embedded store of the package
+	 * has the bundle and the SDK runtime that it pins. A bundled type is first-party, so its code
+	 * runs in this process.
+	 */
+	private bundledTypeOf(manifest: CredentialManifest) {
+		const blob = (digest: string) =>
+			readFileSync(path.join(this.storeDir, storeBlobFileOf(digest)), 'utf8');
+		const { bundleHash, sdk } = manifest;
+		return credentialTypeOfBundle(
+			manifest,
+			blob(`sha256:${bundleHash}`),
+			typeof sdk === 'object' ? blob(sdk.digest) : undefined,
+		);
 	}
 
 	/** Whether `N8N_NODE_PERMISSIONS_DENY` lets a version load, for bundled and stored versions alike. */
@@ -1047,6 +1119,22 @@ export const contractImportsOf = (
 	loaders: Readonly<Record<string, NodeLoader>>,
 	node: Pick<INode, 'type' | 'typeVersion'>,
 ): readonly string[] => contractPermissionsOf(loaders, node)?.imports ?? [];
+
+/**
+ * The OAuth2 data that `derive` of a contract credential type gives from the stored data, see
+ * `ContractNodeLoader.derivedCredentialData`. `undefined` for any other type.
+ */
+export function derivedCredentialDataOf(
+	loaders: Readonly<Record<string, NodeLoader>>,
+	credentialType: string,
+	data: ICredentialDataDecryptedObject,
+) {
+	const loader = Object.values(loaders).find(
+		(each): each is ContractNodeLoader =>
+			each instanceof ContractNodeLoader && credentialType in each.known.credentials,
+	);
+	return loader?.derivedCredentialData(credentialType, data);
+}
 
 /** The contract loader of the package of an id, when n8n loads it. */
 function contractLoaderOf(loaders: Readonly<Record<string, NodeLoader>>, id: string) {

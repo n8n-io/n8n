@@ -14,7 +14,7 @@ import {
 import { defineNode, t } from '../index';
 import { credential, defineCredential, field } from '../entry/credentials';
 import { credentialManifestOf, type NativeManifest } from '../manifest';
-import { packAction, packNative, packSdkRuntime, type PackedAction } from '../pack';
+import { packAction, packCredential, packNative, packSdkRuntime, type PackedAction } from '../pack';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -1242,6 +1242,55 @@ describe('contractStore with triggers and credentials', () => {
 		const legacy = credentialManifestsOf(reread, (name) => name === 'pingApi');
 		expect(await legacy('pingApi')).toBeUndefined();
 	});
+
+	it('takes a pinned credential with code with its bundle and the SDK runtime it pins, and exports them', async () => {
+		const entryFile = path.join(pingDir.path, 'derived-credentials.ts');
+		const derive = "derive: () => ({ scope: 'read' }),";
+		await writeFile(
+			entryFile,
+			pingCredentialsSource.replace(
+				"auth: (a) => a.bearer('token'),",
+				`${derive}\n\tauth: (a) => a.bearer('token'),`,
+			),
+		);
+		const sdk = await packSdkRuntime();
+		const otherBundle = `${sdk.bundle}\n`;
+		const otherSdk = {
+			manifest: { ...sdk.manifest, semver: '0.0.1', bundleHash: sha256(otherBundle) },
+			bundle: otherBundle,
+		};
+		const packed = await packCredential(
+			{ ...pingToken, derive: () => ({ scope: 'read' }) },
+			{ entryFile, exportName: 'pingToken' },
+			otherSdk,
+		);
+		if (!packed?.bundle) throw new Error('ping.token has no bundle');
+		const { trigger } = await ping();
+		fake().put(npmPackageOf(packed, { privateKey }));
+		fake().put(npmPackageOf(trigger, { privateKey }));
+		const pin = { version: trigger.manifest.semver, digest: npmDigestOf(trigger.manifest) };
+		await expect(storeOf().locked('ping.pinged', pin)).rejects.toThrow(
+			`The registry has no SDK runtime sha256:${otherSdk.manifest.bundleHash}`,
+		);
+		fake().put(npmPackageOf(otherSdk, { privateKey }));
+
+		await storeOf().locked('ping.pinged', pin);
+		const rows = [...instance.current.rows.values()];
+		expect(rows.find(({ kind }) => kind === 'credential')?.bundle).toBe(packed.bundle);
+		expect(rows.find(({ kind }) => kind === 'sdk')?.bundle).toBe(otherBundle);
+
+		const out = path.join(dirs.root, 'credential-bundle-export');
+		await exportContractStore(instance.current.store, out, ({ kind }) => kind === 'trigger');
+		const imported = memoryStore();
+		await importContractStore(storeReader(storeFilesOfDir(out)), imported.store, vettingKeys);
+		expect([...imported.rows.values()].map(({ id, bundle }) => [id, bundle]).sort()).toEqual(
+			[
+				['ping.pinged', trigger.bundle],
+				['ping.token', packed.bundle],
+				['sdkRuntime', otherBundle],
+			].sort(),
+		);
+	}, 60_000);
 
 	it('takes no credential manifest from the registry without a key', async () => {
 		const { pin } = await publishPing();

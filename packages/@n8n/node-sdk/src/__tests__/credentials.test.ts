@@ -1,12 +1,19 @@
 import type { ICredentialType, IHttpRequestHelper, IHttpRequestOptions } from 'n8n-workflow';
 
-import { compat, defineCredential, field, type AnyCredentialType } from '../entry/credentials';
+import {
+	compat,
+	defineCredential,
+	field,
+	type AnyCredentialType,
+	type Derived,
+} from '../entry/credentials';
 import { credentialTypeOfManifest, toCredentialType } from '../entry/host';
 import { checkCredentialType, parseCredentialManifest } from '../entry/registry';
 import { t } from '../index';
 import {
 	credentialBaseUrlOf,
 	credentialDataOf,
+	derivedOf,
 	discoverOidc,
 	secretRedactorOf,
 } from '../credentials';
@@ -522,6 +529,15 @@ describe('credential types in tsc', () => {
 			fields,
 			// @ts-expect-error `{apiKy}` is not a field
 			auth: (a) => a.header('X-Key', '{apiKy}'),
+		});
+		defineCredential({
+			id: 'probe.token',
+			version: '1.0.0',
+			displayName: 'Probe',
+			fields,
+			auth: (a) => a.bearer('apiKey'),
+			// @ts-expect-error derive never reads a secret
+			derive: ({ apiKey }) => ({ scope: apiKey }),
 		});
 		defineCredential({
 			id: 'probe.custom',
@@ -1252,6 +1268,118 @@ describe('credentialTypeOfManifest', () => {
 		});
 		expect(() => fromManifest(custom)).toThrow(
 			'Credential acme.signed: a custom scheme needs a credential bundle',
+		);
+	});
+});
+
+describe('derivedOf', () => {
+	const serverOAuth2 = (derive: (fields: { server: string }) => Derived) =>
+		defineCredential({
+			id: 'acme.oauth2',
+			version: '1.0.0',
+			displayName: 'Acme OAuth2',
+			fields: {
+				server: field.url('Server').default('https://api.acme.test'),
+				note: field.text('Note').optional(),
+				clientSecret: field.secret('Client Secret').optional(),
+			},
+			hosts: ['*.acme-cdn.test'],
+			auth: (a) =>
+				a.oauth2.authorizationCode({
+					authorizationEndpoint: 'https://acme.test/authorize',
+					tokenEndpoint: 'https://acme.test/token',
+				}),
+			derive,
+		});
+
+	it('gives derive the fields without secrets, each default filled in', () => {
+		const seen: unknown[] = [];
+		const type = serverOAuth2((fields) => {
+			seen.push(fields);
+			return { authorizationEndpoint: `${new URL(fields.server).origin}/login/oauth/authorize` };
+		});
+		expect(derivedOf(type, { clientSecret: 's', note: 'n' })).toEqual({
+			authorizationEndpoint: 'https://api.acme.test/login/oauth/authorize',
+		});
+		expect(seen).toEqual([{ server: 'https://api.acme.test', note: 'n' }]);
+	});
+
+	it('takes http and https URLs, and hosts of the type or of a URL field value', () => {
+		const type = serverOAuth2(({ server }) => ({
+			authorizationEndpoint: 'http://ghe.internal/login/oauth/authorize',
+			tokenEndpoint: 'https://ghe.internal/login/oauth/access_token',
+			baseUrl: `${server}/api/v3`,
+			hosts: ['ghe.internal', 'files.acme-cdn.test'],
+		}));
+		expect(derivedOf(type, { server: 'http://ghe.internal' })).toMatchObject({
+			baseUrl: 'http://ghe.internal/api/v3',
+		});
+	});
+
+	it('refuses another URL scheme, another host and data that is not valid', () => {
+		const at = 'Credential acme.oauth2: derive';
+		expect(() =>
+			derivedOf(
+				serverOAuth2(() => ({ tokenEndpoint: 'javascript:alert(1)' })),
+				{},
+			),
+		).toThrow(`${at} gave javascript:alert(1), which is not an http or https URL`);
+		expect(() =>
+			derivedOf(
+				serverOAuth2(() => ({ hosts: ['evil.test'] })),
+				{},
+			),
+		).toThrow(`${at} gave the hosts evil.test, which are not hosts of the type or of a URL field`);
+		// The note is not a URL field.
+		expect(() =>
+			derivedOf(
+				serverOAuth2(() => ({ baseUrl: 'https://note.test' })),
+				{ note: 'https://note.test' },
+			),
+		).toThrow(`${at} gave the hosts note.test`);
+		const loose = serverOAuth2(() => ({ scope: ['a', 'b'] }) as unknown as Derived);
+		expect(() => derivedOf(loose, {})).toThrow(`${at} gave data that is not valid`);
+	});
+
+	it('gives undefined for a type without derive', () => {
+		expect(
+			derivedOf(
+				serverOAuth2(() => ({})),
+				{},
+			),
+		).toEqual({});
+		const { derive: _, ...plain } = serverOAuth2(() => ({}));
+		expect(derivedOf(plain, {})).toBeUndefined();
+	});
+});
+
+describe('the sign of a custom scheme', () => {
+	const signed = (url: string) =>
+		defineCredential({
+			id: 'acme.signed',
+			version: '1.0.0',
+			displayName: 'Acme Signed',
+			fields: { key: field.secret('Key') },
+			hosts: ['api.acme.test'],
+			auth: (a) =>
+				a.custom({
+					reason: 'HMAC',
+					sign: async ({ key }, request) =>
+						await Promise.resolve({ ...request, url, headers: { 'x-signature': key } }),
+				}),
+		});
+
+	it('gives a request to a credential host', async () => {
+		await expect(
+			sign(signed('https://api.acme.test/v1/items'), { key: 'k' }, { url: '/items' }),
+		).resolves.toMatchObject({ headers: { 'x-signature': 'k' } });
+	});
+
+	it('refuses a signed URL outside the credential hosts', async () => {
+		await expect(
+			sign(signed('https://evil.test/collect'), { key: 'k' }, { url: 'https://api.acme.test/v1' }),
+		).rejects.toThrow(
+			'Credential acme.signed: the signed request goes to evil.test, which is not a credential host',
 		);
 	});
 });

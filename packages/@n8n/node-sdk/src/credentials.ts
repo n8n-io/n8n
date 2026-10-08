@@ -29,7 +29,7 @@ import {
 	type OptionLabel,
 	type Shape,
 } from './schema';
-import { applyDefaults } from './validate';
+import { applyDefaults, matches } from './validate';
 import { validate } from './validator';
 
 type NoFields = Record<never, never>;
@@ -329,6 +329,30 @@ export interface CustomAuth<F extends Shape = Shape> {
 	sign(data: CredentialData<F>, request: IHttpRequestOptions): Promise<IHttpRequestOptions>;
 }
 
+/**
+ * What `derive` gives from the fields without secrets. n8n runs it, e.g. the OAuth2 flow, after it
+ * checks it: each URL is http or https, and each host comes from a host of the type or from the
+ * value of a URL field.
+ *
+ * @unstable The `credential-derive` feature of Node Contract 2.13.0.
+ */
+export interface Derived {
+	/** The OAuth2 authorization endpoint, e.g. `https://github.example.com/login/oauth/authorize`. */
+	readonly authorizationEndpoint?: string;
+	/** The OAuth2 token endpoint. */
+	readonly tokenEndpoint?: string;
+	/** The exact scope text that n8n sends, e.g. comma-joined for GitHub. */
+	readonly scope?: string;
+	/** The query parameters of the authorization request. */
+	readonly authorizationQuery?: Values;
+	/** The JWT claims of a JWT bearer grant. */
+	readonly claims?: Values;
+	/** The API base URL. Its host is a credential host. */
+	readonly baseUrl?: string;
+	/** More credential hosts. */
+	readonly hosts?: readonly string[];
+}
+
 /** How n8n signs a request. All kinds but `custom` are data. */
 export type CredentialScheme<F extends Shape = Shape> =
 	| Placement
@@ -582,6 +606,13 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	readonly fields?: F;
 	/** How n8n signs a request: what `auth` gave. */
 	readonly scheme: CredentialScheme<F>;
+	/**
+	 * Gives data that n8n runs from the fields without secrets, e.g. the OAuth2 endpoints of a
+	 * server URL. A type with it has a credential bundle.
+	 *
+	 * @unstable The `credential-derive` feature of Node Contract 2.13.0.
+	 */
+	derive?(fields: CredentialData<PlainShape<F>>): Derived;
 	/**
 	 * The API base URL, e.g. `https://{subdomain}.zendesk.com/api/v2`. It replaces the node's, and
 	 * its host is a credential host.
@@ -1095,6 +1126,13 @@ export function defineCredential<
 	 */
 	readonly auth: (a: AuthBuilders<F>) => CredentialScheme<F>;
 	/**
+	 * Gives data that n8n runs from the fields without secrets, e.g. the OAuth2 endpoints of a
+	 * server URL. Pack then makes a credential bundle of the type.
+	 *
+	 * @unstable The `credential-derive` feature of Node Contract 2.13.0.
+	 */
+	readonly derive?: (fields: CredentialData<PlainShape<F>>) => Derived;
+	/**
 	 * A GET of this path, or a POST with a body, after `baseUrl` with the credential applied. The
 	 * body may hold secrets; the path never does.
 	 */
@@ -1143,6 +1181,7 @@ export function defineCredential<
 		...(spec.docs ? { documentationUrl: spec.docs } : {}),
 		...(spec.fields ? { fields: spec.fields } : {}),
 		scheme: spec.auth(authBuilders<F>()),
+		...(spec.derive ? { derive: spec.derive } : {}),
 		...(spec.baseUrl === undefined ? {} : { baseUrl: spec.baseUrl }),
 		...(spec.hosts ? { hosts: spec.hosts } : {}),
 		...(spec.test ? { test: spec.test } : {}),
@@ -1846,6 +1885,23 @@ export function toCredentialType(type: AnyCredentialType): ICredentialType | und
 		}
 		if (scheme.kind !== 'custom') throw notRunBy(type, scheme.kind);
 		const signed = await scheme.sign(stored, request);
+		// A type without hosts keeps the legacy meaning of the user setting, which n8n core checks.
+		const hosts =
+			type.hosts === undefined && type.baseUrl === undefined
+				? undefined
+				: credentialHostsOf(type, data, {
+						surface: type.displayName,
+						baseUrl: credentialBaseUrlOf(type, data),
+					});
+		const target = URL.canParse(signed.url, signed.baseURL)
+			? new URL(signed.url, signed.baseURL).href
+			: undefined;
+		const host = webHostOf(target);
+		if (hosts !== undefined && (host === undefined || !allowsHost(hosts, host))) {
+			throw new UserError(
+				`Credential ${type.name}: the signed request goes to ${host ?? signed.url}, which is not a credential host`,
+			);
+		}
 		// The request layer checks each redirect hop against `allowedDomains`, so a signer that
 		// builds new options must not drop it.
 		return request.allowedDomains === undefined
@@ -1922,6 +1978,67 @@ export function credentialTypeOfManifest(manifest: CredentialManifest): ICredent
 	const projected = toCredentialType(typeOfManifest(manifest));
 	if (!projected) throw new UserError(`Credential ${manifest.id} has no n8n credential type`);
 	return projected;
+}
+
+// A function, so the SDK runtime bundle leaves it out: only the host checks what derive gives.
+const derivedSchema = () =>
+	t.obj({
+		authorizationEndpoint: t.str().optional(),
+		tokenEndpoint: t.str().optional(),
+		scope: t.str().optional(),
+		authorizationQuery: t.record(t.str()).optional(),
+		claims: t.record(t.str()).optional(),
+		baseUrl: t.str().optional(),
+		hosts: t.arr(t.str()).optional(),
+	});
+
+/** Whether a value has the shape of what `derive` gives. `derivedOf` also checks the URLs and hosts. */
+export const isDerived = (value: unknown): value is Derived => matches(derivedSchema(), value);
+
+/** The host of an http or https URL, or `undefined` for another scheme or no URL. */
+const webHostOf = (url: unknown) => {
+	if (typeof url !== 'string' || !URL.canParse(url)) return undefined;
+	const { protocol, hostname } = new URL(url);
+	return protocol === 'http:' || protocol === 'https:' ? hostname.toLowerCase() : undefined;
+};
+
+/**
+ * Runs `derive` of a type with the stored fields without secrets, each default filled in, and
+ * checks what it gives. Each URL must be http or https. A derived host and the host of a derived
+ * base URL must be a host of the type or the host of the value of a URL field. `undefined` for a
+ * type without `derive`.
+ */
+export function derivedOf(type: AnyCredentialType, raw: unknown): Derived | undefined {
+	if (!type.derive) return undefined;
+	const fields = plainFieldsOf(type, raw);
+	const derived: unknown = type.derive(fields);
+	const fail = (problem: string) => new UserError(`Credential ${type.id}: derive ${problem}`);
+	if (!isDerived(derived)) throw fail('gave data that is not valid');
+	const { authorizationEndpoint, tokenEndpoint, baseUrl, hosts = [] } = derived;
+	const urls = [authorizationEndpoint, tokenEndpoint, baseUrl].filter((url) => url !== undefined);
+	const notWeb = urls.find((url) => webHostOf(url) === undefined);
+	if (notWeb !== undefined) throw fail(`gave ${notWeb}, which is not an http or https URL`);
+	const typeBaseUrl = type.baseUrl;
+	const allowed = [
+		...(type.hosts ?? []),
+		...[
+			...(typeof typeBaseUrl === 'object' ? Object.values(typeBaseUrl.values) : [typeBaseUrl]),
+			...Object.entries(type.fields ?? {})
+				.filter(([, schema]) => schema.json.format === 'uri' && !isSecretField(schema))
+				.map(([name]) => fields[name]),
+		]
+			.map(webHostOf)
+			.filter((host) => host !== undefined),
+	];
+	const outside = [...hosts, ...(baseUrl === undefined ? [] : [webHostOf(baseUrl) ?? ''])].filter(
+		(host) => !allowed.includes(host) && !allowsHost(allowed, host),
+	);
+	if (outside.length > 0) {
+		throw fail(
+			`gave the hosts ${outside.join(', ')}, which are not hosts of the type or of a URL field`,
+		);
+	}
+	return derived;
 }
 
 /** The endpoints of an OpenID provider, from its discovery document. */

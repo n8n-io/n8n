@@ -43,6 +43,7 @@ import {
 	compat,
 	compatTypeOfManifest,
 	credentialBaseUrlOf,
+	isDerived,
 	plainFieldsOf,
 	redactedValue,
 	secretRedactorOf,
@@ -67,7 +68,7 @@ import {
 	reportRefusal,
 	type PermissionRefusalListener,
 } from './egress';
-import { actionUiSchema, type CredentialManifest } from './manifest';
+import { actionUiSchema, type CredentialHook, type CredentialManifest } from './manifest';
 import {
 	contractInputOf,
 	formPropertiesOf,
@@ -2861,6 +2862,83 @@ export const credentialOfManifests =
 		const manifest = manifests.find((each) => each?.id === id);
 		return manifest && typeOfManifest(manifest);
 	};
+
+/**
+ * The credential type of a credential manifest with a bundle from `packCredential`, after the
+ * bundle and the SDK runtime that it pins are checked against the manifest. The data comes from
+ * the manifest. The bundle gives only the hooks that the manifest lists, and the host checks what
+ * each hook gives. The bundle runs in this process, so it must be `first-party`.
+ */
+export function credentialTypeOfBundle(
+	manifest: CredentialManifest,
+	bundle: string,
+	sdk?: string,
+): AnyCredentialType {
+	const at = `${manifest.id}@${manifest.semver}`;
+	if (sha256(bundle) !== manifest.bundleHash) {
+		throw new UnexpectedError(`The bundle of ${at} does not match ${manifest.bundleHash}`);
+	}
+	const pin = typeof manifest.sdk === 'object' ? manifest.sdk : undefined;
+	if (pin && (sdk === undefined || `sha256:${sha256(sdk)}` !== pin.digest)) {
+		throw new UnexpectedError(`The SDK runtime of ${at} does not match ${pin.digest}`);
+	}
+	if (!implementsNodeContract(manifest.nodeContract)) {
+		throw new UserError(
+			`This host cannot run Node Contract ${manifest.nodeContract}. It implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
+		);
+	}
+	const modules =
+		pin && sdk !== undefined
+			? { ...HOST_MODULES, ...sdkModulesOf(sdk, () => undefined) }
+			: HOST_MODULES;
+	const exported = defaultExportOf(bundle, modules);
+	const hooks = manifest.hooks ?? [];
+	const hookOf = (owner: unknown, name: CredentialHook) => {
+		const hook = isRecord(owner) ? owner[name] : undefined;
+		if (!hooks.includes(name) || typeof hook !== 'function') {
+			throw new UnexpectedError(`The bundle of ${at} does not export ${name}`);
+		}
+		return (...args: unknown[]): unknown => Reflect.apply(hook, owner, args);
+	};
+	const { scheme } = manifest;
+	const signOf =
+		(sign: (...args: unknown[]) => unknown) =>
+		async (data: unknown, request: IHttpRequestOptions) => {
+			const signed = await sign(data, request);
+			if (!isSignedRequest(signed)) {
+				throw new UserError(`Credential ${manifest.id}: sign gave no request with a URL`);
+			}
+			return signed;
+		};
+	const derive = hooks.includes('derive') ? hookOf(exported, 'derive') : undefined;
+	return {
+		...manifest,
+		fields: shapeOf(manifest.fields),
+		scheme:
+			scheme.kind === 'custom'
+				? {
+						kind: 'custom',
+						reason: scheme.reason,
+						sign: signOf(hookOf(isRecord(exported) ? exported.scheme : undefined, 'sign')),
+					}
+				: typeOfManifest(manifest).scheme,
+		...(derive
+			? {
+					derive: (fields) => {
+						const derived = derive(fields);
+						if (!isDerived(derived)) {
+							throw new UserError(`Credential ${manifest.id}: derive gave data that is not valid`);
+						}
+						return derived;
+					},
+				}
+			: {}),
+	};
+}
+
+/** A request that `sign` of a credential bundle gives. The host checks its URL again. */
+const isSignedRequest = (value: unknown): value is IHttpRequestOptions =>
+	isRecord(value) && typeof value.url === 'string';
 
 /**
  * The bundle of a packed version, after its Node Contract version and its hash are checked. The

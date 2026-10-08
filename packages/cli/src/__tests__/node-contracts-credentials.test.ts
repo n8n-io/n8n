@@ -35,7 +35,13 @@ async function loaded(nodeContractsEnabled: boolean) {
 		mock(),
 		mock(),
 	);
-	const next = new ContractNodeLoader(hostRuntime(), [], [], async () => ({
+	const runtime = hostRuntime({
+		credentialManifestOf: async (name) =>
+			await Promise.resolve(
+				bundledCredentialsOf().find(({ manifest }) => manifest.name === name)?.manifest,
+			),
+	});
+	const next = new ContractNodeLoader(runtime, [], [], async () => ({
 		versions: async () => new Map(),
 		credentials: async () => new Map(),
 	}));

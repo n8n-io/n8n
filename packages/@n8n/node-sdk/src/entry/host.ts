@@ -16,7 +16,14 @@ export {
 	resourceIdOf,
 	type FieldRef,
 } from '../define';
-export { credentialTypeOfManifest, toCredentialType } from '../credentials';
+export {
+	credentialTypeOfManifest,
+	derivedOf,
+	plainFieldsOf,
+	toCredentialType,
+	type AnyCredentialType,
+	type Derived,
+} from '../credentials';
 export type { FileExtractor } from '../host-imports';
 export {
 	advancedFieldsOf,
@@ -32,6 +39,7 @@ export {
 } from '../properties';
 export {
 	AUTHENTICATION,
+	credentialTypeOfBundle,
 	hostRuntime,
 	lookupActionOf,
 	nodeDescriptionOf,

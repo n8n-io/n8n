@@ -22,6 +22,7 @@ import {
 	credentialManifestOf,
 	parseCredentialManifest,
 	SDK_RUNTIME_ID,
+	type CredentialHook,
 	type CredentialManifest,
 	type NativeManifest,
 	type SdkManifest,
@@ -651,11 +652,13 @@ export interface CredentialEntry {
 
 const CUSTOM_HOOKS = ['sign', 'exchange', 'refresh'] as const;
 
-/** The functions of a `custom` scheme, which the credential bundle exports. */
-const hooksOf = ({ scheme }: AnyCredentialType) =>
-	scheme.kind === 'custom' && isRecord(scheme)
+/** The functions of a `custom` scheme and `derive`, which the credential bundle exports. */
+const hooksOf = ({ scheme, derive }: AnyCredentialType): CredentialHook[] => [
+	...(scheme.kind === 'custom' && isRecord(scheme)
 		? CUSTOM_HOOKS.filter((hook) => typeof scheme[hook] === 'function')
-		: [];
+		: []),
+	...(typeof derive === 'function' ? ['derive' as const] : []),
+];
 
 /**
  * The credential manifest of a type, with the version of its source, or none for a compat type.

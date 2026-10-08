@@ -591,7 +591,10 @@ async function assertPinsResolve(store: InstanceStore, added: readonly StoredVer
 
 /** The `sha256:<hex>` digest of the SDK runtime that a stored version pins, or `undefined`. */
 const sdkPinOf = (version: StoredVersion) => {
-	const manifest = pinningManifestOf(version);
+	const manifest =
+		version.kind === 'credential'
+			? parseCredentialManifest(version.manifestText)
+			: pinningManifestOf(version);
 	return manifest && 'sdk' in manifest && typeof manifest.sdk === 'object'
 		? manifest.sdk.digest
 		: undefined;
@@ -891,7 +894,18 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				if (read.manifest.kind !== 'credential') {
 					throw new UserError(`${record.id}@${record.version} is not a credential type`);
 				}
-				return [storedVersionOf(record, read.text, origin)];
+				const { bundleHash } = read.manifest;
+				const bundle = bundleHash && (await registry.blob(bundleDigestOf(bundleHash)));
+				if (bundleHash && !bundle) throw new UserError(`The registry has no bundle ${bundleHash}`);
+				return [
+					...(await pinnedSdk(read.manifest)),
+					storedVersionOf(
+						record,
+						read.text,
+						origin,
+						bundle ? { bundle: bundle.toString('utf8') } : {},
+					),
+				];
 			}),
 		);
 		return found.flat();
@@ -933,8 +947,8 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		return { ...storedVersionOf(record, read.text, origin), bundle: bundle.toString('utf8') };
 	};
 
-	/** The SDK runtime that a version pins, from the registry, unless n8n has it. */
-	const pinnedSdk = async ({ sdk }: VersionManifest): Promise<StoredVersion[]> =>
+	/** The SDK runtime that a version or a credential pins, from the registry, unless n8n has it. */
+	const pinnedSdk = async ({ sdk }: Pick<VersionManifest, 'sdk'>): Promise<StoredVersion[]> =>
 		typeof sdk === 'object' && (await knownSdkOf(sdk.digest)) === undefined
 			? [await registrySdk(sdk.digest)]
 			: [];
@@ -1440,15 +1454,18 @@ export async function exportContractStore(
 	const all = await store.versions();
 	const included = all.filter(include);
 	const pins = included.flatMap(credentialPinsOf);
-	const sdks = new Set(included.flatMap((version) => sdkPinOf(version) ?? []));
-	const pinned = all.filter(
+	const credentials = all.filter(
 		(version) =>
 			!included.includes(version) &&
-			((version.kind === 'credential' &&
-				pins.some(({ id, range }) => id === version.id && satisfies(version.version, range))) ||
-				(version.kind === 'sdk' && sdks.has(runtimeDigestOf(version)))),
+			version.kind === 'credential' &&
+			pins.some(({ id, range }) => id === version.id && satisfies(version.version, range)),
 	);
-	const versions = [...included, ...pinned].sort(
+	const sdks = new Set([...included, ...credentials].flatMap((version) => sdkPinOf(version) ?? []));
+	const runtimes = all.filter(
+		(version) =>
+			!included.includes(version) && version.kind === 'sdk' && sdks.has(runtimeDigestOf(version)),
+	);
+	const versions = [...included, ...credentials, ...runtimes].sort(
 		(a, b) => a.id.localeCompare(b.id) || compareSemver(a.version, b.version),
 	);
 	const records = await addToStore(dir, versions);

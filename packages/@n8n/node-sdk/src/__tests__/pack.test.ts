@@ -6,6 +6,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { Action } from '../define';
 import type { PermissionRefusal } from '../egress';
+import { derivedOf } from '../credentials';
 import { defineCredential, field } from '../entry/credentials';
 import {
 	contractsOfPackage,
@@ -22,6 +23,7 @@ import {
 import { credentialManifestOf, type CredentialManifest } from '../manifest';
 import { npmDigestOf, npmPackageOf, type NpmVersion } from '../npm';
 import {
+	credentialTypeOfBundle,
 	executorOf,
 	hostRuntime,
 	loadExecutor,
@@ -624,6 +626,62 @@ export const pass = defineNode({
 	});
 
 	const storeOf = () => storeReader(storeFilesOfDir(path.join(state.pkg, 'dist', 'store')));
+
+	it('packs a credential type with code of the package into a bundle that the host runs', async () => {
+		vi.stubEnv('N8N_NODE_CONTRACTS_NPM_REGISTRY', '');
+		const entryFile = path.join(state.pkg, 'src', 'nodes', 'demo', 'credentials.ts');
+		await writeFile(
+			entryFile,
+			`
+import { defineCredential, field } from '@n8n/node-sdk/credentials';
+
+export const token = defineCredential({
+	id: 'demo.token',
+	version: '1.0.0',
+	displayName: 'Demo',
+	fields: {
+		server: field.url('Server').default('https://api.demo.test'),
+		clientSecret: field.secret('Client Secret'),
+	},
+	auth: (a) =>
+		a.oauth2.authorizationCode({
+			authorizationEndpoint: 'https://demo.test/authorize',
+			tokenEndpoint: 'https://demo.test/token',
+		}),
+	derive: ({ server }) => ({
+		authorizationEndpoint: \`\${new URL(server).origin}/login/oauth/authorize\`,
+		scope: ['repo', 'user'].join(','),
+	}),
+});
+`,
+		);
+		await writeFile(state.entry, passSource(run));
+		const pkg = { name: '@acme/nodes', dir: state.pkg };
+		expect((await contractsOfPackage(pkg)).credentials.get('demo.token')).toEqual({
+			entryFile,
+			exportName: 'token',
+		});
+
+		const {
+			credentials: [manifest],
+		} = await packPackage(pkg);
+		if (!manifest || typeof manifest.sdk !== 'object') throw new Error('no SDK pin');
+		expect(manifest).toMatchObject({ nodeContract: '2.13.0', hooks: ['derive'] });
+		const [record] = await storeOf().records('demo.token');
+		expect(record?.bundle).toBe(`sha256:${manifest.bundleHash}`);
+		const blob = async (digest = '') => (await storeOf().blob(digest))?.toString('utf8') ?? '';
+		const [bundle, sdk] = [await blob(record?.bundle), await blob(manifest.sdk.digest)];
+		const type = credentialTypeOfBundle(manifest, bundle, sdk);
+		expect(derivedOf(type, { server: 'https://ghe.acme.test/api/v3', clientSecret: 's' })).toEqual({
+			authorizationEndpoint: 'https://ghe.acme.test/login/oauth/authorize',
+			scope: 'repo,user',
+		});
+		expect(() => credentialTypeOfBundle(manifest, `${bundle}\n`, sdk)).toThrow(
+			`The bundle of demo.token@1.0.0 does not match ${manifest.bundleHash}`,
+		);
+		// The host calls only the exports that the manifest lists.
+		expect(credentialTypeOfBundle({ ...manifest, hooks: [] }, bundle, sdk).derive).toBeUndefined();
+	}, 60_000);
 
 	it('ships a published version that pins another signed SDK runtime, with that runtime', async () => {
 		const registry = state.registry as FakeNpmRegistry;

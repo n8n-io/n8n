@@ -17,6 +17,7 @@ export {
 	type CredentialTest,
 	type CredentialType,
 	type CustomAuth,
+	type Derived,
 	type DeviceCodeGrant,
 	type Exchange,
 	type JwtBearerGrant,
