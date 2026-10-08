@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent } from 'vue';
+import { defineComponent, type PropType } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -86,8 +86,16 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 						type: String,
 						default: versionId,
 					},
+					actions: {
+						type: Array as PropType<Array<{ value: string; disabled?: boolean }>>,
+						default: () => [],
+					},
 				},
 				template: `<div>
+						<span
+							data-test-id="stub-restore-action"
+							:data-disabled="String(actions.find((action) => action.value === 'restore')?.disabled)"
+						/>
 						<button data-test-id="stub-preview-button" @click="event => $emit('preview', {id, event})" />
 						<button data-test-id="stub-compare-button" @click="() => $emit('compare', { id })" />
 						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
@@ -135,6 +143,21 @@ describe('WorkflowHistory', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('restore action', () => {
+		it.each([
+			[['workflow:read'], 'true'],
+			[['workflow:read', 'workflow:update'], 'false'],
+		])('with scopes %j, is disabled: %s', async (scopes, disabled) => {
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
+				scopes,
+			} as unknown as IWorkflowDb);
+
+			const { findByTestId } = renderComponent({ pinia });
+
+			expect(await findByTestId('stub-restore-action')).toHaveAttribute('data-disabled', disabled);
+		});
 	});
 
 	it('should replace url path to contain /:versionId', async () => {
