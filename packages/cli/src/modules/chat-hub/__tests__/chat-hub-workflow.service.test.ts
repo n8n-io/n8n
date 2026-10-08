@@ -7,7 +7,9 @@ import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workfl
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
@@ -38,6 +40,7 @@ describe('ChatHubWorkflowService', () => {
 
 	const mockCipher = mock<Cipher>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const deprecatedNodesValidationService = mock<DeprecatedNodesValidationService>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -72,6 +75,7 @@ describe('ChatHubWorkflowService', () => {
 			workflowFinderService,
 			mockCipher,
 			policyEnforcementService,
+			deprecatedNodesValidationService,
 		);
 
 		// Mock repository methods
@@ -158,6 +162,32 @@ describe('ChatHubWorkflowService', () => {
 					defaultExecutionMetadata,
 				),
 			).rejects.toThrow('blocked');
+
+			expect(workflowRepository.createContent).not.toHaveBeenCalled();
+		});
+
+		it('writes nothing when the workflow contains a deprecated node', async () => {
+			deprecatedNodesValidationService.validateOnCreate.mockImplementationOnce(() => {
+				throw new DeprecatedNodesError('deprecated', { violations: [] });
+			});
+
+			await expect(
+				service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{},
+					{ provider: 'openai', model: 'gpt-4' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				),
+			).rejects.toThrow(DeprecatedNodesError);
 
 			expect(workflowRepository.createContent).not.toHaveBeenCalled();
 		});
@@ -1363,6 +1393,7 @@ describe('ChatHubWorkflowService', () => {
 				workflowFinderService,
 				mockCipher,
 				policyEnforcementService,
+				deprecatedNodesValidationService,
 			);
 
 			const mockTrx = mock<EntityManager>();
