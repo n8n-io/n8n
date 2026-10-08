@@ -34,7 +34,6 @@ import type { AgentMessageEntity, AgentMessageOrigin } from './entities/agent-me
 import { messageToDto } from './agent-message-mapper';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { buildAgentTurnMetrics } from './agent-telemetry';
-import { getBuiltAgentId } from './builder/builder-thread-metadata';
 import { toAgentRef } from './utils/agent-ref';
 import {
 	AgentExecutionThread,
@@ -114,12 +113,6 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	initialTimeline?: TimelineEvent[];
 	/** Links a delegated run to the execution that started it. Absent for a top-level turn. */
 	executionLinks?: AgentExecutionLinks;
-	/**
-	 * Agent whose checkpoint store holds the run's checkpoints, when it is not
-	 * `agentId`. The Agent builder records its session under the system agent,
-	 * but keeps its checkpoints under the agent that it builds.
-	 */
-	checkpointAgentId?: string;
 	/** Internal admission data. These fields are not stored on the execution. */
 	queueItemId?: string;
 	resumeRunId?: string;
@@ -329,8 +322,7 @@ export class AgentExecutionService {
 	}
 
 	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
-		const { threadId, resumeRunId, queueItemId } = params;
-		const agentId = params.checkpointAgentId ?? params.agentId;
+		const { threadId, agentId, resumeRunId, queueItemId } = params;
 		const running = await this.agentExecutionRepository.findRunningByThread(threadId, ctx);
 		const active = await this.queueRepository.findActive(threadId, ctx);
 		if (resumeRunId) {
@@ -676,7 +668,6 @@ export class AgentExecutionService {
 		threadId: string,
 		userId: string,
 	): Promise<boolean> {
-		const runtimeAgentId = await this.findSessionRuntimeAgentId(agentId, threadId);
 		const result = await this.txRunner.run({}, async (ctx) => {
 			const deletion = await this.agentExecutionThreadRepository.deleteSession(
 				projectId,
@@ -684,12 +675,11 @@ export class AgentExecutionService {
 				threadId,
 				userId,
 				ctx,
-				runtimeAgentId,
 			);
 			if (!deletion) return null;
 			if (deletion.status === 'busy') return deletion;
 
-			await this.n8nMemory.getImplementation(runtimeAgentId).deleteThread(threadId, ctx);
+			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
 			return deletion;
 		});
 		if (!result) return false;
@@ -710,16 +700,6 @@ export class AgentExecutionService {
 			),
 		]);
 		return true;
-	}
-
-	/**
-	 * The agent whose memory and checkpoints a session uses. It is the session
-	 * agent, except for an Agent builder session: that one belongs to a system
-	 * agent, but its memory thread names the built agent.
-	 */
-	private async findSessionRuntimeAgentId(agentId: string, threadId: string): Promise<string> {
-		const memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
-		return getBuiltAgentId(memoryThread?.metadata) ?? agentId;
 	}
 
 	/**

@@ -587,8 +587,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		threadId: string,
 		userId: string,
 		ctx: OperationContext,
-		/** Agent whose checkpoints the session uses, when it is not `agentId`. */
-		checkpointAgentId: string = agentId,
 	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
@@ -610,11 +608,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			projectId,
 			threadId,
 		);
-		const checkpointRunIds = await this.findSessionCheckpointRunIds(
-			manager,
-			checkpointAgentId,
-			threadId,
-		);
+		const checkpointRunIds = await this.findSessionCheckpointRunIds(manager, agentId, threadId);
 		for (const batch of chunk(checkpointRunIds, CHECKPOINT_BATCH_SIZE)) {
 			await manager.delete(AgentCheckpoint, batch);
 		}

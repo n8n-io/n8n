@@ -1,3 +1,4 @@
+import type { SerializableAgentState } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,14 +11,19 @@ import {
 import {
 	BUILDER_AGENT_NAME,
 	BUILDER_EXECUTION_SOURCE,
+	getBuilderStateOwnerAgentId,
 } from '@/modules/agents/builder/agents-builder.service';
 import { BUILT_AGENT_ID_METADATA_KEY } from '@/modules/agents/builder/builder-thread-metadata';
 import { ExecutionRecorder } from '@/modules/agents/execution-recorder';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import { AgentObservationRepository } from '@/modules/agents/repositories/agent-observation.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { EXECUTION_METADATA_KEY } from '@/modules/agents/types/agent-queued-message';
 
 import { createMember } from '../shared/db/users';
 
@@ -29,8 +35,9 @@ const INSTANCE_AGENT_ID = 'test-instance-assistant';
  * parameters as `AgentsBuilderService` and check the stored rows.
  *
  * The builder session belongs to the system agent and to the working project
- * of the parent thread. The built agent lives in another project here, so the
- * tests show that nothing of the session depends on it.
+ * of the parent thread. Its checkpoints and observational memory belong to the
+ * same system agent (the state owner). The built agent lives in another
+ * project here, so the tests show that nothing of the session depends on it.
  */
 describe('Agent builder execution records', () => {
 	let threadRepo: AgentExecutionThreadRepository;
@@ -39,6 +46,9 @@ describe('Agent builder execution records', () => {
 	let executionService: AgentExecutionService;
 	let systemAgentService: SystemAgentExecutionService;
 	let memory: N8nMemory;
+	let checkpointStorage: N8NCheckpointStorage;
+	let checkpointRepo: AgentCheckpointRepository;
+	let observationRepo: AgentObservationRepository;
 	let owner: User;
 	let workingProjectId: string;
 	let targetProjectId: string;
@@ -53,6 +63,9 @@ describe('Agent builder execution records', () => {
 		executionService = Container.get(AgentExecutionService);
 		systemAgentService = Container.get(SystemAgentExecutionService);
 		memory = Container.get(N8nMemory);
+		checkpointStorage = Container.get(N8NCheckpointStorage);
+		checkpointRepo = Container.get(AgentCheckpointRepository);
+		observationRepo = Container.get(AgentObservationRepository);
 		owner = await createMember();
 		await systemAgentService.register({
 			agentId: INSTANCE_AGENT_ID,
@@ -79,6 +92,8 @@ describe('Agent builder execution records', () => {
 	});
 
 	afterEach(async () => {
+		await checkpointRepo.delete({});
+		await observationRepo.delete({});
 		await executionRepo.delete({});
 		await threadRepo.delete({});
 		await agentRepo.delete({ scope: 'project' });
@@ -105,10 +120,35 @@ describe('Agent builder execution records', () => {
 		return { threadId: thread.id, executionId: execution.id };
 	}
 
-	async function recordBuilderTurn(parent: { threadId: string; executionId: string }) {
+	/** The state owner that `AgentsBuilderService` uses for a recorded (v2) turn. */
+	const stateOwner = () =>
+		getBuilderStateOwnerAgentId(targetAgentId, { agentId: INSTANCE_AGENT_ID });
+
+	function suspendedState(threadId: string, executionId: string): SerializableAgentState {
+		return {
+			status: 'suspended',
+			persistence: {
+				threadId,
+				resourceId: owner.id,
+				hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+			},
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+		};
+	}
+
+	/**
+	 * Record one builder turn with the parameters of `AgentsBuilderService`.
+	 * `suspendRunId` saves a checkpoint while the turn runs, like a builder
+	 * question. `resumeRunId` resumes such a checkpoint.
+	 */
+	async function recordBuilderTurn(
+		parent: { threadId: string; executionId: string },
+		options: { suspendRunId?: string; resumeRunId?: string } = {},
+	) {
 		const threadId = `ia-builder:${parent.threadId}:${targetAgentId}`;
 		const parentThread = await threadRepo.findOneByOrFail({ id: parent.threadId });
-		await memory.getImplementation(targetAgentId).saveThread({
+		await memory.getImplementation(stateOwner()).saveThread({
 			id: threadId,
 			resourceId: owner.id,
 			metadata: { [BUILT_AGENT_ID_METADATA_KEY]: targetAgentId },
@@ -120,10 +160,12 @@ describe('Agent builder execution records', () => {
 			agentId: INSTANCE_AGENT_ID,
 			agentName: BUILDER_AGENT_NAME,
 			projectId: parentThread.projectId,
-			checkpointAgentId: targetAgentId,
-			userMessage: 'Build a support agent',
+			userMessage: options.resumeRunId ? null : 'Build a support agent',
 			resourceId: owner.id,
 			source: BUILDER_EXECUTION_SOURCE,
+			...(options.resumeRunId
+				? { resumeRunId: options.resumeRunId, sessionMode: 'existing' as const }
+				: {}),
 			...(executionLinks ? { executionLinks } : {}),
 			threadMetadata: { parentThreadId: parent.threadId, parentAgentId: INSTANCE_AGENT_ID },
 		};
@@ -132,16 +174,41 @@ describe('Agent builder execution records', () => {
 			params,
 			recorder.startedAt,
 		);
+		if (options.suspendRunId) {
+			await checkpointStorage.save(
+				options.suspendRunId,
+				suspendedState(threadId, executionId),
+				stateOwner(),
+			);
+		}
 		recorder.record({
 			type: 'finish',
 			finishReason: 'stop',
 			usage: { promptTokens: 120, completionTokens: 30, totalTokens: 150 },
 		});
+		let hitlStatus: 'suspended' | 'resumed' | undefined;
+		if (options.suspendRunId) hitlStatus = 'suspended';
+		else if (options.resumeRunId) hitlStatus = 'resumed';
 		await executionService.finalizeExecution(executionId, {
 			...params,
 			record: recorder.getMessageRecord(),
+			hitlStatus,
 		});
 		return { threadId, executionId };
+	}
+
+	async function addObservation(agentId: string, threadId: string) {
+		await memory
+			.getImplementation(agentId)
+			.appendObservationLogEntries([
+				{ observationScopeId: threadId, marker: 'info', text: 'The user wants Slack.' },
+			]);
+	}
+
+	async function observationsOf(agentId: string, threadId: string) {
+		return await memory
+			.getImplementation(agentId)
+			.getObservationLog({ observationScopeId: threadId });
 	}
 
 	it('stores the builder session under the system agent and the working project', async () => {
@@ -162,7 +229,7 @@ describe('Agent builder execution records', () => {
 			totalPromptTokens: 240,
 			totalCompletionTokens: 60,
 		});
-		const memoryThread = await memory.getImplementation(targetAgentId).getThread(first.threadId);
+		const memoryThread = await memory.getImplementation(stateOwner()).getThread(first.threadId);
 		expect(memoryThread?.metadata).toMatchObject({ builtAgentId: targetAgentId });
 
 		const executions = await executionRepo.findByThreadIdOrdered(first.threadId);
@@ -196,8 +263,91 @@ describe('Agent builder execution records', () => {
 		expect(await threadRepo.findOneBy({ id: builder.threadId })).toBeNull();
 		expect(await executionRepo.findByThreadIdOrdered(builder.threadId)).toEqual([]);
 		// The builder memory thread goes with the session.
-		expect(await memory.getImplementation(targetAgentId).getThread(builder.threadId)).toBeNull();
+		expect(await memory.getImplementation(stateOwner()).getThread(builder.threadId)).toBeNull();
 		expect(await threadRepo.findOneBy({ id: otherBuilder.threadId })).not.toBeNull();
+	});
+
+	it('keys the builder state on the system agent and resumes without an override', async () => {
+		const parent = await createParentTurn();
+		expect(stateOwner()).toBe(INSTANCE_AGENT_ID);
+
+		const suspended = await recordBuilderTurn(parent, { suspendRunId: 'builder-run-1' });
+		await addObservation(stateOwner(), suspended.threadId);
+
+		expect(await checkpointRepo.findByRunId('builder-run-1')).toMatchObject({
+			agentId: INSTANCE_AGENT_ID,
+			threadId: suspended.threadId,
+		});
+		expect(await observationsOf(INSTANCE_AGENT_ID, suspended.threadId)).toHaveLength(1);
+		expect(await observationsOf(targetAgentId, suspended.threadId)).toEqual([]);
+
+		// The admission reads the checkpoint under the session agent.
+		const resumed = await recordBuilderTurn(parent, { resumeRunId: 'builder-run-1' });
+		expect(resumed.threadId).toBe(suspended.threadId);
+		expect(
+			(await executionRepo.findByThreadIdOrdered(suspended.threadId)).map(({ id }) => id),
+		).toEqual([suspended.executionId, resumed.executionId]);
+	});
+
+	it('deletes the builder checkpoints and observations with the parent thread', async () => {
+		const parent = await createParentTurn();
+		const builder = await recordBuilderTurn(parent, { suspendRunId: 'builder-run-1' });
+		await addObservation(stateOwner(), builder.threadId);
+		// Another parent's builder state uses the same agent and must stay.
+		const otherParent = await createParentTurn();
+		const otherBuilder = await recordBuilderTurn(otherParent, { suspendRunId: 'builder-run-2' });
+		await addObservation(stateOwner(), otherBuilder.threadId);
+		await executionRepo.update({ threadId: parent.threadId }, { status: 'success' });
+
+		await systemAgentService.deleteThread(INSTANCE_AGENT_ID, owner, parent.threadId);
+
+		expect(await checkpointRepo.findByRunId('builder-run-1')).toBeNull();
+		expect(await observationsOf(INSTANCE_AGENT_ID, builder.threadId)).toEqual([]);
+		expect(await checkpointRepo.findByRunId('builder-run-2')).not.toBeNull();
+		expect(await observationsOf(INSTANCE_AGENT_ID, otherBuilder.threadId)).toHaveLength(1);
+	});
+
+	it('keeps the builder checkpoints and observations when the built agent is deleted', async () => {
+		const parent = await createParentTurn();
+		const builder = await recordBuilderTurn(parent, { suspendRunId: 'builder-run-1' });
+		await addObservation(stateOwner(), builder.threadId);
+
+		await agentRepo.delete({ id: targetAgentId });
+
+		expect(await checkpointRepo.findByRunId('builder-run-1')).toMatchObject({
+			agentId: INSTANCE_AGENT_ID,
+			expired: false,
+		});
+		expect(await observationsOf(INSTANCE_AGENT_ID, builder.threadId)).toHaveLength(1);
+	});
+
+	it('keeps the builder state on the built agent without a parent execution', async () => {
+		// The v1 builder records nothing and keys its state on the built agent.
+		const v1Owner = getBuilderStateOwnerAgentId(targetAgentId);
+		expect(v1Owner).toBe(targetAgentId);
+		const threadId = `ia-builder:${uuid()}:${targetAgentId}`;
+		await memory.getImplementation(v1Owner).saveThread({ id: threadId, resourceId: owner.id });
+		await checkpointStorage.save(
+			'builder-run-v1',
+			{
+				status: 'suspended',
+				persistence: { threadId, resourceId: owner.id },
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			},
+			v1Owner,
+		);
+		await addObservation(v1Owner, threadId);
+
+		expect(await checkpointRepo.findByRunId('builder-run-v1')).toMatchObject({
+			agentId: targetAgentId,
+		});
+		expect(await observationsOf(targetAgentId, threadId)).toHaveLength(1);
+		expect(await observationsOf(INSTANCE_AGENT_ID, threadId)).toEqual([]);
+
+		// As before, the checkpoints go with the built agent.
+		await agentRepo.delete({ id: targetAgentId });
+		expect(await checkpointRepo.findByRunId('builder-run-v1')).toBeNull();
 	});
 
 	it('keeps the builder sessions when the built agent is deleted', async () => {

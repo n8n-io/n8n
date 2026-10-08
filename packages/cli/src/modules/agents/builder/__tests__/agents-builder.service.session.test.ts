@@ -251,6 +251,7 @@ function setup(
 	return {
 		service,
 		logger,
+		n8nMemory,
 		memoryImplementation,
 		user,
 		credentialProvider,
@@ -902,14 +903,13 @@ describe('AgentsBuilderService execution records', () => {
 			metadata: { builtAgentId: 'agent-1' },
 		});
 		// The session belongs to the parent's system agent and working project.
-		// The admission checks the checkpoints of the built agent.
+		// Its checkpoints belong to the same agent, so no override is needed.
 		expect(recordedStart(turnExecutionService)).toEqual({
 			access: { accessScope: 'user', ownerId: 'user-1' },
 			threadId: 'ia-builder:t:agent-1',
 			agentId: 'instance-assistant',
 			agentName: 'agent-builder',
 			projectId: 'working-project-1',
-			checkpointAgentId: 'agent-1',
 			userMessage: 'Build a support agent',
 			resourceId: 'user-1',
 			source: 'builder',
@@ -992,7 +992,6 @@ describe('AgentsBuilderService execution records', () => {
 			threadId: 'ia-builder:t:agent-1',
 			agentId: 'instance-assistant',
 			projectId: 'working-project-1',
-			checkpointAgentId: 'agent-1',
 			userMessage: null,
 			resumeRunId: 'builder-run-1',
 			sessionMode: 'existing',
@@ -1133,6 +1132,143 @@ describe('AgentsBuilderService execution records', () => {
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to resolve builder execution links',
 			expect.objectContaining({ agentId: 'agent-1' }),
+		);
+	});
+});
+
+describe('AgentsBuilderService state owner', () => {
+	const parentExecution = {
+		threadId: 'assistant-thread-1',
+		agentId: 'instance-assistant',
+		projectId: 'working-project-1',
+		executionId: 'parent-execution-1',
+	};
+
+	beforeEach(() => {
+		agentsSdkMocks.streamCalls.length = 0;
+		agentsSdkMocks.nextChunks.length = 0;
+		agentsSdkMocks.resumeCalls.length = 0;
+		agentsSdkMocks.observationalMemoryCalls.length = 0;
+	});
+
+	it.each([
+		{ name: 'the built agent without a parent execution', parent: undefined, owner: 'agent-1' },
+		{
+			name: 'the parent agent with a parent execution',
+			parent: parentExecution,
+			owner: 'instance-assistant',
+		},
+	])('keys checkpoints and memory of a start turn on $name', async ({ parent, owner }) => {
+		const {
+			service,
+			user,
+			credentialProvider,
+			credentialService,
+			n8nCheckpointStorage,
+			n8nMemory,
+			agentsBuilderToolsService,
+		} = setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				parent ? { ...baseSession, parentExecution: parent } : baseSession,
+			),
+		);
+
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledTimes(1);
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith(owner);
+		expect(n8nMemory.getImplementation.mock.calls.every(([agentId]) => agentId === owner)).toBe(
+			true,
+		);
+		expect(n8nMemory.getImplementation).toHaveBeenCalledWith(owner);
+		// The config tools always act on the built agent.
+		expect(agentsBuilderToolsService.getTools.mock.calls[0]?.[0]).toBe('agent-1');
+	});
+
+	it.each([
+		{ name: 'the built agent without a parent execution', parent: undefined, owner: 'agent-1' },
+		{
+			name: 'the parent agent with a parent execution',
+			parent: parentExecution,
+			owner: 'instance-assistant',
+		},
+	])('reads the checkpoint of a resume from $name', async ({ parent, owner }) => {
+		const { service, user, credentialProvider, credentialService, n8nCheckpointStorage } = setup();
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				credentialService,
+				user,
+				parent ? { ...baseSession, parentExecution: parent } : baseSession,
+			),
+		);
+
+		expect(n8nCheckpointStorage.getStatus).toHaveBeenCalledWith('builder-run-1', owner);
+		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith(owner);
+	});
+
+	it('finds and cancels open checkpoints under the state owner', async () => {
+		const { service, n8nCheckpointStorage } = setup();
+		n8nCheckpointStorage.findSuspendedForThread.mockResolvedValue(null);
+
+		await service.findOpenCheckpointForThread('agent-1', 'builder-thread-1');
+		await service.findOpenCheckpointForThread('agent-1', 'builder-thread-1', parentExecution);
+		await service.cancelCheckpoint('agent-1', 'run-1');
+		await service.cancelCheckpoint('agent-1', 'run-2', parentExecution);
+
+		expect(n8nCheckpointStorage.findSuspendedForThread.mock.calls).toEqual([
+			['agent-1', 'builder-thread-1'],
+			['instance-assistant', 'builder-thread-1'],
+		]);
+		expect(n8nCheckpointStorage.delete.mock.calls).toEqual([
+			['run-1', 'agent-1'],
+			['run-2', 'instance-assistant'],
+		]);
+	});
+
+	it('keeps the built agent id in the memory usage dedupe key with a parent execution', async () => {
+		const { service, user, credentialProvider, credentialService, instanceAiCreditService } =
+			setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{ ...baseSession, parentExecution },
+			),
+		);
+
+		const { observe } = agentsSdkMocks.observationalMemoryCalls[0];
+		await observe.options.onUsage({
+			task: 'observer',
+			model: baseSession.modelConfig,
+			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			reportId: 'report-1',
+		});
+
+		expect(instanceAiCreditService.claimRunUsage).toHaveBeenCalledWith(
+			user,
+			'instance-thread-1',
+			'run-1:agent-builder:agent-1:memory:observer:report-1',
+			expect.any(Array),
+			'completed',
 		);
 	});
 });

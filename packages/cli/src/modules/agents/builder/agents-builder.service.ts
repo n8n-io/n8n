@@ -73,7 +73,10 @@ export const BUILDER_AGENT_NAME = 'agent-builder';
 export interface BuilderParentExecution {
 	/** Agents execution thread id of the parent session. */
 	threadId: string;
-	/** Instance agent id that owns the parent thread. The builder session belongs to it too. */
+	/**
+	 * Instance agent id that owns the parent thread. The builder session, its
+	 * checkpoints and its observational memory belong to it too.
+	 */
 	agentId: string;
 	/** Working project of the parent thread. The builder session is stored in this project. */
 	projectId: string;
@@ -127,6 +130,20 @@ export interface InstanceAiBuilderSessionOptions {
 	 * row, linked to the parent turn. When absent, the builder records nothing.
 	 */
 	parentExecution?: BuilderParentExecution;
+}
+
+/**
+ * The agent that owns the builder's checkpoints and memory. With a parent
+ * execution (v2), it is the parent's instance agent, the same agent as the
+ * builder's execution thread, so the normal session deletion removes all
+ * builder state and deleting the built agent keeps it. Without one (v1),
+ * it is the built agent, as before.
+ */
+export function getBuilderStateOwnerAgentId(
+	targetAgentId: string,
+	parentExecution?: Pick<BuilderParentExecution, 'agentId'>,
+): string {
+	return parentExecution?.agentId ?? targetAgentId;
 }
 
 interface BuilderTurnScope {
@@ -245,7 +262,10 @@ export class AgentsBuilderService {
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(
+			runId,
+			getBuilderStateOwnerAgentId(agentId, session.parentExecution),
+		);
 		if (checkpointStatus.status === 'expired') {
 			this.logger.debug('Builder checkpoint unavailable', {
 				runId,
@@ -303,9 +323,20 @@ export class AgentsBuilderService {
 		);
 	}
 
-	/** Expire a suspended builder checkpoint (e.g. when a host cannot render its question), scoped to the agent that owns it. */
-	async cancelCheckpoint(agentId: string, runId: string): Promise<void> {
-		await this.n8nCheckpointStorage.delete(runId, agentId);
+	/**
+	 * Expire a suspended builder checkpoint (e.g. when a host cannot render its
+	 * question). Pass the parent execution of a recorded (v2) session, because
+	 * its checkpoints belong to the parent's agent.
+	 */
+	async cancelCheckpoint(
+		agentId: string,
+		runId: string,
+		parentExecution?: Pick<BuilderParentExecution, 'agentId'>,
+	): Promise<void> {
+		await this.n8nCheckpointStorage.delete(
+			runId,
+			getBuilderStateOwnerAgentId(agentId, parentExecution),
+		);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -365,7 +396,8 @@ export class AgentsBuilderService {
 		);
 
 		const { Agent } = await import('@n8n/agents');
-		const builderMemory = await this.createBuilderMemory(agentId, user, session);
+		const stateOwnerAgentId = getBuilderStateOwnerAgentId(agentId, session.parentExecution);
+		const builderMemory = await this.createBuilderMemory(agentId, stateOwnerAgentId, user, session);
 
 		const builder = new Agent(BUILDER_AGENT_NAME)
 			.model(modelConfig)
@@ -374,7 +406,7 @@ export class AgentsBuilderService {
 			.volatileInstructionsProvider(async () => sessionContext)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			.checkpoint(this.n8nCheckpointStorage.getStorage(stateOwnerAgentId))
 			.configuration({ maxIterations: 100 });
 		const promptCaching = resolveAIAPromptCaching(modelConfig);
 		if (promptCaching) {
@@ -400,9 +432,10 @@ export class AgentsBuilderService {
 	 *
 	 * The session belongs to the system agent of the parent and to the parent's
 	 * working project, not to the built agent: the built agent never runs, and
-	 * its session lists must not show builder sessions. The builder memory and
-	 * checkpoints stay keyed on the built agent, so the memory thread stores its
-	 * id and the admission checks its checkpoints.
+	 * its session lists must not show builder sessions. The builder checkpoints
+	 * and memory belong to the same agent (see `getBuilderStateOwnerAgentId`),
+	 * so the admission finds them without an override. The memory thread keeps
+	 * the built agent id as information.
 	 */
 	private async *streamRecordedTurn(
 		scope: BuilderTurnScope,
@@ -417,7 +450,6 @@ export class AgentsBuilderService {
 			agentId: parentExecution.agentId,
 			agentName: BUILDER_AGENT_NAME,
 			projectId: parentExecution.projectId,
-			checkpointAgentId: scope.agentId,
 			userMessage: scope.userMessage,
 			resourceId: scope.user.id,
 			source: BUILDER_EXECUTION_SOURCE,
@@ -437,7 +469,7 @@ export class AgentsBuilderService {
 			recording,
 		);
 		session.abortSignal.throwIfAborted();
-		await this.n8nMemory.getImplementation(scope.agentId).saveThread({
+		await this.n8nMemory.getImplementation(parentExecution.agentId).saveThread({
 			id: session.threadId,
 			resourceId: scope.user.id,
 			metadata: { [BUILT_AGENT_ID_METADATA_KEY]: scope.agentId },
@@ -521,13 +553,18 @@ export class AgentsBuilderService {
 
 	/**
 	 * Find the latest open checkpoint for a chat thread so its interactive
-	 * cards can be rebuilt after a page refresh.
+	 * cards can be rebuilt after a page refresh. Pass the parent execution of a
+	 * recorded (v2) session, because its checkpoints belong to the parent's agent.
 	 */
 	async findOpenCheckpointForThread(
 		agentId: string,
 		threadId: string,
+		parentExecution?: Pick<BuilderParentExecution, 'agentId'>,
 	): Promise<SerializableAgentState | null> {
-		return await this.n8nCheckpointStorage.findSuspendedForThread(agentId, threadId);
+		return await this.n8nCheckpointStorage.findSuspendedForThread(
+			getBuilderStateOwnerAgentId(agentId, parentExecution),
+			threadId,
+		);
 	}
 
 	private async claimMemoryUsage(
@@ -574,15 +611,19 @@ export class AgentsBuilderService {
 
 	private async createBuilderMemory(
 		agentId: string,
+		stateOwnerAgentId: string,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	) {
 		const { Memory } = await import('@n8n/agents');
 
+		// The usage dedupe key keeps the built agent id: one host run can build
+		// several agents, and each build must claim its own usage.
 		const onMemoryUsage = async (report: MemoryTaskUsageReport) =>
 			await this.claimMemoryUsage(report, agentId, user, session);
 
-		return new Memory().storage(this.n8nMemory.getImplementation(agentId)).observationalMemory({
+		const storage = this.n8nMemory.getImplementation(stateOwnerAgentId);
+		return new Memory().storage(storage).observationalMemory({
 			observe: createObservationLogObserveFn(session.modelConfig, { onUsage: onMemoryUsage }),
 			reflect: createObservationLogReflectFn(session.modelConfig, { onUsage: onMemoryUsage }),
 		});
