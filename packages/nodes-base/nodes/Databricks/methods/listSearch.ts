@@ -729,8 +729,6 @@ export async function getLakebaseTables(
 	}
 	try {
 		const base = await resolveLakebaseRestBase(this, project, branch);
-		// Same transport as the operations, so the PAT guard, token refresh and schema-cache retry
-		// live in one place. A disabled OpenAPI spec answers PGRST205, so that error shows after the one retry.
 		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
 			this,
 			{
