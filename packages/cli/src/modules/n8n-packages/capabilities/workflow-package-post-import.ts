@@ -4,7 +4,11 @@ import { Container } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { DataTableChoices } from './copy-choices';
-import { type ErrorWorkflowRule, settleErrorWorkflowLink } from './error-workflow-link';
+import {
+	type ErrorWorkflowLinkInput,
+	type ErrorWorkflowRule,
+	settleErrorWorkflowLink,
+} from './error-workflow-link';
 import { dataTablesNotKeptWarning, publishingWarning } from './import-outcome';
 import type { ImportedWorkflowPackage, ImportSummary } from './import-summary';
 import { logPostImportFailure, warnOnFailure } from './post-import-step';
@@ -62,9 +66,12 @@ async function keptDataTables(
 }
 
 /** The link as stored after the import. When the copy cannot be read, the link of the package. */
-async function errorWorkflowWarnings(input: PostImportInput, copy: WorkflowEntity | null) {
+function errorWorkflowLink(
+	input: PostImportInput,
+	copy: WorkflowEntity | null,
+): ErrorWorkflowLinkInput {
 	const { summary, packageWorkflow } = input;
-	return await settleErrorWorkflowLink({
+	return {
 		user: input.user,
 		copyId: summary.workflowId,
 		created: summary.created,
@@ -73,7 +80,7 @@ async function errorWorkflowWarnings(input: PostImportInput, copy: WorkflowEntit
 		packageWorkflowIds: [summary.workflowId, packageWorkflow.id],
 		workflowLabel: input.workflowLabel,
 		rule: input.errorWorkflowRule,
-	});
+	};
 }
 
 async function surfaceWarnings({ afterImport, user, summary }: PostImportInput) {
@@ -94,7 +101,7 @@ export async function finishImport(input: PostImportInput): Promise<ImportedWork
 	const { publishing, activeVersionId, ...result } = input.summary;
 	const copy = await readCopy(input);
 	const tables = await keptDataTables(input, copy);
-	const linkWarnings = await errorWorkflowWarnings(input, copy);
+	const linkWarnings = await settleErrorWorkflowLink(errorWorkflowLink(input, copy));
 	// The versions that the import left. A version that keeps the data tables is newer.
 	const publishingNotice = copy
 		? publishingWarning({

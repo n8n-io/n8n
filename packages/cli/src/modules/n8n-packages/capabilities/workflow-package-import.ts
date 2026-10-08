@@ -26,6 +26,7 @@ import {
 import {
 	type AfterImportStep,
 	finishImport,
+	type PostImportInput,
 	type PreviousCopy,
 } from './workflow-package-post-import';
 import {
@@ -232,11 +233,12 @@ async function writePackage(request: WorkflowPackageImportRequest, prepared: Pre
 
 type WrittenPackage = Awaited<ReturnType<typeof writePackage>>;
 
-async function finishWrittenPackage(
+/** What the steps after the import need: the summary of the import and what the copy keeps. */
+async function postImportInput(
 	request: WorkflowPackageImportRequest,
 	prepared: PreparedPackage,
 	{ previous, plan, result }: WrittenPackage,
-): Promise<ImportedWorkflowPackage> {
+): Promise<PostImportInput> {
 	const { user, rules } = request;
 	const { manifest, entry } = prepared;
 	const summary = summariseImport({
@@ -252,7 +254,7 @@ async function finishWrittenPackage(
 		},
 	});
 	const references = manifest.requirements?.workflows ?? [];
-	return await finishImport({
+	return {
 		user,
 		summary,
 		previous,
@@ -261,7 +263,7 @@ async function finishWrittenPackage(
 		dataTables: plan.dataTables,
 		afterImport: rules?.afterImport,
 		errorWorkflowRule: rules?.errorWorkflowRule,
-	});
+	};
 }
 
 /**
@@ -280,6 +282,6 @@ export async function importWorkflowPackage(
 			request,
 			async () => await writePackage(request, prepared),
 		);
-		return await finishWrittenPackage(request, prepared, written);
+		return await finishImport(await postImportInput(request, prepared, written));
 	});
 }

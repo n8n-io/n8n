@@ -246,7 +246,7 @@ describe('finishImport and the error workflow link', () => {
 
 	it('says that a link stays unchecked when it can neither check nor remove it', async () => {
 		withLink();
-		validation.findProblem.mockResolvedValue({ reason: 'caller-policy' });
+		validation.findProblem.mockResolvedValue({ reason: 'caller-policy', name: 'Alert' });
 		workflowService.update.mockRejectedValue(new ForbiddenError('You cannot update it.'));
 
 		const output = await finishImport(input());
@@ -259,7 +259,7 @@ describe('finishImport and the error workflow link', () => {
 
 	it('checks the link of the package when the copy cannot be read', async () => {
 		finder.findWorkflowForUser.mockRejectedValue(new Error('Connection lost'));
-		validation.findProblem.mockResolvedValue({ reason: 'not-published' });
+		validation.findProblem.mockResolvedValue({ reason: 'not-published', name: 'Alert' });
 
 		const output = await finishImport(
 			input({

@@ -31,14 +31,11 @@ function addChoice(choices: Map<string, Set<string>>, sourceId: string, chosenId
 	choices.set(sourceId, chosen);
 }
 
-/**
- * The credentials that the copy uses in place of the credentials of the package: the credential
- * of the same type in the node with the same id.
- */
-export function credentialChoicesOfCopy(
+/** The credentials that the copy uses in place of each credential of the package. */
+function chosenCredentials(
 	packageNodes: readonly INode[],
 	copyNodes: readonly INode[],
-): CredentialChoices {
+): Map<string, Set<string>> {
 	const copyById = nodesById(copyNodes);
 	const choices = new Map<string, Set<string>>();
 	for (const node of packageNodes) {
@@ -48,9 +45,20 @@ export function credentialChoicesOfCopy(
 			if (details.id && chosenId) addChoice(choices, details.id, chosenId);
 		}
 	}
+	return choices;
+}
+
+/**
+ * The credentials that the copy uses in place of the credentials of the package: the credential
+ * of the same type in the node with the same id.
+ */
+export function credentialChoicesOfCopy(
+	packageNodes: readonly INode[],
+	copyNodes: readonly INode[],
+): CredentialChoices {
 	const bindings = new Map<string, string>();
 	const conflicting: string[] = [];
-	for (const [sourceId, chosen] of choices) {
+	for (const [sourceId, chosen] of chosenCredentials(packageNodes, copyNodes)) {
 		if (chosen.size === 1) bindings.set(sourceId, [...chosen][0]);
 		else conflicting.push(sourceId);
 	}
@@ -86,7 +94,7 @@ export function acceptedCredentialChoices(
  */
 export function dataTableIdOf(node: INode): string | undefined {
 	if (!DATA_TABLE_NODE_TYPES.includes(node.type)) return undefined;
-	const locator = node.parameters?.dataTableId;
+	const locator: unknown = node.parameters?.dataTableId;
 	if (!isRecord(locator) || locator.mode === 'name') return undefined;
 	const { value } = locator;
 	if (typeof value !== 'string' || value.length === 0 || value.includes('{')) return undefined;
