@@ -469,7 +469,7 @@ onBeforeUnmount(() => {
 				/>
 
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					v-if="mfaDisabled"
 					:class="$style.button"
 					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
@@ -477,7 +477,7 @@ onBeforeUnmount(() => {
 					@click="onMfaEnableClick"
 				/>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					v-else
 					:class="$style.disableMfaButton"
 					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
@@ -572,14 +572,14 @@ onBeforeUnmount(() => {
 
 .disableMfaButton {
 	> span {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 
 .button {
 	font-size: var(--spacing--xs);
 	> span {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

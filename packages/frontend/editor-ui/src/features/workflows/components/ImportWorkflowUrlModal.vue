@@ -69,7 +69,7 @@ const focusInput = async () => {
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
 				</N8nButton>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					float="right"
 					data-test-id="cancel-workflow-import-url-button"
 					@click="closeModal"

@@ -15,7 +15,7 @@ import { N8nButton, N8nText, type IconName, type ButtonVariant } from '@n8n/desi
 const LEGACY_STYLE_TO_VARIANT: Record<string, ButtonVariant> = {
 	success: 'solid',
 	primary: 'solid',
-	secondary: 'subtle',
+	secondary: 'outline',
 	tertiary: 'ghost',
 	danger: 'destructive',
 };

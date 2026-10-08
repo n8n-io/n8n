@@ -166,7 +166,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 						{{ i18n.baseText('agents.builder.agentEvals.review.row.keptWithFeedback') }}
 					</N8nText>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="small"
 						icon="pencil"
 						:disabled="disabled"
@@ -230,7 +230,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 						{{ i18n.baseText('agents.builder.agentEvals.review.reason.save') }}
 					</N8nButton>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="small"
 						data-testid="agent-eval-reason-cancel"
 						@click="emit('cancel')"
@@ -240,7 +240,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 				</div>
 				<N8nButton
 					v-if="!view.showAnswerEditor"
-					variant="subtle"
+					variant="outline"
 					size="small"
 					icon="pencil"
 					:disabled="disabled"
@@ -262,7 +262,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 				{{ settledComment }}
 			</N8nText>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="small"
 				:disabled="disabled"
 				data-testid="agent-eval-edit-note"
@@ -280,7 +280,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 			/>
 			<N8nButton
 				v-if="showFooterEdit"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="pencil"
 				:disabled="disabled"

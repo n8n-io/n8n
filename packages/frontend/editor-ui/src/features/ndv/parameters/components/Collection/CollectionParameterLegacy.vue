@@ -232,7 +232,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				<N8nButton
 					v-if="(parameter.options ?? []).length === 1"
 					style="width: 100%"
-					variant="subtle"
+					variant="outline"
 					:label="getPlaceholderText"
 					data-test-id="collection-parameter-add"
 					@click="optionSelected(parameter.options![0].name)"

@@ -3,11 +3,11 @@ import { type ClassValue } from 'clsx';
 import { type IconSize } from './icon';
 import { type IconName } from '../components/N8nIcon/icons';
 
-const BUTTON_VARIANT = ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const;
+const BUTTON_VARIANT = ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'] as const;
 export type ButtonVariant = (typeof BUTTON_VARIANT)[number];
 
-/** @deprecated Use 'ghost' or 'subtle' instead */
-export type LegacyButtonVariant = 'highlight' | 'highlight-fill';
+/** @deprecated Use 'ghost' or 'outline' instead */
+export type LegacyButtonVariant = 'highlight' | 'highlight-fill' | 'subtle';
 
 const BUTTON_SIZE = ['mini', 'xmini', 'small', 'medium', 'large', 'xlarge', 'xsmall'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];

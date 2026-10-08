@@ -12,14 +12,14 @@ const props = withDefaults(
 		coding?: boolean;
 		isPreviewOpen?: boolean;
 		iconOnly?: boolean;
-		variant?: 'subtle' | 'ghost';
+		variant?: 'outline' | 'ghost';
 		validationIssues?: AgentConfigValidationIssue[];
 		testId?: string;
 	}>(),
 	{
 		isPreviewOpen: false,
 		iconOnly: false,
-		variant: 'subtle',
+		variant: 'outline',
 		validationIssues: () => [],
 		testId: undefined,
 	},
@@ -62,7 +62,7 @@ function onClick() {
 		<N8nToggle
 			v-if="props.iconOnly"
 			:model-value="props.isPreviewOpen"
-			variant="subtle"
+			variant="outline"
 			size="medium"
 			:icon="props.coding ? 'code' : 'flask-conical'"
 			:label="label"

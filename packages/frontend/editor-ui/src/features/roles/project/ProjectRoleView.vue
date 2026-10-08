@@ -362,13 +362,13 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				</N8nText>
 
 				<div class="mb-s" :class="$style.presetsContainer">
-					<N8nButton variant="subtle" @click="setPreset('project:admin')">
+					<N8nButton variant="outline" @click="setPreset('project:admin')">
 						{{ i18n.baseText('projectRoles.admin') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:editor')">
+					<N8nButton variant="outline" @click="setPreset('project:editor')">
 						{{ i18n.baseText('projectRoles.editor') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+					<N8nButton variant="outline" @click="setPreset('project:viewer')">
 						{{ i18n.baseText('projectRoles.viewer') }}
 					</N8nButton>
 				</div>

@@ -9,7 +9,7 @@ const i18n = useI18n();
 </script>
 <template>
 	<N8nIconButton
-		variant="subtle"
+		variant="outline"
 		class="stop-execution"
 		icon="square"
 		:size="props.size ?? 'large'"

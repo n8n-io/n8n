@@ -626,7 +626,7 @@ onMounted(() => {
 															placement="top"
 														>
 															<N8nIconButton
-																variant="subtle"
+																variant="outline"
 																icon="file-diff"
 																@click="openDiffModal(row.file.id)"
 															/>
@@ -664,7 +664,7 @@ onMounted(() => {
 				</div>
 			</N8nCallout>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" class="mr-2xs" @click="close">
+				<N8nButton variant="outline" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" data-test-id="force-pull" @click="pullWorkfolder">

@@ -425,7 +425,7 @@ onMounted(() => {
 							placement="top"
 						>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								data-test-id="variable-row-edit-button"
 								class="mr-xs"
@@ -443,7 +443,7 @@ onMounted(() => {
 							placement="top"
 						>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								data-test-id="variable-row-delete-button"
 								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"

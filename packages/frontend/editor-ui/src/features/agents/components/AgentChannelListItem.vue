@@ -158,7 +158,7 @@ const statusTooltip = computed(() => {
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					:icon="connectAction.icon"
 					@click="emit('setup', integration.type)"

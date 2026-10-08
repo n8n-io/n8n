@@ -556,7 +556,7 @@ watch(
 								</div>
 								<N8nButton
 									icon="plus"
-									variant="subtle"
+									variant="outline"
 									size="small"
 									native-type="button"
 									:disabled="isEnvManaged('exporterHeaders')"

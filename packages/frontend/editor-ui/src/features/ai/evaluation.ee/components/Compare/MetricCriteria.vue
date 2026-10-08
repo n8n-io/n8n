@@ -103,7 +103,7 @@ const promptParagraphs = computed(() =>
 }
 
 .label {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .toggle {

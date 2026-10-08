@@ -59,7 +59,7 @@ function handleClickCollapseAll() {
 </script>
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
-		<N8nButtonList variant="toolbar">
+		<N8nButtonList variant="toolbar" :class="$style.container">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.zoomToFit')"
 				:shortcut="{ keys: ['1'] }"
@@ -178,5 +178,13 @@ function handleClickCollapseAll() {
 		width: 16px;
 		height: 16px;
 	}
+}
+.container {
+	background: var(--background--surface);
+	border: var(--border);
+	box-shadow: var(--shadow--xs);
+	border-radius: var(--radius--full);
+	padding: var(--spacing--5xs);
+	gap: var(--spacing--5xs);
 }
 </style>

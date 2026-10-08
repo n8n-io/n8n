@@ -47,7 +47,7 @@ const description = computed(() =>
 			</N8nButton>
 			<N8nButton
 				v-if="showReplace"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="arrow-left-right"
 				data-test-id="node-restricted-replace"

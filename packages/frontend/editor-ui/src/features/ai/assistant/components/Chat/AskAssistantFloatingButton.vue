@@ -101,7 +101,7 @@ const onClick = async () => {
 .assistant {
 	font-size: var(--font-size--3xs);
 	line-height: var(--spacing--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-top: var(--spacing--xs);
 
 	> span {

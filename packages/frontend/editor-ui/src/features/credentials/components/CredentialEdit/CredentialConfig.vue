@@ -584,7 +584,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -672,14 +672,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<template v-if="canConnect" #button>
 						<div :class="$style.bannerActions">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:label="i18n.baseText('credentialEdit.credentialConfig.switchAccount')"
 								data-test-id="oauth-switch-account-button"
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
