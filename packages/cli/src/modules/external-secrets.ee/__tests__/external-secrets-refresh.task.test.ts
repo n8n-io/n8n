@@ -17,8 +17,7 @@ describe('ExternalSecretsRefreshTask', () => {
 	it('should refresh in every kind of instance every update interval', () => {
 		expect(task.name).toBe('external-secrets-refresh');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({
+		expect(task.target).toEqual({
 			scope: 'instance',
 			instanceTypes: ['main', 'worker', 'webhook'],
 		});

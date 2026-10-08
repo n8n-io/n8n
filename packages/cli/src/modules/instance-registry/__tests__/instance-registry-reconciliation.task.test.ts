@@ -16,9 +16,12 @@ describe('InstanceRegistryReconciliationTask', () => {
 	it('should declare the reconciliation cadence', () => {
 		expect(task.name).toBe('instance-registry-reconciliation');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 180 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.maxAttempts).toBe(1);
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
+		expect(task.target.scheduler?.maxAttempts).toBe(1);
+		expect(task.target).toMatchObject({
+			scope: 'cluster',
+			scheduler: { maxAttempts: 1 },
+			leaderTimer: { runOnTakeover: true },
+		});
 	});
 
 	describe('run', () => {

@@ -10,8 +10,7 @@ describe('TrustedSourceDiscoveryTask', () => {
 	it('declares a durable, idempotent, cluster-wide 60-second poll', () => {
 		expect(task.name).toBe('trusted-source-discovery');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 60 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
 	});
 
 	it('refreshes the due sources with the run signal', async () => {
