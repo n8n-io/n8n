@@ -1,7 +1,7 @@
 import {
 	DEFAULT_MISFIRE_GRACE_SECONDS,
 	MAX_INTEGER_32BITS_SIGNED,
-	MAX_TASK_TIMEOUT_SECONDS,
+	MAX_TIMER_DELAY_SECONDS,
 	ScheduledJobMisfirePolicy,
 	Time,
 	type IntervalDefinition,
@@ -77,7 +77,7 @@ export interface SystemTask {
 	/**
 	 * Overrides how long, in seconds, one durable run may take before the
 	 * scheduler aborts its signal and gives the occurrence back. An integer from 1
-	 * to {@link MAX_TASK_TIMEOUT_SECONDS}. Defaults to the scheduler's task timeout.
+	 * to {@link MAX_TIMER_DELAY_SECONDS}. Defaults to N8N_SCHEDULER_TASK_TIMEOUT_SECONDS.
 	 */
 	readonly timeoutSeconds?: number;
 
@@ -163,14 +163,11 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 		assertInRange(task.name, 'concurrencyLimit', options.concurrencyLimit, 1);
 	}
 	if (options.timeoutSeconds !== undefined) {
-		assertInRange(task.name, 'timeoutSeconds', options.timeoutSeconds, 1, MAX_TASK_TIMEOUT_SECONDS);
+		assertInRange(task.name, 'timeoutSeconds', options.timeoutSeconds, 1, MAX_TIMER_DELAY_SECONDS);
 	}
 
 	return options;
 }
-
-/** Longest delay a timeout honors. Node fires a longer one after about 1 ms. */
-const MAX_RETRY_DELAY_SECONDS = Math.floor(MAX_INTEGER_32BITS_SIGNED / Time.seconds.toMilliseconds);
 
 /**
  * Rejects a task that declares an option the schedulers cannot honor.
@@ -186,7 +183,7 @@ export function validateSystemTask(task: SystemTask): void {
 		retryDelaySeconds !== undefined &&
 		(!Number.isInteger(retryDelaySeconds) ||
 			retryDelaySeconds < 1 ||
-			retryDelaySeconds > MAX_RETRY_DELAY_SECONDS)
+			retryDelaySeconds > MAX_TIMER_DELAY_SECONDS)
 	) {
 		throw new UnexpectedError('A system task declares an out-of-range retry delay', {
 			extra: { name: task.name, retryDelaySeconds },
@@ -231,9 +228,9 @@ export function intervalFromSeconds(seconds: number): IntervalDefinition {
  */
 export function timeoutAfterLimit(limitSeconds: number, marginSeconds: number): number {
 	if (!(limitSeconds > 0)) {
-		return MAX_TASK_TIMEOUT_SECONDS;
+		return MAX_TIMER_DELAY_SECONDS;
 	}
-	return Math.min(Math.ceil(limitSeconds + marginSeconds), MAX_TASK_TIMEOUT_SECONDS);
+	return Math.min(Math.ceil(limitSeconds + marginSeconds), MAX_TIMER_DELAY_SECONDS);
 }
 
 /** An interval schedule firing every `milliseconds`, rounded to the whole millisecond. */
