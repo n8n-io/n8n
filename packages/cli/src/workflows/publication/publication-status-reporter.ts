@@ -127,12 +127,11 @@ export class PublicationStatusReporter {
 				if (!policyRefusal) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				// One failed trigger whose own error this is: the FE names it in the toast.
-				// A policy refusal marks every trigger failed with the policy error, so it carries no node.
-				const failedNodeIds = (triggerStatuses ?? [])
-					.filter((s) => s.status === 'failed')
-					.map((s) => s.nodeId);
-				const nodeId = !policyRefusal && failedNodeIds.length === 1 ? failedNodeIds[0] : undefined;
+				// Name the node only when one trigger failed with its own error: the FE prefixes the toast with it.
+				// A policy refusal fails every trigger with the same error, so it names none.
+				const failedTriggers = (triggerStatuses ?? []).filter((s) => s.status === 'failed');
+				const nodeId =
+					!policyRefusal && failedTriggers.length === 1 ? failedTriggers[0].nodeId : undefined;
 				await this.pushFailedToActivate(record.workflowId, result.error.message, nodeId);
 				return;
 			}
@@ -223,7 +222,7 @@ export class PublicationStatusReporter {
 	): Promise<void> {
 		await this.pushStatus({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage, ...(nodeId ? { nodeId } : {}) },
+			data: { workflowId, errorMessage, nodeId },
 		});
 	}
 

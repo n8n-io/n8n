@@ -109,6 +109,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
 	nock.cleanAll();
+	push.sendToUsers.mockClear();
 	await activeWorkflowManager.removeAll();
 	await activationErrorsService.clearAll();
 	await testDb.truncate([

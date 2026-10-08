@@ -58,7 +58,8 @@ export class ActiveWorkflowsService {
 			throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
-		// A failed republish never clears the legacy cache, so its error comes first.
+		// A failed republish never clears the legacy cache. Read the publication error first
+		// so a stale runtime error cannot mask it.
 		if (this.workflowsConfig.useWorkflowPublicationService) {
 			const publicationError = await this.workflowPublicationStatusService.getFailedActivationError(
 				workflowId,
@@ -70,9 +71,8 @@ export class ActiveWorkflowsService {
 	}
 
 	/**
-	 * Drops the ids with a recorded activation failure: a legacy activation
-	 * error or, under the publication service, a failed publication (zero live
-	 * triggers). A partial publication keeps its triggers running, so it stays.
+	 * Drops the ids with a recorded activation failure. A partial publication keeps
+	 * its triggers running, so only a failed publication (zero live triggers) is dropped.
 	 */
 	private async dropActivationFailures(workflowIds: string[]) {
 		const activationErrors = await this.activationErrorsService.getAll();

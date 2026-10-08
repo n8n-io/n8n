@@ -101,7 +101,7 @@ describe('GET /active-workflows', () => {
 	});
 });
 
-describe('with the publication service on', () => {
+describe('with trigger status rows', () => {
 	let originalFlag: boolean;
 
 	beforeAll(() => {

@@ -61,6 +61,7 @@ describe('ActiveWorkflowsService', () => {
 
 		it.each([
 			{ accessible: ['3'], expected: ['3'] },
+			{ accessible: ['1', '3'], expected: ['3'] },
 			{ accessible: [], expected: [] },
 		])(
 			'should return only workflow ids the member has access to (accessible: $accessible)',
@@ -81,6 +82,10 @@ describe('ActiveWorkflowsService', () => {
 	describe('getActivationError', () => {
 		const workflowId = 'workflowId';
 
+		afterEach(() => {
+			workflowsConfig.useWorkflowPublicationService = false;
+		});
+
 		it('should throw a BadRequestError a user does not have access to the workflow id', async () => {
 			workflowsConfig.useWorkflowPublicationService = true;
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
@@ -91,7 +96,6 @@ describe('ActiveWorkflowsService', () => {
 			]);
 			expect(activationErrorsService.get).not.toHaveBeenCalled();
 			expect(workflowPublicationStatusService.getFailedActivationError).not.toHaveBeenCalled();
-			workflowsConfig.useWorkflowPublicationService = false;
 		});
 
 		it('should return the error when the user has access', async () => {
@@ -126,7 +130,7 @@ describe('ActiveWorkflowsService', () => {
 			workflowsConfig.useWorkflowPublicationService = false;
 		});
 
-		it('drops workflows whose publication failed from the stored active ids', async () => {
+		it('should drop workflows whose publication failed from the stored active ids', async () => {
 			const ids = await service.getAllActiveIdsInStorage();
 
 			expect(ids).toEqual(['3', '4', '5']);
@@ -138,7 +142,7 @@ describe('ActiveWorkflowsService', () => {
 			]);
 		});
 
-		it('drops workflows whose publication failed for an owner', async () => {
+		it('should drop workflows whose publication failed for an owner', async () => {
 			user.role = GLOBAL_OWNER_ROLE;
 
 			const ids = await service.getAllActiveIdsFor(user);
@@ -152,7 +156,7 @@ describe('ActiveWorkflowsService', () => {
 			]);
 		});
 
-		it('checks only the workflows a member can read', async () => {
+		it('should check only the workflows a member can read', async () => {
 			user.role = GLOBAL_MEMBER_ROLE;
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['2', '3']);
 
@@ -187,7 +191,7 @@ describe('ActiveWorkflowsService', () => {
 				);
 			});
 
-			it('returns the publication error before the legacy one', async () => {
+			it('should return the publication error before the legacy one', async () => {
 				workflowPublicationStatusService.getFailedActivationError.mockResolvedValue(
 					'publication error',
 				);
@@ -197,7 +201,7 @@ describe('ActiveWorkflowsService', () => {
 				expect(activationErrorsService.get).not.toHaveBeenCalled();
 			});
 
-			it('falls back to the legacy error when the publication did not fail', async () => {
+			it('should fall back to the legacy error when the publication did not fail', async () => {
 				workflowPublicationStatusService.getFailedActivationError.mockResolvedValue(null);
 				activationErrorsService.get.mockResolvedValue('runtime error');
 
@@ -208,7 +212,7 @@ describe('ActiveWorkflowsService', () => {
 				);
 			});
 
-			it('returns null when neither source holds an error', async () => {
+			it('should return null when neither source holds an error', async () => {
 				workflowPublicationStatusService.getFailedActivationError.mockResolvedValue(null);
 				activationErrorsService.get.mockResolvedValue(null);
 
