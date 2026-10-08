@@ -15,5 +15,5 @@ export type {
 	SystemTaskRunOptions,
 	SystemTaskSchedule,
 } from './system-task';
-export type { SystemTaskPlacement } from './system-task-placement';
+export type { SystemTaskPlacement } from './types';
 export { SystemTaskMetadata } from './system-task-metadata';
