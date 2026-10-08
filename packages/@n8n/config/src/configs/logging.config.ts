@@ -32,7 +32,7 @@ export const LOG_SCOPES = [
 	'breaking-changes',
 	'circuit-breaker',
 	'source-control',
-	'git-connections',
+	'promotions',
 	'dynamic-credentials',
 	'workflow-history-compaction',
 	'data-table-csv-import',
@@ -57,6 +57,8 @@ export const LOG_SCOPES = [
 	'engine-v2',
 	'policy',
 	'activity-log',
+	'instance-reporting',
+	'inbound-auth',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

@@ -28,6 +28,19 @@ describe('RetryManager', () => {
 			expect(retryManager.isRetrying('test-key')).toBe(false);
 		});
 
+		it('should stop retrying when a scheduled attempt throws', async () => {
+			const operation = vi
+				.fn()
+				.mockResolvedValueOnce({ success: false, error: new Error('Connection failed') })
+				.mockRejectedValueOnce(new Error('Provider not found in registry'));
+
+			await retryManager.runWithRetry('test-key', operation);
+			await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+
+			expect(operation).toHaveBeenCalledTimes(2);
+			expect(retryManager.isRetrying('test-key')).toBe(false);
+		});
+
 		it('should schedule retry when operation fails', async () => {
 			const error = new Error('Connection failed');
 			const failOperation = vi.fn().mockResolvedValue({ success: false, error });

@@ -54,7 +54,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: () => ({
 		credential: { create: true, read: true, update: true, delete: true, share: true, move: true },
 	}),
@@ -81,6 +82,7 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
 		connectedCredentials: ref<Record<string, string>>({}),
 		integrationSettings: ref({}),
+		integrationApproval: ref({}),
 		loadingMap: ref<Record<string, boolean>>({}),
 		errorMessages: ref<Record<string, string>>({}),
 		errorIsConflict: ref<Record<string, boolean>>({}),
@@ -310,7 +312,7 @@ describe('ChannelSetupCard', () => {
 		await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
 		await flushPromises();
 
-		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined);
+		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined, {});
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
 	});
 

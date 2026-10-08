@@ -10,6 +10,7 @@ import {
 	getChildNodes,
 	getParentNodes,
 	nodeIssuesToString,
+	getUnconnectedRequiredInputs,
 } from 'n8n-workflow';
 import type {
 	INodeProperties,
@@ -18,7 +19,6 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	INodeInputConfiguration,
 	INodeExecutionData,
 	ITaskDataConnections,
 	IBinaryKeyData,
@@ -49,7 +49,6 @@ import { EnableNodeToggleCommand } from '@/app/models/history';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -72,7 +71,6 @@ export function useNodeHelpers() {
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
-	const { check: envFeatureFlag } = useEnvFeatureFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
@@ -160,7 +158,7 @@ export function useNodeHelpers() {
 		return Object.values(credentials)
 			.map(({ id }) => id)
 			.filter((id) => id !== null)
-			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
+			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserCanUse);
 	}
 
 	// Returns if the given parameter should be displayed or not
@@ -225,11 +223,16 @@ export function useNodeHelpers() {
 				}
 			}
 
-			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
-			if (nodeIssues === null) {
-				nodeIssues = nodeInputIssues;
-			} else {
-				NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
+			// Honoured like the other kinds: the tool-config panel passes a partial
+			// accessor (getNode only) and opts out of input issues, so the shared
+			// check must not run against it.
+			if (!ignoreIssues.includes('input')) {
+				const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+				if (nodeIssues === null) {
+					nodeIssues = nodeInputIssues;
+				} else {
+					NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
+				}
 			}
 		}
 
@@ -293,6 +296,14 @@ export function useNodeHelpers() {
 			type: 'input',
 			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
 		});
+	}
+
+	function updateNodeInputIssuesByName(name: string): void {
+		const node = workflowDocumentStore.value.getNodeByName(name) ?? null;
+
+		if (node) {
+			updateNodeInputIssues(node);
+		}
 	}
 
 	function updateNodesInputIssues() {
@@ -389,25 +400,22 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
-		if (nodeType && workflowNode) {
-			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
-		}
+		// Detection is shared with the backend publish check; only wording is local.
+		const unconnected =
+			nodeType && workflowNode
+				? getUnconnectedRequiredInputs(workflow, workflowNode, nodeType)
+				: [];
 
-		inputs.forEach((input) => {
-			if (typeof input === 'string' || input.required !== true) {
-				return;
-			}
-
-			const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
-
-			if (parentNodes.length === 0) {
-				foundIssues[input.type] = [
-					i18n.baseText('nodeIssues.input.missing', {
-						interpolate: { inputName: input.displayName || input.type },
-					}),
-				];
-			}
+		unconnected.forEach((input) => {
+			// Accumulate: a node can leave two inputs of one type unconnected, e.g.
+			// an agent's Chat Model and Fallback Model are both `ai_languageModel`.
+			// Assigning would drop all but the last.
+			foundIssues[input.type] = [
+				...(foundIssues[input.type] ?? []),
+				i18n.baseText('nodeIssues.input.missing', {
+					interpolate: { inputName: input.displayName || input.type },
+				}),
+			];
 		});
 
 		if (Object.keys(foundIssues).length) {
@@ -459,7 +467,6 @@ export function useNodeHelpers() {
 			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
 				trigger.type,
 				trigger.parameters,
-				{ isChatOAuth2Enabled: envFeatureFlag.value('CHAT_TRIGGER_OAUTH2') },
 			);
 			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
 		};
@@ -1089,11 +1096,13 @@ export function useNodeHelpers() {
 		getForeignCredentialsIfSharingEnabled,
 		displayParameter,
 		getNodeCredentialIssues,
+		getNodeInputIssues,
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,
 		updateNodesParameterIssues,
 		updateNodeInputIssues,
+		updateNodeInputIssuesByName,
 		updateNodeCredentialIssuesByName,
 		updateNodeCredentialIssues,
 		updateNodeParameterIssuesByName,

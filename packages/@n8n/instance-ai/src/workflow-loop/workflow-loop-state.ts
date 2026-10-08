@@ -82,6 +82,7 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
+	lastFailedNodeName: z.string().optional(),
 	lastWorkflowInspection: z.string().optional(),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
@@ -154,6 +155,64 @@ export const executionNodeErrorSchema = z.object({
 });
 
 /**
+ * Strength of the claim a verification run supports. `verified` means every
+ * planned node ran for real; anything less must not be reported as verified.
+ * See `tools/orchestration/verification/claim.ts` for the derivation.
+ */
+export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unproven', 'failed']);
+
+export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
+
+/**
+ * Where a verified change actually runs. Verification always executes the
+ * draft, so a fix to a published workflow stays out of production until the
+ * workflow is published again. `live-stale` is the state that must never be
+ * reported as a working live workflow — see INS-1311.
+ */
+export const verificationLiveStateSchema = z.enum(['unpublished', 'live-current', 'live-stale']);
+
+export type VerificationLiveState = z.infer<typeof verificationLiveStateSchema>;
+
+/**
+ * The deterministic verdict from verification evidence. Backend-only: it shapes
+ * the tool result the model reads and gates the publish offer. It is
+ * deliberately not sent to the client — see INS-1308.
+ */
+export const verificationClaimSchema = z.object({
+	level: verificationClaimLevelSchema,
+	/** Nodes the verification plan covers. Excludes triggers the classifier skips. */
+	plannedNodeCount: z.number().int().min(0),
+	/** Planned nodes the run reached. Same set as `plannedNodeCount`. */
+	reachedNodeCount: z.number().int().min(0),
+	nodesNotReached: z.array(z.string()),
+	/** Reached nodes whose output was mocked, so the run proves nothing about them. */
+	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })),
+	/** Pin-fed subset of `simulatedNodes` — these need the pin removed for a live test. */
+	pinnedNodes: z.array(z.string()),
+	/**
+	 * Fix targets still unreached or simulated — the reason this run cannot
+	 * claim `verified` even when it ended without an error.
+	 */
+	unprovenTargets: z.array(z.string()),
+	/** Triggers with missing or incomplete scoped verification evidence. */
+	pendingTriggers: z.array(z.string()).optional(),
+	publishReady: z.boolean(),
+	liveTestRecommended: z.boolean(),
+	/**
+	 * Publish state when the run happened. Optional: absent when the lookup
+	 * failed and on claims stored before INS-1311. Unknown never means stale.
+	 */
+	liveState: verificationLiveStateSchema.optional(),
+	/**
+	 * Draft version the run executed. Names the version a retest applies to,
+	 * and the version a publish would make live.
+	 */
+	verifiedVersionId: z.string().optional(),
+});
+
+export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
+
+/**
  * Structured verification evidence the builder captures when it runs
  * `verify-built-workflow`. Downstream checkpoint runs read this and skip
  * running verify again when `success === true`.
@@ -164,9 +223,12 @@ export const workflowVerificationEvidenceSchema = z.object({
 	executionId: z.string().optional(),
 	status: z.enum(['success', 'error', 'waiting', 'running', 'unknown']).optional(),
 	failureSignature: z.string().optional(),
+	claim: verificationClaimSchema.optional(),
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
+			/** Trigger whose main-flow scope was used for this evidence. */
+			triggerNodeName: z.string().optional(),
 			/**
 			 * Plan nodes the execution never reached (e.g. a lookup returned zero
 			 * items and stopped the chain). Non-empty means partial coverage —
@@ -183,6 +245,15 @@ export const workflowVerificationEvidenceSchema = z.object({
 });
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
+
+export const workflowVerificationProgressSchema = z.record(
+	z.string(),
+	z.array(workflowVerificationEvidenceSchema.required({ claim: true })),
+);
+
+export type WorkflowTriggerVerificationProgress = z.infer<
+	typeof workflowVerificationProgressSchema
+>[string];
 
 export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('ready') }),
@@ -283,6 +354,21 @@ export const waitGateScriptSchema = z.object({
 
 export type WaitGateScript = z.infer<typeof waitGateScriptSchema>;
 
+/**
+ * What the build did about node groups, on the saved (post-drop) shape. A NEW
+ * OPTIONAL FIELD for the same rollback reason as `executionIntent`.
+ */
+export const groupingOutcomeSchema = z.object({
+	topLevelItemCount: z.number().int().min(0),
+	ceiling: z.number().int().min(1),
+	groupCount: z.number().int().min(0),
+	droppedGroupCount: z.number().int().min(0),
+	decision: z.enum(['grouped', 'not_warranted', 'under_ceiling', 'missing']),
+	reason: z.string().optional(),
+});
+
+export type GroupingOutcome = z.infer<typeof groupingOutcomeSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -296,7 +382,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
 	/**
-	 * Trigger nodes in the submitted workflow. Populated on successful submits;
+	 * Enabled trigger nodes in the submitted workflow. Populated on successful submits;
 	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
 	 * to pick a `verify-built-workflow` `inputData` shape for direct builds.
 	 */
@@ -371,8 +457,12 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Deterministic setup handoff verdict for post-verification workflow setup. */
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	remediation: remediationMetadataSchema.optional(),
+	/** Node-group result of this build; absent on outcomes stored before the field existed. */
+	grouping: groupingOutcomeSchema.optional(),
 	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
+	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */
+	verificationProgress: workflowVerificationProgressSchema.optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow`
 	 * tool call. This is tool evidence, not builder prose, so downstream checks may
@@ -454,6 +544,7 @@ export const verificationResultSchema = z.object({
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
+	claim: verificationClaimSchema.optional(),
 	workflowInspection: z.string().optional(),
 	failureSignature: z.string().optional(),
 	failedNodeName: z.string().optional(),
@@ -485,6 +576,7 @@ export type WorkflowLoopAction =
 			type: 'done';
 			workflowId?: string;
 			summary: string;
+			claim?: VerificationClaim;
 			mockedCredentialTypes?: string[];
 			hasUnresolvedPlaceholders?: boolean;
 			setupSkippedByUser?: boolean;

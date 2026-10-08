@@ -631,6 +631,42 @@ describe('createEngineRequests', () => {
 			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('test_signature_123');
 		});
 
+		it('should preserve thinking blocks with empty thinking text', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_omitted_1',
+					messageLog: [
+						{
+							content: [
+								{
+									type: 'thinking',
+									thinking: '',
+									signature: 'encrypted_signature_abc',
+								},
+								{
+									type: 'tool_use',
+									id: 'call_omitted_1',
+									name: 'calculator',
+									input: { expression: '2+2' },
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result[0].metadata.anthropic).toEqual({
+				thinkingContent: '',
+				thinkingType: 'thinking',
+				thinkingSignature: 'encrypted_signature_abc',
+			});
+		});
+
 		it('should extract redacted_thinking content from Anthropic message', async () => {
 			const tools = [createMockTool('search', { sourceNodeName: 'Search' })];
 

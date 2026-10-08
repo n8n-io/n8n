@@ -1,0 +1,73 @@
+{
+	"properties": {
+		"active_flag": {
+			"type": "boolean"
+		},
+		"activity_id": {},
+		"add_time": {
+			"type": "string"
+		},
+		"cid": {},
+		"deal_id": {
+			"type": "number"
+		},
+		"deal_name": {
+			"type": "string"
+		},
+		"description": {},
+		"file_name": {
+			"type": "string"
+		},
+		"file_size": {
+			"type": "number"
+		},
+		"file_type": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"inline_flag": {
+			"type": "boolean"
+		},
+		"lead_id": {},
+		"lead_name": {},
+		"log_id": {},
+		"mail_message_id": {},
+		"mail_template_id": {},
+		"name": {
+			"type": "string"
+		},
+		"org_id": {
+			"type": "number"
+		},
+		"org_name": {
+			"type": "string"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"person_name": {
+			"type": "string"
+		},
+		"product_id": {},
+		"product_name": {},
+		"remote_id": {
+			"type": "string"
+		},
+		"remote_location": {
+			"type": "string"
+		},
+		"s3_bucket": {},
+		"update_time": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		},
+		"user_id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

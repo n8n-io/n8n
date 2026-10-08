@@ -131,9 +131,13 @@ export class SeaTableTriggerV1 implements INodeType {
 			})) as IRowResponse;
 		} else {
 			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
+				// Both bounds are this trigger's own poll cursor, formatted to
+				// `YYYY-MM-D HH:mm:ss`, so neither can carry a quote.
+				/* eslint-disable n8n-local-rules/require-escaped-query-values */
 				sql: `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\`
 					WHERE ${filterField} BETWEEN "${moment(startDate).tz(timezone).format('YYYY-MM-D HH:mm:ss')}"
 					AND "${moment(endDate).tz(timezone).format('YYYY-MM-D HH:mm:ss')}"`,
+				/* eslint-enable n8n-local-rules/require-escaped-query-values */
 			})) as IRowResponse;
 		}
 

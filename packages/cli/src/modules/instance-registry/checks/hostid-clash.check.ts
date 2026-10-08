@@ -6,6 +6,8 @@ import {
 	type IClusterCheck,
 } from '@n8n/decorators';
 
+import { buildCheckResult } from './build-check-result';
+
 const CHECK_CODE = 'cluster.hostid-clash';
 const AUDIT_DETECTED = 'n8n.audit.cluster.hostid-clash.detected';
 const AUDIT_RESOLVED = 'n8n.audit.cluster.hostid-clash.resolved';
@@ -19,7 +21,6 @@ const AUDIT_RESOLVED = 'n8n.audit.cluster.hostid-clash.resolved';
  * restart; the operator-relevant signal is which *hosts* are misconfigured.
  */
 function computeFingerprint(instances: Iterable<InstanceRegistration>): {
-	hasClash: boolean;
 	fingerprint: string;
 	clashing: Array<{ hostId: string; instanceKeys: string[] }>;
 } {
@@ -36,7 +37,6 @@ function computeFingerprint(instances: Iterable<InstanceRegistration>): {
 		.sort((a, b) => a.hostId.localeCompare(b.hostId));
 
 	return {
-		hasClash: clashing.length > 0,
 		fingerprint: clashing.map((c) => c.hostId).join('|'),
 		clashing,
 	};
@@ -53,29 +53,19 @@ export class HostIdClashCheck implements IClusterCheck {
 		const current = computeFingerprint(context.currentState.values());
 		const previous = computeFingerprint(context.previousState.values());
 
-		if (!current.hasClash) {
-			if (previous.hasClash) {
-				return { auditEvents: [{ eventName: AUDIT_RESOLVED, payload: {} }] };
-			}
-			return {};
-		}
-
 		const hostIds = current.clashing.map((c) => c.hostId);
-		const result: ClusterCheckResult = {
-			warnings: [
-				{
-					code: CHECK_CODE,
-					message: `Detected multiple instances sharing the same hostId: ${hostIds.join(', ')}`,
-					severity: 'warning',
-					context: { clashing: current.clashing },
-				},
-			],
-		};
 
-		if (current.fingerprint !== previous.fingerprint) {
-			result.auditEvents = [{ eventName: AUDIT_DETECTED, payload: { clashing: current.clashing } }];
-		}
-
-		return result;
+		return buildCheckResult({
+			hasProblem: current.clashing.length > 0,
+			hadProblem: previous.clashing.length > 0,
+			fingerprint: current.fingerprint,
+			previousFingerprint: previous.fingerprint,
+			code: CHECK_CODE,
+			severity: 'warning',
+			message: `Detected multiple instances sharing the same hostId: ${hostIds.join(', ')}`,
+			context: { clashing: current.clashing },
+			auditDetected: AUDIT_DETECTED,
+			auditResolved: AUDIT_RESOLVED,
+		});
 	}
 }

@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
@@ -11,7 +12,6 @@ import {
 	ConcurrencyControlService,
 } from '@/concurrency/concurrency-control.service';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
-import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 

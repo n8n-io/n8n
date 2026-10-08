@@ -1,6 +1,6 @@
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
@@ -10,9 +10,9 @@ import { Service } from '@n8n/di';
 import { triggerResourceGate } from '../resource-gate';
 import {
 	WORKFLOW_MCP_TRIGGER_SCOPES,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 @Service()
@@ -29,11 +29,12 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 	readonly scopes = WORKFLOW_MCP_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getTestWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 
@@ -81,6 +82,7 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-mcp-test:' + workflowEntity.id,
+				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,

@@ -113,7 +113,7 @@ export function defineRenderer(extension: RendererExtension = {}): Renderer {
 						// already fail in isolation on `master`. Correcting the helper and those tests
 						// is one scoped change that this package should not smuggle in.
 						merge(defaultOptions, options)
-					: ({
+					: {
 							...defaultOptions,
 							...options,
 							props: {
@@ -128,7 +128,7 @@ export function defineRenderer(extension: RendererExtension = {}): Renderer {
 									...options.global?.provide,
 								},
 							},
-						} as RenderOptions<T>),
+						},
 			);
 	}
 

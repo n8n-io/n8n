@@ -252,6 +252,11 @@ describe('emit-instance-ai', () => {
 			'hasProperty',
 			'isPlainObject',
 			// Validation
+			'connectRequiredSubnodeInputs',
+			'describeAddedSubnodeConnection',
+			'containsExpression',
+			'isSensitiveHeader',
+			'isCredentialFieldName',
 			'validateNodeConfig',
 			'validateWorkflow',
 			'getSchemaBaseDirs',
@@ -284,7 +289,9 @@ describe('emit-instance-ai', () => {
 			'findEnvelopeKey',
 			'findOutputParserTargets',
 			'isAiRootNodeType',
+			'literalParameter',
 			'parsePinDataResponse',
+			'readDataTableReadParameters',
 			'repairStructuredOutput',
 			'workflowToMermaid',
 			// Display-options matching

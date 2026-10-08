@@ -1,3 +1,25 @@
+lefthook: '[ ! -x ./node_modules/.bin/lefthook ] || ./node_modules/.bin/lefthook'
+
+output:
+  - execution_out
+  - failure
+
+post-merge:
+  commands:
+    check-pnpm:
+      run: node .githooks/check-pnpm.mjs
+
+post-rewrite:
+  commands:
+    check-pnpm:
+      run: node .githooks/check-pnpm.mjs
+
+post-checkout:
+  commands:
+    check-pnpm:
+      # $3 is 1 for a branch checkout, 0 for a file checkout — the script skips the latter
+      run: node .githooks/check-pnpm.mjs {3}
+
 pre-commit:
   commands:
     biome_check:
@@ -65,7 +87,7 @@ pre-commit:
         - merge
         - rebase
     playwright_janitor:
-      glob: 'packages/testing/playwright/**/*.ts'
+      glob: 'packages/quality/testing/playwright/**/*.ts'
       run: |
         files=$(echo {staged_files} | tr ' ' ',')
         pnpm --filter=n8n-playwright janitor --files="$files"

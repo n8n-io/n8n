@@ -21,5 +21,5 @@ export function required<K extends keyof StoredSchedule>(
 			`scheduled_job ${job.id} of kind '${job.kind}' is missing '${String(key)}'`,
 		);
 	}
-	return value as NonNullable<StoredSchedule[K]>;
+	return value;
 }

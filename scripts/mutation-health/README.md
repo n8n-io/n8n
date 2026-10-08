@@ -57,6 +57,7 @@ That divergence is exactly why this project exists.
 | `mutate.mjs` | The whole engine. Runs Stryker over a package and emits an actionable summary. Exposed as `pnpm mutate`. |
 | `mutate.test.mjs` | Unit tests for its pure helpers (`node --test 'scripts/mutation-health/*.test.mjs'`). |
 | `stryker.default.mjs` | Shared Stryker config for any vitest package. A package that needs special handling ships its own `stryker.config.mjs`, which `mutate.mjs` prefers. |
+| `stryker.cli.mjs` | The default plus `vitest.related: false`, used for `packages/cli` targets. See [Scoping the tests](#scoping-the-tests-with---test-files). |
 
 Outputs land in `<package>/reports/mutation/` (gitignored):
 
@@ -81,6 +82,10 @@ pnpm mutate packages/@n8n/crdt/src/utils.ts:40-75
 
 # Package-relative target.
 pnpm mutate src/cron.ts --package-dir packages/workflow
+
+# One file, scoped to the tests that must kill its mutants.
+pnpm mutate packages/cli/src/credentials/external-secrets.utils.ts:32-68 \
+  --test-files packages/cli/src/credentials/__tests__/external-secrets.utils.test.ts
 ```
 
 Exit codes: `0` gate passed · `1` gate failed (summary.json still written — this is the
@@ -102,6 +107,51 @@ On top of that, Stryker's vitest runner only loads the tests *related* to the mu
 cost tracks the related suite rather than package size. Measured end-to-end, whole-file:
 `@n8n/decorators` 1s · `@n8n/scheduler` 3s · `packages/workflow` 13s · `nodes-base` 26s ·
 `packages/cli` 88s. Line-scoping cuts these further.
+
+### Scoping the tests with `--test-files`
+
+By default Stryker's vitest runner uses [related mode](https://vitest.dev/guide/cli.html#vitest-related): it
+walks the import graph of the mutated file and runs every test file that reaches it. That is the
+right default for most packages, and it is what keeps cost tracking the related suite rather than
+package size.
+
+`--test-files` replaces that discovery with an explicit list. The value goes to Stryker's
+[`testFiles`](https://stryker-mutator.io/docs/stryker-js/configuration/#testfiles-string) config
+field, so only those files run — which also answers a sharper question: can this module's *own*
+unit tests kill its mutants, without help from the rest of the suite?
+
+The flag repeats and it also takes a comma-separated list. Paths may be repo-relative (what you
+type) or package-relative (what Stryker matches); `mutate.mjs` converts them. Globs work.
+
+```bash
+pnpm mutate packages/@n8n/crdt/src/utils.ts --test-files packages/@n8n/crdt/src/__tests__/utils.test.ts
+pnpm mutate src/utils.ts --package-dir packages/@n8n/crdt --test-files 'src/__tests__/*.test.ts'
+```
+
+`--test-files` needs a single target, so it does not combine with `--diff`.
+For `packages/cli`, diff mode automatically uses the test files changed in the
+patch. This keeps unrelated CLI tests out of Stryker's instrumented dry run.
+
+#### `packages/cli` test scope
+
+`packages/cli` runs vitest with `pool: 'forks'` and a global setup, so each test file costs a
+process. Related discovery finds hundreds of them for a typical source file, and the dry run alone
+outlives any usable timeout. A named `packages/cli` target therefore **fails with exit `2`** until
+you name the test files:
+
+```bash
+$ pnpm mutate packages/cli/src/credentials/external-secrets.utils.ts:32-68
+Mutating packages/cli needs --test-files.
+```
+
+Those runs also get `stryker.cli.mjs` instead of the shared default — same settings, with
+`vitest.related` turned off, because the explicit list already decides the scope. With it, the
+example above runs its 36-test file and finishes in seconds.
+
+In diff mode, the changed CLI test files provide the same explicit list. If a
+CLI patch changes source without changing a test, the command fails before
+Stryker starts. Add or update a covering test, or run a named target with the
+existing covering tests passed through `--test-files`.
 
 ### In-place mutation
 
@@ -140,6 +190,9 @@ Not scored:
 - `@n8n/expression-runtime` — Stryker's dry run SIGABRTs on the isolated-vm engine ([DEVP-257](https://linear.app/n8n/issue/DEVP-257)).
 - `.vue` single-file components — every SFC package crashed Stryker's mutate step in the 2026-06 sweep, and the component layer is low-value to mutate.
 - Tests, declarations, stories, configs, migrations and build output.
+
+`packages/cli` is scored with an explicit [`--test-files`](#packagescli-test-scope)
+list for named targets, or with the changed CLI tests in diff mode.
 
 ## Gate semantics
 

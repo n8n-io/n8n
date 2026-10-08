@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ChatArtifact } from '@n8n/api-types';
 import { N8nIconButton, N8nSelect2 } from '@n8n/design-system';
+import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
 import { computed } from 'vue';
 import ChatMarkdownChunk from './ChatMarkdownChunk.vue';
 
@@ -24,6 +25,12 @@ const options = computed(() =>
 	})),
 );
 
+function onSelectArtifact(value: SelectValue | undefined) {
+	if (typeof value === 'number') {
+		emit('selectArtifact', value);
+	}
+}
+
 const isHtml = computed(() => selectedArtifact.value?.type === 'html');
 const isMarkdown = computed(() => selectedArtifact.value?.type === 'md');
 const markdownContent = computed(() => ({
@@ -45,7 +52,7 @@ const markdownContent = computed(() => ({
 					variant="ghost"
 					:items="options"
 					:class="$style.title"
-					@update:model-value="emit('selectArtifact', $event)"
+					@update:model-value="onSelectArtifact"
 				/>
 				<div :class="$style.headerActions">
 					<N8nIconButton variant="ghost" text icon="download" @click="emit('download')" />

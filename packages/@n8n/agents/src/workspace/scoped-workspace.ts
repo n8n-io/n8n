@@ -31,7 +31,10 @@ function resolvePath(root: string, path: string): string {
 		: posixNormalize(posixJoin(normalizedRoot, path));
 
 	if (!isInsideRoot(normalizedPath, normalizedRoot)) {
-		throw new Error(`Path escapes workspace root: ${path}`);
+		throw new Error(
+			`Path "${path}" is outside the workspace root "${normalizedRoot}". ` +
+				'Use a path relative to the workspace root, e.g. "tmp/output.txt".',
+		);
 	}
 
 	return normalizedPath;
@@ -81,7 +84,11 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 
 	getInstructions(): string {
 		const base = this.filesystem.getInstructions?.() ?? '';
-		return [base, `Filesystem access is scoped to ${this.root}.`].filter(Boolean).join('\n');
+		const scope =
+			`Filesystem access is scoped to ${this.root}. ` +
+			'Paths are relative to the workspace root unless you pass an absolute path under that root. ' +
+			`Use ${this.root}/tmp for scratch files.`;
+		return [base, scope].filter(Boolean).join('\n');
 	}
 
 	/**

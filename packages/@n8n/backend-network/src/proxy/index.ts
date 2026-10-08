@@ -14,6 +14,7 @@ export {
 	createHttpProxyAgent,
 	createHttpsProxyAgent,
 	hasProxyEnvironmentVariables,
+	isProxyRequired,
 	resolveProxyUrl,
 } from './proxy-resolution';
 export { ensureHostsBypassProxy } from './no-proxy-patch';

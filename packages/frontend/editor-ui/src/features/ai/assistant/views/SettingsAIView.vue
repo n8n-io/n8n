@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { N8nHeading, N8nCheckbox, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nHeading, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const i18n = useI18n();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const message = useMessage();
 const telemetry = useTelemetry();
 
 const assistantStore = useAssistantStore();
@@ -22,7 +19,6 @@ const settingsStore = useSettingsStore();
 const allowSendingSchema = ref(true);
 
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
-const isBuilderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
 const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
 const allowSendingParameterValues = computed(() => settingsStore.isAiDataSharingEnabled);
 
@@ -38,26 +34,10 @@ const aiSettingsDescription = computed(() => {
 	return i18n.baseText('settings.ai.description.both');
 });
 
-const confirmationMessage = computed(() => {
-	if (isBuilderEnabled.value) {
-		return i18n.baseText('settings.ai.confirm.message.builderEnabled');
-	}
-	return i18n.baseText('settings.ai.confirm.message.builderDisabled');
-});
-
+// The setting is deprecated: it can only be turned on.
 const onallowSendingParameterValuesChange = async (newValue: boolean | string | number) => {
-	if (typeof newValue !== 'boolean') return;
+	if (newValue !== true) return;
 
-	if (!newValue) {
-		const promptResponse = await message.confirm(confirmationMessage.value, {
-			title: i18n.baseText('settings.ai.confirm.title'),
-			confirmButtonText: i18n.baseText('settings.ai.confirm.confirmButtonText'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		});
-		if (promptResponse !== MODAL_CONFIRM) {
-			return;
-		}
-	}
 	try {
 		await settingsStore.updateAiDataSharingSettings(newValue);
 		toast.showMessage({
@@ -97,12 +77,28 @@ onMounted(async () => {
 			<div :class="$style.checkboxContainer">
 				<N8nCheckbox
 					:model-value="allowSendingParameterValues"
+					:disabled="allowSendingParameterValues"
 					:label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
 					@update:model-value="onallowSendingParameterValuesChange"
 				/>
 				<N8nText :class="$style.checkboxDescription" color="text-base">
 					{{ i18n.baseText('settings.ai.allowSendingParameterValues.description') }}
 				</N8nText>
+				<N8nCallout
+					:class="$style.notice"
+					theme="warning"
+					data-test-id="ai-data-sharing-deprecation-notice"
+				>
+					<template v-if="allowSendingParameterValues">
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.locked') }}
+					</template>
+					<template v-else>
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated') }}
+					</template>
+					<template v-if="!allowSendingParameterValues && !settingsStore.isCloudDeployment">
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.envVar') }}
+					</template>
+				</N8nCallout>
 			</div>
 		</div>
 		<div :class="$style.privacyNote">

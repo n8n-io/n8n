@@ -11,22 +11,48 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 
-import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import {
+	AGENTS_MODULE_NAME,
+	AGENT_BUILDER_VIEW,
+	PENDING_AGENT_ID_STATE,
+} from '@/features/agents/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 
 import { useGlobalEntityCreation } from './useGlobalEntityCreation';
+
+const promptMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(false),
 }));
+
+const trackClickedNewAgentMock = vi.fn();
+vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackClickedNewAgent: trackClickedNewAgentMock }),
+}));
+
+// Agent menu items carry no `route` — clicking mints the id at click time
+// (via `useCreateAgent`) instead of baking a stale one into the menu. Assert
+// the hand-off `handleSelect` produces: same minted id in the click telemetry,
+// the builder route params, and the pending-agent history state.
+function expectAgentCreated(projectId: string) {
+	const [source, mintedAgentId] = trackClickedNewAgentMock.mock.calls.at(-1) as [string, string];
+	expect(source).toBe('dropdown');
+	expect(routerPushMock).toHaveBeenCalledWith({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId, agentId: mintedAgentId },
+		state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
+	});
+}
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToUpgrade = vi.fn();
@@ -37,13 +63,19 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ prompt: promptMock }),
+}));
+
 vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
+	const showToast = vi.fn();
 	const showError = vi.fn();
 	return {
 		useToast: () => {
 			return {
 				showMessage,
+				showToast,
 				showError,
 			};
 		},
@@ -51,6 +83,7 @@ vi.mock('@n8n/composables/useToast', () => {
 });
 
 const routerPushMock = vi.fn();
+const routerResolveMock = vi.fn().mockReturnValue({ href: '/folder' });
 vi.mock('vue-router', async (importOriginal) => {
 	const { RouterLink, useRoute } = await importOriginal<typeof router>();
 	return {
@@ -58,6 +91,7 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute,
 		useRouter: () => ({
 			push: routerPushMock,
+			resolve: routerResolveMock,
 		}),
 	};
 });
@@ -70,6 +104,8 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 beforeEach(() => {
 	setActivePinia(createTestingPinia());
 	routerPushMock.mockReset();
+	routerResolveMock.mockReturnValue({ href: '/folder' });
+	promptMock.mockReset();
 	trackMock.mockReset();
 	vi.mocked(hasPermission).mockReturnValue(false);
 });
@@ -97,6 +133,127 @@ describe('useGlobalEntityCreation', () => {
 				},
 			}),
 		);
+	});
+
+	describe('registered Community folder CTA', () => {
+		const enableRegisteredCommunityFolderCta = () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.deploymentType = 'default';
+			settingsStore.isFoldersFeatureEnabled = false;
+
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = {
+				globalScopes: ['community:register'],
+			} as unknown as typeof usersStore.currentUser;
+		};
+
+		it('shows a New folder item when folders are unavailable', () => {
+			enableRegisteredCommunityFolderCta();
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value).toContainEqual(
+				expect.objectContaining({ id: 'folder', title: 'New folder' }),
+			);
+		});
+
+		it('opens the Community Plus enrollment modal', () => {
+			enableRegisteredCommunityFolderCta();
+			const uiStore = mockedStore(useUIStore);
+
+			const { handleSelect } = useGlobalEntityCreation();
+			handleSelect('folder');
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+				data: {
+					customHeading: 'Get access to folders with registered community',
+				},
+			});
+		});
+
+		it('keeps the item when folders are enabled', () => {
+			enableRegisteredCommunityFolderCta();
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isFoldersFeatureEnabled = true;
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value).toContainEqual(
+				expect.objectContaining({ id: 'folder', title: 'New folder' }),
+			);
+		});
+
+		it('creates a folder in the selected project when folders are enabled', async () => {
+			enableRegisteredCommunityFolderCta();
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isFoldersFeatureEnabled = true;
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.currentProject = {
+				id: 'team-project',
+				name: 'Team project',
+				type: 'team',
+				scopes: ['folder:create'],
+			} as Project;
+			const foldersStore = mockedStore(useFoldersStore);
+			foldersStore.createFolder.mockResolvedValue({
+				id: 'folder-1',
+				name: 'New folder',
+			} as never);
+			promptMock.mockResolvedValue({ action: MODAL_CONFIRM, value: 'New folder' });
+
+			const { handleSelect } = useGlobalEntityCreation();
+			handleSelect('folder');
+			await flushPromises();
+
+			expect(promptMock).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ inputValidator: expect.any(Function) }),
+			);
+			expect(foldersStore.createFolder).toHaveBeenCalledWith('New folder', 'team-project');
+		});
+
+		it('creates a folder in Personal when no project is selected', async () => {
+			enableRegisteredCommunityFolderCta();
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isFoldersFeatureEnabled = true;
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				type: 'personal',
+				scopes: ['folder:create'],
+			} as Project;
+			const foldersStore = mockedStore(useFoldersStore);
+			foldersStore.createFolder.mockResolvedValue({
+				id: 'folder-1',
+				name: 'New folder',
+			} as never);
+			promptMock.mockResolvedValue({ action: MODAL_CONFIRM, value: 'New folder' });
+
+			const { handleSelect } = useGlobalEntityCreation();
+			handleSelect('folder');
+			await flushPromises();
+
+			expect(foldersStore.createFolder).toHaveBeenCalledWith('New folder', 'personal-project');
+		});
+
+		it('does not show the item without registration permission', () => {
+			enableRegisteredCommunityFolderCta();
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = { globalScopes: [] } as unknown as typeof usersStore.currentUser;
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.find((item) => item.id === 'folder')).toBeUndefined();
+		});
 	});
 
 	describe('global', () => {
@@ -289,15 +446,14 @@ describe('useGlobalEntityCreation', () => {
 			projectsStore.isTeamProjectFeatureEnabled = false;
 			projectsStore.personalProject = { id: personalProjectId } as Project;
 
-			const { menu } = useGlobalEntityCreation();
+			const { menu, handleSelect } = useGlobalEntityCreation();
 
 			const ids = menu.value.map((item) => item.id);
 			expect(ids).toEqual(['workflow', 'credential', 'agent', 'create-project']);
-			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
-				expect.objectContaining({
-					route: instanceAiCreateAgentRoute(personalProjectId),
-				}),
-			);
+			expect(menu.value.find((item) => item.id === 'agent')).not.toHaveProperty('route');
+
+			handleSelect('agent');
+			expectAgentCreated(personalProjectId);
 		});
 
 		it('inserts a flat agent entry when team feature is enabled but no team projects exist', () => {
@@ -313,14 +469,15 @@ describe('useGlobalEntityCreation', () => {
 			} as Project;
 			projectsStore.myProjects = [];
 
-			const { menu } = useGlobalEntityCreation();
+			const { menu, handleSelect } = useGlobalEntityCreation();
 
 			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
-				expect.objectContaining({
-					disabled: false,
-					route: instanceAiCreateAgentRoute(personalProjectId),
-				}),
+				expect.objectContaining({ disabled: false }),
 			);
+			expect(menu.value.find((item) => item.id === 'agent')).not.toHaveProperty('route');
+
+			handleSelect('agent');
+			expectAgentCreated(personalProjectId);
 		});
 
 		it('disables the flat agent entry when the user lacks the agent:create scope', () => {
@@ -359,23 +516,23 @@ describe('useGlobalEntityCreation', () => {
 				{ id: '3', name: '3', type: 'team', scopes: [] },
 			] as ProjectListItem[];
 
-			const { menu } = useGlobalEntityCreation();
+			const { menu, handleSelect } = useGlobalEntityCreation();
 
 			const agentEntry = menu.value.find((item) => item.id === 'agent');
 			expect(agentEntry).toBeDefined();
 			expect(agentEntry?.submenu).toHaveLength(4);
 
 			const personal = agentEntry?.submenu?.find((s) => s.id === 'agent-personal');
-			expect(personal).toStrictEqual(
-				expect.objectContaining({
-					disabled: false,
-					route: instanceAiCreateAgentRoute(personalProjectId),
-				}),
-			);
+			expect(personal).toStrictEqual(expect.objectContaining({ disabled: false }));
+			expect(personal).not.toHaveProperty('route');
+			handleSelect('agent-personal');
+			expectAgentCreated(personalProjectId);
 
 			const teamWithScope = agentEntry?.submenu?.find((s) => s.id === 'agent-1');
 			expect(teamWithScope?.disabled).toBe(false);
-			expect(teamWithScope?.route).toEqual(instanceAiCreateAgentRoute('1'));
+			expect(teamWithScope).not.toHaveProperty('route');
+			handleSelect('agent-1');
+			expectAgentCreated('1');
 
 			const teamWithoutScope = agentEntry?.submenu?.find((s) => s.id === 'agent-3');
 			expect(teamWithoutScope?.disabled).toBe(true);
@@ -619,6 +776,7 @@ describe('useGlobalEntityCreation', () => {
 	describe('instance-ai module', () => {
 		const INSTANCE_AI_SETTINGS = {
 			enabled: true,
+			mcpConnectionsAvailable: true,
 			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,

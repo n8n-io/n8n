@@ -37,7 +37,7 @@ export const makeN8nLlmFailedAttemptHandler = (
 		}
 
 		// If there are no retries left, throw the error wrapped in a NodeApiError
-		const apiError = new NodeApiError(ctx.getNode(), error as unknown as JsonObject, {
+		const apiError = new NodeApiError(ctx.getNode(), error as JsonObject, {
 			functionality: 'configuration-node',
 		});
 

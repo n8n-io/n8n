@@ -362,9 +362,12 @@ export const objectOperations: INodeProperties[] = [
 									// Without this, names containing '/', spaces, or '#' produce a 404.
 									requestOptions.url = `/b/${bucketName}/o/${encodeURIComponent(objectName)}`;
 									requestOptions.qs = projection ? { projection } : {};
-									requestOptions.headers = this.getNodeParameter(
-										'encryptionHeaders',
-									) as IDataObject;
+									// Merge rather than replace: the service-account preSend has already put the
+									// bearer token on these headers, and dropping it makes this request anonymous.
+									requestOptions.headers = {
+										...requestOptions.headers,
+										...(this.getNodeParameter('encryptionHeaders') as IDataObject),
+									};
 									delete requestOptions.body;
 
 									return requestOptions;

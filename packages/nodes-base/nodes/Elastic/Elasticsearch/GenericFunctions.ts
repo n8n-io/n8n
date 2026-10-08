@@ -5,9 +5,7 @@ import type {
 	IHttpRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
-
-import { toPathSegment } from '@utils/url';
+import { toPathSegment, NodeApiError } from 'n8n-workflow';
 
 import type { ElasticsearchApiCredentials } from './types';
 

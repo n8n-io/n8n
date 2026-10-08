@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 
 import { ApiError, N8nClient } from '../client';
 
@@ -12,6 +12,13 @@ function jsonResponse(status: number, body: unknown): Response {
 		text: vi.fn().mockResolvedValue(JSON.stringify(body)),
 		arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
 	} as unknown as Response;
+}
+
+/** The method and URL of each request the client made, in order. */
+function requestLines(mock: Mock): string[] {
+	return (mock.mock.calls as Array<[string, RequestInit]>).map(
+		([url, init]) => `${init.method} ${url}`,
+	);
 }
 
 function binaryResponse(status: number, bytes: Uint8Array): Response {
@@ -42,92 +49,223 @@ describe('N8nClient packages', () => {
 		vi.unstubAllGlobals();
 	});
 
-	describe('pushGitConnectionProjects', () => {
-		it('POSTs the commit message and returns the connection id, counts, and commit SHA', async () => {
-			const response = {
-				connectionId: 'connection-id',
-				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
-				commitSha: 'abc123',
+	describe('promotions', () => {
+		it('promotes and applies on the connection, not on one of its directions', async () => {
+			const promoted = {
+				connectionId: 'conn-1',
+				configId: 'cfg-1',
+				counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+				git: { commitSha: 'abc123', branchName: 'main' },
 			};
-			fetchMock.mockResolvedValue(jsonResponse(200, response));
+			fetchMock.mockResolvedValue(jsonResponse(200, promoted));
 
 			await expect(
-				client.pushGitConnectionProjects('connection-id', {
-					commitMessage: 'sync projects',
-					force: true,
-				}),
-			).resolves.toEqual(response);
+				client.promotePackage('conn-1', { commitMessage: 'promote projects', force: true }),
+			).resolves.toEqual(promoted);
 
-			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/push');
-			expect(init.method).toBe('POST');
-			expect(JSON.parse(init.body as string)).toEqual({
-				commitMessage: 'sync projects',
+			fetchMock.mockResolvedValue(jsonResponse(200, { connectionId: 'conn-1' }));
+			await client.applyPackage('conn-1');
+
+			expect(requestLines(fetchMock)).toEqual([
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/promote',
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/apply',
+			]);
+
+			const [, promoteInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(promoteInit.body as string)).toEqual({
+				commitMessage: 'promote projects',
 				force: true,
 			});
 		});
-	});
 
-	describe('pullGitConnectionProjects', () => {
-		it('posts to the pull endpoint and returns the import counts', async () => {
-			const response = {
-				connectionId: 'connection-id',
-				counts: {
-					projects: { created: 1, updated: 0, skipped: 0, deleted: 0 },
-					folders: { created: 0, skipped: 0, removed: 0 },
-					workflows: {
-						created: 2,
-						updated: 0,
-						skipped: 0,
-						archived: 0,
-						deleted: 0,
-						publishing: { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
-					},
-					credentials: { matched: 0, stubbed: 1 },
-					dataTables: { matched: 0, created: 0 },
-					variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
-					tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
-				},
-				commitSha: 'def456',
-			};
-			fetchMock.mockResolvedValue(jsonResponse(200, response));
+		const expectedSource = {
+			configId: 'cfg-2',
+			branchName: 'release',
+			commitSha: 'a'.repeat(40),
+		};
 
-			await expect(client.pullGitConnectionProjects('connection-id')).resolves.toEqual(response);
+		it.each([
+			{
+				title: 'posts apply with no body when no expected source is given',
+				send: async () => await client.applyPackage('conn-1'),
+				path: 'apply',
+				body: undefined,
+			},
+			{
+				title: 'posts apply with the expected source in the body',
+				send: async () => await client.applyPackage('conn-1', expectedSource),
+				path: 'apply',
+				body: { expectedSource },
+			},
+			{
+				title: 'posts continue to apply/continue with the expected source in the body',
+				send: async () => await client.continueApplyPackage('conn-1', expectedSource),
+				path: 'apply/continue',
+				body: { expectedSource },
+			},
+		])('$title', async ({ send, path, body }) => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));
 
-			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/pull');
-			expect(init.method).toBe('POST');
+			await send();
+
+			expect(requestLines(fetchMock)).toEqual([
+				`POST https://n8n.example.com/api/v1/promotions/connections/conn-1/${path}`,
+			]);
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
 		});
-	});
 
-	describe('pullGitConnectionProjects', () => {
-		it('posts to the pull endpoint and returns the import counts', async () => {
-			const response = {
-				connectionId: 'connection-id',
-				counts: {
-					projects: { created: 1, updated: 0, skipped: 0 },
-					folders: { created: 0, skipped: 0, removed: 0 },
-					workflows: {
-						created: 2,
-						updated: 0,
-						skipped: 0,
-						archived: 0,
-						deleted: 0,
-						publishing: { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
-					},
-					credentials: { matched: 0, stubbed: 1 },
-					dataTables: { matched: 0, created: 0 },
-					variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
-					tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
-				},
+		it.each([
+			{
+				title: 'applies a selection with only the workflow ids by default',
+				send: async () => await client.applyProjectSelection('proj-1', ['wf-1', 'wf-2']),
+				path: 'apply',
+				body: { workflowIds: ['wf-1', 'wf-2'] },
+			},
+			{
+				title: 'pins the reviewed source when applying a selection',
+				send: async () => await client.applyProjectSelection('proj-1', ['wf-1'], expectedSource),
+				path: 'apply',
+				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+			{
+				title: 'continues a selection apply against the reviewed source',
+				send: async () =>
+					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource),
+				path: 'apply/continue',
+				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+		])('$title', async ({ send, path, body }) => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'source-changed' }));
+
+			await send();
+
+			expect(requestLines(fetchMock)).toEqual([
+				`POST https://n8n.example.com/api/v1/promotions/projects/proj-1/${path}`,
+			]);
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(init.body as string)).toEqual(body);
+		});
+
+		describe('list changes', () => {
+			beforeEach(() => {
+				fetchMock.mockResolvedValue(jsonResponse(200, { commitSha: null, changes: [] }));
+			});
+
+			it('sends no query parameters when no options are given', async () => {
+				await client.listProjectPromotionChanges('proj-1', 'apply');
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/apply',
+				]);
+			});
+
+			it('sends search, sort, and order as query parameters', async () => {
+				await client.listProjectPromotionChanges('proj-1', 'promote', {
+					search: 'checkout',
+					sort: 'updatedAt',
+					order: 'desc',
+				});
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/promote?search=checkout&sort=updatedAt&order=desc',
+				]);
+			});
+		});
+
+		it('clones and disconnects one direction of a connection', async () => {
+			const checkout = {
+				connectionId: 'conn-1',
+				configId: 'cfg-1',
+				direction: 'promote',
+				branchName: 'main',
+				hasCheckout: true,
 			};
-			fetchMock.mockResolvedValue(jsonResponse(200, response));
+			fetchMock.mockResolvedValue(jsonResponse(200, checkout));
 
-			await expect(client.pullGitConnectionProjects('connection-id')).resolves.toEqual(response);
+			await expect(client.clonePromotionCheckout('conn-1', 'promote')).resolves.toEqual(checkout);
 
-			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/pull');
-			expect(init.method).toBe('POST');
+			fetchMock.mockResolvedValue(jsonResponse(200, { ...checkout, hasCheckout: false }));
+			await client.disconnectPromotionCheckout('conn-1', 'apply');
+
+			expect(requestLines(fetchMock)).toEqual([
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/promote/clone',
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/apply/disconnect',
+			]);
+		});
+
+		it('writes and removes the settings of one direction', async () => {
+			const promoteConfig = {
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, { id: 'cfg-1', ...promoteConfig }));
+			await client.setPromotionConfig('conn-1', 'promote', promoteConfig);
+
+			fetchMock.mockResolvedValue(jsonResponse(200, { id: 'cfg-2' }));
+			await client.setPromotionConfig('conn-1', 'apply', {
+				settings: { schemaVersion: 1, branchName: 'main' },
+			});
+
+			fetchMock.mockResolvedValue(jsonResponse(204, undefined));
+			await client.deletePromotionConfig('conn-1', 'apply');
+
+			expect(requestLines(fetchMock)).toEqual([
+				'PUT https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/promote',
+				'PUT https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/apply',
+				'DELETE https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/apply',
+			]);
+
+			// A write replaces the whole config, so every setting has to reach the API.
+			const [, promoteInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(promoteInit.body as string)).toEqual(promoteConfig);
+		});
+
+		it('follows the cursor to read every page of a list', async () => {
+			fetchMock
+				.mockResolvedValueOnce(
+					jsonResponse(200, { data: [{ id: 'prov-1' }], nextCursor: 'page-2' }),
+				)
+				.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 'prov-2' }] }));
+
+			await expect(client.listPromotionProviders()).resolves.toEqual([
+				{ id: 'prov-1' },
+				{ id: 'prov-2' },
+			]);
+
+			expect(requestLines(fetchMock)).toEqual([
+				'GET https://n8n.example.com/api/v1/promotions/providers',
+				'GET https://n8n.example.com/api/v1/promotions/providers?cursor=page-2',
+			]);
+		});
+
+		it('stops at the requested number of results and asks only for what is missing', async () => {
+			fetchMock
+				.mockResolvedValueOnce(
+					jsonResponse(200, { data: [{ id: 'p1' }, { id: 'p2' }], nextCursor: 'page-2' }),
+				)
+				.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 'p3' }, { id: 'p4' }] }));
+
+			// A server may answer with more rows than asked for, so the extra is dropped.
+			await expect(client.listPromotionProviders(3)).resolves.toEqual([
+				{ id: 'p1' },
+				{ id: 'p2' },
+				{ id: 'p3' },
+			]);
+
+			expect(requestLines(fetchMock)).toEqual([
+				'GET https://n8n.example.com/api/v1/promotions/providers?limit=3',
+				'GET https://n8n.example.com/api/v1/promotions/providers?cursor=page-2&limit=1',
+			]);
+		});
+
+		it('narrows the connection list by scope and provider', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { data: [], nextCursor: null }));
+
+			await client.listPromotionConnections({ scope: 'instance', providerId: 'prov-1' });
+
+			expect(requestLines(fetchMock)).toEqual([
+				'GET https://n8n.example.com/api/v1/promotions/connections?scope=instance&providerId=prov-1',
+			]);
 		});
 	});
 
@@ -286,6 +424,80 @@ describe('N8nClient packages', () => {
 			expect(second.body).toBe(
 				JSON.stringify({ workflowIds: ['a'], includeArchivedWorkflows: true }),
 			);
+		});
+	});
+
+	describe('importPackageSelection', () => {
+		it('sends the package, JSON ID arrays, and policies in a multipart request', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+			const buffer = Buffer.from([0, 1, 127, 128, 255]);
+
+			await client.importPackageSelection(
+				{ buffer, filename: 'project.n8np' },
+				{
+					selectedProjectId: 'project-1',
+					selectedWorkflowIds: ['workflow-1', 'workflow-2'],
+					deletedWorkflowIds: ['workflow-3', 'workflow-4'],
+					workflowConflictPolicy: 'skip',
+					workflowIdPolicy: 'new',
+					overwriteDeletionPolicy: 'hard-delete',
+				},
+			);
+
+			expect(fetchMock).toHaveBeenCalledOnce();
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/import-selection');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBeInstanceOf(FormData);
+
+			const form = init.body as FormData;
+			expect(form.get('selectedProjectId')).toBe('project-1');
+			expect(form.get('selectedWorkflowIds')).toBe('["workflow-1","workflow-2"]');
+			expect(form.get('deletedWorkflowIds')).toBe('["workflow-3","workflow-4"]');
+			expect(form.get('workflowConflictPolicy')).toBe('skip');
+			expect(form.get('workflowIdPolicy')).toBe('new');
+			expect(form.get('overwriteDeletionPolicy')).toBe('hard-delete');
+
+			const pkg = form.get('package') as File;
+			expect(pkg).toBeInstanceOf(Blob);
+			expect(pkg.name).toBe('project.n8np');
+			expect(Buffer.from(await pkg.arrayBuffer())).toEqual(buffer);
+			// Let fetch set the multipart content type and boundary.
+			expect((init.headers as Headers).get('content-type')).toBeNull();
+		});
+
+		it('sends an empty selection and omits unspecified optional fields', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+
+			await client.importPackageSelection(
+				{ buffer: Buffer.from('package-bytes'), filename: 'project.n8np' },
+				{ selectedProjectId: 'project-1', selectedWorkflowIds: [] },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('selectedProjectId')).toBe('project-1');
+			expect(form.get('selectedWorkflowIds')).toBe('[]');
+			expect(form.has('deletedWorkflowIds')).toBe(false);
+			expect(form.has('workflowConflictPolicy')).toBe(false);
+			expect(form.has('workflowIdPolicy')).toBe(false);
+			expect(form.has('overwriteDeletionPolicy')).toBe(false);
+		});
+
+		it('preserves an explicit empty deletion list', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+
+			await client.importPackageSelection(
+				{ buffer: Buffer.from('package-bytes'), filename: 'project.n8np' },
+				{
+					selectedProjectId: 'project-1',
+					selectedWorkflowIds: [],
+					deletedWorkflowIds: [],
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('selectedWorkflowIds')).toBe('[]');
+			expect(form.get('deletedWorkflowIds')).toBe('[]');
 		});
 	});
 

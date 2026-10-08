@@ -23,7 +23,7 @@ import { isRecord } from './guards';
 import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 /**
- * Converts a v1 workflow (node-based JSON) into the Engine 2.0 `WorkflowGraph`.
+ * Converts a v1 workflow (node-based JSON) into the Engine v2 `WorkflowGraph`.
  *
  * A pure, deterministic topology translation: it maps nodes and connections to
  * graph nodes and edges and never executes anything. Supported surface is kept
@@ -132,6 +132,8 @@ export class V1WorkflowConverter {
 			parameters: node.parameters,
 			continueOnFail: node.continueOnFail === true || node.onError === 'continueRegularOutput',
 		};
+		// Set only when present, so a node without credentials serializes without the key.
+		if (node.credentials !== undefined) config.credentials = node.credentials;
 
 		return { id: node.id, name: node.name, type: 'v1-node', config };
 	}

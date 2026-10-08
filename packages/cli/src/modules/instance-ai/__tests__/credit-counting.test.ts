@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+import type { Thread } from '@n8n/agents';
 import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
@@ -57,9 +58,23 @@ function claimedRunIds(service: InstanceAiCreditService) {
 function createMockThreadRepo(
 	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
 ) {
+	let current: Thread | null = thread
+		? {
+				id: thread.id,
+				resourceId: 'user-1',
+				metadata: thread.metadata ?? undefined,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}
+		: null;
 	return {
-		findOneBy: vi.fn().mockResolvedValue(thread ?? null),
-		save: vi.fn().mockImplementation(async (entity: unknown) => entity),
+		updateThread: vi.fn<InstanceAiThreadRepository['updateThread']>(async ({ update }) => {
+			if (!current) return null;
+			const patch = update(structuredClone(current));
+			if (patch) current = { ...current, ...patch };
+			return await Promise.resolve(current);
+		}),
+		getCurrent: () => current,
 	};
 }
 
@@ -155,7 +170,7 @@ describe('claimRunUsage', () => {
 			{ Authorization: 'Bearer ia-tok' },
 			{ dedupeId: 'run-1', usage, threadId: 't1' },
 		);
-		expect(threadRepo.save).toHaveBeenCalledWith(
+		expect(threadRepo.getCurrent()).toEqual(
 			expect.objectContaining({ metadata: expect.objectContaining({ creditsUsed: 2.5 }) }),
 		);
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -327,7 +342,7 @@ describe('claimRunUsage', () => {
 
 	it('keeps the claim successful when persisting the thread total fails', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
-		threadRepo.save = vi.fn().mockRejectedValue(new Error('db down'));
+		threadRepo.updateThread.mockRejectedValueOnce(new Error('db down'));
 		const ai = createMockAiService({
 			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
 		});
@@ -399,7 +414,7 @@ describe('claimRunUsage', () => {
 		expect(ai.getClient).not.toHaveBeenCalled();
 		expect(ai.__getInstanceAiApiProxyToken).not.toHaveBeenCalled();
 		expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
-		expect(threadRepo.save).not.toHaveBeenCalled();
+		expect(threadRepo.updateThread).not.toHaveBeenCalled();
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
@@ -425,7 +440,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const result = await callClaim(service);
 
-		expect(threadRepo.save).not.toHaveBeenCalled();
+		expect(threadRepo.updateThread).not.toHaveBeenCalled();
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 		expect(result).toBeUndefined();
 	});

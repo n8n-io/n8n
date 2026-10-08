@@ -1,4 +1,5 @@
 import { type BuiltTool, McpClient } from '@n8n/agents';
+import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
 import type {
 	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
@@ -8,19 +9,17 @@ import type {
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
 import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import {
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -31,12 +30,10 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAuthFetch, getBearerTokenRevision } from '@/utils/auth-fetch';
 
-import type {
-	InstanceAiMcpRegistryConnection,
-	InstanceAiMcpToolFilter,
-} from '../entities/instance-ai-mcp-registry-connection.entity';
+import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 interface ResolvedRegistryServer {
@@ -62,41 +59,16 @@ function buildServerName(serverSlug: string, sequence: number): string {
 	return `${baseName.slice(0, maxBaseLength)}${suffix}`;
 }
 
-function normalizeTools(tools: string[] | undefined): string[] {
-	if (!tools) {
-		return [];
-	}
-
-	return [...new Set(tools.filter((tool) => tool.length > 0))];
-}
-
-function resolveToolFilter(
-	payload: InstanceAiMcpUpdateConnectionRequestDto,
-	current: InstanceAiMcpToolFilter | null,
-): InstanceAiMcpToolFilter | null {
-	if (payload.inclusionMode === undefined) {
-		return current;
-	}
-
-	if (payload.inclusionMode === 'all') {
-		return null;
-	}
-
-	if (payload.inclusionMode === 'selected') {
-		return { mode: 'allow', tools: normalizeTools(payload.selectedTools) };
-	}
-
-	return { mode: 'exclude', tools: normalizeTools(payload.excludedTools) };
-}
-
 function stripMcpServerPrefix(toolName: string, serverName: string): string {
 	const prefix = `${serverName}_`;
 	return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
 }
 
 function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConnectionToolResponse {
+	const name = tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName);
 	const response: InstanceAiMcpConnectionToolResponse = {
-		name: tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName),
+		name,
+		category: classifyMcpTool({ name, annotations: tool.mcpAnnotations }),
 	};
 	if (tool.description) response.description = tool.description;
 	return response;
@@ -123,6 +95,7 @@ export class InstanceAiMcpRegistryService {
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly instanceAiSettingsService: InstanceAiSettingsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -182,6 +155,7 @@ export class InstanceAiMcpRegistryService {
 			userId: user.id,
 			serverSlug: input.serverSlug,
 			credentialId: input.credentialId,
+			toolPermissions: this.instanceAiSettingsService.getMcpToolPermissions(),
 		});
 
 		try {
@@ -232,7 +206,7 @@ export class InstanceAiMcpRegistryService {
 			await this.swapCredential(user, connection, payload.credentialId, server);
 		}
 
-		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
+		if (payload.toolPermissions) connection.toolPermissions = payload.toolPermissions;
 		return await this.connectionRepository.save(connection);
 	}
 
@@ -383,8 +357,8 @@ export class InstanceAiMcpRegistryService {
 				name: buildServerName(resolvedServer.serverSlug, nextCount),
 				url: resolvedServer.connection.endpointUrl,
 				transport: toAgentMcpTransport(resolvedServer.connection.transport),
-				cacheKey: `registry-connection:${connection.id}`,
-				toolFilter: connection.toolFilter ?? undefined,
+				cacheKey: `registry-connection:${connection.id}:${connection.credentialId}`,
+				toolPermissions: connection.toolPermissions,
 				metadata: {
 					connectionId: connection.id,
 					serverSlug: resolvedServer.serverSlug,
@@ -493,13 +467,32 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
+		const storedTokenData = credentialWithData.data.oauthTokenData;
+		const oauthTokenData = isRecord(storedTokenData) ? { ...storedTokenData } : undefined;
 		return createAuthFetch({
 			baseFetch,
 			initialHeaders: prepared.value.headers,
-			onUnauthorized: async () =>
-				projectId
-					? await this.oauthService.refreshOAuth2CredentialById(config.credentialId, projectId)
-					: null,
+			onUnauthorized: async (currentHeaders) => {
+				if (!projectId) return null;
+				const result = await this.oauthService.refreshOAuth2CredentialById(
+					config.credentialId,
+					projectId,
+					getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
+				);
+				if (result && oauthTokenData) {
+					if (result.expiresAt === undefined) {
+						delete oauthTokenData.n8n_expires_at;
+					} else {
+						oauthTokenData.n8n_expires_at = String(result.expiresAt);
+					}
+					if (result.expiresInSeconds === undefined) {
+						delete oauthTokenData.expires_in;
+					} else {
+						oauthTokenData.expires_in = result.expiresInSeconds;
+					}
+				}
+				return result?.headers ?? null;
+			},
 			allowedDomains: {
 				mode: 'domains',
 				domains: prepared.value.allowedDomains,

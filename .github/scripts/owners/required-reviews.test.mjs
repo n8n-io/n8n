@@ -15,19 +15,28 @@ let getPullRequestByIdImpl = async () => ({});
 let getChangedFilesImpl = async () => new Set();
 /** @type {(pullRequestNumber: number) => Promise<any[]>} */
 let getPrReviewsImpl = async () => [];
+/** @type {(pullRequestNumber: number) => Promise<any[]>} */
+let getPrEventsImpl = async () => [];
 /** @type {(teamSlug: string, username: string) => Promise<boolean>} */
 let isTeamMemberImpl = async () => false;
 /** @type {(sha: string, status: any) => Promise<void>} */
 let setCommitStatusImpl = async () => {};
+/** @type {(headOwner: string, headBranch: string) => Promise<any[]>} */
+let listOpenPullRequestsByHeadImpl = async () => [];
 
 mock.module('../github-helpers.mjs', {
 	namedExports: {
 		getEventFromGithubEventPath: () => eventImpl(),
 		getPullRequestById: (n) => getPullRequestByIdImpl(n),
 		getChangedFiles: (n) => getChangedFilesImpl(n),
+		getPrEvents: (n) => getPrEventsImpl(n),
 		getPrReviews: (n) => getPrReviewsImpl(n),
 		isTeamMember: (slug, username) => isTeamMemberImpl(slug, username),
 		setCommitStatus: (sha, status) => setCommitStatusImpl(sha, status),
+		listOpenPullRequestsByHead: (headOwner, headBranch) =>
+			listOpenPullRequestsByHeadImpl(headOwner, headBranch),
+		readPrLabels: (pullRequest) =>
+			(pullRequest.labels ?? []).map((label) => (typeof label === 'string' ? label : label.name)),
 	},
 });
 
@@ -46,28 +55,153 @@ mock.module('./owners.mjs', {
 });
 
 const {
+	REQUIRED_REVIEW_EXEMPTIONS,
+	LARGE_SCALE_CHANGE_LABEL,
+	LARGE_SCALE_CHANGES_TEAM,
 	STATUS_CONTEXT,
 	buildStatus,
 	collectApprovers,
+	findLargeScaleChangeExemption,
+	findExemption,
 	latestReviewStates,
+	matchesBranchPattern,
+	parseExemption,
 	resolvePullRequestNumber,
 	run,
 } = await import('./required-reviews.mjs');
 
+const REPO = 'n8n-io/n8n';
+
+/** @param {string} head @param {string} base @param {string} [headRepo] */
+function pullRequestFor(head, base, headRepo = REPO) {
+	return {
+		head: { ref: head, sha: 'head-sha', repo: { full_name: headRepo } },
+		base: { ref: base, repo: { full_name: REPO } },
+	};
+}
+
+describe('parseExemption', () => {
+	it('splits a "<head> -> <base>" route', () => {
+		assert.deepEqual(parseExemption('sync/master-to-3x -> 3.x'), {
+			head: 'sync/master-to-3x',
+			base: '3.x',
+			source: 'sync/master-to-3x -> 3.x',
+		});
+	});
+
+	it('treats a bare "<base>" as any head', () => {
+		assert.deepEqual(parseExemption('release/*'), { head: '*', base: 'release/*', source: 'release/*' });
+	});
+
+	it('rejects malformed routes', () => {
+		assert.throws(() => parseExemption('a -> b -> c'), /Invalid exemption/);
+		assert.throws(() => parseExemption(' -> 3.x'), /Invalid exemption/);
+		assert.throws(() => parseExemption('3.x -> '), /Invalid exemption/);
+	});
+
+	it('accepts every configured exemption', () => {
+		for (const entry of REQUIRED_REVIEW_EXEMPTIONS) parseExemption(entry);
+	});
+});
+
+describe('matchesBranchPattern', () => {
+	it('matches whole branch names', () => {
+		assert.equal(matchesBranchPattern('3.x', '3.x'), true);
+		assert.equal(matchesBranchPattern('3.xy', '3.x'), false);
+		assert.equal(matchesBranchPattern('v3.x', '3.x'), false);
+	});
+
+	it('treats "." as a literal', () => {
+		assert.equal(matchesBranchPattern('3ax', '3.x'), false);
+	});
+
+	it('expands "*" across path separators', () => {
+		assert.equal(matchesBranchPattern('release/2.39.5', 'release/*'), true);
+		assert.equal(matchesBranchPattern('release/2.39.5/hotfix', 'release/*'), true);
+		assert.equal(matchesBranchPattern('anything', '*'), true);
+		assert.equal(matchesBranchPattern('release-candidate/2.40.0', 'release/*'), false);
+	});
+});
+
+describe('findExemption', () => {
+	const exemptions = ['sync/master-to-3x -> 3.x', 'release/*'];
+
+	it('finds the route for a matching head and base', () => {
+		const route = findExemption(pullRequestFor('sync/master-to-3x', '3.x'), exemptions);
+		assert.equal(route?.source, 'sync/master-to-3x -> 3.x');
+	});
+
+	it('returns nothing when only the base matches', () => {
+		assert.equal(findExemption(pullRequestFor('feature/x', '3.x'), exemptions), undefined);
+	});
+
+	it('returns nothing when only the head matches', () => {
+		assert.equal(findExemption(pullRequestFor('sync/master-to-3x', 'master'), exemptions), undefined);
+	});
+
+	it('matches a bare base route for any head', () => {
+		const route = findExemption(pullRequestFor('feature/x', 'release/2.39.5'), exemptions);
+		assert.equal(route?.source, 'release/*');
+	});
+
+	it('ignores heads from another repository', () => {
+		const fromFork = pullRequestFor('sync/master-to-3x', '3.x', 'someone/n8n');
+		assert.equal(findExemption(fromFork, exemptions), undefined);
+	});
+
+	it('ignores heads whose repository is gone', () => {
+		const pullRequest = pullRequestFor('sync/master-to-3x', '3.x');
+		pullRequest.head.repo = null;
+		assert.equal(findExemption(pullRequest, exemptions), undefined);
+	});
+});
+
 describe('resolvePullRequestNumber', () => {
-	it('reads the PR number from pull_request payloads', () => {
+	/** A workflow_run payload for a run on `owner/branch` at `sha`. */
+	function workflowRunEvent(owner, branch, sha) {
+		return { workflow_run: { head_sha: sha, head_branch: branch, head_repository: { owner: { login: owner } } } };
+	}
+
+	beforeEach(() => {
+		listOpenPullRequestsByHeadImpl = async () => [];
+	});
+
+	it('reads the PR number from pull_request payloads', async () => {
 		assert.equal(
-			resolvePullRequestNumber('pull_request', { pull_request: { number: 42 } }, undefined),
+			await resolvePullRequestNumber('pull_request_target', { pull_request: { number: 42 } }, undefined),
 			42,
 		);
 	});
 
-	it('falls back to the PULL_REQUEST_NUMBER env value for workflow_dispatch', () => {
-		assert.equal(resolvePullRequestNumber('workflow_dispatch', {}, '7'), 7);
+	it('falls back to the PULL_REQUEST_NUMBER env value for workflow_dispatch', async () => {
+		assert.equal(await resolvePullRequestNumber('workflow_dispatch', {}, '7'), 7);
 	});
 
-	it('throws when no source yields a PR number', () => {
-		assert.throws(() => resolvePullRequestNumber('workflow_dispatch', {}, undefined), /Cannot resolve/);
+	it('rejects when no source yields a PR number', async () => {
+		await assert.rejects(resolvePullRequestNumber('workflow_dispatch', {}, undefined), /Cannot resolve/);
+	});
+
+	it('looks up the open PR for a workflow_run head', async () => {
+		const listOpenPullRequestsByHead = mock.fn(async () => [
+			{ number: 11, head: { sha: 'old-sha' } },
+			{ number: 12, head: { sha: 'run-sha' } },
+		]);
+		listOpenPullRequestsByHeadImpl = listOpenPullRequestsByHead;
+
+		assert.equal(
+			await resolvePullRequestNumber('workflow_run', workflowRunEvent('forker', 'fix/x', 'run-sha'), undefined),
+			12,
+		);
+		assert.deepEqual(listOpenPullRequestsByHead.mock.calls[0].arguments, ['forker', 'fix/x']);
+	});
+
+	it('returns undefined when no open PR has the workflow_run head SHA', async () => {
+		listOpenPullRequestsByHeadImpl = async () => [{ number: 11, head: { sha: 'old-sha' } }];
+
+		assert.equal(
+			await resolvePullRequestNumber('workflow_run', workflowRunEvent('forker', 'fix/x', 'run-sha'), undefined),
+			undefined,
+		);
 	});
 });
 
@@ -120,6 +254,116 @@ describe('collectApprovers', () => {
 	});
 });
 
+describe('findLargeScaleChangeExemption', () => {
+	beforeEach(() => {
+		getPrEventsImpl = async () => [];
+		isTeamMemberImpl = async () => false;
+	});
+
+	it('returns the team member who applied the active label', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'ana' } },
+		];
+		isTeamMemberImpl = async (slug, username) =>
+			slug === LARGE_SCALE_CHANGES_TEAM && username === 'ana';
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			'ana',
+		);
+	});
+
+	it('rejects a label applied by someone outside the team', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'outsider' } },
+		];
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			undefined,
+		);
+	});
+
+	it('rejects the exemption when the label event is not available', async () => {
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			undefined,
+		);
+	});
+
+	it('rejects the exemption when the label event has no actor', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: null },
+		];
+		const isTeamMember = mock.fn(async () => true);
+		isTeamMemberImpl = isTeamMember;
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			undefined,
+		);
+		assert.equal(isTeamMember.mock.calls.length, 0);
+	});
+
+	it('ignores events for other labels', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'ana' } },
+			{ event: 'labeled', label: { name: 'bug' }, actor: { login: 'outsider' } },
+			{ event: 'unlabeled', label: { name: 'bug' }, actor: { login: 'outsider' } },
+		];
+		isTeamMemberImpl = async (slug, username) =>
+			slug === LARGE_SCALE_CHANGES_TEAM && username === 'ana';
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			'ana',
+		);
+	});
+
+	it('uses the actor from the latest label application', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'ana' } },
+			{
+				event: 'unlabeled',
+				label: { name: LARGE_SCALE_CHANGE_LABEL },
+				actor: { login: 'outsider' },
+			},
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'outsider' } },
+		];
+		isTeamMemberImpl = async (slug, username) => username === 'ana';
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			undefined,
+		);
+	});
+
+	it('rejects the exemption when the latest event removed the label', async () => {
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'ana' } },
+			{
+				event: 'unlabeled',
+				label: { name: LARGE_SCALE_CHANGE_LABEL },
+				actor: { login: 'outsider' },
+			},
+		];
+		isTeamMemberImpl = async (slug, username) => username === 'ana';
+
+		assert.equal(
+			await findLargeScaleChangeExemption(42, { labels: [{ name: LARGE_SCALE_CHANGE_LABEL }] }),
+			undefined,
+		);
+	});
+
+	it('does not inspect events when the label is absent', async () => {
+		const getPrEvents = mock.fn(async () => []);
+		getPrEventsImpl = getPrEvents;
+
+		assert.equal(await findLargeScaleChangeExemption(42, { labels: [] }), undefined);
+		assert.equal(getPrEvents.mock.calls.length, 0);
+	});
+});
+
 describe('buildStatus', () => {
 	it('succeeds when nothing is required', () => {
 		const status = buildStatus([], 0);
@@ -135,11 +379,11 @@ describe('buildStatus', () => {
 		assert.match(status.description, /2 teams/);
 	});
 
-	it('fails with the missing team slugs', () => {
+	it('stays pending with the missing team slugs', () => {
 		const status = buildStatus(['@n8n-io/qa-dx', '@n8n-io/migrations-review'], 2);
 
-		assert.equal(status.state, 'failure');
-		assert.equal(status.description, 'Missing approval from: qa-dx, migrations-review');
+		assert.equal(status.state, 'pending');
+		assert.equal(status.description, 'Waiting for approval from: qa-dx, migrations-review');
 	});
 });
 
@@ -152,12 +396,12 @@ describe('run', () => {
 
 		eventImpl = () => ({ pull_request: { number: 42 } });
 		getPullRequestByIdImpl = async () => ({
-			base: { ref: 'master' },
-			head: { sha: 'head-sha' },
+			...pullRequestFor('feature/x', 'master'),
 			user: { login: 'author' },
 		});
 		getChangedFilesImpl = async () => new Set(['a.ts']);
 		getPrReviewsImpl = async () => [];
+		getPrEventsImpl = async () => [];
 		isTeamMemberImpl = async () => false;
 		parseOwnersFileImpl = () => [];
 		resolveRequiredTeamsImpl = () => new Map();
@@ -181,7 +425,7 @@ describe('run', () => {
 		assert.equal(status.state, 'success');
 	});
 
-	it('sets a failure status when a required team has not approved', async () => {
+	it('sets a pending status when a required team has not approved', async () => {
 		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
 		getPrReviewsImpl = async () => [
 			{ user: { login: 'outsider' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
@@ -191,8 +435,8 @@ describe('run', () => {
 		await run();
 
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
-		assert.equal(status.state, 'failure');
-		assert.match(status.description, /Missing approval from: qa-dx/);
+		assert.equal(status.state, 'pending');
+		assert.match(status.description, /Waiting for approval from: qa-dx/);
 	});
 
 	it('sets an error status and rethrows when the evaluation fails', async () => {
@@ -250,7 +494,7 @@ describe('run', () => {
 
 		assert.equal(isTeamMember.mock.calls.length, 0);
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
-		assert.equal(status.state, 'failure');
+		assert.equal(status.state, 'pending');
 	});
 
 	it('does not count an approval that was later dismissed', async () => {
@@ -264,18 +508,94 @@ describe('run', () => {
 		await run();
 
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
-		assert.equal(status.state, 'failure');
+		assert.equal(status.state, 'pending');
 	});
 
-	it('skips PRs that do not target master without setting a status', async () => {
-		getPullRequestByIdImpl = async () => ({
-			base: { ref: 'release-candidate/2.9.x' },
-			head: { sha: 'head-sha' },
+	it('writes no status for a workflow_run head without an open PR', async () => {
+		process.env.GITHUB_EVENT_NAME = 'workflow_run';
+		eventImpl = () => ({
+			workflow_run: { head_sha: 'gone-sha', head_branch: 'fix/x', head_repository: { owner: { login: 'forker' } } },
 		});
+		listOpenPullRequestsByHeadImpl = async () => [];
 
 		await run();
 
 		assert.equal(setCommitStatus.mock.calls.length, 0);
+	});
+
+	it('evaluates PRs into branches other than master', async () => {
+		getPullRequestByIdImpl = async () => pullRequestFor('feature/x', 'release-candidate/2.9.x');
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+
+		await run();
+
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'pending');
+		assert.match(status.description, /Waiting for approval from: qa-dx/);
+	});
+
+	it('reports success without evaluating a PR on an exempt route', async () => {
+		getPullRequestByIdImpl = async () => pullRequestFor('sync/master-to-3x', '3.x');
+		const getChangedFiles = mock.fn(async () => new Set(['a.ts']));
+		getChangedFilesImpl = getChangedFiles;
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+
+		await run();
+
+		assert.equal(getChangedFiles.mock.calls.length, 0);
+		assert.equal(setCommitStatus.mock.calls.length, 2);
+		assert.equal(setCommitStatus.mock.calls[0].arguments[1].state, 'pending');
+		const [, status] = setCommitStatus.mock.calls[1].arguments;
+		assert.equal(status.state, 'success');
+		assert.equal(status.description, 'Exempt route: sync/master-to-3x -> 3.x');
+	});
+
+	it('reports success without evaluating an authorized large-scale change', async () => {
+		getPullRequestByIdImpl = async () => ({
+			...pullRequestFor('feature/x', 'master'),
+			labels: [{ name: LARGE_SCALE_CHANGE_LABEL }],
+		});
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'ana' } },
+		];
+		isTeamMemberImpl = async (slug, username) =>
+			slug === LARGE_SCALE_CHANGES_TEAM && username === 'ana';
+		const getChangedFiles = mock.fn(async () => new Set(['a.ts']));
+		getChangedFilesImpl = getChangedFiles;
+
+		await run();
+
+		assert.equal(getChangedFiles.mock.calls.length, 0);
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'success');
+		assert.equal(status.description, 'Large-scale change exemption by @ana');
+	});
+
+	it('evaluates a large-scale label applied outside the team', async () => {
+		getPullRequestByIdImpl = async () => ({
+			...pullRequestFor('feature/x', 'master'),
+			labels: [{ name: LARGE_SCALE_CHANGE_LABEL }],
+		});
+		getPrEventsImpl = async () => [
+			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'outsider' } },
+		];
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+
+		await run();
+
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'pending');
+		assert.match(status.description, /Waiting for approval from: qa-dx/);
+	});
+
+	it('does not exempt a fork branch that is named like an exempt route', async () => {
+		getPullRequestByIdImpl = async () => pullRequestFor('sync/master-to-3x', '3.x', 'someone/n8n');
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+
+		await run();
+
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'pending');
 	});
 
 });

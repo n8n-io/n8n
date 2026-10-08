@@ -2,20 +2,42 @@ import { createChildSubAgentTaskPath } from '@n8n/agents';
 import type { SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import {
 	AgentBackgroundJobService,
+	EXPIRED_BACKGROUND_CHECKPOINT_ERROR,
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 	type BackgroundJobReceipt,
 } from './agent-background-job.service';
-import type { AgentBackgroundJobSettlement } from '../repositories/agent-background-job.repository';
+import type {
+	AgentBackgroundJobSettlement,
+	ExpectedBackgroundJobState,
+} from '../repositories/agent-background-job.repository';
+import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import { AgentWorkspaceService } from '../agent-workspace.service';
+import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
+import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import { formatSubAgentToolOutput } from '../sub-agents/format-sub-agent-tool-output';
 import {
 	SubAgentRunner,
 	type SubAgentRunContext,
 	type SubAgentRunResult,
 } from '../sub-agents/sub-agent-runner';
+
+export type BackgroundSubAgentRunContext = Pick<
+	SubAgentRunContext,
+	| 'credentialProvider'
+	| 'runType'
+	| 'workflowToolExecutionMode'
+	| 'user'
+	| 'instrumentation'
+	| 'parentWorkspaceHandle'
+	| 'rootSessionCapUsd'
+>;
 
 export interface BackgroundSpawnRequest {
 	subAgentId: string;
@@ -28,7 +50,8 @@ export interface BackgroundSpawnRequest {
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
 	parentResourceId: string;
-	parentSandboxPrincipalHash?: string;
+	parentSandboxPrincipalHash: string;
+	parentMessageContext?: IntegrationMessageContext | null;
 }
 
 /**
@@ -46,6 +69,8 @@ export class SubAgentBackgroundRunner {
 		private readonly runner: SubAgentRunner,
 		private readonly jobService: AgentBackgroundJobService,
 		private readonly logger: Logger,
+		private readonly jobRepository: AgentBackgroundJobRepository,
+		private readonly workspaceService: AgentWorkspaceService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -55,10 +80,7 @@ export class SubAgentBackgroundRunner {
 		context: {
 			projectId: string;
 			parentAgentId: string;
-		} & Pick<
-			SubAgentRunContext,
-			'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
-		>,
+		} & BackgroundSubAgentRunContext,
 	): Promise<BackgroundJobReceipt> {
 		// Throws on an unusable task name — before the job row exists, so a bad
 		// name cannot leave a phantom `running` row holding a thread slot.
@@ -71,6 +93,8 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			parentResourceId: request.parentResourceId,
+			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
@@ -81,26 +105,16 @@ export class SubAgentBackgroundRunner {
 		// chat connection, and the parent's live telemetry does not outlive its
 		// turn — neither is forwarded.
 		const abortController = new AbortController();
+		const expected: ExpectedBackgroundJobState = { status: 'running' };
 		this.jobService.registerAbortController(jobId, abortController);
-		const timeout = setTimeout(() => {
-			// Settle first so the timeout is recorded as the reason; the aborted
-			// run's own settle then loses to this one.
-			void this.jobService
-				.settle(jobId, {
-					status: 'failed',
-					error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
-				})
-				.catch((error: unknown) => {
-					// A rejection escaping this detached chain would surface as an
-					// unhandled rejection; the sweeper reconciles the row later.
-					this.logger.error('Failed to settle timed-out background job', { jobId, error });
-				})
-				.finally(() => abortController.abort());
-		}, SUB_AGENT_BACKGROUND_TIMEOUT_MS);
-		timeout.unref();
-
-		void this.runner
-			.run(
+		void this.dispatch(jobId, abortController, expected, async () => {
+			const job = await this.jobRepository.findById(jobId);
+			if (job?.status !== 'running') {
+				abortController.abort();
+				abortController.signal.throwIfAborted();
+			}
+			expected.timeoutAt = job?.timeoutAt;
+			return await this.runner.run(
 				{
 					goal: request.goal,
 					source: request.source,
@@ -110,9 +124,7 @@ export class SubAgentBackgroundRunner {
 						: {}),
 					parentThreadId: request.parentThreadId,
 					parentResourceId: request.parentResourceId,
-					...(request.parentSandboxPrincipalHash !== undefined
-						? { parentSandboxPrincipalHash: request.parentSandboxPrincipalHash }
-						: {}),
+					parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
 					childThreadId,
 					taskPath,
 				},
@@ -125,34 +137,285 @@ export class SubAgentBackgroundRunner {
 					user: context.user,
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
+					backgroundJobId: jobId,
+					shouldPause: async () => await this.jobService.shouldPause(jobId),
+					parentMessageContext: request.parentMessageContext,
+					// The parent thread is the root session: the child debits it, not
+					// its own thread id, and its descendants keep the same bucket.
+					rootSessionId: request.parentThreadId,
+					rootSessionCapUsd: context.rootSessionCapUsd,
+					budgetForwarded: true,
 					...(request.difficulty !== undefined
 						? { selfDelegationDifficulty: request.difficulty }
 						: {}),
+					...(context.parentWorkspaceHandle !== undefined
+						? { parentWorkspaceHandle: context.parentWorkspaceHandle }
+						: {}),
 				},
-			)
-			.then((result) => settlementFor(result))
-			.catch(
-				(error: unknown): AgentBackgroundJobSettlement => ({
-					status: 'failed',
-					error: error instanceof Error ? error.message : String(error),
-				}),
-			)
-			.then(async (settlement) => {
-				const settled = await this.jobService.settle(jobId, settlement);
-				if (settled && settlement.status === 'failed') {
-					this.logger.warn('Background sub-agent job failed', { jobId, error: settlement.error });
-				}
-			})
-			.catch((error: unknown) => {
-				// Only the settle write itself can land here: don't overwrite the
-				// outcome (a completed answer must not become 'failed' over a DB
-				// blip) and don't let the rejection escape the detached chain —
-				// the sweeper reconciles the still-running row later.
-				this.logger.error('Failed to settle background sub-agent job', { jobId, error });
-			})
-			.finally(() => clearTimeout(timeout));
+			);
+		}).catch((error: unknown) => {
+			this.logger.error('Failed to settle background sub-agent job', { jobId, error });
+		});
 
 		return receipt;
+	}
+
+	async resume(
+		job: AgentBackgroundJob,
+		response: { token: string; resumeData: unknown },
+		context: { projectId: string; parentAgentId: string } & BackgroundSubAgentRunContext,
+	): Promise<void> {
+		const approval =
+			job.status === 'suspended' && !job.pauseRequestId && (await this.jobService.getApproval(job));
+		if (
+			!approval ||
+			approval.token !== response.token ||
+			approval.scope.projectId !== context.projectId ||
+			!job.subAgentId ||
+			!job.childThreadId
+		) {
+			throw new UserError('This background approval is no longer available');
+		}
+		const { metadata, scope } = approval;
+		const workspace = metadata.sharedWorkspace
+			? await this.workspaceService.getAgentWorkspace(
+					context.projectId,
+					job.parentAgentId,
+					scope.principalHash,
+				)
+			: undefined;
+		const started = createDeferredPromise();
+		const controller = new AbortController();
+		const expected: ExpectedBackgroundJobState = { status: 'suspended', timeoutAt: job.timeoutAt };
+		let claimed = false;
+		let admitted = false;
+		void this.dispatch(
+			job.id,
+			controller,
+			expected,
+			async () => {
+				const result = await this.runner.resumeForeground(
+					{
+						subAgentId: metadata.resumeContext.agentId,
+						childThreadId: job.childThreadId ?? undefined,
+						parentThreadId: job.parentThreadId,
+						childRunId: approval.runId,
+						childToolCallId: approval.pending.toolCallId,
+						resumeData: response.resumeData,
+						taskPath: metadata.taskPath,
+						resumeContext: metadata.resumeContext,
+					},
+					{
+						...context,
+						shouldPause: async () => await this.jobService.shouldPause(job.id),
+						abortSignal: controller.signal,
+						selfDelegationDifficulty: metadata.difficulty,
+						runtimeSnapshot: metadata.runtimeSnapshot,
+						parentWorkspaceHandle: workspace?.handle,
+						beforeResume: async () => {
+							// The child thread is reserved here. Recheck the gate after admission.
+							const currentJob = await this.jobRepository.findById(job.id);
+							const currentApproval =
+								currentJob?.status === 'suspended' &&
+								!currentJob.pauseRequestId &&
+								(await this.jobService.getApproval(currentJob));
+							if (!currentApproval || currentApproval.token !== response.token) {
+								throw new UserError('This background approval is no longer available');
+							}
+						},
+						onResumeClaimed: async () => {
+							this.jobService.registerAbortController(job.id, controller);
+							const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+							if (!(await this.jobService.resume(job.id, timeoutAt))) {
+								throw new UserError('This background task has already ended');
+							}
+							claimed = true;
+							expected.status = 'running';
+							expected.timeoutAt = timeoutAt;
+							admitted = true;
+							started.resolve();
+						},
+					},
+				);
+				if (!admitted) throw new UserError('This background approval could not be resumed');
+				return result;
+			},
+			() => claimed,
+		)
+			.then(() => {
+				if (!admitted)
+					started.reject(new UserError('This background approval could not be resumed'));
+			})
+			.catch((error: unknown) => {
+				started.reject(ensureError(error));
+				this.logger.warn('Failed to resume background sub-agent', { jobId: job.id, error });
+			});
+		await started.promise;
+	}
+
+	async resumePaused(
+		job: AgentBackgroundJob,
+		context: { projectId: string; parentAgentId: string } & BackgroundSubAgentRunContext,
+		reservationTimeoutAt: Date,
+	): Promise<void> {
+		if (job.status !== 'paused' || !job.pauseRequestId || !job.notifiedAt) {
+			throw new UserError('Wait for the combined status report, then ask to continue again');
+		}
+		const suspension = await this.jobService.getCheckpoint(job);
+		if (!suspension) throw new UserError(EXPIRED_BACKGROUND_CHECKPOINT_ERROR);
+		const { metadata, scope, checkpoint } = suspension;
+		if (scope.projectId !== context.projectId || job.parentAgentId !== context.parentAgentId) {
+			throw new UserError('This background task is not available');
+		}
+		if (Object.keys(checkpoint.pendingToolCalls).length > 0) {
+			if (!(await this.jobService.getApproval(job)))
+				throw new UserError('This background task cannot be resumed');
+			if (
+				!(await this.jobRepository.resumeIfPaused(
+					job.id,
+					job.pauseRequestId,
+					'suspended',
+					suspension.expiresAt,
+					reservationTimeoutAt,
+				))
+			) {
+				throw new UserError('This background task has already resumed');
+			}
+			await this.jobService.notifyResumed(job.id);
+			return;
+		}
+		const workspace = metadata.sharedWorkspace
+			? await this.workspaceService.getAgentWorkspace(
+					context.projectId,
+					job.parentAgentId,
+					scope.principalHash,
+				)
+			: undefined;
+		const controller = new AbortController();
+		const started = createDeferredPromise();
+		const expected: ExpectedBackgroundJobState = { status: 'running' };
+		const pauseRequestId = job.pauseRequestId;
+		let claimed = false;
+		let admitted = false;
+		void this.dispatch(
+			job.id,
+			controller,
+			expected,
+			async () => {
+				return await this.runner.resumePaused(
+					{
+						subAgentId: metadata.resumeContext.agentId,
+						childThreadId: job.childThreadId ?? undefined,
+						parentThreadId: job.parentThreadId,
+						childRunId: suspension.runId,
+						taskPath: metadata.taskPath,
+						resumeContext: metadata.resumeContext,
+					},
+					{
+						...context,
+						abortSignal: controller.signal,
+						selfDelegationDifficulty: metadata.difficulty,
+						runtimeSnapshot: metadata.runtimeSnapshot,
+						parentWorkspaceHandle: workspace?.handle,
+						rootSessionId: job.parentThreadId,
+						budgetForwarded: true,
+						shouldPause: async () => await this.jobService.shouldPause(job.id),
+						beforeResume: async () => {
+							const current = await this.jobRepository.findById(job.id);
+							if (
+								current?.status !== 'suspended' ||
+								current.pauseRequestId !== pauseRequestId ||
+								current.timeoutAt?.getTime() !== reservationTimeoutAt.getTime()
+							) {
+								throw new UserError('This background task has already resumed');
+							}
+						},
+						onResumeClaimed: async () => {
+							this.jobService.registerAbortController(job.id, controller);
+							const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+							if (
+								!(await this.jobRepository.resumeIfPaused(
+									job.id,
+									pauseRequestId,
+									'running',
+									timeoutAt,
+									reservationTimeoutAt,
+								))
+							) {
+								throw new UserError('This background task has already ended');
+							}
+							claimed = true;
+							expected.timeoutAt = timeoutAt;
+							await this.jobService.notifyResumed(job.id);
+							admitted = true;
+							started.resolve();
+						},
+					},
+				);
+			},
+			() => claimed,
+		)
+			.then(() => {
+				if (!admitted) started.reject(new UserError('This background task could not be resumed'));
+			})
+			.catch((error: unknown) => {
+				started.reject(ensureError(error));
+				this.logger.warn('Failed to resume paused background task', { jobId: job.id, error });
+			});
+		await started.promise;
+	}
+
+	private async dispatch(
+		jobId: string,
+		controller: AbortController,
+		expected: ExpectedBackgroundJobState,
+		run: () => Promise<SubAgentRunResult>,
+		ownsRun: () => boolean = () => true,
+	): Promise<void> {
+		const timeout = setTimeout(() => {
+			if (!ownsRun()) {
+				controller.abort();
+				return;
+			}
+			void this.jobService
+				.settle(
+					jobId,
+					{
+						status: 'failed',
+						error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
+					},
+					expected,
+				)
+				.catch((error: unknown) => {
+					this.logger.error('Failed to settle timed-out background job', { jobId, error });
+				})
+				.finally(() => controller.abort());
+		}, SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+		timeout.unref();
+		try {
+			let result: SubAgentRunResult;
+			try {
+				result = await run();
+			} catch (error) {
+				if (!ownsRun()) throw error;
+				await this.jobService.settle(
+					jobId,
+					{ status: 'failed', error: error instanceof Error ? error.message : String(error) },
+					expected,
+				);
+				return;
+			}
+			clearTimeout(timeout);
+			if (result.status === 'paused') {
+				await this.jobService.settlePausedSubAgent(jobId, expected);
+				return;
+			}
+			if (result.status === 'suspended' && (await this.jobService.suspend(jobId))) return;
+			await this.jobService.settle(jobId, settlementFor(result), expected);
+		} finally {
+			clearTimeout(timeout);
+			this.jobService.unregisterAbortController(jobId, controller);
+		}
 	}
 }
 
@@ -162,11 +425,9 @@ function settlementFor(result: SubAgentRunResult): AgentBackgroundJobSettlement 
 		return { status: 'completed', result: output.answer };
 	}
 	if (output.status === 'suspended') {
-		// Background HITL is not supported yet: nobody can answer the child,
-		// so record why instead of leaving the job running forever.
 		return {
 			status: 'failed',
-			error: 'Sub-agent suspended awaiting human input, which background runs do not support',
+			error: 'The background task requested an unsupported interaction',
 		};
 	}
 	return {

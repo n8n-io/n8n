@@ -1,8 +1,7 @@
+import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
-
-import { EventService } from '@/events/event.service';
 
 import type { PrometheusMetricsCollector } from './base';
 import { DURATION_BUCKETS_SECONDS } from './constant';

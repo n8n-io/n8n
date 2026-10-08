@@ -2,9 +2,7 @@ import type { Response } from 'express';
 import { BadRequest, Unauthorized } from 'express-openapi-validator/dist/framework/types';
 import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 
 import { sendPublicApiErrorResponse } from '../public-api-error-response';

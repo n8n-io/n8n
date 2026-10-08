@@ -1,9 +1,6 @@
-import type {
-	PullWorkFolderRequestDto,
-	PushWorkFolderRequestDto,
-	SourceControlledFile,
-} from '@n8n/api-types';
+import type { PullWorkFolderRequestDto, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -13,9 +10,7 @@ import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { IWorkflowToImport } from '@/interfaces';
 
 import {
@@ -45,8 +40,15 @@ import {
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
+import type { SourceControlActionOrigin } from './types/source-control-action-origin';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
+
+export type PushWorkfolderOptions = {
+	commitMessage?: string;
+	force?: boolean;
+	fileNames: Array<Pick<SourceControlledFile, 'id' | 'type'>>;
+};
 
 @Service()
 export class SourceControlService {
@@ -307,14 +309,15 @@ export class SourceControlService {
 
 	async pushWorkfolder(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		origin: SourceControlActionOrigin = 'ui',
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
 		return await this.workfolderMutex(
-			async () => await this.pushWorkfolderWithoutLock(user, options),
+			async () => await this.pushWorkfolderWithoutLock(user, options, origin),
 		);
 	}
 
@@ -327,12 +330,14 @@ export class SourceControlService {
 	 */
 	private async resolveAuthorizedFilesToPush(
 		user: User,
-		requestedFiles: SourceControlledFile[],
+		requestedFiles: Array<Pick<SourceControlledFile, 'id' | 'type'>>,
+		origin: SourceControlActionOrigin,
 	): Promise<SourceControlledFile[]> {
 		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
+			origin,
 		});
 
 		// No explicit selection: push everything the user is allowed to.
@@ -370,7 +375,8 @@ export class SourceControlService {
 
 	private async pushWorkfolderWithoutLock(
 		user: User,
-		options: PushWorkFolderRequestDto,
+		options: PushWorkfolderOptions,
+		origin: SourceControlActionOrigin = 'ui',
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
@@ -384,7 +390,7 @@ export class SourceControlService {
 
 		const context = await this.sourceControlContextFactory.createContext(user);
 
-		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames);
+		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames, origin);
 
 		let statusResult: SourceControlledFile[] = filesToPush;
 
@@ -510,10 +516,10 @@ export class SourceControlService {
 		}
 
 		// #region Tracking Information
-		this.eventService.emit(
-			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(user.id, statusResult),
-		);
+		this.eventService.emit('source-control-user-finished-push-ui', {
+			...getTrackingInformationFromPostPushResult(user.id, statusResult),
+			publicApi: origin === 'publicApi',
+		});
 		// #endregion
 
 		return {
@@ -577,10 +583,32 @@ export class SourceControlService {
 		// validates against the freshly imported credential state (e.g. a credential's
 		// resolvable/private status), instead of the stale local state.
 		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.importCredentialsFromWorkFolder(
-			credentialsToBeImported,
-			user.id,
+		const credentialImportResults =
+			await this.sourceControlImportService.importCredentialsFromWorkFolder(
+				credentialsToBeImported,
+				user.id,
+			);
+
+		// Add content-import policy violations to status result
+		const statusByCredentialId = new Map(
+			statusResult.filter((item) => item.type === 'credential').map((item) => [item.id, item]),
 		);
+
+		for (const { id, contentImportPolicy } of credentialImportResults) {
+			if (!contentImportPolicy) continue;
+
+			if (contentImportPolicy.violations.length) {
+				this.logger.warn(
+					`Skipped credential ${id}: ${contentImportPolicy.violations.length} policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
+				);
+			}
+
+			const statusItem = statusByCredentialId.get(id);
+			if (statusItem) {
+				statusItem.contentImportPolicy = contentImportPolicy;
+			}
+		}
 
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
 		const workflowImportResults =
@@ -608,6 +636,9 @@ export class SourceControlService {
 					`Skipped workflow ${id}: ${contentImportPolicy.violations.length} content-import policy violation(s)`,
 					{ violations: contentImportPolicy.violations },
 				);
+			} else {
+				// A pull writes the workflow directly, so no save event fires for it.
+				this.eventService.emit('workflow-imported', { workflowId: id });
 			}
 
 			if (contentImportPolicy && statusItem) {

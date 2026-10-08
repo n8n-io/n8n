@@ -1,9 +1,19 @@
+import {
+	INSTANCE_AI_PREFILL_TYPES,
+	instanceContextAbsenceReasonSchema,
+	instanceContextSurfaceSchema,
+	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+	INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { assistantSurfaceSchema } from '../schemas';
+import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 /**
- * How each AI Assistant setup component is configured. Source (who set it) and
+ * How each n8n Assistant setup component is configured. Source (who set it) and
  * type/provider (what it is) are separate properties on purpose: an env-var
  * Daytona sandbox reports sandbox_source 'env' and sandbox_type 'daytona',
  * so neither dimension shadows the other.
@@ -34,14 +44,143 @@ const setupSnapshotProps = {
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
+const assistantMentionTriggerSource = z.enum(['typed', 'button']);
+/** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
+export const ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH = 100;
+// The composer has no thread on the empty view until the first send, so every
+// mention event carries an explicit null there rather than omitting the column.
+const assistantMentionThreadId = z
+	.string()
+	.nullable()
+	.describe('Thread the composer belongs to. Null before the first message creates one');
+const mentionCount = z.number().int().nonnegative();
+// One object rather than one column per kind: the picker will grow to agents,
+// data tables and more, and each new kind adds a key here, never a column on the
+// event. Keys match the `kind` values of the mention events.
+const assistantMentionCounts = z
+	.object({
+		total: mentionCount.describe('Sum of all kinds. Stable predicate for "has mentions"'),
+		workflow: mentionCount,
+		node: mentionCount,
+		group: mentionCount,
+	})
+	.describe('Picker mentions attached to the message, by kind');
+// Shared by the send and the response events so a with/without-mentions cut reads
+// the same columns on both.
+const mentionContextProperties = {
+	mention_counts: assistantMentionCounts,
+	attachment_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe(
+			'All outbound attachments: files, workflow, agent and nodes attachments, including ones the host adds',
+		),
+};
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
+// Both taxonomies are owned by `@n8n/api-types`, beside the request schemas that
+// enforce them; the fallbacks are read-path only, so no caller can declare them.
+const threadActionSource = z.enum([
+	...INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+]);
+const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
+
+const instanceContextTurnSchema = z.object({
+	surface: assistantSurfaceSchema,
+	user_id: z.string(),
+	thread_id: z.string().optional(),
+	run_id: z.string().describe('Turn ID shared by all segments'),
+	segment: z
+		.enum(['whole', 'suspended', 'resumed'])
+		.describe(
+			'Whole turn, pause for input, or final resumed segment. A turn can pause more than once.',
+		),
+	instance_context_enabled: z.boolean().describe('Instance activity gate result'),
+	node_usage_enabled: z.boolean().describe('Per-user node usage gate result'),
+	context_depth: z
+		.number()
+		.int()
+		.describe(
+			'Deepest attempted read: 0 none, 1 activity list, 2 activity expand or node usage, 3 workflow inspection',
+		),
+	context_surfaces: z
+		.array(z.enum(instanceContextSurfaceSchema.options))
+		.describe('Distinct context surfaces called in this segment'),
+	asked_clarifying_question: z
+		.boolean()
+		.describe('This segment asked for missing information. Combine segments with OR.'),
+	tool_calls: z.number().int().describe('Total tool calls in this segment'),
+	turn_prompt_tokens: z
+		.number()
+		.int()
+		.optional()
+		.describe('Measured prompt tokens for this segment'),
+	turn_completion_tokens: z
+		.number()
+		.int()
+		.optional()
+		.describe('Measured completion tokens for this segment'),
+	turn_total_tokens: z.number().int().optional().describe('Measured total tokens for this segment'),
+	turn_cost_usd: z.number().optional().describe('Estimated segment cost from model prices'),
+	status: z
+		.enum(['completed', 'cancelled', 'errored', 'suspended'])
+		.describe('How this segment ended'),
+});
+
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
+	SETUP_PANEL_STATE_OBSERVED: {
+		name: 'AI Assistant setup panel state observed',
+		description:
+			'The setup panel observed a new requirement snapshot. Also fires when no setup is needed, including workflows whose credentials were already connected.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			credential_count: z.number(),
+			pending_credential_count: z.number(),
+			pending_parameter_count: z.number(),
+			already_connected_count: z.number(),
+		}),
+	},
+	SETUP_PANEL_ITEM_SHOWN: {
+		name: 'AI Assistant setup panel item shown',
+		description:
+			'A setup checklist row became visible. Reopening the same row within the mounted panel does not emit another event.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			kind: z.enum(['credential', 'parameters', 'details']),
+			credential_type: z.string().optional(),
+			parameter_count: z.number(),
+			items: z.array(z.object(setupItemProperties)).optional(),
+		}),
+	},
+	SETUP_PANEL_DISMISSED: {
+		name: 'AI Assistant setup panel dismissed',
+		description:
+			'A visible setup panel closed. The reason separates navigation and removed requirements from a finished execution or an explicit dismissal.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			reason: z.enum([
+				'navigation',
+				'items_removed',
+				'execution_succeeded',
+				'execution_finished',
+				'user_dismissed',
+			]),
+		}),
+	},
 	USER_CLICKED_AI_CREDIT_BALANCE: {
 		name: 'User clicked AI credit balance',
 		description:
-			'The user clicked the AI Assistant credit balance button to open or close the balance dropdown.',
+			'The user clicked the n8n Assistant credit balance button to open or close the balance dropdown.',
 		properties: z.object({}),
 	},
 	FREE_NUDGE_EXPOSED: {
@@ -50,7 +189,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'An eligible user reached the Instance AI empty state for the free-use nudge experiment, including the control variant.',
 		properties: z.object({
 			variant: freeNudgeVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
 		}),
 	},
@@ -59,7 +197,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user dismissed a visible Instance AI free-use nudge.',
 		properties: z.object({
 			variant: freeNudgeTreatmentVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/105_instance_ai_free_nudge': freeNudgeTreatmentVariant,
 		}),
 	},
@@ -67,11 +204,10 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	OPEN_BY_DEFAULT_NOTIFICATION_SHOWN: {
 		name: 'Open in assistant notification shown',
 		description:
-			'The open-by-default experiment notification rendered after a workflow list card auto-opened in the AI Assistant.',
+			'The open-by-default experiment notification rendered after a workflow list card auto-opened in the n8n Assistant.',
 		properties: z.object({
 			workflow_id: z.string().nullable(),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
@@ -81,17 +217,15 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			method: z.enum(['got_it', 'never_show_again', 'close', 'settings_link']),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {
 		name: 'Default editor preference changed',
-		description: 'The user saved the default-editor preference on the AI Assistant settings page.',
+		description: 'The user saved the default-editor preference on the n8n Assistant settings page.',
 		properties: z.object({
 			value: z.enum(['assistant', 'manual']),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
@@ -102,25 +236,49 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			workflow_id: z.string(),
 			thread_id: z.string().optional(),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
 	USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON: {
 		name: 'User clicked AI Assistant input plus button',
-		description: 'The user clicked the plus button in the AI Assistant input.',
+		description: 'The user clicked the plus button in the n8n Assistant input.',
 		properties: z.object({}),
 	},
+	// Experiment cleanup (119_surface_assistant_on_workflow_error)
+	USER_VIEWED_FIX_WITH_ASSISTANT_NUDGE: {
+		name: 'User viewed fix with Assistant nudge',
+		description:
+			'The Fix with Assistant button was shown inside a workflow error toast. Fires once for each toast that receives the button.',
+		properties: z.object({
+			variant: z.enum(['control', 'variant']),
+			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+		}),
+	},
+	USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT: {
+		name: 'User clicked fix with Assistant CTA on error toast',
+		description:
+			'The user clicked the Fix with Assistant button on a workflow error toast. assistant_enabled records whether n8n Assistant was enabled at click time. Enabled opens the Assistant. Disabled opens Assistant settings.',
+		properties: z.object({
+			assistant_enabled: z
+				.boolean()
+				.describe(
+					'Whether n8n Assistant was enabled. True opens the Assistant. False opens Assistant settings.',
+				),
+			variant: z.enum(['control', 'variant']),
+			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+		}),
+	},
+	// EOF Experiment cleanup
 	TOOLS_LIST_OPENED: {
 		name: 'Instance AI tools list opened',
-		description: 'The user opened the AI Assistant tools connection modal.',
+		description: 'The user opened the n8n Assistant tools connection modal.',
 		properties: z.object({
 			source: z.enum(['input_menu', 'mcp_connect_card']),
 		}),
 	},
 	MCP_SETTINGS_OPENED: {
 		name: 'Instance AI mcp settings opened',
-		description: 'The user opened settings for an MCP connection in the AI Assistant.',
+		description: 'The user opened settings for an MCP connection in the n8n Assistant.',
 		properties: z.object({
 			server_slug: z.string(),
 			source: z.enum(['input_menu', 'mcp_connect_card']),
@@ -146,12 +304,15 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user started connecting a new credential for an MCP server.',
 		properties: z.object({ server_slug: z.string() }),
 	},
-	MCP_TOOL_FILTER_SETTINGS_UPDATED: {
-		name: 'Instance AI mcp tool filter settings updated',
-		description: 'The user updated which tools are enabled for an MCP server.',
+	MCP_TOOL_PERMISSIONS_UPDATED: {
+		name: 'User updated Instance AI MCP tool permissions',
+		description:
+			'The user saved changed read, write, or tool-specific permissions for an MCP server.',
 		properties: z.object({
 			server_slug: z.string(),
-			inclusion_mode: z.enum(['all', 'selected', 'except']),
+			read_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			write_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			tool_override_count: z.number().int().nonnegative(),
 		}),
 	},
 	BROWSER_USE_MODAL_OPENED: {
@@ -175,8 +336,34 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	BROWSER_USE_DIRECT_CONNECT_REQUESTED: {
 		name: 'Instance AI Browser Use direct connect requested',
 		description:
-			'The AI Assistant requested a direct connection through the Browser Use extension.',
+			'The n8n Assistant requested a direct connection through the Browser Use extension.',
 		properties: z.object({}),
+	},
+	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
+		name: 'User received AI Assistant response',
+		description:
+			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample. Repeats the mention and attachment counts of the message that started the run, so outcome cuts by context need no join back to "User sent builder message".',
+		properties: z.object({
+			instance_id: z.string(),
+			thread_id: z.string(),
+			run_id: z.string().describe('Run ID returned for the user-submitted message'),
+			...mentionContextProperties,
+			latency_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds from submit intent until the initial foreground reply is rendered'),
+			is_first_user_message: z
+				.boolean()
+				.describe("Whether this was the thread's first user message"),
+			response_kind: z
+				.enum(['completed', 'awaiting_input'])
+				.describe('Whether the response completed the run or rendered an input request'),
+			action_source: threadActionSource,
+			tab_visible: z
+				.boolean()
+				.describe('Whether the document was visible when the response rendered'),
+		}),
 	},
 	COMPUTER_USE_MODAL_OPENED: {
 		name: 'User opened computer use connection modal',
@@ -226,7 +413,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_AI_ASSISTANT_SETUP_PAGE: {
 		name: 'User viewed AI Assistant setup page',
 		description:
-			'The user landed on a self-hosted AI Assistant setup surface: the onboarding takeover on /assistant, or the settings page on /settings/assistant. Carries the configuration snapshot at view time, so joined with "AI Assistant setup completed" it measures setup drop-off. Not emitted on cloud or proxy deployments, where setup is managed.',
+			'The user landed on a self-hosted n8n Assistant setup surface: the onboarding takeover on /assistant, or the settings page on /settings/assistant. Carries the configuration snapshot at view time, so joined with "AI Assistant setup completed" it measures setup drop-off. Not emitted on cloud or proxy deployments, where setup is managed.',
 		properties: z.object({
 			page: z
 				.enum(['onboarding', 'settings'])
@@ -237,7 +424,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_MODEL: {
 		name: 'User configured AI Assistant model',
 		description:
-			'An admin saved an AI Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
+			'An admin saved an n8n Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
 		properties: z.object({
 			provider: z
 				.string()
@@ -255,7 +442,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_SANDBOX: {
 		name: 'User configured AI Assistant sandbox',
 		description:
-			'An admin saved an AI Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
+			'An admin saved an n8n Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
 		properties: z.object({
 			sandbox_type: z.enum(['n8n-sandbox', 'daytona']),
 			previous_sandbox_type: z
@@ -269,7 +456,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_WEB_SEARCH: {
 		name: 'User configured AI Assistant web search',
 		description:
-			'An admin saved an AI Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
+			'An admin saved an n8n Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
 		properties: z.object({
 			provider: z.enum(['brave', 'searxng']),
 			previous_provider: z
@@ -314,7 +501,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_SETUP_COMPLETED: {
 		name: 'AI Assistant setup completed',
 		description:
-			'A self-hosted instance reached a complete AI Assistant setup for the first time: model configured, sandbox configured, and web search decided (configured or explicitly disabled) — the same predicate that unlocks the assistant UI. Fires at most once per instance, guarded by a persisted settings key, regardless of how the last piece was set: emitted from the settings save path, with a boot-time check so an env-var finish is also counted. No "User" prefix because the last piece can land via env vars with no acting user.',
+			'A self-hosted instance reached a complete n8n Assistant setup for the first time: model configured, sandbox configured, and web search decided (configured or explicitly disabled) — the same predicate that unlocks the assistant UI. Fires at most once per instance, guarded by a persisted settings key, regardless of how the last piece was set: emitted from the settings save path, with a boot-time check so an env-var finish is also counted. No "User" prefix because the last piece can land via env vars with no acting user.',
 		properties: z.object({ ...setupSnapshotProps }),
 	},
 	USER_ADDED_NODES_TO_CHAT: {
@@ -335,5 +522,268 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
 		}),
+	},
+	USER_OPENED_AI_ASSISTANT_MENTION_PICKER: {
+		name: 'User opened AI Assistant mention picker',
+		description:
+			'The user opened the n8n Assistant mention picker by typing an at sign or selecting the composer button. Every open ends in exactly one "User selected AI Assistant mention" or one "User dismissed AI Assistant mention picker", so the two together give the pick rate per open.',
+		properties: z.object({
+			thread_id: assistantMentionThreadId,
+			source: assistantMentionTriggerSource,
+		}),
+	},
+	USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER: {
+		name: 'User dismissed AI Assistant mention picker',
+		description:
+			'The n8n Assistant mention picker closed without a selection. The list properties describe what was on screen at that moment: a search with result_count 0 is a resource the user could not find, a non-zero ambiguous_result_count is a list the user could not tell apart. Carries interaction metadata but no query text or resource names; the query text of an empty search is on "User searched AI Assistant mentions without results".',
+		properties: z.object({
+			thread_id: assistantMentionThreadId,
+			source: assistantMentionTriggerSource,
+			reason: z
+				.enum(['closed_menu', 'deleted_trigger', 'moved_caret', 'unavailable'])
+				.describe(
+					"How the picker closed. 'closed_menu' is Escape, a click outside or focus loss; 'deleted_trigger' is the typed at sign removed; 'moved_caret' is the caret leaving the mention; 'unavailable' is mentions turning off while open, e.g. a send starting",
+				),
+			mode: z.enum(['browse', 'search']).describe('Whether a filter query was present at close'),
+			query_length: z.number().int().nonnegative(),
+			result_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe(
+					'Rows the user could pick at the top level when the picker closed. Headers, loading and error rows excluded; sub-menu children not counted',
+				),
+			ambiguous_result_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Rows whose visible label matched at least one other row in the list'),
+			submenu_open_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('How many times the user opened a workflow or group sub-menu during this open'),
+		}),
+	},
+	USER_SEARCHED_AI_ASSISTANT_MENTIONS_WITHOUT_RESULTS: {
+		name: 'User searched AI Assistant mentions without results',
+		description:
+			'The n8n Assistant mention picker showed its empty state for a search query the user let settle for about a second, or closed the picker on. Fires once per distinct settled query within one picker open, so typing straight through a prefix chain like "S", "Sl", "Slack" reports "Slack" once. The one mention event that carries the query text, to learn what users try to mention and cannot.',
+		properties: z.object({
+			thread_id: assistantMentionThreadId,
+			source: assistantMentionTriggerSource,
+			query: z
+				.string()
+				.describe(
+					'The search text as typed, trimmed, with secrets and PII redacted and cut to 100 characters',
+				),
+			query_length: z.number().int().nonnegative().describe('Length of the full, uncut query'),
+			matched_node_type: z
+				.string()
+				.nullable()
+				.describe(
+					'Node type whose display name equals the query, e.g. n8n-nodes-base.slack for "slack"; null otherwise. A match means the user was likely reaching for a service or node type rather than a node they had named',
+				),
+			artifact_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe(
+					'Workflow tabs open in the thread at the time. Nodes and groups are only searchable inside these, so 0 means no node search could have matched',
+				),
+		}),
+	},
+	USER_SELECTED_AI_ASSISTANT_MENTION: {
+		name: 'User selected AI Assistant mention',
+		description:
+			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. A pick of a mention that is already staged also counts, so every open ends in this event or in "User dismissed AI Assistant mention picker". The event contains interaction metadata but no resource names or IDs.',
+		properties: z.object({
+			thread_id: assistantMentionThreadId,
+			kind: assistantMentionKind,
+			mode: z.enum(['browse', 'search']),
+			source: z.enum(['artifacts', 'workflows']),
+			result_position: z
+				.number()
+				.int()
+				.positive()
+				.describe('One-based position in the current search list, browse section, or submenu'),
+			query_length: z.number().int().nonnegative(),
+			already_artifact: z.boolean(),
+			artifact_origin: z
+				.enum(['built', 'fetched', 'attached', 'mentioned'])
+				.nullable()
+				.describe(
+					"How the mentioned workflow first became a tab in the thread, or null when already_artifact is false. 'built' is the assistant creating or editing it, 'fetched' is the assistant reading it in a lookup that opens a tab (even if it edits it later), 'attached' is a message or the editor hand-off attaching it, 'mentioned' is an earlier pick in this picker. Known for the current session only: after a reload an earlier mention reads as 'attached', because both reach the thread as a workflow attachment. A node or group pick with 'mentioned' is the two-step journey",
+				),
+		}),
+	},
+	USER_REMOVED_AI_ASSISTANT_MENTION: {
+		name: 'User removed AI Assistant mention',
+		description:
+			'The user removed workflow, node, or canvas group context that they added through the n8n Assistant mention picker.',
+		properties: z.object({
+			thread_id: assistantMentionThreadId,
+			kind: assistantMentionKind,
+		}),
+	},
+	USER_SENT_BUILDER_MESSAGE: {
+		name: 'User sent builder message',
+		description:
+			'The user sent a message to the n8n Assistant. Fires once per message on the optimistic send, before the request is admitted, so a refused send still counts as an attempt. Carries who wrote the text: a pre-fill is an opener n8n composed (a failed execution, a credential modal, a template card, a suggestion chip) that the user accepted or edited, so pre-fill share must be read from prefill_type rather than matched against the message body.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string().optional(),
+			pending_credential_count: z.number().optional(),
+			pending_parameter_count: z.number().optional(),
+			thread_id: z.string(),
+			instance_id: z.string(),
+			is_first_message: z
+				.boolean()
+				.describe('Whether this is the first user message in the thread'),
+			action_source: threadActionSource.describe(
+				"The thread's entry point, read back from thread metadata. 'unknown' covers threads created before source was required.",
+			),
+			prefill_type: prefillType
+				.nullable()
+				.describe(
+					"Which pre-fill surface composed the text. Null when the user typed it. 'unknown' is a read-path fallback for a pre-fill a previous deploy stashed in the browser, so a non-trivial share of it is a bug, not a category.",
+				),
+			prefill_id: z
+				.string()
+				.nullable()
+				.describe(
+					'Catalog entry id for pre-fill types that have sub-items, e.g. a suggestion id. Null otherwise.',
+				),
+			prompt_modified: z
+				.boolean()
+				.nullable()
+				.describe(
+					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
+				),
+			...mentionContextProperties,
+		}),
+	},
+	BUILDER_LISTED_WORKFLOWS: {
+		name: 'Builder listed workflows',
+		description:
+			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string().optional(),
+			folder_exploration_enabled: z
+				.boolean()
+				.describe('Whether the run had the folder-exploration flag on'),
+			folder_scope: z
+				.enum(['none', 'path', 'id'])
+				.describe('How the caller addressed a folder, if at all'),
+			recursive: z.boolean().optional().describe('Only when a folder was addressed'),
+			folder_resolution: z
+				.enum(['resolved', 'not_found', 'ambiguous', 'unsupported', 'scope_too_wide'])
+				.optional()
+				.describe('Only when a folder was addressed'),
+			candidate_count: z
+				.number()
+				.int()
+				.optional()
+				.describe('Folders offered back on an unresolved request'),
+			scope: z.enum(['project', 'instance']),
+			has_query: z.boolean().describe('Whether a name filter was also passed'),
+			result_count: z.number().int().describe('Rows returned on this page'),
+			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
+		}),
+	},
+	USER_STARTED_AI_ASSISTANT_ONBOARDING: {
+		name: 'User started AI Assistant onboarding',
+		description:
+			'An onboarding thread was created: the user arrived from the n8n Cloud signup survey (/assistant?source=onboarding) or opened the onboarding by hand. Fires once per thread, from the backend, when the seeded greeting and question card are stored.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			team: z
+				.string()
+				.nullable()
+				.describe(
+					'The signup survey answer to "What team are you on?". Null when the survey did not answer it, so the card asks',
+				),
+			team_source: z
+				.enum(['cloud', 'url'])
+				.nullable()
+				.describe(
+					'Where the team answer came from: the n8n Cloud account, or the `?team=` query of a test run. Null when there is no team',
+				),
+		}),
+	},
+	USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD: {
+		name: 'User answered AI Assistant onboarding card',
+		description:
+			'The user settled the question card an onboarding thread opens with. Fires once per thread, from the backend, when the answers are stored. Carries the picked apps and the free text as typed.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			team: z
+				.string()
+				.nullable()
+				.describe('From the signup survey or the card. Null when the card step was skipped'),
+			team_source: z
+				.enum(['cloud', 'url', 'card'])
+				.nullable()
+				.describe(
+					'Where the team came from: the n8n Cloud account, the `?team=` query of a test run, or the card. Null when the card step was skipped',
+				),
+			apps: z.array(z.string()).describe('Apps picked in the card, by their shown names'),
+			custom_text: z
+				.string()
+				.nullable()
+				.describe('Free text typed in the card, which starts the first model turn'),
+		}),
+	},
+	AI_ASSISTANT_ONBOARDING_ENDED: {
+		name: 'AI Assistant onboarding ended',
+		description:
+			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, or when a run fails.',
+		properties: z.object({
+			thread_id: z.string(),
+			instance_id: z.string(),
+			outcome: z
+				.enum(['build', 'left', 'run_failed'])
+				.describe(
+					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted',
+				),
+			leave_reason: z
+				.string()
+				.nullable()
+				.describe(
+					"The reason the agent gave on `leave-onboarding`: 'stop', 'explore' or 'unrelated_request'. Null for the other outcomes, or when the agent gave none",
+				),
+		}),
+	},
+	INSTANCE_CONTEXT_TURN: {
+		name: 'Instance AI instance-context turn completed',
+		description:
+			'One context result per turn segment, including turns without a block. Group by run_id. Count distinct runs, sum segment tokens, and count a question if any segment asked one.',
+		properties: z.discriminatedUnion('block_state', [
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('absent'),
+					absence_reason: z
+						.enum(instanceContextAbsenceReasonSchema.options)
+						.describe('Why this turn received no block'),
+				})
+				.strict(),
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('injected'),
+					block_is_update: z.boolean().describe('The block adds to an earlier window'),
+					block_inventory_rows: z.number().int(),
+					block_event_rows: z.number().int(),
+					block_run_rows: z.number().int(),
+					block_chars: z.number().int().describe('Exact rendered block length'),
+					block_tokens_estimated: z
+						.number()
+						.int()
+						.describe('Block token estimate at four characters per token'),
+				})
+				.strict(),
+		]),
 	},
 });

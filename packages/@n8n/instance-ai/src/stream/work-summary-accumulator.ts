@@ -1,11 +1,17 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
+
 // ── Schema (source of truth) ────────────────────────────────────────────────
 
 export const toolCallSummarySchema = z.object({
 	toolCallId: z.string(),
 	toolName: z.string(),
+	/** The tool name alone does not identify the read surface. */
+	action: z.string().optional(),
+	/** Track workflow index reads without storing the requested node types. */
+	filteredByNodeTypes: z.literal(true).optional(),
 	succeeded: z.boolean(),
 	configMutated: z.literal(true).optional(),
 	errorSummary: z.string().optional(),
@@ -15,6 +21,8 @@ export const workSummarySchema = z.object({
 	toolCalls: z.array(toolCallSummarySchema),
 	totalToolCalls: z.number().int().min(0),
 	totalToolErrors: z.number().int().min(0),
+	/** Count requests for missing information, not approval requests. */
+	askedClarifyingQuestion: z.boolean(),
 });
 
 export type ToolCallSummary = z.infer<typeof toolCallSummarySchema>;
@@ -42,16 +50,25 @@ function hasConfigMutationMarker(result: unknown): boolean {
 export class WorkSummaryAccumulator {
 	private readonly calls = new Map<string, ToolCallSummary>();
 
-	/** Feed an event from the stream. Only tool-call / tool-result / tool-error
-	 *  events are processed; all others are silently ignored. */
+	private askedClarifyingQuestion = false;
+
+	/** Feed an event from the stream. Only tool-call / tool-result / tool-error and
+	 *  confirmation-request events are processed; all others are silently ignored. */
 	observe(event: InstanceAiEvent): void {
 		switch (event.type) {
 			case 'tool-call': {
-				const { toolCallId, toolName } = event.payload;
+				const { toolCallId, toolName, args } = event.payload;
 				if (!toolCallId) break;
+				const action = typeof args?.action === 'string' ? args.action : undefined;
+				const filteredByNodeTypes =
+					toolName === DOMAIN_TOOL_IDS.WORKFLOWS &&
+					Array.isArray(args?.nodeTypes) &&
+					args.nodeTypes.length > 0;
 				this.calls.set(toolCallId, {
 					toolCallId,
 					toolName,
+					...(action !== undefined ? { action } : {}),
+					...(filteredByNodeTypes ? { filteredByNodeTypes: true as const } : {}),
 					succeeded: true, // optimistic — flipped on error
 				});
 				break;
@@ -80,8 +97,16 @@ export class WorkSummaryAccumulator {
 				}
 				break;
 			}
+			case 'confirmation-request': {
+				// These input types ask for information. Other types ask for a decision.
+				const { inputType } = event.payload;
+				if (inputType === 'questions' || inputType === 'text') {
+					this.askedClarifyingQuestion = true;
+				}
+				break;
+			}
 			default:
-				// Ignore text-delta, reasoning-delta, confirmation-request, error, etc.
+				// Ignore text-delta, reasoning-delta, error, etc.
 				break;
 		}
 	}
@@ -93,6 +118,7 @@ export class WorkSummaryAccumulator {
 			toolCalls,
 			totalToolCalls: toolCalls.length,
 			totalToolErrors: toolCalls.filter((c) => !c.succeeded).length,
+			askedClarifyingQuestion: this.askedClarifyingQuestion,
 		};
 	}
 }

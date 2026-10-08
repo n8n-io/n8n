@@ -90,7 +90,7 @@ function makeRequest(): InstanceAiCredentialRequest[] {
 	];
 }
 
-describe('InstanceAiCredentialSetup - n8n credits with NodeCredentials', () => {
+describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
@@ -152,5 +152,112 @@ describe('InstanceAiCredentialSetup - n8n credits with NodeCredentials', () => {
 			kind: 'credentialSelection',
 			credentials: { openAiApi: AI_GATEWAY_MANAGED_TAG },
 		});
+	});
+
+	// The picker renders from the payload before the setup fetch has
+	// filled the store (or after it failed). Picking a row must resolve the
+	// credential from the rows shown, not from a store that does not hold it.
+	it('lets the user pick a payload credential the store has not loaded', async () => {
+		const credentialsStore = useCredentialsStore();
+		credentialsStore.state.credentials = {};
+		Object.defineProperty(credentialsStore, 'getCredentialById', {
+			configurable: true,
+			get: () => () => undefined,
+		});
+		Object.defineProperty(credentialsStore, 'getUsableCredentialByType', {
+			configurable: true,
+			get: () => () => [],
+		});
+		Object.defineProperty(credentialsStore, 'allUsableCredentialsByType', {
+			configurable: true,
+			get: () => ({}),
+		});
+		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+		renderComponent({
+			props: {
+				requestId: 'req-1',
+				credentialRequests: makeRequest(),
+				message: 'Set up credentials',
+				requireUserSelection: true,
+			},
+		});
+
+		const select = screen.getByTestId('node-credentials-select');
+		// Real credentials are listed, so the empty-slice path must not have
+		// auto-enabled n8n credits behind the user's back.
+		expect(select.querySelector('[data-icon="wallet"]')).toBeNull();
+
+		await userEvent.click(select);
+		await userEvent.click(await screen.findByTestId('node-credentials-select-item-cred-1'));
+		await userEvent.click(screen.getByTestId('instance-ai-credential-continue-button'));
+
+		expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			kind: 'credentialSelection',
+			credentials: { openAiApi: 'cred-1' },
+		});
+	});
+
+	it('auto-selects from the payload before the usable slice has been fetched', async () => {
+		const credentialsStore = useCredentialsStore();
+		Object.defineProperty(credentialsStore, 'hasFetchedUsableCredentials', {
+			configurable: true,
+			get: () => false,
+		});
+		Object.defineProperty(credentialsStore, 'allUsableCredentialsByType', {
+			configurable: true,
+			get: () => ({}),
+		});
+
+		renderComponent({
+			props: {
+				requestId: 'req-1',
+				credentialRequests: [
+					{
+						credentialType: 'openAiApi',
+						reason: 'Enter a valid OpenAI API key',
+						existingCredentials: [
+							{ id: 'cred-1', name: 'OpenAI account' },
+							{ id: 'cred-2', name: 'OpenAI account 2' },
+						],
+					},
+				],
+				message: 'Set up credentials',
+				requireUserSelection: true,
+			},
+		});
+
+		// The payload is the whole list; waiting for the slice fetch would leave a
+		// multi-credential card unselected until unrelated store activity re-fired.
+		await vi.waitFor(() => {
+			expect(screen.getByTestId('instance-ai-credential-step-check')).toBeTruthy();
+		});
+		expect(
+			screen.getByTestId('node-credentials-select').querySelector('[data-icon="wallet"]'),
+		).toBeNull();
+	});
+
+	it('falls back to the store slice when the payload lists no credentials', async () => {
+		renderComponent({
+			props: {
+				requestId: 'req-1',
+				credentialRequests: [
+					{
+						credentialType: 'openAiApi',
+						reason: 'Enter a valid OpenAI API key',
+						existingCredentials: [],
+					},
+				],
+				message: 'Set up credentials',
+				requireUserSelection: true,
+			},
+		});
+
+		// The card gated on the slice, so the picker must read the slice too —
+		// an empty override would render NodeCredentials' empty state instead.
+		expect(screen.queryByTestId('node-credentials-empty-state')).toBeNull();
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+		expect(await screen.findByTestId('node-credentials-select-item-cred-1')).toBeTruthy();
+		expect(screen.getByTestId('node-credentials-select-item-cred-2')).toBeTruthy();
 	});
 });

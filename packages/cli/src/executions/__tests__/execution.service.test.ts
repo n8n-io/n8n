@@ -1,4 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -12,30 +13,28 @@ import type {
 	User,
 	WorkflowHistoryRepository,
 } from '@n8n/db';
-import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
 import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
+import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -57,6 +56,7 @@ describe('ExecutionService', () => {
 	const ownershipService = mock<OwnershipService>();
 	const eventService = mock<EventService>();
 	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
+	const engineDataPlane = mock<EngineDataPlaneProxyService>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -73,13 +73,12 @@ describe('ExecutionService', () => {
 		mock(),
 		concurrencyControl,
 		mock(),
-		mock(),
-		mock(),
 		eventService,
 		executionRedactionServiceProxy,
 		executionStopService,
 		ownershipService,
 		engineV2ExecutionReader,
+		engineDataPlane,
 	);
 
 	beforeEach(() => {
@@ -169,7 +168,7 @@ describe('ExecutionService', () => {
 			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
 		});
 
-		it('should read an engine 2.0 id from the data plane, not the control plane', async () => {
+		it('should read an engine v2 id from the data plane, not the control plane', async () => {
 			const execution = mock<IExecutionResponse>({
 				id: V2_EXECUTION_ID,
 				data: { resultData: {} },
@@ -255,11 +254,10 @@ describe('ExecutionService', () => {
 				concurrencyControl,
 				mock(),
 				mock(),
-				mock(),
-				mock(),
 				localExecutionRedactionProxy,
 				executionStopService,
 				ownershipService,
+				mock(),
 				mock(),
 			);
 
@@ -339,11 +337,10 @@ describe('ExecutionService', () => {
 				concurrencyControl,
 				mock(),
 				mock(),
-				mock(),
-				mock(),
 				redactionProxy,
 				mock(),
 				ownershipService,
+				mock(),
 				mock(),
 			);
 
@@ -575,6 +572,147 @@ describe('ExecutionService', () => {
 			await expect(stop).rejects.toThrowError(WorkflowOperationError);
 		});
 
+		describe.each(['regular', 'queue'] as const)('stop races in %s mode', (mode) => {
+			it.each(['success', 'error', 'canceled'] as const)(
+				'keeps a %s outcome that wins after the initial read',
+				async (status) => {
+					globalConfig.executions.mode = mode;
+					const execution = mock<IExecutionResponse>({
+						id: '123',
+						workflowId: 'workflow-1',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData
+						.mockResolvedValueOnce(execution)
+						.mockResolvedValue({ ...execution, status });
+					executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+					concurrencyControl.has.mockReturnValue(false);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+
+					const stop = executionService.stop(execution.id, ['workflow-1']);
+					if (status === 'canceled') {
+						await expect(stop).resolves.toMatchObject({ status });
+					} else {
+						await expect(stop).rejects.toThrow(`currently ${status}`);
+					}
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledExactlyOnceWith(
+						execution.id,
+						execution,
+						{ requireStatus: 'running' },
+					);
+				},
+			);
+
+			it('cancels an execution that resumes during the stop', async () => {
+				globalConfig.executions.mode = mode;
+				const execution = mock<IExecutionResponse>({
+					id: '123',
+					workflowId: 'workflow-1',
+					status: 'waiting',
+					data: { resultData: {} },
+				});
+				executionPersistence.findWithUnflattenedData
+					.mockResolvedValueOnce(execution)
+					.mockResolvedValue({ ...execution, status: 'running' });
+				executionPersistence.updateExistingExecution
+					.mockResolvedValueOnce(false)
+					.mockResolvedValue(true);
+				concurrencyControl.has.mockReturnValue(false);
+				activeExecutions.has.mockReturnValue(false);
+				waitTracker.has.mockReturnValue(false);
+
+				await expect(executionService.stop(execution.id, ['workflow-1'])).resolves.toMatchObject({
+					status: 'canceled',
+				});
+				expect(executionPersistence.updateExistingExecution).toHaveBeenNthCalledWith(
+					1,
+					execution.id,
+					expect.objectContaining({ status: 'canceled' }),
+					{ requireStatus: 'waiting' },
+				);
+				expect(executionPersistence.updateExistingExecution).toHaveBeenNthCalledWith(
+					2,
+					execution.id,
+					expect.objectContaining({ status: 'canceled' }),
+					{ requireStatus: 'running' },
+				);
+			});
+		});
+
+		describe('engine v2', () => {
+			const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+			const startedAt = new Date('2026-09-28T10:00:00.000Z');
+			// A plain object: `mock()` would wrap the date in a proxy.
+			const running = {
+				id: executionId,
+				status: 'running',
+				mode: 'manual',
+				startedAt,
+			} as IExecutionResponse;
+
+			it('cancels a running execution through the engine', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(running);
+				const finishedAt = new Date('2026-09-28T10:00:05.000Z');
+				engineDataPlane.cancelExecution.mockResolvedValue({ cancelled: true, finishedAt });
+
+				const result = await executionService.stop(executionId, ['wf-1']);
+
+				expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(executionId, ['wf-1']);
+				expect(engineDataPlane.cancelExecution).toHaveBeenCalledWith(executionId);
+				expect(result).toEqual({
+					mode: 'manual',
+					startedAt,
+					stoppedAt: finishedAt,
+					finished: false,
+					status: 'canceled',
+				});
+				expect(executionPersistence.findWithUnflattenedData).not.toHaveBeenCalled();
+			});
+
+			it('throws when the execution is absent or not visible to the caller', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(undefined);
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					MissingExecutionStopError,
+				);
+				expect(engineDataPlane.cancelExecution).not.toHaveBeenCalled();
+			});
+
+			it('throws when the execution has already ended', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(
+					mock<IExecutionResponse>({ id: executionId, status: 'success' }),
+				);
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					WorkflowOperationError,
+				);
+				expect(engineDataPlane.cancelExecution).not.toHaveBeenCalled();
+			});
+
+			it('throws when the engine reports the execution ended meanwhile', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(running);
+				engineDataPlane.cancelExecution.mockResolvedValue({
+					cancelled: false,
+					status: 'completed',
+				});
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					WorkflowOperationError,
+				);
+			});
+
+			it('throws when the engine no longer has the execution', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(running);
+				engineDataPlane.cancelExecution.mockResolvedValue(undefined);
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					MissingExecutionStopError,
+				);
+			});
+		});
+
 		describe('regular mode', () => {
 			it('should stop a `running` execution in regular mode', async () => {
 				/**
@@ -610,6 +748,7 @@ describe('ExecutionService', () => {
 				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					execution.id,
 					execution,
+					{ requireStatus: 'running' },
 				);
 			});
 
@@ -647,6 +786,7 @@ describe('ExecutionService', () => {
 				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					execution.id,
 					execution,
+					{ requireStatus: 'waiting' },
 				);
 			});
 
@@ -703,7 +843,6 @@ describe('ExecutionService', () => {
 					const job = mock<Job>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
-					// @ts-expect-error Private method
 					const stopInRegularModeSpy = vi.spyOn(executionService, 'stopInRegularMode');
 
 					/**
@@ -722,6 +861,7 @@ describe('ExecutionService', () => {
 					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 						execution.id,
 						execution,
+						{ requireStatus: 'running' },
 					);
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();
@@ -824,6 +964,7 @@ describe('ExecutionService', () => {
 					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 						execution.id,
 						execution,
+						{ requireStatus: 'running' },
 					);
 				});
 			});
@@ -871,31 +1012,26 @@ describe('ExecutionService', () => {
 			const result = await executionService.getExecutedVersions(workflowId);
 
 			expect(result).toEqual([]);
-			expect(workflowHistoryRepository.find).not.toHaveBeenCalled();
+			expect(workflowHistoryRepository.findVersionSummaries).not.toHaveBeenCalled();
 		});
 
 		it('should return versions with metadata from workflow history', async () => {
 			const versionIds = ['v1', 'v2'];
 			executionRepository.getDistinctVersionIds.mockResolvedValue(versionIds);
 
-			const historyVersions = [
-				mock<WorkflowHistory>({ versionId: 'v2', name: null, createdAt: new Date('2025-01-02') }),
-				mock<WorkflowHistory>({
-					versionId: 'v1',
-					name: 'Release 1',
-					createdAt: new Date('2025-01-01'),
-				}),
+			const historySummaries = [
+				{ versionId: 'v2', name: null, createdAt: new Date('2025-01-02') },
+				{ versionId: 'v1', name: 'Release 1', createdAt: new Date('2025-01-01') },
 			];
-			workflowHistoryRepository.find.mockResolvedValue(historyVersions);
+			workflowHistoryRepository.findVersionSummaries.mockResolvedValue(historySummaries);
 
 			const result = await executionService.getExecutedVersions(workflowId);
 
 			expect(executionRepository.getDistinctVersionIds).toHaveBeenCalledWith(workflowId);
-			expect(workflowHistoryRepository.find).toHaveBeenCalledWith({
-				where: { workflowId, versionId: expect.anything() },
-				select: ['versionId', 'name', 'createdAt'],
-				order: { createdAt: 'DESC' },
-			});
+			expect(workflowHistoryRepository.findVersionSummaries).toHaveBeenCalledWith(
+				workflowId,
+				versionIds,
+			);
 			expect(result).toHaveLength(2);
 			expect(result[0].versionId).toBe('v2');
 			expect(result[0].name).toBeNull();
@@ -905,7 +1041,7 @@ describe('ExecutionService', () => {
 
 		it('should return empty array when version IDs have no matching history', async () => {
 			executionRepository.getDistinctVersionIds.mockResolvedValue(['orphan-v1']);
-			workflowHistoryRepository.find.mockResolvedValue([]);
+			workflowHistoryRepository.findVersionSummaries.mockResolvedValue([]);
 
 			const result = await executionService.getExecutedVersions(workflowId);
 
@@ -1113,16 +1249,37 @@ describe('ExecutionService', () => {
 			]);
 		});
 
-		it('should map QueryFailedError to NotFoundError for missing tags', async () => {
+		it('should map a foreign-key-constraint violation to NotFoundError for missing tags', async () => {
 			executionPersistence.findOneInWorkflows.mockResolvedValue(mock<IExecutionBase>({ id: '1' }));
 			executionAnnotationRepository.findOneOrFail.mockResolvedValue({ id: 42 } as never);
 			annotationTagMappingRepository.overwriteTags.mockRejectedValue(
-				new QueryFailedError('INSERT', [], new Error('FK')),
+				new QueryFailedError(
+					'INSERT',
+					[],
+					Object.assign(new Error('FOREIGN KEY constraint failed'), {
+						code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
+					}),
+				),
 			);
 
 			await expect(
 				executionService.updateExecutionTags('1', ['missing'], ['wf-1']),
 			).rejects.toThrow('Some tags not found');
+		});
+
+		it('should let a non-foreign-key QueryFailedError propagate instead of mapping it to a 404', async () => {
+			executionPersistence.findOneInWorkflows.mockResolvedValue(mock<IExecutionBase>({ id: '1' }));
+			executionAnnotationRepository.findOneOrFail.mockResolvedValue({ id: 42 } as never);
+			const dbError = new QueryFailedError(
+				'INSERT',
+				[],
+				Object.assign(new Error('Connection timeout after 30000ms'), {}),
+			);
+			annotationTagMappingRepository.overwriteTags.mockRejectedValue(dbError);
+
+			await expect(executionService.updateExecutionTags('1', ['tag-1'], ['wf-1'])).rejects.toThrow(
+				dbError,
+			);
 		});
 	});
 });

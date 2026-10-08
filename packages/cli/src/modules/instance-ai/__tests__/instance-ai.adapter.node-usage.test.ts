@@ -1,15 +1,8 @@
 // The barrel is mocked so this file exercises the adapter's own wiring rather than pulling the
 // whole instance-ai package in behind it, matching the other adapter tests.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
-	);
-	const { WorkflowNotFoundError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
-	);
-	const { WorkflowEditorLockedError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
-	);
+	const { WorkflowSaveConflictError, WorkflowNotFoundError, WorkflowEditorLockedError } =
+		await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
@@ -36,6 +29,12 @@ vi.mock('@n8n/ai-utilities', () => ({
 import type { Logger } from '@n8n/backend-common';
 import { INSTANCE_AI_NODE_USAGE_FLAG } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
+import {
+	type EventService,
+	type RoleService,
+	type CredentialsFinderService,
+	type InstanceWriteAccessService,
+} from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -52,9 +51,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -67,10 +64,9 @@ import { PostHogClient } from '@/posthog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FolderService } from '@/services/folder.service';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+
 import type { TagService } from '@/services/tag.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -147,34 +143,29 @@ beforeEach(() => {
 });
 
 describe('InstanceAiAdapterService node usage', () => {
-	describe('isNodeUsageEnabled()', () => {
-		const gateFor = async (flags: Record<string, unknown> | Error) => {
+	describe('resolveExperimentGates().nodeUsageEnabled', () => {
+		// `PostHogClient.getFeatureFlags` already swallows PostHog errors and returns `{}`
+		// plus env overrides, so the adapter only has to read the resolved flag.
+		const gateFor = async (flags: Record<string, unknown>) => {
 			const postHogClient = mock<PostHogClient>();
-			if (flags instanceof Error) {
-				postHogClient.getFeatureFlags.mockRejectedValue(flags);
-			} else {
-				postHogClient.getFeatureFlags.mockResolvedValue(flags as never);
-			}
+			postHogClient.getFeatureFlags.mockResolvedValue(flags as never);
 			vi.spyOn(Container, 'get').mockImplementation(((token: unknown) =>
 				token === PostHogClient ? postHogClient : mock<ExecutionPersistence>()) as never);
-			return await buildAdapter({}).isNodeUsageEnabled(user);
+			const gates = await buildAdapter({}).resolveExperimentGates(user);
+			return gates.nodeUsageEnabled;
 		};
 
 		it('is on for a user in the rollout', async () => {
 			expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: true })).toBe(true);
 		});
 
+		// A flag-plane outage resolves to `{}`, so this case also covers fail-closed.
 		it('is off when the flag is absent', async () => {
 			expect(await gateFor({})).toBe(false);
 		});
 
 		it('is off when the flag is explicitly false', async () => {
 			expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: false })).toBe(false);
-		});
-
-		// A flag-plane outage must not switch a context surface on by accident.
-		it('fails closed when PostHog is unreachable', async () => {
-			expect(await gateFor(new Error('PostHog unreachable'))).toBe(false);
 		});
 	});
 

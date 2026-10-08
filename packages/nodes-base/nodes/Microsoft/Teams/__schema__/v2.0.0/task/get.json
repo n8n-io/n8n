@@ -1,0 +1,127 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"@odata.etag": {
+			"type": "string"
+		},
+		"activeChecklistItemCount": {
+			"type": "number"
+		},
+		"appliedCategories": {
+			"properties": {},
+			"type": "object"
+		},
+		"assigneePriority": {
+			"type": "string"
+		},
+		"assignments": {
+			"additionalProperties": {
+				"properties": {
+					"@odata.type": {
+						"type": "string"
+					},
+					"assignedBy": {
+						"properties": {
+							"application": {
+								"properties": {
+									"displayName": {},
+									"id": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"user": {
+								"properties": {
+									"displayName": {},
+									"id": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"assignedDateTime": {
+						"type": "string"
+					},
+					"orderHint": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "object"
+		},
+		"bucketId": {
+			"type": "string"
+		},
+		"checklistItemCount": {
+			"type": "number"
+		},
+		"completedBy": {},
+		"completedDateTime": {},
+		"conversationThreadId": {},
+		"createdBy": {
+			"properties": {
+				"application": {
+					"properties": {
+						"displayName": {},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"user": {
+					"properties": {
+						"displayName": {},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"dueDateTime": {
+			"type": "string"
+		},
+		"hasDescription": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "string"
+		},
+		"orderHint": {
+			"type": "string"
+		},
+		"percentComplete": {
+			"type": "number"
+		},
+		"planId": {
+			"type": "string"
+		},
+		"previewType": {
+			"type": "string"
+		},
+		"priority": {
+			"type": "number"
+		},
+		"referenceCount": {
+			"type": "number"
+		},
+		"startDateTime": {},
+		"title": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

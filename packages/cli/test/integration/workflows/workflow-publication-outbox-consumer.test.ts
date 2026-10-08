@@ -332,13 +332,14 @@ describe('leader stepdown (integration)', () => {
 
 		// Hold the workflow's lock to stand in for an in-flight record being processed.
 		let releaseHolder!: () => void;
-		const holder = lifecycleLock.runExclusive(
-			workflow.id,
-			async () =>
+		const holder = lifecycleLock.runExclusive({
+			workflowId: workflow.id,
+			fn: async () =>
 				await new Promise<void>((resolve) => {
 					releaseHolder = resolve;
 				}),
-		);
+			signal: new AbortController().signal,
+		});
 
 		// The instance was demoted; the stepdown teardown must neither wait on the
 		// held lock nor tear the workflow down without it — it skips.

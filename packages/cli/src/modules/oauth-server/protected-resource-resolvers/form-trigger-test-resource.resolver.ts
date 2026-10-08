@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -12,9 +12,9 @@ import { triggerResourceGate } from '../resource-gate';
 import {
 	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 @Service()
@@ -31,11 +31,12 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 	readonly scopes = FORM_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getTestWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 
@@ -84,6 +85,7 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 			return {
 				id: 'workflow-form:' + workflowEntity.id,
 				isFirstParty: true,
+				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				getAllowedRedirectUris: async () => [resourceUrl],

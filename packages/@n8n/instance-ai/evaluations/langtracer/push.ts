@@ -3,6 +3,8 @@
 // seeding). Pure — no network — so the create/update/unchanged partitioning is
 // unit-testable against in-memory suite state.
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { LangTracerUpdateCaseBody } from './client';
 import { normalizeExportedCase } from './normalize';
 import { unsupportedPushReason, type LangTracerCreateCaseBody } from './to-exported';
@@ -32,6 +34,7 @@ const COMPARED_KEYS = [
 	'messageBudget',
 	'credentials',
 	'credentialFixture',
+	'requiresMemoryCompaction',
 	'datasets',
 	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
 	// (lang-tracer #48) and the export emits them back in disk shape.
@@ -119,6 +122,9 @@ function projectComparable(src: unknown): Record<string, unknown> {
 		// The export only emits `messageBudget` for multi-turn cases (it's ignored for
 		// single-turn auto-approve builds), so ignore it there to stay convergent.
 		if (key === 'messageBudget' && !isMultiTurn) continue;
+		// The export omits a stored `false` for requiresMemoryCompaction (the column
+		// default), so a disk `false` folds to absent to keep re-pushes convergent.
+		if (key === 'requiresMemoryCompaction' && value === false) continue;
 		// The loader defaults an absent disk `datasets` while the export omits (or
 		// nulls) the stored default — fold the default to absent on both sides, and
 		// compare order-insensitively since tiers are a set.
@@ -139,6 +145,10 @@ function projectComparable(src: unknown): Record<string, unknown> {
 			out[key] = seedWithoutMessageIds(value);
 			continue;
 		}
+		if (key === 'executionScenarios') {
+			out[key] = scenariosWithoutEmptyRows(value);
+			continue;
+		}
 		out[key] = value;
 	}
 	return out;
@@ -146,11 +156,18 @@ function projectComparable(src: unknown): Record<string, unknown> {
 
 /** Drop message `id`s from a seed before comparing: shorthand expansion mints a
  *  new one per parse, so keeping them would make a shorthand-authored case differ
- *  from its stored export forever. Everything else the author wrote — role,
- *  content, `createdAt`, workflows, data tables — still compares. */
+ *  from its stored export forever. Empty slots go too: the loader defaults every
+ *  seed array to `[]`, while the push omits an empty `folders` (the write API has
+ *  no such key) and a stored export may lack any empty slot, so `[]` and absent
+ *  must read as the same seed. Everything else the author wrote — role, content,
+ *  `createdAt`, workflows, data tables — still compares. */
 function seedWithoutMessageIds(value: unknown): unknown {
 	if (value === null || typeof value !== 'object') return value;
-	const seed: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+	const seed: Record<string, unknown> = {};
+	for (const [key, slot] of Object.entries(value as Record<string, unknown>)) {
+		if (Array.isArray(slot) && slot.length === 0) continue;
+		seed[key] = slot;
+	}
 	const messages: unknown = seed.messages;
 	if (!Array.isArray(messages)) return seed;
 	seed.messages = (messages as unknown[]).map((message) => {
@@ -159,6 +176,20 @@ function seedWithoutMessageIds(value: unknown): unknown {
 		return rest;
 	});
 	return seed;
+}
+
+/** lang-tracer stores a seed table's empty `rows` as absent, so `[]` must compare equal to it. */
+function scenariosWithoutEmptyRows(value: unknown): unknown {
+	if (!Array.isArray(value)) return value;
+	return value.map((scenario: unknown) => {
+		if (!isRecord(scenario) || !Array.isArray(scenario.seedDataTables)) return scenario;
+		const seedDataTables = scenario.seedDataTables.map((table: unknown) => {
+			if (!isRecord(table) || !Array.isArray(table.rows) || table.rows.length > 0) return table;
+			const { rows, ...rest } = table;
+			return rest;
+		});
+		return { ...scenario, seedDataTables };
+	});
 }
 
 /** Stable JSON with sorted object keys, so field/scenario ordering never affects equality. */
@@ -170,7 +201,7 @@ function sortKeysDeep(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(sortKeysDeep);
 	if (value !== null && typeof value === 'object') {
 		const sorted: Record<string, unknown> = {};
-		for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+		for (const key of Object.keys(value).sort()) {
 			sorted[key] = sortKeysDeep((value as Record<string, unknown>)[key]);
 		}
 		return sorted;

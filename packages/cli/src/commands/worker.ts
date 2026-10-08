@@ -6,7 +6,7 @@ import { BinaryDataConfig } from 'n8n-core';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import { N8N_VERSION } from '@/constants';
+import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
@@ -65,8 +65,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		try {
 			await this.externalHooks?.run('n8n.stop');
 
-			// Wait for in-process executions not tracked as Bull jobs,
-			// which are instead drained by `ScalingService.stopWorker`
+			// Final wait for any execution still active after the shutdown hooks.
 			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('Error shutting down worker', error);
@@ -88,8 +87,23 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		const { QUEUE_WORKER_TIMEOUT } = process.env;
 		if (QUEUE_WORKER_TIMEOUT) {
-			this.gracefulShutdownTimeoutInS =
-				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
+			// Accept a whole positive number only, the way the config layer parses
+			// `N8N_GRACEFUL_SHUTDOWN_TIMEOUT`, so a malformed value cannot shorten the
+			// shutdown window.
+			const parsed = Number(QUEUE_WORKER_TIMEOUT);
+			const isValid = Number.isInteger(parsed) && parsed > 0;
+
+			if (!isValid) {
+				this.logger.warn(
+					`Invalid QUEUE_WORKER_TIMEOUT value "${QUEUE_WORKER_TIMEOUT}". Using the configured queue timeout.`,
+				);
+			}
+
+			// oxlint-disable-next-line typescript/no-deprecated
+			const timeout = isValid ? parsed : this.globalConfig.queue.bull.gracefulShutdownTimeout;
+			// One field arms the force-exit timer, the other sizes the shutdown drains.
+			this.gracefulShutdownTimeoutInS = timeout;
+			this.globalConfig.generic.gracefulShutdownTimeout = timeout;
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);
@@ -207,11 +221,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		};
 
 		let workerServer: WorkerServer | undefined;
-		if (Object.values(endpointsConfig).some((e) => e)) {
+		if (inE2ETests || Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server.js');
 			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
 		}
+
+		// After the server started, so the metrics collector is subscribed before the tasks are routed.
+		await this.initSystemTasks();
 
 		// Register the job processor only after `init()` has fully completed,
 		// so that jobs cannot be pulled before all modules and their

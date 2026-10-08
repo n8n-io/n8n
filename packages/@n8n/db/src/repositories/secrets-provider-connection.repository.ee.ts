@@ -58,7 +58,7 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		} = {},
 	): Promise<SecretsProviderConnection[]> {
 		const { providerKeys } = filters;
-		if (providerKeys && providerKeys.length === 0) {
+		if (providerKeys?.length === 0) {
 			return [];
 		}
 
@@ -93,7 +93,7 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		} = {},
 	): Promise<SecretsProviderConnection[]> {
 		const { providerKeys } = filters;
-		if (providerKeys && providerKeys.length === 0) {
+		if (providerKeys?.length === 0) {
 			return [];
 		}
 

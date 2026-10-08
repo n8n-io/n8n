@@ -10,10 +10,10 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: () => ({ fetchWorkflow }),
 }));
 
-const provisionLaunchedThread = vi.fn();
+const provisionWorkflowThread = vi.fn();
 const ensurePersonalProjectId = vi.fn();
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
-	provisionLaunchedThread: (...args: unknown[]) => provisionLaunchedThread(...args),
+	provisionWorkflowThread: (...args: unknown[]) => provisionWorkflowThread(...args),
 	ensurePersonalProjectId: () => ensurePersonalProjectId(),
 }));
 
@@ -26,7 +26,7 @@ describe('launchWorkflowThread', () => {
 			name: 'Gmail fetch',
 			homeProject: { id: 'p1' },
 		});
-		provisionLaunchedThread.mockResolvedValue('thread-1');
+		provisionWorkflowThread.mockResolvedValue('thread-1');
 		ensurePersonalProjectId.mockResolvedValue('personal-1');
 	});
 
@@ -57,7 +57,7 @@ describe('launchWorkflowThread', () => {
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-1' },
 		});
-		expect(provisionLaunchedThread).toHaveBeenCalledWith(
+		expect(provisionWorkflowThread).toHaveBeenCalledWith(
 			'personal-1',
 			expect.anything(),
 			expect.anything(),
@@ -78,12 +78,9 @@ describe('launchWorkflowThread', () => {
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-1' },
 		});
-		expect(provisionLaunchedThread).toHaveBeenCalledWith(
+		expect(provisionWorkflowThread).toHaveBeenCalledWith(
 			'p1',
-			{
-				message: '',
-				attachments: [{ type: 'workflow', id: 'wf1', name: 'Gmail fetch' }],
-			},
+			{ type: 'workflow', id: 'wf1', name: 'Gmail fetch' },
 			{
 				source: 'workflow_list_auto',
 				origin: 'internal',
@@ -94,7 +91,7 @@ describe('launchWorkflowThread', () => {
 
 	it('honors the deliberate button source', async () => {
 		await launchWorkflowThread({ workflowId: 'wf1', source: 'workflow_list_button' });
-		expect(provisionLaunchedThread).toHaveBeenCalledWith(
+		expect(provisionWorkflowThread).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.anything(),
 			expect.objectContaining({ source: 'workflow_list_button' }),
@@ -102,7 +99,7 @@ describe('launchWorkflowThread', () => {
 	});
 
 	it('falls back to the manual editor when provisioning fails', async () => {
-		provisionLaunchedThread.mockResolvedValue(null);
+		provisionWorkflowThread.mockResolvedValue(null);
 		await expect(launchWorkflowThread({ workflowId: 'wf1' })).resolves.toEqual({
 			name: VIEWS.WORKFLOW,
 			params: { workflowId: 'wf1' },

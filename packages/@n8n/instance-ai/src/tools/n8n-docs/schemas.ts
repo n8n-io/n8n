@@ -22,7 +22,9 @@ const sharedLookupFields = {
 	credentialType: z
 		.string()
 		.optional()
-		.describe('n8n credential type name, for example "gmailOAuth2".'),
+		.describe(
+			'n8n credential type name, for example "gmailOAuth2". Always pass it for an auth question (scopes, permissions, setup steps) — the tool resolves that type\'s own docs page from it, so you do not need to look the URL up first.',
+		),
 	credentialDisplayName: z
 		.string()
 		.optional()

@@ -1,14 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
-	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
-
 	async init() {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
@@ -20,6 +18,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
+		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
@@ -27,6 +26,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./agent-slack-integrations.controller.js');
+		await import('./agent-teams-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
@@ -35,8 +35,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
-		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
-		Container.get(AgentCredentialIndexListener).init();
+		const { AgentDependencyIndexListener } = await import('./agent-dependency-index.listener.js');
+		Container.get(AgentDependencyIndexListener).init();
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
@@ -62,11 +62,19 @@ export class AgentsModule implements ModuleInterface {
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
 
+		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
+		registerAgentUsageProvider();
+
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
 
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository.js');
 		Container.get(AgentHistoryRepository);
+
+		const { AgentBudgetSpendRepository } = await import(
+			'./repositories/agent-budget-spend.repository.js'
+		);
+		Container.get(AgentBudgetSpendRepository);
 
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
@@ -84,12 +92,20 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { WhatsAppIntegration } = await import(
+			'./integrations/platforms/whatsapp-integration.js'
+		);
+		const { TeamsIntegration } = await import(
+			'./integrations/platforms/teams/teams-integration.js'
+		);
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(WhatsAppIntegration));
+		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
@@ -114,25 +130,22 @@ export class AgentsModule implements ModuleInterface {
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			const { AgentMessageQueueConsumer } = await import(
+				'./agent-message-queue-consumer.service.js'
+			);
+			Container.get(AgentMessageQueueConsumer).start();
 			// Loaded for its pubsub decorator
 			await import('./background/agent-background-job.service.js');
+			await import('./background/agent-wake.service.js');
 
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
-			const sweep = () => {
-				void Container.get(AgentInterruptedExecutionSweeper)
-					.sweep()
-					.catch((error: unknown) => {
-						logger.error('[Agents] Interrupted execution sweep failed', { error });
-					});
-			};
-			sweep();
-			this.interruptedExecutionSweepTimer = setInterval(
-				sweep,
-				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
-			);
-			this.interruptedExecutionSweepTimer.unref();
+			void Container.get(AgentInterruptedExecutionSweeper)
+				.sweep()
+				.catch((error: unknown) => {
+					logger.error('[Agents] Interrupted execution sweep failed', { error });
+				});
 		}
 
 		// Workers never receive inbound platform events: no webhook route, no polling
@@ -144,8 +157,7 @@ export class AgentsModule implements ModuleInterface {
 			channelReconciler.init();
 		}
 
-		// Tasks are leader-only: only the leader should run the cron and reconnect tasks on startup.
-		// TODO: migrate to the durable scheduler
+		// In-memory task crons are leader-only. Only the leader reconnects them on startup.
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {
@@ -155,23 +167,56 @@ export class AgentsModule implements ModuleInterface {
 		} else {
 			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
 		}
+
+		// Durable scheduling for agent tasks runs on mains only. The handler is
+		// registered before DurableScheduler starts, because module init precedes
+		// its start() in the start command. A main with the flag off registers no
+		// handler, so the executor never claims a leftover agent-task row. The
+		// reconcile runs with the flag in either state: it backfills jobs when the
+		// flag is on and removes them when it is off. It is awaited, so that the
+		// executor cannot claim an occurrence of a job it is about to redefine or
+		// remove.
+		if (instanceSettings.instanceType === 'main') {
+			const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
+			const registrar = Container.get(AgentTaskJobRegistrar);
+
+			if (registrar.isEnabled()) {
+				const { AgentTaskTaskHandler } = await import('./scheduling/agent-task-task-handler.js');
+				const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
+				const agentTaskHandler = Container.get(AgentTaskTaskHandler);
+				Container.get(DurableScheduler).registerTaskHandler(
+					agentTaskHandler.taskType,
+					agentTaskHandler,
+				);
+			}
+
+			try {
+				await registrar.reconcileAll();
+			} catch (error) {
+				logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 	}
 
-	@OnShutdown()
-	async shutdown() {
-		if (this.interruptedExecutionSweepTimer) {
-			clearInterval(this.interruptedExecutionSweepTimer);
-		}
+	async systemTasks() {
+		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
+		const { AgentInterruptedExecutionSweepTask } = await import(
+			'./agent-interrupted-execution-sweep.task.js'
+		);
+		return [AgentCheckpointPruningTask, AgentInterruptedExecutionSweepTask];
 	}
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
-			enabled: true,
+			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
@@ -188,15 +233,29 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
+		const { AgentExecutionMessageLink } = await import(
+			'./entities/agent-execution-message-link.entity.js'
+		);
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
+		const { AgentThreadGrant } = await import('./entities/agent-thread-grant.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
+		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
+		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
 		);
+		const { AgentWorkflowDependency } = await import(
+			'./entities/agent-workflow-dependency.entity.js'
+		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
+		const { AgentBudgetSpend } = await import('./entities/agent-budget-spend.entity.js');
+		const { AgentBudgetAppliedCall } = await import(
+			'./entities/agent-budget-applied-call.entity.js'
+		);
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity.js');
 		const { AgentObservationCursorEntity } = await import(
@@ -206,14 +265,14 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-observation-lock.entity.js'
 		);
 		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity.js');
+		const { AgentMemoryEntryCandidateEntity } = await import(
+			'./entities/agent-memory-entry-candidate.entity.js'
+		);
 		const { AgentMemoryEntryLockEntity } = await import(
 			'./entities/agent-memory-entry-lock.entity.js'
 		);
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
-		);
-		const { AgentMemoryEntryCursorEntity } = await import(
-			'./entities/agent-memory-entry-cursor.entity.js'
 		);
 
 		return [
@@ -226,21 +285,29 @@ export class AgentsModule implements ModuleInterface {
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
+			AgentExecutionMessageLink,
 			AgentExecutionThread,
+			AgentThreadGrant,
 			AgentExecution,
+			AgentMessageQueue,
 			AgentBackgroundJob,
+			AgentPlan,
+			AgentPlanHistory,
 			AgentHistory,
 			AgentCredentialDependency,
+			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
+			AgentBudgetSpend,
+			AgentBudgetAppliedCall,
 			AgentTaskSnapshot,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
 			AgentMemoryEntryEntity,
+			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
-			AgentMemoryEntryCursorEntity,
 		];
 	}
 

@@ -1,4 +1,7 @@
 import type { User } from '@n8n/db';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { truncate } from '@n8n/utils/string/truncate';
+import { NodeApiError } from 'n8n-workflow';
 import z from 'zod';
 
 import { MCP_EXPLORE_NODE_RESOURCES_TOOL } from './constants';
@@ -70,7 +73,45 @@ const outputSchema = {
 		.string()
 		.optional()
 		.describe("Selection guidance from the node's @builderHint annotation, when present."),
+	error: z.string().optional().describe('Error message when the lookup failed.'),
+	httpCode: z
+		.string()
+		.optional()
+		.describe('HTTP status code the upstream API returned, when the lookup failed on an API call.'),
+	errorDescription: z
+		.string()
+		.optional()
+		.describe(
+			"The upstream API's own error text, when the lookup failed on an API call. " +
+				'Use it to tell a missing permission apart from an invalid credential.',
+		),
 } satisfies z.ZodRawShape;
+
+type Output = z.infer<z.ZodObject<typeof outputSchema>>;
+
+const MAX_ERROR_DESCRIPTION_CHARS = 4_000;
+
+/**
+ * A thrown error reaches the agent as `error.message` only, which for a
+ * `NodeApiError` is a generic status sentence. Scrub before truncating, so a
+ * cut token still matches the secret patterns.
+ */
+function toErrorOutput(error: unknown): Output {
+	const output: Output = {
+		results: [],
+		error: scrubSecretsInText(error instanceof Error ? error.message : String(error)),
+	};
+	if (error instanceof NodeApiError) {
+		if (error.httpCode) output.httpCode = error.httpCode;
+		if (error.description) {
+			output.errorDescription = truncate(
+				scrubSecretsInText(error.description),
+				MAX_ERROR_DESCRIPTION_CHARS,
+			);
+		}
+	}
+	return output;
+}
 
 /**
  * MCP tool that resolves a node's resource locator (listSearch) or
@@ -139,7 +180,13 @@ export const createExploreNodeResourcesTool = (
 				error: error instanceof Error ? error.name : 'UnknownError',
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+
+			const output = toErrorOutput(error);
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });

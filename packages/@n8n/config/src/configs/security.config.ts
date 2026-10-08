@@ -162,6 +162,14 @@ export class SecurityConfig {
 	awsSystemCredentialsSdkSources: string = 'all';
 
 	/**
+	 * Whether Azure Storage Shared Key credentials can target a custom endpoint, such as a private
+	 * endpoint or a custom domain. Off by default. The Azure sovereign clouds are always available
+	 * and do not need this setting.
+	 */
+	@Env('N8N_AZURE_STORAGE_CUSTOM_ENDPOINTS_ENABLED')
+	azureStorageCustomEndpoints: boolean = false;
+
+	/**
 	 * Whether to enable hooks (like pre-commit hooks) for the Git node.
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_HOOKS')

@@ -1,5 +1,7 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
+	instanceAiQuestionSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
@@ -9,21 +11,15 @@ import {
 	channelConfigSchema,
 	mcpConnectRequestSchema,
 	credentialDestinationSchema,
+	testListenerCardSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
 export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
-
-const questionItemSchema = z.object({
-	id: z.string(),
-	question: z.string(),
-	type: z.enum(['single', 'multi', 'text']),
-	options: z.array(z.string()).optional(),
-});
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];
@@ -333,7 +329,7 @@ function mapSuspendedChunk(
 	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
-	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
+	const questions = parseSchemaArray(suspendPayload.questions, instanceAiQuestionSchema);
 	const introMessage = presentString(suspendPayload.introMessage);
 	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
 	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
@@ -346,6 +342,11 @@ function mapSuspendedChunk(
 	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
+	const resourceName = presentString(suspendPayload.resourceName);
+	const approvalDetails = parseSchemaRecord(
+		suspendPayload.approvalDetails,
+		instanceAiApprovalDetailsSchema,
+	);
 	const resourceDecision = parseSchemaRecord(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
@@ -355,6 +356,7 @@ function mapSuspendedChunk(
 		suspendPayload.mcpConnectRequest,
 		mcpConnectRequestSchema,
 	);
+	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
 	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
@@ -392,6 +394,8 @@ function mapSuspendedChunk(
 			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
+			...(resourceName ? { resourceName } : {}),
+			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
 			...(tasks ? { tasks } : {}),
@@ -399,6 +403,7 @@ function mapSuspendedChunk(
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
+			...(testListener ? { testListener } : {}),
 		},
 	};
 }

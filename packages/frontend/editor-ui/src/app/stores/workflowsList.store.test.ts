@@ -71,8 +71,8 @@ describe('useWorkflowsListStore', () => {
 			workflowsListStore.addWorkflow(workflow);
 
 			const result = workflowsListStore.getWorkflowById('123');
-			expect(result.id).toBe('123');
-			expect(result.name).toBe('Test Workflow');
+			expect(result?.id).toBe('123');
+			expect(result?.name).toBe('Test Workflow');
 		});
 
 		it('should return undefined for non-existent workflow', () => {
@@ -377,6 +377,55 @@ describe('useWorkflowsListStore', () => {
 				undefined,
 				['id', 'name'],
 			);
+		});
+
+		it('should pass workflow ids and list options', async () => {
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: [],
+			});
+
+			await workflowsListStore.searchWorkflows({
+				projectId: 'project-1',
+				ids: ['workflow-1', 'workflow-2'],
+				isArchived: false,
+				options: {
+					take: 10,
+					skip: 0,
+					sortBy: 'updatedAt:desc',
+					includeScopes: false,
+				},
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{
+					projectId: 'project-1',
+					ids: ['workflow-1', 'workflow-2'],
+					query: undefined,
+					nodeTypes: undefined,
+					tags: undefined,
+					isArchived: false,
+					triggerNodeTypes: undefined,
+				},
+				{
+					take: 10,
+					skip: 0,
+					sortBy: 'updatedAt:desc',
+					includeScopes: false,
+				},
+				undefined,
+			);
+		});
+
+		it('should return no workflows without a request when ids is empty', async () => {
+			const result = await workflowsListStore.searchWorkflows({
+				projectId: 'project-1',
+				ids: [],
+			});
+
+			expect(result).toEqual([]);
+			expect(workflowsApi.getWorkflows).not.toHaveBeenCalled();
 		});
 	});
 

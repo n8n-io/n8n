@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 /**
- * Tracks which node outputs of an execution were simulated by the AI Assistant
+ * Tracks which node outputs of an execution were simulated by the n8n Assistant
  * during workflow verification (fabricated fixture data, not real service
  * responses). Written by the Instance AI preview when it displays an agent
  * execution; read by the NDV output panel to label simulated data and guard

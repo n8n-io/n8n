@@ -141,7 +141,7 @@ describe('chat-shell.handlebars', () => {
 				...withOneMissingAccount,
 				ready: true,
 				connectedCount: 1,
-				barText: 'All 1 account connected · ready to chat',
+				barText: 'Account connected · ready to chat',
 				credentials: [
 					{
 						id: 'cred-1',
@@ -159,6 +159,8 @@ describe('chat-shell.handlebars', () => {
 			// The dialog is what carries Disconnect, so Manage has somewhere to land.
 			expect(html).toContain('btn-disconnect');
 			expect(html).toContain('Connected as visitor@example.com');
+			// "All" only reads correctly once there's more than one account to be "all" of.
+			expect(html).toContain('Account connected · ready to chat');
 		});
 
 		it('keeps the control in test mode while accounts are outstanding', async () => {
@@ -497,6 +499,16 @@ describe('chat-shell.handlebars', () => {
 			const row = makeElement({ 'data-row-key': 'cred-1::system-n8n', 'data-id': 'cred-1' });
 			row.querySelector = (selector: string) => (selector === '.connect' ? connectButton : null);
 
+			// The bar's own connect click, captured so a test can trigger the real
+			// single-account round trip (openConnect -> popup -> success signal), the
+			// same path `barText`'s live recompute runs through.
+			const barTextEl = makeElement();
+			const clickHandlers: Array<() => void> = [];
+			const barAction = makeElement();
+			barAction.addEventListener = (type: string, fn: () => void) => {
+				if (type === 'click') clickHandlers.push(fn);
+			};
+
 			const posted: Array<Record<string, unknown>> = [];
 			const frame = {
 				...makeElement(),
@@ -508,10 +520,13 @@ describe('chat-shell.handlebars', () => {
 				'n8n-chat-frame': frame,
 				'n8n-connect-bar': bar,
 				'n8n-connect-overlay': overlay,
+				'n8n-connect-bar-text': barTextEl,
+				'n8n-connect-bar-action': barAction,
 			};
 
 			const listeners: Array<(event: unknown) => void> = [];
 			const opened: string[] = [];
+			const popup = { closed: false };
 			const doc = {
 				getElementById: (id: string) => byId[id] ?? makeElement(),
 				querySelector: (selector: string) => (selector === '.cred-row' ? row : makeElement()),
@@ -529,7 +544,7 @@ describe('chat-shell.handlebars', () => {
 				parent: {},
 				open: (url: string) => {
 					opened.push(url);
-					return null;
+					return popup;
 				},
 			};
 
@@ -561,7 +576,14 @@ describe('chat-shell.handlebars', () => {
 				return opened;
 			}
 
-			return { overlay, opened, send };
+			return {
+				overlay,
+				opened,
+				send,
+				barTextEl,
+				clickConnect: () => clickHandlers.forEach((fn) => fn()),
+				signalSuccess: () => listeners.forEach((fn) => fn({ source: popup, data: 'success' })),
+			};
 		}
 
 		const rejection = (ids: unknown) => ({ type: 'n8n-chat-credentials-rejected', ids });
@@ -637,6 +659,18 @@ describe('chat-shell.handlebars', () => {
 			// No message can undo it: this path only ever disconnects.
 			send(rejection(['cred-1']));
 			expect(rows[0].getAttribute('data-connected')).toBeNull();
+		});
+
+		// "All 1 account connected" reads wrong once the last (only) account connects
+		// live in the browser - the same text `connectBarText` already gets right for
+		// the initial, server-rendered state.
+		it('says "Account connected", not "All 1 account connected", once the only account connects', async () => {
+			const { barTextEl, clickConnect, signalSuccess } = await runSingleAccountBarScript();
+
+			clickConnect();
+			signalSuccess();
+
+			expect(barTextEl.textContent).toBe('Account connected · ready to chat');
 		});
 	});
 });

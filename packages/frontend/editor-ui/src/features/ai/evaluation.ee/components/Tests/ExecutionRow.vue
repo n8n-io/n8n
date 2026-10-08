@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { EVALUATION_TRIGGER_NODE_TYPE, type ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -9,7 +9,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
-import { readFirstOutputItem, readFirstInputItemViaGraph } from '../../composables/useSliceInputs';
+import {
+	readFirstOutputItem,
+	readFirstInputItemViaGraph,
+	buildEvaluationTriggerSources,
+} from '../../composables/useSliceInputs';
 import { formatShortDateTime, stringifyValue } from '../../evaluation.utils';
 
 const props = defineProps<{
@@ -66,12 +70,10 @@ const items = computed<{ input?: Record<string, unknown>; output?: Record<string
 		const isTrigger = allNodes.some(
 			(n) => n.name === probe && nodeTypesStore.isTriggerNode(n.type),
 		);
-		const evaluationTriggerNames = new Set(
-			allNodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
-		);
+		const evaluationTriggers = buildEvaluationTriggerSources(allNodes);
 		const input = isTrigger
-			? readFirstOutputItem(runData, probe)
-			: readFirstInputItemViaGraph(runData, connections, probe, evaluationTriggerNames);
+			? readFirstOutputItem(runData, probe, evaluationTriggers)
+			: readFirstInputItemViaGraph(runData, connections, probe, evaluationTriggers);
 		const output = readFirstOutputItem(runData, probe);
 		return { input, output };
 	},

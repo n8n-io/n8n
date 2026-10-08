@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { AgentResource } from '@/features/agents/types';
@@ -9,10 +9,13 @@ import {
 	getPendingAgentTargetFromThreadMetadata,
 } from '../instanceAi.threadRuntime';
 
-const threadState = {
+const threadState = reactive({
 	id: 'thread-1',
 	messages: [] as InstanceAiMessage[],
-};
+	activeArtifactId: undefined as string | undefined,
+	isSendingMessage: false,
+	isStreaming: false,
+});
 const metadataState = ref<Record<string, unknown>>();
 const updateThreadMetadataMock = vi.fn(
 	async (_threadId: string, metadata: Record<string, unknown>) => {
@@ -25,7 +28,19 @@ vi.mock('../instanceAi.store', () => ({
 	useInstanceAiStore: () => ({
 		getThreadMetadata: () => metadataState.value,
 		updateThreadMetadata: updateThreadMetadataMock,
+		setThreadMetadata: (_threadId: string, metadata: Record<string, unknown> | undefined) => {
+			metadataState.value = metadata;
+		},
 	}),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: '' } }),
+}));
+
+const persistPendingAgentMock = vi.fn();
+vi.mock('../instanceAi.memory.api', () => ({
+	persistPendingAgent: (...args: unknown[]) => persistPendingAgentMock(...args),
 }));
 
 const persistedAgent = {
@@ -35,8 +50,13 @@ const persistedAgent = {
 
 const AgentBuilderViewStub = {
 	name: 'AgentBuilderView',
-	props: ['artifactPreviewSessionId', 'artifactEditingLocked'],
-	emits: ['persisted', 'name-saved', 'preview-open-change', 'assistant-handoff'],
+	props: [
+		'artifactPreviewSessionId',
+		'artifactPreviewOpen',
+		'artifactPersistAgent',
+		'artifactEditingLocked',
+	],
+	emits: ['name-saved', 'preview-open-change', 'assistant-handoff'],
 	template: '<div />',
 };
 
@@ -83,7 +103,11 @@ describe('InstanceAiAgentPreview', () => {
 			},
 		};
 		threadState.messages = [];
+		threadState.activeArtifactId = undefined;
+		threadState.isSendingMessage = false;
+		threadState.isStreaming = false;
 		updateThreadMetadataMock.mockClear();
+		persistPendingAgentMock.mockReset();
 	});
 
 	it('forwards preview dock state and Assistant handoffs from Agent Builder', async () => {
@@ -92,6 +116,7 @@ describe('InstanceAiAgentPreview', () => {
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				previewSessionId: 'preview-session-1',
+				previewOpen: true,
 			},
 			global: {
 				stubs: { AgentBuilderView: AgentBuilderViewStub },
@@ -100,6 +125,7 @@ describe('InstanceAiAgentPreview', () => {
 
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 		expect(builder.props('artifactPreviewSessionId')).toBe('preview-session-1');
+		expect(builder.props('artifactPreviewOpen')).toBe(true);
 		builder.vm.$emit('preview-open-change', true);
 		const handoff = {
 			projectId: 'project-1',
@@ -115,14 +141,29 @@ describe('InstanceAiAgentPreview', () => {
 		expect(wrapper.emitted('assistant-handoff')).toEqual([[handoff]]);
 	});
 
-	it('shows the building indicator and locks editing while the AI mutates this agent', () => {
-		threadState.messages = [makeBuildingMessage('agent-1')];
+	it('shows activity from sending through agent changes and only locks editing for changes', async () => {
+		threadState.activeArtifactId = 'agent-1';
+		threadState.isSendingMessage = true;
 
 		const wrapper = mount(InstanceAiAgentPreview, {
-			props: { projectId: 'project-1', agentId: 'agent-1' },
+			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
 			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
 		});
 
+		expect(wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists()).toBe(
+			true,
+		);
+		expect(wrapper.findComponent({ name: 'AgentBuilderView' }).props('artifactEditingLocked')).toBe(
+			false,
+		);
+		threadState.isSendingMessage = false;
+		await wrapper.vm.$nextTick();
+		expect(wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists()).toBe(
+			false,
+		);
+
+		threadState.messages = [makeBuildingMessage('agent-1')];
+		await wrapper.vm.$nextTick();
 		expect(wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists()).toBe(
 			true,
 		);
@@ -133,9 +174,11 @@ describe('InstanceAiAgentPreview', () => {
 
 	it('hides the building indicator when the AI is working on a different agent', () => {
 		threadState.messages = [makeBuildingMessage('agent-other')];
+		threadState.activeArtifactId = 'agent-other';
+		threadState.isSendingMessage = true;
 
 		const wrapper = mount(InstanceAiAgentPreview, {
-			props: { projectId: 'project-1', agentId: 'agent-1' },
+			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
 			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
 		});
 
@@ -148,11 +191,27 @@ describe('InstanceAiAgentPreview', () => {
 	});
 
 	it('keeps the bound thread target in sync across persistence and renames', async () => {
+		// One server call creates/adopts the agent AND swaps pending for bound, so
+		// the metadata the FE keeps is the server's, not a local merge.
+		persistPendingAgentMock.mockResolvedValue({
+			agent: persistedAgent,
+			thread: {
+				id: 'thread-1',
+				metadata: {
+					instanceAiAgentBuilderTarget: {
+						agentId: 'agent-1',
+						projectId: 'project-1',
+						name: 'Support Agent',
+					},
+				},
+			},
+		});
 		const wrapper = mount(InstanceAiAgentPreview, {
 			props: {
 				agentId: 'agent-1',
 				projectId: 'project-1',
 				pending: true,
+				previewOpen: false,
 			},
 			global: {
 				stubs: {
@@ -162,9 +221,17 @@ describe('InstanceAiAgentPreview', () => {
 		});
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 
-		builder.vm.$emit('persisted', persistedAgent);
+		const persist = builder.props('artifactPersistAgent') as (
+			name: string,
+		) => Promise<AgentResource>;
+		await expect(persist('Support Agent')).resolves.toBe(persistedAgent);
 		await flushPromises();
 
+		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			name: 'Support Agent',
+		});
 		expect(getPendingAgentTargetFromThreadMetadata(metadataState.value)).toBeUndefined();
 		expect(getAgentBuilderTargetFromThreadMetadata(metadataState.value)).toEqual({
 			agentId: 'agent-1',

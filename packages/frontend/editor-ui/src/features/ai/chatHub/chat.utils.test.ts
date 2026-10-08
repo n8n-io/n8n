@@ -2,14 +2,19 @@ import { describe, it, expect } from 'vitest';
 import {
 	splitMarkdownIntoChunks,
 	isWaitingForApproval,
+	enrichMimeTypesWithExtensions,
 	isFileAcceptedByAccept,
 } from './chat.utils';
 import type { ChatMessage } from './chat.types';
 
 describe('isFileAcceptedByAccept', () => {
-	it('accepts everything when accept string is empty or "*/*"', () => {
+	it('accepts everything when an unrestricted token is present', () => {
 		expect(isFileAcceptedByAccept('any.bin', 'application/octet-stream', '')).toBe(true);
+		expect(isFileAcceptedByAccept('any.bin', 'application/octet-stream', '*')).toBe(true);
 		expect(isFileAcceptedByAccept('any.bin', 'application/octet-stream', '*/*')).toBe(true);
+		expect(
+			isFileAcceptedByAccept('any.bin', 'application/octet-stream', '*/*,application/pdf'),
+		).toBe(true);
 	});
 
 	it('accepts files matching exact MIME type', () => {
@@ -40,6 +45,13 @@ describe('isFileAcceptedByAccept', () => {
 
 	it('rejects files when neither MIME nor extension matches', () => {
 		expect(isFileAcceptedByAccept('archive.zip', '', 'text/markdown,.md')).toBe(false);
+	});
+});
+
+describe('enrichMimeTypesWithExtensions', () => {
+	it('normalizes unrestricted MIME type tokens', () => {
+		expect(enrichMimeTypesWithExtensions('*')).toBe('*/*');
+		expect(enrichMimeTypesWithExtensions('*/*,application/pdf')).toBe('*/*');
 	});
 });
 

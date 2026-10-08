@@ -5,6 +5,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	AI_UNCATEGORIZED_CATEGORY,
 	CUSTOM_API_CALL_KEY,
+	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import type { ActionsRecord, INodeCreateElement, INodeUi, SimplifiedNodeType } from '@/Interface';
@@ -26,6 +27,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { mockCommandCreateElement } from './__tests__/utils';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -282,7 +284,7 @@ describe('useNodeCreatorStore', () => {
 		});
 	});
 
-	it('tracks when search filter is updated, ignoring custom actions in count', () => {
+	it('tracks when search filter is updated, ignoring custom actions and commands in count', () => {
 		const newValue = 'new-value';
 		const subcategory = 'subcategory';
 		const title = 'title';
@@ -320,6 +322,7 @@ describe('useNodeCreatorStore', () => {
 				name: '@author/n8n-nodes-community-node2',
 			},
 		} as INodeCreateElement;
+		const mockCommand = mockCommandCreateElement({ key: 'group' });
 
 		nodeCreatorStore.onCreatorOpened({
 			source,
@@ -328,7 +331,14 @@ describe('useNodeCreatorStore', () => {
 		});
 		nodeCreatorStore.onNodeFilterChanged({
 			newValue,
-			filteredNodes: [mockCustom, mockRegular, mockTrigger, mockCommunity1, mockCommunity2],
+			filteredNodes: [
+				mockCustom,
+				mockCommand,
+				mockRegular,
+				mockTrigger,
+				mockCommunity1,
+				mockCommunity2,
+			],
 			filterMode: REGULAR_NODE_CREATOR_VIEW,
 			subcategory,
 			title,
@@ -566,11 +576,13 @@ describe('useNodeCreatorStore', () => {
 					},
 				],
 			} as ActionsRecord<SimplifiedNodeType[]>;
+			nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT;
 
 			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
 			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(nodeCreatorStore.openSource).toBe('');
 			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
 				{
 					key: nodeType.name,

@@ -116,10 +116,17 @@ describe('connectBarText', () => {
 		expect(connectBarText(vm)).toBe('2 more accounts needed to start this chat');
 	});
 
-	it('confirms readiness once every account is connected', () => {
+	// "All 1 account" doesn't read correctly, so the singular case drops "All".
+	it('confirms readiness for a single account without saying "All 1"', () => {
 		expect(connectBarText(buildChatShellViewModel([configuredCred()]))).toBe(
-			'All 1 account connected · ready to chat',
+			'Account connected · ready to chat',
 		);
+	});
+
+	it('confirms readiness for two or more accounts', () => {
+		const vm = buildChatShellViewModel([configuredCred(), configuredCred({ credentialId: 'x' })]);
+
+		expect(connectBarText(vm)).toBe('All 2 accounts connected · ready to chat');
 	});
 
 	// Test mode resolves identity from the builder's own credentials, so once they are

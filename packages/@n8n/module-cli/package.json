@@ -10,6 +10,7 @@
   "scripts": {
     "clean": "rimraf .turbo",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest",
     "format": "biome format --write .",
     "format:check": "biome ci ."

@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ComparisonOutcome } from '../comparison/compare';
-import { formatComparisonTerminal } from '../comparison/format';
+import { formatComparisonTerminal, type EvaluationSubject } from '../comparison/format';
 import type { GateResult } from '../comparison/gate';
 import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
@@ -84,6 +84,7 @@ export function emitRunReports(config: {
 	gate: GateResult | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined;
 	commitSha: string | undefined;
+	subject: EvaluationSubject;
 	/** --output-dir; the HTML reports land here alongside the data artifacts.
 	 *  Undefined leaves each writer on its `.data` default. */
 	outputDir: string | undefined;
@@ -110,7 +111,13 @@ export function emitRunReports(config: {
 	const debugHtmlPath = writeRunDebugReport(reportResults, outputDir);
 	console.log(`LLM debug:  ${debugHtmlPath}`);
 	console.log(
-		'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
+		'\n' +
+			formatComparisonTerminal(evaluation, outcome, {
+				subject: config.subject,
+				commitSha,
+				slugByTestCase,
+				gate,
+			}),
 	);
 
 	// Advisory only: findLatestBaseline trusts the newest experiment by

@@ -15,6 +15,8 @@ import { NodeApiError, NodeOperationError, sanitizeXmlName } from 'n8n-workflow'
 import { URL } from 'url';
 import { parseString } from 'xml2js';
 
+import { uriEncodeS3Pathname } from '../../credentials/common/aws/utils';
+
 function queryToString(params: IDataObject) {
 	return Object.keys(params)
 		.map((key) => key + '=' + (params[key] as string))
@@ -52,6 +54,9 @@ export async function s3ApiRequest(
 	}
 
 	endpoint.pathname = `${endpoint.pathname === '/' ? '' : endpoint.pathname}${path}`;
+	endpoint.pathname = uriEncodeS3Pathname(endpoint.pathname, {
+		preserveEncodedSlashes: true,
+	});
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {

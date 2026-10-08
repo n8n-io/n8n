@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { ScheduledJobOwnerType } from '@n8n/constants';
@@ -14,6 +15,8 @@ import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
 import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
+import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 // Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
@@ -52,6 +55,9 @@ describe('DurableScheduler', () => {
 		const tasks = mock<ScheduledTaskRepository>();
 		tasks.readDbTime.mockResolvedValue(new Date());
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
+		const agentOwner = mock<AgentScheduledJobOwner>();
+		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
+		const eventService = mock<EventService>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -86,8 +92,21 @@ describe('DurableScheduler', () => {
 			pollTriggerTaskHandler,
 			mock<PrometheusSchedulerMetricsService>(),
 			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			eventService,
 		);
-		return { scheduler, inner, logger, tracing, tasks, workflowOwner };
+		return {
+			scheduler,
+			inner,
+			logger,
+			tracing,
+			tasks,
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			eventService,
+		};
 	}
 
 	describe('composition', () => {
@@ -184,78 +203,6 @@ describe('DurableScheduler', () => {
 		});
 	});
 
-	describe('poll timeout warning', () => {
-		it('warns when a poll may outlive the lease on its occurrence', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 120,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.objectContaining({ pollTimeoutSeconds: 120, leaseDurationSeconds: 60 }),
-			);
-		});
-
-		// The poll deadline starts after the occurrence's setup reads, so a timeout
-		// equal to the lease already lets a full-length poll outlive it.
-		it('warns when the timeout equals the lease', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 60,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.objectContaining({ pollTimeoutSeconds: 60, leaseDurationSeconds: 60 }),
-			);
-		});
-
-		it('does not warn when the timeout fits inside the lease', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 45,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.anything(),
-			);
-		});
-
-		it('does not warn when poll triggers do not use the durable scheduler', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: false,
-				pollTimeoutSeconds: 120,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.anything(),
-			);
-		});
-
-		// Without the publication service the durable poller chain is inactive and
-		// polls run on the legacy in-memory path, where the timeout does not apply.
-		it('does not warn when the workflow publication service is disabled', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 120,
-				leaseDurationSeconds: 60,
-				useWorkflowPublicationService: false,
-			});
-
-			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.anything(),
-			);
-		});
-	});
-
 	describe('tracer', () => {
 		// A fire span is opened from inside a timer callback armed while the claim
 		// span was active, so it needs a fresh trace instead of parenting under a
@@ -325,18 +272,30 @@ describe('DurableScheduler', () => {
 	});
 
 	describe('owner registration', () => {
-		it('composes the reconciliation pass over a registry declaring the workflow owner', () => {
-			const { workflowOwner } = makeScheduler();
+		it('composes the reconciliation pass over a registry declaring the workflow and agent owners', () => {
+			const { workflowOwner, agentOwner } = makeScheduler();
 
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.Workflow)).toBe(
 				workflowOwner,
+			);
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.Agent)).toBe(
+				agentOwner,
 			);
 			expect(deps?.reconciliation?.options).toMatchObject({
 				settleSeconds: 300,
 				quarantineGraceSeconds: 86_400,
 				batchSize: 500,
 			});
+		});
+
+		it('composes the reconciliation pass over a registry declaring the system-task owner', () => {
+			const { systemTaskOwner } = makeScheduler();
+
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+			expect(deps?.reconciliation?.owners.resolverFor(ScheduledJobOwnerType.SystemTask)).toBe(
+				systemTaskOwner,
+			);
 		});
 
 		it('composes no reconciliation pass when it is disabled', () => {

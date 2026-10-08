@@ -521,11 +521,11 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 				path.replace(
 					b.memberExpression(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-						node.object as any,
+						node.object,
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						b.callExpression(b.memberExpression(dataNode, sanitizerIdentifier), [
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							node.property as any,
+							node.property,
 						]),
 						true,
 					),

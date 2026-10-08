@@ -7,16 +7,21 @@ export function getConfigMutationPrompt(): string {
 ### Purpose
 
 Use this after deciding a config change is needed and before calling
-\`read_config\`, \`write_config\`, or \`patch_config\`.
+\`agent-context({ type: "config" })\`, \`write_config\`, or \`patch_config\`.
 
 ### Workflow
 
 Follow Config Freshness for authoritative reads, hashes, and stale recovery.
 - For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
 - For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
+- Pass the \`configHash\` from your latest config read or from your latest
+  write result as \`baseConfigHash\`; do not read the config again between your
+  own writes.
+- Put every change you already know into one write. Do not split known changes
+  across several \`patch_config\` calls.
 - Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
-- On parse, patch, or schema errors, fix the payload, call \`read_config\`
-  again, and retry from the fresh \`configHash\`.
+- On parse, patch, or schema errors, nothing was saved: fix the payload and
+  retry with the same \`baseConfigHash\`.
 
 ### Rules
 
@@ -61,14 +66,15 @@ Use \`patch_config\` with:
 
 #### Add A Target-Agent Skill Ref
 
-- If \`skills\` exists, append to \`/skills/-\`.
-- If \`skills\` is missing, add \`/skills\` with an array.
-- Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
+- \`create_skills\` attaches its new skills itself; do not patch those refs in.
+- To attach an existing, unattached skill: if \`skills\` exists, append to
+  \`/skills/-\`; if \`skills\` is missing, add \`/skills\` with an array.
+- Ref shape: \`{ "type": "skill", "id": "<skill-id>" }\`.
 
 #### Remove An Existing Chat Integration
 
 - Chat-channel removal is a config edit, not a \`configure_channel\` action.
-- Call \`read_config\` first and inspect \`config.integrations\`.
+- Call \`agent-context({ type: "config" })\` first and inspect \`config.integrations\`.
 - If you know the exact array index to remove, prefer:
 \`\`\`json
 [{ "op": "remove", "path": "/integrations/1" }]
@@ -152,9 +158,10 @@ Bad: replacing \`config\` while dropping unrelated settings
 
 ### Error Recovery
 
-- \`stage: "stale"\`: follow Config Freshness.
-- \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
-- \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
-- \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.
+- \`stage: "stale"\`: the result carries the current \`config\` and \`configHash\`;
+  re-apply your change to that config and retry once.
+- \`stage: "parse"\`: fix JSON syntax and retry with the same \`baseConfigHash\`.
+- \`stage: "patch"\`: fix JSON Pointer paths or operation shape and retry with the same \`baseConfigHash\`.
+- \`stage: "schema"\`: compare the payload against the Config schema reference and retry with the same \`baseConfigHash\`.
 - \`ask_credential\` skipped: omit or disable the feature that required it.`;
 }

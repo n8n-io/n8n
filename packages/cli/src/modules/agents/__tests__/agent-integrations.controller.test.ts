@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,12 +13,14 @@ import type { AgentChannelStatusReporter } from '../integrations/agent-channel-s
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@n8n/errors';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 
-const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook']);
+const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook', 'handleWebhookVerification']);
 
 function makeController({
 	managementService = mock<AgentIntegrationManagementService>(),
@@ -26,6 +29,8 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
+	instanceSettings = mock<InstanceSettings>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -33,6 +38,8 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
+	instanceSettings?: Mocked<InstanceSettings>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -45,12 +52,15 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
+			instanceSettings,
+			collaborationService,
 		),
 		managementService,
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
 		statusReporter,
+		collaborationService,
 	};
 }
 
@@ -91,6 +101,7 @@ describe('AgentIntegrationsController integration management', () => {
 				params: { projectId: agent.projectId },
 				user,
 				body: integration,
+				headers: { 'push-ref': 'sender-1' },
 			} as never,
 			undefined as never,
 			agent.id,
@@ -98,11 +109,9 @@ describe('AgentIntegrationsController integration management', () => {
 		);
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration,
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration, pushRef: 'sender-1' }),
+		);
 		expect(result).toEqual({ status: 'connected' });
 	});
 
@@ -126,12 +135,14 @@ describe('AgentIntegrationsController integration management', () => {
 			{ ...integration, replaces: { credentialId: 'credential-0' } } as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration: { ...integration, replaces: { credentialId: 'credential-0' } },
-			replaces: { type: 'slack', credentialId: 'credential-0' },
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				integration: { ...integration, replaces: { credentialId: 'credential-0' } },
+				replaces: { type: 'slack', credentialId: 'credential-0' },
+			}),
+		);
 	});
 
 	it('passes platform settings through the envelope untouched', async () => {
@@ -155,7 +166,32 @@ describe('AgentIntegrationsController integration management', () => {
 			integration as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({ agent, user, integration });
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
+	});
+
+	it('delegates a credential-less n8n Chat connect', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		const result = await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
+		expect(result).toEqual({ status: 'connected' });
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {
@@ -193,6 +229,7 @@ describe('AgentIntegrationsController integration management', () => {
 		const result = await controller.disconnectIntegration(
 			{
 				params: { projectId: agent.projectId },
+				headers: { 'push-ref': 'sender-1' },
 				user,
 			} as never,
 			undefined as never,
@@ -200,13 +237,75 @@ describe('AgentIntegrationsController integration management', () => {
 			{ type: 'slack', credentialId: 'credential-1' },
 		);
 
-		expect(managementService.disconnect).toHaveBeenCalledWith({
-			agent,
-			user,
+		expect(managementService.disconnect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				type: 'slack',
+				credentialId: 'credential-1',
+				pushRef: 'sender-1',
+			}),
+		);
+		expect(result).toEqual({ status: 'disconnected' });
+	});
+
+	it('validates the write lock before connecting an integration', async () => {
+		const { controller, collaborationService, agentRepository, managementService } =
+			makeController();
+		const integration = {
 			type: 'slack',
 			credentialId: 'credential-1',
-		});
-		expect(result).toEqual({ status: 'disconnected' });
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+				headers: { 'push-ref': 'push-ref-1' },
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			'user-1',
+			'push-ref-1',
+			agent.projectId,
+			agent.id,
+			'connect integration for',
+		);
+	});
+
+	it('propagates a LockedError from validateAgentWriteLock on connect', async () => {
+		const { controller, collaborationService, agentRepository } = makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		collaborationService.validateAgentWriteLock.mockRejectedValue(
+			new LockedError(
+				'Cannot connect integration for agent - another user currently has write access',
+			),
+		);
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: agent.projectId },
+					user,
+					body: integration,
+					headers: { 'push-ref': 'push-ref-1' },
+				} as never,
+				undefined as never,
+				agent.id,
+				integration as never,
+			),
+		).rejects.toThrow(LockedError);
 	});
 
 	it('returns a platform webhook rejection without looking up a handler', async () => {
@@ -272,6 +371,129 @@ describe('AgentIntegrationsController integration management', () => {
 		);
 		expect(handler).toHaveBeenCalledTimes(1);
 		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('delegates GET webhook verification to the same handling as POST for whatsapp', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'select', connectionSelector: 'app-b' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			setHeader: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'whatsapp' },
+				headers: { host: 'localhost', 'content-type': 'application/json' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/whatsapp',
+				body: { application_id: 'app-b', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'whatsapp',
+			'app-b',
+		);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('rejects GET webhook verification for a platform other than whatsapp without looking up a handler', async () => {
+		// Every platform but WhatsApp only ever sends POST — a GET here is never
+		// meaningful, so it should 404 immediately rather than reach a handler
+		// built for a POST-shaped request.
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { host: 'localhost' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				body: {},
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationRegistry.get).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(404);
+	});
+
+	it('sends a raw-text response for an unauthenticated webhook handshake without a live connection', async () => {
+		// WhatsApp's verification handshake expects the raw hub.challenge value
+		// back verbatim — JSON-encoding it would wrap it in quotes, which Meta
+		// treats as a mismatch (see `UnauthenticatedWebhookResponse.raw`).
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getWebhookHandler.mockReturnValue(undefined);
+		const handleUnauthenticatedWebhook = vi
+			.fn()
+			.mockReturnValue({ status: 200, body: 'the-challenge', raw: true });
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({ handleUnauthenticatedWebhook } as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			type: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'whatsapp' },
+				headers: { host: 'localhost' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl:
+					'/rest/projects/project-1/agents/v2/agent-1/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=abc&hub.challenge=the-challenge',
+				query: {
+					'hub.mode': 'subscribe',
+					'hub.verify_token': 'abc',
+					'hub.challenge': 'the-challenge',
+				},
+				body: {},
+			} as never,
+			res as never,
+		);
+
+		expect(handleUnauthenticatedWebhook).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			method: 'GET',
+			query: {
+				'hub.mode': 'subscribe',
+				'hub.verify_token': 'abc',
+				'hub.challenge': 'the-challenge',
+			},
+			headers: { host: 'localhost' },
+			body: {},
+		});
+		expect(res.status).toHaveBeenCalledWith(200);
+		// A caller-controlled challenge value must never be sent as text/html —
+		// Express defaults a string res.send() to html, which would let it be
+		// interpreted as markup instead of an inert plain-text echo.
+		expect(res.type).toHaveBeenCalledWith('text/plain');
+		expect(res.send).toHaveBeenCalledWith('the-challenge');
+		expect(res.json).not.toHaveBeenCalled();
 	});
 
 	it('does not look up a handler when the platform reports no match', async () => {
@@ -395,6 +617,39 @@ describe('AgentIntegrationsController channel status', () => {
 			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
 			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
 		]);
+	});
+
+	it('reports draft and active n8n Chat availability separately', async () => {
+		const agent = {
+			...publishedAgent,
+			activeVersion: {
+				schema: {
+					name: 'Agent',
+					model: 'openai:gpt-4o-mini',
+					instructions: 'Help',
+					integrations: [{ type: 'n8n_chat', credentialId: '' }],
+				},
+			},
+		} as Agent;
+		const { response } = await statusOf(agent, []);
+		expect(response.n8nChat).toEqual({ draftEnabled: false, publishedEnabled: true });
+		expect(response.integrations).toEqual([
+			{ type: slack.type, credentialId: slack.credentialId, status: 'starting' },
+			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
+			{ type: 'n8n_chat', status: 'connected' },
+		]);
+		const unpublished = {
+			...agent,
+			activeVersionId: null,
+			activeVersion: null,
+			integrations: [...agent.integrations, { type: 'n8n_chat', credentialId: '' }],
+		} as Agent;
+		const { response: unpublishedResponse } = await statusOf(unpublished, []);
+		expect(unpublishedResponse.n8nChat).toEqual({ draftEnabled: true, publishedEnabled: false });
+		expect(unpublishedResponse.integrations).toContainEqual({
+			type: 'n8n_chat',
+			status: 'configured',
+		});
 	});
 
 	it('reports the reason a channel could not start', async () => {

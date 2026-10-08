@@ -14,6 +14,7 @@ const context: IRestApiContext = { baseUrl: 'http://localhost:5678', pushRef: ''
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n',
@@ -59,6 +60,7 @@ describe('otel.api', () => {
 
 	describe('sendOtelTestTrace', () => {
 		const connection: OtelTestConnection = {
+			exporterProtocol: 'grpc',
 			exporterEndpoint: 'https://collector.io',
 			exporterTracingPath: '/v1/traces',
 			exporterServiceName: 'n8n',

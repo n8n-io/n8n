@@ -56,14 +56,13 @@ async function checkPineconeIndex(
 				warning: null,
 			};
 		}
-		if (config.namespace) {
-			const stats = await pc.index(config.indexName).describeIndexStats();
-			if (!(config.namespace in (stats.namespaces ?? {}))) {
-				return {
-					failure: null,
-					warning: `Namespace "${config.namespace}" has no data yet in index "${config.indexName}". It will appear once data is indexed — double-check the name if you expected existing data.`,
-				};
-			}
+		if (!config.namespace) return none;
+		const stats = await pc.index(config.indexName).describeIndexStats();
+		if (!(config.namespace in (stats.namespaces ?? {}))) {
+			return {
+				failure: null,
+				warning: `Namespace "${config.namespace}" has no data yet in index "${config.indexName}". It will appear once data is indexed — double-check the name if you expected existing data.`,
+			};
 		}
 	} catch {
 		// Introspection is best-effort; the real probe query below reports the actual failure.
@@ -157,26 +156,7 @@ export class AgentVectorStoresService {
 					throw new Error('Connection test timed out');
 				}
 
-				const embeddingOptions = await resolveEmbeddingProviderOptionsFromCredential(
-					vectorStore.embedding.credential,
-					vectorStore.embedding.model,
-					credentialProvider,
-				);
-				const embeddingModel = createEmbeddingModel(vectorStore.embedding.model, embeddingOptions);
-				const { embed } = await import('ai');
-				const { embedding } = await embed({ model: embeddingModel, value: TEST_QUERY });
-
-				const { failure, warning } = await this.checkProviderCompatibility(
-					vectorStore,
-					rawCredential,
-					embedding.length,
-				);
-				if (failure) {
-					return { success: false, message: failure };
-				}
-
-				await backend.query(embedding, { topK: 1 });
-				return { success: true, ...(warning ? { warning } : {}) };
+				return await this.probeBackend(vectorStore, credentialProvider, rawCredential, backend);
 			}, TEST_TIMEOUT_MS);
 		} catch (error) {
 			return { success: false, message: errorMessage(error) };
@@ -209,5 +189,40 @@ export class AgentVectorStoresService {
 				// No cheap introspection available (REST-only client / no metadata table) — the probe query below surfaces mismatches.
 				return { failure: null, warning: null };
 		}
+	}
+	private async embedTestQuery(
+		vectorStore: AgentJsonVectorStoreConfig,
+		credentialProvider: AgentsCredentialProvider,
+	): Promise<number[]> {
+		const embeddingOptions = await resolveEmbeddingProviderOptionsFromCredential(
+			vectorStore.embedding.credential,
+			vectorStore.embedding.model,
+			credentialProvider,
+		);
+		const embeddingModel = createEmbeddingModel(vectorStore.embedding.model, embeddingOptions);
+		const { embed } = await import('ai');
+		const { embedding } = await embed({ model: embeddingModel, value: TEST_QUERY });
+		return embedding;
+	}
+
+	private async probeBackend(
+		vectorStore: AgentJsonVectorStoreConfig,
+		credentialProvider: AgentsCredentialProvider,
+		rawCredential: Record<string, unknown>,
+		backend: BuiltVectorStoreBackend,
+	): Promise<VectorStoreTestResult> {
+		const embedding = await this.embedTestQuery(vectorStore, credentialProvider);
+
+		const { failure, warning } = await this.checkProviderCompatibility(
+			vectorStore,
+			rawCredential,
+			embedding.length,
+		);
+		if (failure) {
+			return { success: false, message: failure };
+		}
+
+		await backend.query(embedding, { topK: 1 });
+		return { success: true, ...(warning ? { warning } : {}) };
 	}
 }
