@@ -149,7 +149,7 @@ export class AgentTaskService {
 
 		const tasks = dtos.map((dto) => {
 			const taskId = generateAgentResourceId(
-				'task',
+				undefined,
 				(agent.schema?.tasks ?? []).map((ref) => ref.id),
 			);
 			this.attachTaskRef(agent, taskId, dto.enabled ?? true);

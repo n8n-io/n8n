@@ -224,11 +224,11 @@ describe('AgentTaskService', () => {
 				telemetryContext,
 			);
 
-			expect(dto.id).toMatch(/^task_/);
+			expect(dto.id).toMatch(/^[A-Za-z0-9]{16}$/);
 			expect(dto.name).toBe('Daily');
 			expect(taskRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
-					id: expect.stringMatching(/^task_/),
+					id: expect.stringMatching(/^[A-Za-z0-9]{16}$/),
 					agentId: AGENT_ID,
 					name: 'Daily',
 					objective: 'Do X',
@@ -238,7 +238,7 @@ describe('AgentTaskService', () => {
 				}),
 			);
 			expect(agent.schema?.tasks).toEqual([
-				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
+				{ type: 'task', id: expect.stringMatching(/^[A-Za-z0-9]{16}$/), enabled: true },
 			]);
 			expect(taskRepository.saveDefinitions).toHaveBeenCalledTimes(1);
 			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);

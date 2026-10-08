@@ -44,15 +44,15 @@ export function createDefaultInlineAgent(): InlineAgentConfig {
 }
 
 /**
- * Mirror of the backend's `generateAgentResourceId('skill', …)` for inline
+ * Mirror of the backend's `generateAgentResourceId(undefined, …)` for inline
  * agents, whose skill ids are minted client-side (there is no entity to POST
- * to). Same `skill_<nanoid>` format, same collision retry.
+ * to). Use the same NanoID format and collision retry.
  */
 export function generateInlineSkillId(existingIds: Iterable<string> = []): string {
 	const existing = new Set(existingIds);
 
 	for (let attempt = 0; attempt < 10; attempt++) {
-		const id = `skill_${generateNanoId()}`;
+		const id = generateNanoId();
 		if (!existing.has(id)) return id;
 	}
 

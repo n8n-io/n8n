@@ -122,7 +122,7 @@ describe('useInlineAgentConfig — skills in the node parameter', () => {
 		const refs = value.config.skills as Array<{ type: string; id: string }>;
 		expect(refs).toHaveLength(1);
 		expect(refs[0].type).toBe('skill');
-		expect(refs[0].id).toMatch(/^skill_[A-Za-z0-9_-]+$/);
+		expect(refs[0].id).toMatch(/^[A-Za-z0-9]{16}$/);
 		expect(value.skills).toEqual({ [refs[0].id]: triage });
 	});
 

@@ -269,7 +269,7 @@ export class AgentSkillsService {
 	}
 
 	private addSkill(entity: Agent, skill: AgentSkill): string {
-		const skillId = generateAgentResourceId('skill', Object.keys(entity.skills ?? {}));
+		const skillId = generateAgentResourceId(undefined, Object.keys(entity.skills ?? {}));
 
 		entity.skills = {
 			...(entity.skills ?? {}),

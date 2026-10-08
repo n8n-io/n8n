@@ -82,7 +82,7 @@ describe('AgentSkillsService', () => {
 		const result = await service.createSkill(agentId, projectId, skill, telemetryContext);
 
 		expect(result).toEqual({
-			id: expect.stringMatching(/^skill_[A-Za-z0-9]{16}$/),
+			id: expect.stringMatching(/^[A-Za-z0-9]{16}$/),
 			skill,
 			skillHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 			versionId: agent.versionId,

@@ -4,8 +4,8 @@ import type { InlineAgentConfig } from '@n8n/api-types';
 import { generateInlineSkillId, inlineAgentToCapabilitySummary } from '../inlineAgent';
 
 describe('generateInlineSkillId', () => {
-	it('mints ids in the backend skill_<nanoid> format', () => {
-		expect(generateInlineSkillId()).toMatch(/^skill_[A-Za-z0-9_-]+$/);
+	it('mints ids in the backend NanoID format', () => {
+		expect(generateInlineSkillId()).toMatch(/^[A-Za-z0-9]{16}$/);
 	});
 
 	it('avoids existing ids', () => {
