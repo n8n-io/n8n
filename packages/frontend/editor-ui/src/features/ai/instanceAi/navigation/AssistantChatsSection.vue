@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useId, watch } from 'vue';
+import { computed, useId, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -12,6 +12,7 @@ import AssistantChatGroups from './AssistantChatGroups.vue';
 import AssistantChatRow from './AssistantChatRow.vue';
 import AssistantSectionHeader from './AssistantSectionHeader.vue';
 import { threadDisplayState } from './threadDisplayState';
+import { FOCUS_ROW_ATTRIBUTE, useKeepRowFocus } from './useKeepListFocus';
 import { useLiveThreadList } from './useLiveThreadList';
 import { useSidebarThreads } from './useSidebarThreads';
 import { useThreadLastViewed } from './useThreadLastViewed';
@@ -50,6 +51,10 @@ useLiveThreadList(() => showStates.value && isInstanceAiNavVisible.value);
 
 const showGroups = computed(() => showStates.value && mode.value === 'power');
 
+// A reload can push the focused chat out of the five that the flat list shows.
+// The groups keep their own focus.
+// disabled
+
 const openThreadId = computed(() => {
 	const threadId = route.name === INSTANCE_AI_THREAD_VIEW ? route.params.threadId : undefined;
 	return typeof threadId === 'string' ? threadId : undefined;
@@ -78,6 +83,7 @@ const rows = computed(() =>
 <template>
 	<div
 		v-if="isInstanceAiNavVisible && !props.collapsed && rows.length > 0"
+		ref="root"
 		:class="$style.instanceAiSidebar"
 		data-test-id="instance-ai-sidebar-chats"
 	>
@@ -96,6 +102,7 @@ const rows = computed(() =>
 				<AssistantChatRow
 					v-for="row in rows"
 					:key="row.thread.id"
+					:[FOCUS_ROW_ATTRIBUTE]="row.thread.id"
 					:thread="row.thread"
 					:state="row.state"
 				/>

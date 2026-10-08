@@ -22,8 +22,28 @@ const safeSegmentArb = fc
 const encodedDotArb = fc.constantFrom('.', '%2e', '%2E', '%252e', '%252E', '%25252e');
 const dotDotArb = fc.tuple(encodedDotArb, encodedDotArb).map(([first, second]) => first + second);
 
-/** A separator that a decoder or a Windows-style path turns into a segment break. */
-const separatorArb = fc.constantFrom('%2f', '%2F', '%5c', '%5C', '\\', '%252f');
+/**
+ * A separator that a decoder, a Windows-style path or a second URL parse turns
+ * into a segment break: `?` and `#` start the query or the fragment, `;` starts
+ * path parameters, and NUL ends a C string.
+ */
+const separatorArb = fc.constantFrom(
+	'%2f',
+	'%2F',
+	'%5c',
+	'%5C',
+	'\\',
+	'%252f',
+	'%3f',
+	'%3F',
+	'%23',
+	'%253f',
+	';',
+	'%3b',
+	'%3B',
+	'%00',
+	'%2500',
+);
 
 /** A segment that holds `..` on its own or between separators, as the client sends it. */
 const climbingSegmentArb = fc.oneof(
@@ -75,6 +95,8 @@ describe('parsePreviewUrl', () => {
 		['/img/100%25.png', '/img/100%25.png'],
 		['/a%25zz/b', '/a%25zz/b'],
 		['/caf%C3%A9/menu', '/caf%C3%A9/menu'],
+		['/v1;rev=2/item', '/v1;rev=2/item'],
+		['/what%3F/..x', '/what%3F/..x'],
 	])('forwards %s after the token as %s', (suffix, forwardPath) => {
 		expect(parsePreviewUrl(`/${TOKEN}${suffix}`)).toEqual({
 			kind: 'forward',
@@ -100,6 +122,13 @@ describe('parsePreviewUrl', () => {
 		'/%252e%252e%252fx%25zz',
 		'/a%25zz%252f..%252fb',
 		'/%25zz%5c%252e%252e',
+		'/%2e%2e%3f/x',
+		'/%2e%2e%23/x',
+		'/..;/x',
+		'/%2e%2e%3b/x',
+		'/x;..',
+		'/%2e%2e%2500/x',
+		'/..%00/x',
 	])('refuses %s after the token', (suffix) => {
 		expect(parsePreviewUrl(`/${TOKEN}${suffix}`)).toEqual({ kind: 'invalid' });
 	});
@@ -170,6 +199,14 @@ describe('segmentClimbsOut', () => {
 		'%252e%252e%252fx%25zz',
 		'a%25zz%252f..%252fb',
 		'%25zz%252f%252e%252e',
+		'..?',
+		'..%3f',
+		'%2e%2e%23',
+		'..;',
+		'%2e%2e%3bx',
+		'a;..',
+		'..%00',
+		'%2e%2e%2500',
 	])('is true for %s', (segment) => {
 		expect(segmentClimbsOut(segment)).toBe(true);
 	});
@@ -185,6 +222,10 @@ describe('segmentClimbsOut', () => {
 		'a%25zz',
 		'100%25.png',
 		'%25%2e',
+		'v1;rev=2',
+		'...;',
+		'a%3f..b',
+		'%00',
 	])('is false for %j', (segment) => {
 		expect(segmentClimbsOut(segment)).toBe(false);
 	});
@@ -225,6 +266,9 @@ describe('isDocumentRequest', () => {
 		['HEAD', { accept: 'text/html' }],
 		['POST', { accept: 'text/html', 'sec-fetch-dest': 'document' }],
 		['POST', { 'sec-fetch-dest': 'iframe' }],
+		['GET', { 'sec-fetch-dest': 'frame', accept: '*/*' }],
+		['GET', { 'sec-fetch-dest': 'object', accept: '*/*' }],
+		['GET', { 'sec-fetch-dest': 'embed', accept: '*/*' }],
 	])('is true for %s %j', (method, headers) => {
 		expect(isDocumentRequest(method, headers)).toBe(true);
 	});
@@ -232,6 +276,7 @@ describe('isDocumentRequest', () => {
 	it.each([
 		['GET', { accept: '*/*' }],
 		['GET', { 'sec-fetch-dest': 'script', accept: '*/*' }],
+		['GET', { 'sec-fetch-dest': 'image', accept: '*/*' }],
 		['GET', {}],
 		['POST', { accept: 'text/html' }],
 		['POST', { accept: 'text/html', 'sec-fetch-dest': 'empty' }],

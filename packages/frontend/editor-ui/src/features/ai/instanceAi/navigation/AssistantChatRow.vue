@@ -111,6 +111,12 @@ const shownState = computed(() => {
 	align-items: center;
 	// The height of an N8nMenuItem row, so that the icon is centred on the row.
 	height: var(--spacing--xl);
+	// The space around the icon passes clicks to the row link below it.
+	pointer-events: none;
+
+	> * {
+		pointer-events: auto;
+	}
 }
 
 .stateLink {

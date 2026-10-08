@@ -141,11 +141,13 @@ function toggleLabel(entry: ThreadGroupEntry) {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	background: none;
 	border: none;
-	border-radius: var(--spacing--4xs);
+	border-radius: var(--radius--3xs);
 	cursor: pointer;
 	color: var(--text-color--subtle);
 	font-family: inherit;
 	font-size: var(--font-size--2xs);
+	// Regular weight, so that the action does not look like the medium group title below it.
+	font-weight: var(--font-weight--regular);
 
 	&:hover {
 		color: var(--text-color);

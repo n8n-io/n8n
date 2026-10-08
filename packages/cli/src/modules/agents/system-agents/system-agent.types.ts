@@ -88,13 +88,21 @@ export interface SystemAgentSharingPolicy {
 		call: SystemAgentPendingCall,
 		resumeData: unknown,
 	): Promise<unknown>;
+	/**
+	 * The text of a stored user message as a reader sees it. The stored text can hold context
+	 * that the host added for the model. Null hides the text.
+	 */
+	readerText(text: string): string | null;
 }
 
-/** The suspended tool call that an answer resumes. The input is what the model sent. */
+/**
+ * The suspended tool call that an answer resumes. The input is what the model sent. The
+ * suspend payload is the card, as the tool stored it in the checkpoint.
+ */
 export type SystemAgentPendingCall = Pick<
 	SerializableAgentState['pendingToolCalls'][string],
 	'toolName' | 'input'
->;
+> & { suspendPayload: unknown };
 
 /**
  * A code-defined, instance-level agent. The Agents runtime owns the queue,

@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import type { InstanceAiProvenanceListItem, PushMessage } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
 import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import { resetExperienceModeState } from '../../experience/useExperienceMode';
 import { useInstanceAiStore } from '../../instanceAi.store';
@@ -76,6 +76,24 @@ const twoAutomations = [
 	automation('wf-2', 'CRM sync'),
 ];
 
+/** Automations `Workflow <from>` to `Workflow <to>`, each with a chat the user can open. */
+function numberedAutomations(from: number, to: number) {
+	return Array.from({ length: to - from + 1 }, (_, index) => {
+		const number = from + index;
+		return automation(`wf-${number}`, `Workflow ${number}`, { canOpenThread: true });
+	});
+}
+
+/** Loads the list again, as when the user comes back to the tab, and waits for the new list. */
+async function reload(items: InstanceAiProvenanceListItem[]) {
+	const calls = fetchMyAutomations.mock.calls.length;
+	fetchMyAutomations.mockResolvedValue(items);
+	document.dispatchEvent(new Event('visibilitychange'));
+	await vi.waitFor(() => expect(fetchMyAutomations).toHaveBeenCalledTimes(calls + 1));
+	await new Promise(setImmediate);
+	await nextTick();
+}
+
 function render(props: { collapsed?: boolean } = {}) {
 	return renderComponent({
 		props: { collapsed: false, ...props },
@@ -141,7 +159,7 @@ describe('AssistantAutomationsSection', () => {
 
 		const [first, second] = getAllByTestId('assistant-automation-row');
 		const openChat = within(first).getByRole('button', {
-			name: 'Open the chat that built Weekly report',
+			name: 'Open chat for Weekly report',
 		});
 		expect(openChat).toBe(within(first).getByTestId('assistant-automation-open-chat'));
 		expect(within(second).queryByTestId('assistant-automation-open-chat')).not.toBeInTheDocument();
@@ -150,7 +168,7 @@ describe('AssistantAutomationsSection', () => {
 	it('opens the chat that built the workflow', async () => {
 		const { getByRole } = await renderLoaded();
 
-		await userEvent.click(getByRole('button', { name: 'Open the chat that built Weekly report' }));
+		await userEvent.click(getByRole('button', { name: 'Open chat for Weekly report' }));
 
 		await waitFor(() =>
 			expect(router.currentRoute.value).toMatchObject({
@@ -163,10 +181,38 @@ describe('AssistantAutomationsSection', () => {
 	it('keeps "Open chat" in the tab order', async () => {
 		const { getByRole } = await renderLoaded();
 
-		const openChat = getByRole('button', { name: 'Open the chat that built Weekly report' });
+		const openChat = getByRole('button', { name: 'Open chat for Weekly report' });
 		expect(openChat).not.toHaveAttribute('tabindex', '-1');
 		openChat.focus();
 		expect(openChat).toHaveFocus();
+	});
+
+	it('shows "Open chat" as the tooltip, and starts the button name with it', async () => {
+		const { getByTestId } = await renderLoaded();
+
+		const openChat = getByTestId('assistant-automation-open-chat');
+		expect(openChat).toHaveAccessibleName('Open chat for Weekly report');
+		await hoverTooltipTrigger(openChat);
+
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Open chat'));
+	});
+
+	it('opens the workflow when the user clicks its status', async () => {
+		const { getAllByTestId } = await renderLoaded();
+
+		await userEvent.click(getAllByTestId('assistant-automation-status')[1]);
+
+		await waitFor(() => expect(router.currentRoute.value.path).toBe('/workflow/wf-2'));
+	});
+
+	it('keeps the status link out of the tab order and away from screen readers', async () => {
+		const { getAllByTestId, getAllByRole } = await renderLoaded();
+
+		const statusLink = getAllByTestId('assistant-automation-status')[0].closest('a');
+		expect(statusLink).toHaveAttribute('href', '/workflow/wf-1');
+		expect(statusLink).toHaveAttribute('tabindex', '-1');
+		expect(statusLink).toHaveAttribute('aria-hidden', 'true');
+		expect(getAllByRole('link').map((link) => link.textContent?.trim())).toEqual(['Show all']);
 	});
 
 	it('links "Show all" to the workflows overview, and says where it goes', async () => {
@@ -275,6 +321,71 @@ describe('AssistantAutomationsSection', () => {
 		document.dispatchEvent(new Event('visibilitychange'));
 
 		expect(await findByTestId('assistant-automations')).toBeInTheDocument();
+	});
+
+	describe('keyboard focus when the list changes', () => {
+		it('moves the focus to the row that takes the place of the focused row', async () => {
+			const { getByRole } = await renderLoaded(numberedAutomations(1, 5));
+			getByRole('button', { name: 'Open chat for Workflow 5' }).focus();
+
+			// A new automation takes the top place, so the fifth one leaves the list.
+			await reload([automation('wf-6', 'Workflow 6'), ...numberedAutomations(1, 4)]);
+
+			expect(getByRole('menuitem', { name: 'Workflow 6, Off' })).toBeInTheDocument();
+			expect(getByRole('menuitem', { name: 'Workflow 4, Off' })).toHaveFocus();
+		});
+
+		it('moves the focus to the next row when a row in the middle goes away', async () => {
+			const { getByRole } = await renderLoaded(numberedAutomations(1, 3));
+			getByRole('menuitem', { name: 'Workflow 2, Off' }).focus();
+
+			await reload([...numberedAutomations(1, 1), ...numberedAutomations(3, 3)]);
+
+			expect(getByRole('menuitem', { name: 'Workflow 3, Off' })).toHaveFocus();
+		});
+
+		it('moves the focus to the row link when the "Open chat" button of the row goes away', async () => {
+			const { getByRole, queryByRole } = await renderLoaded(numberedAutomations(1, 2));
+			getByRole('button', { name: 'Open chat for Workflow 2' }).focus();
+
+			await reload([...numberedAutomations(1, 1), automation('wf-2', 'Workflow 2')]);
+
+			expect(queryByRole('button', { name: 'Open chat for Workflow 2' })).not.toBeInTheDocument();
+			expect(getByRole('menuitem', { name: 'Workflow 2, Off' })).toHaveFocus();
+		});
+
+		it('moves the focus to the section toggle when no automation is left', async () => {
+			const { getByRole, getByTestId } = await renderLoaded(numberedAutomations(1, 1));
+			getByRole('menuitem', { name: 'Workflow 1, Off' }).focus();
+
+			await reload([]);
+
+			expect(getByTestId('assistant-automations-empty')).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Automations' })).toHaveFocus();
+		});
+
+		it('leaves the focus on a row that moves down the list', async () => {
+			const { getByRole } = await renderLoaded(numberedAutomations(1, 5));
+			const row = getByRole('menuitem', { name: 'Workflow 1, Off' });
+			row.focus();
+
+			await reload([automation('wf-6', 'Workflow 6'), ...numberedAutomations(1, 4)]);
+
+			expect(getByRole('menuitem', { name: 'Workflow 1, Off' })).toBe(row);
+			expect(row).toHaveFocus();
+		});
+
+		it('does not take the focus from an element outside the list', async () => {
+			const outside = document.createElement('button');
+			document.body.appendChild(outside);
+			await renderLoaded(numberedAutomations(1, 5));
+			outside.focus();
+
+			await reload([automation('wf-6', 'Workflow 6'), ...numberedAutomations(1, 4)]);
+
+			expect(outside).toHaveFocus();
+			outside.remove();
+		});
 	});
 
 	it('updates the status one second after a listed workflow is turned off elsewhere', async () => {

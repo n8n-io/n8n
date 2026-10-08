@@ -6,8 +6,11 @@ import { ASSISTANT_AGENT_ID } from '../agentsChatMode';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { usePushTrigger } from './usePushTrigger';
 
-/** The list reloads at most once in this time. */
-const RELOAD_INTERVAL = TIME.SECOND;
+/** The list reloads this long after the last event of a burst. */
+const RELOAD_DELAY = TIME.SECOND;
+
+/** While events keep coming, the list reloads at least once in this time. */
+const MAX_RELOAD_DELAY = 3 * TIME.SECOND;
 
 /** True for a push event that can change the state of an Assistant chat. */
 export function isAssistantThreadEvent(event: PushMessage): boolean {
@@ -23,12 +26,12 @@ export function isAssistantThreadEvent(event: PushMessage): boolean {
  */
 export function useLiveThreadList(enabled: MaybeRefOrGetter<boolean>) {
 	const store = useInstanceAiStore();
-	const wait = getDebounceTime(RELOAD_INTERVAL);
 
-	// The server sends an event for each step of a running turn. `maxWait` makes a long run of
-	// events reload once a second, so that the sidebar shows "Working" while the turn runs.
+	// The server sends an event for each step of a running turn, so a burst can last as long as
+	// the turn. `maxWait` lets the sidebar show "Working" while the turn runs. It is longer than
+	// `wait`, because each reload is a full list request.
 	usePushTrigger(enabled, isAssistantThreadEvent, async () => await store.loadThreads(), {
-		wait,
-		maxWait: wait,
+		wait: getDebounceTime(RELOAD_DELAY),
+		maxWait: getDebounceTime(MAX_RELOAD_DELAY),
 	});
 }

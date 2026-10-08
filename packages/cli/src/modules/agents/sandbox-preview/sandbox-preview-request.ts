@@ -32,7 +32,13 @@ const isStrictlyDecodable = (value: string): boolean => {
 const decodeLeniently = (value: string): string =>
 	value.replace(ESCAPE_RUN, (run) => Buffer.from(run.replaceAll('%', ''), 'hex').toString('utf8'));
 
-const namesParent = (value: string): boolean => value.split(/[\\/]/).includes('..');
+/**
+ * A segment ends at `/` and `\`. A service that decodes the path and parses
+ * it again as a URL also ends it at `?`, `#`, `;` (path parameters) and NUL.
+ */
+const SEGMENT_END = /[\\/?#;\0]/;
+
+const namesParent = (value: string): boolean => value.split(SEGMENT_END).includes('..');
 
 /**
  * Whether a segment, in any decoded form, names the parent directory. The
@@ -70,13 +76,22 @@ export function parsePreviewUrl(url: string): PreviewRequestTarget {
 	return { kind: 'forward', token, forwardPath: `/${rest.join('/')}${search}` };
 }
 
+/** `Sec-Fetch-Dest` values of requests that load a document. */
+const DOCUMENT_DESTINATIONS: ReadonlySet<string> = new Set([
+	'document',
+	'iframe',
+	'frame',
+	'object',
+	'embed',
+]);
+
 /**
  * The frame's document, as opposed to the scripts and assets that it loads.
  * A form that the page submits also loads a new document into the frame.
  */
 export function isDocumentRequest(method: string | undefined, headers: IncomingHttpHeaders) {
 	const destination = headers['sec-fetch-dest'];
-	if (destination === 'document' || destination === 'iframe') return true;
+	if (typeof destination === 'string' && DOCUMENT_DESTINATIONS.has(destination)) return true;
 	if (method !== 'GET' && method !== 'HEAD') return false;
 	return headers.accept?.includes('text/html') ?? false;
 }

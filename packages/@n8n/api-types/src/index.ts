@@ -728,7 +728,12 @@ export {
 	readPendingInstanceAiSetupCredentialSelections,
 	type InstanceAiSetupCredentialSelection,
 } from './schemas/instance-ai-setup-credential-selection';
-export { canTeammateAnswer, sharedThreadApprovalScopes } from './instance-ai-sharing';
+export {
+	sharedCardRule,
+	type SharedCard,
+	type SharedCardRule,
+	type SharedCardTarget,
+} from './instance-ai-sharing';
 
 export type {
 	McpRegistryServerStatus,

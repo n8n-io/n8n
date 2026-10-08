@@ -100,7 +100,7 @@ describe('useLiveThreadList', () => {
 		expect(loadThreads).toHaveBeenCalledTimes(1);
 	});
 
-	it('reloads once a second while events keep coming, and covers the last event', async () => {
+	it('reloads every three seconds while events keep coming, and one second after the last', async () => {
 		mount();
 		const reloadTimes: number[] = [];
 		loadThreads.mockImplementation(async () => {
@@ -109,14 +109,14 @@ describe('useLiveThreadList', () => {
 		});
 		const start = Date.now();
 
-		// A turn that writes a step every 200 ms for 5 seconds.
-		for (let index = 0; index < 25; index++) {
+		// A turn that writes a step every 200 ms for 7 seconds. The last step is at 6800 ms.
+		for (let index = 0; index < 35; index++) {
 			emit(executionUpdated());
 			await vi.advanceTimersByTimeAsync(200);
 		}
 		await vi.advanceTimersByTimeAsync(5000);
 
-		expect(reloadTimes.map((time) => time - start)).toEqual([1000, 2000, 3000, 4000, 5000]);
+		expect(reloadTimes.map((time) => time - start)).toEqual([3000, 6000, 7800]);
 	});
 
 	it('keeps one reload running and queues one more while the list loads slowly', async () => {

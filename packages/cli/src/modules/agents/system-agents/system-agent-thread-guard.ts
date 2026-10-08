@@ -150,7 +150,7 @@ export class SystemAgentThreadGuard {
 		const resumeData = await sharing.authorizeAnswer(
 			request.user,
 			thread,
-			{ toolName: call.toolName, input: call.input },
+			{ toolName: call.toolName, input: call.input, suspendPayload: call.suspendPayload },
 			request.resumeData,
 		);
 		return { resumeData, runAs: await this.loadOwner(provider, thread) };

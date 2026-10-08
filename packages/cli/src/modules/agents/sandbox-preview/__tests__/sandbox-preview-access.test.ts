@@ -99,6 +99,41 @@ describe('SandboxPreviewAccess', () => {
 			expect(userHasScopes).toHaveBeenCalledTimes(2);
 		});
 
+		it('checks again when asked for a fresh check, even within thirty seconds', async () => {
+			const entry = entryFor('a');
+			await access.tokenUserAllowed(entry);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(access.tokenUserAllowed(entry, { fresh: false })).resolves.toBe(true);
+			await expect(access.tokenUserAllowed(entry, { fresh: true })).resolves.toBe(false);
+			expect(userHasScopes).toHaveBeenCalledTimes(2);
+		});
+
+		it('drops an older pass when a fresh check refuses', async () => {
+			const entry = entryFor('a');
+			await access.tokenUserAllowed(entry);
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+			await access.tokenUserAllowed(entry, { fresh: true });
+
+			// The next check without `fresh` asks the database, because no pass is left.
+			await expect(access.tokenUserAllowed(entry)).resolves.toBe(true);
+			expect(userHasScopes).toHaveBeenCalledTimes(3);
+		});
+
+		it('starts a new thirty-second pass after a fresh check passes', async () => {
+			const entry = entryFor('a');
+			await access.tokenUserAllowed(entry);
+			vi.setSystemTime(START.getTime() + ACCESS_CHECK_TTL_MS - 1);
+			await access.tokenUserAllowed(entry, { fresh: true });
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			vi.setSystemTime(START.getTime() + 2 * ACCESS_CHECK_TTL_MS - 2);
+			await expect(access.tokenUserAllowed(entry)).resolves.toBe(true);
+			vi.setSystemTime(START.getTime() + 2 * ACCESS_CHECK_TTL_MS - 1);
+			await expect(access.tokenUserAllowed(entry)).resolves.toBe(false);
+			expect(userHasScopes).toHaveBeenCalledTimes(3);
+		});
+
 		it('does not keep a refusal, so access that comes back counts at once', async () => {
 			const entry = entryFor('a');
 			vi.mocked(userHasScopes).mockResolvedValueOnce(false);

@@ -82,8 +82,9 @@ function endWhenUpstreamStops(proxyRes: IncomingMessage, res: ServerResponse): v
  * reach the browser frame.
  *
  * The URL is a bearer credential for its whole TTL: whoever holds it reaches
- * the app while the user it was made for keeps access. The page-load check of
- * the browser's session is an extra check, not an access boundary.
+ * the app while the user it was made for keeps access (see
+ * `SandboxPreviewAccess`). The page-load check of the browser's session is an
+ * extra check, not an access boundary.
  *
  * Path mode limits (no host mode in v1):
  * - The app gets only what follows the token, so it must use relative URLs or
@@ -152,12 +153,14 @@ export class SandboxPreviewProxyController {
 	}
 
 	private async allowed(req: Request, entry: SandboxPreviewEntry): Promise<boolean> {
-		if (!(await this.access.tokenUserAllowed(entry))) {
+		// Each page load checks access again. Scripts, assets and API calls may use a recent pass.
+		const isDocument = isDocumentRequest(req.method, req.headers);
+		if (!(await this.access.tokenUserAllowed(entry, { fresh: isDocument }))) {
 			// The URL is of no use now, so later requests get 404 and cost no check.
 			this.previewService.markDead(entry);
 			return false;
 		}
-		if (!isDocumentRequest(req.method, req.headers)) return true;
+		if (!isDocument) return true;
 		return await this.access.sessionUserAllowed(req, entry);
 	}
 
@@ -223,13 +226,13 @@ export class SandboxPreviewProxyController {
 		this.logger.warn('Could not proxy an app preview to the sandbox service', {
 			code: 'code' in error ? error.code : undefined,
 		});
-		if (!('writeHead' in res)) {
+		// Part of the answer of the app is out, so break it off: text added to it would
+		// end it as if it were complete.
+		if (!('writeHead' in res) || res.headersSent) {
 			res.destroy();
 			return;
 		}
-		if (!res.headersSent) {
-			res.writeHead(502, { ...previewAnswerHeaders(), 'content-type': 'text/plain' });
-		}
+		res.writeHead(502, { ...previewAnswerHeaders(), 'content-type': 'text/plain' });
 		res.end('Bad Gateway');
 	}
 }

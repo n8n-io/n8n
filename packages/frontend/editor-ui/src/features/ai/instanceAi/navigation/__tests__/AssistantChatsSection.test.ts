@@ -264,6 +264,32 @@ describe('AssistantChatsSection', () => {
 			expect(rowTestIds(getByTestId('instance-ai-sidebar-chats'))).toHaveLength(5);
 		});
 
+		it('keeps the keyboard focus in the flat list when a reload pushes the focused chat out', async () => {
+			const fiveChats = Array.from({ length: 5 }, (_, index) => chat(`c${index}`, `Chat ${index}`));
+			instanceAiStore.threads = fiveChats;
+			const { getByRole, queryByRole } = render();
+			getByRole('menuitem', { name: 'Chat 4' }).focus();
+
+			instanceAiStore.threads = [chat('new', 'New chat'), ...fiveChats];
+
+			await waitFor(() => expect(queryByRole('menuitem', { name: 'Chat 4' })).not.toBeInTheDocument());
+			expect(getByRole('menuitem', { name: 'Chat 3' })).toHaveFocus();
+		});
+
+		it('leaves the focus on a chat that moves down the flat list', async () => {
+			const fiveChats = Array.from({ length: 5 }, (_, index) => chat(`c${index}`, `Chat ${index}`));
+			instanceAiStore.threads = fiveChats;
+			const { getByRole } = render();
+			const row = getByRole('menuitem', { name: 'Chat 0' });
+			row.focus();
+
+			instanceAiStore.threads = [chat('new', 'New chat'), ...fiveChats];
+
+			await waitFor(() => expect(getByRole('menuitem', { name: 'New chat' })).toBeInTheDocument());
+			expect(getByRole('menuitem', { name: 'Chat 0' })).toBe(row);
+			expect(row).toHaveFocus();
+		});
+
 		it('shows a state icon for each chat that needs a look, and none for a chat the user saw', () => {
 			instanceAiStore.threads = chatsInEveryState();
 

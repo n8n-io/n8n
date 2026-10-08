@@ -14,7 +14,9 @@ export const ACCESS_CHECK_TTL_MS = 30_000;
  * Whether a preview request may reach the app. The URL is a bearer
  * credential, so these checks do not identify the person who holds it. They
  * end the preview when the user it was made for loses `agent:execute` on the
- * project, and on a page load they also check the browser's n8n session.
+ * project, and on a page load they also check the browser's n8n session. A
+ * logout or a password change does not end a URL that n8n already gave out:
+ * it stays valid until it expires or this check fails.
  */
 @Service()
 export class SandboxPreviewAccess {
@@ -26,14 +28,22 @@ export class SandboxPreviewAccess {
 		private readonly userRepository: UserRepository,
 	) {}
 
-	/** Asked for every request, so a user who lost access loses the app within the TTL. */
-	async tokenUserAllowed(entry: SandboxPreviewEntry): Promise<boolean> {
+	/**
+	 * Asked for every request, so a user who lost access loses the app within
+	 * the TTL. `fresh` ignores a recent pass, as a page load must.
+	 */
+	async tokenUserAllowed(
+		entry: SandboxPreviewEntry,
+		options: { fresh?: boolean } = {},
+	): Promise<boolean> {
 		const now = Date.now();
-		if ((this.passedUntil.get(entry.jti) ?? 0) > now) return true;
+		if (!options.fresh && (this.passedUntil.get(entry.jti) ?? 0) > now) return true;
 		const user = await this.userRepository.findByIdWithRole(entry.userId);
 		const allowed = await this.hasAccess(user, entry);
 		this.forgetExpired(now);
+		// A refusal also removes an older pass, so that no later request uses it.
 		if (allowed) this.passedUntil.set(entry.jti, now + ACCESS_CHECK_TTL_MS);
+		else this.passedUntil.delete(entry.jti);
 		return allowed;
 	}
 

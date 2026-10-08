@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useId } from 'vue';
+import { computed, useId, useTemplateRef } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import type { InstanceAiProvenanceListItem } from '@n8n/api-types';
@@ -13,6 +13,7 @@ import { useExperienceMode } from '../experience/useExperienceMode';
 import AssistantSectionHeader from './AssistantSectionHeader.vue';
 import { useAutomationUpdates } from './useAutomationUpdates';
 import { useChatTurnEnded } from './useChatTurnEnded';
+import { FOCUS_ROW_ATTRIBUTE, useKeepRowFocus } from './useKeepListFocus';
 import { useMyAutomations } from './useMyAutomations';
 
 const COLLAPSED_KEY = 'n8n:sidebar:instance-ai-automations-collapsed';
@@ -21,6 +22,7 @@ type AutomationRow = {
 	workflowId: string;
 	active: boolean;
 	status: string;
+	to: RouteLocationRaw;
 	item: IMenuItem;
 	rowLabel: string;
 	chat?: { to: RouteLocationRaw; label: string };
@@ -53,19 +55,25 @@ useAutomationUpdates(
 
 const isCollapsed = useLocalStorage(COLLAPSED_KEY, false, { writeDefaults: false });
 
+// A reload can remove the focused row, for example when a new automation takes the top place.
+const header = useTemplateRef<InstanceType<typeof AssistantSectionHeader>>('header');
+useKeepRowFocus(useTemplateRef<HTMLElement>('root'), () => header.value?.focus());
+
 function toRow(automation: InstanceAiProvenanceListItem): AutomationRow {
 	const status = i18n.baseText(
 		automation.active ? 'instanceAi.automations.on' : 'instanceAi.automations.off',
 	);
+	const to = { name: VIEWS.WORKFLOW, params: { workflowId: automation.workflowId } };
 	return {
 		workflowId: automation.workflowId,
 		active: automation.active,
 		status,
+		to,
 		item: {
 			id: `assistant-automation-${automation.workflowId}`,
 			icon: 'workflow',
 			label: automation.name,
-			route: { to: { name: VIEWS.WORKFLOW, params: { workflowId: automation.workflowId } } },
+			route: { to },
 		},
 		rowLabel: i18n.baseText('instanceAi.automations.rowLabel', {
 			interpolate: { name: automation.name, status },
@@ -87,10 +95,12 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 <template>
 	<div
 		v-if="isShown && automations !== undefined"
+		ref="root"
 		:class="$style.section"
 		data-test-id="assistant-automations"
 	>
 		<AssistantSectionHeader
+			ref="header"
 			v-model:collapsed="isCollapsed"
 			:title="i18n.baseText('instanceAi.automations.title')"
 			:title-id="titleId"
@@ -116,6 +126,7 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 				<li
 					v-for="row in rows"
 					:key="row.workflowId"
+					:[FOCUS_ROW_ATTRIBUTE]="row.workflowId"
 					:class="[$style.row, { [$style.withChat]: row.chat }]"
 					data-test-id="assistant-automation-row"
 				>
@@ -124,7 +135,7 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 						<N8nTooltip
 							v-if="row.chat"
 							placement="right"
-							:content="i18n.baseText('instanceAi.provenance.openChat')"
+							:content="i18n.baseText('instanceAi.automations.openChat')"
 						>
 							<N8nIconButton
 								variant="ghost"
@@ -135,15 +146,16 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 								@click="router.push(row.chat.to)"
 							/>
 						</N8nTooltip>
-						<!-- The row label already names the status. -->
-						<N8nBadge
-							:variant="row.active ? 'success' : 'outline'"
-							size="xxsmall"
-							aria-hidden="true"
-							data-test-id="assistant-automation-status"
-						>
-							{{ row.status }}
-						</N8nBadge>
+						<!-- The row label already names the status, so screen readers skip this copy of the link. -->
+						<RouterLink :to="row.to" tabindex="-1" aria-hidden="true" :class="$style.statusLink">
+							<N8nBadge
+								:variant="row.active ? 'success' : 'outline'"
+								size="xxsmall"
+								data-test-id="assistant-automation-status"
+							>
+								{{ row.status }}
+							</N8nBadge>
+						</RouterLink>
 					</span>
 				</li>
 			</ul>
@@ -198,5 +210,17 @@ const rows = computed(() => (automations.value ?? []).map(toRow));
 	gap: var(--spacing--4xs);
 	// The height of an N8nMenuItem row, so that the items are centred on the row.
 	height: var(--spacing--xl);
+	// The space around the items passes clicks to the row link below it.
+	pointer-events: none;
+
+	> * {
+		pointer-events: auto;
+	}
+}
+
+.statusLink {
+	display: flex;
+	align-items: center;
+	text-decoration: none;
 }
 </style>

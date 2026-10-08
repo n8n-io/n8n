@@ -176,13 +176,28 @@ describe('SandboxPreviewProxyController transport', () => {
 		it.each([
 			['a sized answer', 'abort-sized' as const],
 			['a chunked answer', 'abort-chunked' as const],
+			['a sized answer on a reset connection', 'abort-reset-sized' as const],
+			['a chunked answer on a reset connection', 'abort-reset-chunked' as const],
 		])('breaks off %s for the browser too, so the frame does not wait', async (_case, mode) => {
 			const { url } = await openPreview();
 			h.state.mode = mode;
 
 			const answer = await watch(`${url}src/main.ts`, 3_000);
 
+			// No text is added to the bytes of the app, and the answer does not look complete.
 			expect(answer).toEqual({ status: 200, body: 'partial', complete: false });
+		});
+
+		it('logs a reset connection without the request path', async () => {
+			const { url } = await openPreview();
+			h.state.mode = 'abort-reset-chunked';
+
+			await watch(`${url}src/main.ts`, 3_000);
+
+			expect(h.logger.warn).toHaveBeenCalledWith(
+				'Could not proxy an app preview to the sandbox service',
+				{ code: 'ECONNRESET' },
+			);
 		});
 
 		it('keeps the URL, so the next request reaches the app again', async () => {
@@ -288,10 +303,14 @@ describe('SandboxPreviewProxyController transport', () => {
 			if (!upstream) throw new Error('The harness servers did not start');
 			const serviceTimeout = upstream.keepAliveTimeout;
 			upstream.keepAliveTimeout = 61_000;
-			const { url } = await openPreview();
-
-			const answer = await send(`${url}src/main.ts`);
-			upstream.keepAliveTimeout = serviceTimeout;
+			const answer = await (async () => {
+				try {
+					const { url } = await openPreview();
+					return await send(`${url}src/main.ts`);
+				} finally {
+					upstream.keepAliveTimeout = serviceTimeout;
+				}
+			})();
 
 			// The service answered `keep-alive: timeout=61`; n8n closes idle browser connections sooner.
 			expect(seen[0].headers.connection).toBe('keep-alive');

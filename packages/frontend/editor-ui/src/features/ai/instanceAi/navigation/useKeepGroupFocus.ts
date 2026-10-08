@@ -1,4 +1,5 @@
-import { onBeforeUpdate, onUpdated, type Ref } from 'vue';
+import type { Ref } from 'vue';
+import { useRestoreFocus } from './useKeepListFocus';
 
 /** The attribute that names the group of an element in the grouped chat list. */
 export const CHAT_GROUP_ATTRIBUTE = 'data-chat-group';
@@ -43,28 +44,11 @@ export function focusTarget(root: HTMLElement, anchor: FocusAnchor): HTMLElement
 	return (group ? chatRows(group).at(-1) : undefined) ?? rows[0];
 }
 
-function isFocusLost(): boolean {
-	const active = document.activeElement;
-	return active === null || active === document.body;
-}
-
 /**
  * Keeps the keyboard focus in the grouped chat list when an update removes the focused element.
  * When the state of a chat changes, Vue removes its row from one group and adds a new row to
  * another group. The "Show all" button goes when its group gets small enough.
  */
 export function useKeepGroupFocus(root: Readonly<Ref<HTMLElement | null>>) {
-	let anchor: FocusAnchor | undefined;
-
-	onBeforeUpdate(() => {
-		anchor = root.value ? focusAnchor(root.value) : undefined;
-	});
-
-	onUpdated(() => {
-		const before = anchor;
-		anchor = undefined;
-		// Only an element that this update removed lost the focus. Do not take it from elsewhere.
-		if (!before || !root.value || !isFocusLost()) return;
-		focusTarget(root.value, before)?.focus();
-	});
+	useRestoreFocus(root, focusAnchor, (element, anchor) => focusTarget(element, anchor)?.focus());
 }

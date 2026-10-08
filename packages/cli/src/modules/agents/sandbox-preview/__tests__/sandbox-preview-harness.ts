@@ -51,7 +51,17 @@ export type UpstreamMode =
 	| 'app-down'
 	| 'stream'
 	| 'abort-sized'
-	| 'abort-chunked';
+	| 'abort-chunked'
+	| 'abort-reset-sized'
+	| 'abort-reset-chunked';
+
+/** Modes in which the service stops after the first chunk of a 200 answer. */
+const ABORT_MODES: ReadonlySet<UpstreamMode> = new Set([
+	'abort-sized',
+	'abort-chunked',
+	'abort-reset-sized',
+	'abort-reset-chunked',
+]);
 
 export interface SeenRequest {
 	method?: string;
@@ -144,12 +154,14 @@ function answerUpstream(
 	res: ServerResponse,
 	body: string,
 ) {
-	if (state.mode === 'abort-sized' || state.mode === 'abort-chunked') {
-		const length = state.mode === 'abort-sized' ? { 'content-length': '1000' } : {};
+	if (ABORT_MODES.has(state.mode)) {
+		const length = state.mode.endsWith('-sized') ? { 'content-length': '1000' } : {};
 		res.writeHead(200, { 'content-type': 'application/javascript', ...length });
 		res.write('partial');
-		// The service stops after the first chunk reached n8n, as when the app crashes.
-		setTimeout(() => res.socket?.destroy(), 20);
+		// The service stops after the first chunk reached n8n, as when the app crashes. A reset
+		// (TCP RST, as from a crashed process or a load balancer) makes the n8n request emit 'error'.
+		const reset = state.mode.startsWith('abort-reset');
+		setTimeout(() => (reset ? res.socket?.resetAndDestroy() : res.socket?.destroy()), 20);
 		return;
 	}
 	if (state.mode === 'restarted') {
@@ -273,6 +285,9 @@ export function usePreviewHarness() {
 		servers.upstream = stubSandboxService(state, seen);
 		servers.upstreamUrl = `http://127.0.0.1:${await listen(servers.upstream)}`;
 		servers.n8n = n8nApp();
+		// Each test makes a new controller, and http-proxy-middleware adds one server 'close'
+		// listener for each proxy of a controller. Production has one controller.
+		servers.n8n.setMaxListeners(0);
 		servers.port = await listen(servers.n8n);
 	});
 

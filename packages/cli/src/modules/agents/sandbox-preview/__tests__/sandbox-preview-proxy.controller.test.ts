@@ -308,6 +308,36 @@ describe('SandboxPreviewProxyController', () => {
 			expect(userHasScopes).toHaveBeenCalledTimes(2);
 		});
 
+		it('checks the user of the token again on each page load without a cookie', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			const start = Date.now();
+			const { url } = await openPreview();
+			const passed = await send(url, { headers: PAGE });
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			vi.setSystemTime(start + 1_000);
+			const reload = await send(url, { headers: PAGE });
+			const later = await send(`${url}src/main.ts`, { headers: { accept: '*/*' } });
+
+			expect(passed.status).toBe(200);
+			expect(reload.status).toBe(403);
+			expect(later.status).toBe(404);
+			expect(userHasScopes).toHaveBeenCalledTimes(2);
+			expect(seen).toHaveLength(1);
+		});
+
+		it('checks a page load again after a script passed, and keeps the pass for scripts', async () => {
+			const { url } = await openPreview();
+
+			await send(`${url}src/main.ts`, { headers: { accept: '*/*' } });
+			await send(url, { headers: { 'sec-fetch-dest': 'iframe' } });
+			await send(`${url}src/app.ts`, { headers: { accept: '*/*' } });
+
+			expect(seen).toHaveLength(3);
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledTimes(2);
+			expect(userHasScopes).toHaveBeenCalledTimes(2);
+		});
+
 		it('checks the session user too when the page load sends the n8n cookie', async () => {
 			const { url } = await openPreview();
 

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useTemplateRef } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -14,6 +15,11 @@ const props = defineProps<{
 }>();
 
 const collapsed = defineModel<boolean>('collapsed', { required: true });
+
+const toggleButton = useTemplateRef<HTMLButtonElement>('toggle');
+
+// The section moves the focus here when a reload removes the focused row and no row is left.
+defineExpose({ focus: () => toggleButton.value?.focus() });
 </script>
 
 <template>
@@ -21,6 +27,7 @@ const collapsed = defineModel<boolean>('collapsed', { required: true });
 		<!-- The heading holds the toggle, so heading navigation also reaches the toggle. -->
 		<div role="heading" :aria-level="2" :class="$style.heading">
 			<button
+				ref="toggle"
 				type="button"
 				:class="$style.toggle"
 				:aria-expanded="!collapsed"
@@ -58,7 +65,7 @@ const collapsed = defineModel<boolean>('collapsed', { required: true });
 	width: 100%;
 	box-sizing: border-box;
 	margin-top: var(--spacing--4xs);
-	border-radius: var(--spacing--4xs);
+	border-radius: var(--radius--3xs);
 	color: inherit;
 
 	// `--text-color--subtle` passes AA on the sidebar background, but not on the hover
@@ -93,7 +100,7 @@ const collapsed = defineModel<boolean>('collapsed', { required: true });
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	background: none;
 	border: none;
-	border-radius: var(--spacing--4xs);
+	border-radius: var(--radius--3xs);
 	cursor: pointer;
 	color: inherit;
 
