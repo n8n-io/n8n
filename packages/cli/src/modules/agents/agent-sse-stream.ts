@@ -75,12 +75,9 @@ export function initSseStream(res: FlushableResponse) {
 
 /** Build the `error` SSE event for a caught error, mapping known error classes to a stable `errorCode`. */
 export function toChatErrorEvent(error: unknown, fallbackMessage: string): AgentSseEvent {
-	const errorCode =
-		error instanceof AgentTurnAlreadyRunningError
-			? 'turn_already_running'
-			: error instanceof AgentN8nChatUnavailableError
-				? 'agent_unavailable'
-				: undefined;
+	let errorCode: string | undefined;
+	if (error instanceof AgentTurnAlreadyRunningError) errorCode = 'turn_already_running';
+	if (error instanceof AgentN8nChatUnavailableError) errorCode = 'agent_unavailable';
 	return {
 		type: 'error',
 		message: scrubSecretsInText(error instanceof Error ? error.message : fallbackMessage),
