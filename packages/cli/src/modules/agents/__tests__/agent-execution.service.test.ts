@@ -421,6 +421,36 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
+		it('checks the checkpoints of the checkpoint agent when the run names one', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			const execution = mock<AgentExecution>({ id: 'execution-1' });
+			agentExecutionRepository.create.mockReturnValue(execution);
+			agentExecutionRepository.saveInContext.mockResolvedValue(execution);
+
+			await service.startExecutionRecording(
+				{
+					access: previewAccess,
+					resourceId: 'user-1',
+					threadId: 'thread-1',
+					agentId: 'system-agent',
+					agentName: 'agent-builder',
+					projectId: 'project-1',
+					checkpointAgentId: 'built-agent',
+					userMessage: null,
+				},
+				new Date(100),
+			);
+
+			expect(checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(
+				'built-agent',
+				'thread-1',
+				expect.any(Object),
+			);
+		});
+
 		it.each([
 			{
 				name: 'stores the execution links of a delegated run',
@@ -2161,6 +2191,7 @@ describe('AgentExecutionService', () => {
 				'thread-1',
 				'user-1',
 				{},
+				'agent-1',
 			);
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('thread-1', {});
@@ -2192,9 +2223,41 @@ describe('AgentExecutionService', () => {
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
 
 			expect(result).toBe(false);
-			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentChatAttachmentService.deleteStoredData).not.toHaveBeenCalled();
+		});
+
+		it('deletes the memory and checkpoints of the built agent for an Agent builder session', async () => {
+			memoryBackend.getThread.mockResolvedValue({
+				id: 'builder-thread-1',
+				resourceId: 'user-1',
+				metadata: { builtAgentId: 'built-agent' },
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: { attachmentBinaryDataIds: [], executionLogs: [] },
+			});
+
+			const result = await service.deleteThread(
+				'project-1',
+				'system-agent',
+				'builder-thread-1',
+				'user-1',
+			);
+
+			expect(result).toBe(true);
+			expect(agentExecutionThreadRepository.deleteSession).toHaveBeenCalledWith(
+				'project-1',
+				'system-agent',
+				'builder-thread-1',
+				'user-1',
+				{},
+				'built-agent',
+			);
+			expect(n8nMemory.getImplementation).toHaveBeenLastCalledWith('built-agent');
+			expect(memoryBackend.deleteThread).toHaveBeenCalledWith('builder-thread-1', {});
 		});
 	});
 

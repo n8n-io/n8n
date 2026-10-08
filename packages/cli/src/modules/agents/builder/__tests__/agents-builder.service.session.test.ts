@@ -771,6 +771,7 @@ describe('AgentsBuilderService execution records', () => {
 	const parentExecution = {
 		threadId: 'assistant-thread-1',
 		agentId: 'instance-assistant',
+		projectId: 'working-project-1',
 		executionId: 'parent-execution-1',
 		executionCounter,
 	};
@@ -808,6 +809,7 @@ describe('AgentsBuilderService execution records', () => {
 			credentialService,
 			turnExecutionService,
 			executionRepository,
+			memoryImplementation,
 		} = setup();
 
 		await drain(
@@ -825,6 +827,7 @@ describe('AgentsBuilderService execution records', () => {
 		expect(turnExecutionService.startExecution).not.toHaveBeenCalled();
 		expect(turnExecutionService.finalizeExecution).not.toHaveBeenCalled();
 		expect(executionRepository.findLinksForChildOf).not.toHaveBeenCalled();
+		expect(memoryImplementation.saveThread).not.toHaveBeenCalled();
 		expect(agentsSdkMocks.streamCalls[0]?.message).toBe('hi');
 		expect(agentsSdkMocks.streamCalls[0]?.options).toEqual({
 			persistence: { threadId: 'ia-builder:t:agent-1', resourceId: 'user-1' },
@@ -875,6 +878,7 @@ describe('AgentsBuilderService execution records', () => {
 			credentialService,
 			turnExecutionService,
 			executionRepository,
+			memoryImplementation,
 		} = setup();
 		agentsSdkMocks.nextChunks.push(finishChunk);
 
@@ -892,12 +896,20 @@ describe('AgentsBuilderService execution records', () => {
 
 		expect(chunks).toEqual([finishChunk]);
 		expect(executionRepository.findLinksForChildOf).toHaveBeenCalledWith('parent-execution-1');
+		expect(memoryImplementation.saveThread).toHaveBeenCalledWith({
+			id: 'ia-builder:t:agent-1',
+			resourceId: 'user-1',
+			metadata: { builtAgentId: 'agent-1' },
+		});
+		// The session belongs to the parent's system agent and working project.
+		// The admission checks the checkpoints of the built agent.
 		expect(recordedStart(turnExecutionService)).toEqual({
 			access: { accessScope: 'user', ownerId: 'user-1' },
 			threadId: 'ia-builder:t:agent-1',
-			agentId: 'agent-1',
-			agentName: 'Support agent',
-			projectId: 'project-1',
+			agentId: 'instance-assistant',
+			agentName: 'agent-builder',
+			projectId: 'working-project-1',
+			checkpointAgentId: 'agent-1',
 			userMessage: 'Build a support agent',
 			resourceId: 'user-1',
 			source: 'builder',
@@ -978,6 +990,9 @@ describe('AgentsBuilderService execution records', () => {
 
 		expect(recordedStart(turnExecutionService)).toMatchObject({
 			threadId: 'ia-builder:t:agent-1',
+			agentId: 'instance-assistant',
+			projectId: 'working-project-1',
+			checkpointAgentId: 'agent-1',
 			userMessage: null,
 			resumeRunId: 'builder-run-1',
 			sessionMode: 'existing',

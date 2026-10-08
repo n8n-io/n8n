@@ -47,6 +47,7 @@ import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt, buildBuilderSessionContext } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, type BuilderTools } from './agents-builder-tools.service';
+import { BUILT_AGENT_ID_METADATA_KEY } from './builder-thread-metadata';
 import { BuilderCheckpointUnavailableError } from './errors';
 import {
 	BUILDER_PLANNER_TODOS_DESCRIPTION,
@@ -60,6 +61,9 @@ import { streamAgentChunks } from '../utils/agent-stream';
 /** Execution source of a recorded builder turn. */
 export const BUILDER_EXECUTION_SOURCE = 'builder';
 
+/** Runtime name of the builder agent. A recorded builder session shows it as its agent name. */
+export const BUILDER_AGENT_NAME = 'agent-builder';
+
 /**
  * The parent turn on the Agents runtime that calls the builder. Only a system
  * agent (for example the Assistant on the Agents runtime) supplies it. The
@@ -69,8 +73,10 @@ export const BUILDER_EXECUTION_SOURCE = 'builder';
 export interface BuilderParentExecution {
 	/** Agents execution thread id of the parent session. */
 	threadId: string;
-	/** Instance agent id that owns the parent thread. */
+	/** Instance agent id that owns the parent thread. The builder session belongs to it too. */
 	agentId: string;
+	/** Working project of the parent thread. The builder session is stored in this project. */
+	projectId: string;
 	/** Execution id of the parent turn that starts or resumes this builder turn. */
 	executionId: string;
 	/** Execution counter of the parent turn, so the parent's limits include builder tokens. */
@@ -124,9 +130,8 @@ export interface InstanceAiBuilderSessionOptions {
 }
 
 interface BuilderTurnScope {
+	/** The agent that the builder builds. */
 	agentId: string;
-	agentName: string;
-	projectId: string;
 	user: User;
 	session: InstanceAiBuilderSessionOptions;
 	parentExecution: BuilderParentExecution;
@@ -172,7 +177,7 @@ export class AgentsBuilderService {
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
-		const { builder, agentName } = await this.createBuilderAgent(
+		const builder = await this.createBuilderAgent(
 			agentId,
 			projectId,
 			credentialProvider,
@@ -202,15 +207,7 @@ export class AgentsBuilderService {
 		}
 
 		yield* this.streamRecordedTurn(
-			{
-				agentId,
-				agentName,
-				projectId,
-				user,
-				session,
-				parentExecution,
-				userMessage: message,
-			},
+			{ agentId, user, session, parentExecution, userMessage: message },
 			async ({ executionId, inputMessageIds, markStarted }) => {
 				markStarted();
 				return await builder.stream(bindExecutionInput(message, inputMessageIds), {
@@ -264,7 +261,7 @@ export class AgentsBuilderService {
 			throw new BuilderCheckpointUnavailableError('not-found');
 		}
 
-		const { builder, agentName } = await this.createBuilderAgent(
+		const builder = await this.createBuilderAgent(
 			agentId,
 			projectId,
 			credentialProvider,
@@ -292,16 +289,7 @@ export class AgentsBuilderService {
 		}
 
 		yield* this.streamRecordedTurn(
-			{
-				agentId,
-				agentName,
-				projectId,
-				user,
-				session,
-				parentExecution,
-				userMessage: null,
-				resumeRunId: runId,
-			},
+			{ agentId, user, session, parentExecution, userMessage: null, resumeRunId: runId },
 			async ({ executionId, recorder, markStarted }) =>
 				await builder.resume('stream', resumeData, {
 					...options,
@@ -340,7 +328,7 @@ export class AgentsBuilderService {
 		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
-	): Promise<{ builder: RuntimeAgent; agentName: string }> {
+	): Promise<RuntimeAgent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -379,7 +367,7 @@ export class AgentsBuilderService {
 		const { Agent } = await import('@n8n/agents');
 		const builderMemory = await this.createBuilderMemory(agentId, user, session);
 
-		const builder = new Agent('agent-builder')
+		const builder = new Agent(BUILDER_AGENT_NAME)
 			.model(modelConfig)
 			.instructions(finalInstructions)
 			// Sent after the cached instructions so per-agent values do not break the cache.
@@ -400,7 +388,7 @@ export class AgentsBuilderService {
 
 		builder.reasoning(resolveAIAReasoning(modelConfig));
 
-		return { builder, agentName: agent.name };
+		return builder;
 	}
 
 	/**
@@ -409,6 +397,12 @@ export class AgentsBuilderService {
 	 * turn, linked to the parent turn. Each start and each resume links to the
 	 * parent execution that calls it, because one builder session lives across
 	 * many parent turns.
+	 *
+	 * The session belongs to the system agent of the parent and to the parent's
+	 * working project, not to the built agent: the built agent never runs, and
+	 * its session lists must not show builder sessions. The builder memory and
+	 * checkpoints stay keyed on the built agent, so the memory thread stores its
+	 * id and the admission checks its checkpoints.
 	 */
 	private async *streamRecordedTurn(
 		scope: BuilderTurnScope,
@@ -420,9 +414,10 @@ export class AgentsBuilderService {
 			// The thread takes its access from the parent thread on creation.
 			access: { accessScope: 'user', ownerId: scope.user.id },
 			threadId: session.threadId,
-			agentId: scope.agentId,
-			agentName: scope.agentName,
-			projectId: scope.projectId,
+			agentId: parentExecution.agentId,
+			agentName: BUILDER_AGENT_NAME,
+			projectId: parentExecution.projectId,
+			checkpointAgentId: scope.agentId,
 			userMessage: scope.userMessage,
 			resourceId: scope.user.id,
 			source: BUILDER_EXECUTION_SOURCE,
@@ -442,6 +437,11 @@ export class AgentsBuilderService {
 			recording,
 		);
 		session.abortSignal.throwIfAborted();
+		await this.n8nMemory.getImplementation(scope.agentId).saveThread({
+			id: session.threadId,
+			resourceId: scope.user.id,
+			metadata: { [BUILT_AGENT_ID_METADATA_KEY]: scope.agentId },
+		});
 		const admission = await this.turnExecutionService.startExecution(recording, recorder.startedAt);
 		const { executionId } = admission;
 		let executionStarted = false;

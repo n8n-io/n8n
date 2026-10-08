@@ -451,7 +451,16 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		if (changes.projectId !== undefined) set.projectId = changes.projectId;
 		// TypeORM rejects an update without values.
 		if (Object.keys(set).length === 0) return;
-		await this.update({ id: threadId }, set);
+		const { projectId } = set;
+		await this.runInTransaction({}, async (manager) => {
+			await manager.update(AgentExecutionThread, { id: threadId }, set);
+			// Child sessions (for example Agent builder sessions) follow the
+			// working project of their parent, so the parent lookup in
+			// `findOrCreate` keeps finding the parent.
+			if (projectId !== undefined) {
+				await manager.update(AgentExecutionThread, { parentThreadId: threadId }, { projectId });
+			}
+		});
 	}
 
 	/**
@@ -521,9 +530,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
-	 * Child sessions that a session of the given agent started, in any project.
-	 * A system agent session can start child sessions in another project, so
-	 * the parent cleanup must not filter by project.
+	 * Child sessions that a session of the given agent started. The children
+	 * follow the parent's working project (see `updateOwned`), but the cleanup
+	 * does not filter by project, so a child is never left behind.
 	 */
 	async findChildSessions(
 		parentThreadId: string,
@@ -578,6 +587,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		threadId: string,
 		userId: string,
 		ctx: OperationContext,
+		/** Agent whose checkpoints the session uses, when it is not `agentId`. */
+		checkpointAgentId: string = agentId,
 	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
@@ -599,7 +610,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			projectId,
 			threadId,
 		);
-		const checkpointRunIds = await this.findSessionCheckpointRunIds(manager, agentId, threadId);
+		const checkpointRunIds = await this.findSessionCheckpointRunIds(
+			manager,
+			checkpointAgentId,
+			threadId,
+		);
 		for (const batch of chunk(checkpointRunIds, CHECKPOINT_BATCH_SIZE)) {
 			await manager.delete(AgentCheckpoint, batch);
 		}
