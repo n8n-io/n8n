@@ -99,7 +99,27 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 				conflicts: [
 					projectConflict,
 					destructiveChange,
-					{ ...destructiveChange, id: 'invoices-id', name: 'Invoices' },
+					{
+						...destructiveChange,
+						id: 'invoices-id',
+						name: 'Invoices',
+						changes: [
+							{ kind: 'add-column', column: 'note', type: 'string', destructive: false },
+							{
+								kind: 'change-column-type',
+								column: 'amount',
+								from: 'number',
+								to: 'string',
+								destructive: true,
+							},
+							...['a', 'b', 'c', 'd', 'e'].map((column) => ({
+								kind: 'remove-column' as const,
+								column,
+								type: 'string' as const,
+								destructive: true as const,
+							})),
+						],
+					},
 				],
 			}),
 			createBinding: vi.fn(),
@@ -110,11 +130,17 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 	expect(getByText(/destination project is not a team project/)).toBeInTheDocument();
 	expect(
 		getByText(
-			'These changes remove, rename or retype columns. The values in those columns are removed. Rows and other columns are kept.',
+			'Changes to these data tables remove, rename or retype columns. The values in those columns are removed. Rows and other columns are kept.',
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
+	expect(getByText('Columns: total (removed)')).toBeInTheDocument();
 	expect(getByText('Invoices')).toBeInTheDocument();
+	expect(
+		getByText(
+			'Columns: amount (number to string), a (removed), b (removed), c (removed), d (removed) and 1 more',
+		),
+	).toBeInTheDocument();
 	expect(getAllByText('Team A: Workflow A')).toHaveLength(2);
 	expect(precedes(getByText(/destination project is not a team project/), destructiveHeading)).toBe(
 		true,
@@ -141,7 +167,7 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(getByText('Check the column changes before you apply')).toBeInTheDocument();
 	expect(
 		getByText(
-			"This change removes, renames or retypes columns. The values in the changed columns can't be restored. Rows and other columns are kept.",
+			"Changes to this data table remove, rename or retype columns. The values in the changed columns can't be restored. Rows and other columns are kept.",
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
