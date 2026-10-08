@@ -39,6 +39,7 @@ import type {
 	WebhookResponseData,
 	IDestinationNode,
 	IUser,
+	ExecutionStorageLocation,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -975,6 +976,8 @@ export async function executeWebhook(
 		 * a node that establishes its own carrier below still wins.
 		 */
 		encryptedRunnerIdentity?: string;
+		/** Store recorded on the execution being resumed. Unset for a new execution. */
+		storedAt?: ExecutionStorageLocation;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1291,7 +1294,9 @@ export async function executeWebhook(
 			true,
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
-			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
+			executionId
+				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				: undefined,
 			responsePromise,
 		);
 

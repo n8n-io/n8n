@@ -1,6 +1,7 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -18,12 +19,56 @@ import { expandSelectsToButtons, type SuspendComponent } from '../../component-m
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import type { ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
+import { READ_PERMISSIONS } from './teams-manifest.service';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
+
+/**
+ * The model input carries no sign of whether the bot was addressed, so a
+ * message read only through read-all looks like a direct question.
+ */
+const ANSWER_AS_TEXT =
+	'To answer, write your answer as normal text. It is posted for you. Do not use the respond action for it.';
+
+const OPTIONAL_REPLY_NOTE = [
+	'<reply_guidance>',
+	'This message does not mention you. You read it because you can read every message in this conversation.',
+	'Answer only if the message is meant for you or you can add something useful within your role.',
+	ANSWER_AS_TEXT,
+	'Otherwise, call do_not_respond once. That ends your turn.',
+	'</reply_guidance>',
+].join('\n');
+
+/** A follow-up in a thread the agent joined may answer the agent itself. */
+const JOINED_THREAD_REPLY_NOTE = [
+	'<reply_guidance>',
+	'This message does not mention you, but it is in a conversation you joined earlier.',
+	'Answer if it continues your conversation or asks you something.',
+	ANSWER_AS_TEXT,
+	'If it is aimed at someone else, call do_not_respond once. That ends your turn.',
+	'</reply_guidance>',
+].join('\n');
+
+function conversationTypeOf(activity: unknown): unknown {
+	return isRecord(activity) && isRecord(activity.conversation)
+		? activity.conversation.conversationType
+		: undefined;
+}
+
+/**
+ * The adapter reports every inbound author as a person, so the activity is
+ * read instead. Bot Framework gives bot accounts a `28:` id.
+ */
+function isFromBot(activity: unknown): boolean {
+	if (!isRecord(activity) || !isRecord(activity.from)) return false;
+	const { id, role } = activity.from;
+	return role === 'bot' || (typeof id === 'string' && id.startsWith('28:'));
+}
 
 /** Interval picked to match Discord's; Teams does not document the expiry. */
 const TEAMS_TYPING_REFRESH_MS = 8000;
@@ -47,17 +92,16 @@ const TENANT_ID_DOMAIN =
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
  *
  * Direct messages, team channels and group chats are all supported. Outside a
- * DM the bot must be @-mentioned once; the mention subscribes the conversation,
- * so later messages reach the agent without a mention. In a channel that
- * subscription covers the one thread, because the thread id carries the root
- * message id. In a group chat it covers the whole chat.
+ * DM the bot must be @-mentioned, and the mention subscribes the conversation.
+ * In a channel that subscription covers the one thread, because the thread id
+ * carries the root message id. In a group chat it covers the whole chat.
  *
- * Whether a later message arrives at all is a setup choice. The manifest
- * carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only when
- * `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants them
- * when the app is added to a team or a chat, and they also make Teams deliver
- * every message instead of mentions alone. Without them Teams delivers only the
- * mention, and the subscription stays inert.
+ * Reading messages without a mention is a setup choice for each surface. The
+ * manifest carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only
+ * when `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants
+ * them when the app is added to a team or a chat, and they make Teams deliver
+ * every message instead of mentions alone. Each such message runs the agent
+ * with an optional reply, so the agent decides whether to speak.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
@@ -76,7 +120,8 @@ export class TeamsIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
 			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
-			'Stay in the conversation after an @-mention, so later messages need no mention.',
+			'In a team channel or group chat, run when @-mentioned. When the setup turns on reading all messages there, run on every message and decide whether to reply, or stay silent.',
+			'Add emoji reactions to messages.',
 			'Render Adaptive Cards with buttons.',
 		],
 		useIntegrationWhen: [
@@ -98,10 +143,18 @@ export class TeamsIntegration extends AgentChatIntegration {
 		'image',
 	];
 
-	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'edit_message']);
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'edit_message',
+		'add_reaction',
+		'do_not_respond',
+	]);
 
 	readonly actionToolGuidance = [
 		'For edit_message, pass the messageId returned by a previous Teams action or get_current_message_context. The current Teams conversation is selected automatically.',
+		'For add_reaction, use one of thumbs_up, eyes, check, x, rocket, thinking or pin, or a Teams reaction type such as like, heart or laugh.',
+		'A channel or group chat message that does not mention you needs no reply. Use do_not_respond unless you have something useful to add.',
+		'To acknowledge a message with only a reaction, call add_reaction and then do_not_respond. Any text you write after add_reaction is posted as a reply.',
 	];
 
 	/**
@@ -128,6 +181,41 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 * the message being edited above it.
 	 */
 	readonly singleStreamedRunPerTurn = true;
+
+	/**
+	 * A message without a mention runs only on a surface whose read-all setting
+	 * is on, and never when another bot wrote it. Two listening bots in one
+	 * channel would otherwise answer each other.
+	 */
+	shouldHandleUnmentionedMessage({
+		message,
+		integration,
+	}: {
+		message: { raw: unknown };
+		integration: AgentIntegrationConfig;
+	}): boolean {
+		if (isFromBot(message.raw)) return false;
+		const settings = integration.type === 'teams' ? integration.settings : undefined;
+		const type = conversationTypeOf(message.raw);
+		const permission = READ_PERMISSIONS.find((p) => p.conversationType === type);
+		return (
+			permission !== undefined &&
+			settings?.[permission.requires] === true &&
+			settings[permission.setting] === true
+		);
+	}
+
+	/** Only a direct message or a mention obliges the agent to answer. */
+	getReplyExpectation({
+		message,
+		isNewMention,
+	}: {
+		message: { isMention?: boolean; raw: unknown };
+		isNewMention: boolean;
+	}): ReplyExpectation {
+		if (isNewMention || message.isMention === true) return 'required';
+		return conversationTypeOf(message.raw) === 'personal' ? 'required' : 'optional';
+	}
 
 	constructor(
 		private readonly logger: Logger,
@@ -185,6 +273,13 @@ export class TeamsIntegration extends AgentChatIntegration {
 		const streamable = params.thread.isDM;
 		return {
 			platformAgentContext: {},
+			...(params.replyExpectation === 'optional'
+				? {
+						historyContext: params.inSubscribedThread
+							? JOINED_THREAD_REPLY_NOTE
+							: OPTIONAL_REPLY_NOTE,
+					}
+				: {}),
 			forceBuffered: !streamable,
 			// A queued message is only captured here; the turn that would clear the
 			// indicator runs later, so starting one now leaves it refreshing alone.

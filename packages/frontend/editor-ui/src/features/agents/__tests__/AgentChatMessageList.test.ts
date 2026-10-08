@@ -51,6 +51,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['theme', 'icon', 'iconless', 'slim'],
 	},
 	N8nButton: {
+		name: 'N8nButton',
 		template:
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 		emits: ['click'],
@@ -132,6 +133,82 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	const emptyAnswerError =
+		'The model finished without returning an answer. Try again or use another model.';
+	const streamStallError =
+		'The model stream stalled: no data received for 90 seconds. This is usually a transient connection issue — please try again.';
+
+	it.each([
+		{ content: emptyAnswerError, withTools: false },
+		{ content: emptyAnswerError, withTools: true },
+		{ content: streamStallError, withTools: false },
+		{ content: streamStallError, withTools: true },
+	])('puts resend inside the retry error callout: %j', async ({ content, withTools }) => {
+		const toolMessage: ChatMessage = {
+			id: 'tools',
+			role: 'assistant',
+			content: '',
+			toolCalls: [{ tool: 'lookup', toolCallId: 'lookup-1', state: 'done' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					...(withTools ? [toolMessage] : []),
+					{ id: 'failed', role: 'assistant', content, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+				retryDisabled: true,
+			},
+		});
+		const callout = wrapper.get('[data-testid="agent-chat-retry-error"]');
+		const retry = callout.get('[data-testid="agent-chat-retry"]');
+		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('subtle');
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toBeUndefined();
+		await wrapper.setProps({ retryDisabled: false });
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toEqual([['user-message']]);
+		expect(callout.text()).toContain(content);
+		wrapper.unmount();
+	});
+
+	it.each([
+		{ content: 'Invalid API key. Check the credential and try again.', status: 'error' },
+		{ content: 'Try again', status: 'error' },
+		{ content: emptyAnswerError, status: 'success' },
+	] as const)('does not show resend for other errors or model replies: %j', async (message) => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'assistant', role: 'assistant', ...message }],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+			},
+		});
+		expect(wrapper.find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain(message.content);
+		wrapper.unmount();
+	});
+
+	it('keeps earlier retry errors visible without a resend button', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'old-error', role: 'assistant', content: emptyAnswerError, status: 'error' },
+					{ id: 'new-user', role: 'user', content: 'New request' },
+					{ id: 'new-error', role: 'assistant', content: streamStallError, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'new-user',
+			},
+		});
+		const callouts = wrapper.findAll('[data-testid="agent-chat-retry-error"]');
+		expect(callouts).toHaveLength(2);
+		expect(callouts[0].find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(callouts[1].find('[data-testid="agent-chat-retry"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
 	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
 		const initial = planView();
 		const previous = { ...planMessage(initial), content: 'Starting research.' };
