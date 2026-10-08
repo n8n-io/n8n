@@ -6,6 +6,8 @@ import {
 	N8nAnimatedCollapsibleContent,
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nInput,
 	N8nRadioGroup,
@@ -115,111 +117,117 @@ const onSave = () => emit('save', result.value);
 		:open="open"
 		size="medium"
 		:header="i18n.baseText('settings.mcp.callbackUrls.dialog.title')"
-		:description="i18n.baseText('settings.mcp.callbackUrls.dialog.description')"
 		data-test-id="mcp-callback-urls-dialog"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.body">
-			<N8nRadioGroup v-model="mode" orientation="vertical" :class="$style.modes">
-				<div
-					v-for="option in ['all', 'trusted'] as const"
-					:key="option"
-					:class="[$style['mode-card'], mode === option && $style['mode-card-active']]"
-					:data-test-id="`mcp-callback-urls-mode-${option}`"
-					@click="mode = option"
-				>
-					<N8nRadioGroupItem
-						:value="option"
-						:label="i18n.baseText(`settings.mcp.callbackUrls.mode.${option}.label`)"
-						:description="i18n.baseText(`settings.mcp.callbackUrls.mode.${option}.description`)"
-					/>
-				</div>
-			</N8nRadioGroup>
+		<N8nDialogBody>
+			<N8nDialogDescription>
+				{{ i18n.baseText('settings.mcp.callbackUrls.dialog.description') }}
+			</N8nDialogDescription>
+			<div :class="$style.body">
+				<N8nRadioGroup v-model="mode" orientation="vertical" :class="$style.modes">
+					<div
+						v-for="option in ['all', 'trusted'] as const"
+						:key="option"
+						:class="[$style['mode-card'], mode === option && $style['mode-card-active']]"
+						:data-test-id="`mcp-callback-urls-mode-${option}`"
+						@click="mode = option"
+					>
+						<N8nRadioGroupItem
+							:value="option"
+							:label="i18n.baseText(`settings.mcp.callbackUrls.mode.${option}.label`)"
+							:description="i18n.baseText(`settings.mcp.callbackUrls.mode.${option}.description`)"
+						/>
+					</div>
+				</N8nRadioGroup>
 
-			<!-- The URL list unfolds with the settings-surface blur motion (the same
+				<!-- The URL list unfolds with the settings-surface blur motion (the same
 			     N8nSettingsRow's expand region uses) so the dialog grows and shrinks
 			     with it instead of jumping between the two heights. -->
-			<CollapsibleRoot :open="mode === 'trusted'">
-				<N8nAnimatedCollapsibleContent
-					:class="$style['trusted-content']"
-					blur
-					data-test-id="mcp-callback-urls-trusted"
-				>
-					<div :class="$style.trusted">
-						<N8nText size="small" color="text-dark" bold :class="$style['trusted-label']">
-							{{ i18n.baseText('settings.mcp.callbackUrls.trusted.label') }}
-						</N8nText>
-						<!-- Rows grow in and shrink out with the same motion as the section, so
+				<CollapsibleRoot :open="mode === 'trusted'">
+					<N8nAnimatedCollapsibleContent
+						:class="$style['trusted-content']"
+						blur
+						data-test-id="mcp-callback-urls-trusted"
+					>
+						<div :class="$style.trusted">
+							<N8nText size="small" color="text-dark" bold :class="$style['trusted-label']">
+								{{ i18n.baseText('settings.mcp.callbackUrls.trusted.label') }}
+							</N8nText>
+							<!-- Rows grow in and shrink out with the same motion as the section, so
 						     adding or removing a URL never snaps the dialog to a new height. -->
-						<TransitionGroup
-							tag="div"
-							:class="$style['url-list']"
-							:enter-from-class="$style['slot-collapsed']"
-							:enter-active-class="$style['slot-animating']"
-							:leave-active-class="$style['slot-animating']"
-							:leave-to-class="$style['slot-collapsed']"
-						>
-							<div
-								v-for="draft in drafts"
-								:key="draft.id"
-								:class="$style.slot"
-								data-test-id="mcp-callback-url-row"
+							<TransitionGroup
+								tag="div"
+								:class="$style['url-list']"
+								:enter-from-class="$style['slot-collapsed']"
+								:enter-active-class="$style['slot-animating']"
+								:leave-active-class="$style['slot-animating']"
+								:leave-to-class="$style['slot-collapsed']"
 							>
-								<div :class="$style['slot-clip']">
-									<div :class="$style['url-row']">
-										<N8nInput
-											v-model="draft.value"
-											type="text"
-											:placeholder="i18n.baseText('settings.mcp.callbackUrls.trusted.placeholder')"
-											data-test-id="mcp-callback-url-input"
-										/>
-										<N8nButton
-											v-if="drafts.length > 1 || draft.value.length > 0"
-											variant="ghost"
-											size="small"
-											icon-only
-											icon="x"
-											:aria-label="i18n.baseText('generic.delete')"
-											data-test-id="mcp-callback-url-remove"
-											@click="removeUrl(draft.id)"
-										/>
+								<div
+									v-for="draft in drafts"
+									:key="draft.id"
+									:class="$style.slot"
+									data-test-id="mcp-callback-url-row"
+								>
+									<div :class="$style['slot-clip']">
+										<div :class="$style['url-row']">
+											<N8nInput
+												v-model="draft.value"
+												type="text"
+												:placeholder="
+													i18n.baseText('settings.mcp.callbackUrls.trusted.placeholder')
+												"
+												data-test-id="mcp-callback-url-input"
+											/>
+											<N8nButton
+												v-if="drafts.length > 1 || draft.value.length > 0"
+												variant="ghost"
+												size="small"
+												icon-only
+												icon="x"
+												:aria-label="i18n.baseText('generic.delete')"
+												data-test-id="mcp-callback-url-remove"
+												@click="removeUrl(draft.id)"
+											/>
+										</div>
 									</div>
 								</div>
-							</div>
-						</TransitionGroup>
-						<Transition
-							:enter-from-class="$style['slot-collapsed']"
-							:enter-active-class="$style['slot-animating']"
-							:leave-active-class="$style['slot-animating']"
-							:leave-to-class="$style['slot-collapsed']"
-						>
-							<div v-if="validationError" :class="$style.slot">
-								<div :class="$style['slot-clip']">
-									<N8nText
-										size="small"
-										color="danger"
-										:class="$style.error"
-										data-test-id="mcp-callback-urls-error"
-									>
-										{{ validationError }}
-									</N8nText>
+							</TransitionGroup>
+							<Transition
+								:enter-from-class="$style['slot-collapsed']"
+								:enter-active-class="$style['slot-animating']"
+								:leave-active-class="$style['slot-animating']"
+								:leave-to-class="$style['slot-collapsed']"
+							>
+								<div v-if="validationError" :class="$style.slot">
+									<div :class="$style['slot-clip']">
+										<N8nText
+											size="small"
+											color="danger"
+											:class="$style.error"
+											data-test-id="mcp-callback-urls-error"
+										>
+											{{ validationError }}
+										</N8nText>
+									</div>
 								</div>
+							</Transition>
+							<div>
+								<N8nButton
+									variant="outline"
+									size="small"
+									icon="plus"
+									:label="i18n.baseText('settings.mcp.callbackUrls.trusted.addUrl')"
+									data-test-id="mcp-callback-url-add"
+									@click="addUrl"
+								/>
 							</div>
-						</Transition>
-						<div>
-							<N8nButton
-								variant="outline"
-								size="small"
-								icon="plus"
-								:label="i18n.baseText('settings.mcp.callbackUrls.trusted.addUrl')"
-								data-test-id="mcp-callback-url-add"
-								@click="addUrl"
-							/>
 						</div>
-					</div>
-				</N8nAnimatedCollapsibleContent>
-			</CollapsibleRoot>
-		</div>
+					</N8nAnimatedCollapsibleContent>
+				</CollapsibleRoot>
+			</div>
+		</N8nDialogBody>
 
 		<N8nDialogFooter>
 			<N8nButton variant="outline" :label="i18n.baseText('generic.cancel')" @click="onCancel" />
