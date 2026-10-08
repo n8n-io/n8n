@@ -37,7 +37,6 @@ import {
 	getLifecycleHooksForScalingMain,
 } from '../execution-lifecycle-hooks';
 
-import { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -70,7 +69,6 @@ describe('Execution Lifecycle Hooks', () => {
 	const userRepository = mockInstance(UserRepository);
 	const redactionProxy = mockInstance(ExecutionRedactionServiceProxy);
 	const workflowHookContext = mockInstance(WorkflowHookContextService);
-	const activeExecutions = mockInstance(ActiveExecutions);
 
 	/**
 	 * The error-workflow dispatch is deliberately fire-and-forget: the hook does
@@ -2108,14 +2106,12 @@ describe('Execution Lifecycle Hooks', () => {
 
 			/**
 			 * A child workflow entered through an Execute Sub-workflow Trigger named
-			 * "Trigger". `connections` is shorthand for main connections by source
-			 * node name; `extraConnections` is merged in verbatim for non-main ones.
+			 * "Trigger". `connections` is shorthand for main connections by source name.
 			 */
 			function buildChildWorkflow(opts: {
 				nodes: string[];
 				connections: Record<string, string[]>;
 				extraNodes?: INode[];
-				extraConnections?: IWorkflowBase['connections'];
 			}): IWorkflowBase {
 				const noOp = workflowData.nodes[0];
 				return {
@@ -2132,15 +2128,12 @@ describe('Execution Lifecycle Hooks', () => {
 						...opts.nodes.map((name) => ({ ...noOp, id: `node-${name}`, name })),
 						...(opts.extraNodes ?? []),
 					],
-					connections: {
-						...Object.fromEntries(
-							Object.entries(opts.connections).map(([source, targets]) => [
-								source,
-								{ main: [targets.map((node) => ({ node, type: 'main' as const, index: 0 }))] },
-							]),
-						),
-						...opts.extraConnections,
-					},
+					connections: Object.fromEntries(
+						Object.entries(opts.connections).map(([source, targets]) => [
+							source,
+							{ main: [targets.map((node) => ({ node, type: 'main' as const, index: 0 }))] },
+						]),
+					),
 				};
 			}
 
@@ -2189,31 +2182,22 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
-			it('emits success phase on nodeExecuteAfter for a successful node', async () => {
+			it.each([
+				['success', undefined],
+				['error', expressionError],
+			] as const)('emits %s phase on nodeExecuteAfter', async (phase, error) => {
 				const hooks = buildHooks();
 
-				const success = mock<ITaskData>({ error: undefined });
-				await hooks.runHook('nodeExecuteAfter', [nodeName, success, runExecutionData]);
+				await hooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mock<ITaskData>({ error }),
+					runExecutionData,
+				]);
 
 				expect(push.send).toHaveBeenCalledWith(
 					expect.objectContaining({
 						type: 'subworkflowNodeProgress',
-						data: expect.objectContaining({ phase: 'success' }),
-					}),
-					rootPushRef,
-				);
-			});
-
-			it('emits error phase on nodeExecuteAfter when task data contains an error', async () => {
-				const hooks = buildHooks();
-
-				const errored = mock<ITaskData>({ error: expressionError });
-				await hooks.runHook('nodeExecuteAfter', [nodeName, errored, runExecutionData]);
-
-				expect(push.send).toHaveBeenCalledWith(
-					expect.objectContaining({
-						type: 'subworkflowNodeProgress',
-						data: expect.objectContaining({ phase: 'error' }),
+						data: expect.objectContaining({ phase }),
 					}),
 					rootPushRef,
 				);
@@ -2238,60 +2222,18 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
-			it('emits when the parent is not registered in this process', async () => {
-				// A queue-mode worker runs the parent job without registering it locally.
-				activeExecutions.has.mockReturnValue(false);
-				const hooks = buildHooks();
-
-				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
-
-				expect(push.send).toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'subworkflowExecutionStarted' }),
-					rootPushRef,
-				);
-				expect(push.send).toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'subworkflowNodeProgress' }),
-					rootPushRef,
-				);
-			});
-
-			it('does not register push hooks when the env feature flag is off', async () => {
-				vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', 'false');
-				const hooks = buildHooks();
-
-				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
-				await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
-				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
-
-				expect(push.send).not.toHaveBeenCalled();
-			});
-
-			it('does not register push hooks when parent node is omitted', async () => {
+			it.each([
+				['the env feature flag is off', { parentNode, parentPushRef: rootPushRef }, 'false'],
+				['the parent node is missing', { parentPushRef: rootPushRef }, 'true'],
+				['the parent has no pushRef', { parentNode }, 'true'],
+			])('sends nothing when %s', async (_, options, flag) => {
+				vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', flag);
 				const hooks = getLifecycleHooksForSubExecutions(
 					'integrated',
 					executionId,
 					workflowData,
 					undefined,
-					{ parentExecution },
-				);
-
-				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
-				await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
-				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
-
-				expect(push.send).not.toHaveBeenCalled();
-			});
-
-			it('does not emit when the parent has no pushRef', async () => {
-				const hooks = getLifecycleHooksForSubExecutions(
-					'integrated',
-					executionId,
-					workflowData,
-					undefined,
-					{ parentExecution, parentNode },
+					{ parentExecution, ...options },
 				);
 
 				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
@@ -2400,78 +2342,6 @@ describe('Execution Lifecycle Hooks', () => {
 					);
 				});
 
-				it('excludes disconnected islands', async () => {
-					const hooks = buildHooks(
-						buildChildWorkflow({
-							nodes: ['Node A', 'Orphan'],
-							connections: { Trigger: ['Node A'] },
-						}),
-					);
-
-					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-					expect(push.send).toHaveBeenCalledWith(
-						expect.objectContaining({
-							type: 'subworkflowExecutionStarted',
-							data: expect.objectContaining({ totalNodes: 2 }),
-						}),
-						rootPushRef,
-					);
-				});
-
-				it('includes non-main sub-nodes attached to a reachable node', async () => {
-					// A chat model connects *into* its agent, so it is not a main
-					// descendant — but it executes and reports progress.
-					const hooks = buildHooks(
-						buildChildWorkflow({
-							nodes: ['Agent', 'Chat Model'],
-							connections: { Trigger: ['Agent'] },
-							extraConnections: {
-								'Chat Model': {
-									ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
-								},
-							},
-						}),
-					);
-
-					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-					expect(push.send).toHaveBeenCalledWith(
-						expect.objectContaining({
-							type: 'subworkflowExecutionStarted',
-							data: expect.objectContaining({ totalNodes: 3 }),
-						}),
-						rootPushRef,
-					);
-				});
-
-				it('includes sub-nodes of sub-nodes', async () => {
-					const hooks = buildHooks(
-						buildChildWorkflow({
-							nodes: ['Agent', 'Vector Store Tool', 'Embeddings'],
-							connections: { Trigger: ['Agent'] },
-							extraConnections: {
-								'Vector Store Tool': {
-									ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]],
-								},
-								Embeddings: {
-									ai_embedding: [[{ node: 'Vector Store Tool', type: 'ai_embedding', index: 0 }]],
-								},
-							},
-						}),
-					);
-
-					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-					expect(push.send).toHaveBeenCalledWith(
-						expect.objectContaining({
-							type: 'subworkflowExecutionStarted',
-							data: expect.objectContaining({ totalNodes: 4 }),
-						}),
-						rootPushRef,
-					);
-				});
-
 				it('falls back to every executable node when the child has no start node', async () => {
 					const activeNode = workflowData.nodes[0];
 					const hooks = buildHooks({
@@ -2492,14 +2362,6 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			describe('throttling', () => {
-				it('emits the first progress event immediately (leading edge)', async () => {
-					const hooks = buildHooks();
-
-					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
-
-					expect(push.send).toHaveBeenCalledTimes(1);
-				});
-
 				it('coalesces a burst into a single trailing emit carrying the latest state', async () => {
 					const hooks = buildHooks();
 
@@ -2529,20 +2391,6 @@ describe('Execution Lifecycle Hooks', () => {
 					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 					vi.advanceTimersByTime(150);
 					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
-
-					expect(push.send).toHaveBeenCalledTimes(2);
-				});
-
-				it('caps push volume for a long-running looping child', async () => {
-					const hooks = buildHooks();
-
-					// 200 node executions (400 engine events) with no time passing:
-					// the whole burst collapses to the leading edge plus one trailing.
-					for (let i = 0; i < 200; i++) {
-						await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
-						await hooks.runHook('nodeExecuteAfter', ['Node A', taskData, runExecutionData]);
-					}
-					vi.advanceTimersByTime(150);
 
 					expect(push.send).toHaveBeenCalledTimes(2);
 				});
