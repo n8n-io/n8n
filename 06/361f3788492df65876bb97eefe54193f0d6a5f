@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_792f146ebe5832::t_407508fcc3dbfa 4019-4022
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_792f146ebe5832::t_d37d2db7c7c2ae 68,71-72,82-86,90-91
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_792f146ebe5832::t_a29706b7f2b6f7 817-818,829,836-837
+  s_792f146ebe5832::t_b6d5dfb0fb93bf 272,279,281-282,286-287,292-293,299,303-304,308-323,326
+  s_792f146ebe5832::t_c509c90da54a9e 847
+  s_792f146ebe5832::t_2b731434a9372d 1447,1456,1459,1464,1504,1522
+  s_792f146ebe5832::t_73bbe052925de1 324-325,327-329,389-390,421-427,429-443,445,450,456-471,473-488,491-492,494,499,503-504,517,528-529,531-532,570,593-594,1245,1252-1253,1265,1385,1393
+  s_792f146ebe5832::t_484c833c52460e 983-985,995,1009,1020,1023-1025,1027,1030,1762,1772-1776,1785,1796,1810,1814-1815,1817
+  s_792f146ebe5832::t_d195e7cf494f01 1536,1551,1554-1555,1576,1609
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_792f146ebe5832::t_a420f763492d0c 187-202,908-910,959,1004-1006
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06361f3788492df65876bb97eefe54193f0d6a5f",
+  "prompts": {},
+  "sessions": {
+    "s_792f146ebe5832": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bce7cd2-ea86-468d-b7da-ecd3c9bbeb92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
