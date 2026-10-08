@@ -1,6 +1,7 @@
 import {
 	AgentEvalRunDetailQueryDto,
 	ApplyAgentEvalSuggestionsDto,
+	ApplyPreviewSuggestionDto,
 	CreateAgentEvalRatingDto,
 	CreateAgentEvalRunDto,
 	CreateDraftDatasetOptionsDto,
@@ -18,6 +19,7 @@ import {
 	type AgentEvalRunRecord,
 	type AgentEvalRunSummary,
 	type ApplyAgentEvalSuggestionsResult,
+	type ApplyPreviewSuggestionResult,
 	type CreateDraftDatasetResult,
 	type GenerateDraftCasesResult,
 	type PreviewRunResult,
@@ -183,6 +185,36 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		return await this.service.previewRun(req.user, agentId, projectId, payload);
+	}
+
+	// Rewrites the agent's instructions from the suggestion on a preview run's
+	// failed first check, then runs that case again. `agent:update`, because it
+	// edits the agent config, and, like `putConfig`, it honours the collaboration
+	// write lock. The service additionally requires `agent:execute` for the rerun.
+	@Post('/:agentId/evals/preview-run/apply-suggestion')
+	@ProjectScope('agent:update')
+	async applyPreviewSuggestion(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: ApplyPreviewSuggestionDto,
+	): Promise<ApplyPreviewSuggestionResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		const pushRef = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			pushRef,
+			projectId,
+			agentId,
+			'update',
+		);
+		return await this.service.applyPreviewSuggestion(
+			req.user,
+			agentId,
+			projectId,
+			payload,
+			pushRef,
+		);
 	}
 
 	// ---- runs ----

@@ -1,6 +1,8 @@
 import type {
 	AgentEvalDatasetRecord,
 	ApplyAgentEvalSuggestionsOptions,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
 	ApplyAgentEvalSuggestionsResult,
 	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
@@ -118,6 +120,23 @@ export const previewRun = async (
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/preview-run`,
+		options,
+	);
+};
+
+// Rewrites the agent's instructions with the suggestion on a preview run's failed first
+// check, then runs that same case again. Nothing is saved for the case itself, so it
+// travels in the body.
+export const applyPreviewSuggestion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	options: ApplyPreviewSuggestionOptions,
+) => {
+	return await makeRestApiRequest<ApplyPreviewSuggestionResult>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/preview-run/apply-suggestion`,
 		options,
 	);
 };

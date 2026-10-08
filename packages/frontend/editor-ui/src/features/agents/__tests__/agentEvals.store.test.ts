@@ -16,6 +16,7 @@ const {
 	deleteDataset,
 	deleteDraftDataset,
 	previewRun,
+	applyPreviewSuggestion,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -33,6 +34,7 @@ const {
 	deleteDataset: vi.fn(),
 	deleteDraftDataset: vi.fn(),
 	previewRun: vi.fn(),
+	applyPreviewSuggestion: vi.fn(),
 	listRuns: vi.fn(),
 	getRunDetail: vi.fn(),
 	getRunSummary: vi.fn(),
@@ -52,6 +54,7 @@ vi.mock('../agentEvals.api', () => ({
 	deleteDataset,
 	deleteDraftDataset,
 	previewRun,
+	applyPreviewSuggestion,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -366,6 +369,25 @@ describe('useAgentEvalsStore', () => {
 				{ suggestion: 'be nicer' },
 			);
 			expect(result).toEqual({ status: 'failed' });
+		});
+	});
+
+	describe('applyPreviewSuggestion', () => {
+		it('forwards the REST context, project id, agent id and the case to the API', async () => {
+			const applied = { configHash: 'h', preview: { status: 'failed' } };
+			applyPreviewSuggestion.mockResolvedValue(applied);
+			const store = useAgentEvalsStore();
+			const options = { input: 'Q', whatToCheck: 'Rule', suggestion: 'Do X.' };
+
+			const result = await store.applyPreviewSuggestion(PROJECT_ID, AGENT_ID, options);
+
+			expect(applyPreviewSuggestion).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				options,
+			);
+			expect(result).toBe(applied);
 		});
 	});
 

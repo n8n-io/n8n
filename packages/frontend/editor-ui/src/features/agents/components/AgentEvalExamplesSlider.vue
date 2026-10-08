@@ -146,11 +146,11 @@ defineExpose({ sliderValue, focusOwnInput });
 	</div>
 	<div v-else :class="$style.root">
 		<div :class="$style.sliderRow" data-test-id="instance-ai-test-agent-examples-slider">
-			<N8nText :class="$style.sliderCount" bold size="small">
+			<N8nText :class="$style.sliderCount" bold size="medium">
 				{{
 					i18n.baseText('instanceAi.testAgentPreview.examplesCount', {
 						adjustToNumber: sliderValue,
-						interpolate: { count: String(sliderValue) },
+						interpolate: { count: String(sliderValue), total: String(examples.length) },
 					})
 				}}
 			</N8nText>

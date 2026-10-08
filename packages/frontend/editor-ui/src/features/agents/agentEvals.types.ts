@@ -6,6 +6,8 @@ import type { AgentEvalDatasetRecord, DataTableDatasetRef } from '@n8n/api-types
 export type {
 	AgentEvalColumnMapping,
 	ApplyAgentEvalSuggestionsOptions,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
 	ApplyAgentEvalSuggestionsResult,
 	AgentEvalCorrection,
 	AgentEvalDatasetRecord,

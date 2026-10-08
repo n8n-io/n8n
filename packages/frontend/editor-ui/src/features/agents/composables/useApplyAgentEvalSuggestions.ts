@@ -2,6 +2,7 @@ import { inject, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
+import type { ApplyPreviewSuggestionOptions, ApplyPreviewSuggestionResult } from '@n8n/api-types';
 
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
@@ -20,15 +21,19 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 	const flushAgentConfig = inject(AGENT_CONFIG_FLUSH_KEY, null);
 
 	const applyingIds = ref<string[]>([]);
+	const applyingPreview = ref(false);
 
-	async function applySuggestions(resultIds: string[]) {
-		if (resultIds.length === 0 || resultIds.some((id) => applyingIds.value.includes(id))) return;
-		applyingIds.value = [...applyingIds.value, ...resultIds];
+	// Saves pending builder edits, runs the write, and tells the builder to refetch. A
+	// failure is toasted and reads as `null`.
+	async function applyAndRefresh<T>(
+		write: (projectId: string, agentId: string) => Promise<T | null>,
+	): Promise<T | null> {
 		const { projectId, agentId } = target();
 		try {
 			await flushAgentConfig?.();
-			const applied = await store.applySuggestions(projectId, agentId, resultIds);
+			const applied = await write(projectId, agentId);
 			if (applied) agentsEventBus.emit('agentUpdated', { agentId, source: 'agent-evals' });
+			return applied;
 		} catch (error) {
 			const conflict = error instanceof ResponseError && error.httpStatusCode === 409;
 			toast.showError(
@@ -39,10 +44,37 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 						: 'agents.builder.agentEvals.suggestion.applyError',
 				),
 			);
+			return null;
+		}
+	}
+
+	async function applySuggestions(resultIds: string[]) {
+		if (resultIds.length === 0 || resultIds.some((id) => applyingIds.value.includes(id))) return;
+		applyingIds.value = [...applyingIds.value, ...resultIds];
+		try {
+			await applyAndRefresh(
+				async (projectId, agentId) => await store.applySuggestions(projectId, agentId, resultIds),
+			);
 		} finally {
 			applyingIds.value = applyingIds.value.filter((id) => !resultIds.includes(id));
 		}
 	}
 
-	return { applyingIds, applySuggestions };
+	// A preview run saves nothing, so the case travels with the suggestion.
+	async function applyPreviewSuggestion(
+		options: ApplyPreviewSuggestionOptions,
+	): Promise<ApplyPreviewSuggestionResult | null> {
+		if (applyingPreview.value) return null;
+		applyingPreview.value = true;
+		try {
+			return await applyAndRefresh(
+				async (projectId, agentId) =>
+					await store.applyPreviewSuggestion(projectId, agentId, options),
+			);
+		} finally {
+			applyingPreview.value = false;
+		}
+	}
+
+	return { applyingIds, applySuggestions, applyingPreview, applyPreviewSuggestion };
 }

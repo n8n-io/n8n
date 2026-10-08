@@ -6,8 +6,10 @@ import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import type { AgentEvalVerdict } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalDatasetRecord } from '@/features/agents/agentEvals.types';
 import InstanceAiTestAgentPreviewPanel from '../components/InstanceAiTestAgentPreviewPanel.vue';
@@ -171,7 +173,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
 			'It named the ticket, the customer and the priority.',
 		);
-		expect(store.previewRun).toHaveBeenCalledWith('project-1', 'agent-1', undefined);
+		expect(store.previewRun).toHaveBeenCalledWith('project-1', 'agent-1');
 	});
 
 	describe("the builder's own test result", () => {
@@ -258,76 +260,6 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		// Scoped to the answer card specifically.
 		const answerCard = getByTestId('instance-ai-test-agent-preview-output');
 		expect(answerCard.querySelector('[class*="content"]')).toHaveTextContent(/very long answer/);
-	});
-
-	it('shows the sample-input prompt instead of dismissing when "Needs work" is clicked', async () => {
-		const store = useAgentEvalsStore();
-		mockPreviewRun(store, { verdict: FAIL_VERDICT });
-
-		const user = userEvent.setup();
-		const { getByTestId, findByTestId, emitted } = renderComponent();
-		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-needs-work')).toBeEnabled(),
-		);
-
-		await user.click(getByTestId('instance-ai-test-agent-preview-needs-work'));
-
-		expect(await findByTestId('instance-ai-test-agent-preview-sample-input')).toBeInTheDocument();
-		expect(emitted().dismiss).toBeUndefined();
-	});
-
-	it('emits dismiss when "Don\'t create evals" is clicked', async () => {
-		const store = useAgentEvalsStore();
-		mockPreviewRun(store, { verdict: FAIL_VERDICT });
-
-		const user = userEvent.setup();
-		const { findByTestId, emitted } = renderComponent();
-		await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
-		await user.click(await findByTestId('instance-ai-test-agent-preview-dont-create-evals'));
-
-		expect(emitted().dismiss).toEqual([[]]);
-	});
-
-	it('submits a suggestion, re-runs the preview with it, and shows the new answer', async () => {
-		const store = useAgentEvalsStore();
-		const previewRun = vi
-			.spyOn(store, 'previewRun')
-			.mockResolvedValueOnce({
-				status: 'completed',
-				input: 'x',
-				whatToCheck: 'y',
-				scenario: 'Vague',
-				response: 'y',
-				verdict: FAIL_VERDICT,
-			})
-			.mockResolvedValueOnce({
-				status: 'completed',
-				input: 'What is the refund policy?',
-				whatToCheck: 'mentions 30 days',
-				scenario: 'Vague',
-				response: 'Yes, within 30 days.',
-				verdict: PASS_VERDICT,
-			});
-
-		const user = userEvent.setup();
-		const { findByTestId } = renderComponent();
-		await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
-
-		const input = await findByTestId('instance-ai-test-agent-preview-sample-input');
-		await user.type(input, 'Can I get my money back?');
-		await user.click(await findByTestId('instance-ai-test-agent-preview-submit-sample'));
-
-		expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
-			'“What is the refund policy?”',
-		);
-		expect(
-			await findByTestId('instance-ai-test-agent-preview-first-check-title'),
-		).toHaveTextContent('First check passed');
-		expect(previewRun).toHaveBeenNthCalledWith(2, 'project-1', 'agent-1', {
-			suggestion: 'Can I get my money back?',
-			previousInput: 'x',
-			previousOutput: 'y',
-		});
 	});
 
 	it('generates a batch of examples and shows the examples panel on "Check harder cases"', async () => {
@@ -1240,7 +1172,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		};
 
 		it('reports a passed check with the example message and what the judge found', async () => {
-			const { getByTestId, getByText, queryByTestId } = await renderCard();
+			const { getByTestId, getByText } = await renderCard();
 
 			expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
 				'First check passed',
@@ -1260,7 +1192,6 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				'Check harder cases',
 			);
 			expect(getByTestId('instance-ai-test-agent-preview-later')).toHaveTextContent('Later');
-			expect(queryByTestId('instance-ai-test-agent-preview-needs-work')).not.toBeInTheDocument();
 		});
 
 		it('shows the full conversation only after the icon button is pressed, and hides it again', async () => {
@@ -1308,8 +1239,8 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			);
 		});
 
-		describe('when the judge failed the answer', () => {
-			it('says the check needs work, with the judge’s reasoning, and offers to fix it', async () => {
+		describe('when the judge failed the answer and made no suggestion', () => {
+			it('says the check needs work, with the judge’s reasoning, and lets the user move on', async () => {
 				const { getByTestId, queryByTestId } = await renderCard({ verdict: FAIL_VERDICT });
 
 				expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
@@ -1318,24 +1249,11 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
 					'It never named the ticket.',
 				);
-				expect(getByTestId('instance-ai-test-agent-preview-needs-work')).toHaveTextContent(
-					'Fix this check',
+				expect(queryByTestId('instance-ai-test-agent-preview-suggestion')).not.toBeInTheDocument();
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toHaveTextContent(
+					'Check harder cases anyway',
 				);
 				expect(getByTestId('instance-ai-test-agent-preview-later')).toBeInTheDocument();
-				// A real fail is the cue to fix the check first, not to move on.
-				expect(
-					queryByTestId('instance-ai-test-agent-preview-check-harder'),
-				).not.toBeInTheDocument();
-			});
-
-			it('opens the correction flow on "Fix this check"', async () => {
-				const { user, getByTestId, findByTestId } = await renderCard({ verdict: FAIL_VERDICT });
-
-				await user.click(getByTestId('instance-ai-test-agent-preview-needs-work'));
-
-				expect(
-					await findByTestId('instance-ai-test-agent-preview-sample-input'),
-				).toBeInTheDocument();
 			});
 		});
 
@@ -1353,11 +1271,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			});
 
 			it('goes on to harder cases with the plain button, and offers no correction flow', async () => {
-				const { user, store, getByTestId, queryByTestId, emitted, findByTestId } = await renderCard(
-					{
-						verdict: SKIPPED_VERDICT,
-					},
-				);
+				const { user, store, getByTestId, emitted, findByTestId } = await renderCard({
+					verdict: SKIPPED_VERDICT,
+				});
 				vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 					cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
 				});
@@ -1368,7 +1284,6 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).not.toHaveTextContent(
 					'anyway',
 				);
-				expect(queryByTestId('instance-ai-test-agent-preview-needs-work')).not.toBeInTheDocument();
 				await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 
 				expect(emitted().confirm).toEqual([[]]);
@@ -1412,62 +1327,244 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 	});
 
-	describe('"Needs work" / sample-input guards', () => {
-		it('ignores a stray "Needs work" click from a stale button reference after confirming', async () => {
+	describe('the suggestion on a failed first check', () => {
+		const SUGGESTION = 'Always name the ticket in the answer.';
+		const FAIL_WITH_SUGGESTION: AgentEvalVerdict = { ...FAIL_VERDICT, suggestion: SUGGESTION };
+		const CARD = 'instance-ai-test-agent-preview-suggestion';
+		const CHECK_HARDER = 'instance-ai-test-agent-preview-check-harder';
+		const REWRITTEN = {
+			input: 'Summarize the thread',
+			whatToCheck: 'mentions the outage',
+			scenario: '',
+			response: 'Ticket #48219 is a P1 SSO outage.',
+		};
+
+		const renderFailed = async (verdict: AgentEvalVerdict = FAIL_WITH_SUGGESTION) => {
 			const store = useAgentEvalsStore();
-			// Ungraded, so both "Fix this check" and "Check harder cases anyway" show.
-			mockPreviewRun(store, { verdict: UNGRADED_VERDICT });
+			mockPreviewRun(store, { verdict });
+			const view = renderComponent();
+			await view.findByTestId('instance-ai-test-agent-preview-first-check');
+			return { store, user: userEvent.setup(), ...view };
+		};
+
+		it('shows the suggestion card instead of a fix button or the harder-cases button', async () => {
+			const { getByTestId, queryByTestId, queryByText } = await renderFailed();
+
+			expect(getByTestId(CARD)).toHaveTextContent(SUGGESTION);
+			expect(queryByTestId(CHECK_HARDER)).not.toBeInTheDocument();
+			expect(queryByText('Fix this check')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-preview-later')).toBeInTheDocument();
+		});
+
+		it.each([
+			['passed', PASS_VERDICT],
+			['was never graded', UNGRADED_VERDICT],
+			['failed without a suggestion', FAIL_VERDICT],
+			['failed with a blank suggestion', { ...FAIL_VERDICT, suggestion: '  ' }],
+		])('shows no card when the check %s', async (_name, verdict) => {
+			const { queryByTestId } = await renderFailed(verdict);
+
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+		});
+
+		it('applies the suggestion to the same case, then reports the new verdict', async () => {
+			const { store, user, getByTestId, queryByTestId, findByText } = await renderFailed();
+			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
+				configHash: 'hash-2',
+				preview: { status: 'completed', ...REWRITTEN, verdict: PASS_VERDICT },
+			});
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			expect(store.applyPreviewSuggestion).toHaveBeenCalledWith('project-1', 'agent-1', {
+				input: 'Summarize the thread',
+				whatToCheck: 'mentions the outage',
+				suggestion: SUGGESTION,
+			});
+			expect(
+				await findByText('It named the ticket, the customer and the priority.'),
+			).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
+				'First check passed',
+			);
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+			expect(getByTestId(CHECK_HARDER)).toHaveTextContent('Check harder cases');
+			expect(getByTestId(CHECK_HARDER)).not.toHaveTextContent('anyway');
+		});
+
+		it('shows the next suggestion when the case still fails', async () => {
+			const { store, user, getByTestId, findByText } = await renderFailed();
+			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
+				configHash: 'hash-2',
+				preview: {
+					status: 'completed',
+					...REWRITTEN,
+					verdict: {
+						...FAIL_VERDICT,
+						reasoning: 'Still no ticket.',
+						suggestion: 'Quote the ticket id.',
+					},
+				},
+			});
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			expect(await findByText('Still no ticket.')).toBeInTheDocument();
+			expect(getByTestId(CARD)).toHaveTextContent('Quote the ticket id.');
+		});
+
+		it('keeps the scenario and the rule of the first try after an apply', async () => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { verdict: FAIL_WITH_SUGGESTION, scenario: 'Upset' });
+			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
+				configHash: 'hash-2',
+				preview: { status: 'completed', ...REWRITTEN, verdict: PASS_VERDICT },
+			});
 			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
 			});
-			mockCommit(store, { rows: [{ rowId: 1, input: 'a', whatToCheck: 'b' }] });
-			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
-			vi.spyOn(store, 'getReview').mockReturnValue({
-				run: { status: 'completed' } as never,
-				results: [],
-				resultsCount: 0,
-				ratingsByResultId: {},
-				pendingByResultId: {},
-				draftsByResultId: {},
-				counts: null,
-				loading: false,
-				loadingMore: false,
-			});
-
-			const { getByTestId, queryByTestId, findByTestId } = renderComponent();
+			const user = userEvent.setup();
+			const { findByTestId, getByTestId } = renderComponent();
+			await user.click(await findByTestId(`${CARD}-apply`));
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
+				expect(getByTestId(CHECK_HARDER)).toHaveTextContent('Check harder cases'),
 			);
-			const checkHarder = getByTestId('instance-ai-test-agent-preview-check-harder');
-			const needsWork = getByTestId('instance-ai-test-agent-preview-needs-work');
 
-			// Both buttons are still the same DOM nodes in this tick — Vue hasn't
-			// patched the phase change in yet. A stray second click on the old
-			// "Needs work" node must not divert the already-confirmed flow to the
-			// sample-input prompt.
-			await fireEvent.click(checkHarder);
-			await fireEvent.click(needsWork);
+			await user.click(getByTestId(CHECK_HARDER));
 
-			expect(await findByTestId('instance-ai-test-agent-examples-check-agent')).toBeInTheDocument();
-			expect(queryByTestId('instance-ai-test-agent-preview-sample-input')).not.toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-examples-try')).toHaveTextContent('Upset');
 		});
 
-		it('does not submit a whitespace-only correction via the keyboard shortcut', async () => {
+		it('shows the new answer for a reused builder test too', async () => {
 			const store = useAgentEvalsStore();
-			const previewRun = mockPreviewRun(store, { verdict: FAIL_VERDICT });
-
+			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
+				configHash: 'hash-2',
+				preview: { status: 'completed', ...REWRITTEN, verdict: PASS_VERDICT },
+			});
 			const user = userEvent.setup();
-			const { findByTestId } = renderComponent();
-			await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
+			const { findByTestId, getByTestId } = renderComponent({
+				props: {
+					target,
+					initialCase: {
+						message: 'Old message',
+						response: 'Old answer',
+						whatToCheck: 'mentions the outage',
+						verdict: FAIL_WITH_SUGGESTION,
+					},
+				},
+			});
+			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+				'“Old message”',
+			);
 
-			const input = await findByTestId('instance-ai-test-agent-preview-sample-input');
-			// `N8nInput` binds plain Enter too, so the guard inside the handler —
-			// not the disabled submit button — is what has to refuse this.
-			await user.type(input, '   {Enter}');
+			await user.click(getByTestId(`${CARD}-apply`));
 
-			// Only the initial preview call — no revision call for the blank submit.
-			expect(previewRun).toHaveBeenCalledTimes(1);
-			expect(await findByTestId('instance-ai-test-agent-preview-sample-input')).toBeInTheDocument();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+					'“Summarize the thread”',
+				),
+			);
+			expect(store.applyPreviewSuggestion).toHaveBeenCalledWith('project-1', 'agent-1', {
+				input: 'Old message',
+				whatToCheck: 'mentions the outage',
+				suggestion: SUGGESTION,
+			});
+		});
+
+		it('toasts and keeps the card when the rerun of the case does not complete', async () => {
+			const { store, user, getByTestId } = await renderFailed();
+			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
+				configHash: 'hash-2',
+				preview: { status: 'failed' },
+			});
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			await waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(
+					expect.any(Error),
+					"Couldn't apply the suggestion",
+				),
+			);
+			expect(getByTestId(CARD)).toHaveTextContent(SUGGESTION);
+		});
+
+		it('toasts and keeps the card when applying fails', async () => {
+			const { store, user, getByTestId } = await renderFailed();
+			vi.spyOn(store, 'applyPreviewSuggestion').mockRejectedValue(new Error('boom'));
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			await waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(
+					expect.any(Error),
+					"Couldn't apply the suggestion",
+				),
+			);
+			expect(getByTestId(CARD)).toBeInTheDocument();
+		});
+
+		it('says the agent changed elsewhere on a conflict', async () => {
+			const { store, user, getByTestId } = await renderFailed();
+			vi.spyOn(store, 'applyPreviewSuggestion').mockRejectedValue(
+				new ResponseError('conflict', { httpStatusCode: 409 }),
+			);
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			await waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(
+					expect.any(ResponseError),
+					'Someone changed this agent. Reload the page, then try again.',
+				),
+			);
+		});
+
+		it('tells the builder to refetch the agent after an apply', async () => {
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			const { store, user, getByTestId } = await renderFailed();
+			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
+				configHash: 'hash-2',
+				preview: { status: 'completed', ...REWRITTEN, verdict: PASS_VERDICT },
+			});
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			await waitFor(() =>
+				expect(emit).toHaveBeenCalledWith('agentUpdated', {
+					agentId: 'agent-1',
+					source: 'agent-evals',
+				}),
+			);
+		});
+
+		it('disables "Later" and shows the card as applying while the apply runs', async () => {
+			const { store, user, getByTestId } = await renderFailed();
+			let finish: (value: never) => void = () => {};
+			vi.spyOn(store, 'applyPreviewSuggestion').mockReturnValue(
+				new Promise((resolve) => {
+					finish = resolve as never;
+				}),
+			);
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-later')).toBeDisabled(),
+			);
+			expect(getByTestId(`${CARD}-dismiss`)).toBeDisabled();
+			finish({ configHash: 'h', preview: { status: 'failed' } } as never);
+		});
+
+		it('hides the card on "Keep as is" and offers the harder cases instead', async () => {
+			const { store, user, getByTestId, queryByTestId } = await renderFailed();
+			vi.spyOn(store, 'applyPreviewSuggestion');
+
+			await user.click(getByTestId(`${CARD}-dismiss`));
+
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+			expect(store.applyPreviewSuggestion).not.toHaveBeenCalled();
+			expect(getByTestId(CHECK_HARDER)).toHaveTextContent('Check harder cases anyway');
 		});
 	});
 

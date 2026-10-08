@@ -161,14 +161,14 @@ describe('AgentEvalExamplesSlider', () => {
 		await rerender({ loading: false, examples: fiveExamples });
 
 		// Defaults to 2, not stuck at the pre-generation 1.
-		expect(getByText('2 checks')).toBeInTheDocument();
+		expect(getByText('2 of 5 checks')).toBeInTheDocument();
 		const slider = getByRole('slider');
 		expect(slider).toHaveAttribute('aria-valuemax', '5');
 
 		// The range is real (1..5), not collapsed to 1..1 — dragging moves it.
 		slider.focus();
 		await fireEvent.keyDown(slider, { key: 'ArrowRight' });
-		expect(getByText('3 checks')).toBeInTheDocument();
+		expect(getByText('3 of 5 checks')).toBeInTheDocument();
 		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(3);
 	});
 

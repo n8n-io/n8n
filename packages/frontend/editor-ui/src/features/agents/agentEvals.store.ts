@@ -19,6 +19,7 @@ import type {
 	AgentEvalRunSummary,
 	AgentEvalVote,
 	ApplyAgentEvalSuggestionsResult,
+	ApplyPreviewSuggestionOptions,
 	CreateDraftDatasetOptions,
 	GenerateDraftCasesOptions,
 	PreviewRunOptions,
@@ -329,6 +330,21 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		options: PreviewRunOptions = {},
 	) => {
 		return await agentEvalsApi.previewRun(rootStore.restApiContext, projectId, agentId, options);
+	};
+
+	// Rewrites the agent's instructions with a preview run's suggestion, then runs the
+	// same case again. Nothing is cached, like `previewRun`.
+	const applyPreviewSuggestion = async (
+		projectId: string,
+		agentId: string,
+		options: ApplyPreviewSuggestionOptions,
+	) => {
+		return await agentEvalsApi.applyPreviewSuggestion(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			options,
+		);
 	};
 
 	// ---- runs + review ----
@@ -1294,6 +1310,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		deleteDataset,
 		deleteDraftDataset,
 		previewRun,
+		applyPreviewSuggestion,
 		getReview,
 		removeCachedResult,
 		deleteResult,

@@ -1,6 +1,8 @@
 import type {
 	AgentEvalDatasetRecord,
 	ApplyAgentEvalSuggestionsResult,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
 	AgentEvalResultRecord,
 	AgentEvalRunDetail,
 	AgentEvalRunList,
@@ -226,6 +228,57 @@ export class AgentEvalService {
 	): Promise<PreviewRunResult> {
 		await this.assertAgentInProject(agentId, projectId);
 		return await this.caseGenerationService.previewRun(user, projectId, agentId, options);
+	}
+
+	// Folds the suggestion on a preview run's failed first check into a rewrite of
+	// the agent's instructions, saves it, then runs the same case again. A preview
+	// run saves no result, so the case arrives in the request. The rewrite and the
+	// save happen first, so a failure in either leaves nothing rerun.
+	// `agent:update` comes from the route scope; the rerun needs `agent:execute`.
+	async applyPreviewSuggestion(
+		user: User,
+		agentId: string,
+		projectId: string,
+		options: ApplyPreviewSuggestionOptions,
+		pushRef?: string,
+	): Promise<ApplyPreviewSuggestionResult> {
+		await this.assertAgentInProject(agentId, projectId);
+
+		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run agents in this project.');
+		}
+
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		const baseConfigHash = getAgentConfigHash(config);
+
+		const instructions = await rewriteAgentInstructions(
+			{
+				agentConfigService: this.agentConfigService,
+				credentialsService: this.credentialsService,
+				logger: this.logger,
+			},
+			{
+				currentInstructions: config.instructions,
+				suggestions: [{ suggestion: options.suggestion, rule: options.whatToCheck }],
+			},
+			{ agentId, projectId, user },
+		);
+
+		const saved = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			{ ...config, instructions },
+			user,
+			{ baseConfigHash, modifiedBy: 'user', pushRef },
+		);
+
+		const preview = await this.caseGenerationService.runPreviewCase(user, projectId, agentId, {
+			input: options.input,
+			whatToCheck: options.whatToCheck,
+			scenario: '',
+		});
+
+		return { configHash: saved.configHash, preview };
 	}
 
 	// ---- runs ----

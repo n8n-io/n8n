@@ -20,6 +20,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
+import { generateFixSuggestion } from './agent-eval-fix-suggestion';
 import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
@@ -216,6 +217,21 @@ export class AgentEvalCaseGenerationService {
 		const draftCase = drafted.cases[0];
 		if (!draftCase) return { status: 'failed' };
 
+		return await this.runPreviewCase(user, projectId, agentId, draftCase);
+	}
+
+	/**
+	 * Runs one case against the agent and grades it against its rule, without
+	 * persisting anything. A failed rule also gets one suggested fix on its
+	 * verdict. Split from {@link previewRun} so a case can be run again after the
+	 * agent's instructions changed.
+	 */
+	async runPreviewCase(
+		user: User,
+		projectId: string,
+		agentId: string,
+		draftCase: Pick<AgentEvalDraftCase, 'input' | 'whatToCheck' | 'scenario'>,
+	): Promise<PreviewRunResult> {
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
@@ -254,13 +270,27 @@ export class AgentEvalCaseGenerationService {
 			{ agentId, projectId, user },
 		);
 
+		const rule = draftCase.whatToCheck.trim();
+		const suggestion =
+			verdict.status === 'completed' && verdict.outcome === 'fail' && rule
+				? await generateFixSuggestion(
+						{
+							agentConfigService: this.agentConfigService,
+							credentialsService: this.credentialsService,
+							logger: this.logger,
+						},
+						{ input: draftCase.input, output: result.response, rule, reasoning: verdict.reasoning },
+						{ agentId, projectId, user },
+					)
+				: null;
+
 		return {
 			status: 'completed',
 			input: draftCase.input,
 			whatToCheck: draftCase.whatToCheck,
 			scenario: draftCase.scenario,
 			response: result.response,
-			verdict,
+			verdict: suggestion ? { ...verdict, suggestion } : verdict,
 		};
 	}
 

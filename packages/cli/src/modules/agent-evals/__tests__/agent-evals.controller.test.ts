@@ -114,6 +114,7 @@ describe('AgentEvalsController', () => {
 			startRun: 'agent:execute',
 			rerunResult: 'agent:execute',
 			applySuggestions: 'agent:update',
+			applyPreviewSuggestion: 'agent:update',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -176,6 +177,15 @@ describe('AgentEvalsController', () => {
 				'applySuggestions',
 				async () =>
 					await controller.applySuggestions(agentReq(), undefined, { resultIds: ['res-1'] }),
+			],
+			[
+				'applyPreviewSuggestion',
+				async () =>
+					await controller.applyPreviewSuggestion(agentReq(), undefined, {
+						input: 'hello',
+						whatToCheck: 'Rule',
+						suggestion: 'Fix it.',
+					}),
 			],
 			[
 				'rateResult',
@@ -365,6 +375,54 @@ describe('AgentEvalsController', () => {
 				'push-1',
 			);
 			expect(callOrder).toEqual(['lock', 'apply']);
+		});
+
+		it('applies a preview suggestion after the write-lock check, forwarding the push ref', async () => {
+			const req = makeReq(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				{},
+				{ 'push-ref': 'push-1' },
+			);
+			const body = { input: 'hello', whatToCheck: 'Rule', suggestion: 'Fix it.' };
+			const callOrder: string[] = [];
+			collaborationService.validateAgentWriteLock.mockImplementation(async () => {
+				callOrder.push('lock');
+			});
+			service.applyPreviewSuggestion.mockImplementation(async () => {
+				callOrder.push('apply');
+				return { configHash: 'hash-1', preview: { status: 'failed' } };
+			});
+
+			await controller.applyPreviewSuggestion(req, undefined, body);
+
+			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+				'user-1',
+				'push-1',
+				PROJECT_ID,
+				AGENT_ID,
+				'update',
+			);
+			expect(service.applyPreviewSuggestion).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				body,
+				'push-1',
+			);
+			expect(callOrder).toEqual(['lock', 'apply']);
+		});
+
+		it('does not apply a preview suggestion when the write lock rejects', async () => {
+			collaborationService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
+
+			await expect(
+				controller.applyPreviewSuggestion(agentReq(), undefined, {
+					input: 'hello',
+					whatToCheck: 'Rule',
+					suggestion: 'Fix it.',
+				}),
+			).rejects.toThrow(BadRequestError);
+			expect(service.applyPreviewSuggestion).not.toHaveBeenCalled();
 		});
 
 		it('does not apply suggestions when the write lock rejects', async () => {

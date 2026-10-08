@@ -192,6 +192,15 @@ describe('AgentEvalService', () => {
 				'applySuggestions',
 				async () => await service.applySuggestions(user, AGENT_ID, PROJECT_ID, ['result-1']),
 			],
+			[
+				'applyPreviewSuggestion',
+				async () =>
+					await service.applyPreviewSuggestion(user, AGENT_ID, PROJECT_ID, {
+						input: 'hello',
+						whatToCheck: 'Rule',
+						suggestion: 'Fix it.',
+					}),
+			],
 			['acceptResult', async () => await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1')],
 			['deleteResult', async () => await service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')],
 			[
@@ -321,6 +330,124 @@ describe('AgentEvalService', () => {
 			expect(runner.rerunResult).toHaveBeenCalledWith(toRerun, AGENT_ID, PROJECT_ID, user, {
 				whatToCheck: 'Mentions the refund window.',
 			});
+		});
+	});
+
+	describe('applyPreviewSuggestion', () => {
+		const config = { name: 'Bot', model: 'm', credential: 'c', instructions: 'Old text.' };
+		const options = { input: 'hello', whatToCheck: 'Rule', suggestion: 'Fix it.' };
+		const completedPreview = {
+			status: 'completed' as const,
+			input: 'hello',
+			whatToCheck: 'Rule',
+			scenario: '',
+			response: 'hi',
+			verdict: { status: 'completed' as const, outcome: 'pass' as const, reasoning: 'ok' },
+		};
+
+		beforeEach(() => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			vi.mocked(rewriteAgentInstructions).mockReset();
+			vi.mocked(rewriteAgentInstructions).mockResolvedValue('New text.');
+			agentConfigService.getConfig.mockResolvedValue(config as never);
+			agentConfigService.updateConfig.mockResolvedValue({
+				configHash: 'hash-after',
+			} as never);
+			caseGenerationService.runPreviewCase.mockResolvedValue(completedPreview);
+		});
+
+		it('rewrites, saves, then runs the same case again', async () => {
+			const order: string[] = [];
+			vi.mocked(rewriteAgentInstructions).mockImplementation(async () => {
+				order.push('rewrite');
+				return 'New text.';
+			});
+			agentConfigService.updateConfig.mockImplementation(async () => {
+				order.push('save');
+				return { configHash: 'hash-after' } as never;
+			});
+			caseGenerationService.runPreviewCase.mockImplementation(async () => {
+				order.push('rerun');
+				return completedPreview;
+			});
+
+			const response = await service.applyPreviewSuggestion(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				options,
+				'push-1',
+			);
+
+			expect(order).toEqual(['rewrite', 'save', 'rerun']);
+			expect(response).toEqual({ configHash: 'hash-after', preview: completedPreview });
+			expect(rewriteAgentInstructions).toHaveBeenCalledWith(
+				expect.anything(),
+				{
+					currentInstructions: 'Old text.',
+					suggestions: [{ suggestion: 'Fix it.', rule: 'Rule' }],
+				},
+				{ agentId: AGENT_ID, projectId: PROJECT_ID, user },
+			);
+			expect(caseGenerationService.runPreviewCase).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				{ input: 'hello', whatToCheck: 'Rule', scenario: '' },
+			);
+		});
+
+		it('saves the full config with only the instructions replaced, against the hash it read', async () => {
+			await service.applyPreviewSuggestion(user, AGENT_ID, PROJECT_ID, options, 'push-1');
+
+			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+				AGENT_ID,
+				PROJECT_ID,
+				{ ...config, instructions: 'New text.' },
+				user,
+				{
+					baseConfigHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+					modifiedBy: 'user',
+					pushRef: 'push-1',
+				},
+			);
+		});
+
+		it('requires agent:execute on top of the route scope', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.applyPreviewSuggestion(user, AGENT_ID, PROJECT_ID, options),
+			).rejects.toThrow(ForbiddenError);
+			expect(rewriteAgentInstructions).not.toHaveBeenCalled();
+			expect(caseGenerationService.runPreviewCase).not.toHaveBeenCalled();
+		});
+
+		it('saves and reruns nothing when the rewrite fails', async () => {
+			vi.mocked(rewriteAgentInstructions).mockRejectedValue(new Error('bad rewrite'));
+
+			await expect(
+				service.applyPreviewSuggestion(user, AGENT_ID, PROJECT_ID, options),
+			).rejects.toThrow('bad rewrite');
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+			expect(caseGenerationService.runPreviewCase).not.toHaveBeenCalled();
+		});
+
+		it('reruns nothing when the save fails, and lets a 409 through', async () => {
+			agentConfigService.updateConfig.mockRejectedValue(new ConflictError('changed elsewhere'));
+
+			await expect(
+				service.applyPreviewSuggestion(user, AGENT_ID, PROJECT_ID, options),
+			).rejects.toThrow(ConflictError);
+			expect(caseGenerationService.runPreviewCase).not.toHaveBeenCalled();
+		});
+
+		it('returns a failed preview next to the new config hash', async () => {
+			caseGenerationService.runPreviewCase.mockResolvedValue({ status: 'failed' });
+
+			await expect(
+				service.applyPreviewSuggestion(user, AGENT_ID, PROJECT_ID, options),
+			).resolves.toEqual({ configHash: 'hash-after', preview: { status: 'failed' } });
 		});
 	});
 
