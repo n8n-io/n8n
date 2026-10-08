@@ -2,14 +2,22 @@
 import { computed, ref, watch } from 'vue';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import type { RouteLocationRaw } from 'vue-router';
-import { N8nAiActivityStepGroup, N8nIcon, N8nLink } from '@n8n/design-system';
+import { type IconColor, N8nIcon, N8nLink, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { AgentPlanItemStatus, AgentPlanView } from '../utils/agent-plan';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
+import ChatCollapsibleContainer from '@/features/ai/shared/components/ChatCollapsibleContainer.vue';
 import { TIME } from '@/app/constants/durations';
 
 const props = defineProps<{ plan: AgentPlanView; traceRoute?: RouteLocationRaw }>();
 const i18n = useI18n();
+const expanded = ref(false);
+watch(
+	() => props.plan.planId,
+	() => {
+		expanded.value = false;
+	},
+);
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
 const startTime = computed(() => Date.parse(props.plan.startedAt ?? ''));
@@ -64,180 +72,206 @@ const statusLabels: Record<AgentPlanItemStatus, BaseTextKey> = {
 };
 const statusIcons = {
 	pending: 'circle',
-	in_progress: 'loader-circle',
+	in_progress: 'loader',
 	done: 'check',
 	failed: 'x',
 	cancelled: 'x',
 } as const;
-const summary = computed(() => {
-	const tasks = props.plan.document.items.flatMap((item) =>
-		item.kind === 'group' ? item.tasks : [item],
-	);
-	return i18n.baseText('agents.chat.plan.progress', {
-		adjustToNumber: tasks.length,
-		interpolate: {
-			done: tasks.filter((task) => task.status === 'done').length,
-			total: tasks.length,
-		},
-	});
-});
+const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
+	pending: 'text-light',
+	in_progress: 'text-light',
+	done: 'success',
+	failed: 'danger',
+	cancelled: 'text-xlight',
+} as const;
+
 </script>
 
 <template>
 	<div :class="$style.plan" data-testid="agent-chat-plan">
-		<N8nAiActivityStepGroup
+		<ChatCollapsibleContainer
 			:key="plan.planId"
+			v-model:expanded="expanded"
 			:label="label"
 			:title="plan.closed || plan.document.presentation ? label : plan.document.title"
-			full-width
-			content-position="below"
 		>
-			<template #prefix>
+			<template #header>
 				<N8nIcon
 					:icon="isRunning ? 'loader-circle' : 'list-checks'"
 					:spin="isRunning"
 					:class="{ [$style.running]: isRunning }"
-					size="small"
+					size="medium"
+					color="text-light"
 					aria-hidden="true"
 					data-testid="agent-chat-plan-indicator"
 				/>
+				<N8nText bold step="xs" :class="[$style.label, { [$style.inProgress]: isRunning }]">{{
+					label
+				}}</N8nText>
 			</template>
 			<template v-if="elapsed !== null" #header-trailing>
-				<span :class="$style.timer" aria-live="off" data-testid="agent-chat-plan-timer">{{
-					elapsed
-				}}</span>
+				<N8nText
+					step="xs"
+					bold
+					color="text-xlight"
+					aria-live="off"
+					:class="$style.timer"
+					data-testid="agent-chat-plan-timer"
+					>{{ elapsed }}</N8nText
+				>
 			</template>
-			<div
+			<N8nScrollArea
+				as-child
+				type="hover"
+				max-height="20vh"
 				:class="$style.details"
 				role="region"
 				:aria-label="plan.document.title"
 				tabindex="0"
 				data-testid="agent-chat-plan-details"
 			>
+				<N8nText
+					v-if="!plan.closed && plan.document.presentation?.detail"
+					:class="$style.detail"
+					:title="plan.document.presentation.detail"
+				>
+					{{ plan.document.presentation.detail }}
+				</N8nText>
 				<ul
 					:class="$style.items"
 					:aria-label="plan.document.title"
 					data-testid="agent-chat-plan-items"
 				>
-					<li v-for="item in plan.document.items" :key="item.id">
+					<li
+						v-for="item in plan.document.items"
+						:key="item.id"
+						:class="[
+							$style.parentItem,
+							{ [$style.hasChildren]: item.kind === 'group' && item.tasks.length > 0 },
+						]"
+					>
 						<div :class="[$style.row, { [$style.group]: item.kind === 'group' }]">
 							<span
+								:class="$style.parentIcon"
 								role="img"
 								:aria-label="i18n.baseText(statusLabels[item.status])"
 								:title="i18n.baseText(statusLabels[item.status])"
 								:data-status="item.status"
-								:class="$style.status"
 							>
 								<N8nIcon
 									:icon="statusIcons[item.status]"
 									:spin="item.status === 'in_progress'"
-									size="small"
+									:color="statusIconColors[item.status]"
+									size="medium"
 									aria-hidden="true"
 								/>
 							</span>
-							<span :class="$style.itemTitle" :title="item.title">{{ item.title }}</span>
+
+							<N8nText
+								bold
+								step="xs"
+								:color="item.status === 'done' ? undefined : 'text-light'"
+								:class="[$style.itemTitle, { [$style.inProgress]: item.status === 'in_progress' }]"
+								:title="item.title"
+								>{{ item.title }}</N8nText
+							>
 						</div>
 						<ul v-if="item.kind === 'group'" :class="$style.children">
 							<li v-for="task in item.tasks" :key="task.id" :class="$style.row">
+								<svg
+									:class="$style.treeBranch"
+									viewBox="0 0 16 8"
+									preserveAspectRatio="none"
+									fill="none"
+									stroke="currentColor"
+									aria-hidden="true"
+								>
+									<path d="M0 0Q0 4 4 4H16" />
+								</svg>
 								<span
 									role="img"
 									:aria-label="i18n.baseText(statusLabels[task.status])"
 									:title="i18n.baseText(statusLabels[task.status])"
 									:data-status="task.status"
-									:class="$style.status"
 								>
 									<N8nIcon
 										:icon="statusIcons[task.status]"
+										:color="statusIconColors[task.status]"
 										:spin="task.status === 'in_progress'"
-										size="small"
+										size="medium"
 										aria-hidden="true"
 									/>
 								</span>
-								<span :class="$style.itemTitle" :title="task.title">{{ task.title }}</span>
+								<N8nText
+									bold
+									step="xs"
+									:color="task.status === 'done' ? undefined : 'text-light'"
+									:class="[
+										$style.itemTitle,
+										{ [$style.inProgress]: task.status === 'in_progress' },
+									]"
+									:title="task.title"
+									>{{ task.title }}</N8nText
+								>
 							</li>
 						</ul>
 					</li>
 				</ul>
-			</div>
-			<p
-				v-if="!plan.closed && plan.document.presentation?.detail"
-				:class="$style.detail"
-				:title="plan.document.presentation.detail"
-			>
-				{{ plan.document.presentation.detail }}
-			</p>
-			<div :class="$style.footer">
+			</N8nScrollArea>
+			<div v-if="traceRoute" :class="$style.footer">
 				<N8nLink
-					v-if="traceRoute"
 					:to="traceRoute"
 					theme="text"
 					size="small"
 					underline
 					data-testid="agent-chat-plan-trace"
 				>
-					<span :class="$style.traceLabel">
-						<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
-						{{ i18n.baseText('agents.chat.plan.viewTrace') }}
-					</span>
+					{{ i18n.baseText('agents.chat.plan.viewTrace') }}
 				</N8nLink>
-				<span :class="$style.summary" data-testid="agent-chat-plan-summary">{{ summary }}</span>
 			</div>
-		</N8nAiActivityStepGroup>
+		</ChatCollapsibleContainer>
 	</div>
 </template>
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
+@use '@n8n/design-system/css/mixins/utils';
 
-.plan {
-	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
-	border-bottom: var(--border);
-	min-width: 0;
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
+.label {
+	@include utils.utils-ellipsis;
 }
 
-.summary {
-	flex: 0 0 auto;
-	width: auto;
-	font-size: var(--font-size--2xs);
-	font-variant-numeric: tabular-nums;
-	color: var(--text-color--subtle);
-	margin-inline-start: auto;
+
+.footer {
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .timer {
 	font-variant-numeric: tabular-nums;
-	font-size: var(--font-size--xs);
-	color: var(--text-color--subtler);
 	flex-shrink: 0;
 }
 
 .details {
-	padding: var(--spacing--2xs) var(--spacing--sm) 0;
-	max-height: 20vh;
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	border-top: var(--border);
-	border-top-style: dashed;
+	min-height: 0;
+	height: auto;
+	padding-block: var(--spacing--4xs) var(--spacing--sm);
 	overflow-wrap: anywhere;
 }
 
 .items {
+	--plan-rail-offset: calc(var(--spacing--xs) + var(--spacing--3xs));
+
 	list-style: none;
 	margin: 0;
 	padding: 0;
 }
 
 .detail {
-	margin: var(--spacing--2xs) 0 0;
-	padding-inline: var(--spacing--sm);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--regular);
+	padding-block: var(--spacing--xs) var(--spacing--2xs);
+	padding-inline: var(--spacing--xs);
 	color: var(--text-color--subtle);
 	white-space: pre-wrap;
+	text-wrap: balance;
 	overflow-wrap: anywhere;
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
@@ -247,44 +281,91 @@ const summary = computed(() => {
 
 .itemTitle {
 	min-width: 0;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	@include utils.utils-ellipsis;
 }
 
-.footer {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
+.inProgress {
+	--animation--shimmer--duration: var(--duration--slowest);
+	--animation--shimmer--foreground: var(--text-color--subtle);
+	--animation--shimmer--background: var(--text-color--subtler);
+	@include motion.shimmer;
 }
 
-.traceLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
+
 
 .running {
 	color: var(--color--primary);
+}
+
+.parentItem {
+	position: relative;
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset-inline-start: var(--plan-rail-offset);
+		inset-block-start: calc(var(--height--lg) / 2);
+		inset-block-end: calc(var(--height--lg) / -2);
+		border-inline-start: var(--border);
+		border-width: 1.5px;
+		pointer-events: none;
+	}
+
+	&:last-child::after {
+		inset-block-end: calc(var(--height--lg) / 2);
+	}
+
+	&:last-child.hasChildren::after {
+		inset-block-end: calc(var(--height--lg) / 2 + var(--spacing--4xs));
+	}
+}
+
+.parentIcon {
+	position: relative;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--background--subtle);
+	box-shadow: 0 0 0 var(--spacing--3xs) var(--background--subtle);
 }
 
 .children {
 	list-style: none;
 	margin: 0;
 	padding: 0 0 0 var(--spacing--lg);
+
+	> .row {
+		position: relative;
+	}
+}
+
+.treeBranch {
+	position: absolute;
+	inset-inline-start: calc(var(--plan-rail-offset) - var(--spacing--lg));
+	inset-block-start: calc(50% - var(--spacing--4xs));
+	width: calc(var(--spacing--sm) - var(--spacing--4xs));
+	height: var(--spacing--2xs);
+	overflow: visible;
+	color: var(--border-color);
+	pointer-events: none;
+
+	path {
+		stroke-width: 1.5px;
+		vector-effect: non-scaling-stroke;
+	}
 }
 
 .row {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
+	justify-content: flex-start;
+	padding-inline: var(--spacing--xs);
 	gap: var(--spacing--2xs);
-	padding-block: var(--spacing--3xs);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--lg);
-	color: var(--text-color--subtle);
+	height: var(--height--md);
 	overflow-wrap: anywhere;
-	min-width: 0;
+	line-height: var(--line-height--lg);
+	user-select: none;
 }
 
 .group {
