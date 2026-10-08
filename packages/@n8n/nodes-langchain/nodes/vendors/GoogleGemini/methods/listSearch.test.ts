@@ -49,6 +49,12 @@ const mockResponse = {
 		{
 			name: 'models/gemini-3.1-flash-image-preview',
 		},
+		{
+			name: 'models/gemini-nano-banana-2.1',
+		},
+		{
+			name: 'models/gemini-3.1-flash-lite-image',
+		},
 	],
 };
 
@@ -153,6 +159,16 @@ describe('GoogleGemini -> listSearch', () => {
 						name: 'models/gemini-3.1-flash-image-preview (Nano Banana 2)',
 						value: 'models/gemini-3.1-flash-image-preview',
 					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-nano-banana-2.1 (Nano Banana 2.1)',
+						value: 'models/gemini-nano-banana-2.1',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
+						value: 'models/gemini-3.1-flash-lite-image',
+					},
 				],
 			});
 		});
@@ -195,6 +211,16 @@ describe('GoogleGemini -> listSearch', () => {
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-3.1-flash-image-preview (Nano Banana 2)',
 						value: 'models/gemini-3.1-flash-image-preview',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-nano-banana-2.1 (Nano Banana 2.1)',
+						value: 'models/gemini-nano-banana-2.1',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
+						value: 'models/gemini-3.1-flash-lite-image',
 					},
 				],
 			});
