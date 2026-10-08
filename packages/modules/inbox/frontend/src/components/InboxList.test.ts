@@ -5,7 +5,7 @@ import { fireEvent, within } from '@testing-library/vue';
 import { useIntersectionObserver } from '@vueuse/core';
 
 import InboxList from './InboxList.vue';
-import type { InboxListSection } from './InboxList.vue';
+import type { InboxListSection } from './InboxListSection.vue';
 
 vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@vueuse/core')>()),
