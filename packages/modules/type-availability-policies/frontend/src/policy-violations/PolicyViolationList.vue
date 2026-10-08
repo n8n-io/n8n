@@ -22,13 +22,23 @@ const i18n = useI18n();
 const NAME_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
 	'node-type-unavailable': 'typeAvailabilityPolicies.violations.nodeType',
 	'credential-type-unavailable': 'typeAvailabilityPolicies.violations.credentialType',
-	'node-type-deprecated': 'typeAvailabilityPolicies.violations.deprecatedNodeType',
+	'node-type-deprecated': 'typeAvailabilityPolicies.violations.nodeType',
+};
+
+/** Headings for kinds that have no scope, so their items can stay as short as scoped ones. */
+const HEADING_KEY_BY_KIND: Record<string, BaseTextKey | undefined> = {
+	'node-type-deprecated': 'typeAvailabilityPolicies.violations.deprecatedHeading',
 };
 
 const SCOPE_ORDER = ['instance', 'project'];
 
 type Item = { key: string; text: string; violation: PolicyViolation; jumpable: boolean };
-type Group = { scope: string | undefined; heading: string | undefined; items: Item[] };
+type Group = {
+	id: string;
+	scope: string | undefined;
+	heading: string | undefined;
+	items: Item[];
+};
 
 function itemText(violation: PolicyViolation): string {
 	const { kind, subject, message } = violation;
@@ -44,6 +54,13 @@ function scopeHeading(scope: string | undefined): string | undefined {
 	return isRestrictionScope(scope) ? i18n.baseText(SCOPE_LABEL_KEY[scope]) : scope;
 }
 
+function groupOf({ scope, kind }: PolicyViolation): Pick<Group, 'id' | 'heading'> {
+	if (scope) return { id: `scope:${scope}`, heading: scopeHeading(scope) };
+
+	const key = HEADING_KEY_BY_KIND[kind];
+	return key ? { id: `kind:${kind}`, heading: i18n.baseText(key) } : { id: '', heading: undefined };
+}
+
 function scopeRank(scope: string | undefined): number {
 	if (!scope) return SCOPE_ORDER.length + 1;
 
@@ -52,23 +69,24 @@ function scopeRank(scope: string | undefined): number {
 }
 
 const groups = computed(() => {
-	const byScope = new Map<string | undefined, Group>();
+	const byId = new Map<string, Group>();
 
 	for (const violation of props.violations) {
 		const text = itemText(violation);
 		const key = `${violation.subjectType ?? ''}:${violation.subject ?? ''}:${text}`;
+		const { id, heading } = groupOf(violation);
 
-		let group = byScope.get(violation.scope);
+		let group = byId.get(id);
 		if (!group) {
-			group = { scope: violation.scope, heading: scopeHeading(violation.scope), items: [] };
-			byScope.set(violation.scope, group);
+			group = { id, scope: violation.scope, heading, items: [] };
+			byId.set(id, group);
 		}
 
 		if (group.items.some((item) => item.key === key)) continue;
 		group.items.push({ key, text, violation, jumpable: props.isJumpable(violation) });
 	}
 
-	return [...byScope.values()].sort((a, b) => scopeRank(a.scope) - scopeRank(b.scope));
+	return [...byId.values()].sort((a, b) => scopeRank(a.scope) - scopeRank(b.scope));
 });
 </script>
 
@@ -76,7 +94,7 @@ const groups = computed(() => {
 	<div :class="$style.list">
 		<section
 			v-for="group in groups"
-			:key="group.scope ?? ''"
+			:key="group.id"
 			:class="$style.group"
 			data-test-id="policy-violation-group"
 		>

@@ -98,7 +98,7 @@ describe('PolicyViolationList', () => {
 		]);
 	});
 
-	it('names a deprecated node type once, however many nodes use it', () => {
+	it('lists deprecated node types under their own heading, once per type', () => {
 		const deprecated: PolicyViolation = {
 			kind: 'node-type-deprecated',
 			checkId: 'deprecated-nodes',
@@ -113,9 +113,10 @@ describe('PolicyViolationList', () => {
 			},
 		});
 
-		expect(groupTexts(getAllByTestId('policy-violation-group'))).toEqual([
-			['Function node is deprecated. Replace it or remove it from the workflow.'],
+		expect(getAllByTestId('policy-violation-scope').map((heading) => heading.textContent)).toEqual([
+			'Deprecated. Replace or remove these nodes.',
 		]);
+		expect(groupTexts(getAllByTestId('policy-violation-group'))).toEqual([['Function node']]);
 	});
 
 	it('lists a repeated violation once', () => {

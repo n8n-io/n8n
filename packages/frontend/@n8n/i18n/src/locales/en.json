@@ -2548,7 +2548,7 @@
 	"typeAvailabilityPolicies.contactAdmin.empty": "No instance admin is listed here. Ask the person who manages this n8n instance.",
 	"typeAvailabilityPolicies.violations.nodeType": "{name} node",
 	"typeAvailabilityPolicies.violations.credentialType": "{name} credential",
-	"typeAvailabilityPolicies.violations.deprecatedNodeType": "{name} node is deprecated. Replace it or remove it from the workflow.",
+	"typeAvailabilityPolicies.violations.deprecatedHeading": "Deprecated. Replace or remove these nodes.",
 	"typeAvailabilityPolicies.violations.jump": "Show in workflow",
 	"typeAvailabilityPolicies.violations.publishTitle": "Problem publishing workflow",
 	"typeAvailabilityPolicies.violations.executeTitle": "Problem executing workflow",
