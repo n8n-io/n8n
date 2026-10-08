@@ -142,7 +142,18 @@ export type ContentToolCall = ContentMetadata & {
 	activatedSkillIds?: string[];
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
-		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
+		| {
+				state: 'resolved';
+				output: JSONValue;
+				canceled?: boolean;
+				/**
+				 * The tool finished, but its result reports a failure (an MCP `isError: true`
+				 * result). The stored `output` of an untrusted tool is wrapped text that hides
+				 * this flag, so history readers use this field. Metadata only — never sent to
+				 * the model.
+				 */
+				resultIsError?: boolean;
+		  }
 		| { state: 'rejected'; error: string }
 	);
 

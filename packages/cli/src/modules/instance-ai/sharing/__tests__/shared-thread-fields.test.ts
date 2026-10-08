@@ -92,6 +92,17 @@ describe('SharedThreadFields.addTo', () => {
 		expect(users.findManyByIds).toHaveBeenCalledWith(['ada']);
 	});
 
+	it('names an owner without a name by email', async () => {
+		const { fields, users } = setup([sharedRow('a', finance.id, 'sso')]);
+		users.findManyByIds.mockResolvedValue([
+			mock<User>({ id: 'sso', firstName: '', lastName: '', email: 'sso-user@example.com' }),
+		]);
+
+		const [thread] = await fields.addTo(ada, [info('a', 'sso')]);
+
+		expect(thread.owner).toEqual({ id: 'sso', name: 'sso-user@example.com' });
+	});
+
 	it('uses empty names for a project or an owner that is gone', async () => {
 		const { fields } = setup([sharedRow('a', 'gone', 'deleted-user')]);
 

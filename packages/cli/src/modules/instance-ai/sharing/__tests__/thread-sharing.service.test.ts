@@ -1,6 +1,6 @@
 import type { InstanceAiThreadInfo } from '@n8n/api-types';
 import type { Project, ProjectRelation, User, UserRepository } from '@n8n/db';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
@@ -76,6 +76,7 @@ function setup() {
 	users.findManyByIds.mockResolvedValue([owner]);
 	memory.getThreadInfo.mockImplementation(async (id) => info(id));
 	threads.findSharedByIds.mockResolvedValue([]);
+	threads.shareWithProject.mockResolvedValue(true);
 
 	return { service, threads, projectService, users, memory };
 }
@@ -154,6 +155,45 @@ describe('ThreadSharingService', () => {
 			// A private thread of another user needs no scope lookup to refuse.
 			expect(projectService.getProjectRelationForUserAndProject).not.toHaveBeenCalled();
 		});
+
+		it('answers 404 for a child session, which is not a chat', async () => {
+			const { service, threads } = setup();
+			threads.findOneBy.mockResolvedValue(makeThread({ parentThreadId: 'parent-1' }));
+
+			await expect(service.share(owner, 'thread-1')).rejects.toThrow(NotFoundError);
+			expect(threads.shareWithProject).not.toHaveBeenCalled();
+		});
+
+		it('returns the chat when another request shared it at the same time', async () => {
+			const { service, threads, memory } = setup();
+			const shared = makeThread({ accessScope: 'project' });
+			threads.findOneBy.mockResolvedValueOnce(makeThread()).mockResolvedValueOnce(shared);
+			threads.shareWithProject.mockResolvedValue(false);
+			threads.findSharedByIds.mockResolvedValue([shared]);
+
+			await expect(service.share(owner, 'thread-1')).resolves.toMatchObject(SHARED_FIELDS);
+			expect(threads.findOneBy).toHaveBeenLastCalledWith({ id: 'thread-1' });
+			expect(memory.getThreadInfo).toHaveBeenCalledWith('thread-1');
+		});
+
+		it.each([
+			['is gone', null],
+			['is still private', makeThread()],
+			['has another owner', makeThread({ accessScope: 'project', ownerId: 'someone-else' })],
+		])(
+			'answers 409, not a chat without sharing fields, when the update changed nothing and the chat %s',
+			async (_label, current) => {
+				const { service, threads, memory } = setup();
+				threads.findOneBy.mockResolvedValueOnce(makeThread()).mockResolvedValueOnce(current);
+				threads.shareWithProject.mockResolvedValue(false);
+
+				const share = service.share(owner, 'thread-1');
+
+				await expect(share).rejects.toThrow(ConflictError);
+				await expect(share).rejects.toThrow('This chat changed while it was shared. Try again.');
+				expect(memory.getThreadInfo).not.toHaveBeenCalled();
+			},
+		);
 
 		it('answers 404 for an unknown thread or a thread without project', async () => {
 			const { service, threads, projectService } = setup();

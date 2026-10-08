@@ -16,6 +16,7 @@ import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { resetExperienceModeState } from '@/features/ai/instanceAi/experience/useExperienceMode';
 import { stubLocalStorage } from '@/features/ai/instanceAi/navigation/__tests__/navigationFixtures';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ExperienceMode } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
@@ -414,20 +415,22 @@ describe('ProjectsNavigation', () => {
 			resetExperienceModeState();
 			storage.clear();
 			stubLocalStorage(storage);
+			// The chat list listens for live updates while experience modes are on.
+			mockedStore(usePushConnectionStore).addEventListener.mockReturnValue(() => {});
 		});
 
 		/** Turns on experience modes with `mode` as the instance default. */
 		function useMode(mode: ExperienceMode) {
-			configureInstanceAi(true);
 			const instanceAiSettings = settingsStore.moduleSettings['instance-ai'];
 			if (instanceAiSettings) instanceAiSettings.experience = { enabled: true, defaultMode: mode };
-			vi.mocked(useRBACStore().hasScope).mockImplementation(
-				(scope) => scope === 'instanceAi:message' || scope === 'chatHub:message',
-			);
 		}
 
 		/** A sidebar where every item can show: projects, sharing, reviews, chat hub, a favourite and a chat. */
 		function fillSidebar() {
+			configureInstanceAi(true);
+			vi.mocked(useRBACStore().hasScope).mockImplementation(
+				(scope) => scope === 'instanceAi:message' || scope === 'chatHub:message',
+			);
 			projectsStore.teamProjectsLimit = -1;
 			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.myProjects = [...teamProjects];
@@ -486,7 +489,6 @@ describe('ProjectsNavigation', () => {
 
 		it('shows no Workspace with the flag off', () => {
 			fillSidebar();
-			configureInstanceAi(true);
 
 			const { getByTestId, getByText, queryByRole } = renderComponent({
 				props: { collapsed: false },
