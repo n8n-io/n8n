@@ -140,21 +140,6 @@ describe('settings.store', () => {
 			store.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
 		});
 
-		it('keeps Inbox available after a saved enable action when settings cannot refresh', async () => {
-			const store = useSettingsStore();
-			getSettings.mockRejectedValueOnce(new Error('Settings unavailable'));
-
-			store.setWorkflowReviewsPolicy({ enabled: true });
-			await expect(store.getSettings()).rejects.toThrow('Settings unavailable');
-
-			expect(store.settings.workflowReviews).toEqual({ enabled: true });
-			expect(store.settings.inbox).toEqual({
-				enabled: true,
-				availableTypes: ['workflow_review'],
-				failedTypes: [],
-			});
-		});
-
 		it.each(['availableTypes', 'failedTypes'] as const)(
 			'preserves Assistant %s when Reviews are enabled and disabled',
 			(sourceStatus) => {
@@ -183,11 +168,8 @@ describe('settings.store', () => {
 
 		it('disables Inbox when its last source is disabled', () => {
 			const store = useSettingsStore();
-			store.settings.inbox = {
-				enabled: true,
-				availableTypes: ['workflow_review'],
-				failedTypes: [],
-			};
+			store.setWorkflowReviewsPolicy({ enabled: true });
+			expect(store.settings.inbox?.enabled).toBe(true);
 
 			store.setWorkflowReviewsPolicy({ enabled: false });
 

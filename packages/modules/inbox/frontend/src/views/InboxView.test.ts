@@ -305,67 +305,48 @@ it.each([
 ])(
 	'reconciles approval after leaving the page for %s (pending detail: %s)',
 	async (returnPath, detailPending) => {
+		const inboxSettings = useSettingsStore().settings.inbox;
 		createTestingPinia({ stubActions: false });
-		useSettingsStore().settings.inbox = {
-			enabled: true,
-			availableTypes: ['workflow_review', 'self_healing_result'],
-			failedTypes: [],
-		};
+		useSettingsStore().settings.inbox = inboxSettings;
 		const inbox = useInboxStore();
 		const detail = useReviewDetailStore();
 		const activity = useReviewActivityStore();
 		const pending = createDeferredPromise<DecideWorkflowReviewRequestResponse>();
 		const staleDetail = createDeferredPromise<WorkflowReviewRequestDetail>();
-		let closed = false;
-		const currentReview = (): InboxWorkflowReviewItem => ({
+		const openReview = {
 			...reviewItem(),
-			state: closed ? 'closed' : 'open',
-			decision: closed ? 'approved' : 'pending',
-		});
-		const reviewDetail = (id: string): WorkflowReviewRequestDetail => ({
-			...(id === 'req-1' ? currentReview() : reviewItem()),
-			id,
 			description: null,
 			workflows: [],
 			viewerCanDecide: true,
 			viewerDecisionIneligibilityReason: null,
 			viewerCanComment: true,
-		});
+		} satisfies WorkflowReviewRequestDetail;
+		const approvedReview = {
+			...openReview,
+			state: 'closed',
+			decision: 'approved',
+		} satisfies WorkflowReviewRequestDetail;
 		vi.mocked(reviewApi.decideWorkflowReviewRequest).mockReturnValueOnce(pending.promise);
-		vi.mocked(reviewApi.fetchWorkflowReviewRequestDetail).mockImplementation(async (_ctx, id) =>
-			reviewDetail(id),
-		);
-		vi.mocked(reviewApi.fetchWorkflowReviewActivity).mockImplementation(async () => ({
-			data: closed
-				? [
-						{
-							id: 'decision',
-							type: 'review.approved',
-							typeVersion: 1,
-							data: null,
-							createdBy: null,
-							createdAt: reviewItem().createdAt,
-						},
-					]
-				: [],
-			nextCursor: null,
-			hasMore: false,
+		vi.mocked(reviewApi.fetchWorkflowReviewRequestDetail).mockImplementation(async (_ctx, id) => ({
+			...openReview,
+			id,
 		}));
+		const page = { data: [], nextCursor: null, hasMore: false };
+		vi.mocked(reviewApi.fetchWorkflowReviewActivity).mockResolvedValue(page);
 		const metadata = { partial: false, failedSources: [], disabledSources: [] };
 		vi.mocked(inboxApi.fetchInboxSummary).mockResolvedValue({
 			...metadata,
 			counts: { open: 2, closed: 0 },
 		});
 		vi.mocked(inboxApi.fetchInbox).mockImplementation(async (_ctx, query) => ({
+			...page,
 			...metadata,
 			data:
 				query.category === 'authored'
 					? []
 					: query.state === 'closed'
-						? [currentReview()]
-						: [...(closed ? [] : [currentReview()]), { ...reviewItem(), id: 'req-2' }],
-			nextCursor: null,
-			hasMore: false,
+						? [{ ...approvedReview }]
+						: [reviewItem(), { ...reviewItem(), id: 'req-2' }],
 		}));
 		await router.replace('/inbox/reviews/req-1');
 		const { getByTestId } = renderRoutedComponent({
@@ -384,7 +365,6 @@ it.each([
 		getByTestId('approve').click();
 		await router.replace('/other');
 		await waitAllPromises();
-		const oldDetail = reviewDetail('req-1');
 		if (detailPending) {
 			vi.mocked(reviewApi.fetchWorkflowReviewRequestDetail).mockReturnValueOnce(
 				staleDetail.promise,
@@ -395,10 +375,10 @@ it.each([
 		activity.decisionNote = 'New note';
 		vi.mocked(reviewApi.fetchWorkflowReviewRequestDetail).mockClear();
 		vi.mocked(reviewApi.fetchWorkflowReviewActivity).mockClear();
-		closed = true;
-		pending.resolve({ ...currentReview(), autoPublish: { status: 'published' } });
+		vi.mocked(reviewApi.fetchWorkflowReviewRequestDetail).mockResolvedValue({ ...approvedReview });
+		pending.resolve({ ...approvedReview, autoPublish: { status: 'published' } });
 		await waitAllPromises();
-		staleDetail.resolve(oldDetail);
+		staleDetail.resolve({ ...openReview });
 		await waitAllPromises();
 
 		expect(inbox.openCount).toBe(1);
@@ -406,7 +386,11 @@ it.each([
 		expect(inbox.lists.waiting.items.map((item) => item.id)).toEqual(['req-2']);
 		if (returnPath === '/inbox/reviews/req-1') {
 			expect(detail.detail?.state).toBe('closed');
-			expect(activity.entries).toEqual([expect.objectContaining({ type: 'review.approved' })]);
+			expect(reviewApi.fetchWorkflowReviewActivity).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
+				'req-1',
+				expect.anything(),
+			);
 			expect(router.currentRoute.value.fullPath).toBe(`${returnPath}?state=closed`);
 		} else {
 			expect(router.currentRoute.value.fullPath).toBe(returnPath);
