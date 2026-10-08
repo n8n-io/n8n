@@ -51,24 +51,19 @@ function makeFakeSandbox(result: Partial<CommandResult> = {}): WorkspaceSandbox 
 }
 
 describe('runJavascriptInputSchema', () => {
-	it('accepts exactly one of path or code', () => {
+	it('accepts path, code, or both', () => {
 		expect(runJavascriptInputSchema.safeParse({ path: 'plot.js' }).success).toBe(true);
 		expect(runJavascriptInputSchema.safeParse({ code: 'console.log(1)' }).success).toBe(true);
-	});
-
-	it('rejects both path and code', () => {
-		const parsed = runJavascriptInputSchema.safeParse({ path: 'plot.js', code: 'console.log(1)' });
-		expect(parsed.success).toBe(false);
-		if (!parsed.success) {
-			expect(parsed.error.message).toContain('Provide exactly one of path or code');
-		}
+		expect(
+			runJavascriptInputSchema.safeParse({ path: 'tmp/unused', code: 'console.log(1)' }).success,
+		).toBe(true);
 	});
 
 	it('rejects neither path nor code', () => {
 		const parsed = runJavascriptInputSchema.safeParse({});
 		expect(parsed.success).toBe(false);
 		if (!parsed.success) {
-			expect(parsed.error.message).toContain('Provide exactly one of path or code');
+			expect(parsed.error.message).toContain('Provide path or code');
 		}
 	});
 });
@@ -101,6 +96,22 @@ describe('createRunJavascriptTool', () => {
 			stdout: 'ok',
 			stderr: '',
 			executionTimeMs: 12,
+		});
+	});
+
+	it('uses code when both path and code are set', async () => {
+		const filesystem = makeFakeFilesystem();
+		const sandbox = makeFakeSandbox();
+		const tool = createRunJavascriptTool(sandbox, filesystem);
+
+		await tool.handler!({ path: 'tmp/unused', code: 'console.log(1)' }, {} as never);
+
+		expect(filesystem.writeFile).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(filesystem.writeFile).mock.calls[0]?.[1]).toBe('console.log(1)');
+		const scriptPath = vi.mocked(filesystem.writeFile).mock.calls[0]?.[0];
+		expect(sandbox.executeCommand).toHaveBeenCalledWith('node', [scriptPath], {
+			timeout: 60_000,
+			abortSignal: undefined,
 		});
 	});
 

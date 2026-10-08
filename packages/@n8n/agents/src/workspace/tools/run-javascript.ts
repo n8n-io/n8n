@@ -18,10 +18,16 @@ export const runJavascriptInputSchema = z
 			.describe(
 				'Path of the JavaScript file, relative to the workspace root (absolute paths must be under it)',
 			),
-		code: z.string().min(1).optional().describe('JavaScript source to run as a Scratch File'),
+		code: z
+			.string()
+			.min(1)
+			.optional()
+			.describe(
+				'JavaScript source to run as a Scratch File. If both path and code are set, code is used.',
+			),
 	})
-	.refine((value) => Boolean(value.path) !== Boolean(value.code), {
-		message: 'Provide exactly one of path or code',
+	.refine((value) => Boolean(value.path) || Boolean(value.code), {
+		message: 'Provide path or code',
 	});
 
 const runJavascriptOutputSchema = z.object({
@@ -41,7 +47,7 @@ export function createRunJavascriptTool(
 ): BuiltTool {
 	return new Tool('workspace_run_javascript')
 		.description(
-			'Run a JavaScript file in the sandbox with node. Provide exactly one of path or code. Read Attachments from `$N8N_UPLOADS_DIR` or `$N8N_UPLOADS_MANIFEST`. Write files the user should retrieve only under `$N8N_OUTPUTS_DIR`. This tool has a 60 second limit. Use `workspace_execute_command` for longer jobs.',
+			'Run a JavaScript file in the sandbox with node. Provide path or code. If both are set, code is used. Read Attachments from `$N8N_UPLOADS_DIR` or `$N8N_UPLOADS_MANIFEST`. Write files the user should retrieve only under `$N8N_OUTPUTS_DIR`. This tool has a 60 second limit. Use `workspace_execute_command` for longer jobs.',
 		)
 		.input(runJavascriptInputSchema)
 		.output(runJavascriptOutputSchema)
@@ -64,7 +70,7 @@ export function createRunJavascriptTool(
 			} else if (input.path) {
 				scriptPath = input.path;
 			} else {
-				throw new Error('Provide exactly one of path or code');
+				throw new Error('Provide path or code');
 			}
 
 			const result = await sandbox.executeCommand('node', [scriptPath], {
