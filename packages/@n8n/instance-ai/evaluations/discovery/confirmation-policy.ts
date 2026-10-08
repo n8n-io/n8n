@@ -27,7 +27,9 @@ export type ApprovalResponder = (
 	payload: Record<string, unknown>,
 ) => Record<string, unknown> | undefined;
 
-export function buildConfirmationPolicy(scenario: DiscoveryTestCase): ConfirmationPolicy {
+export function buildConfirmationPolicy(
+	scenario: Pick<DiscoveryTestCase, 'confirmations'>,
+): ConfirmationPolicy {
 	const policy: ConfirmationPolicy = new Map();
 	for (const [toolName, answer] of Object.entries(scenario.confirmations ?? {})) {
 		policy.set(toolName, typeof answer === 'string' ? { decision: answer } : answer);
