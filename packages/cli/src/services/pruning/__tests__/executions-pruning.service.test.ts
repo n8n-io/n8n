@@ -112,6 +112,19 @@ describe('ExecutionsPruningService', () => {
 			expect(executionPersistence.hardDelete).toHaveBeenCalledTimes(1);
 		});
 
+		it('should not delete a batch when the signal aborts during the select', async () => {
+			const { service, executionRepository, executionPersistence } = makeService();
+			const controller = new AbortController();
+			executionRepository.findSoftDeletedExecutions.mockImplementation(async () => {
+				controller.abort();
+				return batchOf(BATCH_SIZE);
+			});
+
+			await service.hardDelete(controller.signal);
+
+			expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+		});
+
 		it('should delete one by one and report the rows that fail when a batch fails', async () => {
 			const { service, logger, errorReporter, executionRepository, executionPersistence } =
 				makeService();
