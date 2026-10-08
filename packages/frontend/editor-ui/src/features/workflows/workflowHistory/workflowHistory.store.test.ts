@@ -144,7 +144,7 @@ describe('Workflow history store', () => {
 	});
 
 	describe('getPublishTimeline', () => {
-		it('should call the API with the rest context and workflow id and return its result', async () => {
+		it('should call the API with the rest context, workflow id and page, and return its result', async () => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			const rootStore = useRootStore();
 			const workflowId = 'workflow-123';
@@ -163,9 +163,15 @@ describe('Workflow history store', () => {
 
 			vi.mocked(whApi.getPublishTimeline).mockResolvedValue(events);
 
-			const result = await workflowHistoryStore.getPublishTimeline(workflowId);
+			const result = await workflowHistoryStore.getPublishTimeline(workflowId, {
+				take: 100,
+				skip: 0,
+			});
 
-			expect(whApi.getPublishTimeline).toHaveBeenCalledWith(rootStore.restApiContext, workflowId);
+			expect(whApi.getPublishTimeline).toHaveBeenCalledWith(rootStore.restApiContext, workflowId, {
+				take: 100,
+				skip: 0,
+			});
 			expect(result).toBe(events);
 		});
 
@@ -173,9 +179,9 @@ describe('Workflow history store', () => {
 			const workflowHistoryStore = useWorkflowHistoryStore();
 			vi.mocked(whApi.getPublishTimeline).mockRejectedValue(new Error('API Error'));
 
-			await expect(workflowHistoryStore.getPublishTimeline('workflow-123')).rejects.toThrow(
-				'API Error',
-			);
+			await expect(
+				workflowHistoryStore.getPublishTimeline('workflow-123', { take: 100, skip: 0 }),
+			).rejects.toThrow('API Error');
 		});
 	});
 

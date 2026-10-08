@@ -4046,6 +4046,7 @@ describe('useAgentChatStream — queued submissions', () => {
 				'thread-1',
 				'3',
 				{ executionId: 'A' },
+				'chat',
 			);
 			expect(hook.queuedMessages.value[1].steeringExecutionId).toBe('A');
 			expect(hook.messages.value.map(({ content }) => content)).toEqual(['Old question', 'A']);
@@ -4558,6 +4559,7 @@ describe('useAgentChatStream — queued submissions', () => {
 			'thread-1',
 			'1',
 			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+			'chat',
 		);
 		expect(hook.isReorderingQueue.value).toBe(true);
 		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['1', '2']);
@@ -4811,7 +4813,7 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 		);
 	});
 
-	it('never reorders and never calls the reorder route on the n8n-chat channel', async () => {
+	it('reorders on the n8n-chat channel, routed through the n8n-chat queue route', async () => {
 		getAgentChatQueueMock.mockResolvedValue({
 			items: [
 				{ id: 'q1', message: 'one', createdAt: new Date().toISOString() },
@@ -4821,10 +4823,16 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 		const hook = buildN8nChatHook('thread-1');
 		await hook.loadHistory();
 
-		expect(hook.capabilities.value.reorder).toBe(false);
-
 		await hook.reorderQueuedMessage('q1', 'q2', ['q1', 'q2']);
-		expect(reorderAgentQueuedMessageMock).not.toHaveBeenCalled();
+		expect(reorderAgentQueuedMessageMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+			'q1',
+			{ targetQueueId: 'q2', expectedQueueIds: ['q1', 'q2'] },
+			'n8n-chat',
+		);
 	});
 
 	it('skips the history fetch entirely for a fresh n8n Chat with no thread', async () => {
@@ -4836,7 +4844,7 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 		expect(hook.messages.value).toEqual([]);
 	});
 
-	it('never offers steer and never calls the steer route, even with a steerable execution', async () => {
+	it('offers steer and calls the n8n-chat steer route for a steerable execution', async () => {
 		getChatMessagesMock.mockResolvedValue({
 			messages: [],
 			openSuspensions: [],
@@ -4849,9 +4857,17 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 		const hook = buildN8nChatHook('thread-1');
 		await hook.loadHistory();
 
-		expect(hook.canSteer.value).toBe(false);
+		expect(hook.canSteer.value).toBe(true);
 
 		await hook.steerQueuedMessage('q1');
-		expect(steerAgentQueuedMessageMock).not.toHaveBeenCalled();
+		expect(steerAgentQueuedMessageMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+			'q1',
+			{ executionId: 'exec-1' },
+			'n8n-chat',
+		);
 	});
 });

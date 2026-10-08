@@ -320,14 +320,9 @@ function isQueueItemBusy(item: AgentChatQueueItem) {
 	);
 }
 function canMoveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
-	if (
-		!capabilities.value.reorder ||
-		editingQueueId.value ||
-		from === to ||
-		!items[from] ||
-		!items[to]
-	)
-		return false;
+	if (editingQueueId.value || from === to || !items[from] || !items[to]) return false;
+	// The preview hides a queued item, so a reorder would send a stale queue order.
+	if (isPreviewingFirstMessage.value && previewQueueId.value) return false;
 	return !items.slice(Math.min(from, to), Math.max(from, to) + 1).some(isQueueItemBusy);
 }
 function canDragQueueItem(index: number) {
