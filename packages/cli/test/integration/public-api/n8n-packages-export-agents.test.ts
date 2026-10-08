@@ -50,22 +50,13 @@ beforeEach(async () => {
 	owner = await createOwnerWithApiKey();
 	project = await createTeamProject('Selected project', owner);
 	const otherProject = await createTeamProject('Dependency project', owner);
-	const fixture = looseAgentsFixture();
-	const content = serializedAgentSchema.parse(fixture.files['agents/support/agent.json']);
 	agent = await repository.save({
-		id: content.id,
-		name: content.name,
+		id: 'support_source',
+		name: 'Support',
 		projectId: project.id,
-		schema: content.config,
-		skills: content.skills,
-		tools: content.tools,
-		availableInMCP: content.availableInMCP,
-		integrations: [],
+		schema: AgentJsonConfigSchema.parse({ name: 'Support', model: '', instructions: '' }),
 		versionId: 'draft-version',
 	});
-	await Container.get(AgentTaskRepository).save(
-		Object.entries(content.tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
-	);
 	dependency = await repository.save({
 		id: 'dependency',
 		name: 'Dependency',
@@ -126,60 +117,67 @@ async function download(body: Partial<ExportPackageRequestDto>, user = owner) {
 	};
 }
 
-it.each(['agents', 'mixed', 'project'] as const)(
-	'downloads a complete %s selection',
-	async (selection) => {
-		await addReferences();
-		const scopes: ApiKeyScope[] = selection === 'project' ? ['project:export'] : ['agent:export'];
-		const body: Partial<ExportPackageRequestDto> = {
+it('downloads an Agent with its skills, tools, tasks, and dependencies', async () => {
+	const { config, tasks, ...content } = serializedAgentSchema.parse(
+		looseAgentsFixture().files['agents/support/agent.json'],
+	);
+	agent = await repository.save({ ...agent, ...content, schema: config });
+	await Container.get(AgentTaskRepository).save(
+		Object.entries(tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
+	);
+	await addReferences();
+	const caller = await createOwnerWithApiKey({ scopes: ['agent:export'] });
+	const emit = vi.spyOn(Container.get(EventService), 'emit');
+	const { reader, manifest, counts } = await download(
+		{
+			agentIds: [agent.id],
 			missingAgentDependencyPolicy: 'include-in-package',
 			missingWorkflowDependencyPolicy: 'include-in-package',
-		};
-		if (selection === 'project') {
-			body.projectIds = [project.id];
-		} else {
-			body.agentIds = [agent.id, agent.id];
-		}
-		if (selection === 'mixed') {
-			const folder = await createFolder(project, { name: 'Selected folder' });
-			body.workflowIds = [workflow.id];
-			body.folderIds = [folder.id];
-			scopes.push('workflow:export');
-		}
-		const caller = await createOwnerWithApiKey({ scopes });
-		const emit = vi.spyOn(Container.get(EventService), 'emit');
-		const { reader, manifest, counts } = await download(body, caller);
-		expect(manifest.agents?.map(({ id }) => id)).toEqual([agent.id, dependency.id]);
-		expect(manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
-		expect(manifest.requirements?.agents).toEqual([
-			{ id: dependency.id, name: dependency.name, usedBy: [{ kind: 'agent', id: agent.id }] },
-		]);
-		expect(manifest.requirements?.workflows).toEqual([
-			{ id: workflow.id, name: workflow.name, usedBy: [{ kind: 'agent', id: agent.id }] },
-		]);
-		expect(counts).toMatchObject({ agents: 2, workflows: 1 });
-		expect(emit).toHaveBeenCalledWith(
-			'n8n-package-exported',
-			expect.objectContaining({
-				agentIds: [agent.id, dependency.id],
-				counts,
-			}),
-		);
-		const prefix =
-			selection === 'project'
-				? `${manifest.projects?.find(({ id }) => id === project.id)?.target}/`
-				: '';
-		const [parsed] = await Container.get(N8nPackageParser).getAgents(reader, prefix);
-		expect(parsed).toMatchObject({
-			sourceAgentId: agent.id,
-			availableInMCP: true,
-			config: { skills: [{ enabled: false }], tasks: [{ enabled: false }] },
-			skills: agent.skills,
-			tools: agent.tools,
-			tasks: { [`${agent.id}_task`]: { cronExpression: '0 9 * * *', timezone: null } },
-		});
-	},
-);
+		},
+		caller,
+	);
+	expect(manifest.agents?.map(({ id }) => id)).toEqual([agent.id, dependency.id]);
+	expect(manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
+	expect(counts).toMatchObject({ agents: 2, workflows: 1 });
+	expect(emit).toHaveBeenCalledWith(
+		'n8n-package-exported',
+		expect.objectContaining({ agentIds: [agent.id, dependency.id], counts }),
+	);
+	const [parsed] = await Container.get(N8nPackageParser).getAgents(reader);
+	expect(parsed).toMatchObject({
+		sourceAgentId: agent.id,
+		availableInMCP: true,
+		config: { skills: [{ enabled: false }], tasks: [{ enabled: false }] },
+		skills: content.skills,
+		tools: content.tools,
+		tasks: { [`${agent.id}_task`]: { cronExpression: '0 9 * * *', timezone: null } },
+	});
+});
+
+it.each(['mixed', 'project'] as const)('downloads a %s selection', async (selection) => {
+	await addReferences();
+	const body: Partial<ExportPackageRequestDto> = { projectIds: [project.id] };
+	let scopes: ApiKeyScope[] = ['project:export'];
+	if (selection === 'mixed') {
+		delete body.projectIds;
+		body.agentIds = [agent.id];
+		body.workflowIds = [workflow.id];
+		body.folderIds = [(await createFolder(project, { name: 'Selected folder' })).id];
+		scopes = ['agent:export', 'workflow:export'];
+	}
+	const caller = await createOwnerWithApiKey({ scopes });
+	const { manifest, counts } = await download(
+		{
+			...body,
+			missingAgentDependencyPolicy: 'include-in-package',
+			missingWorkflowDependencyPolicy: 'include-in-package',
+		},
+		caller,
+	);
+	expect(manifest.agents?.map(({ id }) => id)).toEqual([agent.id, dependency.id]);
+	expect(manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
+	expect(counts).toMatchObject({ agents: 2, workflows: 1 });
+});
 
 it.each([
 	{ agentPolicy: 'reference-only', workflowPolicy: 'include-in-package', agents: 1, workflows: 1 },

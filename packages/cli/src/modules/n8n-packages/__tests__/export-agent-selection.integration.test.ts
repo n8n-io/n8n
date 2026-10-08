@@ -184,9 +184,9 @@ it.each(['loose', 'project'] as const)(
 		expect((manifest.projects ?? []).map(({ id }) => id)).toEqual(
 			placement === 'project' ? [project.id, otherProject.id] : [],
 		);
-		expect(findProjects.mock.calls.flatMap(([, ids]) => ids).filter((id) => id === project.id)).toEqual(
-			placement === 'project' ? [project.id] : [],
-		);
+		expect(
+			findProjects.mock.calls.flatMap(([, ids]) => ids).filter((id) => id === project.id),
+		).toEqual(placement === 'project' ? [project.id] : []);
 		for (const entry of manifest.agents ?? []) {
 			const projectId = entry.id === parent.id ? project.id : otherProject.id;
 			const prefix =
