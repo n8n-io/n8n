@@ -5,6 +5,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 
 import { agentsEventBus } from '../../agents.eventBus';
 import { MAX_APPLY_SUGGESTIONS } from '../../agentEvals.types';
+import { AGENT_CONFIG_FLUSH_KEY } from '../../components/agentBuilderInjectionKeys';
 import { useApplyAgentEvalSuggestions } from '../useApplyAgentEvalSuggestions';
 
 const showError = vi.hoisted(() => vi.fn());
@@ -19,8 +20,8 @@ vi.mock('../../agentEvals.store', () => ({ useAgentEvalsStore: () => store }));
 
 const ids = (count: number) => Array.from({ length: count }, (_, i) => `r${i}`);
 
-function setup(initial = { projectId: 'project-1', agentId: 'agent-1' }) {
-	const target = ref(initial);
+function setup(flush?: () => Promise<void>) {
+	const target = ref({ projectId: 'project-1', agentId: 'agent-1' });
 	let api!: ReturnType<typeof useApplyAgentEvalSuggestions>;
 	mount(
 		defineComponent({
@@ -29,6 +30,7 @@ function setup(initial = { projectId: 'project-1', agentId: 'agent-1' }) {
 				return () => null;
 			},
 		}),
+		{ global: { provide: flush ? { [AGENT_CONFIG_FLUSH_KEY as symbol]: flush } : {} } },
 	);
 	return { api, target };
 }
@@ -65,6 +67,58 @@ describe('useApplyAgentEvalSuggestions', () => {
 			['project-1', 'agent-1'],
 			['project-1', 'agent-1'],
 		]);
+	});
+
+	it('saves pending builder edits once, before the first batch only', async () => {
+		const order: string[] = [];
+		const flush = vi.fn(async () => {
+			order.push('flush');
+		});
+		store.applySuggestions.mockImplementation(async () => {
+			order.push('apply');
+			return { configHash: 'h', results: [] };
+		});
+		const { api } = setup(flush);
+
+		await api.applySuggestions(ids(MAX_APPLY_SUGGESTIONS + 1));
+
+		expect(order).toEqual(['flush', 'apply', 'apply']);
+	});
+
+	it('does not let a builder that moved to another agent block the later batches', async () => {
+		const flush = vi
+			.fn()
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValue(new Error('save failed'));
+		store.applySuggestions.mockResolvedValue({ configHash: 'h', results: [] });
+		const { api } = setup(flush);
+
+		await expect(api.applySuggestions(ids(MAX_APPLY_SUGGESTIONS + 1))).resolves.toBe(true);
+
+		expect(store.applySuggestions).toHaveBeenCalledTimes(2);
+		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it('sends nothing when saving the pending edits fails', async () => {
+		const { api } = setup(vi.fn().mockRejectedValue(new Error('save failed')));
+
+		await expect(api.applySuggestions(['r0'])).resolves.toBe(false);
+
+		expect(store.applySuggestions).not.toHaveBeenCalled();
+		expect(showError).toHaveBeenCalled();
+	});
+
+	it('saves pending builder edits before a preview suggestion too', async () => {
+		const flush = vi.fn().mockResolvedValue(undefined);
+		store.applyPreviewSuggestion.mockResolvedValue({
+			configHash: 'h',
+			preview: { status: 'failed' },
+		});
+		const { api } = setup(flush);
+
+		await api.applyPreviewSuggestion({ input: 'a', whatToCheck: 'b', suggestion: 'c' });
+
+		expect(flush).toHaveBeenCalledTimes(1);
 	});
 
 	it('goes on to the next batch when one has nothing left to send', async () => {

@@ -29,15 +29,17 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 	// nothing to send, which is not a failure.
 	type Outcome<T> = { ok: true; value: T | null } | { ok: false };
 
-	// Saves pending builder edits, runs the write, and tells the builder to refetch. The target
-	// is fixed by the caller, so a navigation in the middle of a multi-request apply cannot
-	// move the rest of it to another agent.
+	// Optionally saves pending builder edits, runs the write, and tells the builder to refetch.
+	// The target is fixed by the caller, so a navigation in the middle of a multi-request apply
+	// cannot move the rest of it to another agent. The flush saves the agent the builder shows
+	// now, so it only runs for the first request, while that is still the pinned agent.
 	async function applyAndRefresh<T>(
 		{ projectId, agentId }: Target,
 		write: (projectId: string, agentId: string) => Promise<T | null>,
+		{ flush }: { flush: boolean },
 	): Promise<Outcome<T>> {
 		try {
-			await flushAgentConfig?.();
+			if (flush) await flushAgentConfig?.();
 			const applied = await write(projectId, agentId);
 			if (applied) agentsEventBus.emit('agentUpdated', { agentId, source: 'agent-evals' });
 			return { ok: true, value: applied };
@@ -76,6 +78,7 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 				const outcome = await applyAndRefresh(
 					writeTarget,
 					async (projectId, agentId) => await store.applySuggestions(projectId, agentId, batch),
+					{ flush: start === 0 },
 				);
 				if (!outcome.ok) return false;
 			}
@@ -96,6 +99,7 @@ export function useApplyAgentEvalSuggestions(target: () => { projectId: string; 
 				target(),
 				async (projectId, agentId) =>
 					await store.applyPreviewSuggestion(projectId, agentId, options),
+				{ flush: true },
 			);
 			return outcome.ok ? outcome.value : null;
 		} finally {
