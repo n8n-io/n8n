@@ -7,7 +7,7 @@ ARG N8N_VERSION=snapshot
 # modules compile against the same glibc that runs them. Change the tag and the
 # digest together.
 ARG BUILDER_IMAGE=dhi.io/node:26.10.0-debian13-dev@sha256:ddb48790becd5f08bb5bb0d21292c098e64ca9108215cce589263abb10e0dcaa
-ARG RUNTIME_IMAGE=n8nio/base:26.7.0-debian@sha256:c2df12119b59afb938364961ffabe3b4e0f61c8f7afdebf5d8702acfebc9813c
+ARG RUNTIME_IMAGE=n8nio/base:26.10.0-debian@sha256:6bb313ed7e110fe753bf7141be2fa99dbac60c9de6a39f6ad56ef5478dee8d48
 
 # The runtime base has no compiler, so this stage supplies one. The -dev
 # packages are for librdkafka. pkgconf and which let its configure step find
