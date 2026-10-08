@@ -8,6 +8,9 @@ import type {
 /** Menu item id of "This computer". A link is named by its id, which is a uuid and never this value. */
 export const LOCAL_RUN_TARGET_ID = 'local';
 
+/** Menu item id of "Link a cloud instance…". It is not a link, so it never clashes with a uuid. */
+export const LINK_CLOUD_MENU_ID = 'link-cloud';
+
 /** Every message of the run target menu. Each key is a key of the i18n catalogue. */
 export type RunTargetTextKey =
 	| 'instanceAi.automation.place.thisComputer'
@@ -106,4 +109,12 @@ export function runTargetChipName(
 ): string | undefined {
 	if (isShared || runTarget?.kind !== 'linked') return undefined;
 	return runTarget.name;
+}
+
+/**
+ * A run target for a message payload. It is set only when the user chose one, so the payload
+ * carries no empty key.
+ */
+export function optionalRunTarget(runTarget: RunTarget | undefined): { runTarget?: RunTarget } {
+	return runTarget ? { runTarget } : {};
 }

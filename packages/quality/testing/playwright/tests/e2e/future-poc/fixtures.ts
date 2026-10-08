@@ -78,8 +78,27 @@ async function withApi(baseURL: string, run: (api: ApiHelpers) => Promise<void>)
 	}
 }
 
+/**
+ * Deactivates the active workflows of "This computer". A published workflow cannot be
+ * deleted, so the database reset fails while one is active.
+ */
+async function deactivateActiveWorkflows(api: ApiHelpers): Promise<void> {
+	try {
+		await api.signin('owner');
+	} catch {
+		// No owner yet, for example after the runner's probe reset failed. The reset below creates one.
+		return;
+	}
+	const workflows: Array<{ id: string; active: boolean }> = await api.workflows.getWorkflows();
+	for (const workflow of workflows.filter((candidate) => candidate.active)) {
+		await api.workflows.deactivate(workflow.id);
+	}
+}
+
 async function resetLocal(baseURL: string): Promise<void> {
 	await withApi(baseURL, async (api) => {
+		// An active workflow that an earlier test left on would block the reset below.
+		await deactivateActiveWorkflows(api);
 		// Clear the in-memory Assistant runs. A database reset does not clear them.
 		const response = await api.request.post('/rest/instance-ai/test/reset');
 		if (!response.ok()) {
@@ -89,19 +108,9 @@ async function resetLocal(baseURL: string): Promise<void> {
 		}
 		await api.resetDatabase();
 		await api.signin('owner');
-		// The test has no web search provider, so turn search off.
-		await api.updateInstanceAiSettings({ searchDisabled: true });
-	});
-}
-
-/** Deactivates the active workflows of "This computer" after a test. */
-async function deactivateActiveWorkflows(baseURL: string): Promise<void> {
-	await withApi(baseURL, async (api) => {
-		await api.signin('owner');
-		const workflows: Array<{ id: string; active: boolean }> = await api.workflows.getWorkflows();
-		for (const workflow of workflows.filter((candidate) => candidate.active)) {
-			await api.workflows.deactivate(workflow.id);
-		}
+		// The test has no web search provider, so turn search off. The runner turns the local
+		// gateway off too. A test that turns it on must not leave it on for the next test.
+		await api.updateInstanceAiSettings({ searchDisabled: true, localGatewayDisabled: true });
 	});
 }
 
@@ -163,11 +172,16 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 			if (testInfo.timeout !== 0) testInfo.setTimeout(Math.max(testInfo.timeout, TEST_TIMEOUT_MS));
 			await Promise.all([resetLocal(urls.localUrl), resetCloud(urls.cloudUrl)]);
 			await use(undefined);
-			// A published workflow blocks the next reset, so turn off what the test left on.
-			await deactivateActiveWorkflows(urls.localUrl);
 		},
 		{ auto: true },
 	],
+
+	// The Assistant home animates. Reduced motion keeps its frames still in every browser
+	// context of the future-poc specs. An override here reaches every spec file, while
+	// `test.use` at module scope reaches only the file that loads this module first.
+	contextOptions: async ({ contextOptions }, use) => {
+		await use({ ...contextOptions, reducedMotion: 'reduce' });
+	},
 
 	context: async ({ context }, use) => {
 		context.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
@@ -213,9 +227,5 @@ export const test = base.extend<LinkedInstancesFixtures, LinkedInstancesWorkerFi
 		await context.dispose();
 	},
 });
-
-// The Assistant home animates. Reduced motion keeps its frames still, so every future-poc
-// spec sees the same layout.
-test.use({ contextOptions: { reducedMotion: 'reduce' } });
 
 export { expect };

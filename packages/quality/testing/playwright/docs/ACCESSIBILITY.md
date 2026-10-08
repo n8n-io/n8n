@@ -2,7 +2,7 @@
 
 Use the `a11y` fixture in a product journey. It runs axe-core against a named part of the page.
 
-1. Select a bucket from [`A11Y_BUCKETS`](../fixtures/a11y.ts). The buckets are `page`, `canvas`, `ndv`, `node-creator`, `sidebar`, `modal`, and `instance-ai`.
+1. Select a bucket from [`A11Y_BUCKETS`](../fixtures/a11y.ts). The buckets are `page`, `canvas`, `ndv`, `node-creator`, `sidebar`, `experience-modes`, `modal`, and `instance-ai`.
 2. Check the bucket after the relevant UI appears. Assert the result when the journey must fail on a violation.
 
 ```typescript

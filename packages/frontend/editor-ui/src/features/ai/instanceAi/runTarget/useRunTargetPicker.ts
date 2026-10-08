@@ -48,5 +48,10 @@ export function useRunTargetPicker() {
 		}
 	});
 
-	return { showRunTargetPicker, runTarget, links };
+	// The target a new chat starts with. Simple mode and a closed picker start the chat here.
+	const chosenRunTarget = computed<RunTarget | undefined>(() =>
+		showRunTargetPicker.value ? runTarget.value : undefined,
+	);
+
+	return { showRunTargetPicker, runTarget, links, chosenRunTarget };
 }

@@ -32,7 +32,7 @@ const textOf = (nodeName: string, value: unknown, run: TemplateRun) =>
  * evaluated, as the workflow engine gives them to the node.
  */
 function slackContextOf(run: TemplateRun): IExecuteFunctions {
-	const parameters: IDataObject = configured.parametersOf(APPROVAL);
+	const parameters: unknown = configured.parametersOf(APPROVAL);
 	const parameterNamed = (name: string): unknown =>
 		name
 			.split('.')

@@ -126,16 +126,20 @@ test.describe('My journey', () => {
 });
 ```
 
-Before each test, the fixtures reset both instances, sign in the owner of
-"This computer" and turn off web search there.
+Before each test, the fixtures deactivate the active workflows of "This
+computer", reset both instances, sign in the owner of "This computer" and turn
+off web search and the local gateway there. The local gateway setting goes back
+to the value of the runner, so a test that turns it on does not change the
+tests after it.
 
 Every browser context uses reduced motion, so animations keep still. A new
 context also starts with the sidebar expanded: the sidebar experiment has no
 PostHog variant in e2e, and its control group starts collapsed. A test that
 stores a choice in `sidebar.collapsed` keeps it.
 
-After each test, the fixtures deactivate the active workflows of "This
-computer". A published workflow cannot be deleted by the next reset.
+A published workflow cannot be deleted by a database reset. The fixtures
+deactivate the active workflows first, so a test that stops early cannot make the
+next reset fail.
 
 | Fixture | Purpose |
 |---|---|
@@ -151,6 +155,9 @@ Guard each rule for the agent turn with `systemIncludes: 'n8n Instance Agent'`,
 so that title and memory calls get the fallback text. See the
 [scripted LLM guide](../../../services/scripted-llm/README.md#guard-the-rules-for-the-assistant).
 
-The fake sandbox cannot run commands, so the Assistant cannot build workflows.
-Create workflows with the API helpers in the test, then start the scripted LLM
-with their ids (`startLlm`).
+The fake sandbox answers every command with exit code 0, so the Assistant cannot
+run real commands. A rule can still ask the Assistant to build a workflow with
+the `build-workflow` tool. The rule passes the workflow JSON as `sourceCode`. The
+Simple and Power spec does this for its digest workflow. For other workflows,
+create them with the API helpers in the test, then start the scripted LLM with
+their ids (`startLlm`).

@@ -9,6 +9,7 @@ import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmati
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { hasGlobalScope } from '@n8n/permissions';
+import type { z } from 'zod';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -33,6 +34,37 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
 import { RunTargetService } from './run-target/run-target.service';
 import { SharedThreadPolicy } from './sharing/shared-thread-policy';
+
+type ChatRequest = z.infer<typeof InstanceAiSendMessageRequest>;
+
+/** The client's chat request, or `undefined` when it does not parse. */
+function parseChatRequest(hostContext: Record<string, unknown> | undefined): ChatRequest | undefined {
+	const parsed = InstanceAiSendMessageRequest.safeParse({ message: '', ...(hostContext ?? {}) });
+	return parsed.success ? parsed.data : undefined;
+}
+
+/** The turn settings of a chat message. The message's own values win over the thread defaults. */
+function chatSettings(context: ChatRequest | undefined, defaults: AssistantTurnDefaults) {
+	const own: Partial<ChatRequest> = context ?? {};
+	return {
+		timeZone: own.timeZone ?? defaults.timeZone,
+		pushRef: own.pushRef ?? defaults.pushRef,
+		computerUseChannels: own.computerUseChannels ?? defaults.computerUseChannels,
+		buildMode: own.mode ?? defaults.buildMode,
+		promptVersion: own.promptVersion ?? defaults.promptVersion,
+	};
+}
+
+/** The thread artifacts, hand-off context and attachment references of a chat message. */
+function chatContextFields(context: ChatRequest | undefined) {
+	// File bytes travel through the Agents attachment store, not the context.
+	const references = context?.attachments?.filter((attachment) => attachment.type !== 'file');
+	return {
+		...(context?.threadArtifacts ? { threadArtifacts: context.threadArtifacts } : {}),
+		...(context?.context ? { handoffContext: context.context } : {}),
+		...(references?.length ? { attachments: references } : {}),
+	};
+}
 
 /**
  * The n8n Assistant as an instance agent. The Agents runtime runs it; this
@@ -73,6 +105,7 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 	}
 
 	async prepareTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle> {
+		if (turn.type === 'start') await this.postRunTargetNotice(turn);
 		if (turn.type === 'start' && turn.attachments.length > 0) {
 			// The model input refers to the stored files; the Agents runtime loads
 			// their bytes per model call. The bytes loaded here stay in memory for
@@ -86,6 +119,12 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 			};
 		}
 		return await this.instanceAiService.prepareAssistantTurn(turn);
+	}
+
+	/** The notice of a turn is posted before the turn runs, so the model and the chat both see it. */
+	private async postRunTargetNotice(turn: Extract<SystemAgentTurn, { type: 'start' }>) {
+		const notice = turn.options.runTargetNotice;
+		if (typeof notice === 'string') await this.runTargets.postTurnNotice(turn, notice);
 	}
 
 	private async loadFileAttachments(turn: Extract<SystemAgentTurn, { type: 'start' }>) {
@@ -127,22 +166,15 @@ export class AssistantAgentProvider implements SystemAgentProvider {
 			.getThread(thread.id);
 		const stored = memoryThread?.metadata?.[ASSISTANT_TURN_DEFAULTS_KEY];
 		const defaults = isRecord(stored) ? (stored as AssistantTurnDefaults) : {};
-		const parsed = InstanceAiSendMessageRequest.safeParse({ message: '', ...(hostContext ?? {}) });
-		const context = parsed.success ? parsed.data : undefined;
-		// File bytes travel through the Agents attachment store, not the context.
-		const references = context?.attachments?.filter((attachment) => attachment.type !== 'file');
+		const context = parseChatRequest(hostContext);
+		const chatRunTarget = await this.runTargets.forChatTurn(thread, stored, context);
 		return toJsonObject({
 			runId: `run_${nanoid()}`,
 			messageGroupId: `mg_${nanoid()}`,
-			timeZone: context?.timeZone ?? defaults.timeZone,
-			pushRef: context?.pushRef ?? defaults.pushRef,
-			computerUseChannels: context?.computerUseChannels ?? defaults.computerUseChannels,
-			buildMode: context?.mode ?? defaults.buildMode,
-			promptVersion: context?.promptVersion ?? defaults.promptVersion,
-			runTarget: await this.runTargets.forChatTurn(thread, stored, context),
-			...(context?.threadArtifacts ? { threadArtifacts: context.threadArtifacts } : {}),
-			...(context?.context ? { handoffContext: context.context } : {}),
-			...(references?.length ? { attachments: references } : {}),
+			...chatSettings(context, defaults),
+			runTarget: chatRunTarget.runTarget,
+			...(chatRunTarget.notice ? { runTargetNotice: chatRunTarget.notice } : {}),
+			...chatContextFields(context),
 		});
 	}
 

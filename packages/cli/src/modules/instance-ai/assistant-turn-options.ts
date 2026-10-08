@@ -35,6 +35,8 @@ export interface AssistantTurnOptions {
 	observerThresholdTokens?: number;
 	/** Where the chat runs. A shared chat runs locally, whatever this says. */
 	runTarget?: InstanceAiThreadRunTarget;
+	/** Posted into the chat with this turn. Set once, when the linked instance is gone. */
+	runTargetNotice?: string;
 	attachments?: InstanceAiAttachment[];
 	handoffContext?: InstanceAiHandoffContext;
 	threadArtifacts?: InstanceAiThreadArtifactsContext;

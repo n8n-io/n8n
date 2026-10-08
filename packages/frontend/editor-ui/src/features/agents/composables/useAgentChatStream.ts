@@ -1332,6 +1332,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return { done: true };
 	}
 
+	/** The first event that is not an error shows that the server took the request. */
+	function noteStart(session: StreamSession, event: AgentSseEvent): void {
+		if (event.type !== 'error') session.started = true;
+	}
+
 	async function consumeStream(
 		response: Response,
 		session: StreamSession,
@@ -1359,7 +1364,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
-					if (event.type !== 'error') session.started = true;
+					noteStart(session, event);
 					const result =
 						event.type === 'execution-started' && session.needsStartValidation
 							? await handleDelayedExecutionStart(event, session)

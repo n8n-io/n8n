@@ -2408,6 +2408,8 @@ export class InstanceAiService {
 			runId: `run_${nanoid()}`,
 			messageGroupId,
 			...defaults,
+			// Only a chat message resolves a run target. A stored one is not replayed here.
+			runTarget: undefined,
 			timeZone: defaults.timeZone ?? this.defaultTimeZone,
 			resumeReason,
 			isReplanFollowUp,
@@ -3178,6 +3180,7 @@ export class InstanceAiService {
 				computerUseChannels: options.computerUseChannels,
 				buildMode: options.buildMode,
 				promptVersion: options.promptVersion,
+				runTarget: options.runTarget,
 			});
 		}
 

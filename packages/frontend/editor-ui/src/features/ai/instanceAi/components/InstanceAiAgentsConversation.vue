@@ -35,6 +35,7 @@ import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { optionalRunTarget } from '../runTarget/runTargetOptions';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -244,8 +245,7 @@ const composerResources = ref<InstanceAiResourceAttachment[]>([]);
 /** Text n8n wrote into the composer, to tell a pre-fill from a typed message. */
 const activePrefill = ref<InstanceAiPrefillPayload | null>(null);
 /** A programmatic send: its context replaces the composer state for one message. */
-let oneShotMessage: Pick<ThreadChatMessage, 'attachments' | 'handoffContext' | 'runTarget'> | null =
-	null;
+let oneShotMessage: OneShotMessage | null = null;
 
 const restoredWorkflowAttachment = getPendingWorkflowAttachment(thread.id);
 if (restoredWorkflowAttachment) thread.setPendingWorkflowAttachment(restoredWorkflowAttachment);
@@ -401,6 +401,25 @@ function composerAttachments(): InstanceAiResourceAttachment[] {
 	return attachments;
 }
 
+/** The parts of a programmatic send that its message carries in place of the composer state. */
+type OneShotMessage = Pick<ThreadChatMessage, 'attachments' | 'handoffContext' | 'runTarget'>;
+
+/** The attachments, hand-off context and run target of the next message. */
+function nextMessageFields(message: OneShotMessage | null) {
+	if (!message) {
+		return {
+			attachments: composerAttachments(),
+			context: pendingComposerContext.value ?? undefined,
+			runTarget: undefined,
+		};
+	}
+	return {
+		attachments: message.attachments ?? [],
+		context: message.handoffContext,
+		runTarget: message.runTarget,
+	};
+}
+
 /**
  * The client context for one Assistant message, in the shape of the Assistant
  * send request. File attachments travel through the Agents chat attachments.
@@ -408,8 +427,7 @@ function composerAttachments(): InstanceAiResourceAttachment[] {
 function buildHostContext(): Record<string, unknown> {
 	const message = oneShotMessage;
 	oneShotMessage = null;
-	const attachments = message ? (message.attachments ?? []) : composerAttachments();
-	const context = message ? message.handoffContext : (pendingComposerContext.value ?? undefined);
+	const { attachments, context, runTarget } = nextMessageFields(message);
 	const threadArtifacts = thread.threadArtifactsContext();
 	const hostContext: Record<string, unknown> = {
 		timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -418,7 +436,7 @@ function buildHostContext(): Record<string, unknown> {
 		...(threadArtifacts ? { threadArtifacts } : {}),
 		...(context ? { context } : {}),
 		...(attachments.length ? { attachments } : {}),
-		...(message?.runTarget ? { runTarget: message.runTarget } : {}),
+		...optionalRunTarget(runTarget),
 	};
 	// A programmatic send leaves the composer state alone when it is accepted.
 	if (message) programmaticHostContexts.add(hostContext);
@@ -485,7 +503,7 @@ async function sendThroughChat(message: ThreadChatMessage): Promise<boolean> {
 	oneShotMessage = {
 		...(message.attachments ? { attachments: message.attachments } : {}),
 		...(message.handoffContext ? { handoffContext: message.handoffContext } : {}),
-		...(message.runTarget ? { runTarget: message.runTarget } : {}),
+		...optionalRunTarget(message.runTarget),
 	};
 	const sent = await panel.sendMessageFromOutside(message.message, message.files);
 	if (!sent) oneShotMessage = null;
@@ -515,7 +533,7 @@ function sendPendingFirstMessage() {
 			attachments: pending.attachments,
 			files,
 			handoffContext: pending.context,
-			...(pending.runTarget ? { runTarget: pending.runTarget } : {}),
+			...optionalRunTarget(pending.runTarget),
 		})
 		.then(() => {
 			// The server stores the run target with the first message. Read it back for the header.

@@ -2,7 +2,7 @@ import type { InstanceAiThreadInfo } from '@n8n/api-types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
-import type { A11yChecker } from '../../../fixtures/a11y';
+import type { A11yChecker, A11yViolation } from '../../../fixtures/a11y';
 import type { n8nPage } from '../../../pages/n8nPage';
 import type { ApiHelpers } from '../../../services/api-helper';
 import type { ScriptedLlm } from '../../../services/scripted-llm/scripted-llm.server';
@@ -23,16 +23,24 @@ const AUTOMATION_WORKFLOW_NAME = 'Simple mode daily digest';
 // The target that the proposal offers: this n8n instance (AUTOMATION_LOCAL_TARGET_ID).
 const AUTOMATION_TARGET = 'local';
 const BLOCKING_IMPACTS = ['serious', 'critical'];
-// Violations of the sidebar that exist today, sorted. Their fixes belong to the owners of the
-// sidebar markup (BACKLOG Q03). The list may only shrink: a new violation fails the scan, and so
-// does a fixed one, until the list is updated.
+// The a11y bucket of the Simple sidebar parts and the Power groups (fixtures/a11y.ts).
+const EXPERIENCE_MODES_BUCKET = 'experience-modes';
+// The blocking elements of the sidebar that exist today, outside the parts above. Each entry
+// names one element, and its owner fixes it (BACKLOG Q03). The list may only shrink: an element
+// with a new violation fails the scan, and so does a fixed one, until the list is updated.
 const KNOWN_SIDEBAR_VIOLATIONS = [
-	'aria-allowed-attr (critical)',
-	'aria-required-parent (critical)',
-	'link-name (serious)',
+	// The help and settings triggers of the bottom menu (BottomMenu.vue) carry aria-expanded.
+	'aria-allowed-attr (critical): main-sidebar-help',
+	'aria-allowed-attr (critical): main-sidebar-settings',
+	// The logo link of the sidebar header (MainSidebarHeader.vue) has no accessible name.
+	'link-name (serious): <a href="/home">',
 ];
 // Chats wait for the scripted model and for the chat list to refresh, so they take a while.
 const CHAT_TIMEOUT_MS = 60_000;
+const PLAIN_REPLY = 'Plain answer.';
+const PROPOSAL_REPLY = 'I can keep the digest and turn it on.';
+// The proposal card is missing after its turn and in a live chat (BACKLOG Q03).
+const CARD_DEFECT = 'The proposal card is missing from the chat (BACKLOG Q03)';
 
 /** A chat with a known title. The rename comes before the first run, so the title stays. */
 async function createNamedChat(api: ApiHelpers, title: string): Promise<InstanceAiThreadInfo> {
@@ -87,7 +95,7 @@ function chatStatesScript(workflowId: string): ScriptInput {
 			{
 				id: 'plain-answer',
 				when: { systemIncludes: AGENT_PROMPT, userText: 'Plain question' },
-				reply: { text: 'Plain answer.' },
+				reply: { text: PLAIN_REPLY },
 			},
 			{
 				id: 'run-needs-approval',
@@ -185,7 +193,7 @@ function proposeDigestScript(workflowId: string): ScriptInput {
 					toolAvailable: 'propose_automation',
 				},
 				reply: {
-					text: 'I can keep the digest and turn it on.',
+					text: PROPOSAL_REPLY,
 					toolCalls: [
 						{
 							name: 'propose_automation',
@@ -223,21 +231,32 @@ async function awaitSuspension(run: AssistantRun) {
 }
 
 /**
+ * Builds the digest in a chat and returns the id of the built workflow. The model that builds
+ * it stops: the proposal needs a model with a rule for that id.
+ */
+async function buildDigestInChat(
+	n8n: n8nPage,
+	startLlm: StartLlm,
+	baseUrl: string,
+	chatId: string,
+): Promise<string> {
+	const buildLlm = await startLlm(buildDigestScript());
+	const build = await startAssistantRun(n8n, baseUrl, chatId, 'Build the digest');
+	await expect.poll(() => build.events.map((event) => event.type)).toContain('done');
+	build.disconnect();
+	expect(buildLlm.requests().map((request) => request.ruleId)).toContain('build-digest');
+	const digestId = await getWorkflowIdByName(n8n.api, AUTOMATION_WORKFLOW_NAME);
+	await buildLlm.stop();
+	return digestId;
+}
+
+/**
  * Builds the digest in a new chat, then asks for the automation proposal. The proposal
  * waits for the user, so the run stays suspended until the answer.
  */
 async function buildDigestAndPropose(n8n: n8nPage, startLlm: StartLlm, baseUrl: string) {
 	const chat = await createNamedChat(n8n.api, 'Digest chat');
-	const buildLlm = await startLlm(buildDigestScript());
-	const build = await startAssistantRun(n8n, baseUrl, chat.id, 'Build the digest');
-	await expect.poll(() => build.events.map((event) => event.type)).toContain('done');
-	build.disconnect();
-	expect(buildLlm.requests().map((request) => request.ruleId)).toContain('build-digest');
-	const digestId = await getWorkflowIdByName(n8n.api, AUTOMATION_WORKFLOW_NAME);
-
-	// The model cannot know the id of the built workflow when it starts. Stop it, then start
-	// a model with a rule for that id.
-	await buildLlm.stop();
+	const digestId = await buildDigestInChat(n8n, startLlm, baseUrl, chat.id);
 	const proposeLlm = await startLlm(proposeDigestScript(digestId));
 	const proposal = await startAssistantRun(n8n, baseUrl, chat.id, 'Turn it into an automation');
 	const suspension = await awaitSuspension(proposal);
@@ -246,39 +265,114 @@ async function buildDigestAndPropose(n8n: n8nPage, startLlm: StartLlm, baseUrl: 
 	return { chat, digestId, suspension };
 }
 
-/** Answers the proposal the way its "Turn it on" button does. */
+/**
+ * Answers the proposal the way its "Turn it on" button does. The card is missing (BACKLOG Q03),
+ * so the test does not click it.
+ */
 async function turnOnProposal(
 	n8n: n8nPage,
 	suspension: { runId: string; toolCallId: string },
 ): Promise<void> {
 	const project = await n8n.api.projects.getMyPersonalProject();
-	const response = await n8n.api.request.post(
-		`/rest/projects/${project.id}/agents/v2/${ASSISTANT_AGENT_ID}/chat/resume`,
-		{
-			data: {
-				runId: suspension.runId,
-				toolCallId: suspension.toolCallId,
-				resumeData: {
-					kind: 'capabilityDecision',
-					approved: true,
-					values: { target: AUTOMATION_TARGET, activate: true },
-				},
-			},
+	await n8n.api.agents.resumeChat(project.id, ASSISTANT_AGENT_ID, {
+		runId: suspension.runId,
+		toolCallId: suspension.toolCallId,
+		resumeData: {
+			kind: 'capabilityDecision',
+			approved: true,
+			values: { target: AUTOMATION_TARGET, activate: true },
 		},
-	);
-	if (!response.ok()) {
-		throw new TestError(`Turning on the automation failed (${response.status()})`);
-	}
+	});
 }
 
-/** Fails when the serious and critical axe violations of the sidebar differ from the known list. */
-async function expectKnownBlockingViolations(a11y: A11yChecker): Promise<void> {
+/**
+ * Expects the proposal card in the open chat. While the card is missing, the test is an
+ * expected failure (BACKLOG Q03). Once the card shows, the rest of the test must pass.
+ */
+async function expectProposalCard(n8n: n8nPage): Promise<void> {
+	let shown = true;
+	try {
+		await expect(n8n.experienceModes.getProposalCard()).toBeVisible();
+	} catch {
+		shown = false;
+	}
+	test.fail(!shown, CARD_DEFECT);
+	expect(shown, CARD_DEFECT).toBe(true);
+}
+
+/** Clicks "Turn it on" on the card. The workflow must then be active and listed as On. */
+async function turnOnFromCard(n8n: n8nPage, digestId: string): Promise<void> {
+	await n8n.experienceModes.getProposalTurnOnButton().click();
+	await expect.poll(async () => (await n8n.api.workflows.getWorkflow(digestId)).active).toBe(true);
+	await n8n.navigate.toInstanceAi();
+	await expect(n8n.experienceModes.getAutomationRow(`${AUTOMATION_WORKFLOW_NAME}, On`)).toBeVisible(
+		{ timeout: CHAT_TIMEOUT_MS },
+	);
+}
+
+/** One axe node with a serious or critical impact, with the rule that reports it. */
+type BlockingNode = { rule: string; impact: string; html: string };
+
+function blockingNodes(violations: A11yViolation[]): BlockingNode[] {
+	return violations.flatMap((violation) =>
+		BLOCKING_IMPACTS.includes(violation.impact ?? '')
+			? violation.nodes.map((node) => ({
+					rule: violation.id,
+					impact: violation.impact ?? '',
+					html: node.html,
+				}))
+			: [],
+	);
+}
+
+/** The opening tag of an axe node, for example `<a href="/home" class="logo">`. */
+function openingTag(html: string): string {
+	return html.match(/^<[^>]*>/)?.[0] ?? html;
+}
+
+/**
+ * The N8nMenuItem links of the design system: a menu item with no menu parent. The design
+ * system owns this pattern, so the lists above do not name it. Other blocking nodes of these
+ * links still fail.
+ */
+function isDesignSystemMenuItem(node: BlockingNode): boolean {
+	return node.rule === 'aria-required-parent' && /^<a\s[^>]*\brole="menuitem"/.test(node.html);
+}
+
+// N8nMenuItem sets this test id on every item, so it does not name one element.
+const GENERIC_TEST_IDS = ['menu-item'];
+
+/**
+ * Names the element of a node by its test id. Without one, the name is the opening tag
+ * without its class, id and label, which change with the build and with the data.
+ */
+function elementName(html: string): string {
+	const tag = openingTag(html);
+	const testId = tag.match(/\sdata-test-id="([^"]+)"/)?.[1];
+	if (testId && !GENERIC_TEST_IDS.includes(testId)) return testId;
+	return tag.replace(/\s(?:class|id|aria-label)="[^"]*"/g, '');
+}
+
+function describeNode(node: BlockingNode): string {
+	return `${node.rule} (${node.impact}): ${elementName(node.html)}`;
+}
+
+/** Fails when a blocking element of the sidebar is not on the known list. */
+async function expectKnownSidebarViolations(a11y: A11yChecker): Promise<void> {
 	const violations = await a11y.check('sidebar');
-	const blocking = violations
-		.filter((violation) => BLOCKING_IMPACTS.includes(violation.impact ?? ''))
-		.map((violation) => `${violation.id} (${violation.impact})`)
-		.sort();
-	expect(blocking).toEqual(KNOWN_SIDEBAR_VIOLATIONS);
+	const labels = blockingNodes(violations)
+		.filter((node) => !isDesignSystemMenuItem(node))
+		.map(describeNode);
+	expect([...new Set(labels)].sort()).toEqual(KNOWN_SIDEBAR_VIOLATIONS);
+}
+
+/** Fails on any blocking node in the parts that the experience modes add. */
+async function expectNoBlockingViolationsInNewParts(a11y: A11yChecker): Promise<void> {
+	const violations = await a11y.check(EXPERIENCE_MODES_BUCKET);
+	const unexpected = blockingNodes(violations)
+		.filter((node) => !isDesignSystemMenuItem(node))
+		.map(describeNode);
+	expect(unexpected).toEqual([]);
 }
 
 // The linked-instance runner starts both instances. Skip when it is not running.
@@ -416,6 +510,7 @@ test.describe(
 			await expect
 				.poll(() => waitingRun.events.map((event) => event.type))
 				.toContain('message-queued');
+			await expect.poll(() => readyRun.events.map((event) => event.type)).toContain('done');
 			readyRun.disconnect();
 			waitingRun.disconnect();
 
@@ -423,6 +518,7 @@ test.describe(
 			await expect(
 				n8n.experienceModes.getChatGroupItem('needs-you', 'Approval chat, Waiting for you'),
 			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
+			await expect(n8n.experienceModes.getChatGroupHeading('needs-you')).toContainText('Needs you');
 			await expect(
 				n8n.experienceModes.getChatGroupItem('ready', 'Ready chat, Ready to review'),
 			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
@@ -441,6 +537,10 @@ test.describe(
 
 			// Opening the chat marks it as seen. The row loses its state, and Power lists it as Done.
 			await n8n.start.fromInstanceAiThread(readyChat.id);
+			// The state alone does not show that the run ended with its reply.
+			await expect(n8n.instanceAi.getPanelText(PLAIN_REPLY)).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
 			await expect(n8n.experienceModes.getSidebarMenuItem('Ready chat')).toBeVisible({
 				timeout: CHAT_TIMEOUT_MS,
 			});
@@ -514,16 +614,35 @@ test.describe(
 			startLlm,
 			backendUrl,
 		}) => {
-			// Known defect (BACKLOG Q03): after the turn, the thread history omits the suspended
-			// proposal call, so the card is not shown. Remove this annotation when the card shows.
-			test.fail(true, 'The thread history drops the suspended proposal call (BACKLOG Q03)');
-			const { chat } = await buildDigestAndPropose(n8n, startLlm, backendUrl);
+			const { chat, digestId } = await buildDigestAndPropose(n8n, startLlm, backendUrl);
 
+			// After the turn, the thread history omits the suspended proposal call (BACKLOG Q03).
 			await n8n.start.fromInstanceAiThread(chat.id);
-			await expect(n8n.page.getByTestId('automation-proposal-card')).toBeVisible({
+			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
 				timeout: CHAT_TIMEOUT_MS,
 			});
-			await n8n.page.getByTestId('automation-proposal-turn-on').click();
+			await expectProposalCard(n8n);
+			await turnOnFromCard(n8n, digestId);
+		});
+
+		test('the proposal card shows for a request that the user sends in the open chat', async ({
+			n8n,
+			startLlm,
+			backendUrl,
+		}) => {
+			const chat = await createNamedChat(n8n.api, 'Live digest chat');
+			const digestId = await buildDigestInChat(n8n, startLlm, backendUrl, chat.id);
+			const proposeLlm = await startLlm(proposeDigestScript(digestId));
+
+			// The live stream of the turn has no card either (BACKLOG Q03).
+			await n8n.start.fromInstanceAiThread(chat.id);
+			await n8n.instanceAi.sendMessage('Turn it into an automation');
+			await expect(n8n.instanceAi.getPanelText(PROPOSAL_REPLY)).toBeVisible({
+				timeout: CHAT_TIMEOUT_MS,
+			});
+			expect(proposeLlm.requests().map((request) => request.ruleId)).toContain('propose-digest');
+			await expectProposalCard(n8n);
+			await turnOnFromCard(n8n, digestId);
 		});
 
 		test('the Simple sidebar and the Power groups have no serious or critical accessibility violations', async ({
@@ -534,17 +653,24 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 			await n8n.experienceModes.getWorkspaceToggle().click();
 			await expect(n8n.experienceModes.getPersonalEntry()).toBeVisible();
-			await expectKnownBlockingViolations(a11y);
-			// A scan that did not run adds nothing to the list, so check the count after each scan.
-			expect(a11y.scans).toHaveLength(1);
+			await expect(n8n.experienceModes.getChatsSection()).toContainText('Accessibility chat');
+			// An empty part would pass the scan with no violations, so each part is checked on screen.
+			await expectKnownSidebarViolations(a11y);
+			await expectNoBlockingViolationsInNewParts(a11y);
 
 			await openInMode(n8n, 'power');
 			await expect(
 				n8n.experienceModes.getChatGroupItem('ready', 'Accessibility chat, Ready to review'),
 			).toBeVisible({ timeout: CHAT_TIMEOUT_MS });
-			await expectKnownBlockingViolations(a11y);
-			expect(a11y.scans).toHaveLength(2);
-			expect(a11y.scans.map((scan) => scan.bucket)).toEqual(['sidebar', 'sidebar']);
+			await expectKnownSidebarViolations(a11y);
+			await expectNoBlockingViolationsInNewParts(a11y);
+			// A scan that did not run adds no scan, so the buckets show which scans ran.
+			expect(a11y.scans.map((scan) => scan.bucket)).toEqual([
+				'sidebar',
+				EXPERIENCE_MODES_BUCKET,
+				'sidebar',
+				EXPERIENCE_MODES_BUCKET,
+			]);
 		});
 	},
 );

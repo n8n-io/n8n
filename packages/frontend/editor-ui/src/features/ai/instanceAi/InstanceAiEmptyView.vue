@@ -29,6 +29,7 @@ import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from '
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useNewChatProject } from './experience/useNewChatProject';
 import { useRunTargetPicker } from './runTarget/useRunTargetPicker';
+import { optionalRunTarget } from './runTarget/runTargetOptions';
 import {
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SOURCE_QUERY,
@@ -126,7 +127,7 @@ const cloudPlanStore = useCloudPlanStore();
 const route = useRoute();
 const router = useRouter();
 const { selectedProject, canSelectProject, rememberChatProject } = useNewChatProject();
-const { showRunTargetPicker, runTarget, links } = useRunTargetPicker();
+const { showRunTargetPicker, runTarget, links, chosenRunTarget } = useRunTargetPicker();
 
 /** Prefer a hand-off source from navigation; fall back for direct empty-state visits. */
 function resolveLaunchSource(): InstanceAiThreadSource {
@@ -593,7 +594,7 @@ async function handleSubmit(
 		authorship,
 		...(references.length ? { attachments: references } : {}),
 		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-		...(showRunTargetPicker.value ? { runTarget: runTarget.value } : {}),
+		...optionalRunTarget(chosenRunTarget.value),
 	});
 	stashPendingFirstMessageFiles(threadId, files);
 	// Track message-with-nodes only after a successful send, so refused sends and

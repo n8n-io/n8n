@@ -5,9 +5,13 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { AgentExecutionThread } from '../../../agents/entities/agent-execution-thread.entity';
 import type { N8nMemory } from '../../../agents/integrations/n8n-memory';
+import { EXECUTION_METADATA_KEY } from '../../../agents/types/agent-queued-message';
 import { LinkedInstanceStore } from '../../../linked-instances/linked-instance.store';
 import { ASSISTANT_TURN_DEFAULTS_KEY } from '../../assistant-turn-options';
 import { RunTargetService } from '../run-target.service';
+
+const OFFICE_NOTICE =
+	"This chat runs in Office, which isn't linked any more. Link it again in Settings, or start a new chat.";
 
 const LINK_ID = '3f1c2b6e-8a4d-4e2b-9c1a-7d5e6f8a9b0c';
 const OTHER_LINK_ID = '0b9a8c7d-6e5f-4a3b-8c2d-1e0f9a8b7c6d';
@@ -54,14 +58,15 @@ function chatThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 	} as AgentExecutionThread;
 }
 
-/** A chat message that names `requested` as its run target. */
+/** The run target of a chat message that names `requested` as its target. */
 async function forTurn(
 	service: RunTargetService,
 	thread: AgentExecutionThread,
 	defaults: unknown,
 	requested: RunTarget | undefined,
 ) {
-	return await service.forChatTurn(thread, defaults, { runTarget: requested });
+	const { runTarget } = await service.forChatTurn(thread, defaults, { runTarget: requested });
+	return runTarget;
 }
 
 function defaultsOf(thread: { metadata: Record<string, unknown> }) {
@@ -160,9 +165,9 @@ describe('RunTargetService', () => {
 			expect(defaultsOf(thread)).toEqual({ runTarget: { kind: 'local' } });
 		});
 
-		it('runs locally without a link lookup when the module is off', async () => {
+		it('runs locally, without a link lookup or a stored target, when the module is off', async () => {
 			moduleRegistry.isActive.mockReturnValue(false);
-			const { memory, thread } = createMemory();
+			const { memory, thread, patchThread } = createMemory();
 			const service = createService(memory);
 
 			const target = await forTurn(service, chatThread(), undefined, {
@@ -172,7 +177,8 @@ describe('RunTargetService', () => {
 
 			expect(target).toEqual({ kind: 'local' });
 			expect(store.getForUser).not.toHaveBeenCalled();
-			expect(defaultsOf(thread)).toEqual({ runTarget: { kind: 'local' } });
+			expect(patchThread).not.toHaveBeenCalled();
+			expect(defaultsOf(thread)).toBeUndefined();
 		});
 	});
 
@@ -250,65 +256,100 @@ describe('RunTargetService', () => {
 	describe('a link that is gone', () => {
 		const stored = { kind: 'linked', instanceId: LINK_ID, name: 'Office' };
 
-		it('runs locally, changes the stored target and posts one notice', async () => {
+		it('runs locally, changes the stored target and returns one notice', async () => {
 			store.getForUser.mockResolvedValue(null);
 			const { memory, thread, saveMessages } = createMemory({
 				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: stored },
 			});
 			const service = createService(memory);
 
-			const first = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
-			const second = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
+			const first = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
+			const second = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
 
-			expect(first).toEqual({ kind: 'local' });
-			expect(second).toEqual({ kind: 'local' });
+			expect(first).toEqual({ runTarget: { kind: 'local' }, notice: OFFICE_NOTICE });
+			expect(second).toEqual({ runTarget: { kind: 'local' } });
 			expect(defaultsOf(thread)).toEqual({ runTarget: { kind: 'local' } });
+			expect(saveMessages).not.toHaveBeenCalled();
+		});
+
+		it('keeps the stored link while the linked-instances module is off', async () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+			const { memory, thread, patchThread, saveMessages } = createMemory({
+				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: stored },
+			});
+			const service = createService(memory);
+
+			const result = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
+
+			expect(result).toEqual({ runTarget: { kind: 'local' } });
+			expect(store.getForUser).not.toHaveBeenCalled();
+			expect(patchThread).not.toHaveBeenCalled();
+			expect(saveMessages).not.toHaveBeenCalled();
+			expect(defaultsOf(thread)).toEqual({ runTarget: stored });
+		});
+
+		it('gives the link back to the chat when the module is on again', async () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+			const { memory, thread } = createMemory({
+				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: stored },
+			});
+			const service = createService(memory);
+			await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
+
+			moduleRegistry.isActive.mockReturnValue(true);
+			const result = await service.forChatTurn(chatThread(), defaultsOf(thread), undefined);
+
+			expect(result).toEqual({ runTarget: stored });
+			expect(result.notice).toBeUndefined();
+		});
+	});
+
+	describe('postTurnNotice', () => {
+		const scope = () => ({
+			thread: chatThread(),
+			resourceId: 'resource-1',
+			executionId: 'execution-1',
+		});
+
+		it('writes the notice into the chat, linked to the execution of the turn', async () => {
+			const { memory, saveMessages } = createMemory();
+			const service = createService(memory);
+
+			await service.postTurnNotice(scope(), OFFICE_NOTICE);
+
 			expect(saveMessages).toHaveBeenCalledTimes(1);
-			expect(saveMessages).toHaveBeenCalledWith(
-				expect.objectContaining({
-					threadId: THREAD_ID,
-					messages: [
-						expect.objectContaining({
-							role: 'assistant',
-							content: [
-								{
-									type: 'text',
-									text: expect.stringContaining(
-										"This chat runs in Office, which isn't linked any more.",
-									),
-								},
-							],
-						}),
-					],
-				}),
+			expect(saveMessages).toHaveBeenCalledWith({
+				threadId: THREAD_ID,
+				resourceId: 'resource-1',
+				messages: [
+					expect.objectContaining({
+						role: 'assistant',
+						content: [{ type: 'text', text: OFFICE_NOTICE }],
+					}),
+				],
+				hostMetadata: { [EXECUTION_METADATA_KEY]: 'execution-1' },
+			});
+		});
+
+		it('writes nothing when the turn has no execution to show the notice in', async () => {
+			const { memory, saveMessages } = createMemory();
+			const service = createService(memory);
+
+			await service.postTurnNotice({ ...scope(), executionId: undefined }, OFFICE_NOTICE);
+
+			expect(saveMessages).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped the run target notice, because the turn has no execution',
+				{ threadId: THREAD_ID },
 			);
 		});
 
-		it('treats the link as gone when the linked-instances module is off', async () => {
-			moduleRegistry.isActive.mockReturnValue(false);
-			const { memory, thread, saveMessages } = createMemory({
-				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: stored },
-			});
-			const service = createService(memory);
-
-			const target = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
-
-			expect(target).toEqual({ kind: 'local' });
-			expect(store.getForUser).not.toHaveBeenCalled();
-			expect(saveMessages).toHaveBeenCalledTimes(1);
-		});
-
-		it('still runs locally when the notice cannot be written', async () => {
-			store.getForUser.mockResolvedValue(null);
-			const { memory, thread, saveMessages } = createMemory({
-				[ASSISTANT_TURN_DEFAULTS_KEY]: { runTarget: stored },
-			});
+		it('does not fail the turn when the write fails', async () => {
+			const { memory, saveMessages } = createMemory();
 			saveMessages.mockRejectedValueOnce(new Error('write failed'));
 			const service = createService(memory);
 
-			const target = await forTurn(service, chatThread(), defaultsOf(thread), undefined);
-
-			expect(target).toEqual({ kind: 'local' });
+			await expect(service.postTurnNotice(scope(), OFFICE_NOTICE)).resolves.toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to post the run target notice',
 				expect.objectContaining({ threadId: THREAD_ID, error: 'write failed' }),

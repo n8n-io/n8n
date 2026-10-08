@@ -13,6 +13,7 @@ import { useI18n } from '@n8n/i18n';
 import { LINKED_INSTANCES_SETTINGS_VIEW } from '@/features/linkedInstances/linkedInstances.constants';
 
 import {
+	LINK_CLOUD_MENU_ID,
 	LOCAL_RUN_TARGET_ID,
 	runTargetOptions,
 	runTargetPlace,
@@ -46,6 +47,12 @@ const menuItems = computed<MenuItem[]>(() => [
 		header: true,
 	},
 	...options.value.map(toMenuItem),
+	{
+		id: LINK_CLOUD_MENU_ID,
+		label: i18n.baseText('instanceAi.runTarget.linkCloud'),
+		icon: { type: 'icon', value: 'plus' },
+		divided: true,
+	},
 ]);
 
 function toMenuItem(option: RunTargetOption): MenuItem {
@@ -61,6 +68,10 @@ function toMenuItem(option: RunTargetOption): MenuItem {
 }
 
 function selectTarget(id: string) {
+	if (id === LINK_CLOUD_MENU_ID) {
+		openLinkedInstances();
+		return;
+	}
 	const option = options.value.find((candidate) => candidate.id === id);
 	if (option && !option.disabled) model.value = option.target;
 }
@@ -107,16 +118,13 @@ function openLinkedInstances() {
 			</span>
 		</template>
 
-		<template #footer>
-			<N8nButton
-				variant="ghost"
+		<template #item-trailing="{ item }">
+			<N8nIcon
+				v-if="item.checked"
+				icon="check"
 				size="small"
-				:class="$style.footerLink"
-				data-test-id="run-target-link-cloud"
-				@click="openLinkedInstances"
-			>
-				{{ i18n.baseText('instanceAi.runTarget.linkCloud') }}
-			</N8nButton>
+				data-test-id="run-target-selected"
+			/>
 		</template>
 	</N8nDropdownMenu>
 </template>
@@ -161,10 +169,5 @@ function openLinkedInstances() {
 .itemHint {
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
-}
-
-.footerLink {
-	width: 100%;
-	justify-content: flex-start;
 }
 </style>

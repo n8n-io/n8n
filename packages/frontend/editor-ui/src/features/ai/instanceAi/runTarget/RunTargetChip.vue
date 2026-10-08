@@ -21,15 +21,19 @@ const summary = computed(
 const name = computed(() =>
 	runTargetChipName(summary.value?.runTarget, summary.value?.sharedWith !== undefined),
 );
+
+// The tooltip shows on focus, and the hidden copy gives screen readers the same explanation.
+const explanation = computed(() => i18n.baseText('instanceAi.runTarget.chip.tooltip'));
 </script>
 
 <template>
 	<N8nTooltip v-if="name" placement="bottom" as-child>
-		<template #content>{{ i18n.baseText('instanceAi.runTarget.chip.tooltip') }}</template>
-		<span :class="$style.chip" data-test-id="instance-ai-run-target-chip">
+		<template #content>{{ explanation }}</template>
+		<span :class="$style.chip" tabindex="0" data-test-id="instance-ai-run-target-chip">
 			<N8nBadge variant="outline" leading-icon="cloud" :class="$style.badge">
 				{{ i18n.baseText('instanceAi.runTarget.chip', { interpolate: { name } }) }}
 			</N8nBadge>
+			<span :class="$style.explanation">{{ explanation }}</span>
 		</span>
 	</N8nTooltip>
 </template>
@@ -47,6 +51,15 @@ const name = computed(() =>
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.explanation {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
 	white-space: nowrap;
 }
 </style>

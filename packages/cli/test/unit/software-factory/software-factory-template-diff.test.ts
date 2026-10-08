@@ -46,8 +46,8 @@ function checkedDiffOf(structuredContent: IDataObject) {
  * `diffSha256` to another value.
  */
 function compare(parts: { approved: IDataObject; minimised: IDataObject; checked?: IDataObject }) {
-	const minimised = {
-		diffSha256: sha256Of(String(parts.minimised.diff ?? '')),
+	const minimised: IDataObject = {
+		diffSha256: sha256Of(typeof parts.minimised.diff === 'string' ? parts.minimised.diff : ''),
 		...parts.minimised,
 	};
 	const facts = z
