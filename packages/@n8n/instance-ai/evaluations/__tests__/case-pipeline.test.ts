@@ -211,6 +211,29 @@ describe('createCasePipeline', () => {
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 
+	// A timeout outranks the fault, as on every other timed-out build.
+	it("keeps a timed-out build that read another build's workflow out of the pass rate", async () => {
+		const lane = makeLane();
+		const timeout = { kind: 'turn' as const, turn: 2, elapsedMs: 900_400 };
+		const cached: CachedBuild = {
+			build: okBuild({ timeout, foreignWorkflowReads: ['other-wf'] }),
+			lane,
+			buildDurationMs: 42,
+		};
+		const pipeline = createCasePipeline(makeDeps(makeOrchestrator(cached)));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			passed: false,
+			incomplete: true,
+			attribution: 'timeout',
+			failureCategory: 'build_timeout',
+			buildTimeout: timeout,
+		});
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
 	it('preserves agent metadata when a prior run failed', async () => {
 		const lane = makeLane();
 		const build = okBuild({
