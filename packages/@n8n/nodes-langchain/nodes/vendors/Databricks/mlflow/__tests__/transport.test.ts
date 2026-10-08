@@ -1,10 +1,10 @@
 import { proxyFetch } from '@n8n/ai-utilities';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { createDatabricksAuthFetch } from '@utils/databricks/auth-fetch';
 import type { DatabricksOAuth2Credential } from '@utils/databricks/token-provider';
 
 import { createMlflowTransport } from '../transport';
@@ -14,12 +14,7 @@ vi.mock('@n8n/ai-utilities', async (importOriginal) => ({
 	proxyFetch: vi.fn(),
 }));
 
-vi.mock('@utils/databricks/auth-fetch', () => ({
-	createDatabricksAuthFetch: vi.fn(),
-}));
-
 const mockedProxyFetch = vi.mocked(proxyFetch);
-const mockedCreateDatabricksAuthFetch = vi.mocked(createDatabricksAuthFetch);
 
 const credential: DatabricksOAuth2Credential = {
 	host: 'https://my.databricks.com/',
@@ -28,14 +23,9 @@ const credential: DatabricksOAuth2Credential = {
 	clientSecret: 'test-client-secret',
 };
 
-function jsonResponse(status: number, body: unknown): Response {
-	return new Response(JSON.stringify(body), { status });
-}
-
 describe('createMlflowTransport', () => {
 	let ctx: MockProxy<IExecuteFunctions>;
 	let mockHelpers: MockProxy<IExecuteFunctions['helpers']>;
-	let authFetch: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -45,10 +35,10 @@ describe('createMlflowTransport', () => {
 		ctx.getNode.mockReturnValue(mock<INode>());
 		ctx.getExecutionCancelSignal.mockReturnValue(undefined);
 
-		authFetch = vi.fn().mockResolvedValue(jsonResponse(200, {}));
-		mockedCreateDatabricksAuthFetch.mockReturnValue({
-			fetch: authFetch as unknown as typeof fetch,
-			tokenSource: { getToken: vi.fn(), expiredStatus: 403 },
+		mockHelpers.httpRequestWithAuthentication.mockResolvedValue({
+			statusCode: 200,
+			body: {},
+			headers: {},
 		});
 		mockedProxyFetch.mockResolvedValue(new Response(null, { status: 200 }));
 	});
@@ -57,27 +47,23 @@ describe('createMlflowTransport', () => {
 		expect(() =>
 			createMlflowTransport(ctx, { ...credential, host: 'http://my.databricks.com' }),
 		).toThrow(NodeOperationError);
-		expect(mockedCreateDatabricksAuthFetch).not.toHaveBeenCalled();
+		expect(mockHelpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
 	});
 
 	describe('request', () => {
-		it('authenticates through the shared Databricks auth fetch, with the host and egress filter', () => {
-			const egressFilter = { validateUrl: vi.fn() };
-			mockHelpers.getSecureEgressFilter.mockReturnValue(egressFilter as never);
+		it('authenticates through the databricksOAuth2Api credential', async () => {
+			const { request } = createMlflowTransport(ctx, credential);
 
-			createMlflowTransport(ctx, credential);
+			await request({ method: 'GET', path: '/api/2.0/mlflow/experiments/get-by-name' });
 
-			expect(mockedCreateDatabricksAuthFetch).toHaveBeenCalledWith(
-				ctx,
-				credential,
-				expect.objectContaining({
-					endpointUrl: 'https://my.databricks.com',
-					egressFilter,
-				}),
+			expect(mockHelpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'databricksOAuth2Api',
+				expect.anything(),
 			);
+			expect(mockHelpers.httpRequestWithAuthentication.mock.contexts[0]).toBe(ctx);
 		});
 
-		it('builds the URL from the host and path, and sends query params', async () => {
+		it('builds the URL from the host and path, sends query params, and sets the timeout and partner User-Agent', async () => {
 			const { request } = createMlflowTransport(ctx, credential);
 
 			await request({
@@ -86,18 +72,17 @@ describe('createMlflowTransport', () => {
 				qs: { experiment_name: '/Shared/x' },
 			});
 
-			const [url, init] = authFetch.mock.calls[0];
-			expect(url).toBe(
-				'https://my.databricks.com/api/2.0/mlflow/experiments/get-by-name?experiment_name=%2FShared%2Fx',
-			);
-			expect(init).toMatchObject({
+			const [, options] = mockHelpers.httpRequestWithAuthentication.mock.calls[0];
+			expect(options).toMatchObject({
 				method: 'GET',
-				headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+				url: 'https://my.databricks.com/api/2.0/mlflow/experiments/get-by-name',
+				qs: { experiment_name: '/Shared/x' },
+				timeout: 60_000,
+				headers: { 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 			});
 		});
 
-		it('serializes the body as JSON when present, and omits it otherwise', async () => {
-			authFetch.mockImplementation(async () => jsonResponse(200, {}));
+		it('passes the body through as-is, letting core serialize it', async () => {
 			const { request } = createMlflowTransport(ctx, credential);
 
 			await request({
@@ -105,15 +90,31 @@ describe('createMlflowTransport', () => {
 				path: '/api/2.0/mlflow/experiments/create',
 				body: { name: 'x' },
 			});
-			expect(authFetch.mock.calls[0][1]).toMatchObject({ body: JSON.stringify({ name: 'x' }) });
 
-			await request({ method: 'GET', path: '/api/2.0/mlflow/experiments/get-by-name' });
-			expect(authFetch.mock.calls[1][1]).toMatchObject({ body: undefined });
+			const [, options] = mockHelpers.httpRequestWithAuthentication.mock.calls[0];
+			expect(options).toMatchObject({ body: { name: 'x' } });
 		});
 
-		it('reports the status and parsed body instead of throwing on a failure response', async () => {
-			authFetch.mockResolvedValue(
-				jsonResponse(404, { error_code: 'RESOURCE_DOES_NOT_EXIST', message: 'not found' }),
+		it('does not report a failure as status+body - it rejects, so core can refresh and retry', async () => {
+			// `ignoreHttpStatusErrors` would make a non-2xx resolve instead of reject,
+			// which would silently stop core's OAuth2 refresh-and-retry from ever
+			// running (it only fires on a rejection) - see requestOAuth2 in
+			// packages/core/.../request-helpers/oauth.ts.
+			const { request } = createMlflowTransport(ctx, credential);
+			await request({ method: 'GET', path: '/api/2.0/mlflow/experiments/get-by-name' });
+
+			const [, options] = mockHelpers.httpRequestWithAuthentication.mock.calls[0];
+			expect(options).not.toHaveProperty('ignoreHttpStatusErrors');
+			expect(options).toMatchObject({ returnFullResponse: true });
+		});
+
+		it('reports the status and body of a failure caught from a thrown NodeApiError', async () => {
+			mockHelpers.httpRequestWithAuthentication.mockRejectedValue(
+				new NodeApiError(
+					ctx.getNode(),
+					{ response: { data: { error_code: 'RESOURCE_DOES_NOT_EXIST', message: 'not found' } } },
+					{ httpCode: '404' },
+				),
 			);
 			const { request } = createMlflowTransport(ctx, credential);
 
@@ -128,28 +129,26 @@ describe('createMlflowTransport', () => {
 			});
 		});
 
-		it('falls back to the raw text when the body is not JSON', async () => {
-			authFetch.mockResolvedValue(new Response('not json', { status: 500 }));
+		it('rethrows a failure that is not a NodeApiError', async () => {
+			mockHelpers.httpRequestWithAuthentication.mockRejectedValue(new Error('network down'));
 			const { request } = createMlflowTransport(ctx, credential);
 
-			const result = await request({
-				method: 'GET',
-				path: '/api/2.0/mlflow/experiments/get-by-name',
-			});
-
-			expect(result).toEqual({ status: 500, body: 'not json' });
+			await expect(
+				request({ method: 'GET', path: '/api/2.0/mlflow/experiments/get-by-name' }),
+			).rejects.toThrow('network down');
 		});
 
-		it('reports an empty body as an empty object', async () => {
-			authFetch.mockResolvedValue(new Response('', { status: 200 }));
-			const { request } = createMlflowTransport(ctx, credential);
+		it('passes the credential domain allowlist through when the credential restricts domains', async () => {
+			const { request } = createMlflowTransport(ctx, {
+				...credential,
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'other.example.com',
+			} as DatabricksOAuth2Credential);
 
-			const result = await request({
-				method: 'GET',
-				path: '/api/2.0/mlflow/experiments/get-by-name',
-			});
+			await request({ method: 'GET', path: '/api/2.0/mlflow/experiments/get-by-name' });
 
-			expect(result).toEqual({ status: 200, body: {} });
+			const [, options] = mockHelpers.httpRequestWithAuthentication.mock.calls[0];
+			expect(options.allowedDomains).toBe('my.databricks.com, other.example.com');
 		});
 	});
 
@@ -173,12 +172,12 @@ describe('createMlflowTransport', () => {
 			expect(mockedProxyFetch).not.toHaveBeenCalled();
 		});
 
-		it('PUTs the body to the signed URL with no bearer token, bypassing the workspace auth fetch', async () => {
+		it('PUTs the body to the signed URL with no bearer token, bypassing the credential entirely', async () => {
 			const { upload } = createMlflowTransport(ctx, credential);
 
 			await upload({ url: SIGNED_URI, body: '{"spans":[]}' });
 
-			expect(authFetch).not.toHaveBeenCalled();
+			expect(mockHelpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
 			const [{ input, init }] = mockedProxyFetch.mock.calls[0];
 			expect(input).toBe(SIGNED_URI);
 			expect(init).toMatchObject({ method: 'PUT', body: '{"spans":[]}' });

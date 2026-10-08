@@ -1,20 +1,41 @@
 import { proxyFetch } from '@n8n/ai-utilities';
-import { NodeOperationError, OperationalError, type IExecuteFunctions } from 'n8n-workflow';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
+import {
+	getCredentialAllowedDomains,
+	NodeApiError,
+	NodeOperationError,
+	OperationalError,
+	type IExecuteFunctions,
+} from 'n8n-workflow';
 
-import { createDatabricksAuthFetch } from '@utils/databricks/auth-fetch';
 import { assertHttpsHost } from '@utils/databricks/constants';
-import type { DatabricksOAuth2Credential } from '@utils/databricks/token-provider';
+import {
+	DATABRICKS_CREDENTIAL_TYPE,
+	type DatabricksOAuth2Credential,
+} from '@utils/databricks/token-provider';
 
-import type { MlflowRequest, SignedUpload } from './trace-writer';
+import type { MlflowRequest, MlflowResponse, SignedUpload } from './trace-writer';
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
 /**
- * Builds the two transports the trace writer needs.
- *
- * Workspace calls reuse `createDatabricksAuthFetch`, so token minting, the
- * credential domain allowlist, the partner User-Agent and egress filtering are
- * all the shared Databricks behaviour rather than a second implementation.
+ * Not `ignoreHttpStatusErrors`: a non-2xx must reject for core's OAuth2
+ * refresh-and-retry to run (it only fires on a rejection). This turns the
+ * `NodeApiError` that rejection produces back into the `{status, body}` shape
+ * `request` reports to its caller.
+ */
+function toMlflowResponse(error: unknown): MlflowResponse {
+	if (error instanceof NodeApiError && error.httpCode) {
+		return { status: Number(error.httpCode), body: error.context.data ?? {} };
+	}
+	throw error;
+}
+
+/**
+ * `request` goes through core's `httpRequestWithAuthentication` - a plain REST
+ * call, not an SDK handoff like the chat model, so core's own OAuth2 refresh
+ * covers it. `upload` stays on `proxyFetch`: the signed URL is unauthenticated
+ * and points at a storage host, not the workspace.
  */
 export function createMlflowTransport(
 	ctx: IExecuteFunctions,
@@ -24,6 +45,35 @@ export function createMlflowTransport(
 	const host = credential.host.replace(/\/$/, '');
 	const egressFilter = ctx.helpers.getSecureEgressFilter();
 	const cancelSignal = ctx.getExecutionCancelSignal();
+
+	const allowedDomains = getCredentialAllowedDomains({
+		node: ctx.getNode(),
+		credentialData: credential,
+		credentialOwnedSurface: true,
+		nodeEndpointUrl: host,
+	});
+
+	const request: MlflowRequest = async ({ method, path, qs, body }) => {
+		try {
+			const response = await ctx.helpers.httpRequestWithAuthentication.call(
+				ctx,
+				DATABRICKS_CREDENTIAL_TYPE,
+				{
+					method,
+					url: `${host}${path}`,
+					qs,
+					body,
+					headers: { 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
+					timeout: REQUEST_TIMEOUT_MS,
+					allowedDomains,
+					returnFullResponse: true,
+				},
+			);
+			return { status: response.statusCode, body: response.body };
+		} catch (error) {
+			return toMlflowResponse(error);
+		}
+	};
 
 	const withDeadline: typeof fetch = async (input, init) => {
 		const signals = [AbortSignal.timeout(REQUEST_TIMEOUT_MS)];
@@ -36,40 +86,11 @@ export function createMlflowTransport(
 		});
 	};
 
-	const { fetch: authFetch } = createDatabricksAuthFetch(ctx, credential, {
-		endpointUrl: host,
-		egressFilter,
-		baseFetch: withDeadline,
-	});
-
-	const request: MlflowRequest = async ({ method, path, qs, body }) => {
-		const url = new URL(`${host}${path}`);
-		for (const [key, value] of Object.entries(qs ?? {})) {
-			url.searchParams.set(key, value);
-		}
-
-		// The status is reported rather than thrown: a missing experiment answers
-		// 404, which the writer handles by creating it.
-		const response = await authFetch(url.toString(), {
-			method,
-			headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-			body: body === undefined ? undefined : JSON.stringify(body),
-		});
-
-		const text = await response.text();
-		let parsed: unknown = text;
-		try {
-			parsed = text.length > 0 ? JSON.parse(text) : {};
-		} catch {
-			// A non-JSON body is only ever used for the error message.
-		}
-		return { status: response.status, body: parsed };
-	};
-
 	const upload: SignedUpload = async ({ url, body }) => {
 		// The signed URL points at a storage host and already carries its own SAS
-		// credential in the query string, so it goes out with no bearer token - and
-		// not through `authFetch`, whose allowlist is scoped to the workspace host.
+		// credential in the query string, so it goes out with no bearer token and
+		// not through the credential's own domain allowlist, which is scoped to
+		// the workspace host.
 		if (!URL.canParse(url) || new URL(url).protocol !== 'https:') {
 			throw new NodeOperationError(ctx.getNode(), 'Databricks upload URL must use https');
 		}
