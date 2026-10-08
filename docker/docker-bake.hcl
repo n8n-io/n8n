@@ -1,7 +1,7 @@
 # Every n8n image build uses this file. `pnpm build:docker` and CI both drive
 # these targets, so a pin changed here changes both.
 
-variable "NODE_VERSION" { default = "26.7.0" }
+variable "NODE_VERSION" { default = "26.10.0" }
 variable "N8N_VERSION" { default = "snapshot" }
 variable "N8N_RELEASE_TYPE" { default = "dev" }
 
