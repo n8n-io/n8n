@@ -1,11 +1,24 @@
 import type { AgentJsonToolConfig } from '@n8n/api-types';
+import { agentToolPolicyRefusalSchema } from '@n8n/api-types';
+import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
+import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
 import { resolveNodeTool } from '../node-tool-factory';
+
+const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation => ({
+	kind: 'node-type-unavailable',
+	checkId: 'node-type-availability',
+	message: 'The node type n8n-nodes-base.googleDrive is not available on this instance',
+	subject: 'n8n-nodes-base.googleDrive',
+	subjectType: 'nodeType',
+	scope: 'instance',
+	...overrides,
+});
 
 // The node-tool-factory imports the DI `Container` to look up NodeTypes inside
 // `resolveInputSchema` (for auto-seeding a `{ input: string }` schema on
@@ -209,6 +222,44 @@ describe('resolveNodeTool → tool name sanitization', () => {
 				inputData: [{ json: { input: 'thinking about this problem' } }],
 			}),
 		);
+	});
+});
+
+describe('resolveNodeTool → policy refusal', () => {
+	it('returns a parseable policy-refusal result instead of throwing, carrying the violations', async () => {
+		const violations: NonEmptyViolations = [violation()];
+		const executeInline = vi.fn().mockResolvedValue({
+			status: 'error',
+			data: [],
+			error: 'Node type is not permitted for agent tool execution',
+			violations,
+		});
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+
+		const output = await tool.handler!({}, {} as never);
+		const parsed = agentToolPolicyRefusalSchema.safeParse(output);
+
+		expect(parsed.success).toBe(true);
+		expect(output).toMatchObject({ status: 'policy_refused', violations });
+	});
+
+	it('throws for an ordinary executor error with no violations, as before', async () => {
+		const executeInline = vi.fn().mockResolvedValue({
+			status: 'error',
+			data: [],
+			error: 'boom',
+		});
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+
+		await expect(tool.handler!({}, {} as never)).rejects.toThrow('boom');
 	});
 });
 

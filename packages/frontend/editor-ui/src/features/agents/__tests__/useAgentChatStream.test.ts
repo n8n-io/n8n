@@ -2284,6 +2284,42 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('error');
 	});
 
+	it('renders a policy-refused tool result as an error step even though the call resolves', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-refused',
+				toolName: 'http_request',
+				input: { url: 'https://example.com' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-refused',
+				toolName: 'http_request',
+				output: {
+					status: 'policy_refused',
+					error: 'Blocked by policy',
+					violations: [
+						{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Not allowed' },
+					],
+					instruction: 'Ask the user to pick another tool.',
+				},
+				isError: false,
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('go');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('error');
+	});
+
 	it('renders a completed delegate_subagent result as a done step', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },

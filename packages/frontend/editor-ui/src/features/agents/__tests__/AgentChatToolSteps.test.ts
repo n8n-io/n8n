@@ -8,7 +8,7 @@ import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 vi.mock('@n8n/design-system', () => ({
 	N8nAiActivityStep: {
-		props: ['label', 'hasContent', 'loading', 'error', 'hideErrorCallout'],
+		props: ['label', 'hasContent', 'loading', 'error', 'hideErrorCallout', 'errorIcon'],
 		data: () => ({ isOpen: false }),
 		computed: {
 			labelParts(this: { label: string }): string[] {
@@ -25,8 +25,15 @@ vi.mock('@n8n/design-system', () => ({
 					<span> · </span>
 					<span data-testid="tool-step-summary">{{ part }}</span>
 				</template>
-				<span v-if="error" data-testid="tool-step-warning" :title="error">⚠</span>
-				<div v-if="error && !hideErrorCallout" data-test-id="tool-step-error">{{ error }}</div>
+				<span
+					v-if="error"
+					data-testid="tool-step-warning"
+					:title="error"
+					:data-error-icon="errorIcon"
+				>⚠</span>
+				<div v-if="error && !hideErrorCallout" data-test-id="tool-step-error">
+					<slot name="errorCallout">{{ error }}</slot>
+				</div>
 				<div v-if="isOpen"><slot /></div>
 			</div>
 		`,
@@ -50,11 +57,38 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<i :data-icon="icon" />',
 		props: ['icon', 'size', 'spin'],
 	},
+	N8nLink: {
+		props: ['underline', 'size'],
+		emits: ['click'],
+		template: '<a href="#" @click="$emit(\'click\', $event)"><slot /></a>',
+	},
 	N8nMarkdownEditor: {
 		template: '<div data-test-id="tool-step-details">{{ modelValue }}</div>',
 		props: ['modelValue', 'readonly', 'variant', 'showToolbar', 'maxHeight'],
 	},
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
+}));
+
+vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
+	ContactInstanceAdminModal: {
+		props: ['open', 'nodeTypeName'],
+		template:
+			'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+	},
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: () => undefined,
+		loadNodeTypesIfNotLoaded: async () => {},
+	}),
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		getCredentialTypeByName: () => undefined,
+		fetchCredentialTypes: async () => {},
+	}),
 }));
 
 vi.mock('@n8n/i18n', () => {
@@ -76,6 +110,9 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
 			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
+			'agents.chat.toolPolicyRefusal.reason': '{name} is restricted on this instance.',
+			'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
+			'typeAvailabilityPolicies.restrictedNode.contactAdmin': 'Contact instance admin',
 		} as Record<string, string>,
 		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
@@ -90,7 +127,11 @@ vi.mock('@n8n/i18n', () => {
 				return `${opts.interpolate.count} tasks`;
 			}
 			if (key === 'agents.chat.writeTodos.summary.done') return 'done';
-			return this.translations[key] ?? key;
+			const template = this.translations[key];
+			if (template && opts?.interpolate?.name) {
+				return template.replace('{name}', opts.interpolate.name);
+			}
+			return template ?? key;
 		},
 	};
 
@@ -764,5 +805,100 @@ describe('AgentChatToolSteps', () => {
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('Weighing the sources.');
 		expect(wrapper.text()).not.toContain('Reasoning');
+	});
+
+	describe('policy-refused tool calls', () => {
+		function refusedCall(overrides: Partial<ToolCall> = {}): ToolCall {
+			return {
+				tool: 'search_nodes',
+				toolCallId: 'tc-refused',
+				state: TOOL_CALL_STATE.ERROR,
+				output: {
+					status: 'policy_refused',
+					error: 'Blocked by policy',
+					violations: [
+						{
+							kind: 'node-type-unavailable',
+							checkId: 'check-1',
+							message: 'Not allowed',
+							subject: 'slack',
+							scope: 'instance',
+						},
+					],
+					instruction: 'Ask the user to pick another tool.',
+				},
+				...overrides,
+			};
+		}
+
+		it('shows a lock with the scope line as tooltip', () => {
+			const icon = mountSteps([refusedCall()]).get('[data-testid="tool-step-warning"]');
+			expect(icon.attributes('data-error-icon')).toBe('lock');
+			expect(icon.attributes('title')).toBe('Restricted on this instance');
+		});
+
+		it('keeps the default error icon for a non-refusal error', () => {
+			const wrapper = mountSteps([
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-err',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Boom',
+				},
+			]);
+			expect(
+				wrapper.get('[data-testid="tool-step-warning"]').attributes('data-error-icon'),
+			).toBeUndefined();
+		});
+
+		it('shows the refusal reason and a contact-admin link in the callout', () => {
+			const wrapper = mountSteps([refusedCall()]);
+			const callout = wrapper.get('[data-test-id="tool-step-error"]');
+			// Node types are not loaded in this test, so the step label names the subject.
+			expect(callout.text()).toContain('Search nodes is restricted on this instance.');
+			expect(
+				callout.find('[data-test-id="agent-chat-tool-policy-refusal-contact-admin"]').exists(),
+			).toBe(true);
+		});
+
+		it('hides the raw Output section even when expanded, unlike a normal error', async () => {
+			const refusedWrapper = mountSteps([refusedCall()]);
+			await refusedWrapper.get('button').trigger('click');
+			expect(refusedWrapper.find('pre').exists()).toBe(false);
+
+			const normalErrorWrapper = mountSteps([
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-err',
+					state: TOOL_CALL_STATE.ERROR,
+					output: { foo: 'bar' },
+				},
+			]);
+			await normalErrorWrapper.get('button').trigger('click');
+			expect(normalErrorWrapper.find('pre').exists()).toBe(true);
+		});
+
+		it('excludes a refusal from fixable failures while a normal error stays fixable', async () => {
+			const normalError: ToolCall = {
+				tool: 'search_nodes',
+				toolCallId: 'tc-normal',
+				state: TOOL_CALL_STATE.ERROR,
+				output: 'Connection failed',
+			};
+			const wrapper = mountSteps([normalError, refusedCall()], {
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+			});
+
+			const fixCallout = wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+			expect(fixCallout.text()).toContain('Connection failed');
+			expect(fixCallout.text()).not.toContain('is restricted on this instance');
+			expect(wrapper.find('[data-test-id="agent-chat-tool-policy-refusal"]').exists()).toBe(true);
+
+			await wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+			expect(wrapper.emitted('fixWithAssistant')).toEqual([
+				[[expect.objectContaining({ toolCallId: 'tc-normal' })]],
+			]);
+		});
 	});
 });

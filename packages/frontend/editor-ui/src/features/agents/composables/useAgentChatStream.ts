@@ -47,6 +47,7 @@ import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thin
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
+import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
@@ -1124,7 +1125,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (found) {
 					const toolResultEvent = event as typeof event & { canceled?: boolean };
 					found.tc.output = event.output;
-					const failed = event.isError || isFailedDelegateOutput(found.tc.tool, event.output);
+					const failed =
+						event.isError ||
+						isFailedDelegateOutput(found.tc.tool, event.output) ||
+						isPolicyRefusedToolOutput(event.output);
 					found.tc.state = failed
 						? TOOL_CALL_STATE.ERROR
 						: toolResultEvent.canceled === true
