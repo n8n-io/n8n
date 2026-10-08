@@ -33,25 +33,21 @@ import {
  * single slot holds the parameter, and both budgets are shared by every node
  * of the expression.
  */
-export interface Env {
-	data: IWorkflowDataProxyData;
-	param: unknown;
-	steps: number;
-	work: number;
-	parameters: Map<string | number, unknown>;
-}
+export class Env {
+	param: unknown = undefined;
 
-export const createEnv = (data: IWorkflowDataProxyData): Env => ({
-	data,
-	param: undefined,
-	steps: 0,
-	work: 0,
-	parameters: new Map(),
-});
+	steps = 0;
 
-function charge(env: Env, units: number): void {
-	env.work += units;
-	if (env.work > MAX_WORK) throw new EngineFallbackError();
+	work = 0;
+
+	readonly parameters = new Map<string | number, unknown>();
+
+	constructor(readonly data: IWorkflowDataProxyData) {}
+
+	charge(units: number): void {
+		this.work += units;
+		if (this.work > MAX_WORK) throw new EngineFallbackError();
+	}
 }
 
 /**
@@ -379,7 +375,7 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
 		if (node.method === 'concat') assertConcatWeight(receiver, args);
 	}
-	charge(env, preflightSize(receiver, node.method, args));
+	env.charge(preflightSize(receiver, node.method, args));
 
 	return bounded(method.apply(receiver, args));
 }
@@ -401,7 +397,7 @@ function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): 
 	const method = ITERATOR_NATIVES.get(node.method);
 	if (method === undefined) throw new EngineFallbackError();
 
-	charge(env, preflightSize(receiver, node.method, []));
+	env.charge(preflightSize(receiver, node.method, []));
 
 	let weight = 0;
 	const visit = (element: unknown) => {
@@ -476,7 +472,7 @@ function evalBinary(node: Extract<SimpleNode, { kind: 'binary' }>, env: Env): un
 
 	// `+` is the one operator that allocates; a body concatenating a payload
 	// string per element repeats that allocation.
-	if (typeof result === 'string') charge(env, result.length);
+	if (typeof result === 'string') env.charge(result.length);
 
 	return result;
 }

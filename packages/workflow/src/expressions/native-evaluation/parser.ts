@@ -200,7 +200,7 @@ function parseCallback(
 	args: namedTypes.CallExpression['arguments'],
 	parse: ParseChild,
 	param: string | null,
-): { param: string; body: SimpleNode } | null {
+): SimpleNode | null {
 	if (param !== null || args.length !== 1) return null;
 
 	const [fn] = args;
@@ -216,10 +216,7 @@ function parseCallback(
 
 	if (fn.body.type === 'BlockStatement') return null;
 
-	const body = parse(fn.body, name);
-	if (body === null) return null;
-
-	return { param: name, body };
+	return parse(fn.body, name);
 }
 
 function parseCall(
@@ -257,10 +254,10 @@ function parseCall(
 	const optional = node.optional === true || callee.optional === true;
 
 	if (isIterator) {
-		const parsed = parseCallback(node.arguments, parse, param);
-		if (parsed === null) return null;
+		const body = parseCallback(node.arguments, parse, param);
+		if (body === null) return null;
 
-		return { kind: 'iterate', receiver, method, ...parsed, optional };
+		return { kind: 'iterate', receiver, method, body, optional };
 	}
 
 	const args: SimpleNode[] = [];

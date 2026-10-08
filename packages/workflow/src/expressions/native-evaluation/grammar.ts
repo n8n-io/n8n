@@ -47,7 +47,6 @@ export type SimpleNode =
 			kind: 'iterate';
 			receiver: SimpleNode;
 			method: IteratorMethod;
-			param: string;
 			body: SimpleNode;
 			optional: boolean;
 	  };

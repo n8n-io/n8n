@@ -2,7 +2,7 @@ import { getParsedExpression } from '@n8n/tournament';
 import type { ParsedCode } from '@n8n/tournament';
 import { LruCache } from '@n8n/utils/lru-cache';
 
-import { EngineFallbackError, bounded, createEnv, evalChunk } from './evaluator';
+import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
 import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
 import { parseSimple } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
@@ -166,7 +166,7 @@ function copyResult(value: unknown): unknown {
 }
 
 function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
-	const env = createEnv(data);
+	const env = new Env(data);
 
 	if (compiled.isWholeValue) {
 		const code = compiled.chunks[1];

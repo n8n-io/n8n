@@ -404,6 +404,9 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names.values() }}',
 	'={{ $json.item.names.keys() }}',
 	"={{ $json.item.name['toUpperCase']() }}",
+	// A computed key on a call declines for node references too.
+	"={{ $input['first']().json.item.name }}",
+	"={{ $input['all']().length }}",
 	'={{ $json.item.name.toUpperCase($json.item[$json.item.name]) }}',
 	// Syntax errors go to the engine for its error reporting.
 	'={{ $json.item. }}',
