@@ -19,16 +19,20 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { NodesConfig } from '@n8n/config';
 import type { ContentImportContext, PolicyViolation } from '@n8n/decorators';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { ImportService } from '@/services/import.service';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { createMember, createOwner } from './shared/db/users';
@@ -652,6 +656,79 @@ describe('ImportService', () => {
 			).rejects.toThrow('backend unavailable');
 
 			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deprecated nodes', () => {
+		let blockingImportService: ImportService;
+
+		const deprecatedNode: INode = {
+			id: uuid(),
+			name: 'Function',
+			type: 'n8n-nodes-base.function',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { functionCode: 'return items;' },
+		};
+
+		beforeAll(() => {
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockImplementation((type) =>
+				mock<INodeType>({
+					description: { deprecated: type === deprecatedNode.type ? true : undefined },
+				}),
+			);
+
+			blockingImportService = new ImportService(
+				mock(),
+				Container.get(CredentialsRepository),
+				tagRepository,
+				mock(),
+				mock(),
+				mockWorkflowIndexService,
+				mock(),
+				Container.get(UserRepository),
+				mockWorkflowService,
+				mockPolicyEnforcementService,
+				sharedWorkflowRepository,
+				workflowRepository,
+				new DeprecatedNodesValidationService(
+					mock(),
+					mock<NodesConfig>({ blockDeprecated: true }),
+					nodeTypes,
+				),
+			);
+		});
+
+		test('rejects a new workflow with a deprecated node and leaves active workflows running', async () => {
+			const active = await createActiveWorkflow({ name: 'Active' });
+			const withDeprecated = newWorkflow({ id: uuid(), nodes: [deprecatedNode] });
+
+			await expect(
+				blockingImportService.importWorkflows(
+					[active, withDeprecated],
+					ownerPersonalProject.id,
+					owner.id,
+					{},
+				),
+			).rejects.toThrow(DeprecatedNodesError);
+
+			await expect(getWorkflowById(withDeprecated.id)).resolves.toBeNull();
+			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('allows re-importing a workflow whose deprecated node is unchanged', async () => {
+			const existing = await createWorkflow({ nodes: [deprecatedNode] });
+
+			await blockingImportService.importWorkflows(
+				[existing],
+				ownerPersonalProject.id,
+				owner.id,
+				{},
+			);
+
+			const dbWorkflow = await getWorkflowById(existing.id);
+			expect(dbWorkflow?.nodes).toEqual([deprecatedNode]);
 		});
 	});
 });

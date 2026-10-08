@@ -883,11 +883,13 @@ describe('POST /workflows', () => {
 
 	describe('deprecated nodes', () => {
 		const nodesConfig = Container.get(NodesConfig);
+		let previousBlockDeprecated: boolean;
 		beforeAll(() => {
+			previousBlockDeprecated = nodesConfig.blockDeprecated;
 			nodesConfig.blockDeprecated = true;
 		});
 		afterAll(() => {
-			nodesConfig.blockDeprecated = false;
+			nodesConfig.blockDeprecated = previousBlockDeprecated;
 		});
 
 		const deprecatedNode: INode = {
@@ -4047,11 +4049,13 @@ describe('PATCH /workflows/:workflowId', () => {
 
 	describe('deprecated nodes', () => {
 		const nodesConfig = Container.get(NodesConfig);
+		let previousBlockDeprecated: boolean;
 		beforeAll(() => {
+			previousBlockDeprecated = nodesConfig.blockDeprecated;
 			nodesConfig.blockDeprecated = true;
 		});
 		afterAll(() => {
-			nodesConfig.blockDeprecated = false;
+			nodesConfig.blockDeprecated = previousBlockDeprecated;
 		});
 
 		const buildDeprecatedNode = (overrides: Partial<INode> = {}): INode => ({
@@ -4102,13 +4106,27 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(response.statusCode).toBe(400);
 		});
 
-		test('allows a no-op save when the workflow still contains a deprecated node', async () => {
+		test('allows editing other nodes while a deprecated node stays unchanged', async () => {
+			const deprecated = buildDeprecatedNode();
+			const cleanNode = buildCleanNode();
+			const workflow = await createWorkflow({ nodes: [deprecated, cleanNode] }, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [deprecated, { ...cleanNode, notes: 'edited' }],
+				connections: workflow.connections,
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('allows moving a deprecated node on the canvas', async () => {
 			const deprecated = buildDeprecatedNode();
 			const workflow = await createWorkflow({ nodes: [deprecated] }, owner);
 
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
 				versionId: workflow.versionId,
-				nodes: [deprecated],
+				nodes: [{ ...deprecated, position: [400, 200] }],
 				connections: workflow.connections,
 			});
 

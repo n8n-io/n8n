@@ -10,7 +10,7 @@ import {
 	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, NodesConfig } from '@n8n/config';
 import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
@@ -4392,5 +4392,52 @@ return [{ json: result }];
 		expect(retrievedUpdatedNode.parameters.jsCode).toBe(updatedCode);
 		expect(retrievedUpdatedNode.parameters.mode).toBe('runOnceForEachItem');
 		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
+	});
+});
+
+describe('deprecated nodes', () => {
+	const nodesConfig = Container.get(NodesConfig);
+	let previousBlockDeprecated: boolean;
+	beforeAll(() => {
+		previousBlockDeprecated = nodesConfig.blockDeprecated;
+		nodesConfig.blockDeprecated = true;
+	});
+	afterAll(() => {
+		nodesConfig.blockDeprecated = previousBlockDeprecated;
+	});
+
+	const deprecatedNode: INode = {
+		id: uuid(),
+		name: 'Function',
+		type: 'n8n-nodes-base.function',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: { functionCode: 'return items;' },
+	};
+
+	test('POST /workflows rejects a workflow with a deprecated node', async () => {
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'has deprecated',
+			nodes: [deprecatedNode],
+			connections: {},
+			settings: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
+	});
+
+	test('PUT /workflows/:id rejects editing a deprecated node', async () => {
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [{ ...deprecatedNode, parameters: { functionCode: 'return [];' } }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
 	});
 });
