@@ -3,6 +3,7 @@ import { DataTableModule } from '@/features/core/dataTable/module.descriptor';
 import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
+import { LinkedInstancesModule } from '@/features/linkedInstances/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
 import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descriptor';
 import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
@@ -33,6 +34,7 @@ export const modules: FrontendModuleDescription[] = [
 	MCPModule,
 	ChatModule,
 	InstanceAiModule,
+	LinkedInstancesModule,
 	AgentsModule,
 	OtelModule,
 	WorkflowReviewsModule,
