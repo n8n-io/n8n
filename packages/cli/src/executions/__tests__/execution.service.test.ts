@@ -396,6 +396,19 @@ describe('ExecutionService', () => {
 		const erroredRun = (error: boolean) =>
 			[{ error: error ? new Error('boom') : undefined }] as unknown as ITaskData[];
 
+		it('should mark the retry as awaited to completion', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs());
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ callerAwaitsOutcome: 'completion' }),
+			);
+		});
+
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
 			const { service, workflowRunner } = buildRetryService();
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(

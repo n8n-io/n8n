@@ -3794,8 +3794,8 @@ export interface IWorkflowExecutionDataProcess {
 	 * not park such a run at shutdown.
 	 * - `'response'`: a webhook caller is owed a response; satisfied once the run
 	 *   relays one.
-	 * - `'completion'`: a trigger node's done promise (Kafka, RabbitMQ, MQTT) or
-	 *   an Instance AI run awaits the end of the run; never satisfied early.
+	 * - `'completion'`: a trigger node's done promise (Kafka, RabbitMQ, MQTT), an
+	 *   Instance AI run or a retry awaits the end of the run; never satisfied early.
 	 * - `'none'`: nothing waits, the run may be parked.
 	 * Absent (older main): treated as `'completion'`, the strictest reading.
 	 */
