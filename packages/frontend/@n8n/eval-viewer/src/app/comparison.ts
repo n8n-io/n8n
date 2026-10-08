@@ -212,7 +212,7 @@ export function comparisonRows(
 export function deltaText(row: MetricRow, base: number | null, value: number | null): string {
 	if (base === null || value === null) return DASH;
 	const delta = value - base;
-	if (row.isRate) return formatSigned(delta * 100, (points) => `${formatNumber(points, 0)} pp`);
+	if (row.isRate) return formatSigned(delta * 100, (points) => `${formatNumber(points, 0)}%`);
 	const percent =
 		base !== 0 ? ` (${formatSigned((delta / base) * 100, (p) => `${formatNumber(p, 0)}%`)})` : '';
 	return `${formatSigned(delta, row.format)}${percent}`;

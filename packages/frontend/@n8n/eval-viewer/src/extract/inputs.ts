@@ -36,6 +36,8 @@ export const resultScenarioRunSchema = z.object({
 export const testCaseSchema = z.object({
 	name: z.string(),
 	testCaseFile: z.string().nullish(),
+	title: z.string().nullish(),
+	tags: z.array(z.string()).nullish(),
 	threadIds: z.array(z.string().nullable()).nullish(),
 	transcriptPerRun: z.array(z.array(transcriptTurnSchema).nullable()).nullish(),
 	buildErrorPerRun: z.array(z.string().nullable()).nullish(),

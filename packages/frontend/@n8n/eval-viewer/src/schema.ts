@@ -118,7 +118,12 @@ export const iterationSummarySchema = z.object({
 export type IterationSummary = z.infer<typeof iterationSummarySchema>;
 
 export const armCaseSchema = z.object({
+	/** The slug (test case file). Views use it as the case id. */
 	name: z.string(),
+	title: z.string(),
+	/** The first user message of the first build. */
+	prompt: z.string().nullable(),
+	tags: z.array(z.string()),
 	totals: buildTotalsSchema.nullable(),
 	iterations: z.array(iterationSummarySchema),
 });

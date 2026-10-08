@@ -1,35 +1,112 @@
 <script setup lang="ts">
-import { N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCollapsiblePanel,
+	N8nHeading,
+	N8nIcon,
+	N8nTableBase,
+	N8nText,
+} from '@n8n/design-system';
+import { computed, onMounted, ref } from 'vue';
 
-import { armCase, iterationPassed, summarizeFirstBuilds, sumToolStats } from '../../metrics';
-import type { ViewerIndex } from '../../schema';
+import {
+	armCase,
+	attemptTotals,
+	caseOf,
+	failedChecks,
+	iterationPassed,
+	summarizeFirstBuilds,
+	typicalBuild,
+} from '../../metrics';
+import type { IterationSummary, ViewerIndex } from '../../schema';
 import { armColorVar } from '../colors';
 import { comparisonRows } from '../comparison';
-import { formatCost, formatNumber, formatSeconds, formatTokens } from '../format';
-import type { Selection } from '../selection';
+import { countVariant, formatCost, formatSeconds } from '../format';
+import type { CaseSelection, CompareTab, Selection } from '../selection';
 import ArmMetricsTable from './ArmMetricsTable.vue';
+import BuildCompare from './BuildCompare.vue';
 import MetricBars from './MetricBars.vue';
-import ToolDonut, { type ToolMode } from './ToolDonut.vue';
-import ToolModeControl from './ToolModeControl.vue';
+import PageHeader from './PageHeader.vue';
 
-const props = defineProps<{ index: ViewerIndex; caseName: string }>();
+const props = defineProps<{ index: ViewerIndex; selection: CaseSelection }>();
 const emit = defineEmits<{ select: [selection: Selection] }>();
 
 const BAR_METRICS = [
 	'scenarios',
+	'expectations',
+	'median.cost',
 	'median.wallSeconds',
 	'median.inputTokens',
-	'median.cost',
 	'median.toolCalls',
-	'median.buildCalls',
-	'median.tscErrors',
-	'fb.oneShot',
-	'fb.firstTryCorrect',
 ];
 
-const toolMode = ref<ToolMode>('calls');
-const entries = computed(() => props.index.arms.map((arm) => armCase(arm, props.caseName)));
+const showMetrics = ref(false);
+const promptOpen = ref(false);
+const promptClamped = ref(false);
+const promptBox = ref<HTMLElement>();
+const compareSection = ref<HTMLElement>();
+onMounted(() => {
+	const box = promptBox.value;
+	promptClamped.value = box !== undefined && box.scrollHeight > box.clientHeight;
+});
+
+const caseName = computed(() => props.selection.caseName);
+const info = computed(() => caseOf(props.index.arms, caseName.value));
+const title = computed(() => info.value?.title ?? caseName.value);
+const crumbs = computed(
+	(): Array<{ label: string; selection: Selection }> => [
+		{ label: 'Summary', selection: { kind: 'summary' } },
+		{ label: title.value, selection: { kind: 'case', caseName: caseName.value } },
+	],
+);
+const entries = computed(() => props.index.arms.map((arm) => armCase(arm, caseName.value)));
+const attemptsByArm = computed(() => entries.value.map((entry) => entry?.iterations ?? []));
+const attempts = computed(() => attemptsByArm.value.flat());
+
+const typicalOf = (candidates: IterationSummary[]) =>
+	typicalBuild(candidates, { passingOnly: true }) ??
+	typicalBuild(candidates, { passingOnly: false });
+const typicalIds = computed(() =>
+	attemptsByArm.value.flatMap((armAttempts) => typicalOf(armAttempts)?.id ?? []),
+);
+
+/**
+ * Column A shows the typical attempt of the first arm, column B that of the second arm. With one
+ * arm, B shows a typical attempt with the other verdict, so a pass sits next to a fail.
+ */
+const defaultIds = computed((): Array<string | undefined> => {
+	const [first, second] = typicalIds.value;
+	if (second) return [first, second];
+	const left = attempts.value.find((entry) => entry.id === first);
+	const others = attempts.value.filter((entry) => entry.id !== first);
+	const contrast = others.filter(
+		(entry) => left && iterationPassed(entry) !== iterationPassed(left),
+	);
+	return [first, (typicalOf(contrast) ?? typicalOf(others))?.id];
+});
+const compareIds = computed({
+	get: () => [
+		props.selection.left ?? defaultIds.value[0],
+		props.selection.right ?? defaultIds.value[1],
+	],
+	set: ([left, right]) => emit('select', { ...props.selection, left, right }),
+});
+const compareTab = computed({
+	get: (): CompareTab => props.selection.tab ?? 'trace',
+	set: (tab) => emit('select', { ...props.selection, tab }),
+});
+function showInColumnA(id: string) {
+	compareIds.value = [id, compareIds.value[1]];
+	compareSection.value?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+const columnOf = (id: string) =>
+	compareIds.value[0] === id ? 'A' : compareIds.value[1] === id ? 'B' : null;
+
+const armTotals = computed(() => attemptsByArm.value.map(attemptTotals));
+const gradeCount = (iteration: IterationSummary) =>
+	iteration.scenarios.length + iteration.expectations.length;
+
 const armNames = computed(() => props.index.arms.map((arm) => arm.name));
 const rows = computed(() =>
 	comparisonRows(
@@ -40,126 +117,154 @@ const rows = computed(() =>
 	),
 );
 const barRows = computed(() =>
-	BAR_METRICS.flatMap((id) => rows.value.filter((row) => row.id === id)),
-);
-const toolStats = computed(() =>
-	entries.value.map((entry) =>
-		sumToolStats((entry?.iterations ?? []).map((iteration) => iteration.toolStats)),
+	BAR_METRICS.flatMap((id) =>
+		rows.value.filter((row) => row.id === id && row.values.some((value) => value !== null)),
 	),
 );
 </script>
 
 <template>
 	<div :class="$style.view" data-test-id="case-view">
-		<header>
-			<N8nText size="small" color="text-light">Case</N8nText>
-			<N8nHeading tag="h1" size="xlarge">{{ caseName }}</N8nHeading>
-		</header>
+		<PageHeader :crumbs="crumbs" :title="title">
+			<template #meta>
+				<N8nText size="small" color="text-light">{{ caseName }}</N8nText>
+				<N8nBadge v-for="tag in info?.tags ?? []" :key="tag" variant="subtle">{{ tag }}</N8nBadge>
+			</template>
+			<template v-if="info?.prompt" #description>
+				<div>
+					<div ref="promptBox" :class="[$style.prompt, !promptOpen && $style.clamped]">
+						<N8nText>{{ info.prompt }}</N8nText>
+					</div>
+					<N8nButton
+						v-if="promptClamped"
+						variant="ghost"
+						size="small"
+						@click="promptOpen = !promptOpen"
+					>
+						{{ promptOpen ? 'Show less' : 'Show the full prompt' }}
+					</N8nButton>
+				</div>
+			</template>
+			<template #verdicts>
+				<span
+					v-for="(totals, armIndex) in armTotals"
+					:key="armIndex"
+					:class="$style.line"
+					:data-test-id="`case-arm-${armIndex}`"
+				>
+					<span :class="$style.dot" :style="{ backgroundColor: `var(${armColorVar(armIndex)})` }" />
+					<N8nText size="small" bold>{{ index.arms[armIndex].name }}</N8nText>
+					<N8nBadge :variant="countVariant(totals.passed, totals.attempts)">
+						{{ totals.passed }}/{{ totals.attempts }}
+					</N8nBadge>
+					<N8nText size="small" color="text-light">
+						{{ formatCost(totals.medianCost) }} · {{ formatSeconds(totals.medianTime) }}
+					</N8nText>
+				</span>
+				<N8nText size="xsmall" color="text-light">
+					attempts that passed every scenario and expectation · median cost and time
+				</N8nText>
+			</template>
+		</PageHeader>
 
 		<section :class="$style.section">
-			<N8nHeading tag="h2" size="large">Arm comparison</N8nHeading>
-			<MetricBars :arm-names="armNames" :rows="barRows" />
-		</section>
-
-		<section :class="$style.section">
-			<N8nHeading tag="h2" size="large">Tools over the case</N8nHeading>
-			<ToolModeControl v-model="toolMode" />
-			<div :class="$style.donuts">
-				<ToolDonut
-					v-for="(arm, armIndex) in index.arms"
-					:key="arm.path"
-					:stats="toolStats[armIndex]"
-					:mode="toolMode"
-					:title="arm.name"
-				/>
-			</div>
-		</section>
-
-		<section :class="$style.section">
-			<N8nHeading tag="h2" size="large">Iterations</N8nHeading>
-			<table :class="$style.table">
+			<N8nHeading tag="h2" size="large">Attempts</N8nHeading>
+			<N8nText size="small" color="text-light">Select a row to show it in column A.</N8nText>
+			<N8nTableBase>
 				<thead>
 					<tr>
-						<th scope="col"><N8nText size="small" bold>Arm</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>Iteration</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>Scenarios</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>Time</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>Input tokens</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>Cost</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>Tool calls</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>Build calls (failed)</N8nText></th>
-						<th scope="col"><N8nText size="small" bold>One-shot</N8nText></th>
+						<th scope="col">Attempt</th>
+						<th scope="col">Passed</th>
+						<th scope="col">Why it failed (judge)</th>
+						<th scope="col">Time</th>
+						<th scope="col">Cost</th>
 					</tr>
 				</thead>
 				<tbody>
-					<template v-for="(entry, armIndex) in entries" :key="armIndex">
-						<tr
-							v-for="iteration in entry?.iterations ?? []"
-							:key="iteration.id"
-							:class="$style.clickable"
-							tabindex="0"
-							:data-test-id="`case-iteration-${iteration.id}`"
-							@click="emit('select', { kind: 'iteration', id: iteration.id, tab: 'transcript' })"
-							@keydown.enter="
-								emit('select', { kind: 'iteration', id: iteration.id, tab: 'transcript' })
-							"
-						>
-							<td>
-								<span
-									:class="$style.dot"
-									:style="{ backgroundColor: `var(${armColorVar(armIndex)})` }"
-								/>
-								<N8nText size="small">{{ index.arms[armIndex].name }}</N8nText>
-							</td>
-							<td>
+					<tr
+						v-for="iteration in attempts"
+						:key="iteration.id"
+						:class="[$style.clickable, columnOf(iteration.id) && $style.inCompare]"
+						tabindex="0"
+						:data-test-id="`case-attempt-${iteration.id}`"
+						@click="showInColumnA(iteration.id)"
+						@keydown.enter="showInColumnA(iteration.id)"
+					>
+						<td :class="$style.nowrap">
+							<span :class="$style.attempt">
 								<N8nIcon
 									v-if="iterationPassed(iteration) !== null"
 									:icon="iterationPassed(iteration) ? 'check' : 'x'"
 									:color="iterationPassed(iteration) ? 'success' : 'danger'"
 									size="small"
 								/>
-								<N8nText size="small"> {{ iteration.index + 1 }} </N8nText>
-								<N8nText size="xsmall" color="text-light">{{ iteration.sub }}</N8nText>
-							</td>
-							<td>
+								<span
+									:class="$style.dot"
+									:style="{ backgroundColor: `var(${armColorVar(iteration.arm)})` }"
+								/>
 								<N8nText size="small">
-									{{ iteration.scenarios.filter((run) => run.passed).length }}/{{
-										iteration.scenarios.length
-									}}
+									{{ index.arms[iteration.arm].name }} · attempt {{ iteration.index + 1 }}
 								</N8nText>
-							</td>
-							<td>
-								<N8nText size="small">{{ formatSeconds(iteration.metrics?.wallSeconds) }}</N8nText>
-							</td>
-							<td>
-								<N8nText size="small">{{ formatTokens(iteration.metrics?.inputTokens) }}</N8nText>
-							</td>
-							<td>
-								<N8nText size="small">{{ formatCost(iteration.metrics?.cost) }}</N8nText>
-							</td>
-							<td>
-								<N8nText size="small">{{ formatNumber(iteration.metrics?.toolCalls) }}</N8nText>
-							</td>
-							<td>
-								<N8nText size="small">
-									{{ formatNumber(iteration.metrics?.buildCalls) }} ({{
-										formatNumber(iteration.metrics?.buildFailed)
-									}})
+								<N8nBadge v-if="columnOf(iteration.id)" variant="subtle">
+									{{ columnOf(iteration.id) }}
+								</N8nBadge>
+							</span>
+						</td>
+						<td>
+							<N8nBadge
+								:variant="
+									countVariant(
+										gradeCount(iteration) - failedChecks(iteration).length,
+										gradeCount(iteration),
+									)
+								"
+							>
+								{{ gradeCount(iteration) - failedChecks(iteration).length }}/{{
+									gradeCount(iteration)
+								}}
+							</N8nBadge>
+						</td>
+						<td :class="$style.wrap">
+							<N8nText v-if="iteration.buildError" tag="div" size="small" color="danger">
+								{{ iteration.buildError }}
+							</N8nText>
+							<div v-for="(check, i) in failedChecks(iteration)" :key="i" :class="$style.clamped">
+								<N8nText size="small" bold>{{ check.label }}</N8nText>
+								<N8nText v-if="check.reason" size="small" color="text-light">
+									— {{ check.reason }}
 								</N8nText>
-							</td>
-							<td>
-								<N8nText size="small">{{ iteration.firstBuild.oneShot ? 'yes' : 'no' }}</N8nText>
-							</td>
-						</tr>
-					</template>
+							</div>
+						</td>
+						<td :class="$style.nowrap">
+							<N8nText size="small">{{ formatSeconds(iteration.metrics?.wallSeconds) }}</N8nText>
+						</td>
+						<td :class="$style.nowrap">
+							<N8nText size="small">{{ formatCost(iteration.metrics?.cost) }}</N8nText>
+						</td>
+					</tr>
 				</tbody>
-			</table>
+			</N8nTableBase>
 		</section>
 
-		<section :class="$style.section">
-			<N8nHeading tag="h2" size="large">All metrics</N8nHeading>
-			<ArmMetricsTable :arm-names="armNames" :rows="rows" />
+		<section ref="compareSection" :class="$style.section" data-test-id="case-compare">
+			<N8nHeading tag="h2" size="large">Compare</N8nHeading>
+			<BuildCompare
+				v-model:ids="compareIds"
+				v-model:tab="compareTab"
+				:index="index"
+				:attempts="attempts"
+				:typical-ids="typicalIds"
+			/>
 		</section>
+
+		<div>
+			<N8nCollapsiblePanel v-model="showMetrics" title="Arm metrics">
+				<div :class="$style.section">
+					<MetricBars :arm-names="armNames" :rows="barRows" />
+					<ArmMetricsTable :arm-names="armNames" :rows="rows" />
+				</div>
+			</N8nCollapsiblePanel>
+		</div>
 	</div>
 </template>
 
@@ -173,26 +278,33 @@ const toolStats = computed(() =>
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
+	scroll-margin-top: var(--spacing--md);
 }
 
-.donuts {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(var(--spacing--5xl), 1fr));
-	gap: var(--spacing--lg);
+.line,
+.attempt {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
-.table {
-	border-collapse: collapse;
-	width: 100%;
+.prompt {
+	white-space: pre-wrap;
 }
 
-.table th,
-.table td {
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-bottom: var(--border);
-	text-align: left;
-	font-variant-numeric: tabular-nums;
+.clamped {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+}
+
+.wrap {
+	white-space: normal;
+}
+
+.nowrap {
 	white-space: nowrap;
 }
 
@@ -200,17 +312,14 @@ const toolStats = computed(() =>
 	cursor: pointer;
 }
 
-@media (hover: hover) {
-	.clickable:hover {
-		background-color: var(--background--hover);
-	}
+.inCompare > td {
+	background-color: var(--background--active);
 }
 
 .dot {
 	display: inline-block;
 	width: var(--spacing--3xs);
 	height: var(--spacing--3xs);
-	margin-right: var(--spacing--4xs);
 	border-radius: var(--radius--full);
 }
 </style>

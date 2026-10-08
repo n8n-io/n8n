@@ -9,7 +9,7 @@ import ValueBlock from './ValueBlock.vue';
 
 type ToolItem = Extract<TranscriptItem, { kind: 'tool' }>;
 
-const props = defineProps<{ item: ToolItem; open: boolean; highlighted: boolean }>();
+const props = defineProps<{ item: ToolItem; open: boolean }>();
 const toolColor = useToolColor();
 
 const isOpen = ref(props.open);
@@ -33,11 +33,7 @@ const resultSize = computed(() =>
 </script>
 
 <template>
-	<div
-		:class="[$style.card, highlighted && $style.highlighted]"
-		:data-item-id="item.id"
-		:data-test-id="`tool-call-${item.tool}`"
-	>
+	<div :class="$style.card" :data-test-id="`tool-call-${item.tool}`">
 		<button type="button" :class="$style.header" :aria-expanded="isOpen" @click="isOpen = !isOpen">
 			<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
 			<N8nIcon
@@ -67,10 +63,6 @@ const resultSize = computed(() =>
 	border: var(--border);
 	border-radius: var(--radius--md);
 	background-color: var(--background--surface);
-}
-
-.highlighted {
-	outline: var(--spacing--5xs) solid var(--border-color--info);
 }
 
 .header {

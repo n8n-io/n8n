@@ -1,58 +1,50 @@
-/** The selected tree node, kept in the URL hash so reload and back work. */
+/** The selected page, kept in the URL hash so reload, back and shared links work. */
 import { onBeforeUnmount, ref } from 'vue';
 
-export type IterationTab =
-	| 'transcript'
-	| 'trace'
-	| 'timeline'
-	| 'sunburst'
-	| 'tools'
-	| 'scenarios'
-	| 'workflow';
+export type CompareTab = 'trace' | 'outcome' | 'transcript' | 'workflow';
 
-export const ITERATION_TABS: IterationTab[] = [
-	'transcript',
-	'trace',
-	'timeline',
-	'sunburst',
-	'tools',
-	'scenarios',
-	'workflow',
-];
+export const COMPARE_TABS: CompareTab[] = ['trace', 'outcome', 'transcript', 'workflow'];
 
-export type Selection =
-	| { kind: 'summary' }
-	| { kind: 'case'; caseName: string }
-	| { kind: 'iteration'; id: string; tab: IterationTab }
-	| { kind: 'scenario'; id: string; scenario: number };
+/** A case page compares two attempts. Unset ids fall back to the typical attempts. */
+export interface CaseSelection {
+	kind: 'case';
+	caseName: string;
+	left?: string;
+	right?: string;
+	tab?: CompareTab;
+}
 
-const isTab = (value: string | undefined): value is IterationTab =>
-	ITERATION_TABS.some((tab) => tab === value);
+export type Selection = { kind: 'summary' } | CaseSelection;
+
+const isTab = (value: string | undefined): value is CompareTab =>
+	COMPARE_TABS.some((tab) => tab === value);
 
 export function parseHash(hash: string): Selection {
-	const [kind, first, second] = hash
+	const [kind, caseName, left, right, tab] = hash
 		.replace(/^#\/?/, '')
 		.split('/')
 		.map((part) => decodeURIComponent(part));
-	if (kind === 'case' && first) return { kind: 'case', caseName: first };
-	if (kind === 'iteration' && first) {
-		return { kind: 'iteration', id: first, tab: isTab(second) ? second : 'transcript' };
-	}
-	if (kind === 'scenario' && first) {
-		return { kind: 'scenario', id: first, scenario: Number(second ?? 0) || 0 };
-	}
-	return { kind: 'summary' };
+	if (kind !== 'case' || !caseName) return { kind: 'summary' };
+	return {
+		kind: 'case',
+		caseName,
+		left: left || undefined,
+		right: right || undefined,
+		tab: isTab(tab) ? tab : undefined,
+	};
 }
 
 export function toHash(selection: Selection): string {
 	const parts =
 		selection.kind === 'case'
-			? ['case', selection.caseName]
-			: selection.kind === 'iteration'
-				? ['iteration', selection.id, selection.tab]
-				: selection.kind === 'scenario'
-					? ['scenario', selection.id, String(selection.scenario)]
-					: [];
+			? [
+					'case',
+					selection.caseName,
+					...(selection.left || selection.right || selection.tab
+						? [selection.left ?? '', selection.right ?? '', selection.tab ?? '']
+						: []),
+				]
+			: [];
 	return `#/${parts.map((part) => encodeURIComponent(part)).join('/')}`;
 }
 

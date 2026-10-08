@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { scenarioTitle, slugToSentence } from './scenario-title';
+import { caseTitle, scenarioTitle, slugToSentence } from './scenario-title';
 
 describe('slugToSentence', () => {
 	it.each([
@@ -26,5 +26,18 @@ describe('scenarioTitle', () => {
 	it('falls back to the slug as a sentence', () => {
 		expect(scenarioTitle('three-orders-three-runs', '')).toBe('Three orders, three runs');
 		expect(scenarioTitle('three-orders-three-runs', null)).toBe('Three orders, three runs');
+	});
+});
+
+describe('caseTitle', () => {
+	it('uses the harness title when there is one', () => {
+		expect(caseTitle('nc-ab-http-retry', ' Retry failed HTTP calls ')).toBe(
+			'Retry failed HTTP calls',
+		);
+	});
+
+	it('falls back to the slug as a sentence without the nc- prefix and the holdout tag', () => {
+		expect(caseTitle('nc-ab-holdout-github-bugs-to-slack', null)).toBe('Ab github bugs to slack');
+		expect(caseTitle('loop-chunked-bulk-api', '')).toBe('Loop chunked bulk API');
 	});
 });

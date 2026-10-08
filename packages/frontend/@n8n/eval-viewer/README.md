@@ -35,6 +35,16 @@ The app is a prebuilt Vite app plus JSON data, served by a small `node:http` ser
 file would have to embed all transcripts. The server also gives the "Raw LLM debug page" link
 without a copy of the 68 MB page: it serves only the debug pages that the extractor listed.
 
+## Pages
+
+- **Summary**: each arm over the cases that every arm ran, and one row per case. The unit is
+  attempts passed: an attempt passes when every scenario and expectation passes. Colour marks a
+  change against the first arm of at least one attempt, or 10% in median cost or time. "All
+  metrics" shows `summary.json` as `compare.py` prints it, over all cases of each run.
+- **Case**: the prompt, the attempts with the judge's reasons, and two attempts side by side
+  (Trace, Outcome, Transcript, Workflow). Both traces use one time scale. The hash
+  `#/case/<slug>/<A>/<B>/<tab>` keeps the comparison, so a link opens the same view.
+
 ## Data sources
 
 Per run folder (a pool folder holds symlinks to sub-folders of several runs):
@@ -48,7 +58,8 @@ Per run folder (a pool folder holds symlinks to sub-folders of several runs):
 
 Matching rules:
 
-- An iteration is one entry of `transcriptPerRun`. Its thread is `threadIds[i]`.
+- An iteration is one entry of `transcriptPerRun`. Its thread is `threadIds[i]`. The UI calls it
+  an attempt: one build of the case by the agent.
 - Scenario rows match an iteration by thread id. Rows without a thread id match by case and
   `_iteration`.
 - Metrics match by thread id in `summary.json`.
@@ -65,9 +76,8 @@ Run `summarize.py` on it first.
 The harness records no tool execution time (`performance.toolExecutionMs` is empty). The viewer
 derives a tool window: the gap between the end of a model step (timestamp plus step time) and the
 start of the next step of the same run. The window holds the tool run and harness overhead. When
-one step made several calls, they share the window. The tool donut and the sunburst split it
-evenly. A tool call in the last step of a run has no window. The UI labels all of these values as
-derived.
+one step made several calls, they share the window. The tool stats (`toolStats`) split it evenly.
+A tool call in the last step of a run has no window. The UI labels all of these values as derived.
 
 Tokens per tool are also derived: a tool gets the input and output tokens of the model step that
 called it, split evenly between the calls of that step.
@@ -79,7 +89,7 @@ called it, split evenly between the calls of that step.
 - `index.json` (`ViewerIndex`): arms (one per run folder) with totals from `summary.json`, cases,
   and iteration summaries (metrics, first-build facts, scenario runs, expectations, tool stats).
 - `iterations/<id>.json` (`IterationDetail`): turns with transcript items and model steps, and the
-  final workflow JSON. The app loads one file when you open an iteration.
+  final workflow JSON. The app loads one file when a compare column shows the attempt.
 
 ## Develop
 

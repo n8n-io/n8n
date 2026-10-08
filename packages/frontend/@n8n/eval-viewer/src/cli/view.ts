@@ -120,9 +120,20 @@ async function extract(options: Options, out: string) {
 	return rawFiles;
 }
 
+/** Null for a malformed escape, which would otherwise throw in the request handler. */
+function safeDecode(value: string): string | null {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return null;
+	}
+}
+
 /** Resolves `relative` inside `base`, or null when it would leave `base`. */
 function inside(base: string, relative: string): string | null {
-	const path = normalize(join(base, decodeURIComponent(relative)));
+	const decoded = safeDecode(relative);
+	if (decoded === null) return null;
+	const path = normalize(join(base, decoded));
 	return path === base || path.startsWith(base + sep) ? path : null;
 }
 
@@ -131,7 +142,7 @@ function serve(out: string, rawFiles: Record<string, string>, port: number) {
 		const url = new URL(request.url ?? '/', 'http://localhost');
 		const rawId = url.pathname.startsWith('/raw/') ? url.pathname.slice('/raw/'.length) : null;
 		const path = rawId
-			? (rawFiles[decodeURIComponent(rawId)] ?? null)
+			? (rawFiles[safeDecode(rawId) ?? ''] ?? null)
 			: url.pathname.startsWith('/data/')
 				? inside(out, url.pathname.slice('/data/'.length))
 				: inside(DIST_DIR, url.pathname === '/' ? 'index.html' : url.pathname.slice(1));

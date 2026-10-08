@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ModelStep } from '../schema';
 import { MODEL_TIME_KEY, TEXT_ANSWER_KEY } from '../schema';
-import { rowsOfIteration, scenarioRunOf, toolStatsOf, turnsOf } from './extract';
+import { caseInfoOf, rowsOfIteration, scenarioRunOf, toolStatsOf, turnsOf } from './extract';
 import { firstBuildOf, scenarioPassesByWorkflow } from './first-build';
 import type { EvalRow, TestCase, TranscriptTurn } from './inputs';
 
@@ -70,6 +70,42 @@ describe('scenarioRunOf', () => {
 			failureCategory: 'builder_issue',
 			rootCause: 'The Code node drops items.',
 			execErrors: [{ message: 'boom' }],
+		});
+	});
+});
+
+describe('caseInfoOf', () => {
+	const transcriptPerRun: TestCase['transcriptPerRun'] = [
+		[
+			{ userMessage: 'Build a digest', steps: [] },
+			{ userMessage: 'Now add Slack', steps: [] },
+		],
+		[{ userMessage: 'Other build', steps: [] }],
+	];
+
+	it('takes the title and tags of the harness and the first user message as the prompt', () => {
+		expect(
+			caseInfoOf({
+				name: 'Build a digest',
+				testCaseFile: 'nc-ab-holdout-digest',
+				title: 'Weekly digest',
+				tags: ['loop'],
+				transcriptPerRun,
+			}),
+		).toEqual({
+			name: 'nc-ab-holdout-digest',
+			title: 'Weekly digest',
+			prompt: 'Build a digest',
+			tags: ['loop'],
+		});
+	});
+
+	it('derives the title and the holdout tag from the slug for older runs', () => {
+		expect(caseInfoOf({ name: 'Build a digest', testCaseFile: 'nc-ab-holdout-digest' })).toEqual({
+			name: 'nc-ab-holdout-digest',
+			title: 'Ab digest',
+			prompt: null,
+			tags: ['holdout'],
 		});
 	});
 });

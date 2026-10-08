@@ -1,4 +1,4 @@
-/** Spans for the trace, timeline and sunburst views, from the model steps of each turn. */
+/** Spans for the trace view, from the model steps of each turn. */
 import type { Turn, Usage } from '../schema';
 
 export interface Span {
@@ -13,8 +13,8 @@ export interface Span {
 	/** True when the duration is derived from the gap between model steps. */
 	derived: boolean;
 	usage: Usage | null;
-	/** Transcript item to open: a tool call id or `turn-<n>`. */
-	focus: string;
+	/** The tool call id of a tool span, to find its transcript item. */
+	callId: string | null;
 }
 
 export interface Trace {
@@ -39,7 +39,7 @@ export function buildTrace(turns: Turn[]): Trace {
 					end: step.toolWindowMs === null ? null : modelEnd + step.toolWindowMs,
 					derived: true,
 					usage: null,
-					focus: call.id,
+					callId: call.id,
 				}),
 			);
 			const model: Span = {
@@ -52,7 +52,7 @@ export function buildTrace(turns: Turn[]): Trace {
 				end: modelEnd,
 				derived: false,
 				usage: step.usage,
-				focus: step.toolCalls[0]?.id ?? `turn-${turnIndex}`,
+				callId: null,
 			};
 			return [model, ...toolSpans];
 		});
@@ -68,7 +68,7 @@ export function buildTrace(turns: Turn[]): Trace {
 			end,
 			derived: false,
 			usage: null,
-			focus: `turn-${turnIndex}`,
+			callId: null,
 		};
 		return [turnSpan, ...stepSpans];
 	});
@@ -80,13 +80,13 @@ export function buildTrace(turns: Turn[]): Trace {
 		id: 'iteration',
 		depth: 0,
 		kind: 'iteration',
-		label: 'iteration',
+		label: 'attempt',
 		tool: null,
 		start,
 		end,
 		derived: false,
 		usage: null,
-		focus: 'turn-0',
+		callId: null,
 	};
 	return { spans: [iteration, ...turnSpans], start, end };
 }

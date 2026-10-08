@@ -58,6 +58,19 @@ export function slugToSentence(slug: string): string {
 	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+export const HOLDOUT_TAG = 'holdout';
+
+/** The human-readable case title: the harness title, else the slug as a sentence. The holdout tag shows as a tag. */
+export function caseTitle(slug: string, title: string | null | undefined): string {
+	const trimmed = title?.trim();
+	if (trimmed) return trimmed;
+	const words = slug
+		.replace(/^nc-/, '')
+		.split('-')
+		.filter((word) => word !== HOLDOUT_TAG);
+	return slugToSentence(words.join('-'));
+}
+
 /** The human-readable scenario title: its description, else its slug as a sentence. */
 export function scenarioTitle(slug: string, description: string | null | undefined): string {
 	const trimmed = description?.trim();

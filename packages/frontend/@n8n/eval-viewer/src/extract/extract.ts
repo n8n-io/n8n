@@ -34,9 +34,10 @@ import {
 	type SummaryCounts,
 	type SummaryMetrics,
 	type SummaryTrial,
+	type TestCase,
 	type TranscriptTurn,
 } from './inputs';
-import { scenarioTitle } from './scenario-title';
+import { caseTitle, HOLDOUT_TAG, scenarioTitle } from './scenario-title';
 
 export const DEBUG_HTML = 'workflow-eval-llm-debug.html';
 
@@ -117,6 +118,16 @@ export function scenarioRunOf(row: EvalRow): ScenarioRun {
 		rootCause: outputs.rootCause ?? null,
 		execErrors: outputs.execErrors ?? [],
 		workflowId: outputs.workflowId ?? null,
+	};
+}
+
+export function caseInfoOf(testCase: TestCase): Omit<ArmCase, 'totals' | 'iterations'> {
+	const name = testCase.testCaseFile ?? testCase.name;
+	return {
+		name,
+		title: caseTitle(name, testCase.title),
+		prompt: testCase.transcriptPerRun?.[0]?.[0]?.userMessage ?? null,
+		tags: testCase.tags ?? (name.split('-').includes(HOLDOUT_TAG) ? [HOLDOUT_TAG] : []),
 	};
 }
 
@@ -239,6 +250,7 @@ export async function extractArm(
 		),
 	);
 	const iterations: IterationSummary[] = [];
+	const caseInfos = new Map<string, ReturnType<typeof caseInfoOf>>();
 	const details: IterationDetail[] = [];
 	const rawFiles: Record<string, string> = {};
 
@@ -258,7 +270,9 @@ export async function extractArm(
 		if (rawDebugId) rawFiles[rawDebugId] = debugPath;
 
 		for (const testCase of results.testCases) {
-			const caseName = testCase.testCaseFile ?? testCase.name;
+			const info = caseInfoOf(testCase);
+			const caseName = info.name;
+			if (!caseInfos.has(caseName)) caseInfos.set(caseName, info);
 			const passesByWorkflow = scenarioPassesByWorkflow(testCase);
 			(testCase.transcriptPerRun ?? []).forEach((maybeTranscript, index) => {
 				const transcript = maybeTranscript ?? [];
@@ -303,10 +317,12 @@ export async function extractArm(
 	}
 
 	const caseNames = [...new Set(iterations.map((iteration) => iteration.caseName))].sort();
-	const cases: ArmCase[] = caseNames.map((name) => {
+	const cases: ArmCase[] = caseNames.flatMap((name) => {
+		const info = caseInfos.get(name);
+		if (!info) return [];
 		const totals = summary?.cases[name];
 		return {
-			name,
+			...info,
 			totals: totals ? toTotals(totals) : null,
 			iterations: iterations.filter((iteration) => iteration.caseName === name),
 		};

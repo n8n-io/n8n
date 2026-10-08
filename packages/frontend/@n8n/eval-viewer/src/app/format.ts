@@ -1,4 +1,8 @@
 /** Display formatting. Every formatter shows a dash for a missing value. */
+import type { BadgeVariant, TextColor } from '@n8n/design-system';
+
+import type { Direction } from '../metrics';
+
 const DASH = '–';
 
 export function formatNumber(value: number | null | undefined, digits = 0): string {
@@ -36,4 +40,9 @@ export function formatSigned(value: number | null, format: (value: number) => st
 	return `${value > 0 ? '+' : value < 0 ? '−' : '±'}${format(Math.abs(value))}`;
 }
 
-export const formatClock = (epochMs: number) => new Date(epochMs).toLocaleTimeString('en-GB');
+export const countVariant = (pass: number, total: number): BadgeVariant =>
+	total === 0 ? 'subtle' : pass === total ? 'success' : 'danger';
+
+/** Text and icon colour for a change against the baseline. */
+export const directionColor = (value: Direction): TextColor | undefined =>
+	value === 'better' ? 'success' : value === 'worse' ? 'danger' : undefined;

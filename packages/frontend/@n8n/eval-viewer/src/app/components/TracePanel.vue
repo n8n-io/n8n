@@ -1,18 +1,39 @@
 <script setup lang="ts">
-import { N8nText } from '@n8n/design-system';
-import { computed } from 'vue';
+import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { computed, ref } from 'vue';
 
 import type { Turn } from '../../schema';
 import { useToolColor } from '../colors';
 import { formatMs, formatTokens } from '../format';
 import { buildTrace, percentOf, ticks, type Span } from '../trace';
+import ToolCallCard from './ToolCallCard.vue';
 
-const props = defineProps<{ turns: Turn[] }>();
-const emit = defineEmits<{ focus: [item: string] }>();
+/** `durationMs` sets a shared time scale, so traces side by side compare by length. */
+const props = defineProps<{ turns: Turn[]; durationMs?: number }>();
 const toolColor = useToolColor();
 
 const trace = computed(() => buildTrace(props.turns));
-const axis = computed(() => ticks(trace.value.end - trace.value.start));
+const scale = computed(() => ({
+	start: trace.value.start,
+	end: trace.value.start + (props.durationMs ?? trace.value.end - trace.value.start),
+}));
+const axis = computed(() => ticks(scale.value.end - scale.value.start));
+const rows = computed(() => {
+	const toolItems = props.turns.flatMap((turn) =>
+		turn.items.flatMap((item) => (item.kind === 'tool' ? [item] : [])),
+	);
+	return trace.value.spans.map((span) => ({
+		span,
+		item: toolItems.find((item) => item.id === span.callId),
+	}));
+});
+
+const openIds = ref<string[]>([]);
+const toggle = (span: Span) => {
+	openIds.value = openIds.value.includes(span.id)
+		? openIds.value.filter((id) => id !== span.id)
+		: [...openIds.value, span.id];
+};
 
 const KIND_COLORS: Record<Span['kind'], string> = {
 	iteration: '--color--neutral-400',
@@ -30,24 +51,18 @@ function detail(span: Span): string {
 	return `${span.derived && span.end !== null ? `${duration} (derived)` : duration}${usage}`;
 }
 
-const x = (time: number) => `${percentOf(time, trace.value)}%`;
+const x = (time: number) => `${percentOf(time, scale.value)}%`;
 const width = (span: Span) =>
-	`${Math.max(percentOf(span.end ?? span.start, trace.value) - percentOf(span.start, trace.value), 0.2)}%`;
+	`${Math.max(percentOf(span.end ?? span.start, scale.value) - percentOf(span.start, scale.value), 0.2)}%`;
 </script>
 
 <template>
 	<div :class="$style.panel" data-test-id="trace-panel">
 		<N8nText v-if="trace.spans.length === 0" color="text-light">
-			No model steps for this iteration: the run-debug page has no section for its thread.
+			No model steps for this attempt: the run-debug page has no section for its thread.
 		</N8nText>
 		<template v-else>
-			<N8nText size="xsmall" color="text-light">
-				Model step spans use the recorded timestamp and step time. Tool call spans are derived: the
-				gap until the next model step (tool run plus harness overhead); calls of one step share it.
-				Select a span to open its transcript item.
-			</N8nText>
 			<div :class="$style.row">
-				<span />
 				<span />
 				<svg :class="$style.axis" role="presentation">
 					<g v-for="tick in axis" :key="tick">
@@ -56,39 +71,51 @@ const width = (span: Span) =>
 					</g>
 				</svg>
 			</div>
-			<button
-				v-for="span in trace.spans"
-				:key="span.id"
-				type="button"
-				:class="[$style.row, $style.span]"
-				:data-test-id="`trace-${span.kind}`"
-				@click="emit('focus', span.focus)"
-			>
-				<N8nText
-					size="small"
-					:bold="span.kind !== 'tool' && span.kind !== 'model'"
-					:class="$style.label"
-					:style="{ paddingInlineStart: `calc(var(--spacing--sm) * ${span.depth})` }"
+			<template v-for="{ span, item } in rows" :key="span.id">
+				<N8nTooltip
+					:content="`${span.label} · ${detail(span)}`"
+					placement="top-start"
+					:show-after="150"
+					as-child
 				>
-					{{ span.label }}
-				</N8nText>
-				<N8nText size="xsmall" color="text-light" :class="$style.label">{{ detail(span) }}</N8nText>
-				<svg :class="$style.bar" role="img" :aria-label="`${span.label}: ${detail(span)}`">
-					<rect
-						:x="x(span.start)"
-						y="20%"
-						:width="width(span)"
-						height="60%"
-						rx="2"
-						:fill="colorOf(span)"
-						:fill-opacity="span.derived ? 0.55 : 1"
-						:stroke="span.derived ? colorOf(span) : 'none'"
-						:stroke-dasharray="span.derived ? '3 2' : undefined"
+					<button
+						type="button"
+						:class="[$style.row, $style.span]"
+						:aria-disabled="item ? undefined : 'true'"
+						:aria-expanded="item ? openIds.includes(span.id) : undefined"
+						:data-test-id="`trace-${span.kind}`"
+						@click="item && toggle(span)"
 					>
-						<title>{{ span.label }}: {{ detail(span) }}</title>
-					</rect>
-				</svg>
-			</button>
+						<N8nText
+							size="small"
+							:bold="span.kind !== 'tool' && span.kind !== 'model'"
+							:class="$style.label"
+							:style="{ paddingInlineStart: `calc(var(--spacing--sm) * ${span.depth})` }"
+						>
+							{{ span.label }}
+						</N8nText>
+						<svg :class="$style.bar" role="img" :aria-label="`${span.label}: ${detail(span)}`">
+							<rect
+								:x="x(span.start)"
+								y="20%"
+								:width="width(span)"
+								height="60%"
+								rx="2"
+								:fill="colorOf(span)"
+								:fill-opacity="span.derived ? 0.55 : 1"
+								:stroke="span.derived ? colorOf(span) : 'none'"
+								:stroke-dasharray="span.derived ? '3 2' : undefined"
+							></rect>
+						</svg>
+					</button>
+				</N8nTooltip>
+				<ToolCallCard
+					v-if="item && openIds.includes(span.id)"
+					:item="item"
+					open
+					:class="$style.card"
+				/>
+			</template>
 		</template>
 	</div>
 </template>
@@ -102,7 +129,8 @@ const width = (span: Span) =>
 
 .row {
 	display: grid;
-	grid-template-columns: minmax(var(--spacing--4xl), 18%) minmax(var(--spacing--4xl), 22%) 1fr;
+	/* Wide enough for "model step 10 · tool_use" at the deepest indent; the time and tokens are in the tooltip. */
+	grid-template-columns: minmax(calc(var(--spacing--4xl) + var(--spacing--2xl)), 38%) 1fr;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-height: var(--spacing--md);
@@ -119,10 +147,18 @@ const width = (span: Span) =>
 	cursor: pointer;
 }
 
+.span[aria-disabled] {
+	cursor: default;
+}
+
 @media (hover: hover) {
 	.span:hover {
 		background-color: var(--background--hover);
 	}
+}
+
+.card {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs) var(--spacing--lg);
 }
 
 .label {

@@ -36,7 +36,14 @@ const charts = computed(() =>
 				x: {
 					beginAtZero: true,
 					max: row.isRate ? 100 : undefined,
-					ticks: { color: cssColor('--text-color--subtle') },
+					ticks: {
+						color: cssColor('--text-color--subtle'),
+						// Chart.js names this option `callback`.
+						// eslint-disable-next-line id-denylist
+						callback(value) {
+							return row.isRate ? value : row.format(Number(value));
+						},
+					},
 				},
 				y: { ticks: { color: cssColor('--text-color') } },
 			},
