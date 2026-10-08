@@ -1061,11 +1061,13 @@ overrides:
   source-map-js: 1.2.2
   '@grpc/grpc-js@<1.14.5': 1.14.5
   prosemirror-view@<1.42.3: 1.42.3
+  '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
 
 patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
   '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
+  '@icetee/ftp@0.3.15': 19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
   '@langchain/openai@1.4.4': e16bcc93cf9037198faacf494fb81afba6e9abba749dc9a09c3abfb33e68d5c2
   '@lezer/highlight': 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
@@ -24989,9 +24991,6 @@ packages:
     resolution: {integrity: sha512-FxF6+rkr1rNSQrhUNYrAFJpRXNzlDoMxeXN5qI84939ylEv3qqPFKa85Oxr6tDaJKqwW6KKyo2v26TSv3k6LeA==}
     engines: {node: '>=0.6.0'}
 
-  xregexp@2.0.0:
-    resolution: {integrity: sha512-xl/50/Cf32VsGq/1R8jJE5ajH1yMCQkpmoS10QbFZWl2Oor4H0Me64Pu2yxvsRWK3m6soJbmGfzSR7BYmDcWAA==}
-
   xss@1.0.15:
     resolution: {integrity: sha512-FVdlVVC67WOIPvfOwhoMETV72f6GbW7aOabBC3WxN/oUdoEMDyLz4OgRv5/gck2ZeNqEQu+Tb0kloovXOfpYVg==}
     engines: {node: '>= 0.10.0'}
@@ -28552,10 +28551,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@icetee/ftp@0.3.15':
+  '@icetee/ftp@0.3.15(patch_hash=19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9)':
     dependencies:
       readable-stream: 1.1.14
-      xregexp: 2.0.0
+      xregexp: empty-npm-package@1.0.0
 
   '@iconify-json/lucide@1.2.114':
     dependencies:
@@ -41787,7 +41786,7 @@ snapshots:
 
   promise-ftp@1.3.5(promise-ftp-common@1.1.5):
     dependencies:
-      '@icetee/ftp': 0.3.15
+      '@icetee/ftp': 0.3.15(patch_hash=19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9)
       bluebird: 2.11.0
       promise-ftp-common: 1.1.5
 
@@ -45362,8 +45361,6 @@ snapshots:
   xpath@0.0.33: {}
 
   xpath@0.0.34: {}
-
-  xregexp@2.0.0: {}
 
   xss@1.0.15:
     dependencies:
