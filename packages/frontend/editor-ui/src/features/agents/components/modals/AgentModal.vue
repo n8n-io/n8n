@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	N8nDialog,
+	N8nDialogBody,
 	N8nButton,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -111,6 +112,7 @@ function onOpenAutoFocus(event: Event) {
 		:trap-focus="props.trapFocus"
 		:disable-outside-pointer-events="props.disableOutsidePointerEvents"
 		:show-close-button="false"
+		:container-class="$style.dialog"
 		@escape-key-down="onEscapeKeyDown"
 		@interact-outside="onInteractOutside"
 		@open-auto-focus="onOpenAutoFocus"
@@ -178,26 +180,28 @@ function onOpenAutoFocus(event: Event) {
 			</N8nText>
 		</N8nDialogHeader>
 
-		<FocusScope
-			v-if="!props.trapFocus"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
-			<span hidden aria-hidden="true" />
-		</FocusScope>
+		<N8nDialogBody>
+			<FocusScope
+				v-if="!props.trapFocus"
+				as-child
+				@mount-auto-focus.prevent
+				@unmount-auto-focus.prevent
+			>
+				<span hidden aria-hidden="true" />
+			</FocusScope>
 
-		<div
-			ref="body"
-			:class="[
-				$style.body,
-				!props.bodyScrollable && $style.bodyNotScrollable,
-				props.bodyFlush && $style.bodyFlush,
-			]"
-			data-testid="agent-modal-body"
-		>
-			<slot />
-		</div>
+			<div
+				ref="body"
+				:class="[
+					$style.body,
+					!props.bodyScrollable && $style.bodyNotScrollable,
+					props.bodyFlush && $style.bodyFlush,
+				]"
+				data-testid="agent-modal-body"
+			>
+				<slot />
+			</div>
+		</N8nDialogBody>
 
 		<N8nDialogFooter v-if="hasFooter" :class="$style.footer">
 			<slot name="footer">
@@ -227,12 +231,14 @@ function onOpenAutoFocus(event: Event) {
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
+.dialog {
+	--n8n-dialog-region--padding: 0;
+}
+
 .header {
 	display: flex;
 	flex-direction: column;
-	margin: calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1) 0;
 	padding: var(--spacing--md) var(--spacing--lg);
-	border-bottom: var(--border);
 }
 
 .titleError {
@@ -261,10 +267,6 @@ function onOpenAutoFocus(event: Event) {
 	gap: var(--spacing--xs);
 	min-width: 0;
 	flex: 1;
-	font-size: var(--font-size--lg);
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--lg);
-	color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
 
 	&:hover .editIcon,
 	&:focus-within .editIcon {
@@ -309,10 +311,13 @@ function onOpenAutoFocus(event: Event) {
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
-	margin-inline: calc(var(--spacing--5xs) * -1);
-	padding: var(--spacing--md) var(--spacing--5xs) var(--spacing--5xs);
+	padding: var(--spacing--md) var(--spacing--lg);
 
 	@include scrollbar-mixins.scroll-bar;
+}
+
+.footer {
+	padding: var(--spacing--md) var(--spacing--lg);
 }
 
 .body :global(.n8n-markdown) {
@@ -324,7 +329,6 @@ function onOpenAutoFocus(event: Event) {
 }
 
 .bodyFlush {
-	margin-inline: calc(var(--spacing--lg) * -1);
 	padding: 0;
 }
 
@@ -348,7 +352,9 @@ function onOpenAutoFocus(event: Event) {
 }
 
 @media (max-width: 480px) {
-	.header {
+	.header,
+	.body:not(.bodyFlush),
+	.footer {
 		padding-inline: var(--spacing--md);
 	}
 
