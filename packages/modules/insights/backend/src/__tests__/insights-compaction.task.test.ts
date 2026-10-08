@@ -1,4 +1,4 @@
-import { MAX_TASK_TIMEOUT_SECONDS } from '@n8n/constants';
+import { MAX_TIMER_DELAY_SECONDS } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import type { InsightsCompactionService } from '../insights-compaction.service';
@@ -23,7 +23,7 @@ describe('InsightsCompactionTask', () => {
 	it.each([
 		{ maxRuntimeSeconds: 300, timeoutSeconds: 600 },
 		{ maxRuntimeSeconds: 1800, timeoutSeconds: 2100 },
-		{ maxRuntimeSeconds: 0, timeoutSeconds: MAX_TASK_TIMEOUT_SECONDS },
+		{ maxRuntimeSeconds: 0, timeoutSeconds: MAX_TIMER_DELAY_SECONDS },
 	])(
 		'should time out 5 minutes after a compaction budget of $maxRuntimeSeconds s',
 		({ maxRuntimeSeconds, timeoutSeconds }) => {
