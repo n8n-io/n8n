@@ -97,5 +97,47 @@ describe('mapCredentialForProvider', () => {
 				oauthTokenData: { access_token: 'stored-token' },
 			});
 		});
+
+		// Guards the shared isEntra predicate: a whitespace-only apiKey must not
+		// count as "present", and an oauthTokenData object without an access_token
+		// must not count as Entra. Both edge cases previously diverged across the
+		// mapper, the Zod schema, and the model factory.
+		it('drops a whitespace-only apiKey and does not treat it as Entra', () => {
+			expect(
+				mapCredentialForProvider('azure-openai', {
+					apiKey: '   ',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpoint: 'https://my-resource.openai.azure.com',
+					endpointType: 'classic',
+				}),
+			).toEqual({
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				baseURL: 'https://my-resource.openai.azure.com',
+				endpointType: 'classic',
+			});
+		});
+
+		it('does not treat an oauthTokenData object without access_token as Entra', () => {
+			expect(
+				mapCredentialForProvider('azure-openai', {
+					apiKey: 'az-key',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpoint: 'https://my-resource.openai.azure.com',
+					endpointType: 'classic',
+					oauthTokenData: {
+						/* disconnected: no access_token */
+					},
+				}),
+			).toEqual({
+				apiKey: 'az-key',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				baseURL: 'https://my-resource.openai.azure.com',
+				endpointType: 'classic',
+			});
+		});
 	});
 });

@@ -1,4 +1,4 @@
-import type { ResolvedCredential } from '@n8n/agents';
+import { isAzureEntraCredential, hasAzureApiKey, type ResolvedCredential } from '@n8n/agents';
 
 type CredMapper = (raw: ResolvedCredential) => Record<string, unknown>;
 
@@ -50,9 +50,9 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	// the Entra path or trip `@ai-sdk/azure`'s apiKey+tokenProvider rejection.
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'azure-openai': (c) => {
-		const isEntra = !c.apiKey && !!c.oauthTokenData;
+		const isEntra = isAzureEntraCredential(c);
 		return {
-			...(c.apiKey ? { apiKey: c.apiKey } : {}),
+			...(hasAzureApiKey(c) ? { apiKey: c.apiKey } : {}),
 			resourceName: c.resourceName,
 			apiVersion: c.apiVersion,
 			// Foundry stores its full base URL in `foundryEndpoint`; classic uses the

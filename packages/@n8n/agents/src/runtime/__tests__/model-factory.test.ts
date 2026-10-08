@@ -1004,6 +1004,19 @@ describe('createModel', () => {
 				}),
 			).toThrow(/clientId is required for Entra/);
 		});
+
+		it('rejects Entra credentials missing accessTokenUrl', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpointType: 'classic',
+					...entraCreds,
+					oauthAccessTokenUrl: undefined,
+				}),
+			).toThrow(/accessTokenUrl is required for Entra/);
+		});
 	});
 
 	describe('aws-bedrock', () => {

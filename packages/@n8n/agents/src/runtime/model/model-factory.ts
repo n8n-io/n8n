@@ -11,6 +11,7 @@ import {
 } from './openai-api-style';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
+	isAzureEntraCredential,
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
@@ -421,16 +422,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
-			const {
-				baseURL,
-				resourceName,
-				apiVersion,
-				apiKey,
-				endpointType,
-				deploymentName,
-				oauthTokenData,
-			} = creds;
-			const isEntra = !apiKey && !!oauthTokenData?.access_token;
+			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+			const isEntra = isAzureEntraCredential(creds);
 
 			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
 			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the

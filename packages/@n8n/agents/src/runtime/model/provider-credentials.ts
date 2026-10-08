@@ -79,8 +79,8 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			oauthTokenData: z.object({ access_token: z.string() }).passthrough().optional(),
 		})
 		.superRefine((data, ctx) => {
-			const hasApiKey = !!data.apiKey?.trim();
-			const hasEntra = !!data.oauthTokenData?.access_token;
+			const hasApiKey = hasAzureApiKey(data);
+			const hasEntra = hasAzureEntraToken(data);
 			if (data.endpointType === 'foundry') {
 				if (!data.baseURL?.trim()) {
 					ctx.addIssue({
@@ -120,6 +120,13 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 					message: 'clientId is required for Entra OAuth2',
 				});
 			}
+			if (hasEntra && !data.oauthAccessTokenUrl?.trim()) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['oauthAccessTokenUrl'],
+					message: 'accessTokenUrl is required for Entra OAuth2',
+				});
+			}
 		}),
 	'aws-bedrock': z.object({
 		region: z.string().min(1, 'AWS region is required'),
@@ -133,3 +140,35 @@ export type ProviderId = keyof typeof PROVIDER_CREDENTIAL_SCHEMAS;
 export type ProviderCredentials<P extends ProviderId> = z.infer<
 	(typeof PROVIDER_CREDENTIAL_SCHEMAS)[P]
 >;
+
+/**
+ * Auth-field shape for the `azure-openai` credential. Shared by the credential
+ * mapper (`cli`), this Zod schema, and the model factory so all three agree on
+ * what counts as "Entra" vs "apiKey". Fields are `unknown` because the mapper
+ * runs on raw, unvalidated credential records.
+ */
+export type AzureOpenAiAuthFields = {
+	apiKey?: unknown;
+	oauthTokenData?: unknown;
+};
+
+function isStringRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+/** `apiKey` is a non-empty string after trimming. */
+export function hasAzureApiKey(creds: AzureOpenAiAuthFields): boolean {
+	return typeof creds.apiKey === 'string' && creds.apiKey.trim() !== '';
+}
+
+/** A stored Entra OAuth2 access token proves the credential was connected. */
+export function hasAzureEntraToken(creds: AzureOpenAiAuthFields): boolean {
+	return (
+		isStringRecord(creds.oauthTokenData) && typeof creds.oauthTokenData.access_token === 'string'
+	);
+}
+
+/** Entra is the active auth path: no usable `apiKey`, and a stored Entra token. */
+export function isAzureEntraCredential(creds: AzureOpenAiAuthFields): boolean {
+	return !hasAzureApiKey(creds) && hasAzureEntraToken(creds);
+}
