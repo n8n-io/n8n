@@ -109,6 +109,14 @@ packages/cli/test/integration/public-api/n8n-packages-import.test.ts
   "base_commit_sha": "193ada1a83456f7db06e63c63a5d647d0c830820",
   "prompts": {},
   "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_71ad2034164515": {
       "agent_id": {
         "tool": "codex",
