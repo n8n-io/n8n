@@ -454,6 +454,7 @@ oneOf:
                           required:
                             - kind
                             - project
+                      type: object
                     sourceValue:
                       type: string
                       maxLength: 1000
@@ -496,6 +497,7 @@ oneOf:
                     - name
                     - scope
                     - consumers
+              type: object
           accessRequirements:
             type: array
             items:
@@ -1253,6 +1255,7 @@ oneOf:
                               - from
                               - to
                               - destructive
+                        type: object
                       minItems: 1
                   required:
                     - kind
@@ -1261,6 +1264,7 @@ oneOf:
                     - name
                     - consumers
                     - changes
+              type: object
           warnings:
             type: array
             items:
@@ -1367,3 +1371,4 @@ oneOf:
       - configId
       - git
       - status
+type: object

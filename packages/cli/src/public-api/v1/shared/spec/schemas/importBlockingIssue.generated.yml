@@ -443,6 +443,7 @@ oneOf:
                 - to
                 - destructive
           description: A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a matched target table's schema. `destructive` operations delete the data in a column.
+          type: object
         description: 'For `schema-incompatible`: the changes `overwrite` would make to the target table.'
       missingScope:
         type: string
@@ -642,3 +643,4 @@ oneOf:
       - name
       - violations
     description: 'A workflow the content-import policy refused. Takes down the whole package rather than skipping the workflow: the import rewrites cross-workflow references to the ids each workflow would get, so dropping one leaves the workflows that call it pointing at a row nothing ever wrote.'
+type: object
