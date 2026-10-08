@@ -1,4 +1,4 @@
-import { DEFAULT_MISFIRE_GRACE_SECONDS, MAX_TASK_TIMEOUT_SECONDS, Time } from '@n8n/constants';
+import { DEFAULT_MISFIRE_GRACE_SECONDS, MAX_TIMER_DELAY_SECONDS, Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -375,7 +375,7 @@ export class SchedulerConfig {
 	 * example at startup or when its workflow is activated.
 	 * Must be greater than 0 and at most 2147483 (about 24 days).
 	 */
-	@Env('N8N_SCHEDULER_TASK_TIMEOUT_SECONDS', positiveIntSchema.max(MAX_TASK_TIMEOUT_SECONDS))
+	@Env('N8N_SCHEDULER_TASK_TIMEOUT_SECONDS', positiveIntSchema.max(MAX_TIMER_DELAY_SECONDS))
 	taskTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
 
 	/**
