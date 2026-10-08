@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick, computed } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
-import { ElDialog } from 'element-plus';
-import { N8nInput, N8nInputLabel } from '@n8n/design-system';
+import { N8nDialog, N8nDialogBody, N8nInput, N8nInputLabel } from '@n8n/design-system';
 const props = defineProps<{
 	dialogVisible: boolean;
 	parameter: INodeProperties;
@@ -64,36 +62,41 @@ const closeDialog = () => {
 	// and is so not allowed to be changed here.
 	emit('closeDialog');
 };
+
+const onDialogOpenUpdate = (open: boolean) => {
+	if (!open) closeDialog();
+};
 </script>
 
 <template>
 	<div v-if="dialogVisible">
-		<ElDialog
-			:model-value="dialogVisible"
-			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
-			width="80%"
-			:title="`${i18n.baseText('textEdit.edit')} ${i18n
+		<N8nDialog
+			:open="dialogVisible"
+			size="full"
+			:header="`${i18n.baseText('textEdit.edit')} ${i18n
 				.nodeText(activeNode?.type)
 				.inputLabelDisplayName(parameter, path)}`"
-			:before-close="closeDialog"
+			@update:open="onDialogOpenUpdate"
 		>
-			<div class="ignore-key-press-canvas">
-				<N8nInputLabel
-					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-				>
-					<div @keydown.stop @keydown.esc="onKeyDownEsc">
-						<N8nInput
-							ref="inputField"
-							v-model="tempValue"
-							type="textarea"
-							:placeholder="i18n.nodeText(activeNode?.type).placeholder(parameter, path)"
-							:read-only="isReadOnly"
-							:rows="15"
-							@update:model-value="valueChanged"
-						/>
-					</div>
-				</N8nInputLabel>
-			</div>
-		</ElDialog>
+			<N8nDialogBody>
+				<div class="ignore-key-press-canvas">
+					<N8nInputLabel
+						:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+					>
+						<div @keydown.stop @keydown.esc="onKeyDownEsc">
+							<N8nInput
+								ref="inputField"
+								v-model="tempValue"
+								type="textarea"
+								:placeholder="i18n.nodeText(activeNode?.type).placeholder(parameter, path)"
+								:read-only="isReadOnly"
+								:rows="15"
+								@update:model-value="valueChanged"
+							/>
+						</div>
+					</N8nInputLabel>
+				</div>
+			</N8nDialogBody>
+		</N8nDialog>
 	</div>
 </template>
