@@ -1,5 +1,12 @@
 import { RoleService } from '@n8n/backend-services';
-import type { SharedWorkflow, User, WorkflowEntity, ListQuery, OperationContext } from '@n8n/db';
+import type {
+	SharedWorkflow,
+	User,
+	WorkflowEntity,
+	ListQuery,
+	PublishHistoryScope,
+	OperationContext,
+} from '@n8n/db';
 import {
 	SharedWorkflowRepository,
 	FolderRepository,
@@ -48,6 +55,7 @@ export class WorkflowFinderService {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
+			publishHistory?: PublishHistoryScope;
 		} & ({ em?: EntityManager; ctx?: never } | { ctx?: OperationContext; em?: never }) = {},
 	) {
 		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em ?? options.ctx);
@@ -57,6 +65,7 @@ export class WorkflowFinderService {
 			includeTags: options.includeTags,
 			includeParentFolder: options.includeParentFolder,
 			includeActiveVersion: options.includeActiveVersion,
+			publishHistory: options.publishHistory,
 			...(options.em ? { em: options.em } : { ctx: options.ctx }),
 		});
 

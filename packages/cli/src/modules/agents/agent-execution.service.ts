@@ -105,6 +105,8 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
 	previewChat?: boolean;
+	/** Whether the execution accepts mid-turn steering. See `acceptsSteering` in `types/agent-queued-message`. */
+	acceptsSteering?: boolean;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
 	/** Internal admission data. These fields are not stored on the execution. */
@@ -226,7 +228,7 @@ export class AgentExecutionService {
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
 			status: 'running',
-			acceptsSteering: params.previewChat === true,
+			acceptsSteering: params.acceptsSteering === true,
 			startedAt,
 			stoppedAt: null,
 			duration: 0,

@@ -98,47 +98,41 @@ describe('SystemTaskHandler', () => {
 		);
 	});
 
-	it('leaves idempotent work retryable', async () => {
-		const { report, handler } = setup('idempotent');
+	it.each(['idempotent', 'non-idempotent'] as const)(
+		'marks %s work dispatched only after the run',
+		async (effects) => {
+			const { task, handler } = setup(effects);
+			const runCountsAtDispatch: number[] = [];
+			const report = createDispatchReporter(() => {
+				runCountsAtDispatch.push(task.runCount);
+			});
 
-		await handler.execute(claimed, report, new AbortController().signal);
+			await handler.execute(claimed, report, new AbortController().signal);
 
-		expect(report.notDispatched).toHaveBeenCalled();
-		expect(report.dispatched).not.toHaveBeenCalled();
-	});
+			expect(runCountsAtDispatch).toEqual([1]);
+		},
+	);
 
-	it('marks non-idempotent work dispatched before it runs', async () => {
-		const { task, report, handler } = setup('non-idempotent');
-		task.onRun = async () => {
-			expect(report.dispatched).toHaveBeenCalled();
-		};
+	it.each(['idempotent', 'non-idempotent'] as const)(
+		'returns the dispatched token for %s work',
+		async (effects) => {
+			const task = new DummySystemTask();
+			task.effects = effects;
+			const report = createDispatchReporter(vi.fn());
+			const handler = new SystemTaskHandler(
+				task,
+				new AbortController().signal,
+				mockLogger(),
+				mock<EventService>(),
+				new Tracing(),
+				vi.fn(),
+			);
 
-		await handler.execute(claimed, report, new AbortController().signal);
+			const returned = await handler.execute(claimed, report, new AbortController().signal);
 
-		expect(task.runCount).toBe(1);
-		expect(report.notDispatched).not.toHaveBeenCalled();
-	});
-
-	it.each([
-		{ effects: 'idempotent', decision: 'notDispatched' },
-		{ effects: 'non-idempotent', decision: 'dispatched' },
-	] as const)('returns the $decision token for $effects work', async ({ effects, decision }) => {
-		const task = new DummySystemTask();
-		task.effects = effects;
-		const report = createDispatchReporter(vi.fn());
-		const handler = new SystemTaskHandler(
-			task,
-			new AbortController().signal,
-			mockLogger(),
-			mock<EventService>(),
-			new Tracing(),
-			vi.fn(),
-		);
-
-		const returned = await handler.execute(claimed, report, new AbortController().signal);
-
-		expect(returned).toBe(report[decision]());
-	});
+			expect(returned).toBe(report.dispatched());
+		},
+	);
 
 	it('lets a failing run reach the executor', async () => {
 		const { task, report, handler } = setup('idempotent');
