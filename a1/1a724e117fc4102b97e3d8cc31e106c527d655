@@ -1,0 +1,63 @@
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_2397c9db9d923f::t_5d3d360c5e13dc 202-204
+  s_2397c9db9d923f::t_44b4b74c721935 41,183,195-198,200-201,205-211
+  s_2397c9db9d923f::t_a5cea363e7c7b3 5,11-14,17-18,24-27,28-30,34-40,42,94-102,147-182,184-194,212-266
+  s_2397c9db9d923f::t_08d26281303f5d 199,267
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 152
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 1-93
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures.ts
+  s_2397c9db9d923f::t_95fb7566a24330 1-16,18-20,24-29,31-58,60-92,94-114,116-146
+  s_2397c9db9d923f::t_503aa10707f294 17,21,23,30
+  s_2397c9db9d923f::t_251fb9f1b6d7c8 22,59,93,115
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 27,45,84-98
+  s_2397c9db9d923f::t_57d313dd66e53b 99
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_2397c9db9d923f::t_5d3d360c5e13dc 14-19,25,28,35-37
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 51,62
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 422,480,501-508,515
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_2397c9db9d923f::t_47b6a1c7d579b9 3-6,8-47,52-66,77-84,91-96,137-140,167
+  s_2397c9db9d923f::t_5d3d360c5e13dc 74
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_2397c9db9d923f::t_a5cea363e7c7b3 5,8,30-70,72-74
+  s_2397c9db9d923f::t_9919026d00107a 71,75
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_2397c9db9d923f::t_a5cea363e7c7b3 1-15
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_2397c9db9d923f::t_95fb7566a24330 53-68,195
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_2397c9db9d923f::t_95fb7566a24330 77-85,89-92,94-101,103-119,121,123-129,131-132
+  s_2397c9db9d923f::t_2407655d2c9fd2 86-88
+  s_2397c9db9d923f::t_09de89f6b01d23 93,102,120,122,130
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_2397c9db9d923f::t_2407655d2c9fd2 1-22,24-102,104-113,115-125,127-129,132-138,140-153,155-160,162-168,170-181,183-189,191,209-214,216-219,221-222,224,226,230-231,233-242,244,246-251,253-261,263,265-296,298-301
+  s_2397c9db9d923f::t_503aa10707f294 23,192-206,208
+  s_2397c9db9d923f::t_3c6207b857ca37 103,114,126,130-131,139,154,161,169,182,190,207,215,220,223,225,227-229,232,243,245,252,262,264,297
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_2397c9db9d923f::t_6cf0e67851d0b8 173,175
+  s_2397c9db9d923f::t_102e44825907e4 1-65,67-79,81-118,120-122,124-126,128-140,142-143,145-153,155,157-172,176,178-180
+  s_2397c9db9d923f::t_148ba7efc2ff3d 66,80,119,123,127,141,144,154,156,174,177
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_2397c9db9d923f::t_5d3d360c5e13dc 56-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a11a724e117fc4102b97e3d8cc31e106c527d655",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
