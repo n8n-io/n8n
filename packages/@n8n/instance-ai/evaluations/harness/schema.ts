@@ -162,6 +162,7 @@ const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 		description: z.string().optional(),
+		title: z.string().trim().min(1).max(80).optional(),
 		// Optional only because a `replay` seed derives the live turn from the trace;
 		// a refine() below requires it for every other case.
 		conversation: z.array(ConversationTurnSchema).min(1).optional(),

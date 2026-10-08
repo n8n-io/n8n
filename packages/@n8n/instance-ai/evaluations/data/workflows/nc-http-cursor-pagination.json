@@ -1,12 +1,7 @@
 {
+	"title": "Fetch all customers with cursor pagination",
 	"complexity": "simple",
-	"tags": [
-		"build",
-		"node-contracts-poc",
-		"http-request",
-		"pagination",
-		"conditionality"
-	],
+	"tags": ["build", "node-contracts-poc", "http-request", "pagination", "conditionality"],
 	"triggerType": "manual",
 	"conversation": [
 		{

@@ -1,4 +1,5 @@
 {
+	"title": "General-purpose assistant agent with web search",
 	"description": "RLY-200: the user asks for an agent with web-search and cloud-browser capabilities but names no specific tool, has only an OpenAI credential stored, and Gateway credits (AI Gateway) covers scraping/browser service nodes on the instance. The build should reach for the covered nodes so those tools run with no extra API key, rather than defaulting to service nodes that need the user's own key (the observed failure picked SerpApi + Airtop, forcing a setup detour). Build-only: agent-tool nodes are supplyData-only and can't be executed standalone (known harness limitation), so correctness is carried in outcome/process expectations. PREREQUISITES TO RUN: an AI-Gateway-licensed instance connected to a gateway config that covers the scraping/browser nodes AND has those community nodes installed (e.g. @mendable/n8n-nodes-firecrawl.firecrawl, n8n-nodes-browserbase.browserbase); a stock eval instance lacks them and will red on node-availability, not on the behaviour under test. NOT YET CALIBRATED against a real build.",
 	"conversation": [
 		{

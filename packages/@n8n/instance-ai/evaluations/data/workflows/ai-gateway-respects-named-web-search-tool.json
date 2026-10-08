@@ -1,4 +1,5 @@
 {
+	"title": "SerpApi industry news to Slack",
 	"description": "Guardrail for the node-preference rule on the workflow path: when the user explicitly names a web-search tool that is NOT Gateway-credits-covered (SerpApi), the build must honour it and must not substitute a covered node or the managed credential — the preference applies only when the user named no tool. Mirrors the prior ai-gateway-respects-named-provider case on the web-search axis. Build-only. NOT YET CALIBRATED against a real build.",
 	"conversation": [
 		{

@@ -1,4 +1,5 @@
 {
+	"title": "Email unshipped Sheets orders over 250 with Gmail",
 	"complexity": "medium",
 	"tags": ["build", "node-contracts-poc", "holdout", "google-sheets", "gmail", "conditionality"],
 	"triggerType": "manual",

@@ -173,6 +173,7 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	McpBuildKeySupport
 > = {
 	description: 'supported',
+	title: 'supported',
 	conversation: 'supported',
 	complexity: 'supported',
 	tags: 'supported',

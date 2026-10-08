@@ -1,4 +1,5 @@
 {
+	"title": "Scrape competitor pricing into a data table",
 	"description": "RLY-200 (workflow path): a scheduled scrape + web-search workflow where the user names no scraping/search tool, has no stored credential for one, and Gateway credits cover a scraping node on the instance. The build should discover coverage and use the covered node with the managed credential — NOT ask the user which provider to use (the observed failure asked 'how should I scrape / which web-search provider' and offered only key-requiring priors like SerpApi/Tavily). Build-only: correctness carried in process + outcome expectations (the covered node is a community node, so execution needs the managed credential which the harness doesn't provision). PREREQUISITES TO RUN: an AI-Gateway-licensed instance whose gateway config covers a scraping node AND has that community node installed (e.g. @mendable/n8n-nodes-firecrawl.firecrawl). NOT YET CALIBRATED against a real build.",
 	"conversation": [
 		{

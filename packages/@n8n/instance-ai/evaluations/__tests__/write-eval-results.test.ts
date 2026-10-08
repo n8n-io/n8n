@@ -49,12 +49,12 @@ function runResult(
 
 interface SerializedResults {
 	summary: { notVerified: number };
-	testCases: Array<{ status: string; testCaseFile?: string }>;
+	testCases: Array<{ status: string; testCaseFile?: string; title?: string }>;
 }
 
 function writeAndRead(): SerializedResults {
 	const notVerifiedCase = scenarioCase();
-	const verifiedCase = scenarioCase();
+	const verifiedCase = { ...scenarioCase(), title: 'Verified case' };
 
 	// Two iterations. Case 0: every run incomplete → notVerified.
 	// Case 1: one pass, one fail → verified.
@@ -101,6 +101,14 @@ describe('writeEvalResults — notVerified serialization', () => {
 		expect(byFile.get('behavioral-not-verified')).toBe('notVerified');
 		expect(byFile.get('scenario-verified')).toBe('verified');
 		expect(report.summary.notVerified).toBe(1);
+	});
+
+	it('serializes the case title', () => {
+		const report = writeAndRead();
+
+		const byFile = new Map(report.testCases.map((tc) => [tc.testCaseFile, tc.title]));
+		expect(byFile.get('scenario-verified')).toBe('Verified case');
+		expect(byFile.get('behavioral-not-verified')).toBeUndefined();
 	});
 
 	// The committed fixture is the cross-repo contract anchor consumed by the

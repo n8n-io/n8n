@@ -481,6 +481,7 @@ export function writeEvalResults(
 		gate,
 		testCases: testCases.map((tc) => ({
 			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
+			title: tc.testCase.title,
 			testCaseFile: slugByTestCase?.get(tc.testCase),
 			// `notVerified` when no scenario or expectation was scored across runs —
 			// consumers must not treat a zero pass rate here as a pass.

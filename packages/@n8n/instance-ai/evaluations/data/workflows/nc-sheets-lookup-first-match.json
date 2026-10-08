@@ -1,12 +1,7 @@
 {
+	"title": "Look up the first matching Sheets row",
 	"complexity": "simple",
-	"tags": [
-		"build",
-		"node-contracts-poc",
-		"google-sheets",
-		"filter",
-		"version-gated-option"
-	],
+	"tags": ["build", "node-contracts-poc", "google-sheets", "filter", "version-gated-option"],
 	"triggerType": "manual",
 	"conversation": [
 		{

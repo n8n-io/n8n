@@ -1,4 +1,5 @@
 {
+	"title": "Summarize unread Gmail emails with Gemini",
 	"complexity": "medium",
 	"tags": ["build", "node-contracts-poc", "holdout", "gmail", "gemini", "output-shape"],
 	"triggerType": "manual",

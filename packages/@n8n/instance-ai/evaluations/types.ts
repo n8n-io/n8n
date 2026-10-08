@@ -232,6 +232,7 @@ export type TestCaseCredential = NonNullable<EvalTestCaseInput['credentials']>[n
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
+	title?: string;
 	/**
 	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
 	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.

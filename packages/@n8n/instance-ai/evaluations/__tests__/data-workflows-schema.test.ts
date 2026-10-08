@@ -77,6 +77,11 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.conversation![0].role).toBe('user');
 	});
 
+	it('accepts a title and trims it', () => {
+		const parsed = EvalTestCaseSchema.parse({ ...validFixture(), title: ' Short name ' });
+		expect(parsed.title).toBe('Short name');
+	});
+
 	it('rejects an empty conversation', () => {
 		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), conversation: [] })).toThrow();
 	});

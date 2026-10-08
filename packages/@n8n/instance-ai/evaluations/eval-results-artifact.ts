@@ -12,6 +12,7 @@ export type StoredScenarioResult<TEvalResult> = {
 
 export type StoredTestCaseResult<TEvalResult> = {
 	name?: string;
+	title?: string;
 	testCaseFile?: string;
 	scenarios: Array<StoredScenarioResult<TEvalResult>>;
 };

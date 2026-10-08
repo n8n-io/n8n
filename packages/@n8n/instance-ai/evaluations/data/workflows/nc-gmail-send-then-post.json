@@ -1,4 +1,5 @@
 {
+	"title": "Send a Gmail email, then POST its message ID",
 	"complexity": "simple",
 	"tags": ["build", "node-contracts-poc", "gmail", "send", "output-shape"],
 	"triggerType": "manual",

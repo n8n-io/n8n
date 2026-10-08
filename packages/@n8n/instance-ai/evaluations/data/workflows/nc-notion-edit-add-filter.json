@@ -1,4 +1,5 @@
 {
+	"title": "Edit a Notion report: add a filter and a body field",
 	"complexity": "simple",
 	"tags": ["edit", "seeded", "node-contracts-poc", "notion", "filter", "output-shape"],
 	"triggerType": "manual",

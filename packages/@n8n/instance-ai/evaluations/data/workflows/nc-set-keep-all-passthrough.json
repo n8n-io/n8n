@@ -1,12 +1,7 @@
 {
+	"title": "Add a field to an order and keep the others",
 	"complexity": "simple",
-	"tags": [
-		"build",
-		"node-contracts-poc",
-		"set-node",
-		"passthrough",
-		"types"
-	],
+	"tags": ["build", "node-contracts-poc", "set-node", "passthrough", "types"],
 	"triggerType": "manual",
 	"conversation": [
 		{

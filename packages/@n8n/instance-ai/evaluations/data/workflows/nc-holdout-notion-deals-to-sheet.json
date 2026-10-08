@@ -1,4 +1,5 @@
 {
+	"title": "Copy won Notion deals to a Google Sheet",
 	"complexity": "medium",
 	"tags": ["build", "node-contracts-poc", "holdout", "notion", "google-sheets", "output-shape"],
 	"triggerType": "manual",

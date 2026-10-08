@@ -1,12 +1,7 @@
 {
+	"title": "Filter invoices by an amount sent as a string",
 	"complexity": "simple",
-	"tags": [
-		"build",
-		"node-contracts-poc",
-		"if-node",
-		"filter",
-		"type-validation"
-	],
+	"tags": ["build", "node-contracts-poc", "if-node", "filter", "type-validation"],
 	"triggerType": "manual",
 	"conversation": [
 		{

@@ -1,11 +1,7 @@
 {
+	"title": "Read Sheets rows with unknown columns",
 	"complexity": "simple",
-	"tags": [
-		"build",
-		"node-contracts-poc",
-		"google-sheets",
-		"dynamic-schema"
-	],
+	"tags": ["build", "node-contracts-poc", "google-sheets", "dynamic-schema"],
 	"triggerType": "manual",
 	"conversation": [
 		{

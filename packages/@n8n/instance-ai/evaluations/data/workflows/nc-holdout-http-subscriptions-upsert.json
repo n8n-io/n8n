@@ -1,4 +1,5 @@
 {
+	"title": "Upsert active subscriptions from a nested HTTP response",
 	"complexity": "medium",
 	"tags": ["build", "node-contracts-poc", "holdout", "http", "google-sheets", "output-shape"],
 	"triggerType": "manual",
