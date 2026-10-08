@@ -369,6 +369,11 @@ describe('useNodeSettingsParameters', () => {
 
 			docStore = mockedStore(useWorkflowDocumentStore, createWorkflowDocumentId(''));
 
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
+			vi.mocked(ndvStore.setParameterValueStash).mockImplementation((stash) => {
+				ndvStore.parameterValueStash = stash;
+			});
+
 			vi.spyOn(nodeSettingsUtils, 'updateDynamicConnections').mockReturnValue(null);
 			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockReturnValue({
 				...nodeHelpers.useNodeHelpers(),
@@ -377,7 +382,7 @@ describe('useNodeSettingsParameters', () => {
 			});
 
 			node = {
-				id: crypto.randomUUID(),
+				id: 'chat-node',
 				name: 'Post to team',
 				type: 'testChat',
 				typeVersion: 1,
@@ -438,8 +443,10 @@ describe('useNodeSettingsParameters', () => {
 			node = { ...node, parameters: { channelId: 'general' } };
 
 			change('operation', 'get');
-
 			expect(node.parameters.channelId).toEqual(emptyLocator);
+
+			change('operation', 'create');
+			expect(node.parameters.channelId).toBe('general');
 		});
 
 		it('does not restore a value that did not fit its parameter', () => {

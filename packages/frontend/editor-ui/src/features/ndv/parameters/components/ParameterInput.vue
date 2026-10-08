@@ -49,6 +49,8 @@ import {
 	formatAsExpression,
 	getParameterTypeOption,
 	isResourceLocatorParameterType,
+	getParameterValueShape,
+	isObjectInPlainParameter,
 	isValidParameterOption,
 	parseFromExpression,
 	shouldSkipParamValidation,
@@ -75,11 +77,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import {
-	getParameterValueShape,
-	isObjectInPlainParameter,
-	useNodeSettingsParameters,
-} from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
@@ -639,7 +637,12 @@ const getIssues = computed<string[]>(() => {
 		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 
-	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
+	if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		issues.parameters = issues.parameters ?? {};
+		issues.parameters[props.parameter.name] = [
+			i18n.baseText('parameterInput.valueFromAnotherField'),
+		];
+	} else if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
 		issues.parameters = issues.parameters ?? {};
 
 		const issue = i18n.baseText('parameterInput.selectACredentialTypeFromTheDropdown');

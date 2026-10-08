@@ -2756,6 +2756,7 @@
 	"parameterInput.selectACredentialTypeFromTheDropdown": "Select a credential type from the dropdown",
 	"parameterInput.theValueIsNotSupported": "The value \"{checkValue}\" is not supported!",
 	"parameterInput.selectedWorkflowIsArchived": "The selected workflow is archived",
+	"parameterInput.valueFromAnotherField": "This value belongs to another field. Enter a new value.",
 	"parameterInput.invalidJson": "Invalid JSON format",
 	"parameterInputExpanded.openDocs": "Open docs",
 	"parameterInputExpanded.thisFieldIsRequired": "This field is required",

@@ -629,6 +629,23 @@ describe('ParameterInput.vue', () => {
 		await waitFor(() => expect(container.querySelector('input')).toHaveValue('C0123'));
 	});
 
+	test('shows an issue when a string parameter holds an object', async () => {
+		const { container, getByTestId } = renderComponent({
+			props: {
+				path: 'channelId',
+				parameter: createTestNodeProperties({
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+				}),
+				modelValue: { __rl: true, mode: 'list', value: 'C0123' },
+			},
+		});
+
+		await waitFor(() => expect(container.querySelector('.has-issues')).toBeInTheDocument());
+		expect(getByTestId('parameter-issues')).toBeInTheDocument();
+	});
+
 	test('shows other objects held by a string parameter as JSON', async () => {
 		const { container } = renderComponent({
 			props: {

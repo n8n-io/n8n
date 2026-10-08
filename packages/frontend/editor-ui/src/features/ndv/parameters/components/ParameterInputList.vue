@@ -29,10 +29,7 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import {
-	getParameterValueShape,
-	useNodeSettingsParameters,
-} from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
@@ -48,6 +45,7 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	getParameterTypeOption,
+	getParameterValueShape,
 	type ParameterOptionsOverrides,
 } from '@/features/ndv/shared/ndv.utils';
 import type { IconName } from '@n8n/design-system';
