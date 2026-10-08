@@ -7,7 +7,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { AGENT_BUILDER_VIEW, AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_N8N_CHAT_SEARCH_MAX_LENGTH,
+	AGENTS_MODULE_NAME,
+} from '@/features/agents/constants';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import type { AgentResource } from '@/features/agents/types';
@@ -70,7 +74,7 @@ export function useAgentNavigationCommands(options: {
 		offset,
 		limit,
 	}: CommandBarSearchRequest): Promise<CommandBarSearchResult> {
-		const trimmed = query.trim();
+		const trimmed = query.trim().slice(0, AGENT_N8N_CHAT_SEARCH_MAX_LENGTH);
 		const { count, data } = await listAgentsPageGlobal(rootStore.restApiContext, {
 			skip: offset,
 			take: limit,

@@ -15,7 +15,14 @@ import {
 	CHAT_VIEW,
 	CHAT_WORKFLOW_AGENTS_VIEW,
 } from '@/features/ai/chatHub/constants';
-import { AGENT_BUILDER_VIEW, AGENTS_LIST_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENTS_LIST_VIEW,
+	PROJECT_AGENTS,
+} from '@/features/agents/constants';
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
@@ -63,7 +70,14 @@ const CREDENTIAL_VIEWS: string[] = [
 	VIEWS.SHARED_CREDENTIALS,
 ];
 const DATA_TABLE_VIEWS: string[] = [PROJECT_DATA_TABLES, DATA_TABLE_VIEW];
-const AGENT_VIEWS: string[] = [AGENTS_LIST_VIEW, PROJECT_AGENTS, AGENT_BUILDER_VIEW];
+const AGENT_VIEWS: string[] = [
+	AGENTS_LIST_VIEW,
+	PROJECT_AGENTS,
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+];
 const CHAT_VIEWS: string[] = [
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
