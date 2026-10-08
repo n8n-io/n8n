@@ -245,8 +245,9 @@ describe('resolveNodeTool → policy refusal', () => {
 			isPolicyRefusal: true,
 			message: 'Node type is not permitted for agent tool execution',
 			violations,
-			instruction: expect.any(String),
+			instruction: expect.stringMatching(/do not retry/i),
 		});
+		expect(output).toMatchObject({ instruction: expect.stringMatching(/tell the user/i) });
 		expect(hasPolicyRefusalMarker(output)).toBe(true);
 	});
 
