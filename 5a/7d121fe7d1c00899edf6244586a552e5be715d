@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/__tests__/public-exports.test.ts
+  s_fcc77b2931f263::t_911ae657fd1f49 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a7d121fe7d1c00899edf6244586a552e5be715d",
+  "prompts": {},
+  "sessions": {
+    "s_fcc77b2931f263": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95e12481-8f3d-4649-a397-a7b2425a401f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

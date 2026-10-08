@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_6cbce1d335a8f6::t_188fd559073f86 67-71
+  s_6cbce1d335a8f6::t_cfdc5f13c1a707 482-503
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_6cbce1d335a8f6::t_cfdc5f13c1a707 148-180
+  s_6cbce1d335a8f6::t_188fd559073f86 43,64,139-147,209,514-518,577-581,664
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_6cbce1d335a8f6::t_1e76bedc98765b 135-139
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_6cbce1d335a8f6::t_188fd559073f86 1123,1146-1151
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.test.ts
+  s_6cbce1d335a8f6::t_188fd559073f86 156
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  s_6cbce1d335a8f6::t_188fd559073f86 58,65,80,89-90,92,102
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  s_6cbce1d335a8f6::t_7f6aa8df685056 5,16-18,61,110
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_6cbce1d335a8f6::t_1e76bedc98765b 738-739
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_6cbce1d335a8f6::t_7f6aa8df685056 57,285-288
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_6cbce1d335a8f6::t_1e76bedc98765b 74-76
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.vue
+  s_6cbce1d335a8f6::t_7f6aa8df685056 131,134
+  s_6cbce1d335a8f6::t_864cf97c1c7045 36
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_6cbce1d335a8f6::t_1e76bedc98765b 42-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "707d91a9f30e48cac269ca7be221420ca64f8aa6",
+  "prompts": {},
+  "sessions": {
+    "s_6cbce1d335a8f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95cad517-d899-4029-b6b4-1209945f8ba1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/cli/src/workflows/publication/workflow-publication-status.service.ts
+  s_eaf07a577bcc8d::t_49ddde017f970d 9-12,77-101
+  s_eaf07a577bcc8d::t_d7b0f3f698e4c3 102
+packages/cli/src/workflows/publication/__tests__/workflow-publication-status.service.test.ts
+  s_eaf07a577bcc8d::t_76957b358c385f 11,264-327,329,331,333,335-336
+  s_eaf07a577bcc8d::t_416f9ec0bbcb4e 328
+  s_eaf07a577bcc8d::t_609681b11f8ae8 330
+  s_eaf07a577bcc8d::t_e7d8f62f478a18 332
+  s_eaf07a577bcc8d::t_8fdbe85da486bb 334
+  s_eaf07a577bcc8d::t_92d20af5480b34 337-339
+  s_3a89fdd8f0be8a::t_ddf7aa13cc699a 340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bfac40f808a6f80f13e8885ca844d0852158057",
+  "prompts": {},
+  "sessions": {
+    "s_3a89fdd8f0be8a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9da675899ce0e780",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_eaf07a577bcc8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53afa069-bfb3-439b-93d4-161825d80123",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
