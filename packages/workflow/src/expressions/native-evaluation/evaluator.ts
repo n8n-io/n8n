@@ -347,10 +347,10 @@ function evalNodeRef(
 	node: Extract<SimpleNode, { kind: 'nodeRef' }>,
 	data: IWorkflowDataProxyData,
 ): unknown {
-	if (node.node === null) return data.$input;
-	if (node.legacy) return data.$node[node.node];
+	if (node.ref === 'input') return data.$input;
+	if (node.ref === 'legacy') return data.$node[node.name];
 
-	return data.$(node.node);
+	return data.$(node.name);
 }
 
 function evalChain(

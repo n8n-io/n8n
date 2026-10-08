@@ -18,24 +18,14 @@
 
 import { getParsedExpression } from '@n8n/tournament';
 import { isNativelyEvaluable } from '../src/expressions/native-evaluation';
+import { DATA_ROOTS } from '../src/expressions/native-evaluation/grammar';
 import { ALL_CORPORA } from './native-evaluation-corpus';
 
 // ── Shape tokenization ────────────────────────────────────────────────────
 // A generic AST walk over the same parse the native evaluator uses.
 
 const SKIP_KEYS = new Set(['loc', 'range', 'tokens', 'comments', 'start', 'end']);
-const GRAMMAR_IDENTIFIERS = new Set([
-	'$json',
-	'$parameter',
-	'$vars',
-	'$binary',
-	'$itemIndex',
-	'$runIndex',
-	'$input',
-	'$node',
-	'$',
-	'undefined',
-]);
+const GRAMMAR_IDENTIFIERS = new Set<string>([...DATA_ROOTS, '$input', '$node', '$', 'undefined']);
 
 type AstRecord = Record<string, unknown>;
 

@@ -30,7 +30,9 @@ export type UnaryOp = (typeof UNARY_OPS)[number];
 export type SimpleNode =
 	| { kind: 'literal'; value: string | number | boolean | null }
 	| { kind: 'root'; name: DataRoot }
-	| { kind: 'nodeRef'; node: string | null; legacy: boolean }
+	| { kind: 'nodeRef'; ref: 'input' }
+	| { kind: 'nodeRef'; ref: 'node'; name: string }
+	| { kind: 'nodeRef'; ref: 'legacy'; name: string }
 	| { kind: 'undefined' }
 	| { kind: 'member'; object: SimpleNode; key: string | number; optional: boolean }
 	| { kind: 'chain'; expression: SimpleNode }

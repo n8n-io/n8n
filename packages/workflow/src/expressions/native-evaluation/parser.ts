@@ -87,7 +87,7 @@ function parseLegacyNodeName(node: namedTypes.MemberExpression): string | null {
 // ask, so a reference never stands alone in the grammar.
 function parseNodeRef(node: AstNode): NodeRef | null {
 	if (node.type === 'Identifier') {
-		return node.name === '$input' ? { kind: 'nodeRef', node: null, legacy: false } : null;
+		return node.name === '$input' ? { kind: 'nodeRef', ref: 'input' } : null;
 	}
 
 	if (node.type === 'CallExpression') {
@@ -97,7 +97,7 @@ function parseNodeRef(node: AstNode): NodeRef | null {
 		}
 
 		const name = parseNodeName(node.arguments[0]);
-		return name === null ? null : { kind: 'nodeRef', node: name, legacy: false };
+		return name === null ? null : { kind: 'nodeRef', ref: 'node', name };
 	}
 
 	if (node.type === 'MemberExpression') {
@@ -107,7 +107,7 @@ function parseNodeRef(node: AstNode): NodeRef | null {
 		}
 
 		const name = parseLegacyNodeName(node);
-		return name === null ? null : { kind: 'nodeRef', node: name, legacy: true };
+		return name === null ? null : { kind: 'nodeRef', ref: 'legacy', name };
 	}
 
 	return null;
@@ -126,7 +126,7 @@ function parseMember(node: namedTypes.MemberExpression, parse: ParseChild): Simp
 
 	const ref = parseNodeRef(node.object);
 	if (ref !== null) {
-		const allowed = ref.legacy ? LEGACY_NODE_REF_MEMBERS : NODE_REF_MEMBERS;
+		const allowed = ref.ref === 'legacy' ? LEGACY_NODE_REF_MEMBERS : NODE_REF_MEMBERS;
 		if (typeof key !== 'string' || !allowed.has(key)) return null;
 
 		return { kind: 'member', object: ref, key, optional: node.optional === true };
@@ -175,7 +175,7 @@ function parseCall(node: namedTypes.CallExpression, parse: ParseChild): SimpleNo
 	// Branch and run indexes stay on the engine.
 	const ref = parseNodeRef(callee.object);
 	if (ref !== null) {
-		if (ref.legacy || !NODE_REF_METHODS.has(property.name) || node.arguments.length > 0) {
+		if (ref.ref === 'legacy' || !NODE_REF_METHODS.has(property.name) || node.arguments.length > 0) {
 			return null;
 		}
 
