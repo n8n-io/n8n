@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 
 import { N8N_VERSION } from '@/constants';
 import { resolveWorkerPoolName } from '@/scaling/queue-name';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 
 import type { InstanceStorage } from './storage/instance-storage.interface';
 
@@ -125,6 +126,8 @@ export class InstanceRegistryService {
 			version: N8N_VERSION,
 			registeredAt: this.registeredAt,
 			lastSeen: Date.now(),
+			memoryLimit: getMemoryLimit(),
+			cpuLimit: getCpuLimit(),
 		};
 
 		if (this.instanceSettings.instanceType === 'worker') {
