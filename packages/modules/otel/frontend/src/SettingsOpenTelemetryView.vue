@@ -6,7 +6,9 @@ import {
 	N8nButton,
 	N8nCheckbox,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogClose,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nIcon,
 	N8nInput,
@@ -753,31 +755,33 @@ watch(
 		<N8nDialog
 			v-model:open="showUnsavedChangesDialog"
 			:header="i18n.baseText('settings.opentelemetry.unsavedChanges.title')"
-			:description="i18n.baseText('settings.opentelemetry.unsavedChanges.message')"
 			size="medium"
 		>
-			<div data-test-id="otel-unsaved-changes-dialog">
-				<N8nDialogFooter>
-					<N8nDialogClose as-child>
-						<N8nButton
-							variant="outline"
-							:label="i18n.baseText('settings.opentelemetry.unsavedChanges.cancel')"
-							@click="onKeepEditing"
-						/>
-					</N8nDialogClose>
+			<N8nDialogBody>
+				<N8nDialogDescription>
+					{{ i18n.baseText('settings.opentelemetry.unsavedChanges.message') }}
+				</N8nDialogDescription>
+			</N8nDialogBody>
+			<N8nDialogFooter data-test-id="otel-unsaved-changes-dialog">
+				<N8nDialogClose as-child>
 					<N8nButton
 						variant="outline"
-						:label="i18n.baseText('settings.opentelemetry.unsavedChanges.leaveWithoutSaving')"
-						@click="onLeaveWithoutSaving"
+						:label="i18n.baseText('settings.opentelemetry.unsavedChanges.cancel')"
+						@click="onKeepEditing"
 					/>
-					<N8nButton
-						variant="solid"
-						:label="i18n.baseText('settings.opentelemetry.unsavedChanges.saveAndLeave')"
-						:loading="otelStore.saving"
-						@click="onSaveAndLeave"
-					/>
-				</N8nDialogFooter>
-			</div>
+				</N8nDialogClose>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('settings.opentelemetry.unsavedChanges.leaveWithoutSaving')"
+					@click="onLeaveWithoutSaving"
+				/>
+				<N8nButton
+					variant="solid"
+					:label="i18n.baseText('settings.opentelemetry.unsavedChanges.saveAndLeave')"
+					:loading="otelStore.saving"
+					@click="onSaveAndLeave"
+				/>
+			</N8nDialogFooter>
 		</N8nDialog>
 	</N8nSettingsLayout>
 </template>
