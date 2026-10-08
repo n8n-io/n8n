@@ -1,15 +1,21 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
-import { N8nButton, N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInput,
+	N8nInputLabel,
+	N8nNotice,
+} from '@n8n/design-system';
 const telemetry = useTelemetry();
 const toast = useToast();
 const i18n = useI18n();
@@ -18,7 +24,7 @@ const uiStore = useUIStore();
 const ndvStore = injectNDVStore();
 
 const curlCommand = ref('');
-const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[IMPORT_CURL_MODAL_KEY]?.open === true);
 
 const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 
@@ -30,9 +36,6 @@ onMounted(() => {
 	const nodeId = ndvStore.value.activeNode?.id ?? '';
 	const command = curlCommands?.[nodeId];
 	curlCommand.value = command ?? '';
-	setTimeout(() => {
-		inputRef.value?.focus();
-	});
 });
 
 function onInput(value: string): void {
@@ -44,7 +47,11 @@ function onFocus(): void {
 }
 
 function closeDialog(): void {
-	modalBus.emit('close');
+	uiStore.closeModal(IMPORT_CURL_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
 }
 
 function onImportSuccess() {
@@ -106,14 +113,13 @@ async function onImport() {
 </script>
 
 <template>
-	<Modal
-		width="700px"
-		:title="i18n.baseText('importCurlModal.title')"
-		:event-bus="modalBus"
-		:name="IMPORT_CURL_MODAL_KEY"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:header="i18n.baseText('importCurlModal.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<div :class="$style.container">
 				<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
 					<N8nInput
@@ -128,8 +134,8 @@ async function onImport() {
 					/>
 				</N8nInputLabel>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.modalFooter">
 				<N8nNotice
 					:class="$style.notice"
@@ -144,8 +150,8 @@ async function onImport() {
 					/>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
@@ -153,6 +159,7 @@ async function onImport() {
 	justify-content: space-between;
 	display: flex;
 	flex-direction: row;
+	width: 100%;
 }
 
 .notice {
