@@ -461,9 +461,6 @@ catalogs:
     '@types/ms':
       specifier: 2.1.0
       version: 2.1.0
-    '@types/nodemailer':
-      specifier: 8.0.1
-      version: 8.0.1
     '@types/oracledb':
       specifier: 6.10.3
       version: 6.10.3
@@ -975,7 +972,7 @@ overrides:
   pdf-parse: 2.4.5
   pdfjs-dist: 5.4.296
   tmp: 0.2.7
-  nodemailer: 8.0.10
+  nodemailer: 10.0.14
   validator: 13.15.26
   zod: 3.25.76
   knip>zod: ^4.4.3
@@ -5088,8 +5085,8 @@ importers:
         specifier: 'catalog:'
         version: 3.3.18
       nodemailer:
-        specifier: 8.0.10
-        version: 8.0.10
+        specifier: 10.0.14
+        version: 10.0.14
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -5259,9 +5256,6 @@ importers:
       '@types/multer':
         specifier: ^2.1.0
         version: 2.1.0
-      '@types/nodemailer':
-        specifier: 'catalog:'
-        version: 8.0.1
       '@types/psl':
         specifier: ^1.1.0
         version: 1.1.3
@@ -7860,8 +7854,8 @@ importers:
         specifier: 13.2.0
         version: 13.2.0
       nodemailer:
-        specifier: 8.0.10
-        version: 8.0.10
+        specifier: 10.0.14
+        version: 10.0.14
       oracledb:
         specifier: 'catalog:'
         version: 6.10.0
@@ -7998,9 +7992,6 @@ importers:
       '@types/mssql':
         specifier: ^9.1.5
         version: 9.1.5
-      '@types/nodemailer':
-        specifier: 'catalog:'
-        version: 8.0.1
       '@types/oracledb':
         specifier: 'catalog:'
         version: 6.10.3
@@ -14983,9 +14974,6 @@ packages:
   '@types/node@20.19.41':
     resolution: {integrity: sha512-ECymXOukMnOoVkC2bb1Vc/w/836DXncOg5m8Xj1RH7xSHZJWNYY6Zh7EH477vcnD5egKNNfy2RpNOmuChhFPgQ==}
 
-  '@types/nodemailer@8.0.1':
-    resolution: {integrity: sha512-PxpaInm8V1JQDd4j0ds5HfvWQk8JupS1C0Picb96QJsrrRDjBH+DlK7L4ZdNSqNULhiZRQHc40nLVShaGxXAMw==}
-
   '@types/oracledb@6.10.3':
     resolution: {integrity: sha512-8SCGQF/VSiXnifVFTajmRNtjHUDTNxkd9SrBrvG2A/80uwLVee5xmv/juH4hnDNTfU9qxfd6HR4Mfmg2nC3RVw==}
 
@@ -21354,9 +21342,9 @@ packages:
     resolution: {integrity: sha512-7vsKR2Bbs66th6IWCy/7SN4MSwlVt+G6QrHB631BjRUM8/LmvDugtYhi0uAmgvHS/+PVurfNBOmELf30rm0MZg==}
     engines: {node: '>= 10'}
 
-  nodemailer@8.0.10:
-    resolution: {integrity: sha512-BLFuSth7QtHOkBzyqTehWWyub0NTRDuK2Q2SQfnGLsrJnzyU+Yeh4WpV1eZGuARFj1xQJHIdnTuJZLP+b9R1GQ==}
-    engines: {node: '>=6.0.0'}
+  nodemailer@10.0.14:
+    resolution: {integrity: sha512-eJoLFKg55fesSlzUekmfOv/SBXh4KUYT8oiQc2RLP0tfG0rbNMJBK7wgHJwXTJwqyKlSJMz9UzDZ4v+aHEvo8g==}
+    engines: {node: '>=20.0.0'}
 
   nodemon@3.0.1:
     resolution: {integrity: sha512-g9AZ7HmkhQkqXkRc20w+ZfQ73cHLbE8hnPbtaFbFtCumZsjyMhKk9LajQ07U5Ux28lvFjZ5X7HvWR1xzU8jHVw==}
@@ -33147,10 +33135,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/nodemailer@8.0.1':
-    dependencies:
-      '@types/node': 20.19.41
-
   '@types/oracledb@6.10.3':
     dependencies:
       '@types/node': 20.19.41
@@ -39532,7 +39516,7 @@ snapshots:
       iconv-lite: 0.7.2
       libmime: 5.3.7
       linkify-it: 5.0.2
-      nodemailer: 8.0.10
+      nodemailer: 10.0.14
       punycode.js: 2.3.1
       tlds: 1.261.0
 
@@ -40854,7 +40838,7 @@ snapshots:
       shell-escape: 0.2.0
       ssh2: 1.16.0
 
-  nodemailer@8.0.10: {}
+  nodemailer@10.0.14: {}
 
   nodemon@3.0.1:
     dependencies:
