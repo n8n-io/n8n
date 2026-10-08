@@ -69,6 +69,8 @@ export type {
 	GraphNode,
 	StepConfig,
 	StepType,
+	StoredGraphNode,
+	StoredWorkflowGraph,
 	WorkflowGraph,
 	WorkflowLoop,
 } from './graph';
