@@ -18,8 +18,7 @@ describe('StaleMemberCleanupTask', () => {
 	it('should declare the reconciliation cadence', () => {
 		expect(task.name).toBe('instance-registry-stale-member-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 180 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
 	});
 
 	describe('run', () => {

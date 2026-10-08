@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { McpRegistryService } from './registry/mcp-registry.service';
 
@@ -18,13 +18,11 @@ export class McpRegistryRefreshTask implements SystemTask {
 		REFRESH_INTERVAL_HOURS * Time.hours.toSeconds,
 	);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'cluster',
-		durable: true,
-		runOnTakeover: true,
-	};
+		scheduler: { maxAttempts: 3 },
+		leaderTimer: { runOnTakeover: true },
+	} satisfies SystemTaskTarget;
 
 	constructor(private readonly mcpRegistryService: McpRegistryService) {}
 

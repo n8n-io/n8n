@@ -25,8 +25,7 @@ describe('JtiCleanupTask', () => {
 	it('should declare the configured cadence', () => {
 		expect(task.name).toBe('jti-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
 	});
 
 	describe('run', () => {

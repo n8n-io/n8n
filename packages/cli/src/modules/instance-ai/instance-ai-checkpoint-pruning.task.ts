@@ -1,7 +1,7 @@
 import { DatabaseConfig, InstanceAiConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { intervalFromMilliseconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceAiService } from './instance-ai.service';
 
@@ -18,23 +18,23 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 		this.instanceAiConfig.pruneInterval,
 	);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
+	readonly target = {
 		scope: 'cluster',
-		durable: true,
-		runOnTakeover: true,
-	};
-
-	readonly retryDelaySeconds = 30;
-
-	// The pass runs three statements in a row that ignore the signal, so it can
-	// take three statement timeouts. A timeout that stops the run before they end
-	// lets the next run start them again, so it waits for all three first.
-	readonly timeoutSeconds = timeoutAfterLimit(
-		3 * statementTimeoutSeconds(this.databaseConfig),
-		5 * Time.minutes.toSeconds,
-	);
+		scheduler: {
+			maxAttempts: 3,
+			// The pass runs three statements in a row that ignore the signal, so it can
+			// take three statement timeouts. A timeout that stops the run before they end
+			// lets the next run start them again, so it waits for all three first.
+			timeoutSeconds: timeoutAfterLimit(
+				3 * statementTimeoutSeconds(this.databaseConfig),
+				5 * Time.minutes.toSeconds,
+			),
+		},
+		leaderTimer: {
+			runOnTakeover: true,
+			retryDelaySeconds: 30,
+		},
+	} satisfies SystemTaskTarget;
 
 	constructor(
 		private readonly instanceAiConfig: InstanceAiConfig,

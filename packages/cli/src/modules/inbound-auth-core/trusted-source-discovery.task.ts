@@ -1,5 +1,5 @@
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 import { TrustedSourceDiscoveryService } from './trusted-source-discovery.service';
 
@@ -16,9 +16,7 @@ export class TrustedSourceDiscoveryTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(DISCOVERY_POLL_INTERVAL_SECONDS);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
+	readonly target = { scope: 'cluster', scheduler: { maxAttempts: 3 } } satisfies SystemTaskTarget;
 
 	constructor(private readonly discovery: TrustedSourceDiscoveryService) {}
 
