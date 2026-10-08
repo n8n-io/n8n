@@ -5,15 +5,17 @@ export {
 	intervalFromSeconds,
 	resolveSystemTaskRunOptions,
 	resolveSystemTaskSchedule,
+	runsOnScheduler,
 	timeoutAfterLimit,
 	validateSystemTask,
 } from './system-task';
+export type { SystemTaskClass, SystemTaskRunOptions } from './system-task';
 export type {
-	SystemTaskClass,
-	SystemTaskEffects,
+	LeaderTimerOptions,
+	SchedulerOptions,
+	SchedulerSystemTask,
 	SystemTaskRunContext,
-	SystemTaskRunOptions,
+	SystemTaskTarget,
 	SystemTaskSchedule,
-} from './system-task';
-export type { SystemTaskPlacement } from './types';
+} from './types';
 export { SystemTaskMetadata } from './system-task-metadata';
