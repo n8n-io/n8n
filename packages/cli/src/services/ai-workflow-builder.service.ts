@@ -8,7 +8,8 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
-import { Service } from '@n8n/di';
+import type { User } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
 import { InstanceSettings } from 'n8n-core';
@@ -25,7 +26,9 @@ import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
+import { TypeRestrictionProviderProxy } from '@/policy/type-restriction-provider-proxy.service';
 import { Push } from '@/push';
+import { BuilderRestrictedNodeTypes } from '@/services/builder-restricted-node-types.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
@@ -205,9 +208,23 @@ export class WorkflowBuilderService {
 		return dirs;
 	}
 
-	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
+	async *chat(
+		payload: ChatPayload,
+		user: User,
+		abortSignal?: AbortSignal,
+		editorProjectId?: string,
+	) {
 		const service = await this.getService();
-		yield* service.chat(payload, user, abortSignal);
+		// Never taken from the client: the controller builds the payload field by field.
+		// Nothing to look up unless the policy module is active.
+		const restrictedNodeTypes = Container.get(TypeRestrictionProviderProxy).hasProvider()
+			? await Container.get(BuilderRestrictedNodeTypes).find(payload, user, editorProjectId)
+			: [];
+		yield* service.chat(
+			restrictedNodeTypes.length > 0 ? { ...payload, restrictedNodeTypes } : payload,
+			user,
+			abortSignal,
+		);
 	}
 
 	async getSessions(workflowId: string | undefined, user: IUser, isCodeBuilder?: boolean) {

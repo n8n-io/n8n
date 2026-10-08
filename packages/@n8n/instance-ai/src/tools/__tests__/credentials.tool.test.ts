@@ -863,6 +863,83 @@ describe('credentials tool', () => {
 			expect(result).toEqual({ results: searchResults });
 		});
 
+		it('tells the model when the query names a restricted credential type', async () => {
+			const context = createMockContext();
+			(context.credentialService.searchCredentialTypes as Mock).mockResolvedValue([]);
+			context.credentialService.listRestrictedTypes = vi
+				.fn()
+				.mockResolvedValue([{ type: 'slackApi', displayName: 'Slack API', scope: 'instance' }]);
+
+			const result = await executeTool(
+				createCredentialsTool(context),
+				{ action: 'search-types' as const, query: 'slack' },
+				noSuspendCtx(),
+			);
+
+			expect(result).toMatchObject({
+				results: [],
+				restricted: [
+					{
+						type: 'slackApi',
+						displayName: 'Slack API',
+						scope: 'instance',
+						note: expect.stringContaining('Do not use it'),
+					},
+				],
+				guidance: expect.stringContaining('get around it'),
+			});
+			expect((result as { guidance: string }).guidance).not.toContain('credentialHints');
+		});
+
+		it('keeps the usable results and only adds the restricted list when some type matches', async () => {
+			const context = createMockContext();
+			(context.credentialService.searchCredentialTypes as Mock).mockResolvedValue([
+				{ type: 'slackOAuth2Api', displayName: 'Slack OAuth2 API' },
+			]);
+			context.credentialService.listRestrictedTypes = vi
+				.fn()
+				.mockResolvedValue([{ type: 'slackApi', displayName: 'Slack API', scope: 'project' }]);
+
+			const result = await executeTool(
+				createCredentialsTool(context),
+				{ action: 'search-types' as const, query: 'slack api' },
+				noSuspendCtx(),
+			);
+
+			expect(result).toMatchObject({
+				results: [{ type: 'slackOAuth2Api', displayName: 'Slack OAuth2 API' }],
+				restricted: [{ type: 'slackApi', scope: 'project' }],
+			});
+			expect(result).not.toHaveProperty('guidance');
+		});
+
+		it('adds nothing when the query names no restricted type or the host cannot list them', async () => {
+			const context = createMockContext();
+			(context.credentialService.searchCredentialTypes as Mock).mockResolvedValue([
+				{ type: 'notionApi', displayName: 'Notion API' },
+			]);
+			const listRestrictedTypes = vi
+				.fn()
+				.mockResolvedValue([{ type: 'slackApi', displayName: 'Slack API', scope: 'instance' }]);
+			context.credentialService.listRestrictedTypes = listRestrictedTypes;
+			const tool = createCredentialsTool(context);
+
+			const unrelated = await executeTool(
+				tool,
+				{ action: 'search-types' as const, query: 'notion' },
+				noSuspendCtx(),
+			);
+			listRestrictedTypes.mockRejectedValue(new Error('policy down'));
+			const failing = await executeTool(
+				tool,
+				{ action: 'search-types' as const, query: 'slack' },
+				noSuspendCtx(),
+			);
+
+			expect(unrelated).toEqual({ results: [{ type: 'notionApi', displayName: 'Notion API' }] });
+			expect(failing).not.toHaveProperty('restricted');
+		});
+
 		it('should filter out generic auth types', async () => {
 			const searchResults = [
 				{ type: 'slackApi', displayName: 'Slack API' },

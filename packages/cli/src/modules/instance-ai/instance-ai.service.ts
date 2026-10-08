@@ -2734,6 +2734,22 @@ export class InstanceAiService {
 
 		context.runId = runId;
 
+		context.onRestrictedNodes = (toolCallId, nodes) => {
+			for (const node of nodes) {
+				this.eventBus.publish(threadId, {
+					type: 'restricted-node-notice',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					payload: {
+						toolCallId,
+						nodeType: node.name,
+						displayName: node.displayName,
+						scope: node.scope,
+					},
+				});
+			}
+		};
+
 		// Setup panel v2: wire the durable `setup-items` sink only while the flag
 		// is on — its presence is the package-side gate. Seeded with the thread's
 		// persisted snapshots so a recomputed, unchanged list publishes nothing.

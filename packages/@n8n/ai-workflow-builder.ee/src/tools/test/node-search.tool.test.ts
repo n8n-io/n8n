@@ -112,6 +112,38 @@ describe('NodeSearchTool', () => {
 			expect(completeMessage).toBeDefined();
 		});
 
+		it('adds a note when a name query names a restricted type', async () => {
+			const tool = createNodeSearchTool(nodeTypesList, [
+				{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'instance' },
+			]).tool;
+
+			const result = await tool.invoke(
+				{ queries: [buildNodeSearchQuery('name', 'gmail')] },
+				createToolConfig('search_nodes', 'test-call-restricted'),
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			const message = content.update.messages[0]?.kwargs.content;
+			expect(message).toContain('Restricted node types that match your search. Do not use them:');
+			expect(message).toContain(
+				'Gmail Trigger (n8n-nodes-base.gmailTrigger): restricted by an instance policy.',
+			);
+		});
+
+		it('adds no note when the query names no restricted type', async () => {
+			const tool = createNodeSearchTool(nodeTypesList, [
+				{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'instance' },
+			]).tool;
+
+			const result = await tool.invoke(
+				{ queries: [buildNodeSearchQuery('name', 'http')] },
+				createToolConfig('search_nodes', 'test-call-plain'),
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			expect(content.update.messages[0]?.kwargs.content).not.toContain('Restricted node types');
+		});
+
 		it('should search sub-nodes by connection type', async () => {
 			const mockConfig = createToolConfig('search_nodes', 'test-call-2');
 

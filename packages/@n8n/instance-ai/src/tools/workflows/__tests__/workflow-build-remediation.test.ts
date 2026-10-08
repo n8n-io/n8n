@@ -16,6 +16,29 @@ describe('createSaveFailureRemediation', () => {
 		expect(remediation.guidance).toContain('status "conflict"');
 	});
 
+	it('blocks the build and asks the user when a policy refuses the save', () => {
+		const refusal = Object.assign(new Error('Node type "x" is blocked by an instance policy'), {
+			isPolicyRefusal: true,
+		});
+
+		const remediation = createSaveFailureRemediation(refusal, false);
+
+		expect(remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_refused_by_policy',
+		});
+		expect(remediation.guidance).toContain('ask what to use instead');
+	});
+
+	it('does not treat an inherited refusal marker as a policy refusal', () => {
+		const error = Object.create({ isPolicyRefusal: true }) as Error;
+
+		expect(createSaveFailureRemediation(error, false).reason).not.toBe(
+			'workflow_refused_by_policy',
+		);
+	});
+
 	it('blocks source edits when a user holds the editor write lock', () => {
 		const remediation = createSaveFailureRemediation(new WorkflowEditorLockedError('wf-1'), true);
 

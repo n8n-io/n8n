@@ -3182,6 +3182,65 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
+	it('refuses a workflow that uses a restricted node type and tells the host', async () => {
+		const onRestrictedNodes = vi.fn();
+		const { context, filePath } = makeContext({
+			overrides: {
+				onRestrictedNodes,
+				nodeService: {
+					listRestricted: vi.fn().mockResolvedValue([
+						{
+							name: 'n8n-nodes-base.gmailTrigger',
+							displayName: 'Gmail Trigger',
+							scope: 'instance',
+						},
+					]),
+				},
+			} as unknown as Partial<InstanceAiContext>,
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Mail summary',
+				nodes: [
+					{
+						id: '1',
+						name: 'Gmail Trigger',
+						type: 'n8n-nodes-base.gmailTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		} as never);
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath },
+			{ toolCallId: 'tc-build' },
+		);
+
+		expect(result).toMatchObject({
+			success: false,
+			errors: [
+				'[node_type_restricted] (Gmail Trigger): Gmail Trigger (n8n-nodes-base.gmailTrigger) is restricted by an instance policy.',
+			],
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'node_type_restricted',
+			},
+		});
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(onRestrictedNodes).toHaveBeenCalledWith('tc-build', [
+			{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'instance' },
+		]);
+	});
+
 	it('keeps repeated validation-error escalation stable when diagnostics are unavailable', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		const validationResult = {

@@ -904,4 +904,36 @@ describe('CodeBuilderSearchTool', () => {
 			expect(result).not.toContain('→ use');
 		});
 	});
+	describe('restricted node types', () => {
+		const restricted = [
+			{
+				name: 'n8n-nodes-base.formTrigger',
+				displayName: 'On form submission',
+				scope: 'instance' as const,
+			},
+		];
+
+		it('says when a query names a restricted type', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockFormNode]);
+			const tool = createCodeBuilderSearchTool(nodeTypeParser, undefined, restricted);
+
+			const result = await tool.invoke({ queries: ['form submission'] });
+
+			expect(result).toContain('Restricted node types that match your search. Do not use them:');
+			expect(result).toContain('On form submission (n8n-nodes-base.formTrigger)');
+		});
+
+		it('leaves the result as it was when no query names a restricted type', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockFormNode]);
+			const plain = await createCodeBuilderSearchTool(nodeTypeParser).invoke({
+				queries: ['form'],
+			});
+
+			const withPolicy = await createCodeBuilderSearchTool(nodeTypeParser, undefined, [
+				{ name: 'n8n-nodes-base.slack', displayName: 'Slack', scope: 'instance' },
+			]).invoke({ queries: ['form'] });
+
+			expect(withPolicy).toBe(plain);
+		});
+	});
 });

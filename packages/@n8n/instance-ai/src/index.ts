@@ -753,6 +753,8 @@ export type {
 	CredentialTypeSearchResult,
 	CredentialHostInfo,
 	NodeSummary,
+	RestrictedCredentialTypeSummary,
+	RestrictedNodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
 	AiGatewayNodeMeta,

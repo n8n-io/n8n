@@ -20,7 +20,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import type { StreamOutput } from '../types/streaming';
-import type { ChatPayload } from '../workflow-builder-agent';
+import type { ChatPayload, RestrictedNodeType } from '../workflow-builder-agent';
 import { CodeBuilderAgent } from './code-builder-agent';
 import { SessionChatHandler } from './handlers/session-chat-handler';
 import type { HistoryContext } from './prompts';
@@ -35,6 +35,8 @@ export interface CodeWorkflowBuilderConfig {
 	llm: BaseChatModel;
 	/** Parsed node types from n8n */
 	nodeTypes: INodeTypeDescription[];
+	/** Node types that a policy restricts. Search says when a query names one. */
+	restrictedNodeTypes?: RestrictedNodeType[];
 	/** Optional logger */
 	logger?: Logger;
 	/**
@@ -93,6 +95,7 @@ export class CodeWorkflowBuilder {
 		this.codeBuilderAgent = new CodeBuilderAgent({
 			llm: config.llm,
 			nodeTypes: config.nodeTypes,
+			restrictedNodeTypes: config.restrictedNodeTypes,
 			logger: config.logger,
 			nodeDefinitionDirs: config.nodeDefinitionDirs,
 			enableTextEditor: true,

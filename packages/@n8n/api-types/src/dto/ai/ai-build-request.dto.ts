@@ -111,6 +111,7 @@ export class AiBuilderChatRequestDto extends Z.class({
 			})
 			.optional(),
 		quickReplyType: z.enum(QUICK_REPLY_TYPES).optional(),
+		projectId: z.string().optional(),
 		mode: z.enum(['build', 'plan']).optional(),
 		resumeData: z.union([z.record(z.unknown()), z.array(z.unknown())]).optional(),
 	}),

@@ -1,4 +1,5 @@
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { hasPolicyRefusalMarker } from 'n8n-workflow';
 
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
 import { isWorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
@@ -6,6 +7,9 @@ import { isWorkflowNotFoundError } from '../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
+
+const POLICY_REFUSAL_GUIDANCE =
+	'Nothing was saved. A policy refused this workflow, for example for a restricted node type or credential type. The error names it. Do not retry with the same type, do not swap in another one on your own, and do not look for a way around the policy. Tell the user what is restricted and ask what to use instead, then build again with their choice.';
 
 export const INVALID_WORKFLOW_ID_GUIDANCE =
 	'Call build-workflow again with the same filePath and omit workflowId to create a new workflow only if that value was never a real n8n workflow id (for example an SDK slug). ' +
@@ -81,6 +85,16 @@ export function createSaveFailureRemediation(
 
 	if (isWorkflowEditorLockedError(error)) {
 		return createWorkflowLockedByEditorRemediation();
+	}
+
+	// A policy refused the save, for example for a type that discovery did not flag.
+	if (hasPolicyRefusalMarker(error)) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_refused_by_policy',
+			guidance: POLICY_REFUSAL_GUIDANCE,
+		});
 	}
 
 	const text = getFailureText(error);

@@ -9,6 +9,8 @@ import { NodeSearchEngine } from './engines/node-search-engine';
 import { createProgressReporter, createBatchProgressReporter } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import type { NodeSearchResult } from '../types/nodes';
+import { describeRestrictedMatches } from '../utils/restricted-node-notes';
+import type { RestrictedNodeType } from '../workflow-builder-agent';
 import type { NodeSearchOutput } from '../types/tools';
 
 /**
@@ -118,7 +120,10 @@ export const NODE_SEARCH_TOOL: BuilderToolBase = {
 /**
  * Factory function to create the node search tool
  */
-export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
+export function createNodeSearchTool(
+	nodeTypes: INodeTypeDescription[],
+	restrictedNodeTypes?: readonly RestrictedNodeType[],
+) {
 	const dynamicTool = tool(
 		(input, config) => {
 			const reporter = createProgressReporter(
@@ -162,7 +167,13 @@ export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 				batchReporter.complete();
 
 				// Build response message
-				const responseMessage = buildResponseMessage(allResults, nodeTypes);
+				const restrictedNote = describeRestrictedMatches(
+					queries.flatMap((q) => (q.queryType === 'name' && q.query ? [q.query] : [])),
+					restrictedNodeTypes,
+				);
+				const responseMessage = [buildResponseMessage(allResults, nodeTypes), restrictedNote]
+					.filter(Boolean)
+					.join('\n\n');
 
 				// Report completion
 				const output: NodeSearchOutput = {

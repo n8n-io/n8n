@@ -443,6 +443,20 @@ text and scope a fact named, so an edit then an undo still strikes out the edite
 {"type":"preference-card","runId":"run_abc123","agentId":"orchestrator-run_abc123","payload":{"toolCallId":"tc-1","preferenceId":"9f1c…","state":"edited","content":"Name trigger nodes On <event>.","scope":"project","projectId":"pr_1"}}
 ```
 
+### `restricted-node-notice`
+
+A node type that a policy blocks, found by a tool call in this run. The tool publishes one
+frame for each blocked type it reports, so the chat can show why the type is unavailable
+without relying on the text the model writes.
+
+`scope` is `instance` or `project`: the policy scope that decided. The reducer folds the
+frame onto the tool call named by `toolCallId`, once for each `nodeType`, and drops a frame
+for a tool call it does not know.
+
+```json
+{"type":"restricted-node-notice","runId":"run_abc123","agentId":"orchestrator-run_abc123","payload":{"toolCallId":"tc-1","nodeType":"n8n-nodes-base.gmailTrigger","displayName":"Gmail Trigger","scope":"instance"}}
+```
+
 ### `thread-title-updated`
 
 The thread title has been updated (e.g., auto-generated from conversation).
@@ -732,6 +746,7 @@ creating duplicate messages.
 | `thread-title-updated` | `title` | Thread title changed |
 | `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn`, `carriedFromRunId?` | Which saved preferences the turn carried |
 | `preference-card` | `toolCallId`, `preferenceId`, `state` (`edited` or `undone`), `content?`, `scope?`, `projectId?` | A saved preference was edited or undone from the chat card |
+| `restricted-node-notice` | `toolCallId`, `nodeType`, `displayName`, `scope` (`instance` or `project`) | A tool call found a node type that a policy blocks |
 | `filesystem-request` | `requestId`, `toolCall` | Local gateway MCP tool request (internal) |
 | `tool-input-start` | `toolCallId`, `toolName` | Tool arguments began streaming |
 | `text-block` | `text` (`responseId` is on the event) | Completed text segment, coalesced |

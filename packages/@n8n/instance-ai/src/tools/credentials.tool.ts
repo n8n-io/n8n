@@ -3,6 +3,7 @@
  */
 import { Tool } from '@n8n/agents';
 import { getCredentialDescriptionPreview } from '@n8n/ai-utilities/credential-description';
+import { describeRestrictionScope, matchRestrictedByQuery } from '@n8n/ai-utilities/node-catalog';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	credentialRequestSchema,
@@ -748,6 +749,24 @@ async function handleDelete(
 	return { success: true };
 }
 
+const RESTRICTED_CREDENTIAL_GUIDANCE =
+	'A policy restricts the credential type that matches. Do not use a generic or templated auth type to get around it, and do not pick another service on your own. Tell the user which credential type is restricted and ask what to use instead.';
+
+async function findRestrictedCredentialTypes(context: InstanceAiContext, query: string) {
+	if (!context.credentialService.listRestrictedTypes) return [];
+
+	try {
+		return matchRestrictedByQuery(
+			query,
+			await context.credentialService.listRestrictedTypes(),
+			(type) => type.type,
+		);
+	} catch {
+		// Search still works without the hint.
+		return [];
+	}
+}
+
 async function handleSearchTypes(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'search-types' }>,
@@ -773,6 +792,22 @@ async function handleSearchTypes(
 
 	// Filter out generic auth types — the AI should use dedicated types
 	const results = allResults.filter((r) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(r.type));
+
+	// Search leaves out the types a policy denies. Say so when the query names one, so the
+	// model tells the user and does not look for a way around the policy.
+	const restricted = await findRestrictedCredentialTypes(context, input.query);
+	if (restricted.length > 0) {
+		return {
+			results,
+			restricted: restricted.map((type) => ({
+				type: type.type,
+				displayName: type.displayName,
+				scope: type.scope,
+				note: `Restricted by ${describeRestrictionScope(type.scope)}. Do not use it.`,
+			})),
+			...(results.length === 0 ? { guidance: RESTRICTED_CREDENTIAL_GUIDANCE } : {}),
+		};
+	}
 
 	if (results.length === 0) {
 		return {

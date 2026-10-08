@@ -134,8 +134,15 @@ export class CodeBuilderAgent {
 		});
 
 		// Create tools
-		const searchTool = createCodeBuilderSearchTool(this.nodeTypeParser);
-		const getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: config.nodeDefinitionDirs });
+		const searchTool = createCodeBuilderSearchTool(
+			this.nodeTypeParser,
+			undefined,
+			config.restrictedNodeTypes,
+		);
+		const getTool = createCodeBuilderGetTool({
+			nodeDefinitionDirs: config.nodeDefinitionDirs,
+			restrictedNodeIds: new Set(config.restrictedNodeTypes?.map((node) => node.name)),
+		});
 		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser);
 		this.tools = [searchTool, getTool, suggestedNodesTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));

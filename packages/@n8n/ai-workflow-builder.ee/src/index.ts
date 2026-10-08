@@ -42,4 +42,8 @@ export type { ParseAndValidateResult, ValidationWarning } from './code-builder';
 
 // SSRF guard contract for the web_fetch tool (cli injects its SsrfProtectionService here)
 export { type SsrfGuard, createPassthroughSsrfGuard } from './tools/utils/ssrf-guard';
-export { type ChatPayload } from './workflow-builder-agent';
+export {
+	type ChatPayload,
+	type RestrictedNodeType,
+	type RestrictedNodeTypeRef,
+} from './workflow-builder-agent';

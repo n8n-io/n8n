@@ -243,6 +243,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'setup-items',
 	'preferences-applied',
 	'preference-card',
+	'restricted-node-notice',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -1240,6 +1241,16 @@ export const preferenceCardPayloadSchema = z.object({
 });
 export type PreferenceCardPayload = z.infer<typeof preferenceCardPayloadSchema>;
 
+/** A node type a policy blocks, found by a tool call in this run. The tool call names the
+ *  type; the UI shows why it is unavailable without asking the model to write that. */
+export const restrictedNodeNoticePayloadSchema = z.object({
+	toolCallId: z.string(),
+	nodeType: z.string(),
+	displayName: z.string(),
+	scope: z.enum(['instance', 'project']),
+});
+export type RestrictedNodeNoticePayload = z.infer<typeof restrictedNodeNoticePayloadSchema>;
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
@@ -1376,6 +1387,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: preferenceCardPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('restricted-node-notice'),
+		...eventBase,
+		payload: restrictedNodeNoticePayloadSchema,
+	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1418,6 +1434,10 @@ export type InstanceAiPreferencesAppliedEvent = Extract<
 	{ type: 'preferences-applied' }
 >;
 export type InstanceAiPreferenceCardEvent = Extract<InstanceAiEvent, { type: 'preference-card' }>;
+export type InstanceAiRestrictedNodeNoticeEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'restricted-node-notice' }
+>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -2033,6 +2053,8 @@ export interface InstanceAiToolCallState {
 		scope?: AiPreferenceScope;
 		projectId?: string | null;
 	};
+	/** Set by `restricted-node-notice` facts: node types a policy blocks that this call found. */
+	restrictedNodes?: Array<Pick<RestrictedNodeNoticePayload, 'nodeType' | 'displayName' | 'scope'>>;
 	startedAt?: string;
 	completedAt?: string;
 }

@@ -1,13 +1,15 @@
 import type { Mock, MockedClass } from 'vitest';
-import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import { AiWorkflowBuilderService, type ChatPayload } from '@n8n/ai-workflow-builder';
+import { Container } from '@n8n/di';
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
-import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,7 +18,9 @@ import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import type { Push } from '@/push';
+import { TypeRestrictionProviderProxy } from '@/policy/type-restriction-provider-proxy.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
+import { BuilderRestrictedNodeTypes } from '@/services/builder-restricted-node-types.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
@@ -54,7 +58,7 @@ describe('WorkflowBuilderService', () => {
 	let mockSsrfProtectionConfig: SsrfProtectionConfig;
 	let mockSsrfProtectionService: SsrfProtectionService;
 	let mockOutboundHttp: OutboundHttp;
-	let mockUser: IUser;
+	let mockUser: User;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -106,7 +110,7 @@ describe('WorkflowBuilderService', () => {
 		const mockTransport = mock<HttpTransport>();
 		mockTransport.asCustomFetch.mockReturnValue(vi.fn() as never);
 		(mockOutboundHttp.transport as Mock).mockReturnValue(mockTransport);
-		mockUser = mock<IUser>();
+		mockUser = mock<User>();
 		mockUser.id = 'test-user-id';
 
 		// Setup default mocks
@@ -181,6 +185,75 @@ describe('WorkflowBuilderService', () => {
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
+		});
+
+		describe('policy-restricted node types', () => {
+			const restricted = [{ name: 'n8n-nodes-base.gmailTrigger', scope: 'instance' }];
+			const find = vi.fn();
+
+			const chatPayload = (): ChatPayload => ({
+				message: 'test message',
+				id: '12345',
+				workflowContext: {},
+			});
+
+			async function runChat() {
+				const mockAiService = mock<AiWorkflowBuilderService>();
+				(mockAiService.chat as Mock).mockReturnValue(
+					(async function* () {
+						yield { messages: ['response'] };
+					})(),
+				);
+				MockedAiWorkflowBuilderService.mockImplementation(function () {
+					return mockAiService;
+				});
+
+				await service.chat(chatPayload(), mockUser).next();
+
+				return mockAiService.chat as Mock;
+			}
+
+			beforeEach(() => {
+				find.mockReset();
+				find.mockResolvedValue(restricted);
+				Container.set(BuilderRestrictedNodeTypes, {
+					find,
+				} as unknown as BuilderRestrictedNodeTypes);
+			});
+
+			afterEach(() => {
+				Container.set(TypeRestrictionProviderProxy, new TypeRestrictionProviderProxy());
+			});
+
+			it('hands the restricted types to the builder while a policy module answers', async () => {
+				Container.get(TypeRestrictionProviderProxy).registerProvider({
+					findRestrictedTypes: vi.fn(),
+				});
+
+				const chat = await runChat();
+
+				expect(chat.mock.calls[0][0]).toMatchObject({ restrictedNodeTypes: restricted });
+			});
+
+			it('sends the payload unchanged when nothing is restricted', async () => {
+				Container.get(TypeRestrictionProviderProxy).registerProvider({
+					findRestrictedTypes: vi.fn(),
+				});
+				find.mockResolvedValue([]);
+
+				const chat = await runChat();
+
+				expect(chat.mock.calls[0][0]).not.toHaveProperty('restrictedNodeTypes');
+			});
+
+			it('does not look anything up while no policy module answers', async () => {
+				Container.set(TypeRestrictionProviderProxy, new TypeRestrictionProviderProxy());
+
+				const chat = await runChat();
+
+				expect(find).not.toHaveBeenCalled();
+				expect(chat.mock.calls[0][0]).not.toHaveProperty('restrictedNodeTypes');
+			});
 		});
 
 		it('should create AiAssistantClient when baseUrl is configured', async () => {
@@ -908,7 +981,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			outboundHttp,
 		);
 
-		const mockUser = mock<IUser>();
+		const mockUser = mock<User>();
 		mockUser.id = 'test-user';
 
 		const generator = builderService.chat(

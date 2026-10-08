@@ -620,6 +620,11 @@ export interface CodeBuilderGetToolOptions {
 	 * Ordered list of directories to search for built-in node definitions.
 	 */
 	nodeDefinitionDirs?: string[];
+	/**
+	 * Node IDs that a policy restricts. A request for one returns an error and no definition, so
+	 * the caller cannot build with a type that the node list leaves out.
+	 */
+	restrictedNodeIds?: ReadonlySet<string>;
 }
 
 /**
@@ -634,13 +639,18 @@ export function getNodeTypes(
 	nodeIds: NodeRequest[],
 	options: CodeBuilderGetToolOptions = {},
 ): string {
-	const { nodeDefinitionDirs } = options;
+	const { nodeDefinitionDirs, restrictedNodeIds } = options;
 	const results: string[] = [];
 	const errors: string[] = [];
 
 	for (const nodeRequest of nodeIds) {
 		const nodeId = typeof nodeRequest === 'string' ? nodeRequest : nodeRequest.nodeId;
 		const version = typeof nodeRequest === 'string' ? undefined : nodeRequest.version;
+
+		if (restrictedNodeIds?.has(nodeId)) {
+			errors.push(`Node type "${nodeId}" is restricted by a policy. Do not use it.`);
+			continue;
+		}
 
 		const discriminators =
 			typeof nodeRequest === 'string'

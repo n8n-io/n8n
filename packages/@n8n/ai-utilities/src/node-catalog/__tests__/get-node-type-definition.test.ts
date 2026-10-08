@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { getNodeTypeDefinition, versionDirToNumber } from '../get';
+import { getNodeTypeDefinition, getNodeTypes, versionDirToNumber } from '../get';
 
 describe('getNodeTypeDefinition — split-node discriminator handling', () => {
 	let defsDir: string;
@@ -160,5 +160,49 @@ describe('getNodeTypeDefinition — version segment handling', () => {
 
 		expect(result.error).toContain('not found for node');
 		expect(result.content).toBe('');
+	});
+});
+
+describe('getNodeTypes — restricted node ids', () => {
+	let defsDir: string;
+
+	beforeAll(() => {
+		defsDir = mkdtempSync(join(tmpdir(), 'ai-utils-node-defs-restricted-'));
+		const mergeDir = join(defsDir, 'nodes', 'n8n-nodes-base', 'merge');
+		mkdirSync(mergeDir, { recursive: true });
+		writeFileSync(join(mergeDir, 'v3.ts'), '// merge def');
+	});
+
+	afterAll(() => {
+		rmSync(defsDir, { recursive: true, force: true });
+	});
+
+	it('returns an error and no definition for a restricted node id', () => {
+		const response = getNodeTypes(['n8n-nodes-base.merge'], {
+			nodeDefinitionDirs: [defsDir],
+			restrictedNodeIds: new Set(['n8n-nodes-base.merge']),
+		});
+
+		expect(response).toContain('Node type "n8n-nodes-base.merge" is restricted by a policy');
+		expect(response).not.toContain('merge def');
+	});
+
+	it('still returns the definition of an allowed node next to a restricted one', () => {
+		const response = getNodeTypes(
+			['n8n-nodes-base.merge', { nodeId: 'n8n-nodes-base.gmailTrigger' }],
+			{
+				nodeDefinitionDirs: [defsDir],
+				restrictedNodeIds: new Set(['n8n-nodes-base.gmailTrigger']),
+			},
+		);
+
+		expect(response).toContain('merge def');
+		expect(response).toContain('"n8n-nodes-base.gmailTrigger" is restricted by a policy');
+	});
+
+	it('returns the definition when no policy restricts the id', () => {
+		const response = getNodeTypes(['n8n-nodes-base.merge'], { nodeDefinitionDirs: [defsDir] });
+
+		expect(response).toContain('merge def');
 	});
 });
