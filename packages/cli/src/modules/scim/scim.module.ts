@@ -11,6 +11,7 @@ import { Container } from '@n8n/di';
 export class ScimModule implements ModuleInterface {
 	async init() {
 		// Import controllers to register routes
+		await import('./scim.controller.js');
 		await import('./scim-discovery.controller.js');
 		await import('./scim-token.controller.js');
 	}

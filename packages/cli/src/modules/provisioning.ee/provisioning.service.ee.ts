@@ -3,7 +3,7 @@ import {
 	ProvisioningConfigDto,
 	ProvisioningConfigPatchDto,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -18,7 +18,7 @@ import {
 	ProjectRelation,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
@@ -496,6 +496,16 @@ export class ProvisioningService {
 	 * Expression mapping is a single global toggle covering both scopes, so it only marks a scope
 	 * as managed when rules for that specific scope actually exist.
 	 */
+	/**
+	 * When the SCIM module is active, the IdP's SCIM push is the system of
+	 * record for the instance role, and login-time role mapping must not
+	 * overwrite it. This matches IdP vendor guidance: with both SSO and
+	 * SCIM active, SCIM owns attributes and SSO only authenticates.
+	 */
+	private isScimActive(): boolean {
+		return Container.get(ModuleRegistry).isActive('scim');
+	}
+
 	private async hasRoleMappingRulesOfType(type: 'instance' | 'project'): Promise<boolean> {
 		return (await this.roleMappingRuleRepository.count({ where: { type } })) > 0;
 	}
@@ -805,6 +815,10 @@ export class ProvisioningService {
 			this.hasRoleMappingRulesOfType('project'),
 		]);
 
+		// SCIM is the system of record for the instance role while it is active.
+		const skipInstanceRole = this.isScimActive();
+		const applyInstanceRole = instanceRolesManaged && !skipInstanceRole;
+
 		this.logger.debug('SSO role resolution complete', {
 			userId: user.id,
 			provider: context.$provider,
@@ -815,11 +829,18 @@ export class ProvisioningService {
 		});
 
 		await this.applyExpressionMappedRoles(user, resolved, {
-			instanceRole: instanceRolesManaged,
+			instanceRole: applyInstanceRole,
 			projectRoles: projectRolesManaged,
 		});
 
-		const newInstanceRole = resolved.instanceRole;
+		const newInstanceRole = skipInstanceRole
+			? {
+					role: previousInstanceRole,
+					matchedRuleId: null,
+					expression: null,
+					isFallback: false,
+				}
+			: resolved.instanceRole;
 		// Report only what was actually applied, so an unmanaged scope doesn't emit phantom changes.
 		const projectRoles = projectRolesManaged
 			? [...resolved.projectRoles.values()].map((pr) => {

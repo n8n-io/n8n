@@ -742,4 +742,9 @@ export {
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
 
-export { ScimConfigPatchDto } from './scim';
+export {
+	ScimConfigPatchDto,
+	ScimPatchRequestDto,
+	ScimQueryDto,
+	ScimUserCreateDto,
+} from './scim';

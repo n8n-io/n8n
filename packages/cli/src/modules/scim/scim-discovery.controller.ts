@@ -10,10 +10,10 @@ import { scimRoute } from './scim-route';
  * An identity provider reads these before it pushes anything, to learn which
  * resources and operations this server supports.
  *
- * No resource endpoint exists yet, so this advertises nothing: no resource
- * types, no schemas, and no PATCH or filter support. A provider that reads a
- * capability here will use it, and would then get a 404. Each entry is added
- * by the PR that implements the endpoint behind it.
+ * Only advertise what exists. A provider uses whatever it finds here, so an
+ * entry without an endpoint behind it turns every sync into a 404, which the
+ * customer sees as a broken integration. Group is added by the PR that
+ * implements its endpoint.
  */
 @RootLevelController('/scim/v2')
 export class ScimDiscoveryController {
@@ -27,7 +27,7 @@ export class ScimDiscoveryController {
 			schemas: ['urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig'],
 			documentationUri: 'https://docs.n8n.io/user-management/scim/',
 			patch: {
-				supported: false,
+				supported: true,
 			},
 			bulk: {
 				supported: false,
@@ -35,8 +35,8 @@ export class ScimDiscoveryController {
 				maxPayloadSize: 0,
 			},
 			filter: {
-				supported: false,
-				maxResults: 0,
+				supported: true,
+				maxResults: 1000,
 			},
 			changePassword: {
 				supported: false,
@@ -68,8 +68,17 @@ export class ScimDiscoveryController {
 	getResourceTypes(_req: AuthenticatedRequest, res: Response) {
 		return res.header('Content-Type', 'application/scim+json').json({
 			schemas: ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
-			totalResults: 0,
-			Resources: [],
+			totalResults: 1,
+			Resources: [
+				{
+					schemas: ['urn:ietf:params:scim:schemas:core:2.0:ResourceType'],
+					id: 'User',
+					name: 'User',
+					endpoint: '/Users',
+					description: 'User Account',
+					schema: 'urn:ietf:params:scim:schemas:core:2.0:User',
+				},
+			],
 		});
 	}
 
@@ -81,8 +90,76 @@ export class ScimDiscoveryController {
 	getSchemas(_req: AuthenticatedRequest, res: Response) {
 		return res.header('Content-Type', 'application/scim+json').json({
 			schemas: ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
-			totalResults: 0,
-			Resources: [],
+			totalResults: 1,
+			Resources: [
+				{
+					id: 'urn:ietf:params:scim:schemas:core:2.0:User',
+					name: 'User',
+					description: 'User Account',
+					attributes: [
+						{
+							name: 'userName',
+							type: 'string',
+							multiValued: false,
+							required: true,
+							caseExact: false,
+							mutability: 'readWrite',
+							returned: 'default',
+							uniqueness: 'server',
+						},
+						{
+							name: 'name',
+							type: 'complex',
+							multiValued: false,
+							required: false,
+							mutability: 'readWrite',
+							returned: 'default',
+							subAttributes: [
+								{
+									name: 'givenName',
+									type: 'string',
+									multiValued: false,
+									required: false,
+									mutability: 'readWrite',
+									returned: 'default',
+								},
+								{
+									name: 'familyName',
+									type: 'string',
+									multiValued: false,
+									required: false,
+									mutability: 'readWrite',
+									returned: 'default',
+								},
+							],
+						},
+						{
+							name: 'emails',
+							type: 'complex',
+							multiValued: true,
+							required: false,
+							mutability: 'readWrite',
+							returned: 'default',
+						},
+						{
+							name: 'active',
+							type: 'boolean',
+							multiValued: false,
+							required: false,
+							mutability: 'readWrite',
+							returned: 'default',
+						},
+						{
+							name: 'roles',
+							type: 'complex',
+							multiValued: true,
+							required: false,
+							mutability: 'readWrite',
+							returned: 'default',
+						},
+					],
+				},
+			],
 		});
 	}
 }

@@ -932,3 +932,23 @@ export type {
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
 export type * from './workflow-suggestions';
+
+export type {
+	ScimUser,
+	ScimUserCreate,
+	ScimPatchOp,
+	ScimPatchRequest,
+	ScimListResponse,
+	ScimError,
+	ScimMeta,
+	ScimUserName,
+	ScimEmail,
+	ScimRole,
+} from './schemas/scim.schema';
+export {
+	scimUserSchema,
+	scimUserCreateSchema,
+	scimPatchRequestSchema,
+	scimListResponseSchema,
+	scimErrorSchema,
+} from './schemas/scim.schema';
