@@ -1,0 +1,27 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_eaf07a577bcc8d::t_2553bbd0585112 1003
+packages/cli/src/workflows/publication/format-node-failures.ts
+  s_eaf07a577bcc8d::t_2553bbd0585112 1,5-11
+  s_eaf07a577bcc8d::t_249dba3c42f84a 12
+packages/cli/src/workflows/publication/__tests__/format-node-failures.test.ts
+  s_eaf07a577bcc8d::t_3c07022a37480d 1-4,26-41
+  s_eaf07a577bcc8d::t_50f4efc088b3cc 42
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_eaf07a577bcc8d::t_2553bbd0585112 25-28,616,619-622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87d7cb627428354a94dca0bfc06a8093f73a6b8a",
+  "prompts": {},
+  "sessions": {
+    "s_eaf07a577bcc8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53afa069-bfb3-439b-93d4-161825d80123",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

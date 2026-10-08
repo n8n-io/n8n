@@ -1,0 +1,16 @@
+packages/workflow/src/path-segment.ts
+  h_52a137d26d774c 3-4,10-17,28-35,39,42
+packages/workflow/test/path-segment.test.ts
+  h_52a137d26d774c 54-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b993dd16bfa66d7ba3943b790915e35f16b0c00",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_41acdb5ade197f::t_c9d8c41a4ca6ef 349-353,356
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_41acdb5ade197f::t_c9d8c41a4ca6ef 15,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ca9531828f2e6656ccd263cfd60df00d7221b6b",
+  "prompts": {},
+  "sessions": {
+    "s_41acdb5ade197f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c5722d4-4186-4bcf-bcf1-469d8c5fce43",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

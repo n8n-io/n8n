@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb11cc482e6bc8fe744dee2c9dc972c16c23ba17",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

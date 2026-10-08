@@ -1,0 +1,80 @@
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_0dc64eefe1b713::t_3c15d262ee87f4 438,471-475,477,480-481,489,491,495
+  s_0dc64eefe1b713::t_68bdb41933f7c2 539-540,542-547
+  s_8987b8017e49de::t_b5395af5f12c68 560-590,595-603
+  s_8987b8017e49de::t_c18e421635645d 591-594,604-635,640-645
+  s_8987b8017e49de::t_fd54e08dec1b92 636-639
+  s_8987b8017e49de::t_44e18b2636038a 649-715
+packages/@n8n/api-types/src/dto/index.ts
+  s_8987b8017e49de::t_88a15fca5f2650 634,636,638
+  s_8987b8017e49de::t_923d6b578b5ded 651
+packages/cli/src/modules/promotions.ee/__tests__/branch-placement.test.ts
+  s_8987b8017e49de::t_b5395af5f12c68 3,48-49,52
+  s_0dc64eefe1b713::t_a2d6ba6aec2f97 23-24,34,39,55,63,66-73,75
+  s_8987b8017e49de::t_b4393242312bb2 36,50-51,65
+  s_0dc64eefe1b713::t_3fff6bff51d2e0 105
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_8987b8017e49de::t_b5395af5f12c68 14,400-401,587-589,591-592,594-595,617,624,629,631,641-644
+  s_0dc64eefe1b713::t_183b6fed718d6a 15
+  s_8987b8017e49de::t_c3289c07955d5c 17-20
+  s_8987b8017e49de::t_fda9e35381adce 387
+  s_0dc64eefe1b713::t_b79c1df9997af6 388,402
+  s_8987b8017e49de::t_b86c75a6c63134 395
+  s_8987b8017e49de::t_effa9425355f1c 399
+  s_8987b8017e49de::t_dfaa2b427ee21c 403
+  s_8987b8017e49de::t_1b3c6644327124 471
+  s_8987b8017e49de::t_addd340508c2b8 519,529,537
+  s_8987b8017e49de::t_e01184b955fc5a 563
+  s_8987b8017e49de::t_3c7459637d619d 565-567,569-571,573-576,578-579
+  s_8987b8017e49de::t_729127fe2807b2 572
+  s_8987b8017e49de::t_cce7b9889b6816 582-585
+  s_0dc64eefe1b713::t_30693cb7ff7ac3 590,597-602,637-640,646-650,659,661
+  s_8987b8017e49de::t_1a241f712a5ae2 593
+  s_8987b8017e49de::t_7520eddd9fd328 603-611,615-616,618-619,622-623
+  s_8987b8017e49de::t_f530ee423390d8 612
+  s_0dc64eefe1b713::t_5a98fd45fd432f 613-614,620-621,632-636
+  s_8987b8017e49de::t_ed1f9e6dfc6147 625-626
+  s_8987b8017e49de::t_375bee062031c6 627-628
+  s_8987b8017e49de::t_bef41ed22a960c 630
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 251-253
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_8987b8017e49de::t_de837efe09283c 2,4,22-23,27-36
+  s_8987b8017e49de::t_8c09bfd2baf734 24-26
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  ai_agent 1884,1923-1928
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_8987b8017e49de::t_b5395af5f12c68 1,28,34-35
+  s_8987b8017e49de::t_4ff6bdcafbceb2 13,17
+  s_0dc64eefe1b713::t_9ad9d9f6e963b6 15-16,30-31,36-37,42
+  s_8987b8017e49de::t_87289a910d6396 25-27
+  s_8987b8017e49de::t_13164efab74cf4 38
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_8987b8017e49de::t_8362aee4ce8624 87,89-94,96-108
+  s_8987b8017e49de::t_1f4539d4c31222 88
+  s_8987b8017e49de::t_8ccb99089f94d9 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f2f724f21e9d915dcbd8c92c855730cd2ded0aa",
+  "prompts": {},
+  "sessions": {
+    "s_0dc64eefe1b713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6344c7c-56d1-4739-a3e7-4af6a32dc3c6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_8987b8017e49de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce582f0f-6915-4be7-93ac-a2ac38c09dc8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

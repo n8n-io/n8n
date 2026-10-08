@@ -1,0 +1,22 @@
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_8631ec10eb1199::t_d03eb4e954cd26 63-68
+  s_8631ec10eb1199::t_6cb60c16441039 188-190
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_8631ec10eb1199::t_319fb792a0336f 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d42c890453e0afff6a70689d2a31fda2d56befb3",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
