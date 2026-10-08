@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GraphEdge, WorkflowGraph } from '../../graph';
+import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph } from '../../graph';
 import { deriveLoops, getDescendantNodeIds } from '../../graph';
 import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { decideSuccessors, type SuccessorDecisions } from '../settlement';
@@ -55,6 +55,23 @@ const diamond = makeGraph([
 ]);
 
 describe('decideSuccessors', () => {
+	it('sends a live successor whose outputs were seeded to toSeed instead of toRun', () => {
+		const seeded: StoredWorkflowGraph = {
+			...diamond,
+			nodes: diamond.nodes.map((node) => (node.id === 'a' ? { ...node, seeded: true } : node)),
+		};
+
+		const decisions = decideSuccessors(
+			seeded,
+			[],
+			keyFor('if'),
+			makeSteps(summary('trigger', 'completed', [true]), summary('if', 'completed', [true, true])),
+			new Map(),
+		);
+
+		expect(decisions).toEqual({ toRun: [keyFor('b')], toSeed: [keyFor('a')], toSkip: [] });
+	});
+
 	it('queues the live branch and skips the dead one', () => {
 		// if fired only output slot 0; m is not a direct successor, so it is
 		// not considered — b's own settled event will examine it.
@@ -64,7 +81,7 @@ describe('decideSuccessors', () => {
 			makeSteps(summary('trigger', 'completed', [true]), summary('if', 'completed', [true, false])),
 		);
 
-		expect(decisions).toEqual({ toQueue: [keyFor('a')], toSkip: [keyFor('b')] });
+		expect(decisions).toEqual({ toRun: [keyFor('a')], toSeed: [], toSkip: [keyFor('b')] });
 	});
 
 	it('decides a merge once its last predecessor settles', () => {
@@ -81,7 +98,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [keyFor('m')], toSkip: [] });
+		expect(decisions).toEqual({ toRun: [keyFor('m')], toSeed: [], toSkip: [] });
 	});
 
 	it('leaves a merge undecided while a predecessor is still unsettled', () => {
@@ -98,7 +115,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSkip: [] });
+		expect(decisions).toEqual({ toRun: [], toSeed: [], toSkip: [] });
 	});
 
 	it('cascades a skip one hop at a time through the event loop', () => {
@@ -116,19 +133,22 @@ describe('decideSuccessors', () => {
 		);
 
 		expect(decideLoopless(graph, keyFor('if'), steps)).toEqual({
-			toQueue: [keyFor('a')],
+			toRun: [keyFor('a')],
+			toSeed: [],
 			toSkip: [keyFor('b')],
 		});
 
 		steps[stepKeyId(keyFor('b'))] = summary('b', 'skipped');
 		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({
-			toQueue: [],
+			toRun: [],
+			toSeed: [],
 			toSkip: [keyFor('c')],
 		});
 
 		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
 		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
-			toQueue: [],
+			toRun: [],
+			toSeed: [],
 			toSkip: [keyFor('d')],
 		});
 	});
@@ -150,11 +170,16 @@ describe('decideSuccessors', () => {
 			summary('b', 'skipped'),
 		);
 
-		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({ toQueue: [], toSkip: [] });
+		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({
+			toRun: [],
+			toSeed: [],
+			toSkip: [],
+		});
 
 		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
 		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
-			toQueue: [],
+			toRun: [],
+			toSeed: [],
 			toSkip: [keyFor('d')],
 		});
 	});
@@ -174,7 +199,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSkip: [] });
+		expect(decisions).toEqual({ toRun: [], toSeed: [], toSkip: [] });
 	});
 
 	it('routes an N-output fan-out per slot', () => {
@@ -194,7 +219,11 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [keyFor('a'), keyFor('c')], toSkip: [keyFor('b')] });
+		expect(decisions).toEqual({
+			toRun: [keyFor('a'), keyFor('c')],
+			toSeed: [],
+			toSkip: [keyFor('b')],
+		});
 	});
 
 	it('treats an output slot beyond the produced list as dead', () => {
@@ -209,7 +238,7 @@ describe('decideSuccessors', () => {
 			makeSteps(summary('trigger', 'completed', [true]), summary('a', 'completed', [true])),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSkip: [keyFor('b')] });
+		expect(decisions).toEqual({ toRun: [], toSeed: [], toSkip: [keyFor('b')] });
 	});
 });
 
@@ -282,8 +311,8 @@ function simulateExecution(
 		if (handleEvent) {
 			const nodeId = settledEvents[0];
 			settledEvents.shift();
-			const { toQueue, toSkip } = decideLoopless(graph, keyFor(nodeId), steps);
-			for (const { nodeId: id } of toQueue) {
+			const { toRun, toSkip } = decideLoopless(graph, keyFor(nodeId), steps);
+			for (const { nodeId: id } of toRun) {
 				steps[stepKeyId(keyFor(id))] = summary(id, 'queued');
 				queuedNodes.push(id);
 			}
@@ -389,7 +418,7 @@ describe('decideSuccessors over loop iterations', () => {
 	it('queues the body at the batch row iteration, and leaves the exit undecided', () => {
 		const steps = makeSteps(at('B', 0, 'completed', [false, true]));
 
-		expect(decide(key('B', 0), steps)).toEqual({ toQueue: [key('x', 0)], toSkip: [] });
+		expect(decide(key('B', 0), steps)).toEqual({ toRun: [key('x', 0)], toSeed: [], toSkip: [] });
 	});
 
 	it('advances the iteration across the return edge', () => {
@@ -398,7 +427,7 @@ describe('decideSuccessors over loop iterations', () => {
 			at('x', 0, 'completed', [true]),
 		);
 
-		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [key('B', 1)], toSkip: [] });
+		expect(decide(key('x', 0), steps)).toEqual({ toRun: [key('B', 1)], toSeed: [], toSkip: [] });
 	});
 
 	it('skips the next iteration when the body returns nothing', () => {
@@ -407,7 +436,7 @@ describe('decideSuccessors over loop iterations', () => {
 			at('x', 0, 'completed', [false]),
 		);
 
-		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [], toSkip: [key('B', 1)] });
+		expect(decide(key('x', 0), steps)).toEqual({ toRun: [], toSeed: [], toSkip: [key('B', 1)] });
 	});
 
 	it('queues what follows the loop from the terminal row only', () => {
@@ -415,7 +444,8 @@ describe('decideSuccessors over loop iterations', () => {
 		const terminals = new Map([['B', 2]]);
 
 		expect(decide(key('B', 2), steps, terminals)).toEqual({
-			toQueue: [key('d', 0)],
+			toRun: [key('d', 0)],
+			toSeed: [],
 			toSkip: [],
 		});
 	});
@@ -426,7 +456,7 @@ describe('decideSuccessors over loop iterations', () => {
 
 		const decisions = decide(key('B', 2), steps, terminals);
 
-		expect(decisions.toQueue).not.toContainEqual(key('x', 2));
+		expect(decisions.toRun).not.toContainEqual(key('x', 2));
 		expect(decisions.toSkip).not.toContainEqual(key('x', 2));
 	});
 
@@ -437,7 +467,7 @@ describe('decideSuccessors over loop iterations', () => {
 			at('B', 1, 'completed', [false, true]),
 		);
 
-		expect(decide(key('B', 1), steps)).toEqual({ toQueue: [key('x', 1)], toSkip: [] });
+		expect(decide(key('B', 1), steps)).toEqual({ toRun: [key('x', 1)], toSeed: [], toSkip: [] });
 	});
 
 	/**
@@ -472,7 +502,8 @@ describe('decideSuccessors over loop iterations', () => {
 		);
 
 		expect(decideSuccessors(joined, joinedLoops, key('p', 0), steps, new Map())).toEqual({
-			toQueue: [],
+			toRun: [],
+			toSeed: [],
 			toSkip: [],
 		});
 
@@ -481,20 +512,25 @@ describe('decideSuccessors over loop iterations', () => {
 			at('p', 0, 'completed', [true]),
 		);
 		expect(decideSuccessors(joined, joinedLoops, key('p', 0), ended, new Map([['B', 2]]))).toEqual({
-			toQueue: [key('d', 0)],
+			toRun: [key('d', 0)],
+			toSeed: [],
 			toSkip: [],
 		});
 	});
 
 	it('reads the entry edge at iteration 0 and the return edge after it', () => {
 		const entry = makeSteps(at('trigger', 0, 'completed', [true]));
-		expect(decide(key('trigger', 0), entry)).toEqual({ toQueue: [key('B', 0)], toSkip: [] });
+		expect(decide(key('trigger', 0), entry)).toEqual({
+			toRun: [key('B', 0)],
+			toSeed: [],
+			toSkip: [],
+		});
 
 		const second = makeSteps(
 			at('trigger', 0, 'completed', [true]),
 			at('B', 0, 'completed', [false, true]),
 			at('x', 0, 'completed', [true]),
 		);
-		expect(decide(key('x', 0), second)).toEqual({ toQueue: [key('B', 1)], toSkip: [] });
+		expect(decide(key('x', 0), second)).toEqual({ toRun: [key('B', 1)], toSeed: [], toSkip: [] });
 	});
 });
