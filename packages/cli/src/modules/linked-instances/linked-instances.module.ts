@@ -6,6 +6,7 @@ import { BackendModule } from '@n8n/decorators';
 export class LinkedInstancesModule implements ModuleInterface {
 	async init() {
 		await import('./linked-instances.controller.js');
+		await import('./transfer/transfer.controller.js');
 	}
 
 	async entities() {

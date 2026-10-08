@@ -80,6 +80,10 @@ export class LogStreamingEventRelay extends EventRelay {
 			'n8n-package-exported': (event) => this.packageExported(event),
 			'n8n-package-export-failed': (event) => this.packageExportFailed(event),
 			'n8n-package-import-failed': (event) => this.packageImportFailed(event),
+			'linked-instance-workflow-pushed': (event) => this.linkedInstanceWorkflowPushed(event),
+			'linked-instance-workflow-pulled': (event) => this.linkedInstanceWorkflowPulled(event),
+			'linked-instance-workflow-transfer-failed': (event) =>
+				this.linkedInstanceWorkflowTransferFailed(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
@@ -243,6 +247,39 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.import.failed',
 			payload: { ...user, operation: 'import', ...rest },
+		});
+	}
+
+	@Redactable()
+	private linkedInstanceWorkflowPushed({
+		user,
+		...rest
+	}: RelayEventMap['linked-instance-workflow-pushed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.linked-instance.workflow.pushed',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private linkedInstanceWorkflowPulled({
+		user,
+		...rest
+	}: RelayEventMap['linked-instance-workflow-pulled']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.linked-instance.workflow.pulled',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private linkedInstanceWorkflowTransferFailed({
+		user,
+		...rest
+	}: RelayEventMap['linked-instance-workflow-transfer-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.linked-instance.workflow.transfer-failed',
+			payload: { ...user, ...rest },
 		});
 	}
 

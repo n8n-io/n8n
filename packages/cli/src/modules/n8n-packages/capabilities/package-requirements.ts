@@ -40,6 +40,21 @@ function compareCredentials(a: CredentialSummary, b: CredentialSummary): number 
 	return a.name.localeCompare(b.name) || a.type.localeCompare(b.type);
 }
 
+/** One key for each name and type, because the import matches credentials by both. */
+export function credentialSummaryKey({ name, type }: CredentialSummary): string {
+	return JSON.stringify([name, type]);
+}
+
+/** Each name and type once, sorted by name, then by type. Other fields go. */
+export function uniqueCredentialSummaries(
+	credentials: readonly CredentialSummary[],
+): CredentialSummary[] {
+	const byKey = new Map(
+		credentials.map(({ name, type }) => [credentialSummaryKey({ name, type }), { name, type }]),
+	);
+	return [...byKey.values()].sort(compareCredentials);
+}
+
 /** Node types as sorted unique "type@version" labels. */
 export function nodeTypeLabels(nodeTypes: readonly NodeTypeVersion[] = []): string[] {
 	return uniqueSorted(nodeTypes.map(nodeTypeLabel));
@@ -52,13 +67,9 @@ export function nodeTypeLabels(nodeTypes: readonly NodeTypeVersion[] = []): stri
 export function summariseRequirements(
 	requirements: PackageRequirements | undefined,
 ): WorkflowPackageRequirements {
-	const credentials = new Map<string, CredentialSummary>();
-	for (const { name, type } of requirements?.credentials ?? []) {
-		credentials.set(JSON.stringify([name, type]), { name, type });
-	}
 	return {
 		nodeTypes: nodeTypeLabels(requirements?.nodeTypes),
-		credentials: [...credentials.values()].sort(compareCredentials),
+		credentials: uniqueCredentialSummaries(requirements?.credentials ?? []),
 	};
 }
 

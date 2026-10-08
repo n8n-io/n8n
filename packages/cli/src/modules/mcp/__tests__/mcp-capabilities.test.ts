@@ -505,6 +505,7 @@ describe('McpService capabilities', () => {
 					workflowName: 'Daily report',
 					created: true,
 					published: false,
+					newVersionLive: false,
 					credentialsNeedingSetup: [],
 					missingNodeTypes: expect.any(Array),
 					warnings: [],

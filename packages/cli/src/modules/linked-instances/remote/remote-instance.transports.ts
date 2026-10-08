@@ -9,6 +9,9 @@ export type BuildTransport = (timeoutMs: number) => HttpTransport;
 
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 
+/** The message of the `unreachable` error for a response body over the size cap. */
+export const RESPONSE_OVER_LIMIT_MESSAGE = 'The linked instance sent a response over 5 MiB.';
+
 /**
  * Reads the whole body within the size cap before the SDK sees it. The SDK reports a
  * failed event stream only to `onerror`, so a streamed failure would wait for the timeout.
@@ -17,8 +20,7 @@ async function readWithinLimit(response: Response): Promise<Response> {
 	if (!response.body) return response;
 	const limited = limitResponseBody(response, {
 		maxBytes: MAX_RESPONSE_BYTES,
-		createError: () =>
-			new RemoteInstanceError('unreachable', 'The linked instance sent a response over 5 MiB.'),
+		createError: () => new RemoteInstanceError('unreachable', RESPONSE_OVER_LIMIT_MESSAGE),
 	});
 	const body = await limited.arrayBuffer();
 	return new Response(body.byteLength > 0 ? body : null, {

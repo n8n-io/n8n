@@ -8,6 +8,7 @@ import type { PackageRequirements } from '../../spec/requirements.schema';
 import {
 	assertNoArchivedWorkflow,
 	assertNoSubWorkflowCalls,
+	credentialSummaryKey,
 	nodeTypeLabel,
 	nodeTypeLabels,
 	notCopiedVariablesWarning,
@@ -15,6 +16,7 @@ import {
 	singleWorkflowEntry,
 	staticSubWorkflowIds,
 	summariseRequirements,
+	uniqueCredentialSummaries,
 	uniqueSorted,
 	workflowLabel,
 } from '../package-requirements';
@@ -133,6 +135,36 @@ describe('summariseRequirements', () => {
 					.sort(([n1, t1], [n2, t2]) => n1.localeCompare(n2) || t1.localeCompare(t2));
 				expect(listed).toEqual(expected);
 			}),
+		);
+	});
+});
+
+describe('uniqueCredentialSummaries and credentialSummaryKey', () => {
+	it('keeps each name and type once, sorted, and drops other fields', () => {
+		expect(
+			uniqueCredentialSummaries([
+				credential('c1', 'Slack', 'slackApi'),
+				credential('c2', 'Alpha', 'smtp'),
+				credential('c3', 'Slack', 'slackApi'),
+			]),
+		).toEqual([
+			{ name: 'Alpha', type: 'smtp' },
+			{ name: 'Slack', type: 'slackApi' },
+		]);
+		expect(uniqueCredentialSummaries([])).toEqual([]);
+	});
+
+	it('gives the same key only to the same name and type', () => {
+		fc.assert(
+			fc.property(fc.string(), fc.string(), fc.string(), fc.string(), (n1, t1, n2, t2) => {
+				const same =
+					credentialSummaryKey({ name: n1, type: t1 }) ===
+					credentialSummaryKey({ name: n2, type: t2 });
+				expect(same).toBe(n1 === n2 && t1 === t2);
+			}),
+		);
+		expect(credentialSummaryKey({ name: 'a', type: 'b,c' })).not.toBe(
+			credentialSummaryKey({ name: 'a,b', type: 'c' }),
 		);
 	});
 });

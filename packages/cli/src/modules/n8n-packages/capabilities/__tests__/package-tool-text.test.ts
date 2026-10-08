@@ -6,6 +6,7 @@ const imported = (overrides: Partial<ImportedWorkflowPackage> = {}): ImportedWor
 	workflowName: 'Daily report',
 	created: true,
 	published: false,
+	newVersionLive: false,
 	credentialsNeedingSetup: [],
 	missingNodeTypes: [],
 	warnings: [],

@@ -27,6 +27,7 @@ import {
 	type RemoteProbeFailureReason,
 } from './remote/remote-instance.client';
 import { RemoteInstanceError } from './remote/remote-instance.errors';
+import { withRemoteClient } from './remote/with-remote-client';
 import {
 	pickDefaultRemoteProject,
 	reconcileDefaultRemoteProject,
@@ -290,16 +291,10 @@ export class LinkedInstancesService {
 		return project;
 	}
 
-	/** Opens one client for the work and always closes it. */
 	private async withClient<T>(
 		credentials: LinkedInstanceCredentials,
 		work: (client: RemoteInstanceClient) => Promise<T>,
 	): Promise<T> {
-		const client = this.clientFactory.create(credentials);
-		try {
-			return await work(client);
-		} finally {
-			await client.close();
-		}
+		return await withRemoteClient(this.clientFactory, credentials, work);
 	}
 }

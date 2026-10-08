@@ -58,6 +58,11 @@ const outputSchema = {
 		.describe(
 			'True when a version of the workflow is live after the import. The warnings say when the live version is not the imported one.',
 		),
+	newVersionLive: z
+		.boolean()
+		.describe(
+			'True when the live version is the version that this import wrote. False when no version is live, or when an earlier version stays live.',
+		),
 	credentialsNeedingSetup: z
 		.array(z.object({ name: z.string(), type: z.string(), id: z.string() }))
 		.describe(

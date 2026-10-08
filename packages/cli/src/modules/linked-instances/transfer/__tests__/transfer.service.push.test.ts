@@ -1,0 +1,679 @@
+import { randomUUID } from 'node:crypto';
+
+import { ForbiddenError, LockedError, NotFoundError, BadRequestError } from '@n8n/errors';
+
+import { exportWorkflowPackage } from '@/modules/n8n-packages/capabilities/workflow-package-export';
+
+import { expectRejection, CLOUD, user } from '../../__tests__/linked-instances.test-helpers';
+import { LINK_NOT_FOUND_MESSAGE } from '../../linked-instances.service';
+import { RemoteInstanceError } from '../../remote/remote-instance.errors';
+import { TRANSFER_MESSAGES, TRANSFER_WARNINGS } from '../transfer-errors';
+import {
+	importReturns,
+	node,
+	OPS,
+	PACKAGE,
+	pushSetup,
+	REFUSED_PROJECT,
+	serialised,
+	STUB_CREDENTIAL,
+	workflowEntity,
+} from './transfer.test-helpers';
+
+vi.mock('@/modules/n8n-packages/capabilities/workflow-package-export', () => ({
+	exportWorkflowPackage: vi.fn(),
+}));
+vi.mock('@/modules/n8n-packages/capabilities/workflow-package-import', () => ({
+	importWorkflowPackage: vi.fn(),
+}));
+vi.mock('@/modules/n8n-packages/capabilities/mcp-package-size-limit', () => ({
+	instanceMcpPackageSizeLimit: () => ({ maxBytes: 1024, setting: 'N8N_PAYLOAD_SIZE_MAX' }),
+}));
+
+beforeEach(() => {
+	vi.mocked(exportWorkflowPackage).mockReset();
+});
+
+describe('TransferService.push', () => {
+	it('exports the workflow here, imports it into the default project there and reports the copy', async () => {
+		const { service, alice, linkId, remote, client, clientFactory, deactivator } =
+			await pushSetup();
+
+		const result = await service.push(alice, linkId, { workflowId: 'wf1' });
+
+		expect(result).toEqual({
+			remoteWorkflowId: 'remote1',
+			remoteUrl: `${CLOUD}/workflow/remote1`,
+			targetProject: OPS,
+			created: true,
+			published: false,
+			publishFailed: false,
+			credentialsNeedingSetup: [],
+			missingNodeTypes: [],
+			localDeactivated: false,
+			warnings: [],
+		});
+		expect(remote.callsOf('import_workflow_package')).toEqual([
+			{ packageBase64: PACKAGE, sourceWorkflowId: 'wf1', projectId: OPS.id },
+		]);
+		expect(remote.callsOf('publish_workflow')).toEqual([]);
+		expect(deactivator.turnOff).not.toHaveBeenCalled();
+		expect(clientFactory.create).toHaveBeenCalledTimes(1);
+		expect(client.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('exports with the normal read access and the size limit of this instance', async () => {
+		const { service, alice, linkId, workflowFinder, workflow } = await pushSetup();
+
+		await service.push(alice, linkId, { workflowId: 'wf1' });
+
+		// The export checks `workflow:export` too.
+		expect(workflowFinder.findWorkflowForUser).toHaveBeenCalledWith('wf1', alice, [
+			'workflow:read',
+			'workflow:export',
+		]);
+		expect(exportWorkflowPackage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: alice,
+				workflowId: workflow.id,
+				limit: { maxBytes: 1024, setting: 'N8N_PAYLOAD_SIZE_MAX' },
+			}),
+		);
+	});
+
+	it('probes the linked instance before it exports, so that no package is made for an instance that cannot take it', async () => {
+		const { service, alice, linkId, client } = await pushSetup();
+		client.probe.mockResolvedValue({ ok: true, toolNames: ['export_workflow_package'] });
+
+		await expectRejection(
+			service.push(alice, linkId, { workflowId: 'wf1' }),
+			BadRequestError,
+			TRANSFER_MESSAGES.builderOff('Cloud'),
+		);
+		expect(exportWorkflowPackage).not.toHaveBeenCalled();
+		expect(client.callTool).not.toHaveBeenCalled();
+		expect(client.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('updates the same copy when the workflow moves again', async () => {
+		const { service, alice, linkId, remote } = await pushSetup();
+
+		const first = await service.push(alice, linkId, { workflowId: 'wf1' });
+		const second = await service.push(alice, linkId, { workflowId: 'wf1' });
+
+		expect(first.created).toBe(true);
+		expect(second).toMatchObject({ created: false, remoteWorkflowId: first.remoteWorkflowId });
+		expect(remote.copies.size).toBe(1);
+	});
+
+	it('emits an audit event with ids only', async () => {
+		const { service, alice, linkId, eventService } = await pushSetup();
+
+		await service.push(alice, linkId, { workflowId: 'wf1', publish: true });
+
+		expect(eventService.emit).toHaveBeenCalledWith('linked-instance-workflow-pushed', {
+			user: alice,
+			linkedInstanceId: linkId,
+			workflowId: 'wf1',
+			remoteWorkflowId: 'remote1',
+			remoteProjectId: OPS.id,
+			created: true,
+			published: true,
+			publishFailed: false,
+			localDeactivated: false,
+		});
+	});
+
+	it('says in the audit event that a requested publish failed', async () => {
+		const { service, alice, linkId, eventService, remote } = await pushSetup();
+		remote.handlers.publish_workflow = () => ({ success: false, error: 'Invalid trigger.' });
+
+		await service.push(alice, linkId, { workflowId: 'wf1', publish: true });
+
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'linked-instance-workflow-pushed',
+			expect.objectContaining({ published: false, publishFailed: true }),
+		);
+	});
+
+	describe('deactivateLocal', () => {
+		it('refuses with 403 before any request when the user cannot turn off the workflow', async () => {
+			const { service, alice, linkId, workflowFinder, clientFactory, eventService } =
+				await pushSetup();
+			workflowFinder.findWorkflowForUser.mockImplementation(async (_id, _user, scopes) =>
+				scopes.includes('workflow:unpublish') ? null : workflowEntity({ activeVersionId: 'v1' }),
+			);
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1', deactivateLocal: true }),
+				ForbiddenError,
+				TRANSFER_MESSAGES.cannotTurnOff,
+			);
+			expect(clientFactory.create).not.toHaveBeenCalled();
+			expect(exportWorkflowPackage).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'linked-instance-workflow-transfer-failed',
+				expect.objectContaining({ direction: 'push', workflowId: 'wf1', reason: 'refused' }),
+			);
+		});
+
+		it('turns off the workflow here after the move, with the editor tab of the request', async () => {
+			const { service, alice, linkId, deactivator, client } = await pushSetup();
+			deactivator.turnOff.mockResolvedValue(true);
+
+			const result = await service.push(
+				alice,
+				linkId,
+				{ workflowId: 'wf1', publish: true, deactivateLocal: true },
+				{ clientId: 'tab-1' },
+			);
+
+			expect(result).toMatchObject({ published: true, localDeactivated: true, warnings: [] });
+			expect(deactivator.turnOff).toHaveBeenCalledWith(alice, 'wf1', { clientId: 'tab-1' });
+			// After the connection closed: nothing here changes before the copy is there.
+			expect(client.close.mock.invocationCallOrder[0]).toBeLessThan(
+				deactivator.turnOff.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the workflow on here and calls nothing when the copy has credentials without a value', async () => {
+			const { service, alice, linkId, deactivator, remote } = await pushSetup();
+			importReturns(remote, { credentialsNeedingSetup: [STUB_CREDENTIAL] });
+
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				publish: true,
+				deactivateLocal: true,
+			});
+
+			expect(result).toMatchObject({
+				published: false,
+				publishFailed: true,
+				localDeactivated: false,
+				credentialsNeedingSetup: [STUB_CREDENTIAL],
+			});
+			expect(result.warnings).toEqual([
+				TRANSFER_WARNINGS.credentialsNeedSetup('Cloud', 1),
+				TRANSFER_WARNINGS.keptLocalLive('Cloud'),
+			]);
+			expect(remote.callsOf('publish_workflow')).toEqual([]);
+			expect(deactivator.turnOff).not.toHaveBeenCalled();
+		});
+
+		it('moves a workflow that is not on here without the right to turn it off, and turns nothing off', async () => {
+			const { service, alice, linkId, workflowFinder, deactivator } = await pushSetup({
+				activeVersionId: null,
+			});
+			workflowFinder.findWorkflowForUser.mockImplementation(async (_id, _user, scopes) =>
+				scopes.includes('workflow:unpublish') ? null : workflowEntity(),
+			);
+
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				deactivateLocal: true,
+			});
+
+			expect(result).toMatchObject({ remoteWorkflowId: 'remote1', localDeactivated: false });
+			expect(result.warnings).toEqual([]);
+			expect(workflowFinder.findWorkflowForUser).not.toHaveBeenCalledWith('wf1', alice, [
+				'workflow:unpublish',
+			]);
+			expect(deactivator.turnOff).not.toHaveBeenCalled();
+		});
+
+		it('says nothing about the workflow here when it was not on', async () => {
+			const { service, alice, linkId, deactivator, remote } = await pushSetup({
+				activeVersionId: null,
+			});
+			remote.handlers.publish_workflow = () => ({ success: false, error: 'Invalid trigger.' });
+
+			const failed = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				publish: true,
+				deactivateLocal: true,
+			});
+			const moved = await service.push(alice, linkId, { workflowId: 'wf1', deactivateLocal: true });
+
+			expect(failed.localDeactivated).toBe(false);
+			expect(failed.warnings).toEqual([
+				TRANSFER_WARNINGS.publishFailed('Cloud', 'Invalid trigger.'),
+			]);
+			expect(moved).toMatchObject({ localDeactivated: false, warnings: [] });
+			expect(deactivator.turnOff).not.toHaveBeenCalled();
+		});
+
+		it('keeps the workflow on here when the copy could not go live there', async () => {
+			const { service, alice, linkId, deactivator, remote } = await pushSetup();
+			remote.handlers.publish_workflow = () => ({ success: false, error: 'Invalid trigger.' });
+
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				publish: true,
+				deactivateLocal: true,
+			});
+
+			expect(result.localDeactivated).toBe(false);
+			expect(result.warnings).toEqual([
+				TRANSFER_WARNINGS.publishFailed('Cloud', 'Invalid trigger.'),
+				TRANSFER_WARNINGS.keptLocalLive('Cloud'),
+			]);
+			expect(deactivator.turnOff).not.toHaveBeenCalled();
+		});
+
+		it('turns off the workflow here without a publish when the user asks only for that', async () => {
+			const { service, alice, linkId, deactivator } = await pushSetup();
+			deactivator.turnOff.mockResolvedValue(true);
+
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				deactivateLocal: true,
+			});
+
+			expect(result.localDeactivated).toBe(true);
+			expect(deactivator.turnOff).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports a failed turn-off as a warning, because the copy is there already', async () => {
+			const { service, alice, linkId, deactivator } = await pushSetup();
+			deactivator.turnOff.mockRejectedValue(
+				new LockedError('Cannot deactivate workflow - another user currently has write access'),
+			);
+
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				deactivateLocal: true,
+			});
+
+			expect(result).toMatchObject({ remoteWorkflowId: 'remote1', localDeactivated: false });
+			expect(result.warnings).toEqual([
+				TRANSFER_WARNINGS.turnOffFailed(
+					'Cannot deactivate workflow - another user currently has write access',
+				),
+			]);
+		});
+
+		it('hides the text of an unexpected turn-off failure from the user, and logs it', async () => {
+			const { service, alice, linkId, deactivator, logger } = await pushSetup();
+			deactivator.turnOff.mockRejectedValue(new Error('SQLITE_BUSY: table workflow_entity'));
+
+			const result = await service.push(alice, linkId, {
+				workflowId: 'wf1',
+				deactivateLocal: true,
+			});
+
+			expect(result.warnings[0]).not.toContain('SQLITE');
+			expect(result.warnings[0]).toContain('The server log has the details');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not turn off a workflow after it moved to a linked instance',
+				expect.objectContaining({
+					workflowId: 'wf1',
+					reason: 'internal',
+					error: 'SQLITE_BUSY: table workflow_entity',
+				}),
+			);
+		});
+	});
+
+	describe('target project', () => {
+		it('moves the workflow to the personal project when the instance refuses the default project', async () => {
+			const { service, alice, linkId, remote } = await pushSetup();
+			const importCopy = remote.handlers.import_workflow_package;
+			remote.handlers.import_workflow_package = (args) => {
+				if (args.projectId !== undefined)
+					throw new RemoteInstanceError('tool-error', REFUSED_PROJECT);
+				return importCopy(args);
+			};
+
+			const result = await service.push(alice, linkId, { workflowId: 'wf1' });
+
+			expect(result.targetProject).toBeNull();
+			expect(result.warnings).toEqual([TRANSFER_WARNINGS.personalProjectFallback('Cloud', 'Ops')]);
+			expect(remote.callsOf('import_workflow_package')).toEqual([
+				{ packageBase64: PACKAGE, sourceWorkflowId: 'wf1', projectId: OPS.id },
+				{ packageBase64: PACKAGE, sourceWorkflowId: 'wf1' },
+			]);
+		});
+
+		it('imports into the personal project when the link has no default project', async () => {
+			const { service, alice, linkId, remote } = await pushSetup({ defaultProject: null });
+
+			const result = await service.push(alice, linkId, { workflowId: 'wf1' });
+
+			expect(result.targetProject).toBeNull();
+			expect(result.warnings).toEqual([]);
+			expect(remote.callsOf('import_workflow_package')).toEqual([
+				{ packageBase64: PACKAGE, sourceWorkflowId: 'wf1' },
+			]);
+		});
+
+		it('names the personal project when the import there fails after the fallback', async () => {
+			const { service, alice, linkId, remote } = await pushSetup();
+			remote.handlers.import_workflow_package = (args) => {
+				if (args.projectId !== undefined)
+					throw new RemoteInstanceError('tool-error', REFUSED_PROJECT);
+				throw new RemoteInstanceError(
+					'tool-error',
+					'The package matches the workflow "Daily report" (remote1) in the target project, so the import would update that workflow. Workflow is not available in MCP. Enable MCP access.',
+				);
+			};
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				'Turn on MCP access for this workflow in your personal project on Cloud, then try again.',
+			);
+		});
+
+		it('names the personal project in a refusal when the link has no default project', async () => {
+			const { service, alice, linkId, remote } = await pushSetup({ defaultProject: null });
+			remote.handlers.import_workflow_package = () => {
+				throw new RemoteInstanceError(
+					'tool-error',
+					"Workflow 'remote1' is archived and cannot be accessed.",
+				);
+			};
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				'This workflow is archived in your personal project on Cloud. Restore it there, then try again.',
+			);
+			expect(remote.callsOf('import_workflow_package')).toHaveLength(1);
+		});
+
+		it('does not retry for another refusal', async () => {
+			const { service, alice, linkId, remote } = await pushSetup();
+			remote.handlers.import_workflow_package = () => {
+				throw new RemoteInstanceError(
+					'tool-error',
+					"Workflow 'remote1' is archived and cannot be accessed.",
+				);
+			};
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				'This workflow is archived in Ops on Cloud. Restore it there, then try again.',
+			);
+			expect(remote.callsOf('import_workflow_package')).toHaveLength(1);
+		});
+	});
+
+	describe('failures', () => {
+		it('answers 404 for a link of another user, before any other step', async () => {
+			const { service, linkId, clientFactory, workflowFinder } = await pushSetup();
+
+			await expectRejection(
+				service.push(user(), linkId, { workflowId: 'wf1' }),
+				NotFoundError,
+				LINK_NOT_FOUND_MESSAGE,
+			);
+			await expectRejection(
+				service.push(user(), randomUUID(), { workflowId: 'wf1' }),
+				NotFoundError,
+				LINK_NOT_FOUND_MESSAGE,
+			);
+			expect(workflowFinder.findWorkflowForUser).not.toHaveBeenCalled();
+			expect(clientFactory.create).not.toHaveBeenCalled();
+		});
+
+		it('answers 404 for a workflow that the user cannot read', async () => {
+			const { service, alice, linkId, workflowFinder, clientFactory } = await pushSetup();
+			workflowFinder.findWorkflowForUser.mockResolvedValue(null);
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				NotFoundError,
+				TRANSFER_MESSAGES.workflowNotFound,
+			);
+			expect(clientFactory.create).not.toHaveBeenCalled();
+		});
+
+		it('answers 403 before any request when the user can read the workflow but cannot export it', async () => {
+			const { service, alice, linkId, workflowFinder, clientFactory, eventService } =
+				await pushSetup();
+			workflowFinder.findWorkflowForUser.mockImplementation(async (_id, _user, scopes) =>
+				scopes.includes('workflow:export') ? null : workflowEntity(),
+			);
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				ForbiddenError,
+				TRANSFER_MESSAGES.cannotExport,
+			);
+			expect(clientFactory.create).not.toHaveBeenCalled();
+			expect(exportWorkflowPackage).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'linked-instance-workflow-transfer-failed',
+				expect.objectContaining({ direction: 'push', workflowId: 'wf1', reason: 'refused' }),
+			);
+		});
+
+		it('refuses a workflow that calls other workflows by ID before any request, and names them', async () => {
+			const { service, alice, linkId, workflowFinder, clientFactory } = await pushSetup();
+			const callNode = (id: string) =>
+				node({
+					id: `call-${id}`,
+					name: `Call ${id}`,
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1.2,
+					parameters: { workflowId: { __rl: true, mode: 'list', value: id } },
+				});
+			workflowFinder.findWorkflowForUser.mockResolvedValue(
+				workflowEntity({ nodes: [callNode('wf-3'), callNode('wf-2')] }),
+			);
+			workflowFinder.findWorkflowsByIdsForUser.mockResolvedValue([
+				workflowEntity({ id: 'wf-2', name: 'Send invoice' }),
+			]);
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				TRANSFER_MESSAGES.subWorkflowCalls('"Send invoice" (wf-2), "wf-3"'),
+			);
+			expect(clientFactory.create).not.toHaveBeenCalled();
+			expect(exportWorkflowPackage).not.toHaveBeenCalled();
+		});
+
+		it('refuses an archived workflow', async () => {
+			const { service, alice, linkId, workflowFinder } = await pushSetup();
+			workflowFinder.findWorkflowForUser.mockResolvedValue(workflowEntity({ isArchived: true }));
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				TRANSFER_MESSAGES.archived,
+			);
+		});
+
+		it.each([
+			['unreachable', "Can't reach Cloud. Check that it's running, then try again."],
+			[
+				'unauthorised',
+				'Cloud refused the access token. Change the token in Settings > Linked instances.',
+			],
+			['mcp-disabled', TRANSFER_MESSAGES.mcpDisabled('Cloud')],
+		] as const)(
+			'maps a failed probe (%s) to a 400 with an en-GB message',
+			async (reason, message) => {
+				const { service, alice, linkId, client, eventService } = await pushSetup();
+				client.probe.mockResolvedValue({ ok: false, reason });
+
+				await expectRejection(
+					service.push(alice, linkId, { workflowId: 'wf1' }),
+					BadRequestError,
+					message,
+				);
+				expect(exportWorkflowPackage).not.toHaveBeenCalled();
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'linked-instance-workflow-transfer-failed',
+					expect.objectContaining({ reason }),
+				);
+			},
+		);
+
+		it('asks for MCP access on a copy that someone made unavailable in MCP', async () => {
+			const { service, alice, linkId, remote } = await pushSetup();
+			remote.handlers.import_workflow_package = () => {
+				throw new RemoteInstanceError(
+					'tool-error',
+					'The package matches the workflow "Daily report" (remote1) in the target project, so the import would update that workflow. Workflow is not available in MCP. Enable MCP access.',
+				);
+			};
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				'Turn on MCP access for this workflow in Ops on Cloud, then try again.',
+			);
+		});
+
+		it('shows the text of a refused import on one line and without characters without width', async () => {
+			const { service, alice, linkId, remote } = await pushSetup();
+			remote.handlers.import_workflow_package = () => {
+				throw new RemoteInstanceError(
+					'tool-error',
+					'The package is too large.\r\nAsk an admin\u2066 to raise\u2028the limit.\u200B',
+				);
+			};
+
+			await expectRejection(
+				service.push(alice, linkId, { workflowId: 'wf1' }),
+				BadRequestError,
+				'Cloud could not take the workflow: The package is too large. Ask an admin to raise the limit.',
+			);
+		});
+
+		it('refuses a result in an unknown format', async () => {
+			const { service, alice, linkId, remote } = await pushSetup();
+			remote.handlers.import_workflow_package = () => ({ workflowId: '../admin', created: true });
+
+			const error = await service
+				.push(alice, linkId, { workflowId: 'wf1' })
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toHaveProperty('message', expect.stringContaining('unknown format'));
+		});
+
+		it('keeps a local export error as it is and audits it as refused', async () => {
+			const { service, alice, linkId, eventService } = await pushSetup();
+			const blocked = new BadRequestError('The workflow calls 1 sub-workflow(s) by a fixed ID.');
+			vi.mocked(exportWorkflowPackage).mockRejectedValue(blocked);
+
+			await expect(service.push(alice, linkId, { workflowId: 'wf1' })).rejects.toBe(blocked);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'linked-instance-workflow-transfer-failed',
+				expect.objectContaining({ reason: 'refused' }),
+			);
+		});
+
+		it('audits an unexpected error as internal and passes it on', async () => {
+			const { service, alice, linkId, eventService, client } = await pushSetup();
+			const bug = new Error('bug');
+			vi.mocked(exportWorkflowPackage).mockRejectedValue(bug);
+
+			await expect(service.push(alice, linkId, { workflowId: 'wf1' })).rejects.toBe(bug);
+			expect(client.close).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('linked-instance-workflow-transfer-failed', {
+				user: alice,
+				linkedInstanceId: linkId,
+				direction: 'push',
+				workflowId: 'wf1',
+				reason: 'internal',
+			});
+		});
+	});
+
+	it('shows what the import there reports, not the warnings of the export here', async () => {
+		const { service, alice, linkId, remote } = await pushSetup();
+		vi.mocked(exportWorkflowPackage).mockResolvedValue({
+			packageBase64: PACKAGE,
+			workflowName: 'Daily report',
+			sizeBytes: 13,
+			requirements: { nodeTypes: [], credentials: [] },
+			warnings: [
+				'The workflow uses 1 variable(s): region. The package holds their names, but not their values.',
+			],
+		});
+		const missingVariable =
+			'The workflow uses 1 variable(s) that this instance does not have: region. Create them before the workflow runs.';
+		importReturns(remote, { warnings: [missingVariable] });
+
+		const result = await service.push(alice, linkId, { workflowId: 'wf1' });
+
+		expect(result.warnings).toEqual([missingVariable]);
+	});
+
+	it('removes the access token also when the instance splits it with characters without width', async () => {
+		const { service, alice, linkId, token, remote } = await pushSetup();
+		const split = (text: string, mark: string) => `${text.slice(0, 6)}${mark}${text.slice(6)}`;
+		importReturns(remote, {
+			warnings: [`Used ${split(token, '\u200B')}.`, `Used ${split(token, '\u202E')}.`],
+			missingNodeTypes: [`n8n-nodes-${split(token, '\uFEFF')}.x@1`],
+		});
+
+		const result = await service.push(alice, linkId, { workflowId: 'wf1' });
+
+		expect(serialised(result)).not.toContain(token);
+		expect(result.warnings).toEqual(['Used [REDACTED].', 'Used [REDACTED].']);
+		expect(result.missingNodeTypes).toEqual(['n8n-nodes-[REDACTED].x@1']);
+	});
+
+	describe('the access token', () => {
+		const split = (token: string) => `${token.slice(0, 8)}\u200B${token.slice(8)}`;
+
+		it('never shows, logs or emits it when the import there repeats it', async () => {
+			const { service, alice, linkId, token, remote, logger, eventService } = await pushSetup();
+			importReturns(remote, {
+				warnings: [`Token ${token} was used.`],
+				credentialsNeedingSetup: [{ id: 'cred1', name: `Key ${token}`, type: 'httpHeaderAuth' }],
+			});
+
+			const result = await service.push(alice, linkId, { workflowId: 'wf1' });
+
+			const seen = serialised(result, eventService.emit.mock.calls, logger.info.mock.calls);
+			expect(seen).not.toContain(token);
+			expect(result.warnings).toContain('Token [REDACTED] was used.');
+			expect(result.credentialsNeedingSetup).toEqual([
+				{ id: 'cred1', name: 'Key [REDACTED]', type: 'httpHeaderAuth' },
+			]);
+		});
+
+		it('never shows, logs or emits it when the publish there refuses with it', async () => {
+			const { service, alice, linkId, token, remote, logger, eventService } = await pushSetup();
+			remote.handlers.publish_workflow = () => ({
+				success: false,
+				error: `Bad ${token} and ${split(token)}`,
+			});
+
+			const result = await service.push(alice, linkId, { workflowId: 'wf1', publish: true });
+
+			const seen = serialised(result, eventService.emit.mock.calls, logger.info.mock.calls);
+			expect(seen).not.toContain(token);
+			expect(result.publishFailed).toBe(true);
+			expect(result.warnings).toEqual([
+				TRANSFER_WARNINGS.publishFailed('Cloud', 'Bad [REDACTED] and [REDACTED]'),
+			]);
+		});
+
+		it('never shows, logs or emits it when a tool error of the instance holds it', async () => {
+			const { service, alice, linkId, token, remote, logger, eventService } = await pushSetup();
+			remote.handlers.import_workflow_package = () => {
+				throw new RemoteInstanceError('tool-error', `Refused ${token} and ${split(token)}`);
+			};
+
+			const error = await service
+				.push(alice, linkId, { workflowId: 'wf1' })
+				.catch((e: unknown) => e);
+
+			const seen = serialised(error, eventService.emit.mock.calls, logger.warn.mock.calls);
+			expect(seen).not.toContain(token);
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toHaveProperty(
+				'message',
+				'Cloud could not take the workflow: Refused [REDACTED] and [REDACTED]',
+			);
+		});
+	});
+});

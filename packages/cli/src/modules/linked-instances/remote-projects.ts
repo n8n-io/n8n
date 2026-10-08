@@ -13,8 +13,9 @@ export const SEARCH_PROJECTS_TOOL = 'search_projects';
 
 // The highest limit that the tool accepts.
 const MAX_PROJECTS = 100;
-// For the whole list, also for the connection that the first call opens.
-const LIST_TIMEOUT_MS = 10_000;
+// For the whole list, also for the connection that the first call opens. Other short list
+// calls to a linked instance use it too.
+export const LIST_TIMEOUT_MS = 10_000;
 // The length of the column that keeps the name.
 const MAX_NAME_LENGTH = 255;
 const ELLIPSIS_LENGTH = 3;
@@ -24,11 +25,15 @@ const INVISIBLE_CHARACTERS = /[\p{Cf}\p{Cs}]+/gu;
 // Control characters and line or paragraph separators become one space, so the name stays on one line.
 const LINE_BREAKS = /[\p{Cc}\p{Zl}\p{Zp}]+/gu;
 
-function cleanName(name: string): string {
+/**
+ * Makes text from another instance safe to show on one line: drops characters without width,
+ * folds control characters and line breaks into spaces, and cuts the text to `maxLength`.
+ */
+export function cleanName(name: string, maxLength = MAX_NAME_LENGTH): string {
 	const oneLine = name.replace(INVISIBLE_CHARACTERS, '').replace(LINE_BREAKS, ' ').trim();
-	if (oneLine.length <= MAX_NAME_LENGTH) return oneLine;
+	if (oneLine.length <= maxLength) return oneLine;
 	// `truncate` counts UTF-16 units, so it can cut a character in two. That half goes.
-	return truncate(oneLine, MAX_NAME_LENGTH - ELLIPSIS_LENGTH).replace(INVISIBLE_CHARACTERS, '');
+	return truncate(oneLine, maxLength - ELLIPSIS_LENGTH).replace(INVISIBLE_CHARACTERS, '');
 }
 
 // Unknown fields are dropped, so a newer n8n version can add fields.
@@ -41,7 +46,10 @@ const resultSchema = z.object({
 
 const projectSchema = z.object({
 	id: linkedInstanceRemoteProjectIdSchema,
-	name: z.string().transform(cleanName).pipe(z.string().min(1)),
+	name: z
+		.string()
+		.transform((name) => cleanName(name))
+		.pipe(z.string().min(1)),
 	type: z.enum(['personal', 'team']),
 });
 
