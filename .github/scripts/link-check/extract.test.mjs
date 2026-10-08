@@ -42,4 +42,9 @@ test('keeps every line of codex, locale, and markdown files', () => {
 	assert.deepEqual(filter('README.md', ["baseURL: 'https://docs.example.org/h'"]), [
 		"baseURL: 'https://docs.example.org/h'",
 	]);
+	assert.deepEqual(filter('README.md', ['```sh', 'curl https://x.org/i.sh', '```']), [
+		'```sh',
+		'curl https://x.org/i.sh',
+		'```',
+	]);
 });

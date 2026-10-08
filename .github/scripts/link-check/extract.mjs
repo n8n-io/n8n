@@ -70,14 +70,15 @@ export function filterText(path, text) {
 	const keepAll = /(\.node\.json|\/locales\/[^/]+\.json|\.md)$/.test(path);
 	const credential = path.endsWith('.credentials.ts');
 	const lines = text.split('\n').map((raw) => normalize(raw, credential));
+	// Markdown keeps its code fences, so that lychee skips code blocks as it does by default.
+	if (keepAll) return lines.join('\n');
 	return lines
 		.map((line, i) => {
 			// Most lines have no URL, and lychee finds nothing to check on them.
 			if (!line.includes('http')) return '';
 			// The formatter can put the value of a doc link property on the next line.
 			const afterKey = i > 0 && endsWithKey(lines[i - 1]);
-			const keep =
-				keepAll || afterKey || LINK.test(line) || (IN_TEXT.test(line) && !EXAMPLE.test(line));
+			const keep = afterKey || LINK.test(line) || (IN_TEXT.test(line) && !EXAMPLE.test(line));
 			return keep ? line : '';
 		})
 		.join('\n');
